@@ -11,13 +11,13 @@ RectSL is a small stack language with scene side effects. Numbers, strings, colo
 
 | Syntax | Meaning |
 | --- | --- |
-| `# comment` | Ignores the rest of the line. Use comments to explain a scene without putting extra values on the stack. |
+| `# comment` | Ignores the rest of the line. |
 | `12`, `-0.25`, `1e-3` | Pushes a scalar number. Signed decimals and scientific notation are accepted. |
-| `0xffaa33` | Pushes an RGB colour from hexadecimal red, green and blue components. Pass it to `solid` before assigning a fill. |
+| `0xffaa33` | Pushes an RGB colour from hexadecimal red, green and blue components, for `solid` to turn into a fill. |
 | `"name"` | Pushes a string value. Strings name objects, tags, tracks and palettes according to the following word. |
-| `'( ... )` | Stores a block as a quoted value without running it immediately. Pass it to a loop, track constructor or another word that consumes a quote. |
-| `: name ... ;` | Defines a reusable word from the enclosed program. Invoking its name runs the definition. |
-| `material name '( ... )` | Defines a named fragment material using StackSL source. Assign the name with `->material` after arranging geometry in RectSL. |
+| `'( ... )` | Stores a block as a quoted value without running it, for a loop, a track constructor or another word that consumes a quote. |
+| `: name ... ;` | Defines a reusable word from the enclosed program. |
+| `material name '( ... )` | Defines a named fragment material using StackSL source, to be assigned with `->material` once the geometry is arranged. |
 
 ## Scene words
 
@@ -103,20 +103,20 @@ Three rects, three different ways of being animated. `mark` sets each channel by
 | Word | Stack | Notes |
 | --- | --- | --- |
 | `->xy` | `x y --` | Sets the object centre in wall coordinates. The wall’s declared units determine the meaning of x and y. |
-| `->nxy` | `nx ny --` | Sets the centre using normalized wall coordinates in `[-1,1]`. This keeps relative placement independent of wall dimensions. |
+| `->nxy` | `nx ny --` | Sets the centre using normalized wall coordinates in `[-1,1]`. |
 | `->x`, `->y` | `scalar --` | Constant or animated coordinate. A quote becomes a TCB track. |
-| `->wh` | `width height --` | Sets width and height in wall coordinates. Use `->square` when the two dimensions should be equal. |
-| `->nwh` | `nw nh --` | Sets width and height relative to the wall dimensions. It scales with the wall rather than using fixed world units. |
+| `->wh` | `width height --` | Sets width and height in wall coordinates. |
+| `->nwh` | `nw nh --` | Sets width and height relative to the wall dimensions. |
 | `->w`, `->h` | `scalar --` | Sets the width or height channel to a scalar or track. This changes dimensions independently of the object’s scale transform. |
 | `->square` | `size --` | Sets width and height together. |
 | `->rot`, `->rotation` | `scalar --` | Sets rotation in radians. A track animates the angle over time. |
 | `->rotate` | `scalar --` | Adds rotation to the active object/selection. |
 | `->face-travel` | `--` | Auto-orient: sets rotation to the heading of the object's own x/y tracks (local +x points along travel). |
 | `->face-travel-at` | `offset --` | Like `->face-travel`, but adds a fixed angle offset (correct for how the art is drawn). |
-| `->scale` | `scalar --` | Sets uniform scale on the active object or selection. The same factor applies to both axes. |
-| `->scale-xy` | `sx sy --` | Sets separate horizontal and vertical scale factors. Push x scale first, then y scale. |
+| `->scale` | `scalar --` | Sets uniform scale on the active object or selection. |
+| `->scale-xy` | `sx sy --` | Sets separate horizontal and vertical scale factors. |
 | `->alpha` | `scalar --` | Sets the opacity channel. Supply a track to fade the object over time. |
-| `->opacity*` | `factor --` | Multiplies the existing opacity by a factor. Use it to dim a selection while preserving relative fades. |
+| `->opacity*` | `factor --` | Multiplies the existing opacity by a factor, so relative fades survive dimming a selection. |
 | `->appear` | `t --` | Hard-gate visibility on: invisible before `t`, unchanged from `t`. |
 | `->vanish` | `t --` | Hard-gate visibility off: unchanged before `t`, invisible from `t`. |
 | `->live` | `birth life --` | Emitter primitive: play the object's animation from `birth` (local time 0 = `birth`) and show it only during `[birth, birth+life]`. |

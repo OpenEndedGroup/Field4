@@ -188,38 +188,12 @@ On a K1-served `f.` the server logs `completion prior-receiver resolved='afield.
 and the popup renders `moveTo`, `lineTo`, `cubicTo`, `close`, `here`, `scale`, `copy` — the declared
 order, out of the fallback backend.
 
-### What the sidecar returns for this caret
+### Asking Field for the prior in numbers
 
-A figure shows nine rows and the panel has rather more. Asking a live sidecar's `/complete` for `val
-f = FLine()` then `f.`, with the running JVM's own classpath, returns **254 candidates, 248 of them
-carrying `receiverQualifiedName = afield.graphics.FLine`**, the exact key
-`CommonMemberPrior.rankOf` looks up. All eight common members are among them, across every overload:
-
-| member | rows returned | all carry the receiver | prior position |
-|---|---|---|---|
-| `moveTo` | 5 | yes | 1 |
-| `lineTo` | 5 | yes | 2 |
-| `cubicTo` | 4 | yes | 3 |
-| `close` | 1 | yes | 4 |
-| `here` | 1 | yes | 5 |
-| `rot` | 8 | yes | 6 |
-| `scale` | 11 | yes | 7 |
-| `copy` | 2 | yes | 8 |
-
-Thirty-seven rows over eight names, which is why the annotation takes *names* rather than callable
-references: one entry covers `scale`'s eleven overloads.
-
-**What still differs between the two backends.** The first `ctrl-space` after launch is still
-K1-served, and a K1 result carries less than a sidecar result does: no `declaredIn`, so the section
-a row lands in is inferred from its name and its type rather than read off its declaration; no
-`declarationProximity`, so nothing pushes `also`/`apply`/`let` below the names that are about *this*
-type; and no expected-type match. The rows are the compiler's own and the prior applies, but the
-*sections* can be less trustworthy for a second or two. Your Field's log names the backend and the
-reason on every request.
-
-The second figure asks Field for the prior in numbers. The box calls `afield.CommonMemberPrior`, the
-object the completion server calls once per candidate on every keystroke, so the table is the popup's
-own arithmetic and moves when the band moves.
+A figure shows nine rows and the panel has rather more; behind it, one `f.` is a couple of hundred
+candidates, and eight of them carry a prior. This figure asks Field what that prior is. The box
+calls `afield.CommonMemberPrior`, the object the completion server calls once per candidate on every
+keystroke, so the table is the popup's own arithmetic and moves when the band moves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/popup-decides-prior-table.png" capture="box" w="700" h="190" wait="1.2" timeout="120" embed=true hidden=true name="popup-decides-prior-table" alt="A Field box output panel labelled main. A heading reads: @CommonMembers on afield.graphics.FLine — 8 members, first scores 40, less 2 per position. Below it a three-column table headed position, member, prior score, with eight rows: 1 moveTo 40, 2 lineTo 38, 3 cubicTo 36, 4 close 34, 5 here 32, 6 rot 30, 7 scale 28, 8 copy 26."}
 :::static

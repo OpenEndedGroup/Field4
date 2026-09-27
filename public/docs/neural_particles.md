@@ -257,8 +257,7 @@ either of them.
     **The same initialisation.** Train both with the same `seed`; nothing checks this for you.
     Hidden units are exchangeable, so two runs from different random starts represent similar
     functions through different permutations of the same machinery, and averaging across a
-    permutation should produce nothing. `dev_docs/NEURAL_PARTICLES_MEASUREMENTS.md` records a
-    measurement that complicates the argument without changing the instruction.
+    permutation should produce nothing.
 
 The `letter_interpolation` transcript sweeps `t` slowly and continuously — forty seconds there and
 back — and `letter_interpolation_panels` is the still above. Both need letters that are a **single
@@ -550,9 +549,9 @@ compute-only dispatch needs a `Window` for the device to exist.
   cohesion are large and nearly cancelling, and what survives is a small difference of big terms.
   Scored on a flock relaxed until it stops rearranging, the learned rule does slightly *worse*
   than predicting exactly zero. It learned to be small, not to find the residual.
-- **A relative force error of a tenth is not boids**, and the picture is not evidence either way.
+- **A flock that behaves like boids is not boids**, and the picture is not evidence either way.
   Almost any attraction-plus-repulsion rule with a speed limit produces something an audience
-  accepts.
+  accepts, which is why nothing here is graded by eye.
 - **No video of the GPU window.** The native surface is stills-only, so the figures on this page are
   screenshots of a live system rather than recordings of one.
 

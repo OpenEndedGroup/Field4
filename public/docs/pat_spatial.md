@@ -91,8 +91,8 @@ Two more behaviours of the placement itself:
 
 ## What Steam Audio is handed
 
-Here is the signal at the point just before the part that has no figure. One `spat` group, one dough
-engine, every event sent `pan/0` — this is the buffer `PatSpatialRoom.spatialiseSource` copies into
+This is the signal one step before Steam Audio sees it. One `spat` group, one dough
+engine, every event sent `pan/0` — the buffer `PatSpatialRoom.spatialiseSource` copies into
 `source.mono` and gives to the binaural effect.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/pat_spatial/spatial-source-plain.wav" audio-spec="spatial-source-plain" audio-renderer="afield.four.synth.PatSpatialSoundDocs" embed=true hidden=true name="pat-spatial-source-plain"}

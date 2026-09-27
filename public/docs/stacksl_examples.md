@@ -28,7 +28,22 @@ offscreen target, and one `{{ stack.auto.program }}` fragment slot (see [Kotlin
 and template use](#kotlin-and-template-use)). `StackSLGalleryHarness` walks the
 program list, re-binds the slot for each one, waits a few frames, and reads the
 texture back to a PNG. Each program reaches a fullscreen fragment shader as
-`program(vec4(uv, hash, time))`.
+`program(vec4(uv, hash, time))`. The target is sRGB, like the window, so the
+shader's output is treated as linear light and encoded on the way into the PNG:
+the images below are what the same program shows in a window.
+
+??? aside "Until 2026-09-27 these images were darker than the window"
+    The harness used to render into `R8G8B8A8_UNORM`, which stores the shader's
+    output as it is, while the window's swapchain is `B8G8R8A8_SRGB` and encodes
+    it. `uv saturate` read 128 at `u = 0.5` where a native-window capture of the
+    same program read 188, and the `fbm-palette` still averaged 60 against the
+    window's 110, with navy and black where the window shows violet. The
+    regenerated stills match those captures to a tenth of a level on average. The feedback clips
+    changed the most, because their ping-pong target is sRGB now as well: in the
+    old `feedback-trails` still 74% of the pixels sat at exactly 8/255, where a
+    0.94 decay stops moving an 8-bit linear value, and that floor would have shown
+    as a grey haze once encoded. `PingPongRenderToTexture` defaults to sRGB, so
+    this is also what the program does in a document of your own.
 
 The programs are not baked into the harness. Each is an editable box in a
 canonical_graphics-style workspace at `assets/stacksl_gallery/`
@@ -63,7 +78,7 @@ expect:
 
 **Normalized coordinates** — the initial stack value, clamped.
 
-![StackSL: normalized coordinates](assets/stacksl/stacksl-uv-coordinates.png)
+![StackSL, normalized coordinates: a square filled by a smooth two-axis ramp with no texture in it at all. Black at the bottom-left corner, lifting quickly into olive, saturated red along the bottom edge to the right, saturated green up the left edge to the top, and yellow where the two meet at top-right — u read out as the red channel and v as the green](assets/stacksl/stacksl-uv-coordinates.png)
 
 ```diffstatic {data-lang=stacksl}
 uv saturate
@@ -130,7 +145,7 @@ palette
 
 **Frequency modulation** — a compact phase modulator.
 
-![StackSL: frequency modulation](assets/stacksl/stacksl-fm-palette.png)
+![StackSL, frequency modulation: a dense plaid in magenta, cyan, cream and deep blue. Broad vertical and horizontal bands cross at right angles over the whole square, each band edged in its complement so the weave reads as woven rather than printed; towards the bottom-left corner the spacing tightens and the crossings break up into fine diagonal moiré](assets/stacksl/stacksl-fm-palette.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 14.0 * time +
@@ -140,7 +155,7 @@ palette
 
 **Reusable definitions** — `warp` and `field` become prefixed GLSL functions.
 
-![StackSL: reusable definitions](assets/stacksl/stacksl-definitions.png)
+![StackSL, reusable definitions: a soft out-of-focus field in burnt orange, violet and blue. Broad violet and blue bars lie across the upper third, orange smears run down the right-hand side, and nothing in it has a hard edge](assets/stacksl/stacksl-definitions.png)
 
 ```diffstatic {data-lang=stacksl}
 : warp
@@ -223,7 +238,7 @@ p ]wr14 palette saturate
 
 **Mirrored tiling** — `mirror` folds coordinates into a symmetric weave.
 
-![StackSL: mirrored tiling](assets/stacksl/stacksl-mirror-tiles.png)
+![StackSL, mirrored tiling: the same orange, violet and blue material folded into a kaleidoscopic lattice, roughly two blocks across and two down. Each block is mirrored about its own vertical and horizontal axis, so where two tiles meet the pattern runs straight through the join instead of jumping](assets/stacksl/stacksl-mirror-tiles.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 4 * mirror fbm palette saturate
@@ -231,7 +246,7 @@ uv 4 * mirror fbm palette saturate
 
 **Tiled repetition** — `tile` wraps coordinates into a repeating grid.
 
-![StackSL: tiled repetition](assets/stacksl/stacksl-tiled-grid.png)
+![StackSL, tiled repetition: a 3 by 3 grid of the same orange-and-violet cloud, copied rather than mirrored. Every tile is identical, and because the cloud does not wrap, the tile edges show as hard vertical and horizontal seams where the pattern jumps back to its start](assets/stacksl/stacksl-tiled-grid.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 3 tile fbm palette saturate
@@ -260,7 +275,7 @@ palette
 
 **Sigmoid contrast** — push the field through a logistic S-curve.
 
-![StackSL: sigmoid contrast](assets/stacksl/stacksl-sigmoid-punch.png)
+![StackSL, sigmoid contrast: the same noise with its midtones squeezed out. Instead of a gradient there are two territories with a grainy border between them — warm tan and orange filling the lower left, cold mid-blue and white the upper right — and a thin violet seam where the field passes quickly through the middle of the palette](assets/stacksl/stacksl-sigmoid-punch.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 4 * fbm 8 sigmoid palette saturate
@@ -268,7 +283,7 @@ uv 4 * fbm 8 sigmoid palette saturate
 
 **Twisted swirl** — rotate coordinates by radius before the field.
 
-![StackSL: twisted swirl](assets/stacksl/stacksl-twist-swirl.png)
+![StackSL, twisted swirl: the orange, violet and blue field wound around the centre of the square. Broad burnt-orange arms, parted by violet bands, turn out of a tan core, a blue wedge fills the top-right corner and runs down the right edge, and the shear is plainly strongest near the middle and slackens towards the edges](assets/stacksl/stacksl-twist-swirl.png)
 
 ```diffstatic {data-lang=stacksl}
 p 5.0 twist fbm palette saturate
@@ -276,7 +291,7 @@ p 5.0 twist fbm palette saturate
 
 **Log-spiral flow** — `spiral` twists by radius and log-radius.
 
-![StackSL: log-spiral flow](assets/stacksl/stacksl-spiral-flow.png)
+![StackSL, log-spiral flow: a tighter coil than the twist above. Orange and violet bands wind inward to a small eye a little right of centre, the turns getting closer together all the way in, while a broad blue arc sweeps around the outside from the upper left down to the lower right](assets/stacksl/stacksl-spiral-flow.png)
 
 ```diffstatic {data-lang=stacksl}
 p 3 spiral fbm palette saturate
@@ -292,7 +307,7 @@ uv 6 * noise palette saturate
 
 **Sample-and-hold blocks** — `sh` steps a hashed value across space.
 
-![StackSL: sample-and-hold blocks](assets/stacksl/stacksl-sample-hold.png)
+![StackSL, sample-and-hold blocks: the square filled edge to edge with vertical stripes of flat colour — orange, pale blue, cream, mid blue and deep violet — a few pixels to a few dozen pixels wide and irregularly spaced. There is no gradient anywhere inside a stripe, which is the quantisation the operator performs made visible](assets/stacksl/stacksl-sample-hold.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 6 * ]sh10 palette saturate
@@ -300,7 +315,7 @@ uv 6 * ]sh10 palette saturate
 
 **Word references** — `'ridge ... apply` inlines a named word as a value.
 
-![StackSL: word references](assets/stacksl/stacksl-word-reference.png)
+![StackSL, word references: a high-contrast two-level field that reads like a map. Broad flat cream plateaus take most of the square, and between them run narrow channels of white and pale blue, outlined in navy, fringed with brown and branching like coastline. All of the fine structure sits on the boundaries; the interiors are empty](assets/stacksl/stacksl-word-reference.png)
 
 ```diffstatic {data-lang=stacksl}
 : ridge fbm 0.42 0.08 pulse ;
@@ -309,7 +324,7 @@ uv 6 * ]sh10 palette saturate
 
 **Local marks** — `=c` names a value, reused twice without a definition.
 
-![StackSL: local marks](assets/stacksl/stacksl-local-marks.png)
+![StackSL, local marks: a grainy cloud, mostly mid and pale blue, with warm orange breaking through at the left edge and along the bottom and violet where the two meet. The grain is finer and noisier than the smooth swirls earlier in the gallery, and the light and dark regions run diagonally across the square](assets/stacksl/stacksl-local-marks.png)
 
 ```diffstatic {data-lang=stacksl}
 uv 8 * =c
@@ -321,7 +336,7 @@ palette saturate
 
 **Sine stripes** — a plain function of `uv.x` colored by the palette.
 
-![StackSL: sine stripes](assets/stacksl/stacksl-stripe-bands.png)
+![StackSL, sine stripes: evenly spaced vertical bands across the square. Each is a broad pale blue centre falling away through cream and orange to a thin dark violet edge, symmetric about its own middle, with about seven repeats visible — a sine read straight into the palette, so the spacing never varies](assets/stacksl/stacksl-stripe-bands.png)
 
 ```diffstatic {data-lang=stacksl}
 uv x 18 * sin 0.5 + 0.5 * palette saturate
@@ -989,7 +1004,7 @@ module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
 
 Before, running `uv 4.0 * fbm palette saturate`:
 
-![stack.auto before rebinding](assets/stacksl/stacksl-auto-before.png)
+![stack.auto before rebinding: a grainy blue-and-orange cloud with no symmetry in it — warm territory through the lower left, cold blue and white through the upper right, and speckled violet borders between them](assets/stacksl/stacksl-auto-before.png)
 
 Re-assigning the same slot swaps the function in place, with no new module and no
 window teardown:
@@ -1000,7 +1015,7 @@ module.program = "p 6 kaleido fbm palette saturate"
 
 After:
 
-![stack.auto after rebinding](assets/stacksl/stacksl-auto-after.png)
+![stack.auto after rebinding: nothing of the cloud survives. A six-fold symmetric figure in burnt orange and violet, a warm star radiating from a single dark point at the exact centre with six thin darker spokes running out of it, ringed by violet lobes at the edges and corners](assets/stacksl/stacksl-auto-after.png)
 
 The gallery above is built this way: one module, one slot, re-bound once per
 program. A module re-registered under the same name replaces the previous one, so

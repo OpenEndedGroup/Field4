@@ -91,7 +91,7 @@ zoom, drag to pan, and use **all** to return to the whole duration. Hover to rea
 sampled values. Your time window survives accepted edits, and a previous revision
 can appear in dashed grey.
 
-Zooming requests finer samples from the actual functions. A wide envelope shows
+Zooming requests finer samples from the functions themselves. A wide envelope shows
 the range within each bin; it does not preserve the order of the oscillations
 inside that bin, and a feature narrower than a bin can fall between samples
 entirely. Zoom in before you judge a detail.
@@ -100,7 +100,7 @@ entirely. Zoom in before you judge a detail.
 
 [Download the developed example](assets/function_conversation/function_conversation_example.zip)
 to open **function_conversation_example**. It contains the finished source, all
-nine saved revisions, and the actual conversations and plots. Opening it restores
+nine saved revisions, and the recorded conversations and plots. Opening it restores
 the checked composition and draws the viewer. Then select **The function — talk
 here (AI4)** and press **command/ctrl-4**.
 The seven recorded turns are already in that box's chat, with their original
@@ -108,13 +108,13 @@ prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
 the saved chat and viewer does not make a model call.
 
-![An actual saved AI4 exchange inside the worked example's source-box chat](assets/function_conversation/saved-chat.png)
+![A saved AI4 exchange inside the worked example's source-box chat](assets/function_conversation/saved-chat.png)
 
 This is Field's chat panel, restored from the recorded run. Here the chat is
 scrolled back to the move-and-stretch exchange; the viewer shows the final saved
-revision. The starter is still blank; the developed example carries this history. The older turns predate model
-badges, so their UI correctly says **Model not recorded**; the run's provider and
-model are documented in the accompanying archive.
+revision. The starter is still blank; the developed example carries this history.
+The older turns predate model badges, so they show **Model not recorded**; the
+archive names the run's provider and model.
 
 ### From constants to a composition
 
@@ -431,11 +431,13 @@ revision sources; the readable versions are here:
 | [Warp a background passage](assets/function_conversation/06-warp.html) | A reversible local time experiment. |
 | [Restore the background](assets/function_conversation/07-restore-background.html) | Other event edits survive. |
 
-An [independent replay](assets/function_conversation/independent-verification.json)
-recompiled the saved sources and compared them on a grid no coarser than 11 ms,
-finding no difference in the preserved regions, the hold values, or under
-random-access evaluation order. It also exercised failed compilation and the
-stale-edit guard. That is sampling, not proof.
+??? aside "How the saved sources were rechecked"
+
+    An [independent replay](assets/function_conversation/independent-verification.json)
+    recompiled every saved source and compared them on a grid no coarser than 11 ms,
+    covering preserved regions, hold values, random-access evaluation order, failed
+    compilation, and protection against stale edits. It found no differences. That
+    covers these nine revisions on that grid; it is not a proof about arbitrary Kotlin.
 
 ## The tools, and adding your own
 
@@ -458,9 +460,9 @@ conversation's focus is a function study, and the handler works on that box.
 A document can register tools of its own the same way from one of its boxes —
 a measurement, a plot, another request class — scoped to itself, then run the box
 and keep chatting; [Talking a shader into existence](stacksl_conversation.md#adding-a-tool-of-your-own)
-has a worked example. The observation tools return both numerical evidence and
-actual image inputs to AI4, so the assistant can inspect what its Kotlin does
-before making the next edit.
+has a worked example. The observation tools return both measurements and rendered
+plot images to AI4, so the assistant can inspect what its Kotlin does before making
+the next edit.
 
 | Tool | Purpose |
 | --- | --- |

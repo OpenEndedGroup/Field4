@@ -7,9 +7,9 @@ A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection`
 `PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
 what came back, and the audio, on one timeline.
 
-The question is how much of the function survives, and where the loss comes from. Most of the
-answer is not noise. It is two delays, both one line of code each, and both exact enough to measure
-to the sample.
+What gets lost on the way is mostly not noise. It is two delays, one in how the function reaches
+the signal graph and one in how the pitch detector reports time, and both can be measured to the
+sample.
 
 ## The function, and two ways to hear it
 
@@ -45,10 +45,10 @@ And the pitch render, the same curve as a glide:
 // Offline-rendered by FnSoundDocs.renderWav("pitch").
 ```
 
-### The bridge this page had to add
+### Two bridges from an `Fn` to a signal
 
-Until this page there was one way to bring an `Fn` into a Dough graph: a `Param` whose supplier
-reads it, `Param { f(time.toDouble()).toFloat() }`. A supplier is evaluated once per audio block,
+The first way to bring an `Fn` into a Dough graph is a `Param` whose supplier reads it,
+`Param { f(time.toDouble()).toFloat() }`. A supplier is evaluated once per audio block,
 at the block's start, and `Param` ramps from the previous block's value to this one across the
 block. So at time `t` the audio hears, to first order, the function at `t` minus one block.
 
@@ -112,7 +112,7 @@ of each lies at the narrow bump, and the last column says how much of that bump'
 encoding kept. Neither window is much narrower than the bump, and a window can only report an
 average over what it read.
 
-The certified band is the honest test of that. A windowed measurement cannot be expected to land on
+That is what the certified band is for. A windowed measurement cannot be expected to land on
 the function's value at one instant. It *can* be expected to land inside the range the function
 covers over the samples the window read, and `certifiedRange` bounds that range with a proof rather
 than a sample grid. Nearly every loudness frame lands inside. The few that do not miss by less than
@@ -167,9 +167,8 @@ error. That is the ramp described above, and it is why a sharp feature driven th
 arrives a block after it was asked for. `Param` is built for control values set once a block, and
 it does that job. It is the wrong bridge for a function whose shape you mean to hear.
 
-The second delay is in the analysis, and it corrects a claim. `PatF0Frame.centerSample` is the
-middle of the samples a YIN frame spans, `window + tauMax`, and its KDoc said that was where the
-estimate is true. But the difference function at the lag YIN chose, `tau`, compares only
+The second delay is in the analysis. `PatF0Frame.centerSample` is the middle of the samples a YIN
+frame spans, `window + tauMax`, but the difference function at the lag YIN chose, `tau`, compares only
 `window + tau` of them. So for any pitch above the lowest the detector was told about, the estimate
 belongs to an instant `(tauMax − tau) / 2` samples earlier than the one it is reported at. Re-centre
 each frame on the samples it compared and the pitch delay through `toSignal()` falls to within a
@@ -197,7 +196,11 @@ sample or two of zero. Through `Param { }`, what is left is one block again. The
 * [Making a Sound, Every Path There Is](sound_paths.md) for why every audio figure in these docs
   comes out of an offline render.
 
-Every number on this page comes out of `FnSoundDocs`, the same code the figures call. The
-`synth.fn.sound.roundtrip` FIELD_TEST runs all four trips and checks the delays. Replay it with
+Every number on this page comes out of `FnSoundDocs`, the same code the figures call. To run all
+four trips yourself, writing only to a temp directory:
 `uv run --project . --group backdoor python tools/run_field_tests.py --id synth.fn.sound.roundtrip`.
-It writes only to a temp directory. `FnSoundRoundTripTest` holds each printed number to a floor.
+
+??? aside "What holds these numbers"
+
+    The `synth.fn.sound.roundtrip` FIELD_TEST runs the four trips and checks the delays, and
+    `FnSoundRoundTripTest` holds each printed number to a floor.

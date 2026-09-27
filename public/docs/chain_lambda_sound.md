@@ -9,8 +9,8 @@ shortest notation that plays the resulting step mask, and `patRenderStereo` play
 The reason to take a reduction through a *rhythm* compressor rather than a plot is that the
 compressor is a measurement. A sequence with a figure in it gets a much shorter spelling than one
 without, so the length of what `patCondense` returns is a number about the schedule that produced
-the sequence. Which turns out to be the only thing about a reduction here that a schedule *can*
-change.
+the sequence. And the order in which a schedule fires its reactions is the one thing about a
+reduction here that a schedule changes.
 
 ## One reduction, recorded
 
@@ -67,9 +67,9 @@ and picking among them is the scheduler's entire job.
 
 ## The scheduler does not change how long it takes
 
-`Reducer` takes an `ActivationOrder`, and the obvious expectation is that a different order costs a
-different number of reactions. Over the front end's whole 25-term corpus under four schedulers —
-100 reductions, 912 reactions — it does not. Not the count, and not even the mix: every schedule
+`Reducer` takes an `ActivationOrder`, which chooses the next active pair to fire. Over the front
+end's whole 25-term corpus under four schedulers — 100 reductions, 912 reactions — the choice never
+changes the number of reactions. Not the count, and not even the mix: every schedule
 fires *the same multiset of rules*, in a different order.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/sweep.png" wait="25" capture="box" open-outputs="true" w="1180" h="560" padding="18" timeout="300" name="chain-lambda-sweep" embed=true alt="A table of twenty-two corpus terms sorted by how many distinct notations their beta mask condenses to: three terms at four spellings each, two at three, four at two and thirteen at one, with reaction counts from three to twenty-six and condensed notations ranging from x*3 to long mixtures of replicates and rests"}
@@ -116,20 +116,15 @@ except in its order.
 Interaction nets are strongly confluent: two reactions available at once are on disjoint pairs of
 agents, so firing one cannot destroy the other, only move it — and a strongly confluent system that
 terminates reaches its normal form in the same number of steps down every path. That is Lafont's
-result and not a discovery of this page. What this page does is measure it in *this* implementation,
-where it is not a given, because the fan labelling is known to be wrong on some terms.
+result. It is not a given here, because the fan labelling is known to be wrong on some terms, so the
+counts below are taken under all four schedulers.
 
-The terms where the sharing is heaviest are the stress case: a confluence failure is exactly what
-could break the count. `stdlib.lambda-terms.property` pins four of them — a duplicated abstraction
-that loses a copy to its eraser, an answer the readback cannot walk, a readback with an occurrence
-outside its binder's body, and one that used to come back with a wrong variable and no warning mark
-until `readback` started scoping its binder names. `LambdaSoundDocs.CONFLUENCE_PROBES` re-runs all
-four under the four schedulers and reports the counts: **26, 18, 19 and 12 reactions, the same under
-every order.** Three of the four answers are still wrong, and every one of those three says so.
-
-The counts did not move when the fourth was fixed, which is worth more than the fix: that repair was
-in the readback, so it changed what the walk reports and not what the reducer does, and 26 on either
-side of it is how you can tell.
+The terms where the sharing is heaviest are where a confluence failure would show, and
+`LambdaSoundDocs.CONFLUENCE_PROBES` runs four of them under all four schedulers: a duplicated
+abstraction that loses a copy to its eraser, an answer the readback cannot walk, a readback with an
+occurrence outside its binder's body, and a term whose readback depends on scoping binder names.
+Each takes the same number of reactions under every order. Three of the four answers are wrong, and
+every one of those three says so.
 
 ## What the scheduler does change
 
@@ -194,9 +189,8 @@ And RIGHTMOST_BY_ID's, same term, same twenty-six reactions, same eight β-steps
 ```
 
 Those two clips are the same length, the same peak and the same RMS, necessarily — same strikes,
-same voice, same tempo. What separates them is where the strikes are, and the harness measures that
-rather than asserting it. The two waveforms correlate at 0.375, against a check that fails above
-0.5.
+same voice, same tempo. What separates them is where the strikes are: the two waveforms correlate
+at only 0.375.
 
 ## The reduction as pitch
 
@@ -224,9 +218,7 @@ because an interaction net may not simply drop a wire.
     side: a *free* `VAR`, a `CONST`, or the `ROOT` itself. A closed term compiled by
     `LambdaTerms.compile` has no free variable, no constant at all, and one `ROOT` whose principal
     port faces the answer. So the whole corpus only ever reaches four of the six kinds, and
-    `LambdaSoundDocs.KINDS_UNREACHABLE_ON_CLOSED_TERMS` names the other two with that reasoning
-    attached — asserted, so a rule-book change that reaches them fails a test rather than quietly
-    widening the tune.
+    `LambdaSoundDocs.KINDS_UNREACHABLE_ON_CLOSED_TERMS` names the other two.
 
 ## Where each piece is documented
 
@@ -244,5 +236,5 @@ because an interaction net may not simply drop a wire.
 Every number on this page comes out of one run of the `synth.lambda.sound` FIELD_TEST, which is the
 same code the figures above call. Replay it with
 `python3 tools/run_field_tests.py --id synth.lambda.sound`; it takes about six seconds and writes
-nothing. The per-term tables, the confluence-probe counts and the three measurements this page
-deliberately leaves out are in `dev_docs/CHAIN_LAMBDA_SOUND_MEASUREMENTS.md`.
+nothing. The per-term tables, the confluence-probe counts and the waveform comparison are in
+`dev_docs/CHAIN_LAMBDA_SOUND_MEASUREMENTS.md`.

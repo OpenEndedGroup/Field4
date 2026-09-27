@@ -21,11 +21,12 @@ import kotlin.test.assertTrue
  * WHY THE BOUNDS ARE PER MECHANISM AND NOT ONE EPSILON. A single global tolerance would have to be
  * loose enough to admit `posterize-shaper`, which differs by a full 255 levels at 118 pixels out of
  * 262144 — and at that tolerance the test would no longer be able to fail for `uv-coordinates`,
- * which is bit-identical. So each program is classified by [AgreementTier] from its own emitted
- * GLSL, and each tier is held to what its ingredients actually permit:
+ * which misses only at rounding ties. So each program is classified by [AgreementTier] from its
+ * own emitted GLSL, and each tier is held to what its ingredients actually permit:
  *
  *   - arithmetic only: IEEE-754 exact, so agreement is REQUIRED;
- *   - `sin`/`cos`/`exp`/`pow`: implementation-defined in GLSL, but smooth, so within a level;
+ *   - `sin`/`cos`/`exp`/`pow`: implementation-defined in GLSL, but smooth, so within a level —
+ *     two at the dark end, where the stills' sRGB encoding is eleven times finer than linear;
  *   - `_hash21`: exact per operation but `floor`-amplified, so a distribution rather than a bound;
  *   - `_hash11` = `fract(sin(x) * 43758)`: cannot agree even in principle, so no bound at all —
  *     what is asserted instead is the STRUCTURE, which does agree, and that is the evidence that
@@ -70,35 +71,44 @@ class StackSLCpuGalleryTest {
         fun tier(t: AgreementTier) = stats.filter { it.tier == t }
 
         // Arithmetic only: exact is required, and a single level of slack is allowed ONLY because
-        // the GPU may contract a multiply-add that this interpreter performs unfused.
+        // the GPU may contract a multiply-add that this interpreter performs unfused, and because
+        // its sRGB conversion rounds a value within ~0.02 of a tie either way (see `uv-coordinates`).
         tier(AgreementTier.EXACT_OPS).also { assertEquals(2, it.size) }.forEach {
             assertTrue(it.maxLevels <= 1, "$it: arithmetic-only programs must agree to within a level")
             assertEquals(1.0, it.withinOneFraction, 0.0, "$it")
         }
 
-        // Implementation-defined but smooth. Measured max: 1 level, on all five.
+        // Implementation-defined but smooth. Measured in sRGB levels: max 1 on four of the five, and
+        // 2 on `phasor-noise` at ONE pixel, whose green is sRGB 18 — linear 1/255, where the curve
+        // is steep enough that one linear level spans eleven sRGB levels. So that miss is under a
+        // fifth of a linear level; in the linear space these stills used to be stored in, all five
+        // measured max 1.
         tier(AgreementTier.SMOOTH_TRANSCENDENTAL).also { assertEquals(5, it.size) }.forEach {
-            assertTrue(it.maxLevels <= 1, "$it: a smooth transcendental should not move a pixel by more than a level")
-            assertEquals(1.0, it.withinOneFraction, 0.0, "$it")
+            assertTrue(it.maxLevels <= 2, "$it: a smooth transcendental should not move a pixel by more than two levels")
+            assertTrue(it.withinOneFraction > 0.9999, "$it: at most a stray dark pixel may miss by more than a level")
         }
 
-        // `_hash21`: exact per operation, `floor`-amplified. Measured worst mean 0.1673 levels and
-        // worst within-one 96.26%; the bounds are just outside those, and the *mean* is the thing
-        // being bounded because the max legitimately reaches 255 on a hard threshold.
+        // `_hash21`: exact per operation, `floor`-amplified. Measured worst mean 0.1856 levels and
+        // worst within-one 96.14% (`subroutine-ridges`); the bounds are just outside those, and the
+        // *mean* is the thing being bounded because the max legitimately reaches 255 on a hard
+        // threshold.
         val hash21 = tier(AgreementTier.HASH21_AMPLIFIED).also { assertEquals(21, it.size) }
         hash21.forEach {
             assertTrue(it.meanLevels < 0.20, "$it: mean disagreement should stay far below one level")
             assertTrue(it.withinOneFraction > 0.96, "$it: nearly every pixel should agree to within a level")
         }
-        // And most of them do not merely nearly agree — they agree everywhere. Measured: 17 of 21.
+        // And most of them do not merely nearly agree — they agree everywhere. Measured: 15 of 21.
+        // (17 when the stills were linear; `tonemap-grade` and `sigmoid-punch` dropped out, each
+        // missing only where a channel sits at linear 1/255, which sRGB stores eleven levels finer.)
         val perfect = hash21.count { it.maxLevels <= 1 }
         println("hash21 programs agreeing at EVERY pixel to within one level: $perfect of ${hash21.size}")
-        assertTrue(perfect >= 17, "expected at least 17 of ${hash21.size} to agree everywhere, got $perfect")
+        assertTrue(perfect >= 15, "expected at least 15 of ${hash21.size} to agree everywhere, got $perfect")
 
-        // Across the whole gallery: measured 24 of 29 agree at every pixel to within one level.
+        // Across the whole gallery: measured 21 of 29 agree at every pixel to within one level
+        // (24 when linear: the same dark-end magnification, on `phasor-noise` as well as the two above).
         val everywhere = stats.count { it.maxLevels <= 1 }
         println("gallery programs agreeing at EVERY pixel to within one level: $everywhere of ${stats.size}")
-        assertTrue(everywhere >= 24, "expected at least 24 of ${stats.size}, got $everywhere")
+        assertTrue(everywhere >= 21, "expected at least 21 of ${stats.size}, got $everywhere")
 
         // And 28 of 29 agree at 96% of pixels or better — everything except `sample-hold`.
         val nearlyAll = stats.count { it.withinOneFraction > 0.96 }
@@ -106,21 +116,43 @@ class StackSLCpuGalleryTest {
     }
 
     /**
-     * `uv-coordinates` is `uv saturate`: nothing but a swizzle and a clamp. It must be **bit
-     * identical**, all 262144 pixels, and that is also the only proof of the raster convention
-     * that cannot be argued with — a Y flip, a half-pixel offset or a truncating quantiser each
-     * makes this impossible.
+     * `uv-coordinates` is `uv saturate`: nothing but a swizzle and a clamp, so every pixel's exact
+     * answer is known, and that is the only proof of the raster convention that cannot be argued
+     * with — a Y flip, a half-pixel offset or a truncating quantiser each moves pixels by amounts
+     * that have nothing to do with rounding.
+     *
+     * It used to be asserted bit-identical, when the gallery stored linear `R8G8B8A8_UNORM`. Since
+     * the gallery stores `R8G8B8A8_SRGB` (what the window shows), the GPU's sRGB conversion sits
+     * between the shader and the bytes, and that conversion tracks the curve closely without being
+     * correctly rounded. Measured: 10 of 512 columns in red and 10 of 512 rows in green come out
+     * one level from the correctly rounded value, and every one of them is a value within 0.0164
+     * of a rounding tie. So the claim is now exactly that: agreement everywhere except at ties.
      */
     @Test
-    fun `the simplest program is bit-identical, which pins the raster convention`() {
+    fun `the simplest program differs only at rounding ties, which pins the raster convention`() {
         val entry = StackSLCpuGallery.load(root).single { it.name == "uv-coordinates" }
         val (gpu, width) = readArgb(entry.gpuPng!!)
         val cpu = StackSLCpuGallery.render(entry)
         val agreement = StackSLCpuGallery.compare(entry.name, AgreementTier.EXACT_OPS, cpu, gpu, width)
         println(agreement)
-        assertEquals(0, agreement.maxLevels, "uv saturate must be bit-identical")
-        assertEquals(1.0, agreement.exactFraction, 0.0)
+        assertTrue(agreement.maxLevels <= 1, "uv saturate may only miss by a level at a rounding tie: $agreement")
         assertEquals(StackSLCpuGallery.DIM * StackSLCpuGallery.DIM, agreement.pixels)
+
+        var missed = 0
+        var worstTieDistance = 0.0
+        for (p in 0 until cpu.width * cpu.height) for (c in 0..2) {
+            val gpuByte = (gpu[p] shr (16 - 8 * c)) and 0xff
+            val exact = CpuRaster.linearToSrgb(cpu.rgba[p * 4 + c]) * 255.0
+            if (gpuByte == Math.round(exact).toInt()) continue
+            missed++
+            val tieDistance = kotlin.math.abs(exact - kotlin.math.floor(exact) - 0.5)
+            worstTieDistance = maxOf(worstTieDistance, tieDistance)
+            assertTrue(
+                tieDistance < TIE_BAND,
+                "pixel ${p % width},${p / width} channel $c: GPU $gpuByte against exact $exact, which is not near a rounding tie"
+            )
+        }
+        println("uv saturate: $missed channel values off by a level, worst distance from a tie %.4f".format(worstTieDistance))
     }
 
     /**
@@ -141,7 +173,7 @@ class StackSLCpuGalleryTest {
         val entry = StackSLCpuGallery.load(root).single { it.name == "sample-hold" }
         assertEquals(AgreementTier.HASH11_UNBOUNDED, StackSLCpuGallery.tierOf(entry))
         val (gpu, width) = readArgb(entry.gpuPng!!)
-        val cpu = StackSLCpuGallery.render(entry).toArgb()
+        val cpu = StackSLCpuGallery.galleryArgb(StackSLCpuGallery.render(entry))
 
         fun boundaries(argb: IntArray, row: Int): List<Int> =
             (1 until width).filter { argb[row * width + it] != argb[row * width + it - 1] }
@@ -276,5 +308,14 @@ class StackSLCpuGalleryTest {
         } finally {
             temp.deleteRecursively()
         }
+    }
+
+    private companion object {
+        /**
+         * How far from a rounding tie a value may be and still be rounded the other way by the
+         * GPU's sRGB conversion. Measured worst 0.0164 of a level on the committed
+         * `uv-coordinates` still; a half-pixel offset would move values by 0.1 to 3 levels.
+         */
+        const val TIE_BAND = 0.02
     }
 }

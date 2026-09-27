@@ -27,6 +27,7 @@ from __future__ import annotations
 import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -71,24 +72,40 @@ crease by splitting a vertex rather than by marking an edge.
 # Boards that need something other than a docs root on the command line. Every board is
 # run; none is skipped. A skip list is how a board goes dark, which is the whole subject
 # of BoardsSurviveTheTree below.
+# The default below -- `public/docs` -- is load-bearing, and a board that takes a
+# different root is invisible to this gate rather than gated by it. `kdoc_overviews.py`
+# takes a *Kotlin source* root. From 2026-09-25 to 2026-09-25 it was run here with
+# `public/docs`, found no `*.kt` under it, printed `overviews=0 ... sum=0` and exited 0 --
+# so both assertions below passed on a scan of **zero files**, including the one whose own
+# failure message is "a reader cannot tell a clean board from one that scanned zero
+# files". A wrong argv looks exactly like a clean tree. Add the root when you add a board.
 BOARD_ARGV = {
     "check_fences": ["HEAD", "HEAD"],
     "check_kdoc_mirror": ["--sweep"],
+    "kdoc_overviews": ["src", "public/docs/reference"],
+}
+
+# Exempt from `test_no_board_is_blind_to_its_root`, each with why. A board belongs here
+# only if it genuinely does not take a filesystem root -- not because making it print its
+# sweep size was inconvenient.
+ROOT_BLIND_BY_DESIGN = {
+    # Takes two git refs and reads the trees behind them, so a directory argument is not
+    # a root it could be blind to.
+    "check_fences",
+    # `--sweep` walks the repo from the tool's own location and takes no root at all.
+    "check_kdoc_mirror",
 }
 
 # Boards known to die on this base, each with where the fix already is. Enforced in BOTH
 # directions, like `expected_test_failures.json`: an unregistered failure is an ordinary
 # failure, and a registered board that starts passing fails too -- so an entry cannot
 # outlive its bug the way a sentence in a commit message can.
-KNOWN_RED = {
-    "alt_text": (
-        "`ValueError: No closing quotation` out of shlex, on any tree containing a fence "
-        "whose alt= describes braced Kotlin (petri_nets.md:143). Already fixed by "
-        "9e8d7fd7c on the unlanded branch docs/voice-2026-09-23e, which also fixes the "
-        "same regex in double_published.py and tools/check_doc_assets.py. Delete this "
-        "entry when that branch lands; this test will tell you to."
-    ),
-}
+# Empty is the good state, and it was not empty for ten days: `alt_text` sat here from
+# 2026-09-15 until 9e8d7fd7c was cherry-picked onto this branch on 2026-09-25, and every
+# firing in between scanned no alt text at all. The entry said "delete this when that
+# branch lands; this test will tell you to", and it did, in the same run that made the
+# board pass. Keep entries this specific: one board, one failure, and where the fix is.
+KNOWN_RED = {}
 
 
 class BoardsSurviveTheTree(unittest.TestCase):
@@ -102,7 +119,11 @@ class BoardsSurviveTheTree(unittest.TestCase):
     made `double_published.py` drop a fence silently and `check_doc_assets.py` report a
     visible figure as an orphan.
 
-    So: exit 0, and print a count. Twelve seconds for all eighteen.
+    So: exit 0, and print a count. Under a minute for the whole directory, whatever is in it.
+
+    (The sentence here used to say "for all eighteen", and by 2026-09-25 there were twenty.
+    A planted count in a docstring nobody re-derives is the same fault `number_restated.py`
+    in this directory now looks for on the docs pages.)
     """
 
     def boards(self):
@@ -111,7 +132,7 @@ class BoardsSurviveTheTree(unittest.TestCase):
     _ran = {}
 
     def run_board(self, path):
-        """One sweep, shared by both assertions: eighteen subprocesses, not thirty-six."""
+        """One sweep, shared by both assertions: one subprocess per board, not two."""
         if path.stem not in self._ran:
             argv = BOARD_ARGV.get(path.stem, ["public/docs"])
             self._ran[path.stem] = subprocess.run(
@@ -151,6 +172,44 @@ class BoardsSurviveTheTree(unittest.TestCase):
                     any(c.isdigit() for c in out),
                     f"{path.name} printed no number, so a reader cannot tell a clean "
                     f"board from one that scanned zero files:\n{out[-500:]}")
+
+    def test_no_board_is_blind_to_its_root(self):
+        """Run each board against an EMPTY directory. The output must change.
+
+        `test_every_board_prints_a_count` above asks for a digit, and a digit is not
+        enough: `overviews=0`, `0 hit(s)`, and `0 figure(s) published twice` all contain
+        one and all three were printed by boards that had read nothing. On 2026-09-25
+        three boards were blind at once -- `kdoc_overviews.py` because this file passed it
+        a docs root when it takes a Kotlin source root, and `moves.py` and
+        `double_published.py` because they reported hits without ever reporting how many
+        pages they had swept. All three were green on every assertion in this file.
+
+        An empty root is the cheapest possible collapsed input, so if a board says the
+        same thing about it as about 618 real files, that board cannot distinguish clean
+        from collapsed and neither can its reader. This is the fourth appearance in three
+        firings of a sweep reporting nothing because its input was empty; the other two
+        were a `| head` that truncated a completeness check and a zsh string that did not
+        word-split. Those were one-off mistakes in a shell. This one is in a file.
+        """
+        with tempfile.TemporaryDirectory() as void:
+            for path in self.boards():
+                if path.stem in ROOT_BLIND_BY_DESIGN or path.stem in KNOWN_RED:
+                    continue
+                with self.subTest(board=path.name):
+                    real = self.run_board(path).stdout
+                    argv = [void if not a.startswith("-") else a
+                            for a in BOARD_ARGV.get(path.stem, ["public/docs"])]
+                    empty = subprocess.run(
+                        [sys.executable, str(path), *argv],
+                        cwd=DETECTORS.parent.parent, capture_output=True,
+                        text=True, timeout=300).stdout
+                    self.assertNotEqual(
+                        real, empty,
+                        f"{path.name} says exactly the same thing about an empty "
+                        f"directory as about the real tree, so its report cannot "
+                        f"distinguish a clean sweep from one whose input collapsed. "
+                        f"Print the size of the sweep, or add it to "
+                        f"ROOT_BLIND_BY_DESIGN with the reason.\n{real[-400:]}")
 
 
 class DetectorsImport(unittest.TestCase):
@@ -194,6 +253,65 @@ class TargetVoice(unittest.TestCase):
     def test_plain_documentation_is_silent(self):
         total, _words, _em, hits, _detail, _meas = self.sv.score(CLEAN)
         self.assertEqual(total, 0, f"fired on plain documentation prose: {dict(hits)}")
+
+
+class BoardsStayAlive(unittest.TestCase):
+    """Every board still runs to completion over the real tree, and says something.
+
+    This is the gap the import test above could not see, and it cost a day. On
+    2026-09-23 `alt_text.py` died on every invocation with `ValueError: No closing
+    quotation` out of `shlex.split`, because one page's `alt=` described a Kotlin lambda
+    and a first-`}` attribute regex cut the quoted value in half. It imported fine. Its
+    `live_fire()` passed, because the fixture had no braces in it. And a board that dies
+    is indistinguishable from a board that is clean unless a human reads its stderr --
+    so a firing ran it, saw no rows, and recorded the queue as empty. Twice.
+
+    What is asserted is deliberately weak and therefore stable: exit 0, and at least one
+    non-blank line of output. NOT a row count, NOT a page, NOT a score -- those are live
+    decisions about the docs tree, which this suite's own docstring says a test must not
+    make quietly. A board legitimately reporting zero hits still prints its summary line.
+    """
+
+    # Boards that take two git revisions or a generated-page pairing rather than a
+    # directory, so `<script> public/docs` is not their calling convention.
+    NOT_A_DIRECTORY_SCAN = {"check_fences", "check_kdoc_mirror"}
+    # Not boards: a shared helper, the surface-scoring library, and the census harness.
+    NOT_A_BOARD = {"build_machinery", "in_fences", "test_census"}
+
+    def test_every_board_exits_zero_and_prints_something(self):
+        import subprocess
+
+        docs = DETECTORS.parent.parent / "public" / "docs"
+        self.assertTrue(docs.is_dir(), f"expected a docs tree at {docs}")
+        checked = []
+        for name in module_names():
+            if name in self.NOT_A_DIRECTORY_SCAN or name in self.NOT_A_BOARD:
+                continue
+            with self.subTest(board=name):
+                # Through BOARD_ARGV, not a bare `public/docs`. This class predates
+                # that map and predates `kdoc_overviews.py`, whose root is a Kotlin
+                # source tree -- so the merge that brought both together had this
+                # gate calling it with the docs root, where it correctly refuses and
+                # exits 2. The fix is to share the one map rather than grow a third
+                # exemption set beside NOT_A_DIRECTORY_SCAN and NOT_A_BOARD: a board
+                # added tomorrow should not have to be registered in two places.
+                argv = BOARD_ARGV.get(name, [str(docs)])
+                done = subprocess.run(
+                    [sys.executable, str(DETECTORS / f"{name}.py"), *argv],
+                    capture_output=True, text=True, timeout=300,
+                )
+                self.assertEqual(
+                    done.returncode, 0,
+                    f"{name}.py exited {done.returncode} over the real tree. A board that "
+                    f"dies reports nothing about any page.\n{done.stderr[-1500:]}")
+                self.assertTrue(
+                    done.stdout.strip(),
+                    f"{name}.py exited 0 and printed nothing. Silence and cleanliness "
+                    f"must not look the same.")
+                checked.append(name)
+        self.assertGreater(
+            len(checked), 8,
+            f"only {len(checked)} board(s) were run; the exclusion sets have swallowed the suite")
 
 
 class Narrowings(unittest.TestCase):

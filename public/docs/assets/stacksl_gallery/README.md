@@ -16,6 +16,8 @@ Each box is one example:
 
 The docs gallery is rendered by `StackSLGalleryHarness`, which reads every
 `*_stackSL_.stacksl` program here and renders them in a single graphics context
-(one renderer, one `{{ stack.auto.program }}` slot re-bound per program). Edit a
+(one renderer, one `{{ stack.auto.program }}` slot re-bound per program) into an
+sRGB target, as the window's swapchain is, so each PNG is what the program shows in a
+live window rather than its darker linear values. Edit a
 `.stacksl` file and regenerate with
 `run_field_tests.py --id docs.stacksl.gallery`.

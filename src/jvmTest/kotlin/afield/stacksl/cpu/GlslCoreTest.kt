@@ -307,6 +307,24 @@ class GlslCoreTest {
     }
 
     /**
+     * `VK_FORMAT_R8G8B8A8_SRGB` — what the window shows, and what the gallery stores — encodes rgb
+     * with the sRGB transfer function and leaves alpha linear. Both halves matter: the committed
+     * gallery stills are compared against [CpuRaster.toSrgbArgb], and a curve applied to alpha as
+     * well would read a constant `1.0` correctly and every other alpha wrong.
+     */
+    @Test
+    fun `sRGB quantisation encodes rgb, leaves alpha linear, and clamps`() {
+        val raster = CpuRaster(2, 1, floatArrayOf(0.5f, 0.2f, 0.002f, 0.5f, 1.5f, -0.5f, 0f, 1f))
+        val argb = raster.toSrgbArgb()
+        assertEquals(188, (argb[0] shr 16) and 0xff, "linear 0.5 shows as sRGB 187.52, not 128")
+        assertEquals(124, (argb[0] shr 8) and 0xff)
+        assertEquals(7, argb[0] and 0xff, "below 0.0031308 the curve is the linear segment, x 12.92")
+        assertEquals(128, (argb[0] ushr 24) and 0xff, "alpha is not encoded")
+        assertEquals(255, (argb[1] shr 16) and 0xff, "out of range clamps")
+        assertEquals(0, (argb[1] shr 8) and 0xff)
+    }
+
+    /**
      * `fragUV` is sampled at PIXEL CENTRES and `y` grows upwards.
      *
      * The direction is not a matter of taste, but the obvious derivation gets it backwards. The

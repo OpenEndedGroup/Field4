@@ -238,6 +238,9 @@ frames — 2.3 ms — from where it was notated.
 Offline the first non-zero sample of a note *is* the notated frame, exactly, and so is a patterned
 parameter change. `dev_docs/FAUST_MEASUREMENTS.md` has the numbers and what limits them.
 
+Splitting the block costs about twice an undisturbed one at eight events, so schedule as finely as
+the music wants; the budget goes on the crossing below, not on the chunking.
+
 ### `freq`, `gate`, `gain`: found by label, refused when absent
 
 Faust's own polyphonic convention is `freq`/`gate`/`gain`, the three names `-nvoices` looks for; a
@@ -306,17 +309,6 @@ Three measurement helpers come with it:
 * `faustSpectrumPeaks` — the only thing here that can tell polyphony from monophony. Counting attacks
   cannot: a single voice stealing itself produces the same number of them.
 
-### What eight voices cost
-
-Eight voices render a 128-frame block in **16.9 µs** against a 2667 µs budget — 158× realtime — and the
-cost is linear in voices, which is what a bank of independent DSPs should be. Sixteen voices build in 6 ms.
-Splitting a block at eight event boundaries costs about 2.2× an undisturbed one and is still 81× realtime
-with a note starting every 0.33 ms, so sub-block scheduling is not where your budget goes.
-
-A bank hosts every voice in one GraalVM context, unlike `FaustDsp`, which gives each voice its own. The
-measurements behind that choice, and the ~0.9 KB per voice per block that `render` still allocates, are in
-`dev_docs/FAUST_MEASUREMENTS.md`.
-
 ### Calling in from another thread
 
 `render` takes no lock. `schedule` and `automate` hand work over through lock-free queues that `render`
@@ -383,8 +375,10 @@ opposite performance profiles. Measured on an M-series Mac, GraalVM CE 25.0.2:
 The two render figures say different things. Faust's generated code is very fast (7.6µs), and almost
 everything else in the 60.4µs is the cost of crossing between the JVM and WebAssembly once per block:
 entering the context, and copying the output out. So a voice costs a little over 2% of one core, and a
-handful of Faust boxes is unremarkable. A polyphonic bank is cheaper still, because it crosses once for
-all its voices.
+handful of Faust boxes is unremarkable. A polyphonic bank is cheaper still, because it hosts every
+voice in one GraalVM context — where `FaustDsp` gives each its own — and so crosses once for all of
+them. Its cost is then linear in voices. `dev_docs/FAUST_MEASUREMENTS.md` measures both arrangements
+against each other as the voice count climbs.
 
 The compiler is the real cost, and three things blunt it:
 
@@ -429,25 +423,25 @@ a live-coding environment: a slow first compile is a warm-up, whereas a missing 
 | Call | Behavior |
 | --- | --- |
 | `Box.faust(source, …)` | Compiles the source and starts playback, returning a `FaustLaunch`. Keep the launch to change controls or inspect meters while it plays. |
-| `Box.faustCompile(source)` | Compiles without starting playback. Inspect the resulting program’s interface or diagram before creating a live node. |
+| `Box.faustCompile(source)` | Compiles without starting playback, returning a program whose interface and diagram can be inspected. |
 | `Box.faustControls(launch)` | Builds the control group for an existing launch. Use it when automatic controls were disabled with `controls = false`. |
-| `Box.faustDiagram(program)` | Displays the compiled program’s block diagram. This reads the program structure without playing it. |
+| `Box.faustDiagram(program)` | Displays the compiled program’s block diagram. |
 | `Box.faustWaveform(program)` | Renders the program offline and plots the result. No audio output device is needed. |
 | `Box.faustPoly(source, voices)` | Compiles a polyphonic instrument and returns a `FaustPolyLaunch`. `voices` limits how many simultaneous note instances the bank can run. |
 | `FaustPolyLaunch.play(pattern, …)` | Schedules a Pat pattern into the voice bank. Supply `automate` to vary controls shared by the instrument. |
-| `FaustPolyLaunch.chord(midis)` | Starts all supplied MIDI notes on the same audio frame. Use it when simultaneity matters more than a pattern’s sequential rhythm. |
-| `Box.showFaustPattern(source, pattern)` | Renders a finite pattern offline and displays a player plus waveform. Use it to inspect an instrument without live playback. |
-| `faustPatternRender(…)` | Returns the offline pattern render as data. Choose it when you need samples for analysis or writing a file rather than a display. |
+| `FaustPolyLaunch.chord(midis)` | Starts all supplied MIDI notes on the same audio frame. |
+| `Box.showFaustPattern(source, pattern)` | Renders a finite pattern offline and displays a player plus waveform. |
+| `faustPatternRender(…)` | Returns the same offline render as data rather than a display, for analysis or writing a file. |
 | `faustParamAutomation(values, control, …)` | Turns a numeric pattern into timed changes for a shared control. The control changes apply across the voice bank. |
 | `faustOnsets` / `faustSilentGaps` | Finds attack frames and silent gaps in rendered audio. These measurements check whether a scheduled pattern produced distinct notes. |
 | `faustFundamentalHz` / `faustSpectrumPeaks` | Estimates the fundamental by autocorrelation and spectral partials by FFT. Compare both when a strong harmonic could be mistaken for the played pitch. |
 | `FaustLaunch["label"] = v` | Sets a running control by label, address or qualified name. Use a qualified name when several controls share the same label. |
 | `FaustLaunch.press(label)` | Pulses a Faust button control. This is a momentary trigger rather than a persistent slider value. |
-| `FaustLaunch.meter(label)` | Reads the current value of a Faust bargraph. Use meters to observe DSP state without changing it. |
-| `FaustEngine.compile(name, src)` | Invokes the compiler directly and returns WebAssembly bytes with interface metadata. Playback is a separate step. |
-| `FaustEngine.blockDiagram(…)` | Returns the program’s SVG diagram set. Use it for a custom display or export. |
+| `FaustLaunch.meter(label)` | Reads the current value of a Faust bargraph. |
+| `FaustEngine.compile(name, src)` | Invokes the compiler directly and returns WebAssembly bytes with interface metadata. |
+| `FaustEngine.blockDiagram(…)` | Returns the program’s SVG diagram set. |
 | `FaustEngine.warmInBackground()` | Starts compiler warm-up in the background. Call it ahead of a performance to move the cold-start delay out of the first edit. |
-| `FaustEngine.libfaustVersion()` | Reports the version of the loaded compiler. Record it with a compiler diagnostic when comparing environments. |
+| `FaustEngine.libfaustVersion()` | Reports the version of the loaded compiler. |
 
 </div>
 

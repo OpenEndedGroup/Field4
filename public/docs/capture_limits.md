@@ -4,9 +4,8 @@ For anything visual, *it compiles* is not verification. The way to know a change
 it to pixels and look at them, and [Letting an Agent Drive](automating_field.md) is how that is
 done here without a human in the chair.
 
-So the useful question is not whether captures work. It is **which pictures cannot be taken at
-all**, because that is the boundary of what a person or an agent can claim about a running
-document.
+This page is about the pictures that cannot be taken, or that come out wrong without saying so.
+They mark the edge of what a person or an agent can claim about a running document from a capture.
 
 The limits sort into three kinds:
 
@@ -23,9 +22,9 @@ subject of this page.
 
 ## Silent: a capture that reported success and showed nothing
 
-`screenshot-box` used to return a picture of nothing with `ok: true`. Captures requesting open
-outputs now reject missing content and unsettled layout. These two historical captures show the
-failure that motivated that check.
+Captures that request open outputs reject missing content and unsettled layout. Without that
+check, `screenshot-box` returns a picture of nothing with `ok: true`, and the two captures below,
+taken before the check existed, show what that looks like.
 
 Here are two runs of the **same box** with the **same command**. One variable changes: whether a
 browser client was attached at the moment the box ran.
@@ -71,19 +70,15 @@ The capture then clips to whatever the box's element measures on the page —
 `getBoundingClientRect`, in the prep script inside `afield/docs/screenshot.kt`. A collapsed box
 measures 24 × 24 logical pixels, and at this display's 2× scale that is a 48 × 48 PNG.
 
-That is also why the number is not a constant, and why looking for "48 × 48" is the wrong habit.
-`dev_docs/MARF_DEMO.md` and `dev_docs/OUTPUT_PANEL_SIZING.md` both report 48 × 48;
-`dev_docs/path_tracer_instrument.md` reports 40 × 40 for a box with no open display panel. These do
-not disagree. **The clip is the box's own rectangle**, so its size is whatever that particular box
-collapsed to, times the device pixel ratio. The signature to watch for is not a number — it is a
-clip much smaller than the output you were expecting.
+So do not look for "48 × 48". **The clip is the box's own rectangle**, so its size is whatever that
+particular box collapsed to, times the device pixel ratio; `dev_docs/path_tracer_instrument.md`
+records a 40 × 40 one. What to watch for is a clip much smaller than the output you were expecting.
 
 ### How it is now rejected
 
 `screenshot-box` already opens outputs by default (`--open-outputs` is the default in
-`tools/field_backdoor.py`; `--no-open-outputs` turns it off), and the prep script does hold a
-readiness precondition before shooting — deliberately so, after a figure published with a "loading
-waveform" badge in the corner.
+`tools/field_backdoor.py`; `--no-open-outputs` turns it off), and the prep script waits for
+anything that declares itself busy, such as a "loading waveform" badge, before shooting.
 
 Checking only whether anything **declares itself busy** misses an output area that was never
 populated. Box and targeted window captures now open the disclosures first, then require visible,
@@ -148,8 +143,8 @@ and `dev_docs/GPU_SKINNING.md`, one variable at a time on the same scene:
 | reads a box property with `getPropertyRaw` | times out |
 | re-uploads vertices with `applyToMesh` | times out |
 
-**Deformation is innocent and buffer writes are innocent.** The trap is the per-frame *vertex
-re-upload* specifically, and separately a per-frame box-property read, not per-frame GPU work in
+Deforming the mesh and rewriting buffers every frame are both fine. What times the capture out is
+a per-frame *vertex re-upload*, or a per-frame box-property read, not per-frame GPU work in
 general.
 
 ??? aside "Where those five rows come from"
@@ -172,8 +167,7 @@ and every evidence renderer is a `main`, that is the environment most likely to 
 `record-window`, `record-editor` and `record-box` all record the *browser*, through the page. A
 docs fence that asks for `capture="native-window"` together with `video=` is accepted, falls through
 to the browser recorder, and silently records the wrong window
-(`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page currently does this, so the trap is real
-and unsprung.
+(`dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`). No published page does this today.
 
 A native-window recorder **does** exist: `Window.raiseAndRecord`, in `afield/docs/doc.kt`, raises
 the GLFW window and records its rectangle with macOS `screencapture`. Its only caller is the
@@ -199,12 +193,12 @@ Two more pictures cannot be taken, for reasons that have nothing to do with the 
 
 ## Telling a timed-out capture from a broken subject
 
-This is the hard one, and today the two look identical: "Timed out waiting for native renderer",
-with no hint whether the scene failed to draw or the capture path failed to fetch it. A theory
-about a timeout is self-confirming — you will always find something slow to blame.
+The two look identical: "Timed out waiting for native renderer", with no hint whether the scene
+failed to draw or the capture path failed to fetch it. A theory about a timeout is
+self-confirming — you will always find something slow to blame.
 
-One technique settles it. Call it a **trusted control**: alongside the thing you are trying to
-photograph, capture something whose committed figures prove it worked before. Then:
+To tell them apart, capture a **trusted control** alongside the thing you are trying to
+photograph: something whose committed figures prove it worked before. Then:
 
 | your subject | the control | verdict |
 |---|---|---|

@@ -1248,7 +1248,7 @@ bridge does its own repair.
 
 <div data-code-lang="kotlin" markdown>
 
-### 2d delaunay / voronoi / hull
+### 2D Delaunay / Voronoi / hull
 
 Connect unweighted sites or partition the plane by nearest site. Delaunay supplies neighbour relations; Voronoi supplies cells; the hull encloses the point set.
 
@@ -1273,7 +1273,7 @@ Connect unweighted sites or partition the plane by nearest site. Delaunay suppli
 
 </div>
 
-### Weighted 2d (apollonius)
+### Weighted 2D (Apollonius)
 
 Partition the plane using weighted sites. Boundaries can be circular arcs, so sample them to polylines when a drawing or downstream algorithm needs straight segments.
 
@@ -1300,7 +1300,7 @@ Partition the plane using weighted sites. Boundaries can be circular arcs, so sa
 
 </div>
 
-### 3d voronoi
+### 3D Voronoi
 
 Partition space into volumetric cells. Keep the cell and face structure when inspecting neighbours, and convert to a mesh only for surface operations or display.
 
@@ -1328,7 +1328,7 @@ Partition space into volumetric cells. Keep the cell and face structure when ins
 
 ### Marching squares
 
-Extract level curves from a two-dimensional scalar field. Sampling step controls detail; smoothing changes the resulting contours after extraction.
+Extract level curves from a two-dimensional scalar field.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 
@@ -1388,7 +1388,7 @@ Partition observations into groups. Hierarchical linkage gives nested cuts; medo
 
 ### Field integration
 
-Convert graphs, cells or clusters into Field drawings and interactive views. Use the geometry helpers first, then choose the display adapter for the result.
+Convert graphs, cells or clusters into Field drawings and interactive views.
 
 <div class="field-reference" data-code-lang="kotlin" markdown>
 

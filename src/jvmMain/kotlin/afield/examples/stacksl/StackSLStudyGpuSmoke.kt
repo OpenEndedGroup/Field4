@@ -77,9 +77,10 @@ object StackSLStudyGpuSmoke {
             check(rasterizer.description.startsWith("GPU")) { "expected a GPU render, got: ${rasterizer.description}" }
             val cpu = CpuStackSLRasterizer.renderAll(program, DIM, TIMES)
             TIMES.indices.map { i ->
-                val g = StackSLStudyShader.displayed(gpu[i]).toArgb()
+                // Both in 8-bit sRGB, as StackSLCpuGallery.compare measures and the window shows.
+                val g = StackSLStudyShader.displayed(gpu[i]).toSrgbArgb()
                 val c = StackSLStudyShader.displayed(cpu[i])
-                rows += g to c.toArgb()
+                rows += g to StackSLCpuGallery.galleryArgb(c)
                 val agreement = StackSLCpuGallery.compare(program, tier, c, g, DIM)
                 holds(program, tier, agreement)
                 agreement

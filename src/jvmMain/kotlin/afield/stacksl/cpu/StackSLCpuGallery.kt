@@ -22,10 +22,12 @@ import java.io.File
 // `StackSLGalleryHarness`); the other 2 are the feedback template. So the render convention is
 // pinned by the files rather than by this code.
 //
-// WORSE: the ground truth is 8-bit. `VK_FORMAT_R8G8B8A8_UNORM` means the GPU's answer is known to
-// 1/255, and the harness's `main()` clamps to [0,1] first, so any disagreement smaller than half
-// a level is invisible and any claim of "bit-exact" would be unfalsifiable. Everything below is
-// therefore measured in 8-bit levels, and "exact" means "quantises to the same byte".
+// WORSE: the ground truth is 8-bit. The harness renders into `VK_FORMAT_R8G8B8A8_SRGB`, the
+// window's encoding, so the GPU's answer is known to one sRGB level, and the harness's `main()`
+// clamps to [0,1] first, so any disagreement smaller than half a level is invisible and any claim
+// of "bit-exact" would be unfalsifiable. Everything below is therefore measured in 8-bit sRGB
+// levels — the CPU side is encoded the same way ([galleryArgb]) — and "exact" means "quantises
+// to the same byte".
 // ---------------------------------------------------------------------------------------------
 
 /** One gallery entry as it exists on disk. */
@@ -206,13 +208,20 @@ object StackSLCpuGallery {
     }
 
     /**
+     * A CPU raster as the gallery's GPU target stores it: 8-bit sRGB
+     * (`StackSLGalleryHarness.GALLERY_FORMAT`). Anything compared with or drawn beside a committed
+     * still goes through here, so the two sides are never in different encodings.
+     */
+    fun galleryArgb(cpu: CpuRaster): IntArray = cpu.toSrgbArgb()
+
+    /**
      * Compare a CPU raster against a committed GPU PNG.
      *
-     * Both sides are reduced to 8-bit before comparing, because 8-bit is all the GPU side has.
+     * Both sides are reduced to 8-bit sRGB before comparing, because that is all the GPU side has.
      */
     fun compare(name: String, tier: AgreementTier, cpu: CpuRaster, gpuArgb: IntArray, gpuWidth: Int): GalleryAgreement {
         require(cpu.width == gpuWidth) { "$name: CPU raster is ${cpu.width} wide, GPU still is $gpuWidth" }
-        val cpuArgb = cpu.toArgb()
+        val cpuArgb = galleryArgb(cpu)
         require(cpuArgb.size == gpuArgb.size) { "$name: ${cpuArgb.size} CPU pixels vs ${gpuArgb.size} GPU pixels" }
 
         var total = 0L

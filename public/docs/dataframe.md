@@ -30,7 +30,7 @@ The typing does not survive a compile boundary, though, and `typed()` is the cal
 
 The plugin's happy path is a chain written in one go. Every step re-types the frame, so the *next* step can name the columns the previous one produced:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="3.0" capture="editor" outputs="inline" padding="10" w="900" h="330" timeout="90" embed=true name="dataframe-typed-columns"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-typed-columns.png" wait="3.0" capture="editor" outputs="inline" padding="10" w="900" h="330" timeout="90" embed=true name="dataframe-typed-columns" alt="The Monaco editor holding the snippet, with two inline output strips wedged between its lines. The first, under the names println, reads names: [Alice, Bob, Cara] and kept: [Bob, Cara]. The second, under the decade println, reads decade: [3, 4]. So filter dropped Alice at 15, and the decade column the add call invented is readable by name afterwards."}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
@@ -151,7 +151,7 @@ A DataFrame is a first-class Field value: it renders through [the value visualiz
 
 Four things dispatch: a **frame**, a **column**, a **row**, and a **`GroupBy`**.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h-forms.png" wait="2.5" capture="box" open-outputs="true" w="900" h="620" padding="8" embed=true name="dataframe-h-forms"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h-forms.png" wait="2.5" capture="box" open-outputs="true" w="900" h="620" padding="8" embed=true name="dataframe-h-forms" alt="Four stacked output panels, one per form. frame: a name/city/age table of Alice and Bob in Berlin, Cara and Dev in Lisbon, footed 4 rows × 3 columns. column: the age values 15, 30, 45, 22 under a kotlin.Int type line. row: the single record name Alice, city Berlin, age 15, with the field names in blue. grouped: groups 2, keyed by city, then a one-column table of Berlin and Lisbon footed 2 rows × 1 columns."}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
@@ -174,7 +174,7 @@ None of this is a bespoke widget. `.h` renders all four through the existing `ta
 
 The compact `.h` form shows the first **10** rows (`DataFrameVisualizer.kt:51#const val HEAD_ROWS: Int = 10`) and says how much it is hiding. It takes them cell by cell, **by index**, never `toList()` on the frame and never `take` on a column (`DataFrameVisualizer.kt:119#private fun headCells(column: DataColumn<*>): List<Any?> {`), so printing a very large frame costs what printing ten rows costs. That matters, because this is the form that appears in a box output on **every** execution.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-big-head.png" wait="3.0" capture="box" open-outputs="true" w="900" h="440" padding="8" timeout="120" embed=true name="dataframe-big-head"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-big-head.png" wait="3.0" capture="box" open-outputs="true" w="900" h="440" padding="8" timeout="120" embed=true name="dataframe-big-head" alt="Two panels. head shows a single column i listing 0 through 9, footed 200000 rows × 1 columns — first 10; use .h2 to scroll all of them. cost below it reads: the compact form of a 200000-row frame is 1143 characters."}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 
@@ -201,7 +201,7 @@ The capture above measures it: **1,143 characters for 200,000 rows.** A 5,000-ro
 
 `.h2` does not produce a bigger HTML dump. It *adapts* the frame into a lazily-indexed row view — a `List<Map<String, Any?>>` that materialises a row only when asked (`DataFrameVisualizer.kt:154#private class LazyRows`) — and the **h2 explorer** streams windows of that view by index. The server holds the **frame** behind an `.h2` token, not a rendering of it, so each scroll builds only the window being looked at.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h2-scroller.png" wait="4.5" capture="box" open-outputs="true" w="900" h="560" padding="8" timeout="150" embed=true name="dataframe-h2-scroller"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/dataframe-h2-scroller.png" wait="4.5" capture="box" open-outputs="true" w="900" h="560" padding="8" timeout="150" embed=true name="dataframe-h2-scroller" alt="The scroller panel, headed 15000 rows × 2 columns with outliner and columns controls beside it. Inside, a LazyRows table labelled list | 15000 rows with columns #, i and sq, showing rows 0 to 5: i running 0,1,2,3,4,5 and sq the squares 0,1,4,9,16,25. Each row number carries a disclosure chevron."}
 :::static
 import org.jetbrains.kotlinx.dataframe.api.*
 

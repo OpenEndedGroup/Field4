@@ -981,18 +981,10 @@ restarted from a spectral embedding, which is the subject of the next section.
     restarts from a spectral embedding and `CanonicalizeResult.reseeded` records which embedding the
     answer came from.
 
-    That is not a promise that every input converges. `kkC`, kis applied twice to the cube, is the
-    worked counter-example for *these two iterations*: neither finds its canonical form, and the
-    library returns `converged = false` with `reason = "max iterations"` and finite coordinates,
-    rather than a smoothed lie. A test pins that failure as a *reported* one, so it cannot
-    start returning garbage instead.
-
-    `relaxWithCeres` does reach it, in 12 iterations and about 6 ms, at a tangency spread of order
-    `1e-8`, and not by having more solver horsepower. `canonicalize()` on `kkC` does not merely run
-    out of its iteration budget:
-    it moves *away* from the answer, ending worse than the embedding it started from and with a minimum
-    dihedral angle of 0.003 radians, a collapsed sliver rather than a solid. The next section measures
-    all three side by side.
+    That is not a promise that every input converges. Where one does not, the library returns
+    `converged = false` with `reason = "max iterations"` and finite coordinates rather than a
+    smoothed lie, and a test pins that failure as a *reported* one so it cannot start returning
+    garbage instead. `kkC` below is the worked case.
 
     `Realization3` stores Field's single-precision `Vec3`, so the achievable residual floor is about
     `1e-7` relative, however good the iteration is.

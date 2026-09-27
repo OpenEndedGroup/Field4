@@ -23,7 +23,7 @@ substantially longer than later starts.
 
 Eventually you'll be greeted with the boot-screen:
 
-![working](assets/screenshot_22.png)
+![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
 The desktop launcher opens Field's Electron shell. You can also open
 [`https://localhost:9092/index.html?file=firstDocument`](https://localhost:9092/index.html?file=firstDocument)
@@ -41,7 +41,7 @@ _Field·4_ is still beta software. Report reproducible problems through the publ
 
 On Mac you might find that Apple cannot abide the idea of you downloading some code from the internet, building it and running it — all outside their ecosystem. Most likely, this complaint is framed in terms of security and privacy. It's possible that you'll have to give `Terminal` permission to read files from your home directory. For reporting bugs with our installation process, beyond that I'll be very interested in the contents of your Security and Privacy settings page:
 
-![](assets/screenshot_4.png)
+![macOS System Settings open on the Privacy & Security pane, that row highlighted in the sidebar among Desktop & Dock, Displays, Notifications, Sound, Lock Screen and the rest. The pane is scrolled to its lower half: Screen & System Audio Recording with 3 apps, Speech Recognition with 0, Sensitive Content Warning off, Analytics & Improvements, Apple Advertising, Apple Intelligence Report on. Then a Security section with "Allow applications from — App Store & Known Developers", "Allow accessories to connect — Ask for New Accessories", FileVault off and Lockdown Mode off, with an Advanced button bottom right](assets/screenshot_4.png)
 
 ## Updating
 
@@ -62,7 +62,7 @@ It will not pull, merge, rebase or write anything into your working tree; only y
 that checkout has work in it. If the answer is "7 new commits on origin/main", the `git pull` is
 yours to run when you are ready.
 
-![](assets/screenshot_17.png)
+![Field's command palette open over the canvas: an empty search box above four commands — New Box, Delete Box, Insert document from workspace, and Check for updates, that last one highlighted in blue as the selected row](assets/screenshot_17.png)
 
 The command says when it cannot answer. If you unpacked Field from an archive instead
 of cloning it, if `HEAD` is detached, if there is no `origin`, or if the network is down, it says

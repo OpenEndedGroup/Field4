@@ -353,9 +353,8 @@ def ripple_adder(a, b, c):
 ![an 8-bit ripple adder drawn as a chain of gates, the output of the MorphoHDL source above having been compiled, grown and laid out](assets/morpho_examples/as-a-language.png)
 
 That figure is not an illustration of the code above it — it *is* the code above it. The fence is
-`data-lang=morpho`: what the page runs is that MorphoHDL text, wrapped by `docs_hooks.py` the same
-way it already wraps `nano` and `forth` snippets. Sixteen gates, depth 8: the same 8-bit ripple adder
-whose exhaustive arithmetic check appears near the top of this page.
+`data-lang=morpho`, so what runs is that MorphoHDL text and nothing else. Sixteen gates, depth 8:
+the same 8-bit ripple adder whose exhaustive arithmetic check appears near the top of this page.
 
 The directive rides in a `#` comment because morpho's tokenizer discards comments wholesale: Field
 can annotate a program without the language ever seeing it, and the same file still parses in
@@ -418,7 +417,7 @@ rather than being poured into `afield.stdlib`; nothing here needs to be a global
 `flines()` gives one `FLine` per wire and one point-set each for gates, inputs and outputs, coloured
 by signal arrival time, so the difference between a ripple adder and a Brent–Kung is a gradient you
 can see rather than a number you have to look up. Everything Field can already do to an `FLine`
-applies: SVG export, the plane grid, the docs capture pipeline.
+applies, SVG export and the plane grid included.
 
 To watch it grow instead:
 

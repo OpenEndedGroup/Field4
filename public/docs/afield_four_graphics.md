@@ -29,7 +29,7 @@ keep interactive previews clean.
 
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -89,7 +89,7 @@ The first example is as small as it can be: vertex data is written directly into
 
 The first triangle put `pos` and `col` directly into the mesh's vertex buffers. Sometimes you want a buffer that is visible as an ordinary named resource in the shader: perhaps the geometry changes every frame, perhaps a compute shader fills it, or perhaps several draws share it. This example uses the simplest version of that pattern: write a few positions into a `defaultBuffer`, bind that buffer to a reflected push-constant member, and draw vertices by index.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01-buffer-triangles.png" alt="three triangles drawn from one vertex buffer against black. On the left a solid crimson one shading to near-black at its base. On the right a large one interpolating from red at its apex through olive to green along its bottom edge, overlapping a second crimson triangle whose upper corner shows through it in yellow-olive where the two cross" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-buffer-triangles" source-box="assets/canonical_graphics/af0946dd-f25d-4355-984d-f0d24a43ee12" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -178,7 +178,7 @@ void main()
 
 The previous two examples draw in clip-space coordinates. To draw from a camera, the shader needs projection and view matrices. This version stores those matrices in a uniform buffer owned by the module.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01b-ubo-camera.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-ubo-camera" source-box="assets/canonical_graphics/85e8478b-529b-406e-b835-7c00912848f2" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/01b-ubo-camera.png" alt="a wide black window holding a receding row of ten right triangles, small at the far left and growing steadily towards the right as they approach the camera, each stepped slightly lower than the last. Every triangle is shaded from magenta at its lower left to pale cream at its upper right, the perspective coming from the projection and view matrices the module's uniform buffer supplies" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-ubo-camera" source-box="assets/canonical_graphics/85e8478b-529b-406e-b835-7c00912848f2" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -237,7 +237,7 @@ That same name is also why the Kotlin above says `afield.four.util.Camera()` in 
 
 For quick sketches, it is often simpler for the mesh to carry the camera matrices as push constants. The draw data still lives in `m`, but now `m.p` and `m.m` are assigned directly before the draw.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-camera-matrices.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-camera-matrices" source-box="assets/canonical_graphics/b2ba23e8-18e5-4f07-a709-2b89116a83b3" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-camera-matrices.png" alt="the same receding row of ten right triangles growing from far left to near right across a black window, here in flat pale cream with no vertex-colour gradient. The camera framing is identical to the uniform-buffer version because only where the matrices are stored has changed" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-camera-matrices" source-box="assets/canonical_graphics/b2ba23e8-18e5-4f07-a709-2b89116a83b3" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -294,7 +294,7 @@ That is why the Kotlin changed from `module.camera.p = ...` to `m.p = ...`. `p` 
 
 `KeyCamera` does not change the shader contract. It wraps a `Camera` and updates it from keyboard input while the renderer runs.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-keyboard-camera.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-keyboard-camera" source-box="assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/02-keyboard-camera.png" alt="a small square window holding one pale cream right triangle, its vertical edge at the left and its right angle at the bottom left, seen at whatever angle the keyboard camera had reached when the frame was captured" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-keyboard-camera" source-box="assets/canonical_graphics/954d64d5-ee3f-4cb7-8ac7-1e2cce8a9073" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -523,13 +523,13 @@ void main()
 
 `gl_VertexIndex/6` picks the particle and `gl_VertexIndex%6` picks the corner: 100,000 particles drawn as 600,000 vertices with no index buffer and no per-particle CPU work.
 
-There is no captured image for this section: it is a two-box scene, and the capture harness on this page drives one box per figure. To see it, open the corpus document in the viewer above, or replay it as a transcript: `dev_docs/agents/transcripts/threebox.yaml` is the same renderer/compute/draw shape built as a runnable three-box scene.
+To see it running, open the corpus document in the viewer above, or replay `dev_docs/agents/transcripts/threebox.yaml`, which is the same renderer/compute/draw shape built as a runnable three-box scene.
 
 ## Texturing
 
 Textures add another reflected resource. The shader declares a sampler named `bbc`; Kotlin creates a `LoadedTexture` property with the same name and transfers it before drawing.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04-texturing.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-texturing" source-box="assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04-texturing.png" alt="a square quad filling a small window, textured with a checkerboard of saturated red, green, blue, orange and yellow cells. Two diagonals cross it corner to corner, one white and one black, drawn into the texture itself so the sampling is legible" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-texturing" source-box="assets/canonical_graphics/55bc1784-bc44-40eb-bc01-d02eca463445" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -608,7 +608,7 @@ The name `bbc` is the bridge. Kotlin creates `prop<LoadedTexture>(bbc)`, the sha
 
 A shader can declare an *array* of samplers, and the Kotlin side binds it by publishing an array of image views under the array's name. The reflected-name contract is the same as the single texture above; only the type changes.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/04b-multi-texture.png" alt="the same multicoloured checkerboard quad with its white and black crossing diagonals. It is pixel-identical to the single-texture figure on purpose: all three entries of the sampler array point at the same image file, so what the figure shows is that the array binds, links and draws at all" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-multi-texture" source-box="assets/canonical_graphics/3cbcadc0-b279-470d-9a5f-afc120518829" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.texture.*
@@ -853,7 +853,7 @@ void main()
 
 Compare that with the texturing fragment shader: it is the same shader. From the consumer's side there is no difference between sampling a file loaded from disk and sampling the output of another box. Two boxes and one renamed property are the smallest complete statement of how `afield.four` composes.
 
-Both boxes together are one scene, so there is no single-box figure for it here; the graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
+The graphics-scene transcripts `threebox` and `spin_glass` in [agent transcripts](agent_transcripts.md) are runnable versions of the same producer/consumer shape.
 
 ## Ping-pong render to texture
 
@@ -1056,7 +1056,7 @@ layout(push_constant) uniform matrices {
 } pc;
 ```
 
-Reflection happens *after* the include is expanded, so `pos`, `col`, `p` and `m` still produce the generated Kotlin writers: a shared header does not cost you the reflected API. There is no figure for this pair either: the include resolves against a box that has to exist alongside it, so the fence on this page has nothing to include.
+Reflection happens *after* the include is expanded, so `pos`, `col`, `p` and `m` still produce the generated Kotlin writers: a shared header does not cost you the reflected API. The include resolves against a box that has to exist alongside the one including it, so this pair only compiles once both boxes are in the document.
 
 `5. lygia` shows the same mechanism reaching a third-party shader library. `registerLygiaIncludeRoot()` in Kotlin registers [Lygia](https://lygia.xyz)'s source tree as an include root, after which the shader uses ordinary `#include`:
 
@@ -1085,7 +1085,7 @@ Note that `#include` here is the C-style directive handled by the shader compile
 
 Beyond includes, a shader property is a template with values supplied from Kotlin. `shaderTemplate["col"]` publishes a map of `Resolver`s, and the shader substitutes them with `{{ … }}`:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05b-templating.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-templating" source-box="assets/canonical_graphics/1103f132-7484-4440-8102-5bd159a29fbf" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05b-templating.png" alt="one right triangle filling a black window, its right angle at the bottom right, in flat saturated yellow with no gradient. The colour is not written into the shader: it is the value Kotlin substituted into the template slot" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-templating" source-box="assets/canonical_graphics/1103f132-7484-4440-8102-5bd159a29fbf" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -1129,7 +1129,7 @@ In the corpus this box also carries a `//%-` line, which is Field's execution br
 
 Templating gets more interesting when the substituted source is itself generated from a Kotlin type. `PushConstants<T>` reflects a Kotlin class into a GLSL push-constant declaration:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/05c-push-constants.png" alt="one right triangle filling a black window in flat dark crimson, the same geometry as the templating figure with a different colour. The value arrives through a push-constant block GLSL never declared by hand, reflected out of a Kotlin class" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-push-constants" source-box="assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 import afield.four.util.*
@@ -1188,7 +1188,7 @@ void main()
 
 Vulkan can print from inside a shader. Enable the extension, guard the call so it does not fire for every invocation, and the message arrives through the validation layer:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/06-printf.png" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-printf" source-box="assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7" source-box-properties="vertex,fragment" source-box-wait="0.1"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/06-printf.png" alt="one right triangle against black, this time with its right angle at the top left and its hypotenuse falling to the bottom right. It shades from bright red along the top edge to near-black at the bottom. The picture is incidental here: the output the section is about is the printf text the validation layer reports, not anything in the window" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-printf" source-box="assets/canonical_graphics/81f27655-7d32-4a4d-b73d-1b5d368efaa7" source-box-properties="vertex,fragment" source-box-wait="0.1"}
 import afield.four.Renderer
 import afield.four.modules.fromContext
 val renderer: Renderer = fromContext()
@@ -1301,7 +1301,7 @@ void main()
 
 A second probe lesson (`6b. debugging / mapping - Texture probe example`) goes further and warps the sampled distribution before display (`AdaptiveQuantileWarp` and `QuantileWarpConfig`). Reach for that when the interesting variation is buried in a narrow part of the range and a linear readout flattens it.
 
-There is no figure here, and there should not be. The probe's value is the readback, and `.display("probe")` puts that in the *box's* output area, not in the Vulkan window, so a native-window capture of this example shows only the textured quads, pixel-identical to the texturing figure, and would suggest the probe produced nothing. The quads also stack along z, so from the camera they land on top of one another and 100 of them look like one.
+In the Vulkan window the 100 quads stack along z, so from the camera they land on top of one another and look like one. Everything this example is for is in the box's output area.
 
 ## Streaming a target over the network
 
@@ -1331,7 +1331,7 @@ target += "boo" to module
 
 The shape is exactly the `RenderToTexture` producer from earlier (`renderList +=`, `target +=`, `target.apply()`) with the target supplied by the streamer instead of constructed directly. `once.streamer { … }` is the live-coding guard: re-running the box re-runs everything except the block that allocated the stream, so you can edit the drawing without tearing down the connection. `@exported` publishes `target` for child boxes.
 
-There is no figure: the picture this produces arrives at a receiver on `127.0.0.1:9001`, not in a window.
+The picture this produces arrives at a receiver on `127.0.0.1:9001` rather than in a window.
 
 ## A GPU radix sort
 
@@ -1367,7 +1367,7 @@ Two things to take from it. The `buffer { … }` builder spells out usage explic
 
 Note `hosted()` for readback. For a GPU→CPU read that happens every frame, host-cached memory is the right choice instead; see the readback notes in [Field probes](field_probes.md).
 
-There is no figure: this box sorts and prints, and draws nothing.
+This box sorts and prints, and draws nothing.
 
 ## Slang
 
@@ -1475,7 +1475,7 @@ void main() {
 
 `push.walkStepPx`, `push.solidThreshold`, `push.stuckRed` and the rest are reflected push-constant members, so every constant in the simulation is a Kotlin lambda away from being animated. The reflected-interface contract this page opened with still holds at a million particles: the shader is the thing you edit.
 
-No figure, and the reason is a property of DLA rather than of Field. Aggregation is a race between walker density and canvas area, and the legible window between the two failure modes is narrow. Captured as written, a million walkers over a 4112×2524 window, eight seconds and 600 frames grow a cluster a few pixels across on a field of near-black walkers: correct, and invisible at page scale. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on the first step, so the whole field sticks at once and the picture is uniform magenta noise. A good still needs a density between those and more frames than a docs build should spend, so it is left to run live.
+Run this one live, and expect to tune it: aggregation is a race between walker density and canvas area, and the window between the two failure modes is narrow. As written, a million walkers over a 4112×2524 window grow a cluster a few pixels across in eight seconds and 600 frames, which is correct and far too small to see. Shrink the canvas to 900×560 to raise density and every walker is adjacent to something solid on its first step, so the whole field sticks at once and goes uniform magenta. A legible cluster wants a density between those two, and more frames than 600.
 
 ## Stopping the renderer
 

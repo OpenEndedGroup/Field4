@@ -1022,7 +1022,7 @@ These are the everyday tools for reusing a shape without rebuilding it: `copy()`
 
 | Operation | Behavior |
 | --- | --- |
-| `fun FLine.copy(): FLine` | Returns a new line with copied nodes and properties. Edit the copy when the original shape should remain available. |
+| `fun FLine.copy(): FLine` | Returns a new line with copied nodes and properties. |
 | `fun FLine.transform(by: (Vec3) -> Vec3): FLine` | Returns a new line by applying `by` to every stored point, including Bézier control points. The original geometry is unchanged and drawing properties are copied. |
 
 </div>
@@ -1405,8 +1405,8 @@ These are convenience transforms specialized for “2D shapes living in the XY p
 | Operation | Behavior |
 | --- | --- |
 | `fun FLine.byRotating2D(angle: Float, center: Vec2 = vec(0f, 0f)): FLine` | Rotates the XY geometry around `center` by an angle in radians, preserving Z. The default center is the origin; the result is a new line. |
-| `fun FLine.byScaling2D(scale: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales XY positions about `center`, leaving Z unchanged. Use the scalar overload for uniform scaling or separate X and Y factors to stretch the shape. |
-| `fun FLine.byScaling2D(scaleX: Float, scaleY: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales XY positions about `center`, leaving Z unchanged. Use the scalar overload for uniform scaling or separate X and Y factors to stretch the shape. |
+| `fun FLine.byScaling2D(scale: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales XY positions uniformly about `center`, leaving Z unchanged. |
+| `fun FLine.byScaling2D(scaleX: Float, scaleY: Float, center: Vec2 = vec(0f, 0f)): FLine` | Scales X and Y by separate factors about `center`, to stretch the shape. Z is unchanged. |
 | `fun FLine.byReflecting2D(linePoint1: Vec2, linePoint2: Vec2): FLine` | Mirrors XY positions across the infinite line through two distinct points. It preserves Z and returns a new line. |
 | `fun FLine.byShearing2D(shearX: Float, shearY: Float): FLine` | Adds `shearX * y` to X and `shearY * x` to Y, preserving Z. This skews the shape about the origin without changing the input line. |
 
@@ -1976,7 +1976,7 @@ This is the same sweep idea as the 2D version, but the source curve itself bends
 
 | Operation | Behavior |
 | --- | --- |
-| `fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine` | Samples the path and displaces each point along its XY normal by `distance`, returning a polyline. Increase `samples` for finer sampling of curved segments. |
+| `fun FLine.byOffsetting(distance: Float, samples: Int = 50): FLine` | Samples the path and displaces each point along its XY normal by `distance`, returning a polyline of `samples` points **per segment**. |
 | `fun FLine.byCreatingParallelCurves(distance: Float, samples: Int = 50): Pair<FLine, FLine>` | Returns two offsets, first at `-distance` and then at `+distance`. Use the pair as the two sides of a stroke or ribbon. |
 
 </div>

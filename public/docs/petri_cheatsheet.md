@@ -27,17 +27,26 @@ Settings for the whole net. One per line, anywhere in the source.
 
 | Example | What it means |
 | --- | --- |
-| `!timing` <br> `!timing step` | Chooses maximal-step firing: every enabled, non-conflicting transition can fire on a grid tick. This is the default timing mode. |
-| `!grid` <br> `!grid 1/16` | Sets the tick to one sixteenth of a cycle. Durations and delays use cycles, so changing playback speed changes their duration in seconds. |
-| `!conflict` <br> `!conflict priority` | Chooses which transition wins when enabled transitions compete for the same tokens. Priority ordering is the default. |
-| `!seed` <br> `!seed 7` | Seeds the random conflict order. Use the same seed and net to reproduce a trajectory. |
-| `step` <br> `!timing step` | Allows a maximal set of compatible firings at each tick. Competing firings still follow the chosen conflict policy. |
-| `event` <br> `!timing event` | Fires one enabled transition per tick, taking the first in conflict order. Use it to hear a net’s interleaving one step at a time. |
-| `timed` <br> `!timing timed` | Holds consumed tokens for the transition’s duration before completing the firing. Choose this when simultaneous work must occupy resources. |
-| `order` <br> `!conflict order` | Resolves competition in declaration order. Moving a transition earlier can change the resulting rhythm. |
-| `priority` <br> `!conflict priority` | Tries larger `pri=` values first. Use priorities to make an accented transition win over a competing ordinary hit. |
-| `round-robin` <br> `!conflict round-robin` | Rotates the ordering from step to step. This prevents a permanently early declaration from always winning a shared token. |
-| `random` <br> `!conflict random` | Uses a seeded weighted shuffle to order competing transitions. Set each transition’s `w=` for relative weight and `!seed` for repeatability. |
+| `!timing step` | Chooses the firing semantics: `step`, `event` or `timed`. |
+| `!grid 1/16` | Sets the tick to one sixteenth of a cycle. Durations and delays are in cycles, so changing playback speed changes their length in seconds. |
+| `!conflict priority` | Chooses how competitors for one token are resolved: `order`, `priority`, `round-robin` or `random`. |
+| `!seed 7` | Seeds `!conflict random`, so the same net plays the same way twice. |
+
+</div>
+
+The three firing semantics and the four conflict policies:
+
+<div class="field-reference" data-code-lang="petri" markdown>
+
+| Value | What it means |
+| --- | --- |
+| `step` | Maximal step: every enabled, non-conflicting transition fires on each grid tick. The default. |
+| `event` | One transition per tick, the first in conflict order. |
+| `timed` | A transition holds its consumed tokens for its duration before the firing completes. |
+| `order` | Resolves competition in declaration order, so moving a transition earlier can change the rhythm. |
+| `priority` | Largest `pri=` first. The default. |
+| `round-robin` | Rotates the ordering from step to step, so an early declaration cannot always win a shared token. |
+| `random` | A seeded weighted shuffle; each transition’s `w=` sets its relative weight. |
 
 </div>
 

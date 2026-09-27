@@ -142,6 +142,24 @@ floor remain semantic video findings. Opaque binary formats such as WAV, EXR, an
 - Fix dimension changes by waiting for the owning DOM/output layout condition, not by adding sleep.
 - Inspect images and decoded video frames before committing regenerated media.
 
+## Known-stale committed assets
+
+Assets whose published form is known not to match what the page or the code now says, each with
+the evidence that settled it. A capture whose staleness is only recorded in a commit message is
+not findable — `91ecd5b69` says "THE TWO FIGURES ARE NOT RECAPTURED" in its own body and both were
+still stale ten days later — so they are collected here instead. Delete a row when the asset is
+re-rendered, not when someone intends to.
+
+| asset | page | what is wrong | since |
+| --- | --- | --- | --- |
+| `forth_examples/variables_and_output_channels.png` | `forth_examples.md` | shows `<b>Forth can emit HTML into Field output areas.</b>` with the tags escaped. The fence beside it has said `s"ForthField writes straight into a Field output area."` since the string was changed to stop asking `display` to emit HTML. Also still the untrimmed 646x458 crop, where `trim=true` asks for 646x268 | `91ecd5b69`, 2026-09-13 |
+| `forth_examples/visualization_helpers.png` | `forth_examples.md` | untrimmed 632x1552 crop; `trim=true` asks for 632x953 | `91ecd5b69`, 2026-09-13 |
+| `datalog/box_why.png` | `datalog.md` | the section promises the box "answers with the derivation rather than the row" and the capture has no output strip at all, with line one clipped to `ell(a1, 3)`. Its fence carries no `embed=true`, so the page has never shown it — which is why nobody saw it | unknown; fence found by `check_doc_assets.py` |
+| `fieldml_examples/viz_record_interop.png` | `fieldml_examples.md` | 354x266 where its three siblings are 1130x622, and every line clips mid-value (`samples → [3, 5, 8, 13, 2`). The fence asks for 760x260. Probably a stale iframe intrinsic size | 2026-09-23 |
+| the twelve `fabricate-*.png` | `fabricate_renderer.md` | all predate `cf4a3b547`; eleven are an X-mirror and the vignette is a 180-degree rotation. Full account in `dev_docs/CAPTURE_ROW_ORDER.md` | `cf4a3b547`, 2026-08-30 |
+
+Sizes above are `PIL.Image.open(...).size` on the committed file, not what a fence requests.
+
 ## Current video acceptance audit
 
 The first complete audit of the frame-synchronous video contract ran on 2026-08-03 from the working

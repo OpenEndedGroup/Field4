@@ -287,8 +287,18 @@ def stale_placeholder_exceptions(root: Path) -> list[str]:
     return stale
 
 
-# A quoted alt/title can contain Kotlin braces (e.g. `.every(4) { it.fast(2) }`).
-# Those must not truncate the header before its embed attribute.
+# An alt string describing Kotlin code contains braces -- `petri_nets.md:143` describes
+# `.every(4) { it.fast(2) }` -- and a `[^}]*` block cut at the first `}`, dropping
+# `embed=true` off the end and reporting a perfectly good embedded figure as an orphaned
+# capture fence. `docs_hooks` never had the bug: it splits the opener on the fence name
+# and flattens every brace to a space.
+#
+# Two branches fixed this independently and the merge had to pick one. This is the
+# quote-aware form: a brace is allowed inside a quoted value and ends the block outside
+# one, which is what the attribute grammar actually means. The other was
+# `\{(.*)\}\s*$` with re.M -- greedy to the last brace on the line -- which agrees on
+# every fence in the tree but also swallows anything after the block. `tools/docs_voice/
+# alt_text.py` and `double_published.py` carry that greedy form for the same bug.
 DIFFSTATIC_FENCE = re.compile(r'```diffstatic_runner \{((?:[^{}"\n]|"(?:\\.|[^"\\])*")*)\}')
 FENCE_ASSET = re.compile(r'(?:screenshot|video|audio)="([^"]+)"')
 

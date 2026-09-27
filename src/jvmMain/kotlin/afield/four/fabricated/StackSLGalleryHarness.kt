@@ -23,7 +23,7 @@ import afield.stdlib.stackAutoShaderSources
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.yield
 import org.lwjgl.vulkan.VK10.VK_FILTER_LINEAR
-import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
+import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_SRGB
 import org.lwjgl.vulkan.VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
 import org.lwjgl.vulkan.VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR
 import java.io.File
@@ -49,10 +49,26 @@ import java.util.concurrent.TimeUnit
  * many afield.four renders": the whole page is produced inside a single graphics
  * context instead of restarting the JVM per asset. The example programs are
  * editable Field content in the workspace, not literals in this file.
+ *
+ * Both targets are [GALLERY_FORMAT], an sRGB format, for the same reason the window's swapchain
+ * is `B8G8R8A8_SRGB`: the fragment writes *linear* colour and the attachment encodes it on
+ * write, so the bytes read back are the bytes a person sees in a live window. The gallery used
+ * to render into `R8G8B8A8_UNORM`, which stores the linear values as they are; its PNGs were
+ * then markedly darker than the same program in a window (`uv saturate` read 128 at `u = 0.5`
+ * where the window shows 188; the `fbm-palette` hero averaged 60 against the window's 110).
+ * The feedback programs sample their own previous frame, and an sRGB ping-pong hands that
+ * sample back decoded, so they still compute in linear light — it is also
+ * `PingPongRenderToTexture`'s default.
  */
 object StackSLGalleryHarness {
 
     const val OUTPUT_DIM = 512
+
+    /**
+     * The colour format of every gallery target: the swapchain's encoding, in RGBA order so
+     * [TexturePreviewCache.capture] copies it straight to the PNG without a blit or a swap.
+     */
+    const val GALLERY_FORMAT = VK_FORMAT_R8G8B8A8_SRGB
     private const val WAIT_FRAMES = 12
     private const val ANIM_FPS = 24
     private const val ANIM_FRAMES = 96          // ~4s per clip
@@ -244,7 +260,7 @@ object StackSLGalleryHarness {
         val pp = PingPongRenderToTexture(renderer, frameCount = 2) {
             width = OUTPUT_DIM
             height = OUTPUT_DIM
-            format = VK_FORMAT_R8G8B8A8_UNORM
+            format = GALLERY_FORMAT
             useDepth = false
             colorSampled = true
             colorTransferSrc = true
@@ -370,7 +386,7 @@ object StackSLGalleryHarness {
     private fun newTarget(renderer: Renderer): RenderToTexture = RenderToTexture(renderer) {
         width = OUTPUT_DIM
         height = OUTPUT_DIM
-        format = VK_FORMAT_R8G8B8A8_UNORM
+        format = GALLERY_FORMAT
         useDepth = false
         colorSampled = true
         colorTransferSrc = true

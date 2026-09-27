@@ -77,7 +77,7 @@ This example writes depth into an R32F **color** attachment as well as using an 
 | Depth | Standard Vulkan projected depth in [0,1], background 1 | Distance in world units, a reversed-Z buffer without conversion |
 | Motion | Previous pixel position minus current pixel position, in **input pixels**, X right / Y down | Optical flow substituted without validating correspondences |
 
-If your existing target contains only RGBA, that is the first piece, not the complete reconstruction input. A fixed planar image really can have a constant plane depth and zero geometric motion. An arbitrary animated fragment function does not acquire valid motion merely because you fill another attachment with zero.
+An existing RGBA-only target is the first of the three pieces, not all of them: you have to produce the depth and motion too. Constant depth and zero motion are the right answer for a fixed plane, and only for a fixed plane — an animated fragment function needs motion vectors that describe what it animated.
 
 ## Make jitter and motion agree
 
@@ -146,7 +146,7 @@ Open **Starting points → rr_plumbing**. It reuses the existing Fabricate scene
 | 3: specular albedo | RGBA16F | Zero RGB because this bridge has no specular lobe |
 | 4: normal + roughness | RGBA16F | World-space unit normal in RGB; roughness one for this bridge |
 
-The source is the **raw** RTXDI output. The conversion module samples surface data with nearest filtering; it does not infer materials from the finished RGB image. Zero specular and roughness one describe this actual diffuse model. Copying those constants into a glossy renderer would misdescribe its lighting. The current adapter does not supply optional specular hit distance.
+The source is the **raw** RTXDI output. The conversion module samples surface data with nearest filtering rather than inferring materials from the finished RGB image. Zero specular and roughness one are true of this diffuse bridge and of nothing glossier, so read those two rows as this scene's values and not as a template. The current adapter does not supply optional specular hit distance.
 
 ```diffstatic {data-lang=kotlin}
 scene.bundle.gBuffer.render(command, index)
@@ -172,11 +172,11 @@ RR is created with `rayReconstruction = true` and is queried separately from SR.
 
 ## History and ownership belong to the graph
 
-The adapter owns its NGX view and reconstructed output; your graph owns source images, guide images, modules and meshes. Use one context per temporal view. Stop/recreate it at a frame boundary, and keep inputs alive until submitted GPU work completes. The Starting Points remove scheduled passes before closing their adapters, then retire their owned Vulkan resources through `renderer.cleanup`. Their cleanup closures retain the exact allocation and renderer that created it, rather than looking up a mutable box property after a rerun or after the parent has stopped.
+The adapter owns its NGX view and reconstructed output; your graph owns source images, guide images, modules and meshes. Use one context per temporal view. Stop/recreate it at a frame boundary, and keep inputs alive until submitted GPU work completes. Remove scheduled passes before closing the adapter, then retire your own Vulkan resources through `renderer.cleanup`. Have that cleanup closure capture the exact allocation and renderer it was created with: reading a box property at cleanup time gets you whatever a rerun put there, or nothing at all if the parent has already stopped.
 
 Call `reset("reason")` for camera cuts, semantic shader/material edits and bypass transitions. A changed scene revision also resets history. The adapter detects replaced input images, skipped frame indices and resumed presentation. Size, mode or format changes require a new context and compatible targets. The Starting Points watch shader changes and include an explicit **Cut / reset history** button; after changes to bound textures or lighting semantics, use that button too. Layout changes require rerunning the box to rebuild its resources.
 
-A failed compatible shader compilation retains Field's last working module. Once a change succeeds, invalidate history. A successful SDK return does not establish that your motion sign, guide semantics or color space are right—inspect the inputs, and compare movement with bypass.
+A failed compatible shader compilation retains Field's last working module. Once a change succeeds, invalidate history. The SDK returns success for a reversed motion sign, a misread guide, or the wrong color space, so inspect the inputs yourself and compare movement against bypass.
 
 ## Where learned shaders fit
 
@@ -184,4 +184,4 @@ The [learned shader workflow](learned_shader.md#train-on-your-own-modulehere-sha
 
 For the current `(screen x, screen y, parameter) → RGB` network, camera and other unrepresented inputs are fixed during training. It is not a learned scene representation that supports arbitrary new camera motion. Train and inspect that approximation first, then decide whether temporal reconstruction improves its intended look. The learned model, SR and RR are independently bypassable tools.
 
-The editable Starting Points are the reference implementations for this page. They are tested through Field's actual renderer on the RTX 4090, including bypass, reset, replacement of the scene and normal Stop cleanup. The [SR](neural_reconstruction.md#on-the-rtx-4090) and [RR](ray_reconstruction.md#cost-and-limits) pages contain measured GPU costs and their limits.
+The editable Starting Points are the reference implementations for this page; read them before writing your own. The [SR](neural_reconstruction.md#on-the-rtx-4090) and [RR](ray_reconstruction.md#cost-and-limits) pages carry measured GPU costs and their limits.

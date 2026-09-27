@@ -118,7 +118,7 @@ read the path to your documents**, and `AFIELD_API_REQUIRE_SAME_SITE=1` does not
 that switch inspects mutating methods only. `dev_docs/server_surface_inventory.md` carries the
 measurement and the open question of whether the key belongs in the response at all.
 
-## Defence 1 — CORS, and the `anyHost()` that has to be there
+## Defence 1 — CORS
 
 Ktor's CORS plugin decides which websites may read Field's replies. Field's configuration is
 five lines, and it is pinned literally by a test so that changing it has to be deliberate:
@@ -155,7 +155,7 @@ This configuration stops exactly two things:
     `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs`, and
     `theImprovementTokenHeaderIsNotReachableFromAWebPage` for the second bullet.
 
-## Defence 2 — the read/write split, and the switch that closes the writes
+## Defence 2 — the read/write split
 
 `AFIELD_API_REQUIRE_SAME_SITE=1` (or `-Dafield.api.requireSameSite=1`) turns on an
 application-wide interceptor that **refuses cross-site state-changing requests** across
@@ -185,8 +185,8 @@ renderer. The switch covers them exactly as it covers any other route, since it 
 *request's* method rather than the route's declaration. All thirteen are listed with their
 guards in `dev_docs/server_surface_inventory.md`.
 
-**The limitation, stated plainly:** a request carrying no `Origin` header at all is **not** refused. The
-switch closes the browser half of the problem and does nothing about the network half.
+**A request carrying no `Origin` header at all is not refused.** The switch closes the browser half
+of the problem and does nothing about the network half.
 
 ??? aside "Pinned by"
     `FieldApiWriteGuardTest`, seven tests, one of which exists purely to assert that limitation, and
@@ -234,9 +234,8 @@ Only after that does the rest run, and the order matters:
   Nobody's ambient browser credentials are being borrowed, so it is not what this guard is
   about, and refusing it would break every non-browser client Field has.
 
-That last point is the limitation, stated plainly: this guard closes the *browser* half. It
-does nothing about a request from another machine, because such a request simply sends no
-`Origin` and is therefore, correctly, not a cross-site browser request.
+So this guard closes the *browser* half and nothing else. A request from another machine sends no
+`Origin`, and is therefore, correctly, not a cross-site browser request at all.
 
 ??? aside "Pinned by"
     `DocsAnnotationSecurityTest` over the predicate, and `DocsAnnotationRouteSecurityTest` through the real

@@ -15,7 +15,7 @@ Open **Starting points → ray_reconstruction**. The scene has a moving area lig
 
 Stop the camera and light independently. **Cut / reset history** jumps the animation and discards old samples. The raw image remains available throughout; RR does not run after the spatial filter, and an extra DLAA pass does not run after RR.
 
-![Ray Reconstruction controls](assets/ray_reconstruction/controls.png)
+![The ray reconstruction box's controls: the path slider set to 3 of Raw/Spatial/Spatial + DLAA/RR, Move light and Move camera both checked, and a hold-to-press Cut / reset history button](assets/ray_reconstruction/controls.png)
 
 <video controls muted loop playsinline preload="metadata" src="assets/ray_reconstruction/comparison.mp4" width="3840" height="2160" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
@@ -35,19 +35,17 @@ rr.evaluate(command, ReconstructionInputs(rawLight, depth, motion), frame,
         camera.modelView(), projection.evaluateUniform()))
 ```
 
-Guides must describe the light actually being reconstructed. This experiment's RTXDI bridge is Lambertian: its specular albedo is zero and roughness is one. Those values describe this material model; they are not substitutes for missing glossy data. Glossy and path-traced RR are still outside this example.
+The guides have to describe the light you are handing over. This experiment's RTXDI bridge is Lambertian, so its specular albedo is zero and its roughness is one — read those as this bridge's values, not as the two you can leave out when you have no glossy data. Glossy and path-traced RR are still outside this example.
 
 Normals are world-space unit vectors, packed with linear roughness in alpha. Diffuse and specular albedo are linear RGB. Depth uses Vulkan's standard 0–1 projection, with background at one. Motion points from the current pixel to its previous position, in input pixels, without jitter. Camera matrices are unjittered. Fabricate now applies raster jitter separately so its motion vectors retain that meaning. Specular hit distance is optional and is not fabricated for this diffuse scene.
 
 ## Cost and limits
 
-The [measurement file](assets/ray_reconstruction/measurements.json) records GPU pass timings, SDK memory, and static error against a 4,096-candidate reference. Timings exclude presentation and should be compared only at the recorded resolution and sample budget.
+On this RTX 4090, native 1080p RR costs **6.22 ms median / 6.23 ms p95** — against 1.34 ms for the DLAA pass after spatial filtering, which is the alternative finish you are choosing between. The SDK reports about 94 MB of shared allocations on top of Field's lighting and guide images. Those timings are at this resolution and sample budget and exclude presentation, so re-measure rather than scaling them.
 
-On this RTX 4090, native 1080p RR costs **6.22 ms median / 6.23 ms p95**, over 100 evaluations after 64 warm-up frames. The DLAA pass after spatial filtering costs 1.34 ms. The SDK reports about 94 MB of shared allocations, excluding Field's lighting and guide images.
+RR is not the closest still image here. Against a 4,096-candidate static reference, RGB MSE is 0.000150 for raw lighting, 0.000047 for RR, and 0.0000091 for the spatial filter — so in this simple diffuse scene the cheap filter wins on a frozen frame. Movement, disocclusion, and your intended look are why you would still compare the paths. The [measurement file](assets/ray_reconstruction/measurements.json) records the per-pass timings, SDK memory and errors behind all of that.
 
-Against the static reference, RGB MSE is 0.000150 for raw lighting, 0.000047 for RR, and 0.0000091 for the spatial filter. RR improves the raw signal here, but the spatial filter is the closer static match in this simple diffuse scene. Movement, disocclusion, and your intended look are additional reasons to compare the paths.
-
-RR can make noisy illumination substantially smoother, but history can also soften intentional discontinuities. Reset after a cut or semantic edit, and inspect motion as well as still frames. This first bridge supports opaque mono direct lighting; alpha coverage, transmission, glossy reflections, and latent pigment channels need their own verified signal contracts.
+RR can make noisy illumination substantially smoother, but history can also soften intentional discontinuities. Reset after a cut or semantic edit, and inspect motion as well as still frames. This first bridge carries opaque mono direct lighting and nothing else: alpha coverage, transmission, glossy reflections and latent pigment channels each need a signal contract that does not exist yet.
 
 Use the same optional [NGX installation](neural_reconstruction.md#optional-installation) as DLAA/SR. RR availability is queried separately, including its required extensions before device creation. Ordinary rendering remains available when the SDK or feature is absent.
 

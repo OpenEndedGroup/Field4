@@ -16,7 +16,7 @@ traces the result.
 
 Both tubes are the same file at the same pose: the upper bone turned 180° about its own axis. The
 nearer, cyan tube was skinned by linear blending and the tan one behind it by dual quaternions. The
-cyan tube's middle ring is not just thin. It is a single point.
+cyan tube's middle ring has shrunk to a single point.
 
 Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 [Fabricate demo assets](assets/fabricate_demo/ATTRIBUTION.md).
@@ -129,7 +129,7 @@ Manifold's `volume` and Field's `signedVolume` share no code. One integrates Man
 half-edge solid in double precision, the other sums signed tetrahedra over the float triangles.
 Where they agree, the skinned mesh reached Manifold intact.
 
-**Linear blending at 180° has a closed form, and it is two thirds.** At the 50/50 ring the blend
+The two thirds that linear blending keeps at 180° can be worked out by hand. At the 50/50 ring the blend
 averages the identity with its own half turn, `½·diag(1,1,1) + ½·diag(−1,1,−1) = diag(0,1,0)`, so
 every vertex of that ring lands on the axis. In general, a ring whose weight is `w` gets
 `diag(1 − 2w, 1, 1 − 2w)`: a pure scale with no rotation left in it. Its scale `1 − 2w = 2 − y`
@@ -138,15 +138,14 @@ integrates exactly to `0.75 · ∫₁³ (2 − y)² dy = 0.75 · ⅔`, and the t
 0.75 each. The total is 2.0, so a third of the limb is gone, and none of that loss comes from how
 the tube happens to be triangulated.
 
-!!! note "At an exact pinch, Manifold weighs its own triangulation"
+??? aside "Why the 180° row has a gap the others do not"
 
     At 180° exactly, the 50/50 ring does not quite shrink to a point. Float rounding in the
     half-turn quaternion leaves it about 2·10⁻⁷ across, which is under the tolerance Manifold
-    gives a mesh of this size (about 5·10⁻⁷). Manifold keeps every one of the 206 vertices and all
-    408 triangles, but it swaps edges in that collar, so the volume it reports is the volume of *its*
-    triangulation. That is the gap in the 180° row. At 179.9° the ring is well above tolerance and
-    the gap disappears. If a measured volume matters at a degenerate pose, compare it with
-    `signedVolume` on the mesh you handed over.
+    gives a mesh of this size (about 5·10⁻⁷). Manifold keeps every vertex and every triangle it was
+    handed, but it swaps edges in that collar, so the volume it reports is the volume of *its*
+    triangulation. At 179.9° the ring is well above tolerance and the gap disappears. If a measured
+    volume matters at a degenerate pose, compare it with `signedVolume` on the mesh you handed over.
 
 ## What crosses each hop
 

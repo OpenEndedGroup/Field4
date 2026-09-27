@@ -6,7 +6,7 @@ when**, and a gradient works out the numbers that put it there.
 
 The figure below comes out of the box beside it, captions and all.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-fit-box.png" alt="an output panel labelled figure holding three stacked strips on a dark grid. The first, TARGET 3 WAYPOINTS, shows three empty white squares: upper left, upper right, and one below centre. The second, SEED WORST MISS 7.72M, adds a blurred orange blob sitting near the middle and touching none of them. The third, FITTED WORST MISS 4.7E-15M, replaces it with a trail of teal squares sweeping in an arc from the upper left, down through the bottom centre and back up to the upper right, passing through all three white squares on the way" wait="9.0" capture="box" open-outputs="true" w="1020" h="1080" padding="14" name="inverse-animation-fit-box" embed=true}
 import afield.rectsl.*
 import afield.stdlib.Functions
 import java.util.Base64
@@ -122,7 +122,7 @@ arithmetic. There is no `sin`: `Functions.sin` is an *oscillator* over the sampl
 `offset + amplitude·sin(2π·frequency·x + phase)`, which is not a composition. But its `phase` child
 is evaluated **at x**, so
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14" name="inverse-animation-sin-identity" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-sin-identity.png" alt="an output panel labelled identity, comparing sin with frequency 0, phase u, amplitude 1 and offset 0 against a plain sin of u of x. It reports 4001 samples over x in the range -2 to 2, a worst difference of 0.0, and 0 samples not bit-equal" wait="4.0" capture="box" open-outputs="true" w="1000" h="330" padding="14" name="inverse-animation-sin-identity" embed=true}
 import afield.stdlib.Functions
 
 // `Fn` has no "apply sin to another Fn" op. But `sin`'s `phase` child is evaluated at x, so a
@@ -189,7 +189,7 @@ call stops short at a residual near 0.1 — a 97% reduction, enough to pass a "d
 and nowhere near solved. Given 2000 iterations the same call lands on the closed-form answer. **Read
 the residual, not the fact that a fit returned.**
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-api.png" alt="an output panel labelled fit, holding two blocks of results for the same track. At the default 300 iterations the solved gain is 3.8945617454461527 and the bias -7.738554034635415, taking the residual from 3.605551275463989 down to 0.11693799822760528. At 2000 iterations the gain is 3.999999999999997 and the bias -7.999999999999994, and the residual is 2.8951074449790722E-15. The last line prints the fitted IR with those numbers substituted in, and notes that it is the same track, solved: samplable, renderable, emittable as GLSL" wait="5.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-api" embed=true}
 import afield.rectsl.*
 
 // The Kotlin API under the RectSL word: any Track carrying FreeParamTrack leaves can be solved
@@ -238,7 +238,7 @@ marker sweeping the wrong span and missing both waypoints. The solved band is th
 the gradient has chosen for you, and it lands on `gain=4.0, bias=-8.0`, which is the analytic answer
 to `t·gain + bias` through both waypoints.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-free-param.png" alt="an output panel labelled before / after, with two strips over a text block. The authored strip, in orange and headed gain 1.0, bias 0.0, worst miss 5.00M, holds a short bar that reaches the right-hand white waypoint square and leaves the left one untouched. The solved strip, in teal and headed gain 3.999999999999997, bias -7.999999999999994, worst miss 3.1E-15M, holds a long stepped bar spanning the strip and passing through both squares. Beneath them the text lists the IR before and after, the free parameters, and a residual falling from 3.605551275463989 to 2.8951074449790722E-15, with x at 1.0 and x at 3.0 landing on -4 and 4 to fifteen decimal places" wait="7.0" capture="box" open-outputs="true" w="1020" h="1240" padding="14" name="inverse-animation-free-param" embed=true}
 import afield.rectsl.*
 import afield.stdlib.Functions
 import java.util.Base64
@@ -326,7 +326,7 @@ shape over a **mask**: only the named parameters ever move. Everything under the
 The gradient is `Fn.gradientAt`, one backward sweep through the same `FnFormulas` table `Fn.eval` is
 pinned against.
 
-## One primitive, and every hard edge in the language
+## The exact step that lowers every hard edge
 
 Five different things could stop a track from lowering, and four of them come down to a single
 primitive: `Fn.floor`, a first-class node that is also differentiable. The derivative of a staircase
@@ -334,7 +334,7 @@ is zero everywhere it exists, and zero is what `floor` reports. On its own that 
 exactly as `sign` is. Inside something else it is the opposite, and the reason is one line of
 arithmetic:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-exact-step.png" wait="4.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-exact-step" embed=true}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/rectsl/inverse-animation-exact-step.png" alt="an output panel labelled exact step, comparing clamp01 of floor of x plus 1 against the ideal step that is 1 where x is at least 0 and 0 below. Over 8009 samples, a grid across -4 to 4 plus the integer boundaries themselves, it reports 0 disagreements, and confirms the boundary by hand: step at 0.0 is 1.0 and step at minus 1e-16 is 0.0" wait="4.0" capture="box" open-outputs="true" w="1000" h="360" padding="14" name="inverse-animation-exact-step" embed=true}
 import afield.stdlib.Functions
 
 // clamp01(floor(x) + 1) is claimed to be an EXACT step: 1 where x >= 0, 0 below it, for every x.
@@ -429,8 +429,10 @@ difference's own truncation error rather than the gradient's.
 The residual tables, the corpus's two halves and what each half is evidence of are in
 `dev_docs/RECTSL_FN_BACKEND_MEASUREMENTS.md`.
 
-The figure at the top of this page is a CPU raster rather than a GPU capture. Its rectangles are
-sampled from the tracks at the instants shown, but they are not the shader's own answer.
+??? aside "The opening figure is a CPU raster, not a GPU capture"
+
+    Its rectangles are sampled from the tracks at the instants shown, so they are the `eval:`
+    column's answer and not the shader's.
 
 ## Printing, comparison and rewriting
 
