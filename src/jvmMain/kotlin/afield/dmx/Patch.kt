@@ -299,6 +299,20 @@ class Patch(val startUniverse: Int = 1) {
     /** Write every fixture into [out]'s universes, atomically with respect to its sender thread. */
     fun render(out: DmxOutput) = out.frame { renderInto { universe(it).data } }
 
+    /**
+     * Animate this patch on [out]'s sender clock: before every tick, [fn] runs with seconds since the
+     * output started (typically calling [map] / [mapAlong] / [mapImage]), then the patch is rendered
+     * into [out]. Replaces any previous animation on that output, so re-running a box is safe; stops
+     * when the output closes (i.e. when the owning box is stopped).
+     */
+    fun animate(out: DmxOutput, fn: Patch.(t: Double) -> Unit): Patch {
+        out.animate { t ->
+            fn(t)
+            render(out)
+        }
+        return this
+    }
+
     /** Set every fixture to black. */
     fun blackout(): Patch {
         fixtures.forEach { it.color = vec(0.0, 0.0, 0.0) }

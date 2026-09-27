@@ -116,6 +116,7 @@ class DmxOutput(
     private var syncSequence = 0
     private var lastDiscoveryNanos = 0L
     private val lock = Any()
+    private val startNanos = System.nanoTime()
     private var executor: ScheduledExecutorService? = null
 
     @Volatile
@@ -138,6 +139,21 @@ class DmxOutput(
         require(maxRateHz > 0 && maxRateHz <= 1000) { "maxRateHz must be in (0, 1000], got $maxRateHz" }
         if (protocol == DmxProtocol.ARTNET) require(hostAddress != null) { "Art-Net needs a destination host (a node IP or broadcast address)" }
         if (autoStart) start()
+    }
+
+    /**
+     * Called with seconds since this output was created at the start of every sender tick, on the
+     * sender thread, before the universes are snapshotted — the place to compute the next look, so
+     * lights animate on the DMX clock whether or not anything else in Field is ticking. There is one
+     * slot, not a list: re-running a box replaces the animation instead of stacking a second one.
+     * Exceptions are caught into [lastError]. See [animate] and [Patch.animate].
+     */
+    @Volatile
+    var beforeTick: ((seconds: Double) -> Unit)? = null
+
+    /** Set [beforeTick]: run [fn] once per sender tick, with seconds since the output started. */
+    fun animate(fn: (seconds: Double) -> Unit) {
+        beforeTick = fn
     }
 
     /** The frame buffer for [number], created (all zeros) on first use. */
@@ -180,6 +196,9 @@ class DmxOutput(
         if (isClosed) return 0
         var count = 0
         val keepAliveNanos = keepAliveMs * 1_000_000
+        beforeTick?.let { hook ->
+            runCatching { hook((nowNanos - startNanos) / 1e9) }.onFailure { lastError = it }
+        }
         synchronized(lock) {
             for (s in streams.values) {
                 System.arraycopy(s.universe.data, 0, s.snapshot, 0, 512)
@@ -201,7 +220,8 @@ class DmxOutput(
             }
         }
         if (count > 0 && sync) sendSync()
-        if (discovery && protocol == DmxProtocol.SACN && nowNanos - lastDiscoveryNanos >= Sacn.DISCOVERY_INTERVAL_MS * 1_000_000) {
+        if (discovery && protocol == DmxProtocol.SACN && streams.isNotEmpty() &&
+            nowNanos - lastDiscoveryNanos >= Sacn.DISCOVERY_INTERVAL_MS * 1_000_000) {
             lastDiscoveryNanos = nowNanos
             sendDiscovery()
         }

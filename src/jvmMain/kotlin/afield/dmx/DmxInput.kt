@@ -183,8 +183,11 @@ class DmxInput(
             }
             ArtNet.OP_POLL -> if (answerPolls) {
                 val reply = ByteArray(ArtNet.POLL_REPLY_LENGTH)
-                val known = (sources.keys + node.ports.map { it.universe }).distinct().sorted()
-                val info = node.copy(ports = known.take(4).map { ArtNet.NodePort(it and 0x0f) })
+                // Advertise what is actually arriving (up to the four ports one reply can carry); an
+                // idle node advertises its configured ports. Net and SubNet come from the first one.
+                val known = sources.keys.sorted().ifEmpty { node.ports.map { it.universe } }.take(4)
+                val first = PortAddress(known.firstOrNull()?.coerceIn(0, 0x7fff) ?: 0)
+                val info = node.copy(net = first.net, subNet = first.subNet, ports = known.map { ArtNet.NodePort(it and 0x0f) })
                 val n = ArtNet.encodePollReply(reply, info)
                 runCatching { socket.send(DatagramPacket(reply, n, InetSocketAddress(from, fromPort))) }
                     .onSuccess { pollsAnswered++ }

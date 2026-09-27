@@ -3,6 +3,7 @@ package afield.dmx
 import afield.Box
 import afield.graphics.FLine
 import afield.stdlib.Img
+import afield.stdlib.color
 import afield.stdlib.vec
 import afield.stopTrackedJobs
 import java.io.File
@@ -131,6 +132,15 @@ class DmxServicesTest {
             out.delete()
         }
         assertEquals(1 + 170, universeToFLines(ByteArray(512), rgb = true).size)
+        assertEquals(1 + 512, universeToFLines(ByteArray(512)).size)
+        // An RGBW universe read back as fixtures: white adds to every primary.
+        val rgbw = ByteArray(512).also { it[4] = 255.toByte(); it[7] = 128.toByte() } // fixture 2: R = 1, W = 0.5
+        val cells = universeToFLines(rgbw, profile = FixtureProfile.RGBW)
+        assertEquals(1 + 128, cells.size)
+        val c = cells[2].color
+        assertEquals(1.0, c.x.toDouble(), 1e-6)
+        assertEquals(128 / 255.0, c.y.toDouble(), 1e-6)
+        assertEquals(128 / 255.0, c.z.toDouble(), 1e-6)
     }
 
     // ---- send policy ------------------------------------------------------------------------
@@ -152,6 +162,46 @@ class DmxServicesTest {
             assertEquals(5, out.packetsSent)
         } finally {
             out.close()
+        }
+    }
+
+    @Test
+    fun animateRunsOnTheSenderTickAndAReRunReplacesIt() {
+        val out = DmxOutput(DmxProtocol.ARTNET, host = "127.0.0.1", port = freePort(), autoStart = false)
+        try {
+            val p = Patch()
+            p.strip(2, vec(0.0, 0.0), vec(1.0, 0.0))
+            var first = 0
+            p.animate(out) { t ->
+                first++
+                assertTrue(t >= 0.0)
+                mapAlong(t) { u, _ -> vec(u, 0.0, 0.0) }
+            }
+            out.tick(System.nanoTime())
+            assertEquals(1, first)
+            assertEquals(0, out.universe(1)[1], "pixel 1 red, u = 0")
+            assertEquals(255, out.universe(1)[4], "pixel 2 red, u = 1")
+            var second = 0
+            p.animate(out) { second++ }
+            out.tick(System.nanoTime())
+            assertEquals(1, first, "the replaced animation no longer runs")
+            assertEquals(1, second)
+        } finally {
+            out.close()
+        }
+    }
+
+    @Test
+    fun showPatchAndShowUniverseDisplayIntoAnOpenChannel() {
+        val box = Box("dmx-show")
+        val p = Patch()
+        p.strip(4, vec(0.0, 0.0), vec(30.0, 0.0))
+        box.showPatch(p)
+        val input = DmxInput(DmxProtocol.ARTNET, port = freePort(), bindAddress = "127.0.0.1")
+        try {
+            box.showUniverse(input, 1, profile = null)
+        } finally {
+            input.close()
         }
     }
 

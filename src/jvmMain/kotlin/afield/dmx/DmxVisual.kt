@@ -3,6 +3,7 @@
 package afield.dmx
 
 import afield.Box
+import afield.displayOpen
 import afield.graphics.FLine
 import afield.graphics.lines
 import afield.graphics.outputTo
@@ -35,12 +36,13 @@ private fun rectLine(x: Double, y: Double, w: Double, h: Double): FLine =
  * colour (dimmer applied), ringed in grey so an unlit fixture is still visible. Positions are the
  * fixtures' own; y grows downward in box output, as it does for every `lines(...)` figure.
  *
- * Fixtures whose universe differs from their predecessor's start a new ring colour, so universe
- * boundaries in a long strip are visible at a glance.
+ * With [outline] (the default up to 64 fixtures; a 200-pixel strip would double the SVG for rings
+ * too small to see) each disc is ringed, and the ring colour flips at every universe boundary so
+ * where a long strip changes universe is visible at a glance.
  *
  * @param radius disc radius in rig units; defaults to 40% of the median spacing between consecutive fixtures.
  */
-fun Patch.toFLines(radius: Double? = null, background: Boolean = true): List<FLine> {
+fun Patch.toFLines(radius: Double? = null, background: Boolean = true, outline: Boolean = fixtures.size <= 64): List<FLine> {
     val out = ArrayList<FLine>(fixtures.size * 2 + 1)
     if (fixtures.isEmpty()) return out
     val r = radius ?: run {
@@ -66,7 +68,7 @@ fun Patch.toFLines(radius: Double? = null, background: Boolean = true): List<FLi
             filled = true; stroked = false
             color = vec(c.x * scale, c.y * scale, c.z * scale, 1.0)
         }
-        out += disc(px, py, r).apply {
+        if (outline) out += disc(px, py, r).apply {
             filled = false; stroked = true; thickness = r * 0.18; color = ringColours[ring]
         }
     }
@@ -74,13 +76,26 @@ fun Patch.toFLines(radius: Double? = null, background: Boolean = true): List<FLi
 }
 
 /**
- * A received (or sent) universe as geometry: 512 cells in a [cols]-wide grid, each cell gray at its
- * slot's value. With [rgb] true, consecutive slot triples are drawn as one coloured cell instead
- * (170 cells), which is how a pixel strip's universe reads best.
+ * A received (or sent) universe as geometry, in a [cols]-wide grid of [cell]-sized squares.
+ *
+ * With no [profile], each of the 512 slots is one gray cell at its value. With a [profile], the
+ * universe is read back as the fixtures that profile describes, packed from slot 1 — one cell per
+ * fixture, coloured from its slots (white adds to all three primaries, amber adds 1 : 0.5 red and
+ * green, a lone dimmer is gray, a master dimmer scales the rest; fine bytes are ignored). So an RGB
+ * strip's universe reads as 170 coloured pixels and an RGBW matrix's as 128. [rgb] is shorthand for
+ * `profile = FixtureProfile.RGB`.
  */
-fun universeToFLines(data: ByteArray, cols: Int = 32, cell: Double = 12.0, rgb: Boolean = false, length: Int = 512): List<FLine> {
+fun universeToFLines(
+    data: ByteArray,
+    cols: Int = 32,
+    cell: Double = 12.0,
+    rgb: Boolean = false,
+    length: Int = 512,
+    profile: FixtureProfile? = if (rgb) FixtureProfile.RGB else null,
+): List<FLine> {
     val out = ArrayList<FLine>()
-    val cells = if (rgb) length / 3 else length
+    val footprint = profile?.footprint ?: 1
+    val cells = length / footprint
     val rows = (cells + cols - 1) / cols
     out += rectLine(-cell * 0.5, -cell * 0.5, cols * cell + cell, rows * cell + cell).apply {
         filled = true; stroked = false; color = vec(0.06, 0.06, 0.07, 1.0)
@@ -88,26 +103,48 @@ fun universeToFLines(data: ByteArray, cols: Int = 32, cell: Double = 12.0, rgb: 
     for (i in 0 until cells) {
         val cx = (i % cols) * cell
         val cy = (i / cols) * cell
-        val col = if (rgb) {
-            vec((data[3 * i].toInt() and 0xff) / 255.0, (data[3 * i + 1].toInt() and 0xff) / 255.0, (data[3 * i + 2].toInt() and 0xff) / 255.0, 1.0)
-        } else {
+        val col = if (profile == null) {
             val g = (data[i].toInt() and 0xff) / 255.0
             vec(g, g, g, 1.0)
-        }
+        } else fixtureColour(data, i * footprint, profile)
         out += rectLine(cx + 1, cy + 1, cell - 2, cell - 2).apply { filled = true; stroked = false; color = col }
     }
     return out
 }
 
+/** The display colour of one [profile] fixture whose first slot is 0-based [at] in [data]. */
+private fun fixtureColour(data: ByteArray, at: Int, profile: FixtureProfile): afield.stdlib.Vec4 {
+    var r = 0.0; var g = 0.0; var b = 0.0; var dim = 1.0; var level = -1.0
+    profile.slots.forEachIndexed { k, slot ->
+        val v = (data[at + k].toInt() and 0xff) / 255.0
+        when (slot) {
+            Slot.RED -> r += v
+            Slot.GREEN -> g += v
+            Slot.BLUE -> b += v
+            Slot.WHITE -> { r += v; g += v; b += v }
+            Slot.AMBER -> { r += v; g += 0.5 * v }
+            Slot.DIMMER -> if (profile.hasColour) dim = v else level = v
+            else -> {}
+        }
+    }
+    if (level >= 0) { r = level; g = level; b = level }
+    return vec(minOf(1.0, r * dim), minOf(1.0, g * dim), minOf(1.0, b * dim), 1.0)
+}
+
 /** Show the patch in its current colours in this box's [channel] output. */
 fun Box.showPatch(patch: Patch, channel: String = "lights", w: Double = 640.0, h: Double = 240.0) {
     lines(patch.toFLines(), channel = channel, w = w, h = h, fitToSize = true)
+    displayOpen(channel)
 }
 
-/** Show one universe of [input] in this box's [channel] output (RGB cells if [rgb]). */
-fun Box.showUniverse(input: DmxInput, universe: Int, channel: String = "universe $universe", rgb: Boolean = true,
-                     w: Double = 640.0, h: Double = 240.0) {
-    lines(universeToFLines(input.universe(universe), rgb = rgb), channel = channel, w = w, h = h, fitToSize = true)
+/**
+ * Show one universe of [input] in this box's [channel] output: as [profile] fixtures (RGB pixels by
+ * default), or as 512 gray slots with `profile = null`. See [universeToFLines].
+ */
+fun Box.showUniverse(input: DmxInput, universe: Int, channel: String = "universe $universe",
+                     profile: FixtureProfile? = FixtureProfile.RGB, cols: Int = 32, w: Double = 640.0, h: Double = 240.0) {
+    lines(universeToFLines(input.universe(universe), cols = cols, profile = profile), channel = channel, w = w, h = h, fitToSize = true)
+    displayOpen(channel)
 }
 
 /**
