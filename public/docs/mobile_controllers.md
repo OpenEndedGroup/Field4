@@ -2,6 +2,8 @@
 
 Open Field's `/controllers` page in a phone browser and the phone becomes a remote for a running Field document: adjust live controls, read outputs, talk to AI4, pick a box, and edit that box in Monaco, none of which asks you to squeeze the canvas UI onto a phone.
 
+This page needs nothing on the phone but a browser. A phone that already runs an OSC control surface, such as TouchOSC, can instead talk to a box directly: see [OSC and TUIO](osc.md).
+
 The phone follows Field's current box selection, and a selection made on the phone becomes the document's. There is one selection behind all six tabs: **Select** sets it, and **Pad**, **Group**, **Outputs**, **Chat** and **Edit** act on whatever it currently is.
 
 ## Open it on your phone

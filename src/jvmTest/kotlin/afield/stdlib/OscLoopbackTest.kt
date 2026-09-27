@@ -16,7 +16,7 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 /**
- * OSC and TUIO over real UDP loopback, pinning what `public/docs/osc.md` teaches and the four
+ * OSC and TUIO over real UDP loopback, pinning what `public/docs/osc.md` teaches and the five
  * defects found while writing it (2026-09-27):
  *
  *  1. an argument after a blob decoded from the blob's own bytes (JavaOSC 0.9 blob parser);
@@ -24,7 +24,9 @@ import kotlin.test.assertTrue
  *     hour off);
  *  3. `osc(port)` after `close()` handed back the same closed server forever;
  *  4. `TuioReceiver.start()` threw a NullPointerException on every call (JavaOSC 0.9's
- *     `OSCPortInBuilder.addMessageListener` on a fresh builder).
+ *     `OSCPortInBuilder.addMessageListener` on a fresh builder);
+ *  5. a second `TuioReceiver` started on a port (a re-run box) received nothing, because the first,
+ *     never closed, kept the datagrams.
  *
  * Ports 57390–57399 are this file's; `OscServer` is serviced with [OscServer.tick] because a jvmTest
  * has no Field runloop.
@@ -171,6 +173,33 @@ class OscLoopbackTest {
             } finally {
                 out.close()
             }
+        }
+    }
+
+    /** What a re-run box does: build and start a second receiver without closing the first. */
+    @Test
+    fun startingASecondTuioReceiverOnAPortClosesTheFirst() {
+        val firstFrames = Collections.synchronizedList(mutableListOf<Int>())
+        val secondFrames = Collections.synchronizedList(mutableListOf<Int>())
+        val first = TuioReceiver(57397) { firstFrames += it.fseq }
+        val second = TuioReceiver(57397) { secondFrames += it.fseq }
+        val out = OSCPortOutBuilder().setRemoteSocketAddress(InetSocketAddress("127.0.0.1", 57397)).build()
+        try {
+            first.start()
+            second.start()
+            out.send(OSCBundle(listOf<OSCPacket>(
+                OSCMessage("/tuio/2Dcur", listOf("alive")),
+                OSCMessage("/tuio/2Dcur", listOf("fseq", 7))
+            )))
+            val deadline = System.currentTimeMillis() + 3_000
+            while (secondFrames.isEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(5)
+            // Before the fix, measured on macOS: the first socket kept every datagram.
+            assertEquals(listOf(7), secondFrames.toList())
+            assertTrue(firstFrames.isEmpty())
+        } finally {
+            out.close()
+            second.close()
+            first.close()
         }
     }
 

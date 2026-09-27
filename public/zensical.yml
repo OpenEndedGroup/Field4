@@ -130,6 +130,9 @@ nav:
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
+      # After the two engines Field talks to, because it is the general form of what they do: OSC
+      # in and out of a box, for any peer — a phone, SuperCollider, Max, a touch table over TUIO.
+      - OSC and TUIO: osc.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md

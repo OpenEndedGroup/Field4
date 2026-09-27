@@ -2154,6 +2154,8 @@ And [`OscServer`](audio.md#osc-kt-oscserver) has `debug` on by default, printing
 
 `src/jvmMain/kotlin/afield/stdlib/osc.kt` — [read the source](source/jvmMain/afield/stdlib/osc/)
 
+**Used in:** [OSC and TUIO](../osc.md)
+
 ### Top-level functions { #osc-kt-functions }
 
 | Declaration | Summary |
