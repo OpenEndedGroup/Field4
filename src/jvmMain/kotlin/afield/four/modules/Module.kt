@@ -376,6 +376,8 @@ class ModulePointer(var current: Module) : Renderable {
 fun Module.pointer() = ModulePointer(this)
 
 class Module(val parameters: Parameters) : Renderable {
+    // Volatile: cleanup() clears it on a box thread while render workers read it.
+    @Volatile
     var valid = false
     var enabled = true
     var meshes = linkedMapOf<String, Mesh>()
@@ -1241,8 +1243,26 @@ class Module(val parameters: Parameters) : Renderable {
         }
     }
 
+    /**
+     * Release this module's pipeline, pipeline layout, shader modules and descriptor layouts.
+     *
+     * The module stops rendering at once ([valid] goes false, so no *new* frame binds it), but
+     * while its renderer is alive the handles are destroyed through the renderer's retirement
+     * queue, after the frames that may have recorded or be executing them have retired. Destroying
+     * them here, as this used to, was a SIGSEGV on a render worker still recording a bind
+     * (`MVKCmdBindGraphicsPipeline`, reproduced 1 of 1), and a `VUID-vkDestroyPipeline-pipeline-00765`
+     * for frames in flight. After the renderer has closed (its device idle) they go at once.
+     * See `dev_docs/renderer_teardown_order.md`, "Immediate cleanup mid-frame".
+     */
     fun cleanup() {
         if (!pipelineDisposeToken.disable()) return
+        valid = false
+        val renderer = parameters.renderer
+        if (renderer.isClosed) destroyPipelineNow()
+        else renderer.cleanup.add(Runnable { destroyPipelineNow() })
+    }
+
+    private fun destroyPipelineNow() {
         destroyPipelineHandles(pipeline, pipelineLayout, vsm, fsm)
         pipeline = 0L
         pipelineLayout = 0L

@@ -295,6 +295,7 @@ class VulkanBuffer(
             // After teardown began the allocator is about to go, and a retirement added now could
             // miss the final drain.
             requireLiveRenderer()
+            check(!released) { "$this was released with cleanup(); it cannot be reallocated" }
             val oldBuffer = buffer
             val oldAlloc = allocation
             val oldHost = hostBuffer
@@ -384,14 +385,18 @@ class VulkanBuffer(
             "$this used after its Renderer was disposed; stop the box writing it before the renderer " +
                 "(or its window, or its document) goes away"
         }
+        check(!destroyed) {
+            "$this used after cleanup() destroyed it; drop every use of a buffer before releasing it"
+        }
     }
 
     /**
      * The handle and range to write into a descriptor for this buffer, read once, as a pair.
      *
      * Refuses, with an [IllegalStateException] that names the cause, rather than hand the driver a
-     * handle it will fault on: after [Renderer.cleanup] has begun, and after [cleanup] or
-     * [pushCleanup] released this buffer while a module still binds it. MoltenVK does not
+     * handle it will fault on: after [Renderer.cleanup] has begun, and once the retirement queue
+     * has destroyed a buffer that [cleanup] released while a module still binds it (between the
+     * two the handle is still valid, and binding it is allowed). MoltenVK does not
      * validate a pushed buffer handle; it dereferences it while recording, so either case used to
      * be a SIGSEGV in `MVKBuffer::getMTLBuffer` on a render worker. A CPU-only buffer has no
      * VkBuffer and is refused too.
@@ -402,7 +407,7 @@ class VulkanBuffer(
         check(bound.buffer != VK_NULL_HANDLE) {
             if (cpuOnly) "$this is CPU-only and has no VkBuffer to bind to a descriptor"
             else "$this was released (cleanup() or pushCleanup()) while a module still binds it; " +
-                "drop the binding, or retire the buffer through renderer.cleanup, before releasing it"
+                "drop the binding before releasing it"
         }
         return bound
     }
@@ -542,35 +547,50 @@ class VulkanBuffer(
         return this
     }
 
-    /** Defer destruction with your renderer.cleanup, or call directly when safe. */
-    fun pushCleanup() {
-        // Ownership of these handles moves to the deferred action. GC must not free them again.
-        if (!autoDisposeToken.disable()) return
-        // Unbind first: a descriptor push after this point refuses by name (see descriptorBinding).
-        binding = DescriptorBinding(VK_NULL_HANDLE, binding.range)
-        val oldBuffer = buffer
-        val oldAlloc  = allocation
-        val oldHost   = hostBuffer
+    /**
+     * Same as [cleanup], which now always retires through the renderer's queue while the renderer
+     * is alive. Kept for the callers that used it to ask for exactly that.
+     */
+    fun pushCleanup() = cleanup()
 
-        buffer = 0L
-        allocation = 0L
-        allocationMemoryType = -1
-        allocationMemoryFlags = 0
-        mappedMemory = 0L
-        hostBuffer = null
-        allocationSize = 0L
-        gpuAddress = 0L
-
-        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldHost))
-    }
-
+    /**
+     * Release this buffer.
+     *
+     * While its renderer is alive the VkBuffer and its memory are destroyed through the renderer's
+     * retirement queue (`Renderer.cleanup`, released `8 × numImages` submitted frames later), so a
+     * frame that recorded or is executing the buffer, or a render worker that read it a moment
+     * ago, still finds it valid. Until then it behaves as before; afterwards [map], [unmap],
+     * [descriptorBinding] and [realloc] refuse by name. After the renderer has closed (device
+     * idle) it is destroyed at once.
+     *
+     * Destroying immediately, as this used to, was reproducible in a live Field: swapping a
+     * module's per-frame uniform buffers for new ones and calling `cleanup()` on the old from a
+     * thread crashed the JVM in `MVKBuffer::getMTLBuffer` (a destroyed handle pushed by a render
+     * worker); doing it from a box's own `loop {}` logged `VUID-vkDestroyBuffer-buffer-00922`
+     * (destroyed while a submitted frame used it) 40 times in 15 s. See
+     * `dev_docs/renderer_teardown_order.md`, "Immediate cleanup mid-frame".
+     */
     fun cleanup() {
         if (!autoDisposeToken.disable()) return
+        released = true
+        if (renderer.isClosed) destroyNow()
+        else renderer.cleanup.add(Runnable { destroyNow() })
+    }
+
+    /** Set by [cleanup]: the handles are on their way to the retirement queue. */
+    @Volatile
+    private var released = false
+
+    /** Set once the handles are actually destroyed; everything that would touch them refuses. */
+    @Volatile
+    private var destroyed = false
+
+    private fun destroyNow() {
+        destroyed = true
         binding = DescriptorBinding(VK_NULL_HANDLE, binding.range)
-        if (hostBuffer != null) MemoryUtil.memFree(hostBuffer)
-        if (buffer != VK_NULL_HANDLE && allocation != 0L) {
-            vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)
-        }
+        val host = hostBuffer
+        val buf = buffer
+        val alloc = allocation
         buffer = VK_NULL_HANDLE
         allocation = 0L
         mappedMemory = 0L
@@ -579,6 +599,10 @@ class VulkanBuffer(
         allocationMemoryFlags = 0
         gpuAddress = 0L
         hostBuffer = null
+        if (host != null) MemoryUtil.memFree(host)
+        if (buf != VK_NULL_HANDLE && alloc != 0L) {
+            vmaDestroyBuffer(allocatorForRenderer(renderer), buf, alloc)
+        }
     }
 
     class Cleaner(

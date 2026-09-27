@@ -37,7 +37,8 @@ expect:
  *    render worker that records `Module$Uniform.pushDescriptorSet`, never reads a zero handle.
  *    Before the fix `realloc` cleared the handle and then allocated, and on MoltenVK a push in
  *    that window was a SIGSEGV in `MVKBuffer::getMTLBuffer` (3 of 3 crashed in a live Field).
- * 2. A buffer released with `cleanup()` refuses a descriptor binding by name.
+ * 2. A buffer released with `cleanup()` stays valid until the frames in flight have retired
+ *    (it used to be destroyed at once, under them), then refuses a descriptor binding by name.
  * 3. Once `Renderer.cleanup()` has begun, `Queue.submit` and `descriptorBinding()` refuse by name.
  */
 object LiveFrameBufferLifetimeSmoke {
@@ -89,13 +90,32 @@ object LiveFrameBufferLifetimeSmoke {
                 "a recorder could read a VK_NULL_HANDLE mid-realloc ($zeroHandles handles, $zeroBindings bindings)"
             }
 
-            // 2. A released buffer refuses a descriptor binding by name.
+            // 2. cleanup() retires instead of destroying: the handle stays valid for the frames that
+            //    may use it, then the buffer refuses by name.
+            val handleBefore = ubo.descriptorBinding().buffer
             ubo.cleanup()
-            val released = runCatching { ubo.descriptorBinding() }.exceptionOrNull()
-            check(released is IllegalStateException && "released" in released.message.orEmpty()) {
-                "descriptorBinding() after cleanup() must refuse by name, got $released"
+            check(ubo.descriptorBinding().buffer == handleBefore) {
+                "cleanup() must not destroy (or unbind) a buffer a frame may still use"
             }
-            println("released buffer refuses: ${released.message}")
+            var framesToRetire = 0
+            while (runCatching { ubo.descriptorBinding() }.isSuccess) {
+                window.pollEvents()
+                renderer.render()
+                framesToRetire++
+                check(framesToRetire < 200) { "cleanup() never retired the buffer" }
+            }
+            val released = runCatching { ubo.descriptorBinding() }.exceptionOrNull()
+            check(released is IllegalStateException && "destroyed" in released.message.orEmpty()) {
+                "descriptorBinding() after retirement must refuse by name, got $released"
+            }
+            check(framesToRetire > renderer.numImages) {
+                "cleanup() retired after $framesToRetire frame(s), not after the frames in flight"
+            }
+            println("released buffer stayed valid for $framesToRetire frame(s), then refuses: ${released.message}")
+
+            // 2b. The same for a module's pipeline is covered in a live Field (see the dev_docs page);
+            //     here, a second cleanup() is harmless.
+            ubo.cleanup()
 
             // 3. After renderer teardown begins, submits and bindings refuse by name.
             val live = VulkanBuffer(
