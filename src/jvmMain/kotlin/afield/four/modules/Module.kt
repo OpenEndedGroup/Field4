@@ -417,9 +417,11 @@ class Module(val parameters: Parameters) : Renderable {
         ) {
             buffer.clean(false, command)
             MemoryStack.stackPush().use { stack ->
-                val targetBuffer = buffer.get()
-                val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack).buffer(targetBuffer.buffer).offset(0)
-                    .range(targetBuffer.descriptorRange)
+                // One read of handle + range, refused by name if the buffer was released or its
+                // renderer disposed: MoltenVK dereferences a pushed handle without validating it.
+                val bound = buffer.get().descriptorBinding()
+                val bufferInfo = VkDescriptorBufferInfo.calloc(1, stack).buffer(bound.buffer).offset(0)
+                    .range(bound.range)
 
                 val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)
                     .dstBinding(binding.binding).dstArrayElement(0).descriptorType(kind).descriptorCount(1)
