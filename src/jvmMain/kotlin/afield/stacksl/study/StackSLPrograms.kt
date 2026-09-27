@@ -498,7 +498,8 @@ fun stackSLTopologyNeedsUpdating(values: Collection<Box>) {
             // itself — once: attach is repeated on every graph change.
             if (child.autorun.isTrue() && child.getPropertyRaw("_stackSLAutostarted", null) != true) {
                 child.properties["_stackSLAutostarted"] = true
-                inMain { kotlinx.coroutines.delay(AUTOSTART_DELAY_MS); child.begin() }
+                // Not over a run that started meanwhile — a run is what gives a box its language at once.
+                inMain { kotlinx.coroutines.delay(AUTOSTART_DELAY_MS); if (child.currentRunningStates.isEmpty()) child.begin() }
             }
         },
         onDetach = { child -> runCatching { StackSLPrograms.live(child).hide() } },

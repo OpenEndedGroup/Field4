@@ -639,7 +639,8 @@ fun rectSLTopologyNeedsUpdating(values: Collection<Box>) {
             // itself — once: attach is repeated on every graph change.
             if (child.autorun.isTrue() && child.getPropertyRaw("_rectSLAutostarted", null) != true) {
                 child.properties["_rectSLAutostarted"] = true
-                inMain { delay(AUTOSTART_DELAY_MS); child.begin() }
+                // Not over a run that started meanwhile — a run is what gives a box its language at once.
+                inMain { delay(AUTOSTART_DELAY_MS); if (child.currentRunningStates.isEmpty()) child.begin() }
             }
         },
         onDetach = { child -> runCatching { RectSLPrograms.live(child).hide() } },

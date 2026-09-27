@@ -69,7 +69,8 @@ rectangle in the window and the editor goes to the line that made it, selecting 
 was not selected.
 
 The model sees the same thing: `InspectRectSLStudy`, which it reads before editing, reports the line
-the person's cursor is on, so "make this one sway more", said after clicking a lantern, names a line.
+the person's cursor is on, so "this one" names a line — as in the last turn of the
+[lanterns session](#lanterns-at-dusk), where it named the flame.
 
 ![The finished lanterns in their window at 13.5 seconds, with the editor's cursor on the flame's line: the small flame at the mouth of each lantern in view is outlined in pale blue](assets/rectsl_conversation/outline.png)
 
@@ -174,8 +175,9 @@ slider value, editing the scene by hand.
 
 The model read the guide, searched the words guide for loops and delays, and wrote the scene with
 one `EditRectSLStudy`: a lantern of nine rectangles — crown, paper, lit fold, paper fold, two seams,
-lower lip, mouth and flame — inside a group that sways, and five deep copies of it, each starting later
-(`->delay-all-time`) on an 18-second rise. It looked at the window before replying:
+lower lip, mouth and flame — inside a group that sways, and an `array` that makes five lanterns of
+it, each starting later (`->delay-all-time`) on an 18-second rise. It looked at the window before
+replying:
 
 ![The live window after the first edit: three warm paper lanterns rising through a deep blue sky](assets/rectsl_conversation/lanterns/images/ae68409c3cd4d6b72b2c.jpg)
 
@@ -214,8 +216,29 @@ It then exported two loops as a clip into `files/`, to watch the seam at 18 seco
 
 <video controls loop muted playsinline width="640" src="assets/rectsl_conversation/lanterns/lanterns-seam-check-two-loops.mp4"></video>
 
+Then the person put the editor's cursor on line 36, `"flame" rect …`, and the window outlined every
+lantern's flame, as in the picture [above](#the-editor-and-the-window). Without naming it:
+
+> Make this one glow a little warmer, and leave everything else exactly as it is.
+
+The model's `InspectRectSLStudy` reported the person at line 36. It changed that line's colour, from
+pale yellow to soft gold, which every lantern's flame shares, and compared the two revisions: two
+lines' rectangles changed, the flame's and the copies the array made of it, in fill only; the other
+60 did not.
+
+<!-- rectsl-study-source:lanterns-flame -->
+```diff {data-lang=rectsl}
+:::before
+  "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;
+:::after
+  "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffd98c solid ->fill ;
+```
+<!-- /rectsl-study-source:lanterns-flame -->
+
+![Comparison r4 → r5 at 0, 6, 12 and 17.967 seconds: before, after and difference; the difference is black but for a small dot at each flame in view](assets/rectsl_conversation/lanterns/images/b5c5db936197ebcab542.png)
+
 <!-- rectsl-study-source:lanterns-final -->
-??? example "The complete scene · r4-cd474f3c0916"
+??? example "The complete scene · r5-137717e37043"
 
     ```diffstatic {data-lang=rectsl}
     # (asked) Paper lanterns drifting up a night sky, a few at a time,
@@ -253,7 +276,7 @@ It then exported two loops as a clip into `files/`, to watch the seam at 18 seco
       # The folded bottom lip, bright opening, and little heat source.
       "lower-fold" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;
       "mouth" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;
-      "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;
+      "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffd98c solid ->fill ;
     end
 
     # Deep copies keep the paper details together. Independent variations avoid a diagonal procession.
@@ -475,7 +498,7 @@ its reply. The person's actions between turns are shown where they happened.
 
 | Session | Turns |
 | --- | --- |
-| Lanterns at dusk | [Paper lanterns](assets/rectsl_conversation/lanterns/01-lanterns.html) · [A less orderly sky](assets/rectsl_conversation/lanterns/02-scatter.html) · [Three skies](assets/rectsl_conversation/lanterns/03-moods.html) · [A seamless loop, shown](assets/rectsl_conversation/lanterns/04-loop.html) |
+| Lanterns at dusk | [Paper lanterns](assets/rectsl_conversation/lanterns/01-lanterns.html) · [A less orderly sky](assets/rectsl_conversation/lanterns/02-scatter.html) · [Three skies](assets/rectsl_conversation/lanterns/03-moods.html) · [A seamless loop, shown](assets/rectsl_conversation/lanterns/04-loop.html) · [This one, warmer](assets/rectsl_conversation/lanterns/05-flame.html) |
 | A tide under a rising moon | [The tide](assets/rectsl_conversation/tide/01-tide.html) · [A moon and its shimmer](assets/rectsl_conversation/tide/02-moon.html) · [Twice as fast](assets/rectsl_conversation/tide/03-faster.html) |
 | A visual score | [A score at 120 bpm](assets/rectsl_conversation/score/01-score.html) · [A canon](assets/rectsl_conversation/score/02-canon.html) · [Which line? A longer accent](assets/rectsl_conversation/score/03-accent.html) |
 
@@ -517,7 +540,8 @@ message continues from the last revision.
     document's `prompts/`. The person-side actions clicked the card's Adopt, Keep and Check in
     buttons in a headless browser; for Keep, the slider's value was set first. The score's hand edit
     wrote the scene box's `rectSL` through the property the editor syncs to; no keystrokes were
-    simulated. Each action is recorded in `conversations/*.human.json`. Both halves are
+    simulated. Before the lanterns' last turn the same browser clicked the scene box and set the
+    editor's cursor on line 36, and the action was kept only once Inspect reported the person there. Each action is recorded in `conversations/*.human.json`. Both halves are
     `tools/conversation_demo.py` (`record` and `act`), which keeps the document running between
     invocations. The four screenshots of Field itself come from
     `tools/capture_rectsl_conversation.py`, which reopens a copy of the lanterns document and first

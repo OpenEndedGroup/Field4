@@ -95,6 +95,10 @@ class RectSLConversationExamplesTest {
                     val after = record["revisionAfter"].asText()
                     if (action == "edit") {
                         assertEquals(true, record["dirtyAfter"].asBoolean(), "${file.name}: an editor edit leaves an unchecked change")
+                    } else if (action == "cursor") {
+                        // Putting the cursor on a line writes nothing; Inspect then says where the person is.
+                        assertEquals(record["revisionBefore"].asText(), after, "${file.name}: a cursor makes no revision")
+                        assertEquals(record["line"].asInt(), record["after"]["facts"]["personAt"]["line"].asInt(), "${file.name}: Inspect reports the cursor's line")
                     } else {
                         assertNotEquals(record["revisionBefore"].asText(), after, "${file.name}: $action should make a revision")
                         val description = study.revisions.revision(after).description
@@ -127,6 +131,23 @@ class RectSLConversationExamplesTest {
                 if (step in 1..11 && step % 4 != 0) assertTrue(tideMoved, "the wave should differ at $t s")
             }
             assertTrue(compared >= 24 * 90, "expected 64 moon slices and 30 shimmer strokes at every time, compared $compared")
+        }
+    }
+
+    @Test fun theLanternsThisOneWasTheLineThePersonWasOn() {
+        withReplay("rectsl_conversation_lanterns") { study, folder ->
+            // The model was told only "this one"; its first look at the study said where the person was.
+            val log = File(folder, "conversations/tool-io/05-flame.jsonl").readLines().filter { it.isNotBlank() }.map { mapper.readTree(it) }
+            val inspect = log.first { it["event"]?.asText() == "tool_call" && it["toolName"]?.asText() == "InspectRectSLStudy" }
+            val seen = mapper.readTree(log.first { it["event"]?.asText() == "tool_result" && it["callId"] == inspect["callId"] }["result"].asText())
+            assertEquals(36, seen["facts"]["personAt"]["line"].asInt())
+            // And the revision it made changed that line, only its colour.
+            val warmer = study.revisions.revision("current")
+            val before = study.revisions.revision(warmer.parent!!)
+            val changed = before.source.lines().zip(warmer.source.lines()).withIndex().filter { (_, p) -> p.first != p.second }
+            assertEquals(listOf(35), changed.map { it.index }, "only line 36 differs: $changed")
+            val (x, y) = changed.single().value
+            assertEquals(x.replace(Regex("0x[0-9a-f]{6}"), "C"), y.replace(Regex("0x[0-9a-f]{6}"), "C"), "and only its colour: $x → $y")
         }
     }
 

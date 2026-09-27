@@ -181,7 +181,7 @@ async def capture(port: int, workspace: Path) -> None:
         restored = await evaluate("""(async () => {
           for (let i = 0; i < 300; i++) {
             const panel = document.querySelector('.ai-chat-window[data-uid="rectsl_source"]');
-            if (panel?.querySelectorAll('.ai-chat-turn.you').length === 4) {
+            if (panel?.querySelectorAll('.ai-chat-turn.you').length === 5) {
               const images = [...panel.querySelectorAll('img')];
               await Promise.all(images.map(img => img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; })));
               if (images.some(img => img.naturalWidth === 0)) throw new Error('A chat image did not load');
@@ -194,7 +194,7 @@ async def capture(port: int, workspace: Path) -> None:
               const reply = [...panel.querySelectorAll('.ai-chat-turn.ai')].find(t => t.textContent.includes('already loops seamlessly'));
               if (!reply) throw new Error('The recorded loop reply is missing');
               reply.scrollIntoView({block: 'start'});
-              return {turns: 4, images: images.length};
+              return {turns: 5, images: images.length};
             }
             await new Promise(r => setTimeout(r, 100));
           }

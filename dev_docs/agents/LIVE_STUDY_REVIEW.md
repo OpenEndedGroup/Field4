@@ -213,10 +213,24 @@ What changed:
    touching only objects of comparable size, recurring happenings folded — so the lanterns' 872 events
    are seven lines.
 5. The knob count, the backdoor's default property, and the function study's blank revision are fixed.
+6. **A run applies the box's language first** (`server/executing.kt#inItsLanguage`). The recorder
+   found it: launching a scene the moment its document opened ran the RectSL as Kotlin
+   (`Expecting an element`), because the topology watcher had not yet given the scene its language;
+   the old window-first recorder had only hidden it by waiting. RectSL and StackSL runs also register
+   as running (`currentRunningStates`), so the renderer teardown that follows a closed window stops
+   them — it had not seen them — and an autostart no longer supersedes a run already under way.
+
+The lanterns session gained a fifth turn to test the last claim with a model: the person's cursor on
+the flame's line (`04a-cursor`), then "make this one glow a little warmer". The model's Inspect
+reported the person at line 36, it changed that line's colour and nothing else, and its comparison
+showed a dot at each flame (`RectSLConversationExamplesTest#theLanternsThisOneWasTheLineThePersonWasOn`).
 
 Not done, still: the StackSL compiler's silent pruning of an unbalanced definition (the study's
 `diagnose` reports it; changing the compiler would refuse programs elsewhere that rely on it); the
 window's click reaches `pick` through GLFW, which no automation here can drive without moving the
 person's real pointer, so everything after the click was checked by calling `pick` from a box and
-GLFW's delivery of the click is untested; and run versus launch for a hand-written window box — the
-case the language roots now avoid — is unchanged and not understood.
+GLFW's delivery of the click is untested; run versus launch for a hand-written window box — the
+case the language roots now avoid — is unchanged and not understood; and the first attempt at the
+cursor action, on a browser page that had just loaded, left the server's record of the selection
+empty, so Inspect reported no `personAt`. A second attempt on the same page worked, and the cause of
+the first was not found.
