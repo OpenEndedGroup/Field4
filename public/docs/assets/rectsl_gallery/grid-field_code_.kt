@@ -9,6 +9,10 @@ import afield.rectsl.RectAnimationOracle
 import afield.rectsl.rectMaterialShaderCode
 import afield.rectsl.writeFrameToMesh
 import afield.rectsl.RECT_ANIMATION_VERTEX_SHADER
+import afield.four.modules.Mesh
+import afield.four.modules.Module
+import afield.four.modules.parameters
+import afield.four.modules.pointer
 
 val rectsl = """
 #rectsl
@@ -31,15 +35,20 @@ val rectsl = """
 
 val program = RectAnimationOracle.compile(rectsl).program!!
 val shader  = rectMaterialShaderCode(program)
+check(shader.ok) { shader.diagnostics.joinToString("\n") }
 
-val module = moduleHere {
+// Built directly, not with `moduleHere { }`: that takes its shaders from this box's
+// `vertex`/`fragment` properties and ignores the ones assigned in its block, and this
+// fragment shader is regenerated from the program's materials on every run.
+val module = Module(parameters(renderer) {
+    name = "rectsl"
     vertex = RECT_ANIMATION_VERTEX_SHADER
     fragment = shader.exampleFragmentShader
     blend = true
     depthTest = false
     primitiveType = triangles
-}
-val m = Mesh()
+}).pointer()
+val m = Mesh(renderer, module)
 module += "scene" to m
 renderer += "rectsl" to module
 

@@ -11,7 +11,7 @@ Each box is one example:
 | `<name>_stackSL_.stacksl` | the StackSL program (the source of truth) |
 | `<name>_vertex_.glsl` | shared fullscreen-triangle vertex |
 | `<name>_fragment_.glsl` | fragment with the `{{ stack.auto.program }}` slot |
-| `<name>_code_.kt` | binds `module.program = stackSL` and draws fullscreen |
+| `<name>_code_.kt` | binds `module.program = stackSL ?: ""` and draws fullscreen; the two `feedback: true` boxes draw into a ping-pong target that `source` reads, and blit it to the window |
 | `<name>_metadata_.yaml` | `docOrder` |
 
 The docs gallery is rendered by `StackSLGalleryHarness`, which reads every
@@ -21,3 +21,10 @@ sRGB target, as the window's swapchain is, so each PNG is what the program shows
 live window rather than its darker linear values. Edit a
 `.stacksl` file and regenerate with
 `run_field_tests.py --id docs.stacksl.gallery`.
+
+The harness never runs the `_code_.kt` boxes, so nothing in the docs build checks
+them; open a copy of this workspace in Field, launch `renderer`, then launch a box.
+`metadata.edn` also carries an inline copy of every sidecar, which the offline viewer
+shows. After editing a sidecar, refresh those copies through Field's own EDN codec
+with `afield.SavingContext().refreshInlineFilesFromDisk("<path to this directory>")`
+rather than by hand.
