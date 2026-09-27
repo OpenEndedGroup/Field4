@@ -3022,6 +3022,17 @@ class KotlinExecution : BoxExecution {
             return
         }
 
+        // A small language's program kept in a property of a Kotlin box (the StackSL gallery's boxes)
+        // completes in that language, as it would under a root of its own.
+        if (property == "stackSL") {
+            reply(Message("complete").payload(afield.stacksl.StackSLVocabulary.complete(allCode, position)))
+            return
+        }
+        if (property == "rectSL") {
+            reply(Message("complete").payload(afield.rectsl.RectSLVocabulary.complete(allCode, position)))
+            return
+        }
+
         if (shaderSpecForProperty(property) != null) {
             val docName = File(thisSessionInfo.get().filename).name
             val fileKey = "afield://$docName/${inside.id}/$property"

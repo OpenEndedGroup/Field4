@@ -309,8 +309,9 @@ class StackSLExecution(val inside: Box) : BoxExecution {
         StackSLPrograms.live(inside).hide()
     }
 
-    // Completion comes from stacksl.js in the browser.
-    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {}
+    /** The compiler's vocabulary and the program's own names ([afield.stacksl.StackSLVocabulary.complete]). */
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) =
+        reply(Message("complete").payload(afield.stacksl.StackSLVocabulary.complete(completionRequest.allCode, completionRequest.position)))
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun start(execute: Execute, first: String, strand: String, reply: (Message) -> Unit, checkIn: Boolean) {

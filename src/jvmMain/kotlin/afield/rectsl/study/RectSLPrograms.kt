@@ -439,8 +439,9 @@ class RectSLExecution(val inside: Box) : BoxExecution {
         RectSLPrograms.live(inside).hide()
     }
 
-    // Completion comes from rectsl.js in the browser.
-    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {}
+    /** The evaluator's vocabulary and the scene's own definitions ([afield.rectsl.RectSLVocabulary.complete]). */
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) =
+        reply(Message("complete").payload(afield.rectsl.RectSLVocabulary.complete(completionRequest.allCode, completionRequest.position)))
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun start(execute: Execute, first: String, strand: String, reply: (Message) -> Unit, checkIn: Boolean) {
