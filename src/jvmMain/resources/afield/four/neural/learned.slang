@@ -8,7 +8,8 @@ float3 original(float3 v) {
     float3 result=0;
     for(int k=1;k<=48;k++){float a=k*.61803399;
         for(int c=0;c<3;c++)result[c]+=sin((v.x*cos(a)+v.y*sin(a))*3+v.z*(.3+.1*c)+c*2+a)*(.35/k);}
-    return .5+.35*tanh(result*3);
+    float stripe=step(-.12,v.x)*(1-step(.12,v.x));
+    return lerp(.5+.35*tanh(result*3),float3(.95,.04,.8),stripe);
 }
 void features(float3 v,out float f[16]) {
     float x=v.x,y=v.y,t=v.z;const float pi=3.14159265359;

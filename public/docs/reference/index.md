@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15381 public symbols across 406 source files**, 9098 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15404 public symbols across 408 source files**, 9111 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -13,7 +13,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 355 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 32 | 1471 | 1236 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
-| [Renderers](renderers.md) | 29 | 646 | 311 (48%) | Turning a scene into pixels on a Vulkan device. |
+| [Renderers](renderers.md) | 30 | 657 | 314 (47%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
 | [Simulation](simulation.md) | 29 | 873 | 505 (57%) | Making a shape behave. |
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 96 | 2730 | 1193 (43%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 97 | 2742 | 1203 (43%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 8 | 140 | 116 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -114,6 +114,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [dynamic_graph_systems.kt](data.md#dynamic-graph-systems-kt) | Data | 157 | 17 | Time-varying point-and-edge systems: point clouds that move every frame while the graph joining them is continually reinforced and decayed. | [Graphs that change while you watch](../dynamic_graph_systems_examples.md) |
 | [EffectiveParameter.kt](workspace.md#effectiveparameter-kt) | Workspace | 13 | 1 |  |  |
 | [Effects.kt](synthesis.md#effects-kt) | Synthesis | 76 | 47 | The mono effects: delays, reverbs, distortions and dynamics, each one a `SignalProcessor` that `/` pipes a signal into. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
+| [EmbeddedRectSL.kt](languages.md#embeddedrectsl-kt) | Languages | 5 | 5 |  |  |
 | [EmbeddedStackSL.kt](languages.md#embeddedstacksl-kt) | Languages | 8 | 8 |  |  |
 | [Envelopes.kt](synthesis.md#envelopes-kt) | Synthesis | 46 | 10 | Control shapes: `Gate`, `ADSR`, `AR`, `Line` and `BreakpointEnvelope` generate one, `Slew` limits how fast one can move, and `EnvelopeFollower` recovers one from a signal that already exists. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [essentiaAnalysis.kt](audio.md#essentiaanalysis-kt) | Audio | 126 | 0 | Readers for two on-disk audio-analysis products, so a box can query them by time. |  |
@@ -292,6 +293,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatCondense.kt](patterns.md#patcondense-kt) | Patterns | 26 | 15 | The shortest mini-notation expression that plays a given rhythm. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatFunctions.kt](patterns.md#patfunctions-kt) | Patterns | 48 | 6 | Bridge from `pat(...)` into scalar functions (`Functions.Fn`). |  |
 | [PathTraceEmitterGpuSmoke.kt](renderers.md#pathtraceemittergpusmoke-kt) | Renderers | 2 | 2 | Real GPU checks for `PathTracingRenderer.emitterSampling`, the path tracer's direct sampling of emissive triangles: four scenes, each measured against a number that exists outside this file. |  |
+| [PathTraceFrameOutput.kt](renderers.md#pathtraceframeoutput-kt) | Renderers | 9 | 2 |  |  |
 | [PathTraceGlassDemo.kt](renderers.md#pathtraceglassdemo-kt) | Renderers | 2 | 2 | All four of the path tracer's glass materials in one scene: clear, absorbing, frosted, and a thin pane. |  |
 | [PathTraceGltf.kt](renderers.md#pathtracegltf-kt) | Renderers | 4 | 3 | glTF and GLB into a `PathTraceScene`: hierarchy baked to world space, PBR parameters mapped onto `PathTraceMaterial`, and an extension check that refuses rather than renders the wrong thing. |  |
 | [PathTraceGpuSmoke.kt](renderers.md#pathtracegpusmoke-kt) | Renderers | 8 | 4 | GPU smoke tests and a demo entry point for `PathTracingRenderer`. | [Progressive path tracing](../path_tracing.md) |
@@ -300,7 +302,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PathTraceScene.kt](renderers.md#pathtracescene-kt) | Renderers | 23 | 6 | What the path tracer traces: triangles, materials, textures and an environment map, all as plain Kotlin with no device attached. | [Progressive path tracing](../path_tracing.md), [A polytope, cut open, and traced](../chain_polytope_render.md) |
 | [PathTraceShaderBoxes.kt](renderers.md#pathtraceshaderboxes-kt) | Renderers | 3 | 3 | `pathTracingHere`: a path tracer whose material function is the box's own editable compute shader, authored and hot-reloaded exactly like any other Field shader. |  |
 | [PathTraceTriMesh.kt](renderers.md#pathtracetrimesh-kt) | Renderers | 9 | 9 | `TriMesh` into `PathTraceScene`, so that anything in Field which produces a mesh can be traced. |  |
-| [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 54 | 37 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
+| [PathTracingRenderer.kt](renderers.md#pathtracingrenderer-kt) | Renderers | 56 | 38 | The path tracer itself: BVH upload, the two traversal backends, accumulation, and the history reprojection that keeps an image usable while a camera moves. |  |
 | [PatKolakoski.kt](patterns.md#patkolakoski-kt) | Patterns | 7 | 7 | Kolakoski rhythms: a bar whose own run lengths are written into it. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [PatMiniNotation.kt](patterns.md#patmininotation-kt) | Patterns | 17 | 15 | The **mini-notation catalogue**: the forms a `pat("…")` string can take, one entry each, with the piano roll and the audio clip the documentation publishes under it. | [Patterns: writing rhythm as a function of time](../pattern_language.md) |
 | [PatOnsetDetection.kt](patterns.md#patonsetdetection-kt) | Patterns | 14 | 8 | Where a rendered pattern's notes actually start, measured from the audio. |  |
@@ -338,7 +340,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RayTracingGpuAudit.kt](renderers.md#raytracinggpuaudit-kt) | Renderers | 3 | 2 |  |  |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [RectSL.kt](languages.md#rectsl-kt) | Languages | 560 | 45 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSL.kt](languages.md#rectsl-kt) | Languages | 561 | 46 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLCoverage.kt](languages.md#rectslcoverage-kt) | Languages | 35 | 35 | The **exact** coverage a soft raster is approximating, and the measurement of how far off it is. |  |
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 6 | Serves `rectsl.js`, the browser-side RectSL editor support, to the page and to the test that checks it. |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
@@ -346,14 +348,14 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
-| [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 40 | 34 |  |  |
+| [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 43 | 37 |  |  |
 | [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 | What to *do* with a RectSL distance field once you have one. | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. | [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md) |
-| [RectSLSource.kt](languages.md#rectslsource-kt) | Languages | 26 | 14 | RectSL read as *source*: what the editor and the study tools need that a plain compile does not give — where things are. |  |
+| [RectSLSource.kt](languages.md#rectslsource-kt) | Languages | 27 | 15 | RectSL read as *source*: what the editor and the study tools need that a plain compile does not give — where things are. |  |
 | [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 50 | 39 |  |  |
 | [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 29 | 20 |  |  |
-| [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 39 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
+| [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 41 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
 | [RectSLStudyViewer.kt](languages.md#rectslstudyviewer-kt) | Languages | 9 | 6 |  |  |
 | [RectSLVocabulary.kt](languages.md#rectslvocabulary-kt) | Languages | 3 | 3 |  |  |
 | [RectSLWindowLinks.kt](languages.md#rectslwindowlinks-kt) | Languages | 6 | 6 |  |  |

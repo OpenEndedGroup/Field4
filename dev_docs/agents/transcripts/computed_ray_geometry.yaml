@@ -1,0 +1,83 @@
+name: computed_ray_geometry
+description: Compute editable triangle clusters in Field and trace them with Vulkan Mega Geometry.
+operations:
+- create:
+    box: agent_graphics_context
+    name: renderer
+    frame:
+      x: 40.0
+      y: 40.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing\
+        \ = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer\
+        \ {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\"\
+        )\nstart(renderer::run)\n"
+- launch:
+    box: agent_graphics_context
+    property: code
+    type: code
+    strand: renderer
+    code: "import afield.four.util.Options\n\nprop<Window>(window)\nprop<Renderer>(renderer)\n\nOptions.enableRayTracing\
+      \ = true\nOptions.enableVR = false\nOptions.enableHDR = false\nOptions.profiling = false\n\nonce.renderer\
+      \ {\n    window = Window(\"Field\")\n    Renderer(window)\n}\n\nprintln(\"agent graphics renderer ready\"\
+      )\nstart(renderer::run)\n"
+- wait:
+    frames: 3
+- create:
+    box: computed_ray_geometry
+    name: computed ray geometry
+    frame:
+      x: 400.0
+      y: 160.0
+      w: 420.0
+      h: 100.0
+    properties:
+      code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.modules.*\n\nprop<ClusterGeometryDemo>(lab)\n\
+        fromContextWithNameOrNull<ClusterGeometryDemo>(\"lab\")?.close()\ncheck(renderer.device.supportsClusterAccelerationStructure)\
+        \ {\n    \"This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline.\"\
+        \n}\nlab = ClusterGeometryDemo(renderer, producerFactory={ computeModuleHere(it) }).install()\nvar animate=true\n\
+        var topology=0\nvar view=0\ncontrolGroup(\"computed ray geometry\") {\n    checkbox(\"Animate computed vertices\"\
+        ,initialValue=true) { animate=it }\n    slider(\"Topology: alternate diagonals\",min=0.0,max=1.0,step=1.0,initialValue=0.0)\
+        \ { topology=it.toInt() }\n    slider(\"0: Surface · 1: Clusters · 2: Triangles\",min=0.0,max=2.0,step=1.0,initialValue=0.0)\
+        \ { view=it.toInt() }\n}\ndisplayOpen(\"computed ray geometry\")\nprintln(\"Edit the compute shader: it\
+        \ writes the positions, local indices and cluster descriptions. 768 clusters / 98,304 triangles.\")\nframes\
+        \ {\n    while(true) {\n        lab.animate=animate;lab.topology=topology;lab.view=view\n        frame()\n\
+        \    }\n}.end { lab.close() }\n"
+      compute: "#version 460\n#extension GL_EXT_buffer_reference : require\nlayout(local_size_x=64) in;\nlayout(buffer_reference,std430,buffer_reference_align=16)\
+        \ buffer Positions {vec4 data[];};\nlayout(buffer_reference,std430,buffer_reference_align=4) buffer Indices\
+        \ {uint data[];};\nstruct Cluster {uvec4 range;uvec4 identity;};\nlayout(buffer_reference,std430,buffer_reference_align=16)\
+        \ buffer Clusters {Cluster data[];};\nlayout(push_constant) uniform Generate {Positions positions;Indices\
+        \ indices;Clusters descriptions;\n    uint columns;uint rows;float time;uint topology;int invalidCluster;int\
+        \ invalidMode;} pc;\nvoid main(){uint id=gl_GlobalInvocationID.x;if(id>=pc.columns*pc.rows)return;\n   \
+        \ uint cx=id%pc.columns,cy=id/pc.columns;\n    for(uint y=0;y<9;y++)for(uint x=0;x<9;x++){\n        vec2\
+        \ p=(vec2(cx,cy)+vec2(x,y)/8)/vec2(pc.columns,pc.rows)*8-4;\n        float z=.55*sin(p.x*1.7+pc.time)*cos(p.y*1.3-pc.time*.7)+.2*sin(p.x*3+p.y*2+pc.time*1.3);\n\
+        \        pc.positions.data[id*81+y*9+x]=vec4(p.x,z,p.y,1);\n    }\n    for(uint y=0;y<8;y++)for(uint x=0;x<8;x++){\n\
+        \        uint a=y*9+x,b=a+1,c=a+10,d=a+9,o=id*384+(y*8+x)*6;\n        bool flip=((x+y+pc.topology)&1)!=0;\n\
+        \        pc.indices.data[o]=a;pc.indices.data[o+1]=flip?d:c;pc.indices.data[o+2]=b;\n        pc.indices.data[o+3]=flip?b:a;pc.indices.data[o+4]=d;pc.indices.data[o+5]=c;\n\
+        \    }\n    pc.descriptions.data[id]=Cluster(uvec4(id*81,id*384,81,128),uvec4(id,id,0,0));\n    // Deliberate\
+        \ invalid address-range injection exercises the public builder's GPU guard.\n    if(int(id)==pc.invalidCluster)\
+        \ {\n        if(pc.invalidMode==1)pc.descriptions.data[id].range.x=0xffffffffu;\n        if(pc.invalidMode==2)pc.indices.data[id*384]=100000u;\n\
+        \        if(pc.invalidMode==4)pc.positions.data[id*81].x=uintBitsToFloat(0x7fc00000u);\n    }\n}\n"
+- connect:
+    parent: agent_graphics_context
+    child: computed_ray_geometry
+- launch:
+    box: computed_ray_geometry
+    property: code
+    type: code
+    strand: scene
+    code: "import afield.controlGroup\nimport afield.displayOpen\nimport afield.four.modules.*\n\nprop<ClusterGeometryDemo>(lab)\n\
+      fromContextWithNameOrNull<ClusterGeometryDemo>(\"lab\")?.close()\ncheck(renderer.device.supportsClusterAccelerationStructure)\
+      \ {\n    \"This Starting Point needs enabled VK_NV_cluster_acceleration_structure and a ray-tracing pipeline.\"\
+      \n}\nlab = ClusterGeometryDemo(renderer, producerFactory={ computeModuleHere(it) }).install()\nvar animate=true\n\
+      var topology=0\nvar view=0\ncontrolGroup(\"computed ray geometry\") {\n    checkbox(\"Animate computed vertices\"\
+      ,initialValue=true) { animate=it }\n    slider(\"Topology: alternate diagonals\",min=0.0,max=1.0,step=1.0,initialValue=0.0)\
+      \ { topology=it.toInt() }\n    slider(\"0: Surface · 1: Clusters · 2: Triangles\",min=0.0,max=2.0,step=1.0,initialValue=0.0)\
+      \ { view=it.toInt() }\n}\ndisplayOpen(\"computed ray geometry\")\nprintln(\"Edit the compute shader: it writes\
+      \ the positions, local indices and cluster descriptions. 768 clusters / 98,304 triangles.\")\nframes {\n \
+      \   while(true) {\n        lab.animate=animate;lab.topology=topology;lab.view=view\n        frame()\n    }\n\
+      }.end { lab.close() }\n"
+- wait:
+    frames: 12

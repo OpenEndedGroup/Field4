@@ -1,0 +1,46 @@
+#version 460
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : require
+layout(local_size_x=64) in;
+layout(buffer_reference,std430,buffer_reference_align=16) buffer Positions {vec4 values[];};
+layout(buffer_reference,std430,buffer_reference_align=4) buffer Words {uint values[];};
+struct Description {uvec4 range;uvec4 identity;};
+layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Descriptions {Description values[];};
+// Exact VkClusterAccelerationStructureBuildTriangleClusterInfoNV, 64 bytes.
+struct BuildInfo {uvec4 header;uvec2 strides;uint64_t indices;uint64_t vertices;uint64_t geometry;uint64_t micromaps;uint64_t micromapIndices;};
+layout(buffer_reference,std430,buffer_reference_align=16) buffer Records {BuildInfo values[];};
+layout(push_constant) uniform Convert {
+    Positions sourcePositions;Words sourceIndices;Descriptions sourceClusters;
+    Positions positions;Words indices;Records records;Words status;
+    uint count;uint maxVertices;uint maxTriangles;uint positionCapacity;uint indexCapacity;uint maxGeometry;
+} pc;
+void main(){
+    uint id=gl_GlobalInvocationID.x;if(id>=pc.count)return;
+    Description d=pc.sourceClusters.values[id];uint firstVertex=d.range.x,firstIndex=d.range.y,nv=d.range.z,nt=d.range.w;
+    uint error=0;
+    if(nv<3 || nv>pc.maxVertices || nt<1 || nt>pc.maxTriangles || firstVertex>pc.positionCapacity ||
+        nv>pc.positionCapacity-min(firstVertex,pc.positionCapacity) || firstIndex>pc.indexCapacity ||
+        nt>(pc.indexCapacity-min(firstIndex,pc.indexCapacity))/3 || d.identity.y>pc.maxGeometry)error=1;
+    uint vo=id*pc.maxVertices,io=id*pc.maxTriangles*3;
+    if(error==0){
+        for(uint v=0;v<nv;v++){
+            vec4 p=pc.sourcePositions.values[firstVertex+v];
+            if(any(isnan(p.xyz)) || any(isinf(p.xyz))){error|=4;p=vec4(0);}
+            pc.positions.values[vo+v]=p;
+        }
+        for(uint j=0;j<nt*3;j++){
+            uint index=pc.sourceIndices.values[firstIndex+j];
+            if(index>=nv){error|=2;index=0;}pc.indices.values[io+j]=index;
+        }
+    }
+    if(error!=0){nv=3;nt=1;for(uint v=0;v<3;v++){pc.positions.values[vo+v]=vec4(0);pc.indices.values[io+v]=0;}}
+    pc.status.values[id]=error;
+    BuildInfo b;
+    // 9 triangle bits, 9 vertex bits, 6 truncate bits, 4 index-format bits, 4 micromap bits.
+    b.header=uvec4(d.identity.x,0,nt|(nv<<9)|(4u<<24),min(d.identity.y,pc.maxGeometry)|(5u<<29));
+    // Triangle indices packed as 3 uint32; vertices vec4. Remaining strides zero.
+    b.strides=uvec2(4u|(16u<<16),0);
+    b.indices=uint64_t(pc.indices)+uint64_t(io)*4;b.vertices=uint64_t(pc.positions)+uint64_t(vo)*16;
+    b.geometry=0;b.micromaps=0;b.micromapIndices=0;
+    pc.records.values[id]=b;
+}

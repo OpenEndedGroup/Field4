@@ -32,31 +32,67 @@
   ],
   "cooperativeVectorTrainingEnabled": false,
   "arithmetic": {
+    "stripe": {
+      "sourceEdgeRgbL1": 1.404644787311554,
+      "xRange": [
+        -0.12,
+        0.12
+      ],
+      "edgeBandLinearRgbMse": 0.017523415812347457,
+      "edgeBandHalfWidthNormalized": 0.02,
+      "fullImageLinearRgbMse": 0.001177017107976704,
+      "rgb": [
+        0.95,
+        0.04,
+        0.8
+      ],
+      "edgeBandPixelFraction": 0.03958333333333333,
+      "awayFromEdgesLinearRgbMse": 5.033043631110981E-4,
+      "maxAbsoluteRgbError": 0.5020943
+    },
     "allocatedBytes": 68570496,
-    "cpuMaxError": 3.5762787E-7,
+    "cpuMaxError": 1.8179417E-6,
     "originalGpuMs": {
       "count": 100,
-      "p50": 0.2624,
-      "p95": 0.269344
+      "p50": 0.267648,
+      "p95": 0.286208
     },
     "learnedGpuMs": {
       "count": 100,
-      "p50": 5.62592,
-      "p95": 5.670848
+      "p50": 5.566208,
+      "p95": 5.612608
     }
   },
   "cooperative": {
+    "stripe": {
+      "sourceEdgeRgbL1": 1.4046447277069092,
+      "xRange": [
+        -0.12,
+        0.12
+      ],
+      "edgeBandLinearRgbMse": 0.017514413954846632,
+      "edgeBandHalfWidthNormalized": 0.02,
+      "fullImageLinearRgbMse": 0.0011767515914111676,
+      "rgb": [
+        0.95,
+        0.04,
+        0.8
+      ],
+      "edgeBandPixelFraction": 0.03958333333333333,
+      "awayFromEdgesLinearRgbMse": 5.033989126578621E-4,
+      "maxAbsoluteRgbError": 0.5010156
+    },
     "allocatedBytes": 68570496,
-    "cpuMaxError": 9.133816E-4,
+    "cpuMaxError": 0.0010524392,
     "originalGpuMs": {
       "count": 100,
-      "p50": 0.26272,
-      "p95": 0.268064
+      "p50": 0.278784,
+      "p95": 0.289504
     },
     "learnedGpuMs": {
       "count": 100,
-      "p50": 0.266816,
-      "p95": 0.276608
+      "p50": 0.307328,
+      "p95": 0.318304
     }
   }
 }

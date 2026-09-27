@@ -464,3 +464,5 @@ mirrors.animate { seconds, scene ->
 edits a sphere; `mirrors.useCamera(camera)` connects your camera. `mirrors.cleanup()` retires the
 scene. Changed instance transforms build a fresh small TLAS while retaining the static BLASes;
 old GPU resources remain alive until earlier frames finish. This example does not deform geometry.
+
+For geometry generated entirely by your own GPU compute shader, see [Computed ray geometry](computed_ray_geometry.md).

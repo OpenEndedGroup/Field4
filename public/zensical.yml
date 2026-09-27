@@ -211,9 +211,12 @@ nav:
       - Direct Lighting: direct_lighting.md
       - Neural Reconstruction: neural_reconstruction.md
       - Ray Reconstruction: ray_reconstruction.md
+      - Path-Traced Reconstruction: path_traced_reconstruction.md
+      - Computed Ray Geometry: computed_ray_geometry.md
       - From Modules to Reconstruction: reconstruction_plumbing.md
       - Optical Flow: optical_flow.md
       - A Learned Shader Function: learned_shader.md
+      - GPU Shader Learning: gpu_shader_learning.md
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md

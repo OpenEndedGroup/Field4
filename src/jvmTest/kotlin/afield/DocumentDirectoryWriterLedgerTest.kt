@@ -178,6 +178,8 @@ class DocumentDirectoryWriterLedgerTest {
             // for the tool factory — and each refusal goes through `refuseWrite`.
             "src/jvmMain/kotlin/afield/server/documentGuides.kt" to GATED,
             "src/jvmMain/kotlin/afield/stdlib/saved.kt" to GATED,
+            // BoxStudies.directory: a read-only box's study works in a scratch copy outside the document.
+            "src/jvmMain/kotlin/afield/stdlib/SourceStudy.kt" to GATED,
 
             // ---- ungated and reachable from a read-only session: the backlog ----
             "src/jvmMain/kotlin/afield/operation_transcript.kt" to exempt(

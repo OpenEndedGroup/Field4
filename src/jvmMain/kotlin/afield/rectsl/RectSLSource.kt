@@ -44,7 +44,12 @@ class RectSLCompiled(
     /** Which line made each node, by node id. */
     val origins: Map<String, RectSLOrigin>,
     /** The materials the scene's StackSL compiled to, when it compiled. */
-    val materials: List<StackSLRectMaterialCompileResult>
+    val materials: List<StackSLRectMaterialCompileResult>,
+    /**
+     * What took each literal off the stack, by the literal's offset in [source]: the word, and how many
+     * values that word had taken before it — the evaluator's own record ([RectLangVm.onLiteralTaken]).
+     */
+    val takenBy: Map<Int, Pair<String, Int>> = emptyMap()
 ) {
     val ok: Boolean get() = program != null && problems.none { it.error }
 }
@@ -91,6 +96,8 @@ fun compileRectSLWithSource(
         if (origin != null) origins[id] = origin
     }
     vm = RectLangVm(scene = scene, namedCurves = curves, escapeEngine = engine, precompiledEscapes = precompiledEscapes)
+    val takenBy = HashMap<Int, Pair<String, Int>>()
+    vm.onLiteralTaken = { token, word, depth -> offsets[token]?.let { takenBy.putIfAbsent(it, word to depth) } }
     val program = try {
         vm.eval(tokens)
     } catch (t: Throwable) {
@@ -104,7 +111,7 @@ fun compileRectSLWithSource(
             RectSLProblem("material ${compiled.module.name}: ${it.message}", line, null, it.severity == StackSLSeverity.ERROR)
         }
     }.sortedBy { !it.error }
-    return RectSLCompiled(source, program, problems, origins, materials)
+    return RectSLCompiled(source, program, problems, origins, materials, takenBy)
 }
 
 /** The line of `material <name>`, or null. */
@@ -151,7 +158,7 @@ private val LITERAL_ARGUMENTS = mapOf(
  * inside `{{ … }}` Kotlin escapes are not knobs; numbers inside a `material` quote are (they are
  * StackSL numbers, and turning one re-shades the material). A source that does not tokenize has none.
  */
-fun rectSLKnobs(source: String): List<RectSLKnob> {
+fun rectSLKnobs(source: String, takenBy: Map<Int, Pair<String, Int>> = emptyMap()): List<RectSLKnob> {
     val tokenizer = RectLangTokenizer(source)
     val tokens = runCatching { tokenizer.tokenize() }.getOrElse { return emptyList() }
     val offsets = tokenizer.offsets
@@ -167,6 +174,18 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
             i++
         }
         return i
+    }
+
+    // A material's quote is StackSL: its numbers are described as StackSL's compiler describes them, by offset.
+    val materialPurposes = HashMap<Int, String>()
+    fun describeMaterial(quote: Token.Quote) {
+        val at = offsets[quote]?.let { source.indexOf(quote.source, it) }?.takeIf { it >= 0 } ?: return
+        val quoteLines = quote.source.lines()
+        val lineStarts = quoteLines.runningFold(0) { acc, l -> acc + l.length + 1 }
+        runCatching { afield.stacksl.study.StackSLStudyShader.knobs(quote.source) }.getOrDefault(emptyList()).forEach { k ->
+            val purpose = afield.stacksl.study.StackSLStudyViewer.purpose(k, quoteLines.getOrElse(k.line - 1) { "" })
+            k.spans.forEach { span -> materialPurposes[at + lineStarts[k.line - 1] + span.column - 1] = purpose }
+        }
     }
 
     fun nextWord(block: List<Token>, from: Int): String? =
@@ -192,6 +211,7 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
                             else if (word.startsWith("->")) "keyframes of $word" else "keyframes before $word"
                         } ?: "in a quote"
                     }
+                    if (role.startsWith("material ")) describeMaterial(token)
                     walk(token.tokens, role)
                 }
                 is Token.Number, is Token.ColorLit -> {
@@ -203,7 +223,7 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
                         LITERAL_ARGUMENTS.getValue(word).getOrNull(seen)?.let { part -> consumer = word to seen + 1; readForward += index; "$word $part" }
                     }
                     if (consumer?.first == "->background") consumer = null
-                    val role = when {
+                    val guessed = when {
                         literal != null -> literal
                         quoteRole != null && quoteRole.startsWith("keyframes") -> "$quoteRole: " + keyPart(block, index)
                         quoteRole != null && !quoteRole.startsWith("in a quote") -> quoteRole
@@ -224,6 +244,11 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
                             } + body
                         }
                     }
+                    // What the evaluator saw take it, where the guess above does not already name that word.
+                    val evaluated = takenBy[start]?.takeIf { (word, _) -> literal == null && word !in guessed }?.let { (word, depth) ->
+                        "into $word" + (if (depth > 0) " (${depth + 1} down the stack)" else "")
+                    }
+                    val role = materialPurposes[start]?.let { "${quoteRole}: $it" } ?: evaluated ?: guessed
                     val colour = (token as? Token.ColorLit)?.color?.let(::hexOf)
                     val value = when (token) {
                         is Token.Number -> token.value
@@ -289,16 +314,37 @@ fun formatRectSLKnob(value: Double, original: String): String {
 
 /**
  * [source] with knobs rewritten in place (knob index to new value). A colour knob takes its value as
- * the 24-bit number of its hex (`0xff8800` is 16746496). Refuses an index that is not a knob.
+ * the 24-bit number of its hex (`0xff8800` is 16746496). Refuses an index that is not a knob, and a
+ * value the number's reader cannot hold — a wall, duration or frame rate that is not positive, an `rgb`
+ * channel outside 0..1, a colour outside 24 bits — saying why, rather than writing a scene that fails
+ * or silently clamps. The same knobs must exist afterwards.
  */
 fun setRectSLKnobs(source: String, values: Map<Int, Double>): String {
     val knobs = rectSLKnobs(source)
     values.keys.forEach { require(it in knobs.indices) { "No knob $it; the program has ${knobs.size}" } }
-    values.values.forEach { require(it.isFinite()) { "Knob values must be finite numbers" } }
+    values.forEach { (index, value) ->
+        require(value.isFinite()) { "Knob values must be finite numbers" }
+        val k = knobs[index]
+        val role = k.role
+        when {
+            k.text.startsWith("0x", ignoreCase = true) ->
+                require(value >= 0 && value <= 0xffffff && value == Math.rint(value)) { "k$index is a colour ($role); give its 24-bit value, 0..16777215 (0xffffff)" }
+            role.startsWith("->wall ") || role == "->duration seconds" ->
+                require(value > 0) { "k$index is $role, which must be more than 0" }
+            role == "->fps frames per second" ->
+                require(value > 0 && value <= 240) { "k$index is $role, which must be more than 0 and at most 240" }
+            Regex("^rgba? (red|green|blue|alpha)$").matches(role) ->
+                require(value in 0.0..1.0) { "k$index is $role, an sRGB channel as typed, 0..1" }
+        }
+    }
     val out = StringBuilder(source)
     values.entries.sortedByDescending { knobs[it.key].start }.forEach { (index, value) ->
         val k = knobs[index]
         out.replace(k.start, k.end, formatRectSLKnob(value, k.text))
     }
-    return out.toString()
+    val rewritten = out.toString()
+    require(rectSLKnobs(rewritten).size == knobs.size) {
+        "Writing those values changed which numbers the scene has (${knobs.size} before, ${rectSLKnobs(rewritten).size} after)"
+    }
+    return rewritten
 }

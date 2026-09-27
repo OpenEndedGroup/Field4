@@ -100,6 +100,8 @@ class RectSLStudyViewer(
             when (act) {
                 "preview" -> {
                     val values = message["values"].properties().associate { it.key.toInt() to it.value.asDouble() }
+                    // Nothing turned: the window shows the program, not a preview of it.
+                    if (values.isEmpty()) { live.preview = null; return "back to the program" }
                     val source = setRectSLKnobs(study.revisions.revision(message["revision"].asText()).source, values)
                     if (live.showing == null && live.preview == null) return "no window to preview in; keep the numbers to see them"
                     live.preview = RectSLStudy.drawable(source)
@@ -109,6 +111,16 @@ class RectSLStudyViewer(
                 "time" -> { live.hold(message["seconds"].asDouble()); return "holding at ${RectSLStudy.secs(message["seconds"].asDouble())} s" }
                 "play" -> { live.hold(null); return "playing" }
                 "restart" -> { live.restart(); return "playing from the start" }
+                // What the window shows: the scene up to a line, the editor's line, or all of it.
+                "pin" -> {
+                    val line = message["line"]?.asInt()
+                    live.pinnedLine = line?.takeIf { it != live.pinnedLine }
+                    return live.pinnedLine?.let { "the window shows the scene as it stands after line $it" } ?: "the window shows the whole scene"
+                }
+                "follow" -> {
+                    live.followCursor = message["on"]?.asBoolean() == true
+                    return if (live.followCursor) "the window shows the scene up to the editor's line" else "the window shows the whole scene"
+                }
                 // A key: every number as the card holds it now, kept by name for this scene's shape.
                 // The card adds it in place, so the sliders keep what has not been kept.
                 "capture-key" -> {
@@ -219,6 +231,7 @@ class RectSLStudyViewer(
                 #$id .scrubber .field-label{width:auto}
                 #$id .kline{margin:10px 0 2px;color:#b8b8be;font-size:12px;border-top:1px solid #222;padding-top:6px}
                 #$id .kline.locate:hover{color:var(--field-accent,#5ce1ff)}
+                #$id button.pin{font-size:11px;padding:0 6px;margin-left:6px} #$id button.pin.pinned{border-color:#5ce1ff;color:#5ce1ff}
                 #$id input[type=color]{width:100%;height:22px;border:1px solid #444;background:none;padding:0}
                 #$id button{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer}
                 #$id button:hover{background:#333}
@@ -247,6 +260,8 @@ class RectSLStudyViewer(
                 append("</div>")
             }
             append("<h4>Knobs</h4>")
+            if (windowed) append("<div class='muted' style='margin-bottom:6px'>A line's <b>window</b> button shows the scene as it stands after that line; press it again for the whole scene. " +
+                "<label><input type='checkbox' class='follow'${if (live.followCursor) " checked" else ""}> the window shows the scene up to the editor's line</label></div>")
             if (c.knobs.isEmpty()) append("<div class='muted'>This scene has no typed numbers.</div>")
             val lines = r.source.lines()
             // What each number does, named by the fast model once per scene shape; until then (and in the tooltip), what reads it.
@@ -259,7 +274,9 @@ class RectSLStudyViewer(
                     folded = true
                 }
                 val heading = RectSLStudy.comment(lines, line) ?: lines.getOrNull(line - 1)?.substringBefore('#')?.trim().orEmpty()
-                append("<div class='kline locate' data-line='$line' title='show line $line in the editor'>line $line · ${esc(heading.take(80))}</div>")
+                val pinned = if (live.pinnedLine == line) " pinned" else ""
+                append("<div class='kline locate' data-line='$line' title='show line $line in the editor'>line $line · ${esc(heading.take(80))}" +
+                    (if (windowed) " <button class='pin$pinned' data-pin='$line' title='show the scene as it stands after this line in the window'>window</button>" else "") + "</div>")
                 val colourDone = HashSet<String>()
                 onLine.forEach { k ->
                     val locate = "class='locate' data-locate='${k.knob}' title='${esc(k.role)} · ${esc(k.context)} — click to select ${esc(k.text)} in the editor'"
@@ -343,6 +360,11 @@ class RectSLStudyViewer(
             // A slider's label, or a line's heading, puts the editor on its number or its line.
             root.querySelectorAll('[data-locate]').forEach(el=>el.addEventListener('click',(ev)=>{ ev.stopPropagation(); send({action:'locate',knob:parseInt(el.dataset.locate)}); }));
             root.querySelectorAll('.kline[data-line]').forEach(el=>el.addEventListener('click',(ev)=>{ ev.stopPropagation(); send({action:'locate',line:parseInt(el.dataset.line)}); }));
+            // One line at a time in the window; the same button again for the whole scene.
+            root.querySelectorAll('button.pin[data-pin]').forEach(b=>b.addEventListener('click',(ev)=>{ ev.stopPropagation();
+              const on=!b.classList.contains('pinned'); root.querySelectorAll('button.pin').forEach(x=>x.classList.remove('pinned'));
+              if(on) b.classList.add('pinned'); send({action:'pin',line:parseInt(b.dataset.pin)}); }));
+            root.querySelectorAll('input.follow').forEach(f=>f.addEventListener('change',(ev)=>{ ev.stopPropagation(); send({action:'follow',on:f.checked}); }));
             // An rgb swatch sets the three numbers after rgb, which RectSL reads as sRGB 0..1, as typed.
             root.querySelectorAll('input[type=color][data-rgb]').forEach(p=>p.addEventListener('input',()=>{
               const rgb=[1,3,5].map(i=>parseInt(p.value.substr(i,2),16)/255);

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
 ```
 
 ## 1. renderer
@@ -38,7 +38,7 @@ start(renderer::run)
 <!-- field-box id="optical_flow_pingpong" index="1" -->
 
 ```edn [field-box id="optical_flow_pingpong" role="properties"]
-{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 98 "characters" 4390 "sha256" "252837dcec2bb580c684c372b9800bb0282ef98c9e56f81a78cc767b0a34f27f"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 13 "characters" 611 "sha256" "024f7def733f20fddca2f9402b13bc077cf3a0a4a7fb8e584c218a4692fb5d04"}]}
+{"id" "optical_flow_pingpong" "index" 1 "name" "optical_flow_pingpong" "parents" ["root" "agent_graphics_context"] "children" ["flow_texture"] "properties" {"children" #{#afield/box "flow_texture"} "parents" #{#afield/box "root" #afield/box "agent_graphics_context"} "name" "optical_flow_pingpong" "_tombstone" false "frame" #afield/rect [400.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "optical_flow_pingpong_code_.kt" "lines" 98 "characters" 4390 "sha256" "252837dcec2bb580c684c372b9800bb0282ef98c9e56f81a78cc767b0a34f27f"} {"name" "vertex" "language" "glsl" "path" "optical_flow_pingpong_vertex_.glsl" "lines" 6 "characters" 148 "sha256" "15ab8178d1aef2acf5d8bd95e36711503c7d8eb87f1698920f9a4e6c99275242"} {"name" "fragment" "language" "glsl" "path" "optical_flow_pingpong_fragment_.glsl" "lines" 30 "characters" 1327 "sha256" "ddc1d84de3d017302dbfe5eaf20e2f0e257f27e2a19a7f793b439dfe544b4e58"}]}
 ```
 
 ```kotlin [field-property box="optical_flow_pingpong" name="code" path="optical_flow_pingpong_code_.kt"]
@@ -155,14 +155,31 @@ void main() {
 #version 460
 layout(location=0) out vec4 color;
 layout(push_constant) uniform Frame { float time; } frame;
+// Optical flow follows brightness. Hue changes alone did not disambiguate the old
+// repeating checkerboard: neighboring cells could produce convincing wrong matches.
+float brightnessKey(ivec2 cell) {
+    uvec2 c=uvec2(cell);
+    uint h=c.x*1597334677u ^ c.y*3812015801u;
+    h=(h ^ (h>>16u))*2246822519u;
+    h=(h ^ (h>>13u))*3266489917u;
+    return float((h ^ (h>>16u)) & 65535u)/65535.0;
+}
+float textureKey(vec2 p) {
+    vec2 q=p/11.0, f=fract(q);
+    ivec2 c=ivec2(floor(q));
+    f=f*f*(3.0-2.0*f);
+    return mix(mix(brightnessKey(c),brightnessKey(c+ivec2(1,0)),f.x),
+               mix(brightnessKey(c+ivec2(0,1)),brightnessKey(c+ivec2(1,1)),f.x),f.y);
+}
 void main() {
     vec2 p=gl_FragCoord.xy-vec2(sin(frame.time)*180,cos(frame.time*1.3)*120);
     vec2 cell=floor(p/34),local=fract(p/34)-.5;
-    float seed=fract(sin(dot(cell,vec2(12.9898,78.233)))*43758.5453);
+    float seed=brightnessKey(ivec2(cell));
     vec3 pigment=.35+.3*cos(seed*6.283+vec3(0,2.094,4.189));
     float disk=1-smoothstep(.20+.12*seed,.24+.12*seed,length(local));
-    float checker=mod(cell.x+cell.y,2);
-    vec3 background=vec3(.05+.15*checker)+.04*sin(p.x*.27)*sin(p.y*.23);
+    // A fixed, aperiodic luminance texture moves with the circles, even in the gaps.
+    vec3 background=vec3(.035+.26*textureKey(p));
+    pigment*=.5+brightnessKey(ivec2(cell)+ivec2(71,103));
     color=vec4(mix(background,pigment,disk),1);
 }
 ```

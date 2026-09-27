@@ -91,10 +91,20 @@ object RectSLPrograms {
     /** The running renderer a scene draws in; see [BoxStudies.rendererAbove]. */
     fun rendererFor(box: Box): Renderer? = BoxStudies.rendererAbove(box)
 
+    /**
+     * The lock a box's study and card are made under — not the box's own monitor. Making a study resumes
+     * it, which renders probe frames on the window's GPU and so waits for a frame the main thread draws;
+     * the main thread, finishing a run's verdict, takes the box's monitor (`ExecutionReports`). Holding
+     * that monitor here deadlocked the two: the scene's run never replied, and Field stopped drawing.
+     */
+    private val creationLocks = java.util.WeakHashMap<Box, Any>()
+
+    private fun creationLock(box: Box): Any = synchronized(creationLocks) { creationLocks.getOrPut(box) { Any() } }
+
     /** [box]'s study, created on first use; publishing writes the box's `rectSL` on the main thread. */
     fun study(box: Box): RectSLStudy {
         (box.getPropertyRaw("_rectSLStudy", null) as? RectSLStudy)?.let { return it }
-        synchronized(box) {
+        synchronized(creationLock(box)) {
             (box.getPropertyRaw("_rectSLStudy", null) as? RectSLStudy)?.let { return it }
             val study = RectSLStudy(BoxStudies.directory(box), { box.getPropertyRaw(PROPERTY, "") as? String ?: "" }, BoxStudies.replacer(box, PROPERTY))
             study.rasterizer = RectSLGpuRasterizer({ rendererFor(box) })
@@ -116,7 +126,7 @@ object RectSLPrograms {
     /** The card showing [box]'s study, created (and shown) on first use. */
     fun viewer(box: Box): RectSLStudyViewer {
         (box.getPropertyRaw("_rectSLViewer", null) as? RectSLStudyViewer)?.let { return it }
-        synchronized(box) {
+        synchronized(creationLock(box)) {
             (box.getPropertyRaw("_rectSLViewer", null) as? RectSLStudyViewer)?.let { return it }
             val viewer = RectSLStudyViewer(study(box), box, CHANNEL)
             box.properties["_rectSLViewer"] = viewer
@@ -177,6 +187,17 @@ class RectSLLive internal constructor(private val box: Box) {
     /** A scene the card is previewing in place of the box's, or null. */
     @Volatile
     var preview: RectSLDrawable? = null
+
+    /** A line the card pinned the window to: it shows the scene as it stands after that line. Null for the whole scene. */
+    @Volatile
+    var pinnedLine: Int? = null
+
+    /** Whether the window shows the scene as it stands at the editor's line, rather than the whole of it. */
+    @Volatile
+    var followCursor: Boolean = false
+
+    /** The line the window is showing the scene up to, given the editor's [cursor]; null for the whole scene. */
+    fun shownLine(cursor: Int?): Int? = pinnedLine ?: cursor?.takeIf { followCursor }
 
     /** The rectangles to outline in the window: those the editor's line makes (see [RectSLWindowLinks]). */
     @Volatile
@@ -492,7 +513,9 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                             changedAt = 0
                             (inside.getPropertyRaw("_rectSLViewer", null) as? RectSLStudyViewer)?.refreshLater()
                         }
-                        live.present(lastGood)?.takeIf { !it.startsWith("no window") }?.let {
+                        // Pinned to a line, or following the editor's: the scene as it stands after that line.
+                        val partial = live.shownLine(cursor)?.let { l -> RectSLPrograms.study(inside).drawableThrough(now, l) }
+                        live.present(partial ?: lastGood)?.takeIf { !it.startsWith("no window") }?.let {
                             withContext(Runloop.runLoop.main) { inside.error(it, RectSLPrograms.PROPERTY, 1) }
                             lastGood = null
                         }

@@ -104,6 +104,12 @@ class RectSLStudy(
     private var heldBatch: File? = null
 
     companion object {
+        /**
+         * How many knobs Inspect lists, one short line each. It was 80, which hid 36 of the recorded
+         * lanterns' 116 from the model; StackSL lists every knob.
+         */
+        internal const val MAX_LISTED_KNOBS = 400
+
         /** What RectSL is, for the fast model that names a scene's knobs ([knobNames]). */
         internal const val ABOUT_FOR_NAMES = "RectSL is a stack-based language for animated rectangles on a wall: each statement makes a named " +
             "rectangle, words starting with -> set its position, size, colour, fill and motion, and '( … ) quotes give values over time " +
@@ -268,7 +274,7 @@ class RectSLStudy(
             if (rects.isEmpty()) warnings += "The scene has no rectangles: it draws only its background."
             else if (visible.all { it == 0 }) warnings += "No rectangle is on the wall at any probe time: they are all outside it, or transparent."
             warnings += analysisWarnings(scene, compiled.origins)
-            val knobs = rectSLKnobs(source)
+            val knobs = rectSLKnobs(source, compiled.takenBy)
             val result = RectSLCheck(
                 wallWidth = scene.wall.width, wallHeight = scene.wall.height, unit = scene.wall.unit.name.lowercase(),
                 origin = if (scene.wall.origin == Origin.TopLeft) "top-left, +y down" else "centre, +y up",
@@ -491,9 +497,9 @@ class RectSLStudy(
             "otherRevisions" to (revisions.allRevisions().size - history.size).takeIf { it > 0 },
             "scene" to sceneSummary(r.value), "warnings" to r.value.warnings.ifEmpty { null },
             "lines" to r.value.lines,
-            "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.take(80).map { knobSummary(it, names[it.knob]) } },
+            "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.take(MAX_LISTED_KNOBS).map { knobSummary(it, names[it.knob]) } },
             "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
-            "moreKnobs" to (r.value.knobs.size - 80).takeIf { it > 0 },
+            "moreKnobs" to (r.value.knobs.size - MAX_LISTED_KNOBS).takeIf { it > 0 },
             "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
             "exports" to exports().ifEmpty { null },
             "frame" to FRAME
@@ -724,15 +730,42 @@ class RectSLStudy(
     /**
      * Which line made what. `identify` draws the frame at [seconds] with every rectangle outlined in its
      * line's colour and labelled `L<line>`, and lists the lines; `build` shows the scene as it stands
-     * after each line that makes something, so a program reads as a sequence of pictures.
+     * after each line that makes something, so a program reads as a sequence of pictures. With a wall
+     * point ([probeX], [probeY]) it also says what is there at [seconds]: every rectangle covering it,
+     * topmost first, with the line that made it — the way to answer "what is this, and why is it here?".
      */
-    fun trace(id: String = "current", seconds: Double = 0.0, mode: String = "identify", size: Int = 0): StudyReport {
+    fun trace(id: String = "current", seconds: Double = 0.0, mode: String = "identify", size: Int = 0,
+              probeX: Double = Double.NaN, probeY: Double = Double.NaN): StudyReport {
         val r = revisions.revision(id)
-        return when (mode) {
+        val report = when (mode) {
             "identify" -> identify(r, seconds, size)
             "build" -> buildUp(r, seconds, size)
             else -> throw StudyRejection("mode is identify or build")
         }
+        if (probeX.isNaN() || probeY.isNaN()) return report
+        return report.copy(facts = report.facts + ("probe" to probe(r, seconds, probeX, probeY)))
+    }
+
+    /** What covers wall point ([x], [y]) at [seconds], topmost first; see [trace]. */
+    internal fun probe(r: SourceRevision<RectSLCheck>, seconds: Double, x: Double, y: Double): Map<String, Any?> {
+        val scene = drawableOf(r).scene
+        val compiled = compile(r.source)
+        val lines = r.source.lines()
+        val covering = scene.sample(seconds).rects.filter { rect ->
+            val dx = x - rect.center.x; val dy = y - rect.center.y
+            val c = cos(-rect.rotation); val s = sin(-rect.rotation)
+            abs(c * dx - s * dy) <= 0.5 * rect.size.x * abs(rect.scale.x) && abs(s * dx + c * dy) <= 0.5 * rect.size.y * abs(rect.scale.y)
+        }.reversed()
+        return linkedMapOf(
+            "at" to listOf(x, y), "seconds" to seconds,
+            "covering" to covering.map { rect ->
+                val line = compiled.origins[rect.id]?.line
+                linkedMapOf("id" to rect.id, "line" to line, "text" to line?.let { lines.getOrNull(it - 1)?.trim()?.take(120) },
+                    "alpha" to fmt(rect.alpha), "visible" to (rect.alpha > 0.02), "centre" to listOf(fmt(rect.center.x), fmt(rect.center.y)),
+                    "size" to listOf(fmt(rect.size.x * abs(rect.scale.x)), fmt(rect.size.y * abs(rect.scale.y))))
+            },
+            "meaning" to if (covering.none { it.alpha > 0.02 }) "nothing visible covers this point: it shows the background ${hex(scene.background)}"
+                else "the first visible entry is what is drawn on top; the rest are beneath it, or transparent")
     }
 
     private val lineColours = listOf(0xff6b6b, 0x4dabf7, 0xffd43b, 0x69db7c, 0xda77f2, 0xff922b, 0x3bc9db, 0xf783ac, 0xa9e34b, 0x748ffc)
@@ -803,6 +836,26 @@ class RectSLStudy(
         "rotationDegrees" to round4(Math.toDegrees(r.rotation)).takeIf { abs(it) > 1e-6 }, "alpha" to round4(r.alpha).takeIf { it < 1.0 },
         "fill" to when (val f = r.fill) { is PaintSpec.Solid -> hex(f.color); is PaintSpec.LinearGradient -> "${hex(f.c0)} → ${hex(f.c1)}" },
         "material" to r.material.name.takeIf { it != "plain" })
+
+    /**
+     * The scene of [source] as it stands at the end of the statement [line] is in — what the window shows
+     * when it is pinned to a line, or follows the editor's — or null when it does not compile that far.
+     * Kept for recent (source, line) pairs, since a following window asks for it every few frames.
+     */
+    internal fun drawableThrough(source: String, line: Int): RectSLDrawable? {
+        val key = SourceStudy.hash(source) + ":" + line
+        synchronized(through) { through[key]?.let { return it.orElse(null) } }
+        val drawn = runCatching {
+            cuts(source).filter { it.first >= line }.firstNotNullOfOrNull { (_, prefix) -> runCatching { drawable(prefix) }.getOrNull() }
+        }.getOrNull()
+        synchronized(through) {
+            through[key] = java.util.Optional.ofNullable(drawn)
+            while (through.size > 32) through.remove(through.keys.first())
+        }
+        return drawn
+    }
+
+    private val through = LinkedHashMap<String, java.util.Optional<RectSLDrawable>>()
 
     /** The root-level cut points of [source]: for each line that starts a root-level token, the source before the next line's first token. */
     private fun cuts(source: String): List<Pair<Int, String>> {
@@ -909,8 +962,9 @@ class RectSLStudy(
         val times = timesFor(r, d.scene, seconds, 2)
         val base = if (sensitivity) framesOf(d, 96, times) else null
         val epoch = revisions.epoch()
+        val names = knobNames(r.source, r.value.knobs)
         val rows = r.value.knobs.mapIndexed { i, k ->
-            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k), "context" to k.context)
+            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k, names[k.knob]), "context" to k.context)
             if (base == null || i >= 40) return@mapIndexed summary
             if (revisions.isCancelled(epoch)) throw CancellationException()
             val step = when {
@@ -1129,7 +1183,7 @@ class RectSLStudy(
     }
 
     /** One export running or finished in the background — see [startExport]. */
-    data class ExportJob(val id: String, val kind: String, val path: String, val revision: String, val frames: Int) {
+    data class ExportJob(val id: String, val kind: String, val path: String, val revision: String, val frames: Int, val estimatedSeconds: Double = 0.0) {
         @Volatile var framesDone: Int = 0
         @Volatile var status: String = "queued"
         @Volatile var message: String? = null
@@ -1143,16 +1197,18 @@ class RectSLStudy(
     /** Every export this session started, newest last. */
     fun exports(): List<Map<String, Any?>> = exportJobs.map {
         linkedMapOf("id" to it.id, "kind" to it.kind, "path" to it.path, "revision" to it.revision, "status" to it.status,
-            "frames" to "${it.framesDone}/${it.frames}", "elapsedSeconds" to it.elapsedSeconds, "message" to it.message)
+            "frames" to "${it.framesDone}/${it.frames}", "estimatedSeconds" to it.estimatedSeconds,
+            "elapsedSeconds" to it.elapsedSeconds, "message" to it.message)
     }
 
     /**
      * Export a checked revision in the background and return at once: `png` (one frame at [seconds]) or
-     * `mp4` (the whole clip at the scene's fps, looped [loops] times). Progress appears in [exports],
-     * [inspect] and the card.
+     * `mp4` (the whole clip at the scene's fps, looped [loops] times), with an estimate made by timing one
+     * real frame at the export's size. An export estimated past [maxMinutes] is refused, with the size that
+     * would fit. Progress appears in [exports], [inspect] and the card.
      */
     fun startExport(id: String, expectedSourceHash: String, file: File, kind: String, size: Int = 0, seconds: Double = 0.0,
-                    loops: Int = 1, overwrite: Boolean = false): StudyReport {
+                    loops: Int = 1, overwrite: Boolean = false, maxMinutes: Double = 10.0): StudyReport {
         val r = exportable(id, expectedSourceHash)
         if (kind !in setOf("png", "mp4")) throw StudyRejection("kind is png or mp4")
         if (file.exists() && !overwrite) throw StudyRejection("${file.name} exists; ask for overwrite to replace it")
@@ -1162,7 +1218,22 @@ class RectSLStudy(
         val long = (if (size > 0) size else if (kind == "png") 1920 else 1280).coerceIn(64, if (kind == "png") 4096 else 1920)
         val frames = if (kind == "png") 1 else (scene.duration * scene.fps).toInt().coerceAtLeast(1) * loops.coerceIn(1, 8)
         if (kind == "mp4" && frames > 3600) throw StudyRejection("That clip is $frames frames; the limit is 3600")
-        val job = ExportJob("x${exportJobs.size + 1}", kind, file.absolutePath, r.id, frames)
+        // Time one real frame at the export's size (twice on the GPU: the first builds the pipeline).
+        // On the CPU a frame's cost is per pixel, so a smaller size that fits the budget can be offered.
+        val onGpu = rasterizer.description.startsWith("GPU")
+        if (onGpu) frames(r.source, long, listOf(seconds))
+        val probeStart = System.nanoTime()
+        frames(r.source, long, listOf(seconds))
+        val probeSeconds = (System.nanoTime() - probeStart) / 1e9
+        val estimate = ((probeSeconds * frames + (if (kind == "mp4") 0.02 * frames else 0.0)) * 10).toInt() / 10.0
+        if (estimate > maxMinutes * 60) {
+            val fits = if (onGpu) long else (long * Math.sqrt(maxMinutes * 60 / estimate)).toInt() / 2 * 2
+            throw StudyRejection("That export would take about ${(estimate / 60).toInt()} minutes on ${rasterizer.description.substringBefore(" (")}, over the ${maxMinutes.toInt()}-minute budget. " +
+                (if (!onGpu && fits >= 64) "At ${fits}px along the long side it would fit; " else "") +
+                "fewer loops also help. Raise maxMinutes only if the person agrees to wait.",
+                mapOf("estimatedSeconds" to estimate, "sizeThatFits" to fits))
+        }
+        val job = ExportJob("x${exportJobs.size + 1}", kind, file.absolutePath, r.id, frames, estimate)
         exportJobs += job
         exportWorker.execute {
             val clock = System.nanoTime()
@@ -1186,7 +1257,8 @@ class RectSLStudy(
         }
         runCatching { onChange?.invoke() }
         return StudyReport(r.id, linkedMapOf("message" to "Export started in the background", "job" to job.id, "kind" to kind,
-            "path" to file.absolutePath, "longSide" to long, "frames" to frames, (if (kind == "png") "atSeconds" else "fps") to (if (kind == "png") seconds else scene.fps),
+            "path" to file.absolutePath, "longSide" to long, "frames" to frames, "estimatedSeconds" to estimate,
+            (if (kind == "png") "atSeconds" else "fps") to (if (kind == "png") seconds else scene.fps),
             "note" to "The file appears when the job finishes; its progress is in InspectRectSLStudy's exports and on the card."))
     }
 

@@ -546,7 +546,9 @@
     // A box's rectSL property is completed by Field (RectSLVocabulary.kt), from the evaluator's whole
     // vocabulary and the scene's own definitions; the table here lacks some of it. Offering both would
     // list every word it does know twice.
-    if (!scope.embedded && window.selectedProperty === "rectSL") return { suggestions: [] };
+    // Field completes a box's rectSL property, and a #rectsl string in its code (EmbeddedRectSL.kt), from the
+    // evaluator's whole vocabulary; offering this table too would list words twice.
+    if ((!scope.embedded && window.selectedProperty === "rectSL") || (scope.embedded && window.selectedProperty === "code")) return { suggestions: [] };
     const prefix = completionPrefixAt(model, position);
     const start = model.getPositionAt(prefix.start);
     const range = new monaco.Range(start.lineNumber, start.column, position.lineNumber, position.column);

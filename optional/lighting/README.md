@@ -17,7 +17,7 @@ This explicit optional task:
 
 1. Initializes the recorded RTXNS submodule if absent, without changing an existing checkout's
    revision or overwriting local edits.
-2. Downloads Slang 2026.10, the version selected by this SDK, and checks the archive SHA-256 from
+2. Downloads Field's pinned Slang 2026.18.3 and checks the archive SHA-256 from
    `toolchains.json`. Hashes come from the official Slang release asset metadata.
 3. Caches the compiler through `tools/native_download_cache.py`, the same per-user cache used by
    Ceres/TetGen. `AFIELD_NATIVE_DOWNLOAD_CACHE` overrides its root. Downloads and the source
@@ -55,7 +55,21 @@ Field's shader build needs only the root SDK pin and compiler, so it does not fe
 renderer's transitive dependencies. The earlier instrumented upstream smoke checkout under
 `build/lighting-experiment/upstream/RTXNS` is historical evidence, not a build dependency.
 
-Update the RTXNS gitlink and `toolchains.json` together when deliberately upgrading. Keep the Slang
-version consistent with the pinned SDK's CMake configuration and revalidate shader layout/numerics.
+Update the RTXNS gitlink and its revision in `toolchains.json` together when deliberately upgrading.
+The SDK sample's Slang version (2026.10) is recorded separately as `sampleSlangVersion`; Field's
+compiler pin is independent so live shaders and GPU training can use newer compiler fixes without
+patching the SDK. Revalidate shader layout/numerics when either pin changes. The 2026.18.3 release
+includes a reverse-mode autodifferentiation hang fix; preparation still remains explicit and optional.
 
 Public walkthrough: [A learned shader function](../../public/docs/learned_shader.md).
+
+### GPU training and the shared compiler
+
+`buildLearnedShaders` now compiles the two frozen inference variants and three GPU-training entry
+points as one transaction. A failure in any entry preserves the working set. Training uses Slang
+2026.18.3's built-in cooperative-vector differentiation; it does not import the older RTXNS sample's
+autodiff extension. Feature negotiation queries training separately from inference. Field startup,
+ordinary docs builds, and non-NVIDIA examples never run this optional preparation task.
+
+See `public/docs/gpu_shader_learning.md` for live `moduleHere()` training and portable checkpoint
+export, and `dev_docs/lighting/ADVANCED_VULKAN.md` for measured verification.

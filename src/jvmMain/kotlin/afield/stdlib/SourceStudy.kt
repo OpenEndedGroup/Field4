@@ -408,7 +408,16 @@ object BoxStudies {
     /** `studies/<box id>` in [box]'s document. */
     fun directory(box: afield.Box): File {
         val session = documentOf(box) ?: throw IllegalStateException("'${box.name}' is not in an open document")
-        return File(session.filename, "studies/${box.id}")
+        val inDocument = File(session.filename, "studies/${box.id}")
+        if (!afield.ReadOnlyDocuments.blocksWritesFrom(box)) return inDocument
+        // A read-only document still has a study — its history readable, its tools usable — in a scratch
+        // copy outside the document, so revisions, knob names and keys write nothing into it.
+        val scratch = File(System.getProperty("java.io.tmpdir"), "field-read-only-studies/${SourceStudy.hash(inDocument.absolutePath).take(16)}")
+        if (!scratch.exists()) {
+            if (inDocument.isDirectory) inDocument.copyRecursively(scratch)
+            afield.ReadOnlyDocuments.refuseWrite("study of '${box.name}'", inDocument.path)
+        }
+        return scratch
     }
 
     /**

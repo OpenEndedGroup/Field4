@@ -1,14 +1,19 @@
 {
   "rtxnsCommit": "f309ae68677a67060cc6ded2d0af925a3931435f",
+  "rtxnsSampleSlangVersion": "2026.10",
   "rtxnsPath": "optional/lighting/RTXNS",
   "host": "linux-x86_64",
-  "slangVersion": "2026.10",
-  "slangArchiveUrl": "https://github.com/shader-slang/slang/releases/download/v2026.10/slang-2026.10-linux-x86_64.zip",
-  "slangArchiveSha256": "709bd134c74bc56aa8101ebb0d3cc0bb15e154fbf1bab63e7e7fae112803d22e",
-  "slangSha256": "80c66ea17b5d482a635e7bb239f91f016fcd7369ee9e895e58aaa5ec3b9e1ec2",
-  "sourceSha256": "6135d81ff8838de1abb631f91591ac6e5b3f9afcf837702496f590047cd0e2d7",
+  "slangVersion": "2026.18.3",
+  "slangArchiveUrl": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-linux-x86_64.zip",
+  "slangArchiveSha256": "516cbcb524f89a8e6185c12e59d4dcd203292e7d75d162325234ce6525f5f614",
+  "slangSha256": "6b42ed03eaef9f5e84433de3ee40edec28da1b680a71a94f813881e38c732a4f",
+  "sourceSha256": "2095bf1b4fc494b984c952e89b4d45f084af2ed777327928dff25c96339cecea",
   "binaries": {
-    "scalar": "f57f61c8953756e00554ef83faeca7cc634a36344f864561ebd3dddba3b61e2a",
-    "coop": "1a13cd36710bf031300d2ae2f2941e5f255ea9b7075d665ddb624386a6f30181"
-  }
+    "scalar": "554220fe68bce1d9c7c489f2cced9ea825d3ebfa217e6578bbbf323788d38551",
+    "coop": "16a89935a485e7ed88018061b51ec426fc606e3ddcbc989ebd8fa78b643aa0d8",
+    "training-train": "7d1bef063e8c07a9d7914324b54048e589b2466d9a7036eef44d3f1ee0ec4784",
+    "training-optimize": "cbd6b473cdf733a29b2c8c4b27f3a356da1a984fd2ba2cde3af47033da1a5ab0",
+    "training-evaluate": "15f3513fc5bed4fd9a1a291dc666a5a29be875e70f5dddaf6ce115e93f18f065"
+  },
+  "trainingSourceSha256": "7981c2b574eb2337a66b6fccc5d30907b60cd5e8096d9156ac549f742e083106"
 }

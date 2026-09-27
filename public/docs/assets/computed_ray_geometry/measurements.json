@@ -1,0 +1,17 @@
+{
+  "triangles": 98304,
+  "clusterCount": 768,
+  "builderBytes": 6893336,
+  "buildMs": {
+    "count": 100,
+    "p50": 1.298048,
+    "p95": 1.3072
+  },
+  "wholePassMs": {
+    "count": 100,
+    "p50": 2.362336,
+    "p95": 2.390688
+  },
+  "enabled": true,
+  "limits": "Limits(vertices=256, triangles=256, scratchAlignment=256, clusterAlignment=128, blasAlignment=256, maxGeometryId=16777215)"
+}

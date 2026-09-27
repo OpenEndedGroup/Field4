@@ -7,6 +7,34 @@ import kotlin.math.*
 
 /** Called from a child of the actual moduleHere Starting Point, after its training process completes. */
 object ShaderLearningChecks {
+    /** Measure the bundled hard stripe separately: a whole-image mean can hide edge smoothing. */
+    fun stripeMetrics(original: FloatArray,learned: FloatArray,width: Int,height: Int): JSONObject {
+        require(original.size==width*height*4 && learned.size==original.size)
+        check(original.all { it.isFinite() } && learned.all { it.isFinite() })
+        val stripe=floatArrayOf(.95f,.04f,.8f)
+        val center=((height/2)*width+width/2)*4
+        check((0..2).all { abs(original[center+it]-stripe[it])<.001f }) { "Missing source stripe" }
+        val inside=((height/2)*width+((-.11f+1)*.5f*width).toInt())*4
+        val outside=((height/2)*width+((-.13f+1)*.5f*width).toInt())*4
+        val jump=(0..2).sumOf { abs(original[inside+it]-original[outside+it]).toDouble() }
+        check(jump>.4) { "Source stripe edge is not discontinuous: $jump" }
+        var edgeError=0.0;var otherError=0.0;var edgeCount=0;var otherCount=0
+        var maximum=0f
+        for(y in 0 until height)for(x in 0 until width) {
+            val edge=abs(abs((x+.5f)/width*2-1)-.12f)<.02f
+            for(c in 0..2) {
+                val i=(y*width+x)*4+c;val d=abs(original[i]-learned[i]);maximum=max(maximum,d)
+                if(edge){edgeError+=d*d;edgeCount++}else{otherError+=d*d;otherCount++}
+            }
+        }
+        return JSONObject().put("xRange",listOf(-.12,.12)).put("rgb",listOf(.95,.04,.8))
+            .put("edgeBandHalfWidthNormalized",.02).put("sourceEdgeRgbL1",jump)
+            .put("edgeBandPixelFraction",edgeCount.toDouble()/(edgeCount+otherCount))
+            .put("edgeBandLinearRgbMse",edgeError/edgeCount).put("awayFromEdgesLinearRgbMse",otherError/otherCount)
+            .put("fullImageLinearRgbMse",(edgeError+otherError)/(edgeCount+otherCount))
+            .put("maxAbsoluteRgbError",maximum)
+    }
+
     fun run(lab: ShaderLearningView,directory: File=File("build/neural-tools/from-module")) {
         directory.mkdirs();val renderer=lab.renderer;val model=requireNotNull(lab.model)
         val oldView=lab.view;val oldParameter=lab.parameter
@@ -19,6 +47,7 @@ object ShaderLearningChecks {
             var error=0.0;var count=0;var maximum=0f
             for(i in original.indices)if(i%4<3){val d=abs(original[i]-learned[i]);maximum=max(maximum,d);error+=d*d;count++}
             val mse=error/count;report.put("heldOutParameter",lab.parameter).put("fullImageLinearRgbMse",mse).put("maxAbsoluteRgbError",maximum)
+            report.put("stripe",stripeMetrics(original,learned,lab.source.width,lab.source.height))
             check(mse<.003) { "Bundled editable teacher did not fit: $mse" }
             ReconstructionCapture.save(File(directory,"source.png"),original,lab.source.width,lab.source.height)
             ReconstructionCapture.save(File(directory,"learned.png"),learned,lab.source.width,lab.source.height)

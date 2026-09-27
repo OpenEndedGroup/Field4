@@ -1910,7 +1910,7 @@ function sliderValueFromPointer(container, event) {
     return lawValueAt(sliderLaw(container), t);
 }
 
-function updateSlider(container, value, { send = false } = {}) {
+function updateSlider(container, value, { send = false, announce = send } = {}) {
     const spec = sliderLaw(container);
     const sliderId = container.dataset.sliderId;
 
@@ -1937,13 +1937,16 @@ function updateSlider(container, value, { send = false } = {}) {
     }
 
     // A page that owns its sliders (a study card previewing locally) listens for this rather than a
-    // server round trip; `data-send="false"` keeps such a slider off the wire.
-    container.dispatchEvent(new CustomEvent('field-slider-input', { bubbles: true, detail: { value: v, dragging: send } }));
+    // server round trip; `data-send="false"` keeps such a slider off the wire. Only a move is announced —
+    // a drag, or a page's own call through window.updateFieldSlider — never the redraw every slider gets
+    // when controls are laid out (refreshControls) or synced: announcing those made a study card treat
+    // every slider as turned, and the RectSL window stuck on a "preview" of the unchanged scene.
+    if (announce) container.dispatchEvent(new CustomEvent('field-slider-input', { bubbles: true, detail: { value: v, dragging: send } }));
     if (send && sliderId && container.dataset.send !== 'false') {
         window.sendSliderUpdate(sliderId, v);
     }
 }
-window.updateFieldSlider = updateSlider;
+window.updateFieldSlider = (container, value, options = {}) => updateSlider(container, value, { announce: true, ...options });
 
 function startSliderDrag(container, event) {
     event.preventDefault();

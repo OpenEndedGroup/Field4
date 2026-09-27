@@ -3022,10 +3022,10 @@ class KotlinExecution : BoxExecution {
             return
         }
 
-        // StackSL inside the box's Kotlin — a `#stacksl` string, or one assigned to a stack.auto slot —
+        // StackSL or RectSL inside the box's Kotlin — a `#stacksl` or `#rectsl` string, or StackSL assigned to a stack.auto slot —
         // completes as StackSL, from the compiler's vocabulary, rather than as a Kotlin string.
         if (property == "code") {
-            afield.stacksl.study.EmbeddedStackSL.complete(inside, allCode, position)?.let {
+            (afield.stacksl.study.EmbeddedStackSL.complete(inside, allCode, position) ?: afield.rectsl.study.EmbeddedRectSL.complete(allCode, position))?.let {
                 reply(Message("complete").payload(it))
                 return
             }

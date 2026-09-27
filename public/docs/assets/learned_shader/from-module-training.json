@@ -21,14 +21,14 @@
   "steps": 12000,
   "batch": 512,
   "validationSamples": 26624,
-  "validationMse": 2.911868978117127e-05,
-  "sha256": "72d8295e92eb5dc5f81609e78aee1330c2e8ecd1a22b6fba7d3f732566901062",
-  "trainingSeconds": 3.1438454420000426,
+  "validationMse": 0.0002342100051464513,
+  "sha256": "30e4ad58edceab4b9c175efbd1fa9d5dce568edc14dd7dcc082d6df48f82b3eb",
+  "trainingSeconds": 2.90647042099954,
   "numpyVersion": "2.5.3",
   "pythonVersion": "3.14.6",
-  "trainerSha256": "2514f4284f12debebcd4ea372fe90750e61c9e8daae01f95acf9309b4571e46a",
+  "trainerSha256": "977814e56230ca8a56c8516886696d2bad8571245d99cd491ef240d18092d035",
   "sourceKind": "captured-module",
-  "sourceShaderDigest": "990a414e09dcc0540f920ed2347f0262409c6bec16dabae4cad53dc363461bdc",
+  "sourceShaderDigest": "e1ec6c31e15dccebd66238ad45eced6edca4a3c562d185a72843555b344667c7",
   "parameterRange": [
     -1,
     1
@@ -38,12 +38,12 @@
     1920,
     1080
   ],
-  "datasetSha256": "6486e1ac1705f2ce4cf7860142f9020392a8b86cc548164990a8a5e854104599",
+  "datasetSha256": "139ee40ecde57903a89756372dd60fa553f0770bebce03def8e0fc4c3f489965",
   "validation": "held-out parameter slices; measured after FP16 weight conversion",
-  "validationP95AbsoluteError": 0.010663703083992004,
-  "validationMaxAbsoluteError": 0.03053039312362671,
+  "validationP95AbsoluteError": 0.020513108000159264,
+  "validationMaxAbsoluteError": 0.4839131236076355,
   "validationTargetRange": [
-    0.17608940601348877,
-    0.8259760141372681
+    0.03999999165534973,
+    0.949999988079071
   ]
 }

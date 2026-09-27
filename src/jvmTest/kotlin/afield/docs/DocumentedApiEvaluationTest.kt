@@ -171,6 +171,16 @@ class DocumentedApiEvaluationTest {
         // them and nothing headless can run them. Recorded here rather than left to fail, and
         // recorded as six rows rather than a raised ceiling so that each says what it is waiting
         // for and a reader can tell when one becomes reachable.
+        // The 2026-09-27 origin landing (computed Mega Geometry, GPU shader learning), merged into a
+        // main that already had this guard. Both pages need an NVIDIA device: cooperative-vector
+        // training for the first, Mega Geometry cluster acceleration structures for the second.
+        "sourceDigest" to
+            "gpu_shader_learning.md; ShaderTraining.sourceDigest names the source a saved fit came from. " +
+                "It is taught beside GPU training, which needs NVIDIA cooperative vectors; the page's " +
+                "transcript compiles the Kotlin only.",
+        "uintBitsToFloat" to
+            "computed_ray_geometry.md; a GLSL builtin in the page's invalid-input compute shader. That " +
+                "shader feeds Mega Geometry cluster builds, which need an NVIDIA device; the transcript compiles only.",
         "enableRtxdi" to
             "direct_lighting.md; DirectLighting.enableRtxdi installs NVIDIA's RTXDI resampling. " +
                 "It needs an NVIDIA device exposing that path; MoltenVK does not, and the page's " +
