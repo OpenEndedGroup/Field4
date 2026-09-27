@@ -1,5 +1,6 @@
 package afield.stdlib
 
+import afield.Box
 import afield.gather
 import com.illposed.osc.OSCBundle
 import com.illposed.osc.OSCMessage
@@ -29,7 +30,9 @@ import kotlin.test.assertTrue
  *     never closed, kept the datagrams;
  *  6. `/fader/{1,10}` never matched `/fader/10` (JavaOSC 0.9's brace matcher).
  *
- * Ports 57390–57399 are this file's; `OscServer` is serviced with [OscServer.tick] because a jvmTest
+ * It also pins that a handler's exception is shown on the box that registered it, not only printed.
+ *
+ * Ports 57388–57399 are this file's; `OscServer` is serviced with [OscServer.tick] because a jvmTest
  * has no Field runloop.
  */
 class OscLoopbackTest {
@@ -225,6 +228,53 @@ class OscLoopbackTest {
             out.close()
             second.close()
             first.close()
+        }
+    }
+
+    /**
+     * A handler that throws used to be reported only on Field's console, so a box whose handler was
+     * broken looked exactly like one that had never been sent anything. The failure now lands on the
+     * box that called `on`, once per distinct failure, from either half of the handler.
+     */
+    @Test
+    fun aThrowingHandlerIsReportedOnTheBoxThatRegisteredIt() {
+        val owner = Box("osc-error-owner")
+        val errors = Collections.synchronizedList(mutableListOf<String>())
+        owner.output.errorProxy = { content, _, _ -> if (content != null) errors += content.toString() }
+
+        OscServer(57388).use { server ->
+            server.debug = false
+            Box.context.set(owner)
+            try {
+                server.on("/lambda") { _ -> throw IllegalStateException("in the lambda") }
+                server.on("/gen") { _ -> gather<OscServer.Message> { throw IllegalStateException("in the generator") } }
+            } finally {
+                Box.context.remove()
+            }
+            // Registered outside any box: nowhere to report but the console, and it must not throw.
+            server.on("/orphan") { _ -> throw IllegalStateException("no owner") }
+
+            OscClient("127.0.0.1", 57388).use { out ->
+                out.send("/lambda"); out.send("/lambda"); out.send("/gen"); out.send("/orphan")
+                pumpUntil(server) { errors.size >= 2 }
+                Thread.sleep(100)
+                server.tick()
+
+                assertEquals(2, errors.size, "one error per distinct failure, not one per message: $errors")
+                assertTrue(errors.any { "/lambda" in it && "IllegalStateException: in the lambda" in it }, "$errors")
+                assertTrue(errors.any { "/gen" in it && "threw on start" in it && "in the generator" in it }, "$errors")
+
+                // Re-running the box registers the pattern again, so the same failure is news again.
+                Box.context.set(owner)
+                try {
+                    server.on("/lambda") { _ -> throw IllegalStateException("in the lambda") }
+                } finally {
+                    Box.context.remove()
+                }
+                out.send("/lambda")
+                pumpUntil(server) { errors.size >= 3 }
+                assertEquals(3, errors.size, "$errors")
+            }
         }
     }
 

@@ -4,7 +4,7 @@
 
 Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. `SoundPathMap.kt` is the one to read first: the declared, re-derived-from-the-code map of every route Field has from a box to something audible, which [Making a sound in Field: every path there is](../sound_paths.md) renders as a page. [Sonic Pi](../sonic_pi.md) covers owned mode in full.
 
-19 source file(s), 895 public symbol(s), 293 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+19 source file(s), 895 public symbol(s), 294 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -2148,7 +2148,8 @@ edited code no longer mentions keeps firing until `remove` is called for it.
 
 Three things to know when debugging. A port another program already holds does not make the bind
 fail: JavaOSC sets `SO_REUSEADDR`, so both sockets bind and a program bound to `127.0.0.1` takes
-what is sent there. Failures inside handlers and sends are caught and printed rather than thrown.
+what is sent there. A handler that throws is reported as an error on the box that registered it,
+and on the console; a failed send is only printed, so a box that sends every frame keeps running.
 And [`OscServer`](audio.md#osc-kt-oscserver) has `debug` on by default, printing every incoming message to Field's console
 (not to the box).
 
@@ -2160,65 +2161,65 @@ And [`OscServer`](audio.md#osc-kt-oscserver) has `debug` on by default, printing
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">osc</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code>](source/jvmMain/afield/stdlib/osc/#L430) | Get (and cache) an OSC server listening on `port`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">oscClient</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code>](source/jvmMain/afield/stdlib/osc/#L437) | Get (and cache) an OSC client targeting `host`:`port`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">osc</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code>](source/jvmMain/afield/stdlib/osc/#L468) | Get (and cache) an OSC server listening on `port`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">oscClient</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code>](source/jvmMain/afield/stdlib/osc/#L475) | Get (and cache) an OSC client targeting `host`:`port`. |
 
 ### OscServer { #osc-kt-oscserver }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">OscServer</span><span class="p">(</span><span class="n">localPort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoStart</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/stdlib/osc/#L167)
+[<code class="highlight"><span class="k">class</span> <span class="nf">OscServer</span><span class="p">(</span><span class="n">localPort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoStart</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/stdlib/osc/#L169)
 
 Thin wrapper around JavaOSC's OSCPortIn that queues callbacks onto the main runloop.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Message</span><span class="p">(</span><span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">event</span><span class="p">:</span> <span class="nc">OSCMessageEvent</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L172) |  |
-| [<code class="highlight"><span class="k">var</span> <span class="n">debug</span></code>](source/jvmMain/afield/stdlib/osc/#L187) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isListening</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L194) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">startListening</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L197) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stopListening</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L201) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">on</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Generator</span><span class="p">&lt;</span><span class="nc">Message</span><span class="p">,</span> <span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L205) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L210) |  |
-| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L273) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L283) | Manual single tick; call from your main loop if you do not use `run`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">stopRunLoop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L285) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isClosed</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L292) | True once `close` has run. `osc` never hands back a closed server; it opens a new one. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L295) |  |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Message</span><span class="p">(</span><span class="k">val</span> <span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">event</span><span class="p">:</span> <span class="nc">OSCMessageEvent</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L174) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">debug</span></code>](source/jvmMain/afield/stdlib/osc/#L199) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isListening</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L206) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">startListening</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L209) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stopListening</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L213) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">on</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">handler</span><span class="p">:</span> <span class="p">(</span><span class="nc">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Generator</span><span class="p">&lt;</span><span class="nc">Message</span><span class="p">,</span> <span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L223) | Run `handler` for every message whose address matches `pattern`, replacing any handler already registered for that pattern. If the handler's lambda or its generator throws, the exception is shown as an error on the box that called `on` (and printed to the console); the generator is dropped and the handler stays registered for the next message. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="n">pattern</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L228) |  |
+| [<code class="highlight"><span class="k">suspend</span> <span class="k">fun</span> <span class="nf">run</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L311) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tick</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L321) | Manual single tick; call from your main loop if you do not use `run`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">stopRunLoop</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L323) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isClosed</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L330) | True once `close` has run. `osc` never hands back a closed server; it opens a new one. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L333) |  |
 
 ### OscClient { #osc-kt-oscclient }
 
-[<code class="highlight"><span class="k">class</span> <span class="nf">OscClient</span><span class="p">(</span><span class="n">remoteHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">remotePort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoConnect</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/stdlib/osc/#L309)
+[<code class="highlight"><span class="k">class</span> <span class="nf">OscClient</span><span class="p">(</span><span class="n">remoteHost</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">remotePort</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">,</span> <span class="n">autoConnect</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Closeable</span></code>](source/jvmMain/afield/stdlib/osc/#L347)
 
 Thin wrapper around JavaOSC's OSCPortOut for sending messages.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">var</span> <span class="n">debug</span></code>](source/jvmMain/afield/stdlib/osc/#L318) |  |
-| [<code class="highlight"><span class="k">val</span> <span class="n">isConnected</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L324) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">connect</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L337) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">disconnect</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L341) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L345) |  |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L352) | Convenience vararg sender; converts arguments to a list and delegates to `send`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">OSCMessage</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L359) | Send a pre-built OSC message. |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L377) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">debug</span></code>](source/jvmMain/afield/stdlib/osc/#L356) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">isConnected</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/osc/#L362) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">connect</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L375) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">disconnect</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L379) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L383) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">vararg</span> <span class="n">arguments</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L390) | Convenience vararg sender; converts arguments to a list and delegates to `send`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">send</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="nc">OSCMessage</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L397) | Send a pre-built OSC message. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">close</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/osc/#L415) |  |
 
 ### OscServers { #osc-kt-oscservers }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">OscServers</span></code>](source/jvmMain/afield/stdlib/osc/#L390)
+[<code class="highlight"><span class="k">object</span> <span class="nc">OscServers</span></code>](source/jvmMain/afield/stdlib/osc/#L428)
 
 Cached per-port servers that are automatically driven on the main runloop.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code>](source/jvmMain/afield/stdlib/osc/#L394) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscServer</span></code>](source/jvmMain/afield/stdlib/osc/#L432) |  |
 
 ### OscClients { #osc-kt-oscclients }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">OscClients</span></code>](source/jvmMain/afield/stdlib/osc/#L413)
+[<code class="highlight"><span class="k">object</span> <span class="nc">OscClients</span></code>](source/jvmMain/afield/stdlib/osc/#L451)
 
 Cached per-host+port clients that open on first use and remain available across edits.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code>](source/jvmMain/afield/stdlib/osc/#L416) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">get</span><span class="p">(</span><span class="n">host</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">9000</span><span class="p">)</span><span class="p">:</span> <span class="nc">OscClient</span></code>](source/jvmMain/afield/stdlib/osc/#L454) |  |
 
 </div>

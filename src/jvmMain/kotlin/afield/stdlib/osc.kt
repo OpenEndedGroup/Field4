@@ -2,6 +2,7 @@
 
 package afield.stdlib
 
+import afield.Box
 import afield.Generator
 import afield.Runloop
 import afield.inMain
@@ -55,7 +56,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *
  * Three things to know when debugging. A port another program already holds does not make the bind
  * fail: JavaOSC sets `SO_REUSEADDR`, so both sockets bind and a program bound to `127.0.0.1` takes
- * what is sent there. Failures inside handlers and sends are caught and printed rather than thrown.
+ * what is sent there. A handler that throws is reported as an error on the box that registered it,
+and on the console; a failed send is only printed, so a box that sends every frame keeps running.
  * And [OscServer] has `debug` on by default, printing every incoming message to Field's console
  * (not to the box).
  */
@@ -177,7 +179,17 @@ class OscServer(
 
     private val port: OSCPortIn = openOscPortIn(localPort)
 
-    private val handlers = ConcurrentHashMap<String, (Message) -> Generator<Message, *>>()
+    /**
+     * A handler and the box whose code registered it ([Box.context] at the time of [on]), which is
+     * where the handler's failures are reported. [lastReported] keeps a handler that fails the same
+     * way on every message — a fader sends dozens a second — to one error on the box rather than a
+     * stream of them; registering the pattern again starts a fresh registration.
+     */
+    private class Registration(val handler: (Message) -> Generator<Message, *>, val owner: Box?) {
+        @Volatile var lastReported: String? = null
+    }
+
+    private val handlers = ConcurrentHashMap<String, Registration>()
     private val registered = ConcurrentHashMap<String, Boolean>()
     private val pendingStart = ConcurrentLinkedQueue<Running>()
     private val running = mutableListOf<Running>()
@@ -202,8 +214,14 @@ class OscServer(
         try { port.stopListening() } catch (_: Throwable) { }
     }
 
+    /**
+     * Run [handler] for every message whose address matches [pattern], replacing any handler already
+     * registered for that pattern. If the handler's lambda or its generator throws, the exception is
+     * shown as an error on the box that called `on` (and printed to the console); the generator is
+     * dropped and the handler stays registered for the next message.
+     */
     fun on(pattern: String, handler: (Message) -> Generator<Message, *>) {
-        handlers[pattern] = handler
+        handlers[pattern] = Registration(handler, Box.context.get())
         ensureRegistered(pattern)
     }
 
@@ -222,26 +240,31 @@ class OscServer(
                 if (debug && pattern == "//*") {
                     println("OSC: ${event.message.address} = ${event.message.arguments.joinToString(", ")}")
                 }
-                val handler = handlers[pattern] ?: return@OSCMessageListener
-                enqueue(handler, event)
+                val registration = handlers[pattern] ?: return@OSCMessageListener
+                enqueue(pattern, registration, event)
             }
             catch (t: Throwable) { println("OSC handler failed: ${t.message}") }
         }
         port.dispatcher.addListener(selector, listener)
     }
 
-    private data class Running(val generator: Generator<Message, *>, val message: Message)
+    private class Running(
+        val generator: Generator<Message, *>,
+        val message: Message,
+        val pattern: String,
+        val registration: Registration,
+    )
 
-    private fun enqueue(handler: (Message) -> Generator<Message, *>, event: OSCMessageEvent) {
+    private fun enqueue(pattern: String, registration: Registration, event: OSCMessageEvent) {
         val message = Message(
             address = event.message.address,
             arguments = event.message.arguments?.toList() ?: emptyList(),
             event = event
         )
         try {
-            pendingStart.add(Running(handler(message), message))
+            pendingStart.add(Running(registration.handler(message), message, pattern, registration))
         } catch (t: Throwable) {
-            println("OSC handler for ${message.address} failed: ${t.message}")
+            report(registration, "OSC handler for ${message.address} (on \"$pattern\") threw ${describe(t)}")
         }
     }
 
@@ -253,7 +276,7 @@ class OscServer(
                 gen.start()
                 if (!gen.isCompleted) running += run
             } catch (t: Throwable) {
-                println("OSC generator threw on start: ${t.message}")
+                report(run.registration, "OSC generator for ${run.message.address} (on \"${run.pattern}\") threw on start: ${describe(t)}")
             }
         }
 
@@ -264,10 +287,25 @@ class OscServer(
                 run.generator.next(run.message)
                 if (run.generator.isCompleted) it.remove()
             } catch (t: Throwable) {
-                println("OSC generator threw on step: ${t.message}")
+                report(run.registration, "OSC generator for ${run.message.address} (on \"${run.pattern}\") threw: ${describe(t)}")
                 it.remove()
             }
         }
+    }
+
+    private fun describe(t: Throwable): String =
+        "${t.javaClass.simpleName}${t.message?.let { ": $it" } ?: ""}"
+
+    /**
+     * Print [text] to the console, and show it as an error on the box that registered the handler —
+     * from whichever thread failed, as a box's own `println` from a raw thread does.
+     */
+    private fun report(registration: Registration, text: String) {
+        println(text)
+        val owner = registration.owner ?: return
+        if (registration.lastReported == text) return
+        registration.lastReported = text
+        owner.error(text)
     }
 
     suspend fun run() {

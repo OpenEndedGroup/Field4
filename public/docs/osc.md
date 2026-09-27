@@ -27,11 +27,11 @@ expect:
   outputContains:
     - "[0.75]"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/receive.png" alt="the main output channel of a box, reading '/fader/1 [0.75]': the address in bold, then the argument list" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-receive" w="760" h="120"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/receive.png" alt="the main output channel of a box, reading '/fader/1 [0.75]': the address set as code, then the argument list" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-receive" w="760" h="120"}
 :::static
 osc(57301).on("/fader/1") { m ->
     gather<OscServer.Message> {
-        display("main", "<b>${m.address}</b> ${m.arguments}")
+        markdown("main", "`${m.address}` ${m.arguments}")
     }
 }
 
@@ -78,19 +78,19 @@ server.debug = false
 val report = mutableListOf<String>()
 
 server.on("/step") { m ->
-    report += "the handler lambda runs on <b>${Thread.currentThread().name}</b>"
+    report += "the handler lambda runs on `${Thread.currentThread().name}`"
     gather<OscServer.Message> {
-        report += "the generator starts on <b>${Thread.currentThread().name}</b>"
+        report += "the generator starts on `${Thread.currentThread().name}`"
         val again = yield()
-        report += "its first yield hands back the same message: <b>${again === m}</b>"
+        report += "its first yield hands back the same message: **${again === m}**"
         val t0 = System.nanoTime()
         var passes = 0
         while (System.nanoTime() - t0 < 1_000_000_000L) {
             yield()
             passes++
         }
-        report += "it was resumed <b>$passes</b> times in the next second"
-        display("main", report.joinToString("<br>"))
+        report += "it was resumed **$passes** times in the next second"
+        markdown("main", report.joinToString("\n") { "- $it" })
     }
 }
 
@@ -129,7 +129,7 @@ expect:
   outputContains:
     - "/1/fader1 = 0."
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's main output channel: an amber bar whose length follows the fader, above the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true name="osc-fader" w="760" h="140"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's outputs: in the main channel, an amber bar drawn inside a grey track, its length following the fader; in the value channel, the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true name="osc-fader" w="760" h="140"}
 :::static
 var level = 0f   // the fader, as last received
 
@@ -144,8 +144,19 @@ var t = 0.0
 animate {
     t += 1 / 60.0
     phone.send("/1/fader1", (0.5 + 0.5 * kotlin.math.sin(t * 2)).toFloat())
-    display("main", "<div style='width:${(level * 400).toInt()}px;height:24px;background:#e8b04a'></div>" +
-        "<p>/1/fader1 = ${"%.2f".format(level)}</p>")
+    val track = fline {
+        rect(0.0, 0.0, 400.0, 24.0)
+        stroked = true
+        color = vec(0.6, 0.6, 0.6, 1.0)
+    }
+    val bar = fline {
+        rect(0.0, 0.0, level * 400.0, 24.0)
+        filled = true
+        stroked = false
+        color = vec(0.91, 0.69, 0.29, 1.0)
+    }
+    lines(track, bar, channel = "main")
+    markdown("value", "/1/fader1 = ${"%.2f".format(level)}")
 }
 ```
 
@@ -159,11 +170,11 @@ box runs again and registers its replacement.
 message it receives. That line goes to the console Field was started from, not to the box, so it is
 most useful when a message you expected never shows up.
 
-!!! note "An exception in a handler does not reach the box"
-    A handler that throws, in its lambda or in its generator, is caught by the server and reported
-    only on Field's console, as `OSC handler … failed` or `OSC generator threw on start: …`. The box
-    shows no error and stays as it was. The generator is dropped; the handler stays registered and
-    runs again for the next message. When a handler seems to do nothing, check the console.
+A handler that throws, in its lambda or in its generator, is caught by the server and shown as an
+error on the box that registered it, naming the address, the pattern and the exception. The
+generator is dropped; the handler stays registered and runs again for the next message. A handler
+that fails the same way on every message shows the error once, and running the box again, which
+registers the handler again, clears that memory.
 
 ## What arrives: argument types
 
@@ -180,7 +191,7 @@ waitSec: 1.5
 expect:
   outputContains:
     - "HeapByteBufferR"
-    - "arrives as <b>9</b>"
+    - "arrives as <strong>9</strong>"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/types.png" alt="a three-column table headed sent as, OSC tag, arrives as. Integer goes as i and arrives as Integer; Float as f, Float; Double as d, Double; Long as h, Long; Boolean as T, Boolean; String as s, String; null as N, null; byte[] as b and arrives as HeapByteBufferR; a final Integer as i, Integer. Below it: the Int after the blob arrives as 9" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-types" w="760" h="420"}
 :::static
@@ -190,14 +201,19 @@ val sent = listOf<Any?>(1, 0.5f, 0.5, 2L, true, "text", null, byteArrayOf(1, 2, 
 
 server.on("/types") { m ->
     val tags = m.event.message.info.argumentTypeTags
-    val rows = m.arguments.indices.joinToString("") { i ->
+    val rows = m.arguments.indices.joinToString("\n") { i ->
         val out = sent[i]?.javaClass?.simpleName ?: "null"
         val back = m.arguments[i]?.javaClass?.simpleName ?: "null"
-        "<tr><td>$out</td><td><code>${tags[i]}</code></td><td>$back</td></tr>"
+        "| $out | `${tags[i]}` | $back |"
     }
     gather<OscServer.Message> {
-        display("main", "<table><tr><th>sent as</th><th>OSC tag</th><th>arrives as</th></tr>$rows</table>" +
-            "<p>the Int after the blob arrives as <b>${m.arguments.last()}</b></p>")
+        markdown("main", """
+            | sent as | OSC tag | arrives as |
+            |---|---|---|
+            $rows
+
+            the Int after the blob arrives as **${m.arguments.last()}**
+        """)
     }
 }
 
@@ -242,7 +258,7 @@ expect:
     - "2 of 7"
     - "1 of 7"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/patterns.png" alt="a three-column table of address against the patterns that fired. /fader/1 fired /fader/1, /fader/*, /fader/?, /fader/[1-3], /fader/{1,2} and /fader/{1,10}. /fader/2 fired /fader/*, /fader/?, /fader/[1-3] and /fader/{1,2}. /fader/10 fired /fader/* and /fader/{1,10}. /mixer/strip/volume fired //volume. A third column counts them: 6 of 7, 4 of 7, 2 of 7 and 1 of 7" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-patterns" w="900" h="300"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/patterns.png" alt="a three-column table of address, how many of the seven patterns fired, and which. /fader/1 fired /fader/1, /fader/*, /fader/?, /fader/[1-3], /fader/{1,2} and /fader/{1,10}. /fader/2 fired /fader/*, /fader/?, /fader/[1-3] and /fader/{1,2}. /fader/10 fired /fader/* and /fader/{1,10}. /mixer/strip/volume fired //volume. The counts are 6 of 7, 4 of 7, 2 of 7 and 1 of 7" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-patterns" w="900" h="300"}
 :::static
 val server = osc(57304)
 server.debug = false
@@ -261,11 +277,13 @@ for (a in addresses) out.send(a, 1f)
 Thread.sleep(300)
 
 fun fired(a: String) = patterns.filter { it in (hits[a] ?: emptyList<String>()) }
-display("main", "<table><tr><th>address</th><th>patterns that fired</th><th>count</th></tr>" +
-    addresses.joinToString("") { a ->
-        "<tr><td><code>$a</code></td><td>${fired(a).joinToString("  ") { "<code>$it</code>" }}</td>" +
-            "<td>${fired(a).size} of ${patterns.size}</td></tr>"
-    } + "</table>")
+markdown("main", """
+    | address | count | patterns that fired |
+    |---|---|---|
+    ${addresses.joinToString("\n") { a ->
+        "| `$a` | ${fired(a).size} of ${patterns.size} | ${fired(a).joinToString(" ") { "`$it`" }} |"
+    }}
+""", width = 860)
 ```
 
 `*` matches any run of characters within one part of the address, `?` one character, `[1-3]` one
@@ -322,11 +340,11 @@ val afterRemove = sendBoth()
 server.close()
 val fresh = osc(57305)
 
-display("main", """
-    before any removal: <b>${beforeRemove.joinToString(", ", "[", "]")}</b> fire<br>
-    after <code>remove("/old")</code>: <b>${afterRemove.joinToString(", ", "[", "]")}</b> fires<br>
-    after <code>close()</code>, <code>osc(57305)</code> is a new server: <b>${fresh !== server}</b>,
-    listening: <b>${fresh.isListening}</b>
+markdown("main", """
+    - before any removal: `${beforeRemove.joinToString(", ", "[", "]")}` fire
+    - after `remove("/old")`: `${afterRemove.joinToString(", ", "[", "]")}` fires
+    - after `close()`, `osc(57305)` is a new server: **${fresh !== server}**,
+      listening: **${fresh.isListening}**
 """)
 fresh.close()
 ```
@@ -408,7 +426,7 @@ server.debug = false
 val arrivals = java.util.Collections.synchronizedList(mutableListOf<String>())
 val t0 = System.currentTimeMillis()
 server.on("/when") { m ->
-    arrivals += "${m.arguments[0]} arrived after <b>${System.currentTimeMillis() - t0} ms</b>"
+    arrivals += "${m.arguments[0]} arrived after **${System.currentTimeMillis() - t0} ms**"
     gather<OscServer.Message> { }
 }
 
@@ -425,7 +443,7 @@ out.send(OSCBundle(listOf(OSCMessage("/when", listOf("stamped immediate"))), OSC
 Thread.sleep(900)
 out.close()
 
-display("main", arrivals.joinToString("<br>"))
+markdown("main", arrivals.joinToString("\n") { "- $it" })
 ```
 
 The bundle stamped 500 ms ahead was sent first and arrived second, about 500 ms later. The timing is
@@ -465,8 +483,8 @@ val rows = java.util.Collections.synchronizedList(mutableListOf<String>())
 fun ids(cursors: List<TuioReceiver.TuioCursor>) = cursors.joinToString(" ") { "${it.sessionId}" }
 
 val tuio = TuioReceiver(57307) { f ->
-    rows += "<tr><td>${f.fseq}</td><td>${ids(f.cursorAdded)}</td><td>${ids(f.cursorUpdated)}</td>" +
-        "<td>${ids(f.cursorRemoved)}</td><td>${f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }}</td></tr>"
+    val alive = f.cursors.joinToString(" ") { "${it.sessionId} (${it.x}, ${it.y})" }
+    rows += "| ${f.fseq} | ${ids(f.cursorAdded)} | ${ids(f.cursorUpdated)} | ${ids(f.cursorRemoved)} | $alive |"
 }
 tuio.start()
 
@@ -486,8 +504,11 @@ Thread.sleep(300)
 tracker.close()
 tuio.close()
 
-display("main", "<table><tr><th>fseq</th><th>added</th><th>updated</th><th>removed</th><th>alive after</th></tr>" +
-    rows.joinToString("") + "</table>")
+markdown("main", """
+    | fseq | added | updated | removed | alive after |
+    |---|---|---|---|---|
+    ${rows.joinToString("\n")}
+""")
 ```
 
 A TUIO frame is an `alive` message listing every session id still present, a `set` message for each

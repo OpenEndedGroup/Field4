@@ -319,7 +319,11 @@ for one second was resumed 238 and 270 times on two runs, while `Runloop.runLoop
 807 — service passes are not display frames.
 
 An exception thrown inside a generator (`throw IllegalStateException(...)`) printed
-`OSC generator threw on start: inside the generator` to Field's console and nothing to the box. A
+`OSC generator threw on start: inside the generator` to Field's console and nothing to the box.
+**Fixed later the same day:** `OscServer.on` now records `Box.context` at registration, and a
+handler's failure, from its lambda or its generator, is also sent to that box's `error(...)`, once per
+distinct message per registration (`OscLoopbackTest.aThrowingHandlerIsReportedOnTheBoxThatRegisteredIt`;
+commenting out the `owner.error` call makes it fail at its first assertion). A
 send to `no-such-host.invalid` printed `OSC send failed: Cannot invoke "Object.getClass()" because
 the return value of "java.net.InetSocketAddress.getAddress()" is null`, also console only. (Box
 code's `error("...")` is not a throw — it is `HasOutput.error`, which writes an error to the box — so
