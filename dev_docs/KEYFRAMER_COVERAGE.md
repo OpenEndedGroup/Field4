@@ -15,20 +15,21 @@ The three figures are asserted, not printed
 
 | | |
 | --- | --- |
-| total public behavioural declarations | 121 |
-| covered by `KeyframerTest` | 113 (93.4%) |
-| unreachable in a headless unit test | 8 |
+| total public behavioural declarations | 124 |
+| covered by `KeyframerTest` | 113 (91.1%) |
+| unreachable in a headless unit test | 11 |
 
 Data-class members the Kotlin compiler generates are excluded, on the same grounds the codebase
 reference excludes them. A further assertion guards the *category*: "unreachable" must mean a live
 `Renderer` or the AWT clipboard, and nothing else (`KeyframerCoverageTest.kt:375`).
 
-## The eight
+## The eleven
 
 | uncovered | why |
 | --- | --- |
 | `target(ModulePointer/ComputeModulePointer/MeshModulePointer, name)` | resolves `module.current.liveUniformStructures`; needs a live `Renderer` |
 | `stackAuto(…)`, all three overloads | writes shader source through `stackAutoShaderSource`; needs a live `Renderer` |
+| `stackAutoNumbers(…)`, all three overloads | resolves the box that owns a module pointer, which needs a live `Renderer`; `StackAutoNumbersTest` covers the numbers the lanes drive |
 | `camera(Camera, keyName)` | `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`) |
 | `Key.copyUpdateCodeToClipboard(…)` | the AWT system clipboard throws on a headless JVM |
 
@@ -41,11 +42,11 @@ The class list itself, and the total, are maintained by hand. Only the enumerati
 listed classes is measured, so a new **top-level** declaration is invisible to it:
 `enum class KeyDiffKind` (`stdlib/keyframer.kt:1473#enum class KeyDiffKind { ADDED, REMOVED, CHANGED }`)
 is public, absent from `SURFACE`, and the suite is green regardless. `KeyframerTest` exercises it;
-it simply is not counted, which pushes 93.4% down rather than up.
+it simply is not counted, which pushes 91.1% down rather than up.
 
 ## Open
 
-Closing the remaining eight needs a renderer in the loop, not more unit tests. Deriving `SURFACE`
+Closing the remaining eleven needs a renderer in the loop, not more unit tests. Deriving `SURFACE`
 from the package rather than from a hand-kept list would make a new top-level declaration visible;
 the cost is that it would need its own exclusion list for the readout members, which is the trade
 `DerivedCountGuard` made the other way for `vision_geometry.md` (select by return type, no hand-kept

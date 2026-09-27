@@ -69,6 +69,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         if (m.valid) {
             m.copyMeshesFrom(current)
             m.enabled = current.enabled
+            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
             current = m
             return true
         }
@@ -200,6 +201,7 @@ class MeshModule(val parameters: Parameters) : Renderable {
             ti.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             mi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ModuleRebuild.created(liveUniformStructures)
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 

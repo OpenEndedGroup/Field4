@@ -44,7 +44,7 @@ internal object StudyKeys {
 
     /** Every key saved for this study, oldest first; a file that does not read as a key is left out. */
     fun all(directory: File): List<Saved> {
-        val files = folder(directory).listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty().sortedBy { it.lastModified() }
+        val files = folder(directory).listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty().sortedWith(compareBy({ it.lastModified() }, { it.name }))
         return files.mapNotNull { f ->
             runCatching {
                 val key = KeyframeScope().loadKey(f.toPath())
@@ -66,7 +66,7 @@ internal object StudyKeys {
      */
     fun section(blendSlider: String) =
         "<h4>Keys</h4><div class='muted' style='margin-bottom:6px'>A key keeps every number at once. Apply one, or blend from one to another; " +
-            "<b>Keep these numbers</b> then makes what you see a revision.</div><div class='studykeys'></div>" +
+            "<b>Keep these numbers</b> then keeps what you see.</div><div class='studykeys'></div>" +
             "<div class='keyblend' style='display:none;margin-top:6px'><select class='keyA'></select> → <select class='keyB'></select>" +
             "<span class='blendslider' style='display:inline-flex;width:420px;vertical-align:middle;margin-left:8px'>$blendSlider</span></div>" +
             "<div style='margin-top:6px'><button data-keyact='capture'>Capture these numbers as a key</button></div>"

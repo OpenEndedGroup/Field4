@@ -1072,6 +1072,67 @@ under a name already in use replaces the previous one. So rebuilding the whole
 module works as well as rebinding its `stack.auto` body, which is handy when the
 surrounding GLSL, not only the StackSL, is what you are editing.
 
+### Its numbers, live
+
+Every number typed in a slot's StackSL is compiled into a uniform block of the
+slot's own, so it can be turned without recompiling anything. For the slot
+`program` the block is `program_numbers`, with a member `program_live` and one
+member per number, `program_wire_0`, `program_wire_1`, …, in the order the
+compiler meets them. Until something turns a number, `program_live` is 0 and
+every number reads as the literal it was compiled from, so a slot nobody touches
+draws exactly what it drew before.
+
+The box shows its slots' numbers on a card of their own, **stack.auto numbers**.
+Each slider is labelled with what the compiler took its number as (`smoothstep
+low`, `multiplies`), or with a name the fast model gives it once the document is
+one a person opened. Dragging a slider writes the block, so the window redraws
+with your whole shader, the host's own part included. Clicking a label selects
+the number where it sits inside the Kotlin string. **Keep these numbers** writes
+what you see back into that string, and **Reset** puts the literals back. Keys
+capture every number of the slot at once and blend between them, as on the
+[StackSL study card](stacksl_conversation.md).
+
+**Render this function alone** draws the slot's program by itself, at its current
+numbers, on your renderer. Its input is the study's, `vec4(uv, hash, 0, time)`
+on a unit square, not what your shader passes it, so it is a debugging view of
+the function and not a preview of the result. A slot that samples a texture or
+reads your push constants cannot be drawn alone, and the card says so.
+
+From Kotlin, the block is an ordinary uniform of the module:
+
+```diffstatic {data-lang=kotlin}
+module.program_numbers["program_wire_2"] = 9f   // taking hold of the block makes the slot live
+
+val scope = afield.stdlib.KeyframeScope()
+scope.stackAuto(module, "program")          // the slot's text, which recompiles when a key applies
+scope.stackAutoNumbers(module, "program")   // its numbers, as lanes program.k0, program.k1, …
+```
+
+`stackAutoNumbers` registers one lane per typed number, numbered as the card
+numbers them, so applying or blending keys moves the numbers on the GPU with no
+recompile. `scope.target("zoom@program_wire_2", module.program_numbers)` keys a
+single member directly, the way any uniform is keyed.
+
+The block's layout never changes, whatever the program: `program_live` and 128
+numbers. That is what lets an edit to the StackSL still update the running
+pipeline in place, since Field refuses an in-place update that changes a uniform
+block. A program with more than 128 numbers compiles with its numbers baked in,
+and its report says so. Assigning new StackSL re-seeds the numbers from its
+literals; assigning the same text again leaves them alone, so a box can re-run
+without losing what was turned. A full shader reload carries the values over.
+Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot as before.
+
+??? aside "How this was checked"
+    On 2026-09-27, the fullscreen example above, with a vignette added to the host
+    shader, ran in a real window. Turning `k2` from 4 to 9 re-zoomed the noise in
+    the window and not the vignette, and render-alone drew the function without
+    it. The first run found that an untouched slot drew black: a uniform buffer
+    starts as whatever memory it was given, so `program_live` was garbage until
+    written. Modules now write it 0 as they make the block. Unit tests pin that the
+    expanded GLSL compiles, that a blank slot and a bound one declare the same
+    block, and that values carry across a rebuild. There is no docs capture of the
+    card yet.
+
 ## Volumetric noise
 
 The [volumetric word reference](stacksl_cheatsheet.md#volumetric-noise) records arities, defaults and output channels. The examples here show how those channels behave in a volume.

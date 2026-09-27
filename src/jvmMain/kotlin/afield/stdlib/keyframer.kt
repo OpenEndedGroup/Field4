@@ -848,6 +848,35 @@ class KeyframeScope(val schemaVersion: Int = 0) {
         targets.remove(keyName)
     }
 
+    /**
+     * Register each number typed in the StackSL of a `stack.auto.<slot>` slot as a key of its own —
+     * `slot.k0`, `slot.k1`, … numbered as the box's numbers card numbers them — so a key snapshots them
+     * and applying or blending keys turns them on the GPU with no recompile ([StackAutoNumbers]).
+     *
+     * [stackAuto] keys the slot's *text*, and applying it recompiles; this keys its *numbers*, and does
+     * not. Use both and a key holds the program and where its numbers were turned to. The lanes are the
+     * program's numbers when this is called: call it again after the program's shape changes. Applying
+     * a key with lanes the program no longer has does nothing for them.
+     */
+    fun stackAutoNumbers(module: ModulePointer, slot: String, keyPrefix: String = slot) = stackAutoNumbersOf(stackAutoOwnerOf(module), slot, keyPrefix)
+
+    /** [stackAutoNumbers] for a compute module. */
+    fun stackAutoNumbers(module: ComputeModulePointer, slot: String, keyPrefix: String = slot) = stackAutoNumbersOf(stackAutoOwnerOf(module), slot, keyPrefix)
+
+    /** [stackAutoNumbers] for a mesh-shader module. */
+    fun stackAutoNumbers(module: MeshModulePointer, slot: String, keyPrefix: String = slot) = stackAutoNumbersOf(stackAutoOwnerOf(module), slot, keyPrefix)
+
+    private fun stackAutoNumbersOf(box: afield.Box?, slot: String, keyPrefix: String) {
+        box ?: error("no box owns this module's stack.auto.$slot")
+        // The slot's text as last assigned: its numbers are the same whether or not the reload has run yet.
+        val source = box.stackAutoShaderSources[slot]?.takeIf { it.isNotBlank() } ?: StackAutoNumbers.slots(box)[slot]?.source
+            ?: error("stack.auto.$slot has no program yet; assign one (module.$slot = …) before registering its numbers")
+        val entrypoint = StackAutoNumbers.slots(box)[slot]?.entrypoint
+        afield.stacksl.study.StackSLStudyShader.knobs(source, entrypoint).forEach { k ->
+            doubleTarget("$keyPrefix.k${k.knob}", { StackAutoNumbers.value(box, slot, k.wire) ?: k.value }) { StackAutoNumbers.set(box, slot, k.wire, it) }
+        }
+    }
+
     /** [stackAuto] for a compute module; the source is reloaded on the compute path. */
     fun stackAuto(module: ComputeModulePointer, name: String, keyName: String = name) {
         val stackAutoName = targetPropertyName(name)

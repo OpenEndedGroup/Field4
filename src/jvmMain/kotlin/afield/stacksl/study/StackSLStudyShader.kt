@@ -241,9 +241,9 @@ object StackSLStudyShader {
 
     private val numberInWord = Regex("""-?(?:\d+\.?\d*|\.\d+)""")
 
-    /** The literals a person typed in [program], each located to its digits. See the object docs. */
-    fun knobs(program: String): List<StackSLKnob> {
-        val wired = StackSLWires.lift(program)
+    /** The literals a person typed in [program] — rooted at [entrypoint] when given — each located to its digits. See the object docs. */
+    fun knobs(program: String, entrypoint: String? = null): List<StackSLKnob> {
+        val wired = StackSLWires.lift(program, entrypoint = entrypoint)
         val outline = StackSLCompiler.outline(program)
         val lines = program.lines()
         val rootWords = outline.root
@@ -337,8 +337,8 @@ object StackSLStudyShader {
      * value a word cannot hold — a negative frequency after a modifier letter, say — is refused with
      * the reason, never written half-way.
      */
-    fun setKnobs(program: String, values: Map<Int, Double>): String {
-        val knobs = knobs(program)
+    fun setKnobs(program: String, values: Map<Int, Double>, entrypoint: String? = null): String {
+        val knobs = knobs(program, entrypoint)
         values.keys.forEach { require(it in knobs.indices) { "No knob $it; this program has ${knobs.size} (0..${knobs.size - 1})" } }
         val lines = program.lines().toMutableList()
         values.entries.flatMap { (index, value) -> knobs[index].spans.map { Triple(knobs[index].line, it, value) } }
@@ -355,7 +355,7 @@ object StackSLStudyShader {
         require(compiled.ok) {
             "Writing those values breaks the program: " + compiled.diagnostics.joinToString("; ") { it.toString() }
         }
-        val after = knobs(rewritten)
+        val after = knobs(rewritten, entrypoint)
         require(after.size == knobs.size) {
             "Writing those values changed which numbers the program has (${knobs.size} before, ${after.size} after); a value the word cannot hold, such as a negative number after a modifier letter, does this"
         }

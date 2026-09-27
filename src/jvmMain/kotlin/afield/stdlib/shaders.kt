@@ -711,9 +711,10 @@ private fun publishStackAutoReport(box: Box, report: StackAutoReport?) {
     box.displayOpen(STACK_AUTO_REPORT_CHANNEL)
 }
 
-private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget): String {
+private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget, kind: ShaderKind? = null): String {
     validateStackAutoShaderName(target.name)
     box.stackAutoShaderSources.putIfAbsent(target.name, "")
+    if (kind != null && kind in STACK_AUTO_LIVE_STAGES && stackAutoLiveNumbersEnabled()) return liveStackAutoShaderFunctionFor(box, target)
     val (glsl, report) = compileStackAutoShaderFunctionReporting(
         target, box.stackAutoShaderSources[target.name] ?: ""
     )
@@ -723,7 +724,76 @@ private fun stackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget):
     return glsl
 }
 
-private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>): Resolver =
+/** The stages whose modules reflect uniform blocks into live structures, so a slot's numbers can live in one ([StackAutoNumbers]). */
+private val STACK_AUTO_LIVE_STAGES = setOf(
+    ShaderKind.VERTEX_SHADER, ShaderKind.FRAGMENT_SHADER, ShaderKind.COMPUTE_SHADER, ShaderKind.TASK_SHADER, ShaderKind.MESH_SHADER
+)
+
+/** Live numbers are on unless `AFIELD_STACK_AUTO_LIVE_NUMBERS` (or `afield.stackAuto.liveNumbers`) is `0` or `false`. */
+private fun stackAutoLiveNumbersEnabled(): Boolean {
+    val flag = System.getenv("AFIELD_STACK_AUTO_LIVE_NUMBERS") ?: System.getProperty("afield.stackAuto.liveNumbers")
+    return !(flag.equals("false", ignoreCase = true) || flag == "0")
+}
+
+/** Every shader text of [box] a slot's binding is chosen against, so all its stages agree on it. */
+private fun stackAutoShaderTexts(box: Box): List<String> =
+    listOf("vertex", "fragment", "compute", "task", "mesh").mapNotNull { runCatching { shaderPropertyValue(box, it) }.getOrNull() }
+
+private val stackAutoRebuildHookInstalled = java.util.concurrent.atomic.AtomicBoolean(false)
+
+/**
+ * A slot expanded with its numbers in a uniform block of its own ([StackAutoNumbers]): the block, then
+ * the function reading it. The block is emitted even for a blank slot, or one with too many numbers to
+ * hold, so that binding a program later keeps every uniform block as it was and the running pipeline
+ * can be updated in place.
+ */
+private fun liveStackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget): String {
+    if (stackAutoRebuildHookInstalled.compareAndSet(false, true)) {
+        afield.four.modules.ModuleRebuild.hooks += { pointer, old, new -> StackAutoNumbers.carry(stackAutoShaderOwner(pointer), old, new) }
+        afield.four.modules.ModuleRebuild.onCreated += StackAutoNumbers::created
+        // Code or a keyframe target that takes hold of a numbers block (`module.foo_numbers`) makes the slot live.
+        afield.four.modules.ModuleRebuild.accessed += { pointer, blockName, structure ->
+            if (StackAutoNumbers.isNumbersBlock(blockName, structure.members.map { it.name }))
+                stackAutoShaderOwner(pointer)?.let { StackAutoNumbers.live(it, blockName.removeSuffix("_numbers")) }
+        }
+        StackAutoNumbers.moduleStructures = { b ->
+            synchronized(stackAutoModuleOwners) { stackAutoModuleOwners.entries.filter { it.value === b }.map { it.key } }.mapNotNull {
+                when (it) {
+                    is ModulePointer -> it.current.liveUniformStructures
+                    is ComputeModulePointer -> it.current.liveUniformStructures
+                    is MeshModulePointer -> it.current.liveUniformStructures
+                    else -> null
+                }
+            }
+        }
+    }
+    val name = target.name
+    val source = box.stackAutoShaderSources[name] ?: ""
+    val binding = StackAutoNumbers.binding(name, stackAutoShaderTexts(box))
+    val block = StackAutoNumbers.block(name, binding)
+    if (source.isBlank()) {
+        StackAutoNumbers.baked(box, name, source)
+        return block + defaultStackAutoShaderFunction(name)
+    }
+    val live = StackAutoNumbers.compileLive(name, source, target.sampleTexture, target.entrypoint)
+    if (live == null) {
+        // More numbers than the block holds: compiled as it always was, numbers baked in.
+        val (glsl, report) = compileStackAutoShaderFunctionReporting(target, source)
+        StackAutoNumbers.baked(box, name, source)
+        publishStackAutoReport(box, report?.let { it.copy(notes = it.notes + "more than ${StackAutoNumbers.CAPACITY} numbers, so they are compiled in rather than live") })
+        return block + glsl
+    }
+    val (glsl, result) = live
+    if (!result.ok) {
+        val diagnostics = result.diagnostics.filter { it.severity == StackSLSeverity.ERROR }.ifEmpty { result.diagnostics }.joinToString("\n") { it.toString() }
+        throw IllegalArgumentException("Unable to compile stack.auto.${target.key}:\n$diagnostics")
+    }
+    StackAutoNumbers.compiled(box, name, source, target.entrypoint, result.analysis.danglingWires)
+    publishStackAutoReport(box, stackAutoReportFor(name, result))
+    return block + glsl
+}
+
+private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, StackAutoShaderTarget>, kind: ShaderKind? = null): Resolver =
     Resolver { key ->
         fun resolveTarget(raw: String): String {
             val target = parseStackAutoShaderTarget(raw)
@@ -735,7 +805,7 @@ private fun stackAutoTemplateResolverFor(box: Box, emitted: MutableMap<String, S
                 return ""
             }
             emitted[target.name] = target
-            return stackAutoShaderFunctionFor(box, target)
+            return stackAutoShaderFunctionFor(box, target, kind)
         }
 
         when {
@@ -764,6 +834,9 @@ private fun registerStackAutoShaderOwner(box: Box, module: Any) {
 
 private fun stackAutoShaderBoxFor(module: Any): Box? =
     stackAutoShaderOwner(module) ?: Box.context.get()
+
+/** The box whose `stack.auto` slots [module] runs, or the ambient box — as the generated `module.foo` resolves it. */
+internal fun stackAutoOwnerOf(module: Any): Box? = stackAutoShaderBoxFor(module)
 
 /**
  * The StackSL source currently bound to the `{{ stack.auto.name }}` slot of this graphics module's
@@ -2167,7 +2240,7 @@ private fun preprocess(
 
     return runShaderTemplate(
         sourceWithCopiedPushConstants,
-        listOf(stackAutoTemplateResolverFor(inside, stackAutoEmitted)) + getShaderTemplateResolverForBox(inside),
+        listOf(stackAutoTemplateResolverFor(inside, stackAutoEmitted, kind)) + getShaderTemplateResolverForBox(inside),
         includeResolver
     )
 }
@@ -2937,7 +3010,8 @@ private fun collectGeneratedShaderStructures(introspections: List<Introspection>
         i.structureTypes.forEach { s ->
             candidates += Candidate(s.name, s.members, s.size, s.bufferReference)
         }
-        i.ubos.forEach { ubo ->
+        // A stack.auto slot's numbers block is reached through its Structure, not a generated class.
+        i.ubos.filterNot { StackAutoNumbers.isNumbersBlock(it.name, it.members.map { m -> m.name }) }.forEach { ubo ->
             candidates += Candidate(ubo.name, ubo.members, ubo.size, bufferReference = false)
         }
         i.ssbo.forEach { ssbo ->
@@ -3606,7 +3680,7 @@ private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
             "compute-ubo-mesh:${ubo.name}",
             "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()"
         ) + "\n"
-        ubo.members.forEach { m ->
+        ubo.members.takeUnless { StackAutoNumbers.isNumbersBlock(ubo.name, ubo.members.map { it.name }) }.orEmpty().forEach { m ->
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "compute-ubo-member:${ubo.name}:${m.name}",
@@ -3800,7 +3874,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
             "mesh-ubo-mesh:${ubo.name}",
             "var MeshMesh.${ubo.name} by MeshMesh.FromStructure<Structure>()"
         ) + "\n"
-        ubo.members.forEach { m ->
+        ubo.members.takeUnless { StackAutoNumbers.isNumbersBlock(ubo.name, ubo.members.map { it.name }) }.orEmpty().forEach { m ->
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "mesh-ubo-member:${ubo.name}:${m.name}",
@@ -4556,7 +4630,7 @@ fun insertForShader(
             "graphics-ubo:${it.name}",
             "val ModulePointer.${it.name} by FromUniform()"
         ) + "\n"
-        it.members.forEach { m ->
+        it.members.takeUnless { _ -> StackAutoNumbers.isNumbersBlock(it.name, it.members.map { m -> m.name }) }.orEmpty().forEach { m ->
             val ty = kotlinBindingTypeName(m)
             postImport += prefixed(
                 "graphics-ubo-member:${it.name}:${m.name}",

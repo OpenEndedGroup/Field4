@@ -77,6 +77,12 @@ class KeyframerCoverageTest {
                 headless("writes shader source through stackAutoShaderSource; needs a live Renderer"),
             "KeyframeScope::stackAuto(MeshModulePointer, String, String)" to
                 headless("writes shader source through stackAutoShaderSource; needs a live Renderer"),
+            "KeyframeScope::stackAutoNumbers(ModulePointer, String, String)" to
+                headless("resolves the box that owns a module pointer, which needs a live Renderer; StackAutoNumbersTest covers the numbers the lanes drive"),
+            "KeyframeScope::stackAutoNumbers(ComputeModulePointer, String, String)" to
+                headless("resolves the box that owns a module pointer, which needs a live Renderer"),
+            "KeyframeScope::stackAutoNumbers(MeshModulePointer, String, String)" to
+                headless("resolves the box that owns a module pointer, which needs a live Renderer"),
             "KeyframeScope::camera(Camera, String)" to
                 headless("Camera(val renderer: Renderer = fromContext()) (Camera.kt:16) needs a Renderer"),
             "KeyframeScope::findByName(String)" to covered(),
@@ -356,9 +362,9 @@ class KeyframerCoverageTest {
 
         // The exact numbers published on public/docs/keyframer_examples.md. If this test has to
         // change, that page has to change in the same commit.
-        assertEquals(121, total, "total public behavioural declarations")
+        assertEquals(124, total, "total public behavioural declarations")
         assertEquals(113, covered, "declarations covered by KeyframerTest")
-        assertEquals(8, unreachable, "declarations unreachable in a headless unit test")
+        assertEquals(11, unreachable, "declarations unreachable in a headless unit test")
 
         // Every uncovered declaration must carry a reason — no silent gaps.
         SURFACE.filter { it.value.cov == Cov.UNREACHABLE_HEADLESS }.forEach { (name, e) ->
