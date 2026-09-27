@@ -230,7 +230,12 @@ deep <- /a/b/c [1]
 `/fader/{1,10}` does not fire for `/fader/10`. Reading `OSCPatternAddressMessageSelector.matches`
 in the JavaOSC 0.9 sources: after alternative `1` consumes the `1` of `10` and the remainder fails,
 the comma branch backtracks the string but steps the pattern index one past the next alternative's
-first character. Documented on the page as a warning; not fixed (it is inside JavaOSC's matcher).
+first character. Fixed in `osc.kt` without touching JavaOSC's matcher: `BraceExpandingSelector`
+expands every `{…}` into the plain patterns it stands for and matches each with JavaOSC's own
+selector, so `*`, `?`, `[…]` and `//` behave exactly as before.
+`OscLoopbackTest.anAlternativeThatExtendsAnotherStillMatches` pins it; with the old selector swapped
+back in it fails with `expected:<[/fader/1, /fader/10]> but was:<[/fader/1]>`. The public page's
+patterns figure now shows `/fader/10` matching `/fader/{1,10}`.
 
 ## Bundles and timetags
 

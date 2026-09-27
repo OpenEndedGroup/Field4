@@ -239,9 +239,10 @@ waitSec: 1.5
 expect:
   outputContains:
     - "6 of 7"
+    - "2 of 7"
     - "1 of 7"
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/patterns.png" alt="a three-column table of address against the patterns that fired. /fader/1 fired /fader/1, /fader/*, /fader/?, /fader/[1-3], /fader/{1,2} and /fader/{1,10}. /fader/2 fired /fader/*, /fader/?, /fader/[1-3] and /fader/{1,2}. /fader/10 fired only /fader/*. /mixer/strip/volume fired //volume. A third column counts them: 6 of 7, 4 of 7, 1 of 7 and 1 of 7" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-patterns" w="900" h="300"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/patterns.png" alt="a three-column table of address against the patterns that fired. /fader/1 fired /fader/1, /fader/*, /fader/?, /fader/[1-3], /fader/{1,2} and /fader/{1,10}. /fader/2 fired /fader/*, /fader/?, /fader/[1-3] and /fader/{1,2}. /fader/10 fired /fader/* and /fader/{1,10}. /mixer/strip/volume fired //volume. A third column counts them: 6 of 7, 4 of 7, 2 of 7 and 1 of 7" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true name="osc-patterns" w="900" h="300"}
 :::static
 val server = osc(57304)
 server.debug = false
@@ -268,19 +269,14 @@ display("main", "<table><tr><th>address</th><th>patterns that fired</th><th>coun
 ```
 
 `*` matches any run of characters within one part of the address, `?` one character, `[1-3]` one
-character from a set, and `{1,2}` one of a list of alternatives. `//` matches across any number of
+character from a set, and `{1,2}` one of a list of alternatives. Field expands the alternatives
+before matching, so `/fader/{1,10}` answers both `/fader/1` and `/fader/10`. `//` matches across any number of
 parts, so `//volume` catches a `volume` at any depth. Every handler whose pattern matches runs, in
 no promised order.
 
 This box reads the table from the handler lambdas and displays it from the box itself, after a
 short sleep. That works because the lambdas run on the receive thread, independently of the box.
 A generator would not get its first pass until the box had finished running.
-
-!!! warning "`{1,10}` does not match `/fader/10`"
-    The alternatives in `{…}` are tried in order, and once one of them has matched the start of the
-    part (`1` against `10`), JavaOSC's matcher does not recover when the rest fails. The figure
-    shows `/fader/{1,10}` firing for `/fader/1` and not for `/fader/10`. Keep alternatives from
-    being prefixes of each other, or register the addresses separately.
 
 ## Handlers outlive the box
 

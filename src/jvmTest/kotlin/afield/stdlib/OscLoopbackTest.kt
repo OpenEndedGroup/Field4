@@ -16,7 +16,7 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertTrue
 
 /**
- * OSC and TUIO over real UDP loopback, pinning what `public/docs/osc.md` teaches and the five
+ * OSC and TUIO over real UDP loopback, pinning what `public/docs/osc.md` teaches and the six
  * defects found while writing it (2026-09-27):
  *
  *  1. an argument after a blob decoded from the blob's own bytes (JavaOSC 0.9 blob parser);
@@ -26,7 +26,8 @@ import kotlin.test.assertTrue
  *  4. `TuioReceiver.start()` threw a NullPointerException on every call (JavaOSC 0.9's
  *     `OSCPortInBuilder.addMessageListener` on a fresh builder);
  *  5. a second `TuioReceiver` started on a port (a re-run box) received nothing, because the first,
- *     never closed, kept the datagrams.
+ *     never closed, kept the datagrams;
+ *  6. `/fader/{1,10}` never matched `/fader/10` (JavaOSC 0.9's brace matcher).
  *
  * Ports 57390–57399 are this file's; `OscServer` is serviced with [OscServer.tick] because a jvmTest
  * has no Field runloop.
@@ -104,6 +105,30 @@ class OscLoopbackTest {
             assertEquals("done", steps.last())
             server.tick()
             assertEquals(3, steps.size)
+        }
+    }
+
+    @Test
+    fun bracesExpandIntoEveryCombination() {
+        assertEquals(listOf("/a"), expandOscBraces("/a"))
+        assertEquals(listOf("/x/1/a", "/x/1/b", "/x/10/a", "/x/10/b"), expandOscBraces("/x/{1,10}/{a,b}"))
+        assertEquals(listOf("/x/{1,2"), expandOscBraces("/x/{1,2"))
+    }
+
+    /** JavaOSC 0.9 alone: `/fader/{1,10}` matched `/fader/1` and never `/fader/10`. */
+    @Test
+    fun anAlternativeThatExtendsAnotherStillMatches() {
+        OscServer(57398).use { server ->
+            server.debug = false
+            val fired = Collections.synchronizedList(mutableListOf<String>())
+            server.on("/fader/{1,10}") { m -> fired += m.address; gather<OscServer.Message> { } }
+            OscClient("127.0.0.1", 57398).use { c ->
+                for (a in listOf("/fader/1", "/fader/2", "/fader/10", "/fader/100")) c.send(a, 1f)
+            }
+            pumpUntil(server) { fired.size >= 2 }
+            Thread.sleep(100); server.tick()
+            assertEquals(setOf("/fader/1", "/fader/10"), fired.toSet())
+            assertEquals(2, fired.size)
         }
     }
 

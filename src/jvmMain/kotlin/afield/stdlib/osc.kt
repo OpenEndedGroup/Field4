@@ -6,6 +6,7 @@ import afield.Generator
 import afield.Runloop
 import afield.inMain
 import com.illposed.osc.OSCBundle
+import com.illposed.osc.MessageSelector
 import com.illposed.osc.OSCMessageEvent
 import com.illposed.osc.OSCMessageListener
 import com.illposed.osc.OSCMessage
@@ -112,6 +113,35 @@ private class TimetagDispatcher : OSCPacketDispatcher() {
 }
 
 /**
+ * Expand every `{a,b}` alternative list in an OSC address pattern, so that `/x/{1,10}/{a,b}` becomes
+ * the four patterns `/x/1/a`, `/x/1/b`, `/x/10/a`, `/x/10/b`. A pattern without braces comes back
+ * alone; an unclosed brace is left for the matcher to reject.
+ */
+internal fun expandOscBraces(pattern: String): List<String> {
+    val open = pattern.indexOf('{')
+    if (open < 0) return listOf(pattern)
+    val close = pattern.indexOf('}', open)
+    if (close < 0) return listOf(pattern)
+    val head = pattern.substring(0, open)
+    val tail = pattern.substring(close + 1)
+    return pattern.substring(open + 1, close).split(',').flatMap { expandOscBraces(head + it + tail) }
+}
+
+/**
+ * JavaOSC 0.9's pattern matcher gets `{…}` wrong once an alternative has matched the start of a part
+ * and the rest then fails: stepping to the next alternative skips its first character, so
+ * `/fader/{1,10}` never matches `/fader/10`. Expanding the braces first and matching each expansion
+ * with JavaOSC's own selector keeps every other wildcard, `//` included, exactly as JavaOSC does it.
+ */
+internal class BraceExpandingSelector(pattern: String) : MessageSelector {
+    private val selectors = expandOscBraces(pattern).map { OSCPatternAddressMessageSelector(it) }
+
+    override fun isInfoRequired(): Boolean = false
+
+    override fun matches(messageEvent: OSCMessageEvent): Boolean = selectors.any { it.matches(messageEvent) }
+}
+
+/**
  * Bind a receiving OSC port on every interface at [localPort], with the two JavaOSC 0.9 decoding
  * defects above corrected. Listeners are added afterwards through `dispatcher.addListener`.
  *
@@ -184,7 +214,7 @@ class OscServer(
     private fun ensureRegistered(pattern: String) {
         if (registered.putIfAbsent(pattern, true) != null) return
 
-        val selector = OSCPatternAddressMessageSelector(pattern)
+        val selector = BraceExpandingSelector(pattern)
         val listener = OSCMessageListener { event ->
             try {
                 // Only the catch-all listener logs, or a message that also matches a handler's
