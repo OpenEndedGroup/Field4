@@ -502,7 +502,7 @@
     padding: 0;
     min-width: 550px;
     min-height: 0;
-    background: var(--field-editor-bg);
+    background: var(--field-surface);
 }
 
 /* --------------------------------------------------------------------------
@@ -725,6 +725,13 @@ pre code {
     font-family: var(--field-font);
 }
 
+/* Highlighted inline code: plain identifiers take the editor's text colour rather than the
+   speaker's, so code reads as code in either voice; tokens take the highlight.js theme. */
+.ai-chat-markdown code.ai-chat-inline-code {
+    color: var(--field-fg-bright);
+    font-style: normal;
+}
+
 .afield-ref-link {
     color: var(--field-code-accent);
     font-family: var(--field-font);
@@ -793,7 +800,13 @@ pre code {
 }
 
 .ai-chat-window {
-    background: var(--field-editor-bg);
+    /* Rhymes with the history panel: a black shell, an editor-grey well for
+       the input, cyan for Field's own voice and orange for yours. */
+    --ai-chat-ai-fg: var(--field-accent-text);
+    --ai-chat-ai-rule: var(--field-accent-muted);
+    --ai-chat-you-fg: color-mix(in srgb, rgb(var(--field-warning-rgb)) 70%, rgb(var(--field-white-rgb)));
+    --ai-chat-you-rule: rgba(var(--field-warning-rgb), 0.4);
+    background: var(--field-surface);
     display: flex;
     flex-direction: column;
     min-height: 100%;
@@ -825,23 +838,21 @@ pre code {
 .ai-chat-input textarea {
     flex: 1 1 auto;
     background: var(--field-editor-bg);
-    color: var(--field-fg);
-    border: 1px solid var(--field-border-medium);
-    border-radius: 6px;
-    padding: 6px 8px;
+    color: var(--ai-chat-you-fg, var(--field-fg));
+    border: 0;
+    border-radius: 8px;
+    padding: 8px;
     font-size: 10px;
     /*resize: vertical;*/
     min-height: 96px;
     max-height: 120px;
     outline: none;
-    margin: 5px;
-    margin-right: 7px;
+    margin: 8px;
     resize: none;
-    transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .ai-chat-input textarea:focus {
-    border-color: var(--field-border-strong);
+    outline: none;
     box-shadow: none;
 }
 
@@ -865,10 +876,11 @@ pre code {
     }
 }
 .ai-chat-input button {
-    background: var(--field-hover-soft);
+    background: var(--field-editor-bg);
     color: var(--field-fg);
-    border: 1px solid var(--field-border-medium);
-    border-radius: 6px;
+    border: 0;
+    border-radius: 8px;
+    margin: 8px 8px 8px 0;
     padding: 0 10px;
     font-size: 10px;
     cursor: pointer;
@@ -895,9 +907,10 @@ pre code {
     box-sizing: border-box;
     margin: 0 6px;
     padding: 4px 6px;
-    border-left: 2px solid var(--field-border-medium);
-    background: var(--field-panel-medium);
-    color: var(--field-fg-muted);
+    border-left: 2px solid var(--ai-chat-ai-rule, var(--field-border-medium));
+    border-radius: 0 8px 8px 0;
+    background: var(--field-editor-bg);
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
     font-size: 10px;
 }
 
@@ -907,7 +920,8 @@ pre code {
     align-items: baseline;
     gap: 2px 12px;
     margin: 2px 6px;
-    color: var(--field-fg-muted);
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
+    opacity: 0.75;
     font: 10px/1.5 var(--field-font);
 }
 
@@ -924,7 +938,7 @@ pre code {
 
 .ai-chat-progress summary {
     cursor: pointer;
-    color: var(--field-fg);
+    color: var(--ai-chat-ai-fg, var(--field-fg));
     font-family: var(--field-font);
     font-size: 10px;
     line-height: 1.3;
@@ -932,30 +946,35 @@ pre code {
 
 .ai-chat-progress .ai-chat-markdown {
     margin-top: 4px;
-    color: var(--field-fg-muted);
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
+    opacity: 0.8;
 }
 
 .ai-chat-turn.ai {
     align-self: flex-start;
     text-align: left;
     margin-right: auto;
-    border-left: 2px solid var(--field-border);
+    border-left: 2px solid var(--ai-chat-ai-rule, var(--field-border));
+    color: var(--ai-chat-ai-fg, var(--field-fg));
 }
 
 .ai-chat-turn.you {
     align-self: flex-end;
     text-align: right;
     margin-left: auto;
-    border-right: 2px solid var(--field-border);
+    border-right: 2px solid var(--ai-chat-you-rule, var(--field-border));
+    color: var(--ai-chat-you-fg, var(--field-fg));
     font-style: italic;
 }
 
 .ai-chat-turn.you .ai-chat-markdown {
     text-align: right;
+    color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
 .ai-chat-turn.ai .ai-chat-markdown {
     text-align: left;
+    color: var(--ai-chat-ai-fg, var(--field-fg));
 }
 
 .ai-chat-model,
@@ -977,7 +996,7 @@ pre code {
 
 .ai-chat-content {
     color: var(--field-fg);
-    background: var(--field-editor-bg);
+    background: var(--field-surface);
 }
 
 .ai-chat {

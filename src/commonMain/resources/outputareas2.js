@@ -1896,6 +1896,39 @@ function applyCodeHighlight(container) {
         if (!container) return;
         const blocks = container.querySelectorAll("pre code");
         blocks.forEach((block) => highlightCodeBlock(block));
+        // Inline `code` carries no fence language, so it is read as the language of the property the
+        // chat is about. Only plain-text spans: anything already holding markup (a link) is left alone.
+        const inlineLanguage = aiChatInlineCodeLanguage(container);
+        container.querySelectorAll(".ai-chat-markdown code").forEach((code) => {
+                if (code.closest("pre") || code.childElementCount > 0) return;
+                highlightInlineCode(code, inlineLanguage);
+        });
+}
+
+function aiChatInlineCodeLanguage(element) {
+        for (let node = element; node; node = node.parentElement) {
+                const property = node.__aiChat?.property;
+                if (property) return SHADER_CHAT_PROPERTIES.has(property) ? "glsl" : "kotlin";
+        }
+        return "kotlin";
+}
+
+const SHADER_CHAT_PROPERTIES = new Set(["fragment", "vertex", "compute", "task", "mesh", "geometry"]);
+
+function highlightInlineCode(code, language) {
+        const text = code.textContent || "";
+        if (!text.trim()) return;
+        code.classList.add("ai-chat-inline-code");
+        if (language === "glsl") {
+                code.innerHTML = highlightGlslCode(text);
+                return;
+        }
+        if (!window.hljs || typeof window.hljs.highlight !== "function") return;
+        if (window.hljs.getLanguage && !window.hljs.getLanguage(language)) return;
+        try {
+                code.innerHTML = window.hljs.highlight(text, { language, ignoreIllegals: true }).value;
+        } catch (_) {
+        }
 }
 
 function normalizeCodeFenceLanguage(language) {
