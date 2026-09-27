@@ -3644,7 +3644,7 @@ private fun shaderCommentSuffix(
     return if (oneLine.isEmpty()) "" else " // $oneLine"
 }
 
-private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
+internal fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
     var postImport = ""
     val commentSources = listOf(ci)
     postImport += buildShaderStructurePreamble("compute", listOf(ci))
@@ -3671,14 +3671,13 @@ private fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
     }
 
     // UBOs
+    // A compute module's uniform block is reached from the compute module, as its SSBOs are. These were
+    // `ModulePointer` and `Mesh` accessors (the graphics module's), so `module.block` on a compute module
+    // did not resolve.
     ci.ubos.distinctBy { it.name }.forEach { ubo ->
         postImport += prefixed(
             "compute-ubo:${ubo.name}",
-            "val ModulePointer.${ubo.name} by FromUniform()"
-        ) + "\n"
-        postImport += prefixed(
-            "compute-ubo-mesh:${ubo.name}",
-            "var Mesh.${ubo.name} by Mesh.FromStructure<Structure>()"
+            "val ComputeModulePointer.${ubo.name} by ComputeMesh.FromUniform()"
         ) + "\n"
         ubo.members.takeUnless { StackAutoNumbers.isNumbersBlock(ubo.name, ubo.members.map { it.name }) }.orEmpty().forEach { m ->
             val ty = kotlinBindingTypeName(m)
