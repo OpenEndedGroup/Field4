@@ -457,6 +457,13 @@ private fun controllerFieldClientCount(targetDocument: String): Int {
 private fun controllerSessionMatches(info: SessionInformation, target: String): Boolean =
     info.filename == target || info.documentName == target || File(info.filename).name == target
 
+/**
+ * What [info]'s pages last said was selected — the boxes, and the property their editor shows — or null
+ * if none has said. The newest report wins when several pages are open on one document.
+ */
+fun documentSelection(info: SessionInformation): ControllerSelectionState? =
+    controllerSelectionKeys(info).mapNotNull { controllerSelections[it] }.maxByOrNull { it.updatedAt }?.selection
+
 private fun controllerSelectionKeys(info: SessionInformation): List<String> =
     listOf(info.filename, info.documentName, File(info.filename).name).distinct().filter { it.isNotBlank() }
 

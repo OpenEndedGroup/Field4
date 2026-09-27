@@ -95,6 +95,10 @@ class RectSLSourceTest {
         assertEquals(listOf("keyframes before linear: time", "keyframes before linear: value", "keyframes before linear: time", "keyframes before linear: value"), phase.map { it.role })
         val eq = rectSLKnobs("linear-track \"rise\" '( 0=-2.6   3=0 )")
         assertEquals(listOf("keyframes of track rise: time", "keyframes of track rise: value", "keyframes of track rise: time", "keyframes of track rise: value"), eq.map { it.role })
+        // A number a prefix word read out of the source is not also an argument of the next word
+        // (the 30 is ->fps's, not the first of two colours pushed for ->background).
+        val postfix = rectSLKnobs("->fps 30\n0x101014 ->background")
+        assertEquals(listOf("->fps frames per second", "->background"), postfix.map { it.role })
     }
 
     @Test

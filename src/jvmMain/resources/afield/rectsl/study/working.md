@@ -14,9 +14,11 @@ A RectSL program is a finite animated scene made of rectangles:
 - Rotation is in radians (`tau` is a full turn). Later rectangles draw over earlier ones; `->layer`
   and `->front`/`->back` change that.
 
-The scene box is a child of a RectSL root, usually the window box. Once run, the window draws the
-scene live and follows every edit that compiles, so a person's typing and a model's accepted edit
-both appear there. The tools draw their evidence the same way on the same window's GPU, and say so
+The scene box is a child of a RectSL root, which opens a window of its own when the scene starts.
+The window draws the scene live and follows every edit that compiles, so a person's typing and a
+model's accepted edit both appear there. The rectangles the person's editor line makes are outlined
+in the window, and clicking a rectangle there puts their editor on the line that made it: Inspect's
+`personAt` is that line, and "this one" in their request usually means it. The tools draw their evidence the same way on the same window's GPU, and say so
 in `renderedBy`; with no window they use a CPU reference that draws the same geometry at one sample
 per pixel. The study card in the scene box's output shows the clip as a filmstrip, holds the window
 at a time, and has a slider for every number that previews in the window as it moves.

@@ -12,19 +12,30 @@ StackSL is one of Field's main languages: a box under a StackSL root is a progra
 the window above it. Its AI4 chat has tools that check, render, compare and version the program,
 and a document can add tools of its own.
 
-## Start from a blank document
+## Start
 
-[Download the blank starter](assets/stacksl_conversation/stacksl_conversation.zip). Unzip it into
-your Field workspace, keeping the `stacksl_conversation` folder intact, then open that document.
-Configure an AI provider through Field's welcome page if you have not already; see
-[AI features](aiFeatures.md).
+In any document, select a box — press **n** to make one — and choose **Make a StackSL Program** from
+the command palette. A root box, **StackSL window**, appears above it and opens a square window; the
+box becomes a program, layered noise over slowly drifting coordinates, and draws in it. Select the
+program and press **command/ctrl-4** to open AI4 chat. Configure an AI provider through Field's
+welcome page if you have not already; see [AI features](aiFeatures.md).
 
-Opening the document opens a square window called *StackSL study* and draws the program in it. The
-starter has two boxes:
+The program box edits its `stackSL` property, and the window follows every edit that compiles; an
+edit with an error is marked on its line, and the window keeps the last program that compiled.
+Running the box (command/ctrl-return) checks your program in as a revision. The root holds no code:
+it is the box whose main language is StackSL, and it opens its window when a program beneath it
+starts. Stopping the root, or closing the window, stops the programs in it; running one again reopens
+the window, and a program whose window is closed still has its card's WebGL preview. **Set Main
+Language: StackSL** on a box you made yourself does the same, and every box beneath it is a program.
+
+The recorded sessions below started from a flat grey.
+[Download that starter](assets/stacksl_conversation/stacksl_conversation.zip) to begin from the same
+place: unzip it into your Field workspace, keeping the `stacksl_conversation` folder intact, and open
+it. It has two boxes:
 
 | Box | What it is |
 | --- | --- |
-| **window** | Owns the window. Its main language is StackSL, so the box beneath it is a StackSL program. |
+| **StackSL window** | The StackSL root. It holds no code; its window opens when the program starts. |
 | **the shader — talk here (AI4)** | The program. Select it and press **command/ctrl-4** to open AI4 chat. |
 
 The program starts as one flat grey:
@@ -42,23 +53,8 @@ Try this in the program box's chat:
 > sliding across the frame.
 
 An accepted edit appears in the program box as StackSL, one stage per line with a comment on each,
-and in the window as soon as it is accepted. Type in the program box yourself and the window follows
-every edit that compiles; an edit with an error is marked on its line, and the window keeps the last
-program that compiled. Running the box (command/ctrl-return) checks your program in as a revision.
-
-## From scratch, in any document
-
-Nothing in the starter is special. To write StackSL anywhere:
-
-1. Make a box that owns a window. The starter's window box is eight lines of Kotlin: a `Window`,
-   a `Renderer`, and `start(renderer::run)`.
-2. Give that box **Set Main Language: StackSL** from the command palette.
-3. Make a box beneath it, and write StackSL in its `stackSL` property. Run it: the program appears
-   in the window and follows your edits from then on. Stop the box to take it out of the window.
-
-A StackSL box that is not under a window still runs; its card's WebGL preview draws the program.
-Every StackSL box's chat has the study tools, and each program keeps its own history under
-`studies/<box id>/` in its document.
+and in the window as soon as it is accepted. Every StackSL box's chat has the study tools, and each
+program keeps its own history under `studies/<box id>/` in its document.
 
 ## The window, the card and the GPU
 
@@ -91,7 +87,9 @@ The **study card** in the program box's output is the person's side of the study
   says what that line does, with a colour swatch for each colour literal, and **Keep these
   numbers** to make the new values a revision;
 - the program's stages, each a small picture of what that line produced — for a line that stores
-  into a mark (`>sky`), the value it stored;
+  into a mark (`>sky`), the value it stored. Click one and the window shows that stage instead of
+  the whole program; click it again to go back. With **the window shows the editor's line** ticked,
+  the window follows the cursor instead, showing what the line under it leaves on the stack;
 - any variants the model has offered, each with **Adopt**;
 - the revision history, each with **Restore**;
 - exports in progress, which can be cancelled;
@@ -101,6 +99,11 @@ The **study card** in the program box's output is the person's side of the study
 
 This is the program box of the finished aurora session, reopened in Field. Past about 24 numbers,
 the remaining lines' sliders wait behind a disclosure.
+
+Clicking the tile of line 54, `<rays * >curtain`, holds the window at that stage: the aurora's
+curtains alone, before lines 56–59 colour them emerald and violet and lay them over the sky.
+
+![The aurora's window held at line 54: pale vertical curtains of light on black, brightest a little below the middle, with no sky, stars or hills](assets/stacksl_conversation/stage.png)
 
 ## The tools
 
@@ -112,7 +115,7 @@ that box's program. They are library code, in
 | Tool | Purpose |
 | --- | --- |
 | `StackSLStudyGuide` | How to work on a study — the frame, idioms, traps and style — or the words guide searched for a word. |
-| `InspectStackSLStudy` | Read the checked program, any unchecked hand edit, history, warnings, stages and knobs. |
+| `InspectStackSLStudy` | Read the checked program, any unchecked hand edit, history, warnings, stages, knobs, and the line the person's cursor is on. |
 | `EditStackSLStudy` | Replace the whole program: compile, check, activate, and return a preview against the parent. |
 | `PatchStackSLStudy` | Exact local text replacements, through the same checks. |
 | `SetStackSLNumbers` | Change numbers by knob index, rewritten in place so a time rate stays a time rate. |
@@ -600,15 +603,17 @@ sending a message continues from the last revision.
     wrote the program box's `stackSL` through the property the editor syncs to; no keystrokes were
     simulated. Each action is recorded in `conversations/*.human.json`. Both halves are
     `tools/conversation_demo.py` (`record` and `act`), which keeps the document running between
-    invocations. The two screenshots of Field itself come from
+    invocations. The three screenshots of Field itself come from
     `tools/capture_stacksl_conversation.py`, which reopens a copy of the aurora document and first
-    checks that the chat Field restores is byte for byte the one saved.
+    checks that the chat Field restores is byte for byte the one saved; the held stage is a click on
+    the stage's tile in the card, in the same browser.
 
     The sessions were recorded when the tools were a box in each document, before they became
-    library code and before the card moved onto the program box. The tools and their names were the
-    same; one kind of result has changed since, as the tiles session describes: a line that ends in a
-    store now shows, and compares, the value it stored. The documents have since been rearranged into
-    today's two boxes, keeping each session's revisions and chat.
+    library code and before the card moved onto the program box, and with a box of Kotlin above the
+    program that opened the window, where the root now holds no code. The tools and their names were
+    the same; one kind of result has changed since, as the tiles session describes: a line that ends
+    in a store now shows, and compares, the value it stored. The documents have since been
+    rearranged into today's two boxes, keeping each session's revisions and chat.
 
     `StackSLConversationExamplesTest` replays all three on the CPU interpreter, a different renderer
     from the GPU the sessions used. Every saved revision must still pass the check, the program box

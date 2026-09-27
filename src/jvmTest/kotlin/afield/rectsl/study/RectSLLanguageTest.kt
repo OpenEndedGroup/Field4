@@ -66,6 +66,20 @@ class RectSLLanguageTest {
     }
 
     @Test
+    fun makeARectSLScenePutsAPlainBoxBeneathARootOfItsOwn() {
+        installRectSLLanguage()
+        val session = session("rectsl-make")
+        val plain = boxIn(session, "plain").also { it.frame = afield.Rect(100.0, 200.0, 360.0, 140.0) }
+        plain.setPropertyRaw("rectSL", "->wall 4 4 meters\n", false)
+        afield.stdlib.LanguageRoots.adopt(listOf(plain), RectSLPrograms.LANGUAGE, "RectSL window", "RectSL scene", RectSLPrograms.PROPERTY, RECTSL_STARTER)
+        val root = plain.parents.single { it.mainLanguage == RectSLPrograms.LANGUAGE }
+        assertEquals("RectSL window", root.name)
+        assertTrue(plain.ke is RectSLExecution)
+        assertEquals("->wall 4 4 meters\n", plain.getPropertyRaw("rectSL", null), "a scene already written is kept")
+        assertTrue((root.getPropertyRaw("code", "") as? String).isNullOrBlank(), "the root holds no Kotlin: the language opens its window")
+    }
+
+    @Test
     fun theStarterScenesCompile() {
         val blank = java.io.File("dev_docs/agents/demos/rectsl_conversation/rectsl_source_rectSL_.rectsl").readText()
         listOf(RECTSL_STARTER, blank).forEach { source ->

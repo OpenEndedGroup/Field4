@@ -82,6 +82,10 @@ class StackSLStudy(
     /** Called after anything that changes what the human view should show — a publication, a new batch of variants. */
     var onChange: (() -> Unit)? = null
 
+    /** The line the person's editor cursor is on in this study's box, or null — see [afield.stdlib.BoxStudies.personAt]. */
+    @Volatile
+    var editorLine: () -> Int? = { null }
+
     companion object {
         /** The size an edit's preview frames are rendered at: enough to judge, cheap enough to wait for. */
         const val PREVIEW_SIZE = 128
@@ -225,7 +229,7 @@ class StackSLStudy(
         val r = revisions.revision(id)
         val liveText = live["liveSource"] as String?
         val liveCheck = liveText?.let { text ->
-            try { check(text).let { mapOf("compiles" to true, "warnings" to it.value.warnings, "knobs" to it.value.knobs.map(::knobSummary)) } }
+            try { check(text).let { mapOf("compiles" to true, "warnings" to it.value.warnings, "knobs" to it.value.knobs.size) } }
             catch (e: StudyRejection) { mapOf("compiles" to false, "problem" to e.message) }
         }
         val history = revisions.history()
@@ -234,6 +238,7 @@ class StackSLStudy(
             "source" to r.source,
             "liveSourceHash" to live["liveSourceHash"], "dirty" to live["dirty"], "liveSource" to liveText,
             "liveCheck" to liveCheck,
+            "personAt" to afield.stdlib.BoxStudies.personAt(editorLine(), liveText ?: r.source),
             "history" to history.takeLast(24).map { mapOf("id" to it.id, "description" to it.description) },
             "otherRevisions" to (revisions.allRevisions().size - history.size).takeIf { it > 0 },
             "warnings" to r.value.warnings, "notes" to r.value.notes,
@@ -247,8 +252,13 @@ class StackSLStudy(
         ))
     }
 
-    private fun knobSummary(k: StackSLKnob) = linkedMapOf("knob" to k.knob, "value" to k.value, "word" to k.token,
-        "at" to "${k.line}:${k.column}", "occurrences" to k.spans.size.takeIf { it > 1 }, "role" to k.role, "feeds" to k.feeds)
+    /**
+     * One knob as one short line — `k3 L6:30 0.035 → *` — index, where, the number as typed, and what reads
+     * it: a program has dozens, and a list of objects was most of every Inspect.
+     */
+    private fun knobSummary(k: StackSLKnob): String =
+        "k${k.knob} L${k.line}:${k.column} ${k.token}" + (k.role.takeIf { it != "number" }?.let { " $it" } ?: "") +
+            (k.feeds?.let { " → $it" } ?: "") + (k.spans.size.takeIf { it > 1 }?.let { " (×$it)" } ?: "")
 
     // ---- Publishing ---------------------------------------------------------------------------
 
@@ -261,7 +271,7 @@ class StackSLStudy(
                 "sourceHash" to SourceStudy.hash(r.source), "scope" to "complete StackSL program, stack.auto rules, CPU reference"),
             "warnings" to r.value.warnings, "notes" to r.value.notes, "animated" to r.value.animated,
             "nonFiniteFraction" to r.value.nonFiniteFraction,
-            "knobs" to r.value.knobs.map(::knobSummary),
+            "knobs" to "${r.value.knobs.size} (InspectStackSLStudy lists them)",
             "stages" to r.value.stages.size
         ))
         val report = try {
@@ -466,7 +476,7 @@ class StackSLStudy(
         val base = if (sensitivity) frame(r.source, 48, seconds) else null
         val epoch = revisions.epoch()
         val rows = r.value.knobs.mapIndexed { i, k ->
-            val summary = knobSummary(k) + ("context" to k.context)
+            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k), "context" to k.context)
             if (base == null || i >= 40) return@mapIndexed summary
             if (revisions.isCancelled(epoch)) throw CancellationException()
             val step = if (abs(k.value) > 1e-3) abs(k.value) * 0.1 else 0.05

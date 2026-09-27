@@ -10,6 +10,17 @@ private fun clearEditorOutputsForLaunch(uid: String) {
     send(Message("clear-editor-outputs").payload(ClearEditorOutputs(uid)))
 }
 
+/**
+ * [box], with its main language applied now rather than on the topology watcher's next pass. A document
+ * that has just opened, or a root that has just been marked, has not had that pass yet, so a scene run
+ * at once went to Kotlin and failed on its RectSL (`Expecting an element`) — as the conversation
+ * recorder found on 2026-09-27, launching a scene the moment its document opened.
+ */
+private fun inItsLanguage(box: Box): Box {
+    afield.runtime.refreshMainLanguageRuntimes(box.parents + box)
+    return box
+}
+
 @RunsAt(installHandlers)
 fun executing() {
 
@@ -17,7 +28,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Stop_box>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
 
             OperationTranscript.recordStop(box)
             stop(box, entrypoint = "stop-box")
@@ -28,7 +39,7 @@ fun executing() {
     handlers["execute-fragment"] = mutableSetOf(
         { message, reply: (Message) -> Unit ->
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
             FlightRecorder.recordExecuteEntrypoint("execute-fragment", box, exec)
             OperationTranscript.recordExecuteFragment(box, exec)
             box.ke.executeFragment(box, exec, reply)
@@ -38,7 +49,7 @@ fun executing() {
     handlers["execute-symbol"] = mutableSetOf(
         { message, reply: (Message) -> Unit ->
             val exec = Json.decodeFromJsonElement<ExecuteSymbol>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
             FlightRecorder.recordExecuteSymbolEntrypoint("execute-symbol", box, exec)
             box.ke.executeSymbol(box, exec, reply)
             Handled.yes
@@ -48,7 +59,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
             val originSession = thisSession.get()
             val originSessionInfo = thisSessionInfo.get()
 
@@ -80,7 +91,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
 
             clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
@@ -96,7 +107,7 @@ fun executing() {
 
             val batch = Json.decodeFromJsonElement<ExecuteBatch>(message.payload!!)
             val requests = batch.executions.map { exec ->
-                val box = box(exec.uid)
+                val box = inItsLanguage(box(exec.uid))
                 FlightRecorder.recordLaunchEntrypoint("launch-batch", box, exec, strand = exec.strand)
                 OperationTranscript.recordLaunch(box, exec, strand = exec.strand)
                 box to exec
@@ -119,7 +130,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
 
             FlightRecorder.recordLaunchEntrypoint("continue-all", box, exec, strand = "default")
             box.ke.continueAll(box, exec, exec.code, "default", reply)
@@ -132,7 +143,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
 
             clearEditorOutputsForLaunch(exec.uid)
             FlightRecorder.recordLaunchEntrypoint("launch-fragment", box, exec, strand = exec.strand)
@@ -146,7 +157,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = box(exec.uid)
+            val box = inItsLanguage(box(exec.uid))
 
             lprintln(
                 "info,execution",

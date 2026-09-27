@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9002 of 15285 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9035 of 15320 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**773 undocumented entry points** (types, top-level functions and values) and 5183 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**773 undocumented entry points** (types, top-level functions and values) and 5185 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -40,7 +40,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
-| [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 2 | 16 | 35% |
+| [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 2 | 15 | 41% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | dataframe, visualizers, agent_transcripts | 1 | 1 | 77% |
@@ -203,19 +203,19 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 50% |
 | [RectSLStudy.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudy.kt) | Languages | — | 0 | 11 | 77% |
 | [TileResidency.kt](../src/jvmMain/kotlin/afield/stdlib/TileResidency.kt) | Simulation | — | 0 | 11 | 26% |
+| [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 68% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
-| [StackSLPrograms.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLPrograms.kt) | Languages | — | 0 | 9 | 70% |
-| [SourceStudy.kt](../src/jvmMain/kotlin/afield/stdlib/SourceStudy.kt) | Workspace | — | 0 | 9 | 74% |
-| [StackSLStudy.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudy.kt) | Languages | — | 0 | 8 | 81% |
+| [StackSLPrograms.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLPrograms.kt) | Languages | — | 0 | 9 | 76% |
+| [SourceStudy.kt](../src/jvmMain/kotlin/afield/stdlib/SourceStudy.kt) | Workspace | — | 0 | 9 | 76% |
+| [StackSLStudy.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudy.kt) | Languages | — | 0 | 8 | 82% |
 | [fline_graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/fline_graph_connectivity.kt) | Graphics | — | 0 | 8 | 38% |
 | [SimdVerletTearing.kt](../src/jvmMain/kotlin/afield/four/physics/SimdVerletTearing.kt) | Simulation | — | 0 | 7 | 61% |
 | [KratosStudyRun.kt](../src/jvmMain/kotlin/afield/kratos/KratosStudyRun.kt) | Simulation | — | 0 | 7 | 66% |
-| [RectSLPrograms.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLPrograms.kt) | Languages | — | 0 | 7 | 78% |
+| [RectSLPrograms.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLPrograms.kt) | Languages | — | 0 | 7 | 82% |
 | [standardRenderer.kt](../src/jvmMain/kotlin/afield/four/fabricated/standardRenderer.kt) | Renderers | — | 0 | 6 | 40% |
 | [FaustDsp.kt](../src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt) | Synthesis | — | 0 | 6 | 53% |
 | [MidiPat.kt](../src/jvmMain/kotlin/afield/four/synth/MidiPat.kt) | Audio | — | 0 | 6 | 66% |
 | [PatOnsetDetection.kt](../src/jvmMain/kotlin/afield/four/synth/PatOnsetDetection.kt) | Patterns | — | 0 | 6 | 57% |
-| [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 6 | 73% |
 | [StackSLGpu.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLGpu.kt) | Languages | — | 0 | 6 | 53% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 6 | 66% |

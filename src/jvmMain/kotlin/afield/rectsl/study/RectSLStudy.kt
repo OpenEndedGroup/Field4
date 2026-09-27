@@ -92,6 +92,10 @@ class RectSLStudy(
     /** Called after anything that changes what the card should show. */
     var onChange: (() -> Unit)? = null
 
+    /** The line the person's editor cursor is on in this study's box, or null — see [afield.stdlib.BoxStudies.personAt]. */
+    @Volatile
+    var editorLine: () -> Int? = { null }
+
     private data class Speculation(val label: String, val note: String, val source: String)
     private val speculations = linkedMapOf<String, Speculation>()
     private val previews = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
@@ -127,8 +131,97 @@ class RectSLStudy(
                 throw StudyRejection("The scene does not compile:\n" + errors.joinToString("\n") { "  ${it.summary}" },
                     mapOf("problems" to errors.map { it.summary }))
             }
-            return RectSLDrawable(source, program, compiled.materials)
+            return RectSLDrawable(source, program, compiled.materials, compiled.origins)
         }
+
+        /**
+         * [events] as sentences, one per happening rather than one per rectangle: an object — a top-level
+         * group, or a rectangle in none — enters the wall with its first part and leaves it with its last,
+         * the copies an `array` made that do something together are one line, and each line names the
+         * lines of the program that made its rectangles —
+         * `12.3 s: lantern ×2 (11 rectangles each, lines 23–35) enters the wall`. Touching is reported
+         * between objects of comparable size, as the overlap warning counts it: not a part touching its
+         * own object, a backdrop covering the wall, or a star a lantern passes.
+         */
+        fun describeEvents(events: List<VisualEvent>, scene: SceneProgram, origins: Map<String, afield.rectsl.RectSLOrigin>, fps: Double): List<String> {
+            val parentOf = HashMap<String, String>()
+            scene.nodes.filterIsInstance<afield.rectsl.GroupNode>().forEach { g -> g.children.forEach { parentOf[it] = g.id } }
+            fun objectOf(id: String): String { var at = id; while (true) at = parentOf[at] ?: return at }
+            fun family(id: String) = RectSLWindowLinks.baseId(objectOf(id))
+            val start = scene.sample(0.0).rects
+            val wallArea = scene.wall.width * scene.wall.height
+            val areaOf = HashMap<String, Double>()
+            start.forEach { r -> areaOf.merge(objectOf(r.id), r.size.x * abs(r.scale.x) * r.size.y * abs(r.scale.y), Double::plus) }
+            fun comparable(a: String, b: String): Boolean {
+                val x = areaOf[objectOf(a)] ?: return true; val y = areaOf[objectOf(b)] ?: return true
+                return max(x, y) < 0.9 * wallArea && min(x, y) >= 0.1 * max(x, y)
+            }
+            // How many of each object's parts are on the wall, so it enters with the first and leaves with the last.
+            val onWall = HashMap<String, Int>()
+            start.filter { visibleOn(it, scene) }.forEach { onWall.merge(objectOf(it.id), 1, Int::plus) }
+            data class Key(val what: String, val frame: Long, val family: String, val other: String?)
+            fun key(e: VisualEvent): Key? {
+                val frame = Math.round(e.time * fps)
+                return when (e) {
+                    is VisualEvent.EnterScreen -> {
+                        val was = onWall.merge(objectOf(e.id), 1, Int::plus)!! - 1
+                        if (was == 0) Key("enters the wall", frame, family(e.id), null) else null
+                    }
+                    is VisualEvent.LeaveScreen -> {
+                        val left = onWall.merge(objectOf(e.id), -1, Int::plus)!!.coerceAtLeast(0).also { onWall[objectOf(e.id)] = it }
+                        if (left == 0) Key("leaves the wall", frame, family(e.id), null) else null
+                    }
+                    is VisualEvent.Stop -> Key("stops", frame, family(e.id), null)
+                    is VisualEvent.StartMoving -> Key("starts moving", frame, family(e.id), null)
+                    is VisualEvent.DirectionChange -> Key("turns", frame, family(e.id), null)
+                    is VisualEvent.RotationReversal -> Key("reverses its spin", frame, family(e.id), null)
+                    is VisualEvent.OpacityCrossing -> Key("${if (e.rising) "fades in past" else "fades out below"} ${fmt(e.threshold)} opacity", frame, family(e.id), null)
+                    is VisualEvent.TouchStart -> if (objectOf(e.a) == objectOf(e.b) || !comparable(e.a, e.b)) null else Key("touches", frame, family(e.a), family(e.b))
+                    is VisualEvent.TouchEnd -> if (objectOf(e.a) == objectOf(e.b) || !comparable(e.a, e.b)) null else Key("parts from", frame, family(e.a), family(e.b))
+                }
+            }
+            fun ids(e: VisualEvent) = when (e) {
+                is VisualEvent.TouchStart -> listOf(e.a); is VisualEvent.TouchEnd -> listOf(e.a)
+                is VisualEvent.EnterScreen -> listOf(e.id); is VisualEvent.LeaveScreen -> listOf(e.id); is VisualEvent.Stop -> listOf(e.id)
+                is VisualEvent.StartMoving -> listOf(e.id); is VisualEvent.DirectionChange -> listOf(e.id)
+                is VisualEvent.RotationReversal -> listOf(e.id); is VisualEvent.OpacityCrossing -> listOf(e.id)
+            }
+            // An object by what it is — how many rectangles, made on which lines — not by the parts that moved.
+            val partsOf = HashMap<String, MutableList<String>>()
+            scene.nodes.filterIsInstance<RectNode>().forEach { partsOf.getOrPut(objectOf(it.id)) { mutableListOf() } += it.id }
+            fun name(family: String, rects: Collection<String>): String {
+                val objects = rects.map(::objectOf).distinct()
+                val parts = objects.flatMap { partsOf[it].orEmpty() }
+                val perObject = parts.size / max(1, objects.size)
+                val made = parts.mapNotNull { origins[it]?.line }.distinct().sorted()
+                val detail = listOfNotNull(
+                    (if (perObject > 1) "$perObject rectangles${if (objects.size > 1) " each" else ""}" else null),
+                    when { made.isEmpty() -> null; made.size == 1 -> "line ${made[0]}"; else -> "lines ${made.first()}–${made.last()}" }
+                ).joinToString(", ")
+                return family + (if (objects.size > 1) " ×${objects.size}" else "") + (if (detail.isNotEmpty()) " ($detail)" else "")
+            }
+            // In time order, once each: [key] counts parts onto and off the wall as it goes.
+            val happenings = events.sortedBy { it.time }.mapNotNull { e -> key(e)?.let { it to e } }
+                .groupBy({ it.first }, { it.second }).entries
+                .map { (k, happened) ->
+                    val rects = happened.flatMap(::ids).distinct()
+                    val with = k.other?.let { other -> other to happened.map { (it as? VisualEvent.TouchStart)?.b ?: (it as VisualEvent.TouchEnd).b }.distinct() }
+                    Triple(k, happened.minOf { it.time }, "${name(k.family, rects)} ${k.what}" + (with?.let { (other, ids) -> " ${name(other, ids)}" } ?: ""))
+                }
+            // What recurs — a sway turning back every few seconds — is one line with its count and times.
+            return happenings.groupBy { (k, _, _) -> Triple(k.family, k.what, k.other) }.values.flatMap { same ->
+                if (same.size <= RECURRING) same.map { (_, time, text) -> time to "${secs(time)} s: $text" }
+                else {
+                    val times = same.map { it.second }
+                    val text = same.first().third.replace(Regex(" ×\\d+ "), " ")
+                    listOf(times.first() to "${secs(times.first())}–${secs(times.last())} s: $text, ${same.size} times " +
+                        "(${times.take(8).joinToString(", ") { secs(it) }}${if (times.size > 8) ", …" else ""})")
+                }
+            }.sortedBy { it.first }.map { it.second }
+        }
+
+        /** More than this many of the same happening to the same kind of object is reported as recurring. */
+        private const val RECURRING = 4
 
         /** The times a clip is shown at when nobody asked: evenly spaced, never the last instant (the loop's first). */
         fun defaultTimes(scene: SceneProgram, count: Int): List<Double> =
@@ -344,8 +437,13 @@ class RectSLStudy(
     /** The checked revision's id, or `empty`. */
     fun currentId(): String = revisions.currentId()
 
-    private fun knobSummary(k: RectSLKnob) = linkedMapOf("knob" to k.knob, "value" to k.text, "at" to "${k.line}:${k.column}",
-        "role" to k.role, "colour" to k.colour)
+    /**
+     * One knob as one short line — `k7 L9:32 0.22 keyframes of track four-beats: time` — index, where, as
+     * typed, and what reads it (and the colour an `rgb`'s number is part of): a scene has dozens, and a list
+     * of objects was most of every Inspect.
+     */
+    private fun knobSummary(k: RectSLKnob): String =
+        "k${k.knob} L${k.line}:${k.column} ${k.text} ${k.role}" + (k.colour?.takeIf { !k.text.startsWith("0x") }?.let { " ($it)" } ?: "")
 
     /** Everything a model needs before editing: source, live-edit state, history, the scene's shape, lines and knobs. */
     fun inspect(id: String = "current"): StudyReport {
@@ -366,6 +464,7 @@ class RectSLStudy(
             "source" to r.source,
             "liveSourceHash" to live["liveSourceHash"], "dirty" to live["dirty"], "liveSource" to liveText,
             "liveCheck" to liveCheck,
+            "personAt" to afield.stdlib.BoxStudies.personAt(editorLine(), liveText ?: r.source),
             "history" to history.takeLast(24).map { mapOf("id" to it.id, "description" to it.description) },
             "otherRevisions" to (revisions.allRevisions().size - history.size).takeIf { it > 0 },
             "scene" to sceneSummary(r.value), "warnings" to r.value.warnings.ifEmpty { null },
@@ -522,20 +621,7 @@ class RectSLStudy(
         val rasters = framesOf(d, long, times)
         val fps = min(scene.fps, max(4.0, 240.0 / max(scene.duration, 1e-6)))
         val report = analyzeAnimation(scene, AnalysisSettings(fps = fps))
-        fun where(id: String) = compiled.origins[id]?.let { "$id (line ${it.line})" } ?: id
-        val events = report.events.sortedBy { it.time }.map { e ->
-            when (e) {
-                is VisualEvent.EnterScreen -> "${secs(e.time)} s: ${where(e.id)} enters the wall"
-                is VisualEvent.LeaveScreen -> "${secs(e.time)} s: ${where(e.id)} leaves the wall"
-                is VisualEvent.Stop -> "${secs(e.time)} s: ${where(e.id)} stops"
-                is VisualEvent.StartMoving -> "${secs(e.time)} s: ${where(e.id)} starts moving"
-                is VisualEvent.DirectionChange -> "${secs(e.time)} s: ${where(e.id)} turns"
-                is VisualEvent.TouchStart -> "${secs(e.time)} s: ${where(e.a)} touches ${where(e.b)}"
-                is VisualEvent.TouchEnd -> "${secs(e.time)} s: ${where(e.a)} parts from ${where(e.b)}"
-                is VisualEvent.RotationReversal -> "${secs(e.time)} s: ${where(e.id)} reverses its spin"
-                is VisualEvent.OpacityCrossing -> "${secs(e.time)} s: ${where(e.id)} ${if (e.rising) "fades in past" else "fades out below"} ${fmt(e.threshold)} opacity"
-            }
-        }
+        val events = describeEvents(report.events, scene, compiled.origins, fps)
         val metrics = report.frameMetrics
         val wallArea = scene.wall.width * scene.wall.height
         val (tw, th) = tileSize(scene, 240)
@@ -748,7 +834,7 @@ class RectSLStudy(
         val base = if (sensitivity) framesOf(d, 96, times) else null
         val epoch = revisions.epoch()
         val rows = r.value.knobs.mapIndexed { i, k ->
-            val summary = knobSummary(k) + ("context" to k.context)
+            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k), "context" to k.context)
             if (base == null || i >= 40) return@mapIndexed summary
             if (revisions.isCancelled(epoch)) throw CancellationException()
             val step = when {

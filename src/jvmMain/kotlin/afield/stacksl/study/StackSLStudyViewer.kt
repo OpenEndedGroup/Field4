@@ -27,7 +27,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *    preview follows without a round trip; **Keep these numbers** writes them into the program as a
  *    new revision through [StackSLStudy.setNumbers], which checks them like any other edit.
  *  - **Stages** — what each line leaves on top of the stack, small, so the program can be read as a
- *    sequence of pictures.
+ *    sequence of pictures. Clicking one holds the window at that stage; the window can also follow the
+ *    editor's cursor, showing what the line under it leaves ([StackSLLive.wanted]).
  *  - **Variants** — whatever [StackSLStudy.tryVariants] is holding, each with **Adopt**.
  *  - **History** — recent revisions with **Restore**, and **Check in the editor's program** for a
  *    person's own edit.
@@ -74,7 +75,8 @@ class StackSLStudyViewer(
 
     /**
      * Carry out one browser action — `keep`, `adopt`, `restore`, `checkin` or `refresh` — and rebuild
-     * the card. Returns the status line the card will show; a refused action says why.
+     * the card; or `stage` and `follow`, which choose what the window shows and leave the card as it is.
+     * Returns the status line the card will show; a refused action says why.
      */
     internal fun handleAction(json: String): String {
         val message = runCatching { mapper.readTree(json) }.getOrNull() ?: return "unreadable action"
@@ -96,6 +98,17 @@ class StackSLStudyViewer(
                 "checkin" -> study.checkIn().let { it.facts["message"]?.toString() + " (" + it.revision + ")" }
                 "cancel-export" -> study.cancelExport(message["id"].asText()).facts["message"].toString()
                 "refresh" -> "refreshed"
+                // The window, not the program: the card shows the choice itself, so it is not rebuilt.
+                "stage" -> {
+                    val live = StackSLPrograms.live(owner)
+                    val words = message["words"]?.asInt()
+                    live.pinnedStage = words?.takeIf { it != live.pinnedStage }
+                    return live.pinnedStage?.let { "the window shows the stage after word $it" } ?: "the window shows the whole program"
+                }
+                "follow" -> {
+                    StackSLPrograms.live(owner).followCursor = message["on"]?.asBoolean() == true
+                    return if (StackSLPrograms.live(owner).followCursor) "the window follows the editor's line" else "the window shows the whole program"
+                }
                 else -> "unknown action"
             }
         } catch (e: Exception) {
@@ -168,6 +181,7 @@ class StackSLStudyViewer(
                 #$id .cell img{width:96px;height:96px;border:1px solid #333;display:block;margin-bottom:3px}
                 #$id .cell span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
                 #$id .status{margin-top:10px;color:#9c9}
+                #$id .cell.stage{cursor:pointer} #$id .cell.stage.pinned img{border-color:#5ce1ff}
             </style>""")
             append("<div><b>${esc(r.id)}</b> <span class='muted'>· ${esc(r.description.take(160))}</span></div>")
             append("<div class='muted'>${if (r.value.animated) "animated" else "still"} · ${r.value.words} words · ${r.value.stages.size} stages · ${r.value.knobs.size} knobs")
@@ -216,8 +230,14 @@ class StackSLStudyViewer(
             if (stages.isNotEmpty()) {
                 val unit = r.value.stages.firstOrNull()?.granularity ?: "line"
                 val which = if (stages.size == r.value.stages.size) "each $unit" else "${stages.size} of ${r.value.stages.size} ${unit}s, evenly spaced"
-                append("<h4>Stages — the top of the stack after $which</h4><div class='strip'>")
-                stages.forEach { (label, image, text) -> append("<div class='cell'>${image?.let { "<img src='$it'>" } ?: "<div style='width:96px;height:96px;border:1px solid #333'></div>"}<span>${esc(label)}</span><span class='muted' title='${esc(text)}'>${esc(text)}</span></div>") }
+                val live = StackSLPrograms.live(owner)
+                append("<h4>Stages — the top of the stack after $which</h4>")
+                append("<div class='muted' style='margin-bottom:6px'>Click a stage to show it in the window; click it again for the whole program. ")
+                append("<label><input type='checkbox' class='follow'${if (live.followCursor) " checked" else ""}> the window shows the editor's line</label></div><div class='strip'>")
+                stages.forEach { c ->
+                    val pinned = if (live.pinnedStage == c.words) " pinned" else ""
+                    append("<div class='cell stage$pinned' data-words='${c.words}' title='show this stage in the window'>${c.image?.let { "<img src='$it'>" } ?: "<div style='width:96px;height:96px;border:1px solid #333'></div>"}<span>${esc(c.label)}</span><span class='muted' title='${esc(c.text)}'>${esc(c.text)}</span></div>")
+                }
                 append("</div>")
             }
             if (variants.isNotEmpty()) {
@@ -250,7 +270,10 @@ class StackSLStudyViewer(
         }
     }
 
-    private fun stageThumbnails(source: String, stages: List<StackSLStage>): List<Triple<String, String?, String>> {
+    /** A stage tile: its label, its picture (a data URL), its line's text, and how many root words it has run. */
+    private data class StageCell(val label: String, val image: String?, val text: String, val words: Int)
+
+    private fun stageThumbnails(source: String, stages: List<StackSLStage>): List<StageCell> {
         if (stages.isEmpty()) return emptyList()
         val outline = StackSLCompiler.outline(source)
         // About fourteen, evenly spaced: every card refresh renders each one, and on the GPU each is a
@@ -269,8 +292,8 @@ class StackSLStudyViewer(
                     png(bytes)
                 }
             }.getOrNull()
-            Triple("${if (stage.granularity == "line") "line" else "word"} ${if (stage.granularity == "line") stage.line else stage.stage}" +
-                (stored?.let { " → $it" } ?: ""), image, stage.text)
+            StageCell("${if (stage.granularity == "line") "line" else "word"} ${if (stage.granularity == "line") stage.line else stage.stage}" +
+                (stored?.let { " → $it" } ?: ""), image, stage.text, stage.wordsThrough)
         }
     }
 
@@ -320,6 +343,11 @@ class StackSLStudyViewer(
                 s.value=String(Math.round(rgb[i]*1000)/1000); s.dispatchEvent(new Event('input')); });
               picker.parentElement.querySelector('.value').textContent=hex;
             }));
+            // A stage shown in the window: one at a time, the same tile again for the whole program.
+            root.querySelectorAll('.cell.stage').forEach(c=>c.addEventListener('click',(ev)=>{ ev.stopPropagation();
+              const on=!c.classList.contains('pinned'); root.querySelectorAll('.cell.stage').forEach(x=>x.classList.remove('pinned'));
+              if(on) c.classList.add('pinned'); send({action:'stage',words:parseInt(c.dataset.words)}); }));
+            root.querySelectorAll('input.follow').forEach(f=>f.addEventListener('change',(ev)=>{ ev.stopPropagation(); send({action:'follow',on:f.checked}); }));
             root.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',(ev)=>{
               ev.stopPropagation(); const act=b.dataset.act;
               if(act==='pause'){ const now=performance.now(); if(paused){ start=now; paused=false; b.textContent='pause'; } else { offset=offset+(now-start)/1000; paused=true; b.textContent='play'; } return; }

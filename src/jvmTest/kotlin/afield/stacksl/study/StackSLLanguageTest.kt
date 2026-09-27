@@ -47,6 +47,26 @@ class StackSLLanguageTest {
     }
 
     @Test
+    fun makeAStackSLProgramPutsAPlainBoxBeneathARootOfItsOwn() {
+        installStackSLLanguage()
+        val session = session("stacksl-make")
+        val plain = boxIn(session, "plain").also { it.frame = afield.Rect(100.0, 200.0, 360.0, 140.0) }
+        val made = afield.stdlib.LanguageRoots.adopt(listOf(plain), StackSLPrograms.LANGUAGE, "StackSL window", "StackSL program", StackSLPrograms.PROPERTY, STACKSL_STARTER)
+        assertEquals(listOf(plain), made)
+        val root = plain.parents.single { it.mainLanguage == StackSLPrograms.LANGUAGE }
+        assertEquals("StackSL window", root.name)
+        assertTrue(root.frame.y < plain.frame.y, "the root sits above the program")
+        assertTrue(plain.ke is StackSLExecution)
+        assertEquals(STACKSL_STARTER, plain.getPropertyRaw("stackSL", null))
+        assertEquals(true, plain.getPropertyRaw("autorun", null), "it plays when the document opens")
+        // Making it again finds the root it has, and a selected root gets a new program beneath it.
+        afield.stdlib.LanguageRoots.adopt(listOf(plain), StackSLPrograms.LANGUAGE, "StackSL window", "StackSL program", StackSLPrograms.PROPERTY, STACKSL_STARTER)
+        assertEquals(1, plain.parents.count { it.mainLanguage == StackSLPrograms.LANGUAGE })
+        val second = afield.stdlib.LanguageRoots.adopt(listOf(root), StackSLPrograms.LANGUAGE, "StackSL window", "StackSL program", StackSLPrograms.PROPERTY, STACKSL_STARTER).single()
+        assertTrue(second !== plain && root in second.parents && second.ke is StackSLExecution)
+    }
+
+    @Test
     fun aChildOfAStackSLRootIsAProgramThatEditsStackSL() {
         installStackSLLanguage()
         val session = session("stacksl-toggle")
@@ -58,7 +78,8 @@ class StackSLLanguageTest {
         stackSLTopologyNeedsUpdating(listOf(window))
         assertTrue(program.ke is StackSLExecution, "the child did not become a StackSL program")
         assertEquals("stackSL", program.getPropertyRaw("default_property", null))
-        assertEquals("", program.getPropertyRaw("stackSL", null), "a new program starts with an empty stackSL")
+        assertEquals(STACKSL_STARTER, program.getPropertyRaw("stackSL", null), "a new program starts with the starter")
+        assertTrue(StackSLStudy.diagnose(STACKSL_STARTER).none { it.error }, "the starter compiles: ${StackSLStudy.diagnose(STACKSL_STARTER)}")
 
         window.mainLanguage = null
         stackSLTopologyNeedsUpdating(listOf(window))

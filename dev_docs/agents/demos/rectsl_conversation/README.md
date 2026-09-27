@@ -1,7 +1,10 @@
 # RectSL conversation — start here
 
-A blank starting point for talking an animated scene into existence: a window whose main language is
-RectSL, and beneath it one RectSL scene (an empty 16 × 9 wall, six seconds long) with no history.
+A blank starting point for talking an animated scene into existence: a root box, **RectSL window**,
+whose main language is RectSL, and beneath it one RectSL scene (an empty 16 × 9 wall, six seconds
+long) with no history. The root holds no code; it opens its window when the scene starts. In any
+other document the same two boxes are one command away: select a box and choose **Make a RectSL
+Scene**.
 
 1. Open this document in Field. A window opens and plays the scene.
 2. Select **the scene — talk here (AI4)** and press **command/ctrl-4**.
@@ -13,9 +16,11 @@ RectSL, and beneath it one RectSL scene (an empty 16 × 9 wall, six seconds long
 Accepted edits appear in the scene box as ordinary RectSL, one object per paragraph, and in the
 window the moment they are accepted; each one is a saved revision under `studies/rectsl_source/`.
 Type in the scene box yourself and the window follows every edit that compiles, with problems marked
-on their lines; running the box checks your edit in as a revision. The scene box's study card shows
-the clip as a filmstrip, holds the window at any time, has a slider for every number (the window
-follows as you drag), its history, and — when the model offers variants — each with **Adopt**.
+on their lines; running the box checks your edit in as a revision. The window outlines the rectangles
+the editor's line makes, and clicking a rectangle in the window puts the editor on the line that made
+it. The scene box's study card shows the clip as a filmstrip, holds the window at any time, has a
+slider for every number (the window follows as you drag), its history, and — when the model offers
+variants — each with **Adopt**.
 
 The study tools ship with Field (`afield.rectsl.study`): any box under a RectSL root has them in its
 AI4 chat, and `RectSLStudyGuide` returns the working guide and searches the words guide. For agents:

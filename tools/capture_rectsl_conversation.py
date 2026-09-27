@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""Capture the RectSL conversation page's three screenshots of Field itself.
+"""Capture the RectSL conversation page's four screenshots of Field itself.
 
-All three come from the recorded lanterns document, reopened: ``card.png`` is the scene box with its
-study card, ``window.png`` the scene's own window, held at one moment with the card's scrubber, and
-``saved-chat.png`` the scene box with its saved AI4 chat restored. The document is a copy in a
-temporary workspace, on a Field this script starts and owns, and nothing here makes a model call.
+All four come from the recorded lanterns document, reopened: ``card.png`` is the scene box with its
+study card, ``window.png`` the scene's own window, held at one moment with the card's scrubber,
+``outline.png`` the same window with the editor's cursor on the flame's line, which outlines every
+lantern's flame, and ``saved-chat.png`` the scene box with its saved AI4 chat restored. The document
+is a copy in a temporary workspace, on a Field this script starts and owns, and nothing here makes a
+model call.
 Before capturing, the script checks that the chat Field restores is byte-for-byte the saved chat,
 which ``metadata.edn`` holds only as a ``#afield/file`` reference to its sidecar, and that the card's
 frames were drawn on the GPU. The blank starter is opened too, as a check that it comes up by itself
 (window and scene); it is not pictured.
 
 The window must be able to open (an awake display). Run the packager afterwards; ``--check`` requires
-all three screenshots to exist.
+all four screenshots to exist.
 Use: uv run --project . --group backdoor python tools/capture_rectsl_conversation.py [--port 9798]
 """
 
@@ -100,6 +102,13 @@ async def capture(port: int, workspace: Path) -> None:
         print(name, "card", card, flush=True)
         return card
 
+    async def native(name: str) -> None:
+        """The scene's own window, as it is drawing now, at half size on a high-density display."""
+        await command(f"native-screenshot {ASSETS / name} --uid rectsl_window")
+        with Image.open(ASSETS / name) as shot:
+            if shot.width > 1600:
+                shot.resize((shot.width // 2, shot.height // 2), Image.LANCZOS).save(ASSETS / name)
+
     async def shoot(inner: str, name: str) -> None:
         measured = await evaluate(REGION + f"('{inner}')")
         window = workspace / f"window-{inner}.png"
@@ -134,11 +143,32 @@ async def capture(port: int, workspace: Path) -> None:
           const scrub = document.querySelector('.rectsl-study .scrub');
           scrub.value = '{HELD_AT}'; scrub.dispatchEvent(new Event('input'));
           await new Promise(r => setTimeout(r, 1500)); return scrub.value; }})()""")
-        await command(f"native-screenshot {ASSETS / 'window.png'} --uid rectsl_window")
-        with Image.open(ASSETS / "window.png") as shot:
-            if shot.width > 1600:
-                shot.resize((shot.width // 2, shot.height // 2), Image.LANCZOS).save(ASSETS / "window.png")
+        await native("window.png")
         print("captured window.png at", HELD_AT, "s", flush=True)
+
+        # The editor and the window: with the cursor on the flame's line, the window outlines every
+        # lantern's flame. The cursor is put there as a person's click in the editor would put it.
+        source = (workspace / EXAMPLE / "rectsl_source_rectSL_.rectsl").read_text().splitlines()
+        flame = next(n for n, line in enumerate(source, 1) if '"flame" rect' in line)
+        await command(f"click-box {SCENE}")
+        # The editor loads the box's text, and the view state it last had, after the click; place the
+        # cursor once that has happened, and see that it stays.
+        at = await evaluate(f"""(async () => {{
+          const ed = window.globalEditor;
+          for (let i = 0; i < 100; i++) {{
+            if (ed.getModel().getLanguageId() === 'rectsl' && ed.getModel().getLineContent({flame}).includes('"flame" rect')) break;
+            await new Promise(r => setTimeout(r, 100));
+          }}
+          for (let i = 0; i < 10; i++) {{
+            ed.focus(); ed.setPosition({{lineNumber: {flame}, column: 3}});
+            await new Promise(r => setTimeout(r, 1000));
+            if (ed.getPosition().lineNumber === {flame}) break;
+          }}
+          await new Promise(r => setTimeout(r, 1000));
+          return {{line: ed.getPosition().lineNumber, lang: ed.getModel().getLanguageId()}}; }})()""")
+        assert at == {"line": flame, "lang": "rectsl"}, f"the editor is not on the flame's line of the scene: {at}"
+        await native("outline.png")
+        print("captured outline.png, the cursor on line", flame, flush=True)
 
         await evaluate("""(async () => {
           const content = document.querySelector('.rectsl-study').closest('.disclosure-content');
@@ -151,7 +181,7 @@ async def capture(port: int, workspace: Path) -> None:
         restored = await evaluate("""(async () => {
           for (let i = 0; i < 300; i++) {
             const panel = document.querySelector('.ai-chat-window[data-uid="rectsl_source"]');
-            if (panel?.querySelectorAll('.ai-chat-turn.you').length === 4) {
+            if (panel?.querySelectorAll('.ai-chat-turn.you').length === 5) {
               const images = [...panel.querySelectorAll('img')];
               await Promise.all(images.map(img => img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; })));
               if (images.some(img => img.naturalWidth === 0)) throw new Error('A chat image did not load');
@@ -164,7 +194,7 @@ async def capture(port: int, workspace: Path) -> None:
               const reply = [...panel.querySelectorAll('.ai-chat-turn.ai')].find(t => t.textContent.includes('already loops seamlessly'));
               if (!reply) throw new Error('The recorded loop reply is missing');
               reply.scrollIntoView({block: 'start'});
-              return {turns: 4, images: images.length};
+              return {turns: 5, images: images.length};
             }
             await new Promise(r => setTimeout(r, 100));
           }

@@ -14,9 +14,10 @@ The program is called once per pixel of a square frame as `program(vec4(uv, hash
   know as sRGB hex, roughly square each channel (`#c08040` ≈ `[0.53,0.22,0.05]`). The palette hex
   codes Observe reports are what the window shows.
 
-The program box is a child of a StackSL root, usually the window box. Once it has been run, the
-window draws the program live and follows every edit that compiles, so a person's typing and a
-model's accepted edit both appear there at once. The tools render their evidence on the same
+The program box is a child of a StackSL root, which opens a window of its own when the program
+starts. The window draws the program live and follows every edit that compiles, so a person's typing
+and a model's accepted edit both appear there at once. The person can hold the window at one stage
+from the card, or have it follow their editor line; Inspect's `personAt` is that line. The tools render their evidence on the same
 window's GPU, into an offscreen float target read back exactly — unclamped, NaN included — and say so
 in `renderedBy`. When there is no running window they fall back to the CPU reference, which
 interprets the same GLSL pixel by pixel: exact, and slow. The study card in the program box's output

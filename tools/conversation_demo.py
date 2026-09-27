@@ -11,7 +11,9 @@ a RectSL scene — whose AI4 chat has the study's tools. This module is everythi
            no key is read or recorded.
   act      do the person's half through the surfaces a person uses (StackSL and RectSL cards):
            ``adopt LABEL``, ``keep KNOB VALUE``, ``checkin`` click the study card in Field's
-           server-owned browser; ``edit OLD NEW`` writes the program through the editor's sync path.
+           server-owned browser; ``edit OLD NEW`` writes the program through the editor's sync path;
+           ``cursor LINE`` selects the box and puts the editor's cursor on that line, where Inspect's
+           ``personAt`` then reports it.
            Each action is kept as ``conversations/<label>.human.json``.
 
 and, for the per-demo packagers, the transcript page renderer, the deterministic zip, the listing
@@ -109,19 +111,12 @@ async def _open(fb, document: Path, port: int, study: Study, label: str, what: s
     await client.connect()
     await client.open_document(document.name, scratch=False, must_exist=True, keep_running=True, timeout=120)
     if study.window_box:
-        # The window opens with the document (autorun) and stays up between invocations
-        # (keepRunning); launch it only if it is not there.
-        wait = f"wait-native-renderer {study.window_box} --frames 3 --timeout 30"
-        if not (await fb.dispatch_command(client, fb.parse_command(wait), wait))["ok"]:
-            for line in (f"launch {study.window_box} --timeout 120", f"wait-native-renderer {study.window_box} --frames 5 --timeout 120"):
-                result = await fb.dispatch_command(client, fb.parse_command(line), line)
-                if not result["ok"]:
-                    raise RuntimeError(line + " failed: " + json.dumps(result)[:2000])
-        # The study box draws in that window only while it runs; a window that had to be relaunched
-        # took the running program with it.
+        # The window is the root's own: the study box opens it when it starts — with the document,
+        # since it autoruns — and it stays up between invocations (keepRunning). A study box that is
+        # not running (its window was closed, which stops it) is started again, reopening the window.
         status = await fb.dispatch_command(client, fb.parse_command("status"), "status")
-        if study.box not in (status.get("data") or {}).get("runningBoxes", []):
-            line = f"launch {study.box} --timeout 120"
+        lines = [] if study.box in (status.get("data") or {}).get("runningBoxes", []) else [f"launch {study.box} --timeout 120"]
+        for line in lines + [f"wait-native-renderer {study.window_box} --frames 5 --timeout 120"]:
             result = await fb.dispatch_command(client, fb.parse_command(line), line)
             if not result["ok"]:
                 raise RuntimeError(line + " failed: " + json.dumps(result)[:2000])
@@ -221,7 +216,28 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
 
     try:
         before = await _inspect(client, study)
-        if action == "edit":
+        if action == "cursor":
+            # The editor's cursor on a line, as a click there puts it: the box selected, then the
+            # position set in the editor once it shows the box's text. Nothing is written.
+            line = int(values[0])
+            await client.open_playwright(timeout=120)
+            select = f"click-box {study.box}"
+            if not (await fb.dispatch_command(client, fb.parse_command(select), select))["ok"]:
+                raise RuntimeError(select + " failed")
+            placed = await page(f"""(async () => {{
+                for (let i = 0; i < 300 && !(window.globalEditor && window.globalEditor.getModel()); i++) await new Promise(r => setTimeout(r, 100));
+                const ed = window.globalEditor;
+                for (let i = 0; i < 100 && ed.getModel().getLanguageId() !== {json.dumps("kotlin" if study.property == "code" else study.property.lower())}; i++) await new Promise(r => setTimeout(r, 100));
+                for (let i = 0; i < 10; i++) {{
+                  ed.focus(); ed.setPosition({{lineNumber: {line}, column: 1}});
+                  await new Promise(r => setTimeout(r, 1000));
+                  if (ed.getPosition().lineNumber === {line}) break;
+                }}
+                return {{line: ed.getPosition().lineNumber, text: ed.getModel().getLineContent({line})}}; }})()""")
+            if placed["line"] != line:
+                raise RuntimeError(f"the editor's cursor did not stay on line {line}: {placed}")
+            detail = {"surface": "the editor, in Field's browser", "line": line, "text": placed["text"]}
+        elif action == "edit":
             old, new = values
             source = await client.get_property(uid=study.box, property_name=study.property, timeout=30)
             if source.count(old) != 1:
@@ -258,15 +274,18 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
         while time.monotonic() < deadline:
             await asyncio.sleep(1)
             after = await _inspect(client, study)
-            if after.get("revision") != before.get("revision") or action == "edit":
+            if after.get("revision") != before.get("revision") or action in ("edit", "cursor"):
                 break
         record = {"label": label, "action": action, **detail,
                   "revisionBefore": before.get("revision"), "revisionAfter": after.get("revision"),
                   "dirtyAfter": (after.get("facts") or {}).get("dirty"), "before": before, "after": after}
-        target.write_text(json.dumps(record, indent=2))
         print(json.dumps({k: record[k] for k in ("label", "action", "revisionBefore", "revisionAfter", "dirtyAfter")}), flush=True)
-        if action != "edit" and after.get("revision") == before.get("revision"):
+        # An action that did not take is not kept, so its label can be used again.
+        if action == "cursor" and ((after.get("facts") or {}).get("personAt") or {}).get("line") != int(values[0]):
+            raise RuntimeError(f"Inspect does not report the person at line {values[0]}: {(after.get('facts') or {}).get('personAt')}")
+        if action not in ("edit", "cursor") and after.get("revision") == before.get("revision"):
             raise RuntimeError("The card action did not produce a revision; see the card's status line")
+        target.write_text(json.dumps(record, indent=2))
         return record
     finally:
         await client.close()
@@ -442,7 +461,7 @@ def main() -> None:
         if name == "record":
             sub.add_argument("--prompt-file", required=True)
         else:
-            sub.add_argument("action", choices=["adopt", "keep", "edit", "checkin"])
+            sub.add_argument("action", choices=["adopt", "keep", "edit", "checkin", "cursor"])
             sub.add_argument("values", nargs="*")
     args = parser.parse_args()
     study = STUDIES[args.study]

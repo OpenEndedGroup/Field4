@@ -1,0 +1,618 @@
+{
+  "label": "04a-cursor",
+  "action": "cursor",
+  "surface": "the editor, in Field's browser",
+  "line": 36,
+  "text": "  \"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+  "revisionBefore": "r4-cd474f3c0916",
+  "revisionAfter": "r4-cd474f3c0916",
+  "dirtyAfter": false,
+  "before": {
+    "revision": "r4-cd474f3c0916",
+    "facts": {
+      "revision": "r4-cd474f3c0916",
+      "parent": "r3-8b5b2a536c7b",
+      "description": "adopt variant dusk: Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion.",
+      "source": "# (asked) Paper lanterns drifting up a night sky, a few at a time,\n# swaying a little as they rise, warm orange against deep blue.\n# (chosen) An 18-second loop, five irregularly scattered lanterns with varied sizes and rise speeds.\n# (asked, refined) Natural starting places and gentle sway, not an orderly procession.\n->wall 16 9 meters\n->duration 18\n->fps 30\n->background 0x07132d\n\n# Blue-violet dusk fading into a dusty rose horizon.\n\"night\" rect 16 9 ->wh 0x995c68 0x222447 0 -0.5 0 0.5 linear ->fill ;\n\n# A sparse scattering of very faint distant stars.\n\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill\n19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;\n\n# The whole paper lantern sways as a unit; its rise wraps only outside the wall.\n\"lantern\" group\n  '( 0=-6 18=6 ) 18 loop-time ->y\n  '( 0=-0.18 3=0.18 6=-0.18 ) ease-in-out 6 loop-time ->x\n  '( 0=-0.045 3=0.045 6=-0.045 ) ease-in-out 6 loop-time ->rot\n\n  # Narrow crown and broad warm paper body.\n  \"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;\n  \"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;\n\n  # A luminous central fold with darker seams along the sides.\n  \"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;\n  \"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;\n\n  # The folded bottom lip, bright opening, and little heat source.\n  \"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;\n  \"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;\n  \"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;\nend\n\n# Deep copies keep the paper details together. Independent variations avoid a diagonal procession.\n# Rise durations vary, with a short offscreen pause so every path still loops cleanly at 18 s.\n\"lantern\" ->select\n5 '(\n  '( 0=-6 14=6 ) linear i 1.7 * sin 0.14 * 1.05 + time* 18 loop-time ->y\n  i 2.399 * sin 5.9 * 0 ->offset\n  i 2.63 * sin 0.18 * 0.85 + ->scale\n  i 1.71 * sin -6 * -8 + ->delay-all-time\n) array ;\n",
+      "liveSourceHash": "cd474f3c0916da94a434dfb76b43c0046d57a1d4023f86224f2caf64d82abf4c",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "personAt": {
+        "line": 36,
+        "text": "\"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+        "meaning": "the line the person's editor cursor is on; 'this', 'here' or 'that one' in their request usually means it"
+      },
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-72e434d058df",
+          "description": "Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night."
+        },
+        {
+          "id": "r3-8b5b2a536c7b",
+          "description": "Scatter lantern positions and launch phases; vary size and ascent speed while preserving gentle sway and the 18-second loop."
+        },
+        {
+          "id": "r4-cd474f3c0916",
+          "description": "adopt variant dusk: Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion."
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 18.0,
+        "fps": 30.0,
+        "background": "#07132d",
+        "rects": 65,
+        "groups": 5,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 65
+          },
+          {
+            "seconds": 6.0,
+            "visible": 43
+          },
+          {
+            "seconds": 12.0,
+            "visible": 44
+          },
+          {
+            "seconds": 17.982,
+            "visible": 65
+          }
+        ]
+      },
+      "warnings": null,
+      "lines": [
+        {
+          "line": 11,
+          "text": "\"night\" rect 16 9 ->wh 0x995c68 0x222447 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "Blue-violet dusk fading into a dusty rose horizon.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "night"
+          ]
+        },
+        {
+          "line": 14,
+          "text": "\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill",
+          "comment": "A sparse scattering of very faint distant stars.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "stars"
+          ]
+        },
+        {
+          "line": 15,
+          "text": "19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;",
+          "comment": null,
+          "nodes": 18,
+          "rects": 18,
+          "ids": [
+            "stars-copy",
+            "stars-copy-2",
+            "stars-copy-3",
+            "stars-copy-4",
+            "stars-copy-5",
+            "stars-copy-6"
+          ]
+        },
+        {
+          "line": 18,
+          "text": "\"lantern\" group",
+          "comment": "The whole paper lantern sways as a unit; its rise wraps only outside the wall.",
+          "nodes": 1,
+          "rects": 0,
+          "ids": [
+            "lantern"
+          ]
+        },
+        {
+          "line": 24,
+          "text": "\"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;",
+          "comment": "Narrow crown and broad warm paper body.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "crown"
+          ]
+        },
+        {
+          "line": 25,
+          "text": "\"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper"
+          ]
+        },
+        {
+          "line": 28,
+          "text": "\"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "A luminous central fold with darker seams along the sides.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lit-fold"
+          ]
+        },
+        {
+          "line": 29,
+          "text": "\"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "left-seam"
+          ]
+        },
+        {
+          "line": 30,
+          "text": "\"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "right-seam"
+          ]
+        },
+        {
+          "line": 31,
+          "text": "\"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper-fold"
+          ]
+        },
+        {
+          "line": 34,
+          "text": "\"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;",
+          "comment": "The folded bottom lip, bright opening, and little heat source.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-fold"
+          ]
+        },
+        {
+          "line": 35,
+          "text": "\"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "mouth"
+          ]
+        },
+        {
+          "line": 36,
+          "text": "\"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "flame"
+          ]
+        },
+        {
+          "line": 47,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 40,
+          "rects": 36,
+          "ids": [
+            "lantern-copy",
+            "crown-copy",
+            "paper-copy",
+            "lit-fold-copy",
+            "left-seam-copy",
+            "right-seam-copy"
+          ]
+        }
+      ],
+      "knobs": [
+        "k0 L5:8 16 ->wall width",
+        "k1 L5:11 9 ->wall height",
+        "k2 L6:12 18 ->duration seconds",
+        "k3 L7:7 30 ->fps frames per second",
+        "k4 L8:14 0x07132d ->background colour",
+        "k5 L11:14 16 ->wh argument 1 of 2",
+        "k6 L11:17 9 ->wh argument 2 of 2",
+        "k7 L11:24 0x995c68 into ->fill via linear",
+        "k8 L11:33 0x222447 into ->fill via linear",
+        "k9 L11:42 0 into ->fill via linear",
+        "k10 L11:44 -0.5 into ->fill via linear",
+        "k11 L11:49 0 into ->fill via linear",
+        "k12 L11:51 0.5 into ->fill via linear",
+        "k13 L14:14 0.018 ->square",
+        "k14 L14:29 0x92aed1 into ->fill via solid",
+        "k15 L15:1 19 array",
+        "k16 L15:9 2.399 into ->x via * in the array body",
+        "k17 L15:21 7.5 into ->x via * in the array body",
+        "k18 L15:33 1.713 into ->y via * in the array body",
+        "k19 L15:45 3.8 into ->y via * in the array body",
+        "k20 L15:51 0.3 into ->y via + in the array body",
+        "k21 L15:63 0.25 into ->alpha via * in the array body",
+        "k22 L15:70 0.15 into ->alpha via + in the array body",
+        "k23 L19:6 0 keyframes before loop-time: time",
+        "k24 L19:8 -6 keyframes before loop-time: value",
+        "k25 L19:11 18 keyframes before loop-time: time",
+        "k26 L19:14 6 keyframes before loop-time: value",
+        "k27 L19:18 18 into ->y via loop-time",
+        "k28 L20:6 0 keyframes before ease-in-out: time",
+        "k29 L20:8 -0.18 keyframes before ease-in-out: value",
+        "k30 L20:14 3 keyframes before ease-in-out: time",
+        "k31 L20:16 0.18 keyframes before ease-in-out: value",
+        "k32 L20:21 6 keyframes before ease-in-out: time",
+        "k33 L20:23 -0.18 keyframes before ease-in-out: value",
+        "k34 L20:43 6 into ->x via loop-time",
+        "k35 L21:6 0 keyframes before ease-in-out: time",
+        "k36 L21:8 -0.045 keyframes before ease-in-out: value",
+        "k37 L21:15 3 keyframes before ease-in-out: time",
+        "k38 L21:17 0.045 keyframes before ease-in-out: value",
+        "k39 L21:23 6 keyframes before ease-in-out: time",
+        "k40 L21:25 -0.045 keyframes before ease-in-out: value",
+        "k41 L21:46 6 into ->rot via loop-time",
+        "k42 L24:16 0 ->xy argument 1 of 2",
+        "k43 L24:18 0.45 ->xy argument 2 of 2",
+        "k44 L24:28 0.55 ->wh argument 1 of 2",
+        "k45 L24:33 0.13 ->wh argument 2 of 2",
+        "k46 L24:43 0xe98230 into ->fill via solid",
+        "k47 L25:16 0.67 ->wh argument 1 of 2",
+        "k48 L25:21 0.88 ->wh argument 2 of 2",
+        "k49 L25:31 0xffb74d into ->fill via linear",
+        "k50 L25:40 0xdb6225 into ->fill via linear",
+        "k51 L25:49 0 into ->fill via linear",
+        "k52 L25:51 -0.5 into ->fill via linear",
+        "k53 L25:56 0 into ->fill via linear",
+        "k54 L25:58 0.5 into ->fill via linear",
+        "k55 L28:19 0 ->xy argument 1 of 2",
+        "k56 L28:21 -0.04 ->xy argument 2 of 2",
+        "k57 L28:32 0.43 ->wh argument 1 of 2",
+        "k58 L28:37 0.74 ->wh argument 2 of 2",
+        "k59 L28:47 0xffd57a into ->fill via linear",
+        "k60 L28:56 0xf08b35 into ->fill via linear",
+        "k61 L28:65 0 into ->fill via linear",
+        "k62 L28:67 -0.5 into ->fill via linear",
+        "k63 L28:72 0 into ->fill via linear",
+        "k64 L28:74 0.5 into ->fill via linear",
+        "k65 L29:20 -0.23 ->xy argument 1 of 2",
+        "k66 L29:26 0 ->xy argument 2 of 2",
+        "k67 L29:33 0.018 ->wh argument 1 of 2",
+        "k68 L29:39 0.83 ->wh argument 2 of 2",
+        "k69 L29:49 0xb74e22 into ->fill via solid",
+        "k70 L29:71 0.4 ->alpha",
+        "k71 L30:21 0.23 ->xy argument 1 of 2",
+        "k72 L30:26 0 ->xy argument 2 of 2",
+        "k73 L30:33 0.018 ->wh argument 1 of 2",
+        "k74 L30:39 0.83 ->wh argument 2 of 2",
+        "k75 L30:49 0xb74e22 into ->fill via solid",
+        "k76 L30:71 0.4 ->alpha",
+        "k77 L31:21 0.02 ->xy argument 1 of 2",
+        "k78 L31:26 0.02 ->xy argument 2 of 2",
+        "k79 L31:36 0.013 ->wh argument 1 of 2"
+      ],
+      "moreKnobs": 36,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "after": {
+    "revision": "r4-cd474f3c0916",
+    "facts": {
+      "revision": "r4-cd474f3c0916",
+      "parent": "r3-8b5b2a536c7b",
+      "description": "adopt variant dusk: Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion.",
+      "source": "# (asked) Paper lanterns drifting up a night sky, a few at a time,\n# swaying a little as they rise, warm orange against deep blue.\n# (chosen) An 18-second loop, five irregularly scattered lanterns with varied sizes and rise speeds.\n# (asked, refined) Natural starting places and gentle sway, not an orderly procession.\n->wall 16 9 meters\n->duration 18\n->fps 30\n->background 0x07132d\n\n# Blue-violet dusk fading into a dusty rose horizon.\n\"night\" rect 16 9 ->wh 0x995c68 0x222447 0 -0.5 0 0.5 linear ->fill ;\n\n# A sparse scattering of very faint distant stars.\n\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill\n19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;\n\n# The whole paper lantern sways as a unit; its rise wraps only outside the wall.\n\"lantern\" group\n  '( 0=-6 18=6 ) 18 loop-time ->y\n  '( 0=-0.18 3=0.18 6=-0.18 ) ease-in-out 6 loop-time ->x\n  '( 0=-0.045 3=0.045 6=-0.045 ) ease-in-out 6 loop-time ->rot\n\n  # Narrow crown and broad warm paper body.\n  \"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;\n  \"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;\n\n  # A luminous central fold with darker seams along the sides.\n  \"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;\n  \"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;\n\n  # The folded bottom lip, bright opening, and little heat source.\n  \"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;\n  \"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;\n  \"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;\nend\n\n# Deep copies keep the paper details together. Independent variations avoid a diagonal procession.\n# Rise durations vary, with a short offscreen pause so every path still loops cleanly at 18 s.\n\"lantern\" ->select\n5 '(\n  '( 0=-6 14=6 ) linear i 1.7 * sin 0.14 * 1.05 + time* 18 loop-time ->y\n  i 2.399 * sin 5.9 * 0 ->offset\n  i 2.63 * sin 0.18 * 0.85 + ->scale\n  i 1.71 * sin -6 * -8 + ->delay-all-time\n) array ;\n",
+      "liveSourceHash": "cd474f3c0916da94a434dfb76b43c0046d57a1d4023f86224f2caf64d82abf4c",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "personAt": {
+        "line": 36,
+        "text": "\"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+        "meaning": "the line the person's editor cursor is on; 'this', 'here' or 'that one' in their request usually means it"
+      },
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-72e434d058df",
+          "description": "Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night."
+        },
+        {
+          "id": "r3-8b5b2a536c7b",
+          "description": "Scatter lantern positions and launch phases; vary size and ascent speed while preserving gentle sway and the 18-second loop."
+        },
+        {
+          "id": "r4-cd474f3c0916",
+          "description": "adopt variant dusk: Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion."
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 18.0,
+        "fps": 30.0,
+        "background": "#07132d",
+        "rects": 65,
+        "groups": 5,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 65
+          },
+          {
+            "seconds": 6.0,
+            "visible": 43
+          },
+          {
+            "seconds": 12.0,
+            "visible": 44
+          },
+          {
+            "seconds": 17.982,
+            "visible": 65
+          }
+        ]
+      },
+      "warnings": null,
+      "lines": [
+        {
+          "line": 11,
+          "text": "\"night\" rect 16 9 ->wh 0x995c68 0x222447 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "Blue-violet dusk fading into a dusty rose horizon.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "night"
+          ]
+        },
+        {
+          "line": 14,
+          "text": "\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill",
+          "comment": "A sparse scattering of very faint distant stars.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "stars"
+          ]
+        },
+        {
+          "line": 15,
+          "text": "19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;",
+          "comment": null,
+          "nodes": 18,
+          "rects": 18,
+          "ids": [
+            "stars-copy",
+            "stars-copy-2",
+            "stars-copy-3",
+            "stars-copy-4",
+            "stars-copy-5",
+            "stars-copy-6"
+          ]
+        },
+        {
+          "line": 18,
+          "text": "\"lantern\" group",
+          "comment": "The whole paper lantern sways as a unit; its rise wraps only outside the wall.",
+          "nodes": 1,
+          "rects": 0,
+          "ids": [
+            "lantern"
+          ]
+        },
+        {
+          "line": 24,
+          "text": "\"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;",
+          "comment": "Narrow crown and broad warm paper body.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "crown"
+          ]
+        },
+        {
+          "line": 25,
+          "text": "\"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper"
+          ]
+        },
+        {
+          "line": 28,
+          "text": "\"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "A luminous central fold with darker seams along the sides.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lit-fold"
+          ]
+        },
+        {
+          "line": 29,
+          "text": "\"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "left-seam"
+          ]
+        },
+        {
+          "line": 30,
+          "text": "\"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "right-seam"
+          ]
+        },
+        {
+          "line": 31,
+          "text": "\"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper-fold"
+          ]
+        },
+        {
+          "line": 34,
+          "text": "\"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;",
+          "comment": "The folded bottom lip, bright opening, and little heat source.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-fold"
+          ]
+        },
+        {
+          "line": 35,
+          "text": "\"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "mouth"
+          ]
+        },
+        {
+          "line": 36,
+          "text": "\"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "flame"
+          ]
+        },
+        {
+          "line": 47,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 40,
+          "rects": 36,
+          "ids": [
+            "lantern-copy",
+            "crown-copy",
+            "paper-copy",
+            "lit-fold-copy",
+            "left-seam-copy",
+            "right-seam-copy"
+          ]
+        }
+      ],
+      "knobs": [
+        "k0 L5:8 16 ->wall width",
+        "k1 L5:11 9 ->wall height",
+        "k2 L6:12 18 ->duration seconds",
+        "k3 L7:7 30 ->fps frames per second",
+        "k4 L8:14 0x07132d ->background colour",
+        "k5 L11:14 16 ->wh argument 1 of 2",
+        "k6 L11:17 9 ->wh argument 2 of 2",
+        "k7 L11:24 0x995c68 into ->fill via linear",
+        "k8 L11:33 0x222447 into ->fill via linear",
+        "k9 L11:42 0 into ->fill via linear",
+        "k10 L11:44 -0.5 into ->fill via linear",
+        "k11 L11:49 0 into ->fill via linear",
+        "k12 L11:51 0.5 into ->fill via linear",
+        "k13 L14:14 0.018 ->square",
+        "k14 L14:29 0x92aed1 into ->fill via solid",
+        "k15 L15:1 19 array",
+        "k16 L15:9 2.399 into ->x via * in the array body",
+        "k17 L15:21 7.5 into ->x via * in the array body",
+        "k18 L15:33 1.713 into ->y via * in the array body",
+        "k19 L15:45 3.8 into ->y via * in the array body",
+        "k20 L15:51 0.3 into ->y via + in the array body",
+        "k21 L15:63 0.25 into ->alpha via * in the array body",
+        "k22 L15:70 0.15 into ->alpha via + in the array body",
+        "k23 L19:6 0 keyframes before loop-time: time",
+        "k24 L19:8 -6 keyframes before loop-time: value",
+        "k25 L19:11 18 keyframes before loop-time: time",
+        "k26 L19:14 6 keyframes before loop-time: value",
+        "k27 L19:18 18 into ->y via loop-time",
+        "k28 L20:6 0 keyframes before ease-in-out: time",
+        "k29 L20:8 -0.18 keyframes before ease-in-out: value",
+        "k30 L20:14 3 keyframes before ease-in-out: time",
+        "k31 L20:16 0.18 keyframes before ease-in-out: value",
+        "k32 L20:21 6 keyframes before ease-in-out: time",
+        "k33 L20:23 -0.18 keyframes before ease-in-out: value",
+        "k34 L20:43 6 into ->x via loop-time",
+        "k35 L21:6 0 keyframes before ease-in-out: time",
+        "k36 L21:8 -0.045 keyframes before ease-in-out: value",
+        "k37 L21:15 3 keyframes before ease-in-out: time",
+        "k38 L21:17 0.045 keyframes before ease-in-out: value",
+        "k39 L21:23 6 keyframes before ease-in-out: time",
+        "k40 L21:25 -0.045 keyframes before ease-in-out: value",
+        "k41 L21:46 6 into ->rot via loop-time",
+        "k42 L24:16 0 ->xy argument 1 of 2",
+        "k43 L24:18 0.45 ->xy argument 2 of 2",
+        "k44 L24:28 0.55 ->wh argument 1 of 2",
+        "k45 L24:33 0.13 ->wh argument 2 of 2",
+        "k46 L24:43 0xe98230 into ->fill via solid",
+        "k47 L25:16 0.67 ->wh argument 1 of 2",
+        "k48 L25:21 0.88 ->wh argument 2 of 2",
+        "k49 L25:31 0xffb74d into ->fill via linear",
+        "k50 L25:40 0xdb6225 into ->fill via linear",
+        "k51 L25:49 0 into ->fill via linear",
+        "k52 L25:51 -0.5 into ->fill via linear",
+        "k53 L25:56 0 into ->fill via linear",
+        "k54 L25:58 0.5 into ->fill via linear",
+        "k55 L28:19 0 ->xy argument 1 of 2",
+        "k56 L28:21 -0.04 ->xy argument 2 of 2",
+        "k57 L28:32 0.43 ->wh argument 1 of 2",
+        "k58 L28:37 0.74 ->wh argument 2 of 2",
+        "k59 L28:47 0xffd57a into ->fill via linear",
+        "k60 L28:56 0xf08b35 into ->fill via linear",
+        "k61 L28:65 0 into ->fill via linear",
+        "k62 L28:67 -0.5 into ->fill via linear",
+        "k63 L28:72 0 into ->fill via linear",
+        "k64 L28:74 0.5 into ->fill via linear",
+        "k65 L29:20 -0.23 ->xy argument 1 of 2",
+        "k66 L29:26 0 ->xy argument 2 of 2",
+        "k67 L29:33 0.018 ->wh argument 1 of 2",
+        "k68 L29:39 0.83 ->wh argument 2 of 2",
+        "k69 L29:49 0xb74e22 into ->fill via solid",
+        "k70 L29:71 0.4 ->alpha",
+        "k71 L30:21 0.23 ->xy argument 1 of 2",
+        "k72 L30:26 0 ->xy argument 2 of 2",
+        "k73 L30:33 0.018 ->wh argument 1 of 2",
+        "k74 L30:39 0.83 ->wh argument 2 of 2",
+        "k75 L30:49 0xb74e22 into ->fill via solid",
+        "k76 L30:71 0.4 ->alpha",
+        "k77 L31:21 0.02 ->xy argument 1 of 2",
+        "k78 L31:26 0.02 ->xy argument 2 of 2",
+        "k79 L31:36 0.013 ->wh argument 1 of 2"
+      ],
+      "moreKnobs": 36,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  }
+}

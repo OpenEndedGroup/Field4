@@ -27,8 +27,10 @@ import org.lwjgl.vulkan.VK10.VK_FILTER_NEAREST
 import org.lwjgl.vulkan.VK10.VK_FORMAT_R8G8B8A8_UNORM
 import afield.inMain
 import afield.isTrue
+import afield.notify
 import afield.logger.lprintln
 import afield.payload
+import afield.newRoot
 import afield.plugins
 import afield.rectsl.RectSLProblem
 import afield.rectsl.SceneProgram
@@ -39,7 +41,10 @@ import afield.runtime.applyRuntimeToggle
 import afield.runtime.isMainLanguage
 import afield.runtime.registerMainLanguageRuntime
 import afield.send
+import afield.stdlib.Action
 import afield.stdlib.BoxStudies
+import afield.stdlib.actions
+import afield.stdlib.LanguageRoots
 import afield.stdlib.begin
 import afield.thisSession
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -59,7 +64,8 @@ import java.util.concurrent.Executors
  *
  *  - compiles it and puts every problem on the line it belongs to, as you type;
  *  - draws it, live and looping, in the window above it — the first box up the parent chain that holds
- *    a running `renderer`, usually the root itself — following every edit that compiles until stopped;
+ *    a running `renderer`, usually the root itself, which opens one of its own when it holds no Kotlin
+ *    ([LanguageRoots]) — following every edit that compiles until stopped;
  *  - checks the scene in as a revision of the box's study (under `studies/<box id>/` in the document)
  *    and shows the study's card in the box's output.
  *
@@ -76,6 +82,9 @@ object RectSLPrograms {
     /** The main-language id, as `mainLanguage` stores it. */
     const val LANGUAGE = "rectsl"
 
+    /** Where the window a RectSL root opens for itself goes, and its size: a 16:9 wall at 960 by 540. */
+    val WINDOW = afield.Rect(80.0, 80.0, 960.0, 540.0)
+
     /** The open document [box] belongs to, or `null`. */
     fun sessionOf(box: Box): SessionInformation? = BoxStudies.documentOf(box)
 
@@ -89,6 +98,7 @@ object RectSLPrograms {
             (box.getPropertyRaw("_rectSLStudy", null) as? RectSLStudy)?.let { return it }
             val study = RectSLStudy(BoxStudies.directory(box), { box.getPropertyRaw(PROPERTY, "") as? String ?: "" }, BoxStudies.replacer(box, PROPERTY))
             study.rasterizer = RectSLGpuRasterizer({ rendererFor(box) })
+            study.editorLine = { BoxStudies.editorLine(box, PROPERTY) }
             study.resume()
             box.properties["_rectSLStudy"] = study
             return study
@@ -120,6 +130,9 @@ object RectSLPrograms {
         box.getPropertyRaw("_rectSLLive", null) as? RectSLLive ?: synchronized(box) {
             box.getPropertyRaw("_rectSLLive", null) as? RectSLLive ?: RectSLLive(box).also { box.properties["_rectSLLive"] = it }
         }
+
+    /** Run [box] as the editor's run does: draw it, follow its edits, and check it in. */
+    fun run(box: Box) = box.ke.executeAll(box, Execute(box.id, "run", 1, box.getPropertyRaw(PROPERTY, "") as? String ?: "", false, property = PROPERTY)) {}
 
     /** Whether a conversation focused on [box]'s [property] is about a RectSL scene. */
     fun isScene(box: Box, property: String): Boolean = property == PROPERTY
@@ -165,6 +178,18 @@ class RectSLLive internal constructor(private val box: Box) {
     @Volatile
     var preview: RectSLDrawable? = null
 
+    /** The rectangles to outline in the window: those the editor's line makes (see [RectSLWindowLinks]). */
+    @Volatile
+    var outlined: Set<String> = emptySet()
+
+    /** The scene the window is drawing, with the lines its rectangles came from, or null. */
+    @Volatile
+    var drawing: RectSLDrawable? = null
+        private set
+
+    /** Takes the click listener off the window it was put on. */
+    private var unlisten: (() -> Unit)? = null
+
     /**
      * The source the window above the box is drawing, or null — also when that window closed, changed,
      * or was resized since (so the next [present] rebuilds its target).
@@ -208,12 +233,13 @@ class RectSLLive internal constructor(private val box: Box) {
      */
     fun show(drawable: RectSLDrawable): String? = onMain {
         val r = RectSLPrograms.rendererFor(box) ?: return@onMain "no window: this box has no running renderer above it"
-        if (r !== renderer) { hideNow(); renderer = r }
+        if (r !== renderer) { hideNow(); renderer = r; listen(r) }
         val extent = extentOf(r) ?: return@onMain "no window: the renderer has no window to draw in"
         val fragment = RectSLStudyShader.fragment(drawable.materials)
         val current = pointer
         if (current != null && builtFragment == fragment && builtExtent == extent && current.current.valid && r.renderList.preTargets[name] === target) {
             scene = drawable.scene
+            drawing = drawable
             shown = drawable.source
             return@onMain null
         }
@@ -273,10 +299,15 @@ class RectSLLive internal constructor(private val box: Box) {
         mesh.push.bind("time") { frameTime.toFloat() }
         mesh.push.bind("wallWidth") { (scene ?: drawable.scene).wall.width.toFloat() }
         mesh.push.bind("wallHeight") { (scene ?: drawable.scene).wall.height.toFloat() }
+        // An outline a couple of the window's points wide, whatever the wall's units and the display's density.
+        val points = runCatching { r.window.size().w }.getOrNull()?.takeIf { it > 0 } ?: extent.first.toDouble()
         mesh.update["rectsl-frame"] = sequence {
             while (true) {
                 frameTime = time()
-                scene?.let { RectSLStudyShader.mesh(it, frameTime).writeTo(mesh) }
+                scene?.let {
+                    val point = RectSLStudyShader.visible(it, extent.first, extent.second)[2] / points
+                    RectSLStudyShader.mesh(it, frameTime, outlined, point).writeTo(mesh)
+                }
                 yield(Unit)
             }
         }
@@ -287,6 +318,7 @@ class RectSLLive internal constructor(private val box: Box) {
         r.renderList.modules["${name}-composite"] = composite!!
         pointer = fresh
         builtFragment = fragment
+        drawing = drawable
         shown = drawable.source
         previous?.takeIf { it !== fresh }?.let { old -> r.cleanup.add(Runnable { dispose(old) }) }
         null
@@ -300,7 +332,44 @@ class RectSLLive internal constructor(private val box: Box) {
 
     private fun hideNow() {
         renderer?.let { retire(it) }
+        // Forget the window too, so the next show listens to it again.
+        renderer = null
+        unlisten?.invoke(); unlisten = null
         shown = null
+        drawing = null
+        outlined = emptySet()
+    }
+
+    /**
+     * A click in [r]'s window puts the editor on the line that made the rectangle under it
+     * ([RectSLWindowLinks]); the listener goes when the scene leaves the window.
+     */
+    private fun listen(r: Renderer) {
+        unlisten?.invoke()
+        val window = runCatching { r.window }.getOrNull() ?: return
+        unlisten = window.addMouseButtonListener { button, action, _ ->
+            if (button != org.lwjgl.glfw.GLFW.GLFW_MOUSE_BUTTON_LEFT || action != org.lwjgl.glfw.GLFW.GLFW_PRESS) return@addMouseButtonListener
+            runCatching {
+                val size = window.size()
+                val at = window.cursor
+                pick(at.x.toDouble() / size.w, at.y.toDouble() / size.h, size.w / size.h)
+            }.onFailure { lprintln("warning,rectsl", "picking a rectangle in the window failed: $it") }
+        }
+    }
+
+    /**
+     * What a click at ([u], [v]) of the window does — `u` across from the left, `v` down from the top, both
+     * 0..1, in a window [aspect] wide for each unit high: find the topmost rectangle under it now and put the
+     * editor on the line that made it. Returns that line, or null when the click missed.
+     */
+    fun pick(u: Double, v: Double, aspect: Double): Int? {
+        val d = drawing ?: return null
+        if (u !in 0.0..1.0 || v !in 0.0..1.0) return null
+        val point = RectSLStudyShader.wallPoint(d.scene, (aspect * 1000).toInt(), 1000, u, v)
+        val hit = RectSLWindowLinks.hit(d.scene, time(), point.x, point.y) ?: return null
+        val line = d.origins[hit.id]?.line ?: return null
+        RectSLWindowLinks.reveal(box, line)
+        return line
     }
 
     /** Take the target, its pass and the scene module out of [r]'s frame and queue them for disposal. */
@@ -379,11 +448,17 @@ class RectSLExecution(val inside: Box) : BoxExecution {
         val trace = ExecutionTrace.forEngine(inside, execute, if (checkIn) "run" else "launch", reply)
         inMain {
             configureOutputProxies(inside, trace.reply, originSession)
+            // Starting a scene is what opens its window, when its root has none (see LanguageRoots).
+            val noWindow = LanguageRoots.ensure(inside, RectSLPrograms.LANGUAGE, "RectSL", RectSLPrograms.WINDOW)
             val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
             inside.runGeneration[strand] = generation
+            // Running as Field counts it, so what stops a box's dependents — a window's teardown — stops this scene too.
+            inside.currentRunningStates[strand] = afield.RunningState(generation, RectSLPrograms.LANGUAGE)
             send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand)))
             GlobalScope.launch(Dispatchers.Default) {
                 val live = RectSLPrograms.live(inside)
+                val startedAt = System.currentTimeMillis()
+                var toldNoWindow = noWindow == null
                 try {
                     var lastGood = compile(first, trace.reply, originSession)
                     val refused = live.present(lastGood)?.takeIf { !it.startsWith("no window") }
@@ -402,7 +477,11 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                     while (inside.runGeneration[strand] == generation) {
                         delay(FOLLOW_MS)
                         if (inside.runGeneration[strand] != generation) break
-                        val now = withContext(Runloop.runLoop.main) { inside.getPropertyRaw(RectSLPrograms.PROPERTY, "") as? String ?: "" }
+                        val (now, cursor) = withContext(Runloop.runLoop.main) {
+                            (inside.getPropertyRaw(RectSLPrograms.PROPERTY, "") as? String ?: "") to RectSLWindowLinks.cursorLine(inside)
+                        }
+                        // The editor's line, outlined in the window.
+                        live.outlined = live.drawing?.let { d -> cursor?.let { RectSLWindowLinks.idsForLine(d, it) } }.orEmpty()
                         if (now != last) {
                             last = now
                             changedAt = System.currentTimeMillis()
@@ -418,10 +497,16 @@ class RectSLExecution(val inside: Box) : BoxExecution {
                         }
                         // A card drawn before the window was up says the CPU drew it; redraw it once it is.
                         if (live.showing != null) (inside.getPropertyRaw("_rectSLViewer", null) as? RectSLStudyViewer)?.redrawIfDrawnWithoutWindow()
+                        // Say why there is no window — after a moment, since a root's own Kotlin may be opening one.
+                        else if (!toldNoWindow && System.currentTimeMillis() - startedAt > NO_WINDOW_GRACE_MS) {
+                            toldNoWindow = true
+                            notify("'${inside.name}': $noWindow", RectSLPrograms.LANGUAGE)
+                        }
                     }
                 } catch (e: Exception) {
                     lprintln("warning,rectsl", "running '${inside.name}' failed: $e")
                 } finally {
+                    if (inside.currentRunningStates[strand]?.watermark == generation) inside.currentRunningStates.remove(strand)
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 }
             }
@@ -433,7 +518,7 @@ class RectSLExecution(val inside: Box) : BoxExecution {
         val (drawable, problems) = try {
             val compiled = RectSLStudy.compile(source)
             val program = compiled.program
-            (if (compiled.ok && program != null) RectSLDrawable(source, program, compiled.materials) else null) to compiled.problems
+            (if (compiled.ok && program != null) RectSLDrawable(source, program, compiled.materials, compiled.origins) else null) to compiled.problems
         } catch (e: Exception) {
             null to listOf(RectSLProblem(e.message ?: "$e", null, null))
         }
@@ -467,6 +552,9 @@ class RectSLExecution(val inside: Box) : BoxExecution {
 
         /** How long an edit must stand before the card is rebuilt to show it. */
         const val SETTLE_MS = 1200L
+
+        /** How long a started scene waits for a window before saying why it has none. */
+        const val NO_WINDOW_GRACE_MS = 3000L
     }
 }
 
@@ -498,7 +586,7 @@ const val RECTSL_STARTER = """# A RectSL scene. The window above draws it, loopi
 ->wall 16 9 meters
 ->duration 6
 ->fps 30
-0x101014 ->background
+->background 0x101014
 
 "square" rect
   0 0 ->xy
@@ -507,6 +595,27 @@ const val RECTSL_STARTER = """# A RectSL scene. The window above draws it, loopi
   '( 0 0   6 6.28318 ) ->rot
 ;
 """
+
+/**
+ * "Make a RectSL Scene": the selected box becomes a scene beneath a RectSL root — a new one just above
+ * it, if it has none, which opens a window of its own — and starts playing. A selected root gets a new
+ * scene beneath it.
+ */
+@RunsAt(newRoot)
+fun installRectSLSceneAction(root: Box) {
+    root.actions["make-rectsl-scene"] = Action(
+        desc = "Make a RectSL Scene",
+        detail = "The selected box becomes a RectSL scene, playing live in a window of its own. Its AI4 chat gets tools that check, draw, compare and version it.",
+    ) { selection ->
+        inMain {
+            LanguageRoots.adopt(selection, RectSLPrograms.LANGUAGE, "RectSL window", "RectSL scene", RectSLPrograms.PROPERTY, RECTSL_STARTER).forEach { scene ->
+                scene.properties["_rectSLAutostarted"] = true
+                RectSLPrograms.run(scene)
+                notify("'${scene.name}' is a RectSL scene: edit it and watch the window, or describe what you want in its AI4 chat", RectSLPrograms.LANGUAGE)
+            }
+        }
+    }
+}
 
 /**
  * Give every child of a RectSL root a [RectSLExecution] that edits `rectSL`, and hand a child back to
@@ -530,7 +639,8 @@ fun rectSLTopologyNeedsUpdating(values: Collection<Box>) {
             // itself — once: attach is repeated on every graph change.
             if (child.autorun.isTrue() && child.getPropertyRaw("_rectSLAutostarted", null) != true) {
                 child.properties["_rectSLAutostarted"] = true
-                inMain { delay(AUTOSTART_DELAY_MS); child.begin() }
+                // Not over a run that started meanwhile — a run is what gives a box its language at once.
+                inMain { delay(AUTOSTART_DELAY_MS); if (child.currentRunningStates.isEmpty()) child.begin() }
             }
         },
         onDetach = { child -> runCatching { RectSLPrograms.live(child).hide() } },

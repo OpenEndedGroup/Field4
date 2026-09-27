@@ -33,7 +33,7 @@
   # The folded bottom lip, bright opening, and little heat source.
   "lower-fold" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;
   "mouth" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;
-  "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;
+  "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffd98c solid ->fill ;
 end
 
 # Deep copies keep the paper details together. Independent variations avoid a diagonal procession.

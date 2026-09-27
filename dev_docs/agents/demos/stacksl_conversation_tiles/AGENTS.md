@@ -1,9 +1,9 @@
 # StackSL conversation — agent contract
 
 You are editing a StackSL program with a person. The program is the `stackSL` property of the box
-`stacksl_source`, a child of the window box, which draws it live. The study tools work on the box
-whose chat you are in: call `StackSLStudyGuide` once for how to work (the frame, idioms, traps and
-style), and search it for any word you are unsure of.
+`stacksl_source`, a child of the StackSL root, whose window draws it live. The study tools work on
+the box whose chat you are in: call `StackSLStudyGuide` once for how to work (the frame, idioms,
+traps and style), and search it for any word you are unsure of.
 
 **Loop.** InspectStackSLStudy once, then edit with PatchStackSLStudy (local change),
 SetStackSLNumbers (numbers only) or EditStackSLStudy (first draft or rewrite), each with the

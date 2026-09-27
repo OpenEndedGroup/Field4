@@ -282,7 +282,7 @@ class StackSLStudyTest {
 
     @Test fun knobsReportWhichNumbersMatter() = withStudy("uv 5 * fbm\n0.5 0.5 0.5 1 vec4\n0.5 0.5 0.5 1 vec4\n1 1 1 1 vec4\n0 0.33 0.67 1 vec4\npalette saturate\n") { study, _ ->
         val rows = study.knobs().facts["knobs"] as List<*>
-        val alpha = rows.filterIsInstance<Map<*, *>>().filter { it["at"] == "2:13" }.single()
+        val alpha = rows.filterIsInstance<Map<*, *>>().filter { " L2:13 " in (it["knob"] as String) }.single()
         assertEquals(0.0, (alpha["sensitivity"] as Map<*, *>)["maxLevels"], "a palette operand's alpha does not reach the frame")
         val scale = rows.filterIsInstance<Map<*, *>>().first()
         assertTrue(((scale["sensitivity"] as Map<*, *>)["meanLevels"] as Double) > 0.5)

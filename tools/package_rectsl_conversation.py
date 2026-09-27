@@ -35,10 +35,10 @@ STARTER = "rectsl_conversation"
 CHAT_FILE = "rectsl_source_ai4_chat_history_.md"
 SCENE_FILE = "rectsl_source_rectSL_.rectsl"
 STUDY = "studies/rectsl_source"
-STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE, "rectsl_window_code_.kt")
+STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE)
 TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyTools.kt"
 # Screenshots of Field itself, taken by tools/capture_rectsl_conversation.py rather than built here.
-CAPTURED = ("card.png", "saved-chat.png", "window.png")
+CAPTURED = ("card.png", "saved-chat.png", "window.png", "outline.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")
 
 EXAMPLES = {
@@ -49,6 +49,7 @@ EXAMPLES = {
             "02-scatter": "A less orderly sky",
             "03-moods": "Three skies, motion untouched",
             "04-loop": "A seamless loop, shown",
+            "05-flame": "This one, warmer",
         },
         # Exports the session wrote into the document; the clip is shown on the page.
         "files": ("files/lanterns-seam-check-two-loops.mp4",),
@@ -108,6 +109,10 @@ def describe_action(action: dict) -> str:
                 "not checked in, so the study reported the editor as dirty.")
     if kind == "checkin":
         return f"Pressed Check in on the study card → `{after}` “{description}”"
+    if kind == "cursor":
+        return (f"Put the editor's cursor on line {action['line']}, `{action['text'].strip()}`. The window outlined "
+                "the rectangles that line makes; nothing was written, and the study stayed at "
+                f"`{after}`.")
     raise ValueError(f"Unknown person-side action {kind}")
 
 
@@ -211,6 +216,7 @@ def source_blocks() -> dict[str, str]:
         "starter": fence((DEMOS / STARTER / SCENE_FILE).read_text()),
         "lanterns-dusk": edit(lines_with(revision("lanterns", "r3"), *sky), lines_with(revision("lanterns", "r4"), *sky)),
         "tide-faster": edit(excerpt(revision("tide", "r4"), '"tide" rect', ") array ;"), excerpt(revision("tide", "r5"), '"tide" rect', ") array ;")),
+        "lanterns-flame": edit(lines_with(revision("lanterns", "r4"), '"flame" rect'), lines_with(revision("lanterns", "r5"), '"flame" rect')),
         "score-accent": edit(lines_with(revision("score", "r4"), 'linear-track "four-beats"'),
                              lines_with(revision("score", "r5"), 'linear-track "four-beats"')),
         "lanterns-final": folded(f"The complete scene · {heads['lanterns']}", finals["lanterns"]),
