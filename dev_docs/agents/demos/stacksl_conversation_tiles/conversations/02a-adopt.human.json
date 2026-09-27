@@ -1,0 +1,1619 @@
+{
+  "label": "02a-adopt",
+  "action": "adopt",
+  "surface": "shader card in Field's browser",
+  "clicked": true,
+  "values": [
+    "10 points"
+  ],
+  "revisionBefore": "r2-fd567658740f",
+  "revisionAfter": "r3-e4e25cfdb90a",
+  "dirtyAfter": false,
+  "before": {
+    "revision": "r2-fd567658740f",
+    "facts": {
+      "revision": "r2-fd567658740f",
+      "parent": "r1-4d2baeb1ffda",
+      "description": "Still zellige mosaic: eightfold cobalt rosettes, ivory tesserae and saffron accents",
+      "source": "# Still zellige: all geometry and glaze depend only on position.\n# Fold a point into one of eight mirrored wedges.\n: wedge\n  polar >pol\n  <pol y 0.392699 + 0.785398 mod 0.392699 - abs\n  <pol x swap vec2 cart\n;\n# Signed edge of an eight-point star, with straight ceramic edges.\n: star\n  wedge dup x swap y 1.45 * + 0.465 - 1.7614 /\n;\n# Octagonal distance for the central white medallion.\n: octagon\n  abs >a\n  <a x <a y max\n  <a x <a y + 0.707107 * max\n;\n# Four by four repeating rosettes.\nuv 4 * >grid\n<grid fract 0.5 - >q\n<q star >edge\n<q wedge >fold\n<q octagon 0.132 - >hub\n# Alternating cobalt facets, warm white ground, tiny saffron corner diamonds.\n[0.88,0.87,0.81,1] >ivory\n[0.018,0.055,0.30,1] [0.027,0.10,0.44,1]\n<q polar y 0.392699 + 0.785398 / floor 2 mod mix >cobalt\n<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix\n<ivory -0.0015 0.0015 <hub smoothstep 1- mix\n>ceramic\n# A small saffron diamond sits at each junction of four repeats.\n<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge\n<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <goldedge smoothstep 1- mix\n>ceramic\n# Saffron centre jewel, deliberately much smaller than the cobalt petals.\n<q abs x+y 0.045 - 0.707107 * >jewel\n<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <jewel smoothstep 1- mix\n>ceramic\n# Grout follows star edges, hub, centre jewels and the eight petal divisions.\n<edge abs <hub abs min <goldedge abs min <jewel abs min >joint\n<fold x 0.382683 * <fold y 0.92388 * - abs\n<hub 0.004 > * <hub 0.004 <= 1 * +\n<joint min >joint\n# Straight background joints end at the rosette and corner diamonds.\n<q abs dup x swap y max 0.5 swap -\n<edge 0.006 > * <edge 0.006 <= 1 * +\n<joint min >joint\n# Subtle static glaze variation; dark, narrow recessed mortar.\n<ceramic uv 95 * noise 0.045 * 0.955 + *\n>glaze\n[0.024,0.028,0.035,1] <glaze 0.003 0.005 <joint smoothstep mix\n",
+      "liveSourceHash": "fd567658740ffb900662d4945051173a2d1578f6ea753df17bee477f59c354ec",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-4d2baeb1ffda",
+          "description": "the starting program"
+        },
+        {
+          "id": "r2-fd567658740f",
+          "description": "Still zellige mosaic: eightfold cobalt rosettes, ivory tesserae and saffron accents"
+        }
+      ],
+      "otherRevisions": null,
+      "warnings": [],
+      "notes": [],
+      "definitions": [
+        {
+          "name": "wedge",
+          "finalDepth": 1,
+          "maxDepth": 2,
+          "pruned": 0
+        },
+        {
+          "name": "star",
+          "finalDepth": 1,
+          "maxDepth": 3,
+          "pruned": 0
+        },
+        {
+          "name": "octagon",
+          "finalDepth": 1,
+          "maxDepth": 3,
+          "pruned": 0
+        }
+      ],
+      "animated": false,
+      "nonFiniteFraction": 0.0,
+      "stages": [
+        {
+          "stage": 1,
+          "line": 19,
+          "text": "uv 4 * >grid",
+          "comment": null
+        },
+        {
+          "stage": 2,
+          "line": 20,
+          "text": "<grid fract 0.5 - >q",
+          "comment": null
+        },
+        {
+          "stage": 3,
+          "line": 21,
+          "text": "<q star >edge",
+          "comment": null
+        },
+        {
+          "stage": 4,
+          "line": 22,
+          "text": "<q wedge >fold",
+          "comment": null
+        },
+        {
+          "stage": 5,
+          "line": 23,
+          "text": "<q octagon 0.132 - >hub",
+          "comment": null
+        },
+        {
+          "stage": 6,
+          "line": 25,
+          "text": "[0.88,0.87,0.81,1] >ivory",
+          "comment": null
+        },
+        {
+          "stage": 7,
+          "line": 26,
+          "text": "[0.018,0.055,0.30,1] [0.027,0.10,0.44,1]",
+          "comment": null
+        },
+        {
+          "stage": 8,
+          "line": 27,
+          "text": "<q polar y 0.392699 + 0.785398 / floor 2 mod mix >cobalt",
+          "comment": null
+        },
+        {
+          "stage": 9,
+          "line": 28,
+          "text": "<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 10,
+          "line": 29,
+          "text": "<ivory -0.0015 0.0015 <hub smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 11,
+          "line": 30,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 12,
+          "line": 32,
+          "text": "<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge",
+          "comment": null
+        },
+        {
+          "stage": 13,
+          "line": 33,
+          "text": "<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <goldedge smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 14,
+          "line": 34,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 15,
+          "line": 36,
+          "text": "<q abs x+y 0.045 - 0.707107 * >jewel",
+          "comment": null
+        },
+        {
+          "stage": 16,
+          "line": 37,
+          "text": "<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <jewel smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 17,
+          "line": 38,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 18,
+          "line": 40,
+          "text": "<edge abs <hub abs min <goldedge abs min <jewel abs min >joint",
+          "comment": null
+        },
+        {
+          "stage": 19,
+          "line": 41,
+          "text": "<fold x 0.382683 * <fold y 0.92388 * - abs",
+          "comment": null
+        },
+        {
+          "stage": 20,
+          "line": 42,
+          "text": "<hub 0.004 > * <hub 0.004 <= 1 * +",
+          "comment": null
+        },
+        {
+          "stage": 21,
+          "line": 43,
+          "text": "<joint min >joint",
+          "comment": null
+        },
+        {
+          "stage": 22,
+          "line": 45,
+          "text": "<q abs dup x swap y max 0.5 swap -",
+          "comment": null
+        },
+        {
+          "stage": 23,
+          "line": 46,
+          "text": "<edge 0.006 > * <edge 0.006 <= 1 * +",
+          "comment": null
+        },
+        {
+          "stage": 24,
+          "line": 47,
+          "text": "<joint min >joint",
+          "comment": null
+        },
+        {
+          "stage": 25,
+          "line": 49,
+          "text": "<ceramic uv 95 * noise 0.045 * 0.955 + *",
+          "comment": null
+        },
+        {
+          "stage": 26,
+          "line": 50,
+          "text": ">glaze",
+          "comment": null
+        },
+        {
+          "stage": 27,
+          "line": 51,
+          "text": "[0.024,0.028,0.035,1] <glaze 0.003 0.005 <joint smoothstep mix",
+          "comment": null
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": 0.392699,
+          "word": "0.392699",
+          "at": "5:10",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 1,
+          "value": 0.785398,
+          "word": "0.785398",
+          "at": "5:21",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "mod"
+        },
+        {
+          "knob": 2,
+          "value": 0.392699,
+          "word": "0.392699",
+          "at": "5:34",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 3,
+          "value": 1.45,
+          "word": "1.45",
+          "at": "10:22",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 4,
+          "value": 0.465,
+          "word": "0.465",
+          "at": "10:31",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 5,
+          "value": 1.7614,
+          "word": "1.7614",
+          "at": "10:39",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "/"
+        },
+        {
+          "knob": 6,
+          "value": 0.707107,
+          "word": "0.707107",
+          "at": "16:15",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 7,
+          "value": 4.0,
+          "word": "4",
+          "at": "19:4",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 8,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "20:13",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 9,
+          "value": 0.132,
+          "word": "0.132",
+          "at": "23:12",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 10,
+          "value": 0.88,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "25:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 11,
+          "value": 0.87,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "25:7",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 12,
+          "value": 0.81,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "25:12",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 13,
+          "value": 1.0,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "25:17",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 14,
+          "value": 0.018,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "26:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 15,
+          "value": 0.055,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "26:8",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 16,
+          "value": 0.3,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "26:14",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 17,
+          "value": 1.0,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "26:19",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 18,
+          "value": 0.027,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "26:23",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 19,
+          "value": 0.1,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "26:29",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 20,
+          "value": 0.44,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "26:34",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 21,
+          "value": 1.0,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "26:39",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 22,
+          "value": 0.392699,
+          "word": "0.392699",
+          "at": "27:12",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 23,
+          "value": 0.785398,
+          "word": "0.785398",
+          "at": "27:23",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "/"
+        },
+        {
+          "knob": 24,
+          "value": 2.0,
+          "word": "2",
+          "at": "27:40",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "mod"
+        },
+        {
+          "knob": 25,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "28:16",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<edge"
+        },
+        {
+          "knob": 26,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "28:24",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<edge"
+        },
+        {
+          "knob": 27,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "29:8",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<hub"
+        },
+        {
+          "knob": 28,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "29:16",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<hub"
+        },
+        {
+          "knob": 29,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "32:8",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "swap"
+        },
+        {
+          "knob": 30,
+          "value": 0.105,
+          "word": "0.105",
+          "at": "32:23",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 31,
+          "value": 0.707107,
+          "word": "0.707107",
+          "at": "32:31",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 32,
+          "value": 0.86,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "33:11",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 33,
+          "value": 0.43,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "33:16",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 34,
+          "value": 0.035,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "33:21",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 35,
+          "value": 1.0,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "33:27",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 36,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "33:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<goldedge"
+        },
+        {
+          "knob": 37,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "33:38",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<goldedge"
+        },
+        {
+          "knob": 38,
+          "value": 0.045,
+          "word": "0.045",
+          "at": "36:12",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 39,
+          "value": 0.707107,
+          "word": "0.707107",
+          "at": "36:20",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 40,
+          "value": 0.86,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "37:11",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 41,
+          "value": 0.43,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "37:16",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 42,
+          "value": 0.035,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "37:21",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 43,
+          "value": 1.0,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "37:27",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 44,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "37:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<jewel"
+        },
+        {
+          "knob": 45,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "37:38",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<jewel"
+        },
+        {
+          "knob": 46,
+          "value": 0.382683,
+          "word": "0.382683",
+          "at": "41:9",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 47,
+          "value": 0.92388,
+          "word": "0.92388",
+          "at": "41:28",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 48,
+          "value": 0.004,
+          "word": "0.004",
+          "at": "42:6",
+          "occurrences": null,
+          "role": "number",
+          "feeds": ">"
+        },
+        {
+          "knob": 49,
+          "value": 0.004,
+          "word": "0.004",
+          "at": "42:21",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<="
+        },
+        {
+          "knob": 50,
+          "value": 1.0,
+          "word": "1",
+          "at": "42:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 51,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "45:25",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "swap"
+        },
+        {
+          "knob": 52,
+          "value": 0.006,
+          "word": "0.006",
+          "at": "46:7",
+          "occurrences": null,
+          "role": "number",
+          "feeds": ">"
+        },
+        {
+          "knob": 53,
+          "value": 0.006,
+          "word": "0.006",
+          "at": "46:23",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<="
+        },
+        {
+          "knob": 54,
+          "value": 1.0,
+          "word": "1",
+          "at": "46:32",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 55,
+          "value": 95.0,
+          "word": "95",
+          "at": "49:13",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 56,
+          "value": 0.045,
+          "word": "0.045",
+          "at": "49:24",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 57,
+          "value": 0.955,
+          "word": "0.955",
+          "at": "49:32",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 58,
+          "value": 0.024,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "51:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 59,
+          "value": 0.028,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "51:8",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 60,
+          "value": 0.035,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "51:14",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 61,
+          "value": 1.0,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "51:20",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 62,
+          "value": 0.003,
+          "word": "0.003",
+          "at": "51:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<joint"
+        },
+        {
+          "knob": 63,
+          "value": 0.005,
+          "word": "0.005",
+          "at": "51:36",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<joint"
+        }
+      ],
+      "pendingVariants": [
+        {
+          "label": "6 points",
+          "note": "Broader six-petal rosettes; same scale, palette and grout, with a matching hexagonal hub."
+        },
+        {
+          "label": "8 points",
+          "note": "The original eight-point mosaic, unchanged visually."
+        },
+        {
+          "label": "10 points",
+          "note": "Finer ten-petal rosettes; same scale, palette and grout, with a matching decagonal hub."
+        },
+        {
+          "label": "12 points",
+          "note": "Dense twelve-petal rosettes; same scale, palette and grout, with a matching twelve-sided hub."
+        }
+      ],
+      "exports": null,
+      "frame": "Square frame; the program is called as program(vec4(uv, hash, seconds)): uv runs 0..1 with y up, hash is a per-pixel value in 0..1, seconds is time. The top of the stack is the colour, clamped to 0..1; NaN draws black."
+    }
+  },
+  "after": {
+    "revision": "r3-e4e25cfdb90a",
+    "facts": {
+      "revision": "r3-e4e25cfdb90a",
+      "parent": "r2-fd567658740f",
+      "description": "adopt variant 10 points: Finer ten-petal rosettes; same scale, palette and grout, with a matching decagonal hub.",
+      "source": "# Still zellige: all geometry and glaze depend only on position.\n# Fold a point into one of ten mirrored wedges.\n: wedge\n  polar >pol\n  <pol y 0.314159265 + 0.628318531 mod 0.314159265 - abs\n  <pol x swap vec2 cart\n;\n# Ten-point star with the same tip and valley radii as the original.\n: star\n  wedge dup x swap y 1.707717 * + 0.465 - 1.707717 dup * 1 + sqrt /\n;\n# Ten-sided central white medallion.\n: medallion\n  wedge x\n;\n# Four by four repeating rosettes.\nuv 4 * >grid\n<grid fract 0.5 - >q\n<q star >edge\n<q wedge >fold\n<q medallion 0.132 - >hub\n# Alternating cobalt facets, warm white ground, tiny saffron corner diamonds.\n[0.88,0.87,0.81,1] >ivory\n[0.018,0.055,0.30,1] [0.027,0.10,0.44,1]\n<q polar y 0.314159265 + 0.628318531 / floor 2 mod mix >cobalt\n<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix\n<ivory -0.0015 0.0015 <hub smoothstep 1- mix\n>ceramic\n# A small saffron diamond sits at each junction of four repeats.\n<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge\n<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <goldedge smoothstep 1- mix\n>ceramic\n# Saffron centre jewel, deliberately much smaller than the cobalt petals.\n<q abs x+y 0.045 - 0.707107 * >jewel\n<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <jewel smoothstep 1- mix\n>ceramic\n# Grout follows star edges, hub, centre jewels and the ten petal divisions.\n<edge abs <hub abs min <goldedge abs min <jewel abs min >joint\n<fold x 0.309016994 * <fold y 0.951056516 * - abs\n<hub 0.004 > * <hub 0.004 <= 1 * +\n<joint min >joint\n# Straight background joints end at the rosette and corner diamonds.\n<q abs dup x swap y max 0.5 swap -\n<edge 0.006 > * <edge 0.006 <= 1 * +\n<joint min >joint\n# Subtle static glaze variation; dark, narrow recessed mortar.\n<ceramic uv 95 * noise 0.045 * 0.955 + *\n>glaze\n[0.024,0.028,0.035,1] <glaze 0.003 0.005 <joint smoothstep mix\n",
+      "liveSourceHash": "e4e25cfdb90a580c79ac05a571a8bf81c59f3aa492bb8a704e009e84e60dbe5d",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-4d2baeb1ffda",
+          "description": "the starting program"
+        },
+        {
+          "id": "r2-fd567658740f",
+          "description": "Still zellige mosaic: eightfold cobalt rosettes, ivory tesserae and saffron accents"
+        },
+        {
+          "id": "r3-e4e25cfdb90a",
+          "description": "adopt variant 10 points: Finer ten-petal rosettes; same scale, palette and grout, with a matching decagonal hub."
+        }
+      ],
+      "otherRevisions": null,
+      "warnings": [],
+      "notes": [],
+      "definitions": [
+        {
+          "name": "wedge",
+          "finalDepth": 1,
+          "maxDepth": 2,
+          "pruned": 0
+        },
+        {
+          "name": "star",
+          "finalDepth": 1,
+          "maxDepth": 3,
+          "pruned": 0
+        },
+        {
+          "name": "medallion",
+          "finalDepth": 1,
+          "maxDepth": 2,
+          "pruned": 0
+        }
+      ],
+      "animated": false,
+      "nonFiniteFraction": 0.0,
+      "stages": [
+        {
+          "stage": 1,
+          "line": 17,
+          "text": "uv 4 * >grid",
+          "comment": null
+        },
+        {
+          "stage": 2,
+          "line": 18,
+          "text": "<grid fract 0.5 - >q",
+          "comment": null
+        },
+        {
+          "stage": 3,
+          "line": 19,
+          "text": "<q star >edge",
+          "comment": null
+        },
+        {
+          "stage": 4,
+          "line": 20,
+          "text": "<q wedge >fold",
+          "comment": null
+        },
+        {
+          "stage": 5,
+          "line": 21,
+          "text": "<q medallion 0.132 - >hub",
+          "comment": null
+        },
+        {
+          "stage": 6,
+          "line": 23,
+          "text": "[0.88,0.87,0.81,1] >ivory",
+          "comment": null
+        },
+        {
+          "stage": 7,
+          "line": 24,
+          "text": "[0.018,0.055,0.30,1] [0.027,0.10,0.44,1]",
+          "comment": null
+        },
+        {
+          "stage": 8,
+          "line": 25,
+          "text": "<q polar y 0.314159265 + 0.628318531 / floor 2 mod mix >cobalt",
+          "comment": null
+        },
+        {
+          "stage": 9,
+          "line": 26,
+          "text": "<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 10,
+          "line": 27,
+          "text": "<ivory -0.0015 0.0015 <hub smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 11,
+          "line": 28,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 12,
+          "line": 30,
+          "text": "<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge",
+          "comment": null
+        },
+        {
+          "stage": 13,
+          "line": 31,
+          "text": "<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <goldedge smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 14,
+          "line": 32,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 15,
+          "line": 34,
+          "text": "<q abs x+y 0.045 - 0.707107 * >jewel",
+          "comment": null
+        },
+        {
+          "stage": 16,
+          "line": 35,
+          "text": "<ceramic [0.86,0.43,0.035,1] -0.0015 0.0015 <jewel smoothstep 1- mix",
+          "comment": null
+        },
+        {
+          "stage": 17,
+          "line": 36,
+          "text": ">ceramic",
+          "comment": null
+        },
+        {
+          "stage": 18,
+          "line": 38,
+          "text": "<edge abs <hub abs min <goldedge abs min <jewel abs min >joint",
+          "comment": null
+        },
+        {
+          "stage": 19,
+          "line": 39,
+          "text": "<fold x 0.309016994 * <fold y 0.951056516 * - abs",
+          "comment": null
+        },
+        {
+          "stage": 20,
+          "line": 40,
+          "text": "<hub 0.004 > * <hub 0.004 <= 1 * +",
+          "comment": null
+        },
+        {
+          "stage": 21,
+          "line": 41,
+          "text": "<joint min >joint",
+          "comment": null
+        },
+        {
+          "stage": 22,
+          "line": 43,
+          "text": "<q abs dup x swap y max 0.5 swap -",
+          "comment": null
+        },
+        {
+          "stage": 23,
+          "line": 44,
+          "text": "<edge 0.006 > * <edge 0.006 <= 1 * +",
+          "comment": null
+        },
+        {
+          "stage": 24,
+          "line": 45,
+          "text": "<joint min >joint",
+          "comment": null
+        },
+        {
+          "stage": 25,
+          "line": 47,
+          "text": "<ceramic uv 95 * noise 0.045 * 0.955 + *",
+          "comment": null
+        },
+        {
+          "stage": 26,
+          "line": 48,
+          "text": ">glaze",
+          "comment": null
+        },
+        {
+          "stage": 27,
+          "line": 49,
+          "text": "[0.024,0.028,0.035,1] <glaze 0.003 0.005 <joint smoothstep mix",
+          "comment": null
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": 0.314159265,
+          "word": "0.314159265",
+          "at": "5:10",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 1,
+          "value": 0.628318531,
+          "word": "0.628318531",
+          "at": "5:24",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "mod"
+        },
+        {
+          "knob": 2,
+          "value": 0.314159265,
+          "word": "0.314159265",
+          "at": "5:40",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 3,
+          "value": 1.707717,
+          "word": "1.707717",
+          "at": "10:22",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 4,
+          "value": 0.465,
+          "word": "0.465",
+          "at": "10:35",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 5,
+          "value": 1.707717,
+          "word": "1.707717",
+          "at": "10:43",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "dup"
+        },
+        {
+          "knob": 6,
+          "value": 1.0,
+          "word": "1",
+          "at": "10:58",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 7,
+          "value": 4.0,
+          "word": "4",
+          "at": "17:4",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 8,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "18:13",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 9,
+          "value": 0.132,
+          "word": "0.132",
+          "at": "21:14",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 10,
+          "value": 0.88,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "23:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 11,
+          "value": 0.87,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "23:7",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 12,
+          "value": 0.81,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "23:12",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 13,
+          "value": 1.0,
+          "word": "[0.88,0.87,0.81,1]",
+          "at": "23:17",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 14,
+          "value": 0.018,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "24:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 15,
+          "value": 0.055,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "24:8",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 16,
+          "value": 0.3,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "24:14",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 17,
+          "value": 1.0,
+          "word": "[0.018,0.055,0.30,1]",
+          "at": "24:19",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 18,
+          "value": 0.027,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "24:23",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 19,
+          "value": 0.1,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "24:29",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 20,
+          "value": 0.44,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "24:34",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 21,
+          "value": 1.0,
+          "word": "[0.027,0.10,0.44,1]",
+          "at": "24:39",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 22,
+          "value": 0.314159265,
+          "word": "0.314159265",
+          "at": "25:12",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 23,
+          "value": 0.628318531,
+          "word": "0.628318531",
+          "at": "25:26",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "/"
+        },
+        {
+          "knob": 24,
+          "value": 2.0,
+          "word": "2",
+          "at": "25:46",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "mod"
+        },
+        {
+          "knob": 25,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "26:16",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<edge"
+        },
+        {
+          "knob": 26,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "26:24",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<edge"
+        },
+        {
+          "knob": 27,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "27:8",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<hub"
+        },
+        {
+          "knob": 28,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "27:16",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<hub"
+        },
+        {
+          "knob": 29,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "30:8",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "swap"
+        },
+        {
+          "knob": 30,
+          "value": 0.105,
+          "word": "0.105",
+          "at": "30:23",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 31,
+          "value": 0.707107,
+          "word": "0.707107",
+          "at": "30:31",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 32,
+          "value": 0.86,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "31:11",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 33,
+          "value": 0.43,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "31:16",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 34,
+          "value": 0.035,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "31:21",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 35,
+          "value": 1.0,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "31:27",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 36,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "31:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<goldedge"
+        },
+        {
+          "knob": 37,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "31:38",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<goldedge"
+        },
+        {
+          "knob": 38,
+          "value": 0.045,
+          "word": "0.045",
+          "at": "34:12",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "-"
+        },
+        {
+          "knob": 39,
+          "value": 0.707107,
+          "word": "0.707107",
+          "at": "34:20",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 40,
+          "value": 0.86,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "35:11",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 41,
+          "value": 0.43,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "35:16",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 42,
+          "value": 0.035,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "35:21",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 43,
+          "value": 1.0,
+          "word": "[0.86,0.43,0.035,1]",
+          "at": "35:27",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 44,
+          "value": -0.0015,
+          "word": "-0.0015",
+          "at": "35:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<jewel"
+        },
+        {
+          "knob": 45,
+          "value": 0.0015,
+          "word": "0.0015",
+          "at": "35:38",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<jewel"
+        },
+        {
+          "knob": 46,
+          "value": 0.309016994,
+          "word": "0.309016994",
+          "at": "39:9",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 47,
+          "value": 0.951056516,
+          "word": "0.951056516",
+          "at": "39:31",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 48,
+          "value": 0.004,
+          "word": "0.004",
+          "at": "40:6",
+          "occurrences": null,
+          "role": "number",
+          "feeds": ">"
+        },
+        {
+          "knob": 49,
+          "value": 0.004,
+          "word": "0.004",
+          "at": "40:21",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<="
+        },
+        {
+          "knob": 50,
+          "value": 1.0,
+          "word": "1",
+          "at": "40:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 51,
+          "value": 0.5,
+          "word": "0.5",
+          "at": "43:25",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "swap"
+        },
+        {
+          "knob": 52,
+          "value": 0.006,
+          "word": "0.006",
+          "at": "44:7",
+          "occurrences": null,
+          "role": "number",
+          "feeds": ">"
+        },
+        {
+          "knob": 53,
+          "value": 0.006,
+          "word": "0.006",
+          "at": "44:23",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<="
+        },
+        {
+          "knob": 54,
+          "value": 1.0,
+          "word": "1",
+          "at": "44:32",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 55,
+          "value": 95.0,
+          "word": "95",
+          "at": "47:13",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 56,
+          "value": 0.045,
+          "word": "0.045",
+          "at": "47:24",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "*"
+        },
+        {
+          "knob": 57,
+          "value": 0.955,
+          "word": "0.955",
+          "at": "47:32",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "+"
+        },
+        {
+          "knob": 58,
+          "value": 0.024,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "49:2",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 59,
+          "value": 0.028,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "49:8",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 60,
+          "value": 0.035,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "49:14",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 61,
+          "value": 1.0,
+          "word": "[0.024,0.028,0.035,1]",
+          "at": "49:20",
+          "occurrences": null,
+          "role": "vec literal",
+          "feeds": null
+        },
+        {
+          "knob": 62,
+          "value": 0.003,
+          "word": "0.003",
+          "at": "49:30",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<joint"
+        },
+        {
+          "knob": 63,
+          "value": 0.005,
+          "word": "0.005",
+          "at": "49:36",
+          "occurrences": null,
+          "role": "number",
+          "feeds": "<joint"
+        }
+      ],
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Square frame; the program is called as program(vec4(uv, hash, seconds)): uv runs 0..1 with y up, hash is a per-pixel value in 0..1, seconds is time. The top of the stack is the colour, clamped to 0..1; NaN draws black."
+    }
+  }
+}

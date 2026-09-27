@@ -27,6 +27,7 @@ private val searchableProperties = listOf(
     "vertex",
     "fragment",
     "stackSL",
+    "rectSL",
     "vertex_fragment",
     "compute",
     "task",

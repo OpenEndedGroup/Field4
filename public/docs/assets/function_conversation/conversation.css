@@ -8,12 +8,15 @@ h1{font:400 clamp(1.7rem,4vw,2.5rem)/1.2 "Iosevka Web",Iosevka,monospace;color:#
 header p{color:#aaa;max-width:76ch}.chapters{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
 .chapters a{padding:4px 12px;border:1px solid #333;text-decoration:none}.chapters a[aria-current]{background:#ddd;color:#080808;border-color:#ddd}
 .turn{margin:32px 0}.turn.you{padding:20px 24px;background:#191919;border-left:2px solid #aaa}.role{margin-bottom:14px}
+.turn.person{padding:16px 24px;border:1px dashed #555;color:#bbb}.turn.person ul{margin:0;padding-left:20px}
 p{margin:12px 0}strong{color:#eee}pre,code{font:inherit}code{font-size:.9em;background:#222;padding:1px 4px;overflow-wrap:anywhere}
 pre{overflow:auto;padding:18px;background:#151515;border:1px solid #333}pre code{background:none;padding:0;white-space:pre-wrap}
 img{display:block;max-width:100%;height:auto;margin:18px auto;border:1px solid #333}a:has(img){display:block}
+figure{margin:28px 0}figcaption{color:#999;font-size:.85rem;text-align:center}
+figure.window img{max-width:min(100%,560px)}
 table{border-collapse:collapse;display:block;overflow:auto}td,th{padding:8px 12px;border:1px solid #333;text-align:left}
 .tool-run{margin:24px 0;border:1px solid #333;background:#111}.tool-run>summary{padding:12px 18px;color:#aaa}
 summary{cursor:pointer}.tool-run ol{padding:0 20px 8px 44px}.tool-run li{padding:8px 0;color:#aaa}.tool-run li summary{color:#ccc}
 .tool-run .body{font-size:.85rem;overflow-wrap:anywhere}.tool-run .body p{white-space:pre-wrap}
 footer{margin-top:48px;padding-top:24px;border-top:1px solid #333;display:flex;justify-content:space-between;gap:24px;font-size:.9rem}
-@media(max-width:600px){main{padding:20px 16px 48px}.turn.you{padding:14px}.top{flex-wrap:wrap}header{padding-top:28px}}
+@media(max-width:600px){main{padding:20px 16px 48px}.turn.you,.turn.person{padding:14px}.top{flex-wrap:wrap}header{padding-top:28px}}

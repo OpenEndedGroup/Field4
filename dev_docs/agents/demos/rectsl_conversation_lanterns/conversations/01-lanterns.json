@@ -1,0 +1,1011 @@
+{
+  "label": "01-lanterns",
+  "status": "completed",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "Paper lanterns drifting up a night sky, a few at a time, swaying a little as they rise, warm orange against deep blue.\n",
+  "elapsedSeconds": 56.093,
+  "before": {
+    "revision": "r1-ebfa39bf30b2",
+    "facts": {
+      "revision": "r1-ebfa39bf30b2",
+      "parent": null,
+      "description": "the starting scene",
+      "source": "# A blank wall, 16 by 9 metres, six seconds long. Describe what you want to see in this box's AI4 chat.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x14141a\n",
+      "liveSourceHash": "ebfa39bf30b201c9925517ef1300647619935fb7bf15f6c885826d7ed2673571",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#14141a",
+        "rects": 0,
+        "groups": 0,
+        "animated": false,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 0
+          },
+          {
+            "seconds": 2.0,
+            "visible": 0
+          },
+          {
+            "seconds": 4.0,
+            "visible": 0
+          },
+          {
+            "seconds": 5.994,
+            "visible": 0
+          }
+        ]
+      },
+      "warnings": [
+        "The scene has no rectangles: it draws only its background.",
+        "Mostly blank from 0.00 to 6.00 s."
+      ],
+      "lines": [],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "2:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "2:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "3:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "4:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x14141a",
+          "at": "5:14",
+          "role": "->background colour",
+          "colour": "#14141a"
+        }
+      ],
+      "moreKnobs": null,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "after": {
+    "revision": "r2-72e434d058df",
+    "facts": {
+      "revision": "r2-72e434d058df",
+      "parent": "r1-ebfa39bf30b2",
+      "description": "Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night.",
+      "source": "# (asked) Paper lanterns drifting up a night sky, a few at a time,\n# swaying a little as they rise, warm orange against deep blue.\n# (chosen) An 18-second loop, five staggered lanterns with folded paper and glowing mouths.\n->wall 16 9 meters\n->duration 18\n->fps 30\n->background 0x07132d\n\n# Blue air, lighter near the unseen horizon.\n\"night\" rect 16 9 ->wh 0x142d50 0x050d24 0 -0.5 0 0.5 linear ->fill ;\n\n# A sparse scattering of very faint distant stars.\n\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill\n19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;\n\n# The whole paper lantern sways as a unit; its rise wraps only outside the wall.\n\"lantern\" group\n  '( 0=-6 18=6 ) 18 loop-time ->y\n  '( 0=-0.18 3=0.18 6=-0.18 ) ease-in-out 6 loop-time ->x\n  '( 0=-0.045 3=0.045 6=-0.045 ) ease-in-out 6 loop-time ->rot\n\n  # Narrow crown and broad warm paper body.\n  \"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;\n  \"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;\n\n  # A luminous central fold with darker seams along the sides.\n  \"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;\n  \"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;\n  \"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;\n\n  # The folded bottom lip, bright opening, and little heat source.\n  \"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;\n  \"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;\n  \"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;\nend\n\n# Deep copies keep the paper details together. Vary size and stagger launches.\n\"lantern\" ->select\n5 '( i 2.7 * -5.4 + 0 ->offset i 1.9 * sin 0.22 * 0.86 + ->scale i -3.6 * -1.8 + ->delay-all-time ) array ;\n",
+      "liveSourceHash": "72e434d058df2168c52527523fd8b05356599fb93565a88846dd9a8de96309da",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-72e434d058df",
+          "description": "Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night."
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 18.0,
+        "fps": 30.0,
+        "background": "#07132d",
+        "rects": 65,
+        "groups": 5,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 47
+          },
+          {
+            "seconds": 6.0,
+            "visible": 55
+          },
+          {
+            "seconds": 12.0,
+            "visible": 53
+          },
+          {
+            "seconds": 17.982,
+            "visible": 47
+          }
+        ]
+      },
+      "warnings": [
+        "Heavy overlap (first at 0.00 s): night (line 10), stars (line 13), stars-copy (line 14), stars-copy-2 (line 14), \u2026."
+      ],
+      "lines": [
+        {
+          "line": 10,
+          "text": "\"night\" rect 16 9 ->wh 0x142d50 0x050d24 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "Blue air, lighter near the unseen horizon.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "night"
+          ]
+        },
+        {
+          "line": 13,
+          "text": "\"stars\" rect 0.018 ->square 0x92aed1 solid ->fill",
+          "comment": "A sparse scattering of very faint distant stars.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "stars"
+          ]
+        },
+        {
+          "line": 14,
+          "text": "19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;",
+          "comment": null,
+          "nodes": 18,
+          "rects": 18,
+          "ids": [
+            "stars-copy",
+            "stars-copy-2",
+            "stars-copy-3",
+            "stars-copy-4",
+            "stars-copy-5",
+            "stars-copy-6"
+          ]
+        },
+        {
+          "line": 17,
+          "text": "\"lantern\" group",
+          "comment": "The whole paper lantern sways as a unit; its rise wraps only outside the wall.",
+          "nodes": 1,
+          "rects": 0,
+          "ids": [
+            "lantern"
+          ]
+        },
+        {
+          "line": 23,
+          "text": "\"crown\" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;",
+          "comment": "Narrow crown and broad warm paper body.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "crown"
+          ]
+        },
+        {
+          "line": 24,
+          "text": "\"paper\" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper"
+          ]
+        },
+        {
+          "line": 27,
+          "text": "\"lit-fold\" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;",
+          "comment": "A luminous central fold with darker seams along the sides.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lit-fold"
+          ]
+        },
+        {
+          "line": 28,
+          "text": "\"left-seam\" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "left-seam"
+          ]
+        },
+        {
+          "line": 29,
+          "text": "\"right-seam\" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "right-seam"
+          ]
+        },
+        {
+          "line": 30,
+          "text": "\"paper-fold\" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "paper-fold"
+          ]
+        },
+        {
+          "line": 33,
+          "text": "\"lower-fold\" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;",
+          "comment": "The folded bottom lip, bright opening, and little heat source.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-fold"
+          ]
+        },
+        {
+          "line": 34,
+          "text": "\"mouth\" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "mouth"
+          ]
+        },
+        {
+          "line": 35,
+          "text": "\"flame\" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "flame"
+          ]
+        },
+        {
+          "line": 40,
+          "text": "5 '( i 2.7 * -5.4 + 0 ->offset i 1.9 * sin 0.22 * 0.86 + ->scale i -3.6 * -1.8 + ->delay-all-time ) array ;",
+          "comment": null,
+          "nodes": 40,
+          "rects": 36,
+          "ids": [
+            "lantern-copy",
+            "crown-copy",
+            "paper-copy",
+            "lit-fold-copy",
+            "left-seam-copy",
+            "right-seam-copy"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "4:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "4:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "18",
+          "at": "5:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "6:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x07132d",
+          "at": "7:14",
+          "role": "->background colour",
+          "colour": "#07132d"
+        },
+        {
+          "knob": 5,
+          "value": "16",
+          "at": "10:14",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "9",
+          "at": "10:17",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 7,
+          "value": "0x142d50",
+          "at": "10:24",
+          "role": "into ->fill via linear",
+          "colour": "#142d50"
+        },
+        {
+          "knob": 8,
+          "value": "0x050d24",
+          "at": "10:33",
+          "role": "into ->fill via linear",
+          "colour": "#050d24"
+        },
+        {
+          "knob": 9,
+          "value": "0",
+          "at": "10:42",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "-0.5",
+          "at": "10:44",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0",
+          "at": "10:49",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "0.5",
+          "at": "10:51",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "0.018",
+          "at": "13:14",
+          "role": "->square",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "0x92aed1",
+          "at": "13:29",
+          "role": "into ->fill via solid",
+          "colour": "#92aed1"
+        },
+        {
+          "knob": 15,
+          "value": "19",
+          "at": "14:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "2.399",
+          "at": "14:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "7.5",
+          "at": "14:21",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "1.713",
+          "at": "14:33",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "3.8",
+          "at": "14:45",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 20,
+          "value": "0.3",
+          "at": "14:51",
+          "role": "into ->y via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "0.25",
+          "at": "14:63",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 22,
+          "value": "0.15",
+          "at": "14:70",
+          "role": "into ->alpha via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 23,
+          "value": "0",
+          "at": "18:6",
+          "role": "= in the loop-time body",
+          "colour": null
+        },
+        {
+          "knob": 24,
+          "value": "-6",
+          "at": "18:8",
+          "role": "= argument 1 of 2 in the loop-time body",
+          "colour": null
+        },
+        {
+          "knob": 25,
+          "value": "18",
+          "at": "18:11",
+          "role": "= argument 2 of 2 in the loop-time body",
+          "colour": null
+        },
+        {
+          "knob": 26,
+          "value": "6",
+          "at": "18:14",
+          "role": "left on the stack in the loop-time body",
+          "colour": null
+        },
+        {
+          "knob": 27,
+          "value": "18",
+          "at": "18:18",
+          "role": "into ->y via loop-time",
+          "colour": null
+        },
+        {
+          "knob": 28,
+          "value": "0",
+          "at": "19:6",
+          "role": "= in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 29,
+          "value": "-0.18",
+          "at": "19:8",
+          "role": "= argument 1 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 30,
+          "value": "3",
+          "at": "19:14",
+          "role": "= argument 2 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 31,
+          "value": "0.18",
+          "at": "19:16",
+          "role": "= argument 1 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 32,
+          "value": "6",
+          "at": "19:21",
+          "role": "= argument 2 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 33,
+          "value": "-0.18",
+          "at": "19:23",
+          "role": "left on the stack in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 34,
+          "value": "6",
+          "at": "19:43",
+          "role": "into ->x via loop-time",
+          "colour": null
+        },
+        {
+          "knob": 35,
+          "value": "0",
+          "at": "20:6",
+          "role": "= in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 36,
+          "value": "-0.045",
+          "at": "20:8",
+          "role": "= argument 1 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 37,
+          "value": "3",
+          "at": "20:15",
+          "role": "= argument 2 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 38,
+          "value": "0.045",
+          "at": "20:17",
+          "role": "= argument 1 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 39,
+          "value": "6",
+          "at": "20:23",
+          "role": "= argument 2 of 2 in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 40,
+          "value": "-0.045",
+          "at": "20:25",
+          "role": "left on the stack in the ease-in-out body",
+          "colour": null
+        },
+        {
+          "knob": 41,
+          "value": "6",
+          "at": "20:46",
+          "role": "into ->rot via loop-time",
+          "colour": null
+        },
+        {
+          "knob": 42,
+          "value": "0",
+          "at": "23:16",
+          "role": "->xy argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 43,
+          "value": "0.45",
+          "at": "23:18",
+          "role": "->xy argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 44,
+          "value": "0.55",
+          "at": "23:28",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 45,
+          "value": "0.13",
+          "at": "23:33",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 46,
+          "value": "0xe98230",
+          "at": "23:43",
+          "role": "into ->fill via solid",
+          "colour": "#e98230"
+        },
+        {
+          "knob": 47,
+          "value": "0.67",
+          "at": "24:16",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 48,
+          "value": "0.88",
+          "at": "24:21",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 49,
+          "value": "0xffb74d",
+          "at": "24:31",
+          "role": "into ->fill via linear",
+          "colour": "#ffb74d"
+        },
+        {
+          "knob": 50,
+          "value": "0xdb6225",
+          "at": "24:40",
+          "role": "into ->fill via linear",
+          "colour": "#db6225"
+        },
+        {
+          "knob": 51,
+          "value": "0",
+          "at": "24:49",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 52,
+          "value": "-0.5",
+          "at": "24:51",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 53,
+          "value": "0",
+          "at": "24:56",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 54,
+          "value": "0.5",
+          "at": "24:58",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 55,
+          "value": "0",
+          "at": "27:19",
+          "role": "->xy argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 56,
+          "value": "-0.04",
+          "at": "27:21",
+          "role": "->xy argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 57,
+          "value": "0.43",
+          "at": "27:32",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 58,
+          "value": "0.74",
+          "at": "27:37",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 59,
+          "value": "0xffd57a",
+          "at": "27:47",
+          "role": "into ->fill via linear",
+          "colour": "#ffd57a"
+        },
+        {
+          "knob": 60,
+          "value": "0xf08b35",
+          "at": "27:56",
+          "role": "into ->fill via linear",
+          "colour": "#f08b35"
+        },
+        {
+          "knob": 61,
+          "value": "0",
+          "at": "27:65",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 62,
+          "value": "-0.5",
+          "at": "27:67",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 63,
+          "value": "0",
+          "at": "27:72",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 64,
+          "value": "0.5",
+          "at": "27:74",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 65,
+          "value": "-0.23",
+          "at": "28:20",
+          "role": "->xy argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 66,
+          "value": "0",
+          "at": "28:26",
+          "role": "->xy argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 67,
+          "value": "0.018",
+          "at": "28:33",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 68,
+          "value": "0.83",
+          "at": "28:39",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 69,
+          "value": "0xb74e22",
+          "at": "28:49",
+          "role": "into ->fill via solid",
+          "colour": "#b74e22"
+        },
+        {
+          "knob": 70,
+          "value": "0.4",
+          "at": "28:71",
+          "role": "->alpha",
+          "colour": null
+        },
+        {
+          "knob": 71,
+          "value": "0.23",
+          "at": "29:21",
+          "role": "->xy argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 72,
+          "value": "0",
+          "at": "29:26",
+          "role": "->xy argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 73,
+          "value": "0.018",
+          "at": "29:33",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 74,
+          "value": "0.83",
+          "at": "29:39",
+          "role": "->wh argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 75,
+          "value": "0xb74e22",
+          "at": "29:49",
+          "role": "into ->fill via solid",
+          "colour": "#b74e22"
+        },
+        {
+          "knob": 76,
+          "value": "0.4",
+          "at": "29:71",
+          "role": "->alpha",
+          "colour": null
+        },
+        {
+          "knob": 77,
+          "value": "0.02",
+          "at": "30:21",
+          "role": "->xy argument 1 of 2",
+          "colour": null
+        },
+        {
+          "knob": 78,
+          "value": "0.02",
+          "at": "30:26",
+          "role": "->xy argument 2 of 2",
+          "colour": null
+        },
+        {
+          "knob": 79,
+          "value": "0.013",
+          "at": "30:36",
+          "role": "->wh argument 1 of 2",
+          "colour": null
+        }
+      ],
+      "moreKnobs": 27,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "panel": {
+    "uid": "rectsl_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nPaper lanterns drifting up a night sky, a few at a time, swaying a little as they rise, warm orange against deep blue.\n<<progress>>\nStarting AI conversation\n<<progress>>\nRectSLStudyGuide finished (4 ms)\n<<progress>>\nInspectRectSLStudy finished (2 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (155 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nTransforming syntax for looping\n**Transforming syntax for looping**\n\nI'm thinking that I need to focus on the syntax for group transformations during the looping phase. There must be a structured way to implement this, as it seems crucial for ensuring that each iteration runs smoothly. I'm looking to clarify these transformations to debug effectively. It feels important to address this so that I can streamline the process and improve overall performance. Let's break it down step by step to make sure it's all clear!\n\nNext tool: `RectSLStudyGuide`\n<<progress>>\nRectSLStudyGuide finished (2 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nExploring loop mapping and delays\n**Exploring loop mapping and delays**\n\nI'm trying to figure out if I can loop a 16-second rise phase across five groups, respecting potential negative delays in the loop mapping. I\u2019m considering using explicit group x and tracks y, with a loop phase managed by delay time after the loop. The simplest setup seems to be an 18-second group template that rises from -6 to 6, incorporating negative delays per copy. I also want to think about scaling and linear adjustments.\n\nNext tool: `RectSLStudyGuide`\n<<progress>>\nRectSLStudyGuide finished (2 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nPlanning design elements\n**Planning design elements**\n\nI'm working on a design project and need to allocate my time carefully to create basic yet stylized detailed rectangles. I want to form a group using a main amber color with specific values like .65 and .93 for the hue. For shoulders, I'll go for .55 and .12 at the top, and I plan to incorporate a bright gradient inset as well. The ribs should be slim with some opacity, and I need to ensure the opening measures .38 by .075 for the flame effect.\n\nNext tool: `RectSLStudyGuide`\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nEditRectSLStudy finished (954 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (550 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/cabeecbcd5fa30e101ec.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r2-72e434d058df: frames at 0.00, 4.00, 8.00, 12.0 s_\n\n![tool image](images/07550df2d80f9b561dd6.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/ae68409c3cd4d6b72b2c.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nImplemented and verified. The live view shows three warm orange lanterns with bright lower openings and subtle paper folds against a deep-blue, faintly starred sky.\n\nThey rise in staggered succession with gentle sway and tilt, keeping only a few visible at once. The scene runs as an 18-second loop; compilation and visual checks passed."
+  },
+  "notices": [
+    "AI4: [info,ai.bridge] Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)",
+    "Initializing AI support v4",
+    "Initiating AI Conversation",
+    "AI4: [info,ai.bridge] startThread(): fileKey=afield://rectsl_conversation_lanterns/rectsl_source/rectSL",
+    "AI4: [info,ai.bridge] startThread(): conversationId=conv_6ab84bca3098819798470b118cd0159c090fe87ea023ffaf localThreadId=390ef615-84eb-43f7-8fe5-b518a3638093 (2142ms)",
+    "AI4: [info,ai.chat] chatGeneral(): lang=RectSL codeChars=167 attachments=3 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab84bca3098819798470b118cd0159c090fe87ea023ffaf fileKey=afield://rectsl_conversation_lanterns/rectsl_source/rectSL inputChars=15235 maxOutputTokens=10000 attachments=3 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-26T224843-735140Z-a52db9ac.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "saved file at <<timeago:1790462926207>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bcc3240819793cfba2de64bbbb6 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_090fe87ea023ffaf006ab84bcc3240819793cfba2de64bbbb6 outputItems=1 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_Xv8CSDGwDzZmKmLDEhsEIxVl {\"search\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 7751 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bce844c81979ec4e93b1f59ff46 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bce844c81979ec4e93b1f59ff46 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectRectSLStudy callId=call_SuQg0W9HDXEBWGE3NZScGqF8 {\"revision\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectRectSLStudy r1-ebfa39bf30b2 revision, parent, description, source, liveSourceHash, dirty, liveSource, liveCheck, history, otherRevisions, scene, warnings, lines, knobs, moreKn...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bd05eac8197a7ad70ed48f8e1f8 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bd05eac8197a7ad70ed48f8e1f8 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_yDEUlazpiUxu7BlHrZYBFrY9 {\"note\":\"Starting blank wall before adding drifting lanterns.\",\"settleMs\":0,\"target\":\"\",\"uid\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=0 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 32 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462931278>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bd30a688197b084a8cf1eb54b37 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bd30a688197b084a8cf1eb54b37 outputItems=3",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 4/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_wIlgle6dKFSmwxozDR0I1i8n {\"search\":\"group\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 3168 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462936358>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bd6c4f08197b3cf922193435007 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bd6c4f08197b3cf922193435007 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 5/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_92NpYrNbGxUZM0BpPnZ5KrJ1 {\"search\":\"time\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 8515 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462941419>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bd935608197b4f74cd56dbd235e status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bd935608197b4f74cd56dbd235e outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null summary=**Exploring loop mapping and delays** I'm trying to figure out if I can loop a 16-second rise phase across five groups, respecting potential negative delays in ...",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 6/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_ICK2yahjUkZz40AfRjdalpjC {\"search\":\"->offset\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 1245 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bdf27d881978d1efa37d2863979 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bdf27d881978d1efa37d2863979 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 7/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_Hqe69QADYQYd8Hb0SjFwdS89 {\"search\":\"linear\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 2581 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462946473>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84be10cec8197b0710d6041d17901 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84be10cec8197b0710d6041d17901 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 8/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_sGX9IaO2j7z4u3gMbfrSd6gy {\"search\":\"material\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 1666 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462951556>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84be3cfe4819791e67ca41e24a70f status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84be3cfe4819791e67ca41e24a70f outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null summary=**Planning design elements** I'm working on a design project and need to allocate my time carefully to create basic yet stylized detailed rectangles. I want to ...",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 9/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_UQHXF9Q12YkykG5Jy9NezCnk {\"search\":\"->scale\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 879 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462956630>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84be87c4081978d1a4236fc320b69 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84be87c4081978d1a4236fc320b69 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=EditRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 10/24)",
+    "AI4: [info,ai.bridge] tool: name=EditRectSLStudy callId=call_1DItqWLBie6Yzndgh7I0Fcoe {\"description\":\"Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night.\",\"expectedRevision\":\"r1-ebfa...",
+    "AI4: [info,ai.bridge] tool: result name=EditRectSLStudy r2-72e434d058df Compiled, checked and activated images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462971866>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bf971bc819792cad1195fd2c534 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bf971bc819792cad1195fd2c534 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 11/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_ucWHrqwmqNXcjNsrOkHWQvqQ {\"note\":\"Verify warm orange paper lanterns, sparse spacing, folded details, and deep-blue sky in the live window.\",\"settleMs\"...",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=500 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 40 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790462976931>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_090fe87ea023ffaf006ab84bfd26d0819785b0edb331871eca status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_090fe87ea023ffaf006ab84bfd26d0819785b0edb331871eca outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_090fe87ea023ffaf006ab84bfd26d0819785b0edb331871eca textChars=337 commentaryCount=0 (53439ms)",
+    "Finished AI conversation"
+  ]
+}

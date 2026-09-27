@@ -1,0 +1,1 @@
+A visual score in the spirit of Oskar Fischinger: rows of vertical rectangles that pulse on a steady beat at 120 beats a minute, four beats to a bar, with the first beat of each bar stronger. A black ground, cream and vermilion.

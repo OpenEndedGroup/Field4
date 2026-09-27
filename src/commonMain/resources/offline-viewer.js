@@ -407,7 +407,7 @@ function showEditorForBox(box) {
     const container = document.getElementById('editor-container');
     const props = box.properties || {};
 
-    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_fragment', 'vertex_s', 'fragment', 'stackSL', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s', 'raygen', 'raygen_s', 'miss', 'miss_s', 'closesthit', 'closesthit_s', 'anyhit', 'anyhit_s', 'intersection', 'intersection_s', 'callable', 'callable_s'];
+    const editablePropsOrder = ['code', 'glsl', 'python', 'clojure', 'javascript', 'vertex', 'vertex_fragment', 'vertex_s', 'fragment', 'stackSL', 'rectSL', 'fragment_s', 'task', 'task_s', 'mesh', 'mesh_s', 'compute', 'compute_s', 'raygen', 'raygen_s', 'miss', 'miss_s', 'closesthit', 'closesthit_s', 'anyhit', 'anyhit_s', 'intersection', 'intersection_s', 'callable', 'callable_s'];
 
     // Get list of properties that contain code
     const codeProperties = editablePropsOrder.filter(key => typeof props[key] === 'string');
@@ -493,6 +493,7 @@ function getLanguageForProperty(property) {
         'vertex_s': 'cpp',
         'fragment': 'cpp',
         'stackSL': 'stacksl',
+        'rectSL': 'rectsl',
         'fragment_s': 'cpp',
         'task': 'cpp',
         'task_s': 'cpp',

@@ -53,7 +53,8 @@ internal object Ai4AutoBoxNamer {
         "anyhit_s",
         "intersection_s",
         "callable_s",
-        "stackSL"
+        "stackSL",
+        "rectSL"
     )
     private val mapper = jacksonObjectMapper().registerModule(KotlinModule.Builder().build())
     private val inFlightDocuments = ConcurrentHashMap.newKeySet<String>()

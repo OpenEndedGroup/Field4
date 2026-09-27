@@ -60,6 +60,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        focus: ToolFocus? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -87,7 +88,8 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = documentGuides,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            focus = focus
         )
 
         val instructions = buildDynamicInstructions(
@@ -149,6 +151,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        focus: ToolFocus? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -179,7 +182,8 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = documentGuides,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            focus = focus
         )
 
         val instructions = buildDynamicInstructions(
@@ -242,6 +246,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        focus: ToolFocus? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -269,7 +274,8 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = documentGuides,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            focus = focus
         )
 
         val instructions = buildDynamicInstructions(
@@ -334,6 +340,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        focus: ToolFocus? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -361,7 +368,8 @@ class IdeChatHelpers(
             semanticRetrievalRebuild = semanticRetrievalRebuild,
             agentMemory = agentMemory,
             documentGuides = documentGuides,
-            workspaceSymbolSearch = workspaceSymbolSearch
+            workspaceSymbolSearch = workspaceSymbolSearch,
+            focus = focus
         )
 
         val instructions = buildDynamicInstructions(

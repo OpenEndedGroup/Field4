@@ -1,0 +1,1496 @@
+{
+  "label": "03-faster",
+  "status": "completed",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "Make the wave twice as fast, but leave the moon and its shimmer exactly as they are \u2014 and show me they didn't change.\n",
+  "elapsedSeconds": 44.052,
+  "before": {
+    "revision": "r4-c3c9527402fc",
+    "facts": {
+      "revision": "r4-c3c9527402fc",
+      "parent": "r3-b9a2b7cda376",
+      "description": "numbers set by hand: k22 1.3\u21921.8",
+      "source": "# asked: tall thin bars across the wall, a tide travelling left to right;\n# deep sea colours, darker towards the bottom.\n# chosen: 80 bottom-anchored bars, one broad rolling wave, seamless six-second tide.\n# added: a slowly rising moon on the right, with broken shimmering light below.\n# The moon and reflection fade at the loop seam so the rise can begin again.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x030c16\n\n# A round moon made from fine horizontal slices, behind the tide.\nlinear-track \"moon-rise\" '( 0=2.45 6=3.55 )\nlinear-track \"moon-visibility\" '( 0=0 0.8=1 4.9=1 6=0 )\n\"moon\" rect\n  5.3 ->x\n  0.022 ->h\n  0xd9e9dc solid ->fill\n  \"moon-visibility\" track-ref ->alpha\n  64 '(\n    fc dup * 1 swap - sqrt 1.8 * ->w\n    \"moon-rise\" track-ref fc 0.65 * + ->y\n  ) array ;\n\n# The tide: each bar rises and falls, its foot held at the bottom of the wall.\n# Subtracting the horizontal phase makes the crest travel to the right.\n\"tide\" rect\n  0.135 ->w\n  0x031322 0x167c89  0 -0.5  0 0.5 linear ->fill\n  80 '(\n    fc 7.9 * ->x\n    '( 0=0 6=6.28318530718 ) linear\n    f tau * - sin 2.0 * 5.9 +\n    dup ->h\n    0.5 * 4.5 - ->y\n  ) array ;\n\n# Broken moonlight follows the local water height and spreads towards the viewer.\n# Each small horizontal ripple varies independently in width, offset and brightness.\n\"moon-shimmer\" rect\n  0.038 ->h\n  0xa0cece solid ->fill\n  30 '(\n    '( 0=0 6=25.13274122872 ) linear i 2.37 * + sin\n    0.11 * 5.3 + ->x\n    '( 0=0 6=6.28318530718 ) linear\n    5.24925861106 - sin 2 * 1.4 +\n    4.0 + 1 f - * 4.5 - ->y\n    '( 0=0 6=25.13274122872 ) linear i 1.73 * + sin\n    0.16 * 0.8 + f 1.2 * 0.35 + * ->w\n    '( 0=0 6=25.13274122872 ) linear i 2.13 * + sin\n    0.22 * 0.48 + 1 f 0.65 * - *\n    \"moon-visibility\" track-ref * ->alpha\n  ) array ;\n",
+      "liveSourceHash": "c3c9527402fc5424d352579e7799b13da0783659090be188411cbc893360f315",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-be7239fd9faa",
+          "description": "A full-width tide of slender deep-sea bars with a rightward travelling crest"
+        },
+        {
+          "id": "r3-b9a2b7cda376",
+          "description": "Add a slowly rising right-hand moon and shimmering silver-blue reflection"
+        },
+        {
+          "id": "r4-c3c9527402fc",
+          "description": "numbers set by hand: k22 1.3\u21921.8"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#030c16",
+        "rects": 174,
+        "groups": 0,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 80
+          },
+          {
+            "seconds": 2.0,
+            "visible": 174
+          },
+          {
+            "seconds": 4.0,
+            "visible": 174
+          },
+          {
+            "seconds": 5.994,
+            "visible": 80
+          }
+        ]
+      },
+      "warnings": [
+        "Heavy overlap (first at 0.067 s): moon-copy (line 22), moon-copy-2 (line 22), tide-copy-65 (line 35), tide-copy-66 (line 35), \u2026."
+      ],
+      "lines": [
+        {
+          "line": 14,
+          "text": "\"moon\" rect",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "moon"
+          ]
+        },
+        {
+          "line": 22,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 63,
+          "rects": 63,
+          "ids": [
+            "moon-copy",
+            "moon-copy-2",
+            "moon-copy-3",
+            "moon-copy-4",
+            "moon-copy-5",
+            "moon-copy-6"
+          ]
+        },
+        {
+          "line": 26,
+          "text": "\"tide\" rect",
+          "comment": "Subtracting the horizontal phase makes the crest travel to the right.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "tide"
+          ]
+        },
+        {
+          "line": 35,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 79,
+          "rects": 79,
+          "ids": [
+            "tide-copy",
+            "tide-copy-2",
+            "tide-copy-3",
+            "tide-copy-4",
+            "tide-copy-5",
+            "tide-copy-6"
+          ]
+        },
+        {
+          "line": 39,
+          "text": "\"moon-shimmer\" rect",
+          "comment": "Each small horizontal ripple varies independently in width, offset and brightness.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "moon-shimmer"
+          ]
+        },
+        {
+          "line": 53,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 29,
+          "rects": 29,
+          "ids": [
+            "moon-shimmer-copy",
+            "moon-shimmer-copy-2",
+            "moon-shimmer-copy-3",
+            "moon-shimmer-copy-4",
+            "moon-shimmer-copy-5",
+            "moon-shimmer-copy-6"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "6:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "6:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "7:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "8:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x030c16",
+          "at": "9:14",
+          "role": "->background colour",
+          "colour": "#030c16"
+        },
+        {
+          "knob": 5,
+          "value": "0",
+          "at": "12:29",
+          "role": "keyframes of track moon-rise: time",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "2.45",
+          "at": "12:31",
+          "role": "keyframes of track moon-rise: value",
+          "colour": null
+        },
+        {
+          "knob": 7,
+          "value": "6",
+          "at": "12:36",
+          "role": "keyframes of track moon-rise: time",
+          "colour": null
+        },
+        {
+          "knob": 8,
+          "value": "3.55",
+          "at": "12:38",
+          "role": "keyframes of track moon-rise: value",
+          "colour": null
+        },
+        {
+          "knob": 9,
+          "value": "0",
+          "at": "13:35",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "0",
+          "at": "13:37",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0.8",
+          "at": "13:39",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "1",
+          "at": "13:43",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "4.9",
+          "at": "13:45",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "1",
+          "at": "13:49",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 15,
+          "value": "6",
+          "at": "13:51",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "0",
+          "at": "13:53",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "5.3",
+          "at": "15:3",
+          "role": "->x",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "0.022",
+          "at": "16:3",
+          "role": "->h",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "0xd9e9dc",
+          "at": "17:3",
+          "role": "into ->fill via solid",
+          "colour": "#d9e9dc"
+        },
+        {
+          "knob": 20,
+          "value": "64",
+          "at": "19:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "1",
+          "at": "20:14",
+          "role": "into ->w via swap in the array body",
+          "colour": null
+        },
+        {
+          "knob": 22,
+          "value": "1.8",
+          "at": "20:28",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 23,
+          "value": "0.65",
+          "at": "21:30",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 24,
+          "value": "0.135",
+          "at": "27:3",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 25,
+          "value": "0x031322",
+          "at": "28:3",
+          "role": "into ->fill via linear",
+          "colour": "#031322"
+        },
+        {
+          "knob": 26,
+          "value": "0x167c89",
+          "at": "28:12",
+          "role": "into ->fill via linear",
+          "colour": "#167c89"
+        },
+        {
+          "knob": 27,
+          "value": "0",
+          "at": "28:22",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 28,
+          "value": "-0.5",
+          "at": "28:24",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 29,
+          "value": "0",
+          "at": "28:30",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 30,
+          "value": "0.5",
+          "at": "28:32",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 31,
+          "value": "80",
+          "at": "29:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 32,
+          "value": "7.9",
+          "at": "30:8",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 33,
+          "value": "0",
+          "at": "31:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 34,
+          "value": "0",
+          "at": "31:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 35,
+          "value": "6",
+          "at": "31:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 36,
+          "value": "6.28318530718",
+          "at": "31:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 37,
+          "value": "2.0",
+          "at": "32:19",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 38,
+          "value": "5.9",
+          "at": "32:25",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 39,
+          "value": "0.5",
+          "at": "34:5",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 40,
+          "value": "4.5",
+          "at": "34:11",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 41,
+          "value": "0.038",
+          "at": "40:3",
+          "role": "->h",
+          "colour": null
+        },
+        {
+          "knob": 42,
+          "value": "0xa0cece",
+          "at": "41:3",
+          "role": "into ->fill via solid",
+          "colour": "#a0cece"
+        },
+        {
+          "knob": 43,
+          "value": "30",
+          "at": "42:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 44,
+          "value": "0",
+          "at": "43:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 45,
+          "value": "0",
+          "at": "43:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 46,
+          "value": "6",
+          "at": "43:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 47,
+          "value": "25.13274122872",
+          "at": "43:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 48,
+          "value": "2.37",
+          "at": "43:40",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 49,
+          "value": "0.11",
+          "at": "44:5",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 50,
+          "value": "5.3",
+          "at": "44:12",
+          "role": "into ->x via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 51,
+          "value": "0",
+          "at": "45:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 52,
+          "value": "0",
+          "at": "45:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 53,
+          "value": "6",
+          "at": "45:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 54,
+          "value": "6.28318530718",
+          "at": "45:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 55,
+          "value": "5.24925861106",
+          "at": "46:5",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 56,
+          "value": "2",
+          "at": "46:25",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 57,
+          "value": "1.4",
+          "at": "46:29",
+          "role": "into ->y via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 58,
+          "value": "4.0",
+          "at": "47:5",
+          "role": "into ->y via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 59,
+          "value": "1",
+          "at": "47:11",
+          "role": "into ->y via f in the array body",
+          "colour": null
+        },
+        {
+          "knob": 60,
+          "value": "4.5",
+          "at": "47:19",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 61,
+          "value": "0",
+          "at": "48:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 62,
+          "value": "0",
+          "at": "48:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 63,
+          "value": "6",
+          "at": "48:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 64,
+          "value": "25.13274122872",
+          "at": "48:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 65,
+          "value": "1.73",
+          "at": "48:40",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 66,
+          "value": "0.16",
+          "at": "49:5",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 67,
+          "value": "0.8",
+          "at": "49:12",
+          "role": "into ->w via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 68,
+          "value": "1.2",
+          "at": "49:20",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 69,
+          "value": "0.35",
+          "at": "49:26",
+          "role": "into ->w via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 70,
+          "value": "0",
+          "at": "50:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 71,
+          "value": "0",
+          "at": "50:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 72,
+          "value": "6",
+          "at": "50:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 73,
+          "value": "25.13274122872",
+          "at": "50:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 74,
+          "value": "2.13",
+          "at": "50:40",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 75,
+          "value": "0.22",
+          "at": "51:5",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 76,
+          "value": "0.48",
+          "at": "51:12",
+          "role": "into ->alpha via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 77,
+          "value": "1",
+          "at": "51:19",
+          "role": "into ->alpha via f in the array body",
+          "colour": null
+        },
+        {
+          "knob": 78,
+          "value": "0.65",
+          "at": "51:23",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        }
+      ],
+      "moreKnobs": null,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "after": {
+    "revision": "r5-7fdf61ff2754",
+    "facts": {
+      "revision": "r5-7fdf61ff2754",
+      "parent": "r4-c3c9527402fc",
+      "description": "Double only tide speed; preserve current moon and shimmer exactly",
+      "source": "# asked: tall thin bars across the wall, a tide travelling left to right;\n# deep sea colours, darker towards the bottom.\n# chosen: 80 bottom-anchored bars, a three-second wave cycle in a six-second clip.\n# added: a slowly rising moon on the right, with broken shimmering light below.\n# The moon and reflection fade at the loop seam so the rise can begin again.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x030c16\n\n# A round moon made from fine horizontal slices, behind the tide.\nlinear-track \"moon-rise\" '( 0=2.45 6=3.55 )\nlinear-track \"moon-visibility\" '( 0=0 0.8=1 4.9=1 6=0 )\n\"moon\" rect\n  5.3 ->x\n  0.022 ->h\n  0xd9e9dc solid ->fill\n  \"moon-visibility\" track-ref ->alpha\n  64 '(\n    fc dup * 1 swap - sqrt 1.8 * ->w\n    \"moon-rise\" track-ref fc 0.65 * + ->y\n  ) array ;\n\n# The tide: each bar rises and falls, its foot held at the bottom of the wall.\n# Subtracting the horizontal phase makes the crest travel to the right.\n\"tide\" rect\n  0.135 ->w\n  0x031322 0x167c89  0 -0.5  0 0.5 linear ->fill\n  80 '(\n    fc 7.9 * ->x\n    '( 0=0 6=12.56637061436 ) linear\n    f tau * - sin 2.0 * 5.9 +\n    dup ->h\n    0.5 * 4.5 - ->y\n  ) array ;\n\n# Broken moonlight follows the local water height and spreads towards the viewer.\n# Each small horizontal ripple varies independently in width, offset and brightness.\n\"moon-shimmer\" rect\n  0.038 ->h\n  0xa0cece solid ->fill\n  30 '(\n    '( 0=0 6=25.13274122872 ) linear i 2.37 * + sin\n    0.11 * 5.3 + ->x\n    '( 0=0 6=6.28318530718 ) linear\n    5.24925861106 - sin 2 * 1.4 +\n    4.0 + 1 f - * 4.5 - ->y\n    '( 0=0 6=25.13274122872 ) linear i 1.73 * + sin\n    0.16 * 0.8 + f 1.2 * 0.35 + * ->w\n    '( 0=0 6=25.13274122872 ) linear i 2.13 * + sin\n    0.22 * 0.48 + 1 f 0.65 * - *\n    \"moon-visibility\" track-ref * ->alpha\n  ) array ;\n",
+      "liveSourceHash": "7fdf61ff2754d5d8c508b8ae4023266056cd2a25e6828bdbdad521894849e794",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-be7239fd9faa",
+          "description": "A full-width tide of slender deep-sea bars with a rightward travelling crest"
+        },
+        {
+          "id": "r3-b9a2b7cda376",
+          "description": "Add a slowly rising right-hand moon and shimmering silver-blue reflection"
+        },
+        {
+          "id": "r4-c3c9527402fc",
+          "description": "numbers set by hand: k22 1.3\u21921.8"
+        },
+        {
+          "id": "r5-7fdf61ff2754",
+          "description": "Double only tide speed; preserve current moon and shimmer exactly"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#030c16",
+        "rects": 174,
+        "groups": 0,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 80
+          },
+          {
+            "seconds": 2.0,
+            "visible": 174
+          },
+          {
+            "seconds": 4.0,
+            "visible": 174
+          },
+          {
+            "seconds": 5.994,
+            "visible": 80
+          }
+        ]
+      },
+      "warnings": [
+        "Heavy overlap (first at 0.067 s): moon-copy (line 22), moon-copy-2 (line 22), tide-copy-65 (line 35), tide-copy-66 (line 35), \u2026."
+      ],
+      "lines": [
+        {
+          "line": 14,
+          "text": "\"moon\" rect",
+          "comment": null,
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "moon"
+          ]
+        },
+        {
+          "line": 22,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 63,
+          "rects": 63,
+          "ids": [
+            "moon-copy",
+            "moon-copy-2",
+            "moon-copy-3",
+            "moon-copy-4",
+            "moon-copy-5",
+            "moon-copy-6"
+          ]
+        },
+        {
+          "line": 26,
+          "text": "\"tide\" rect",
+          "comment": "Subtracting the horizontal phase makes the crest travel to the right.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "tide"
+          ]
+        },
+        {
+          "line": 35,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 79,
+          "rects": 79,
+          "ids": [
+            "tide-copy",
+            "tide-copy-2",
+            "tide-copy-3",
+            "tide-copy-4",
+            "tide-copy-5",
+            "tide-copy-6"
+          ]
+        },
+        {
+          "line": 39,
+          "text": "\"moon-shimmer\" rect",
+          "comment": "Each small horizontal ripple varies independently in width, offset and brightness.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "moon-shimmer"
+          ]
+        },
+        {
+          "line": 53,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 29,
+          "rects": 29,
+          "ids": [
+            "moon-shimmer-copy",
+            "moon-shimmer-copy-2",
+            "moon-shimmer-copy-3",
+            "moon-shimmer-copy-4",
+            "moon-shimmer-copy-5",
+            "moon-shimmer-copy-6"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "6:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "6:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "7:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "8:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x030c16",
+          "at": "9:14",
+          "role": "->background colour",
+          "colour": "#030c16"
+        },
+        {
+          "knob": 5,
+          "value": "0",
+          "at": "12:29",
+          "role": "keyframes of track moon-rise: time",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "2.45",
+          "at": "12:31",
+          "role": "keyframes of track moon-rise: value",
+          "colour": null
+        },
+        {
+          "knob": 7,
+          "value": "6",
+          "at": "12:36",
+          "role": "keyframes of track moon-rise: time",
+          "colour": null
+        },
+        {
+          "knob": 8,
+          "value": "3.55",
+          "at": "12:38",
+          "role": "keyframes of track moon-rise: value",
+          "colour": null
+        },
+        {
+          "knob": 9,
+          "value": "0",
+          "at": "13:35",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "0",
+          "at": "13:37",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0.8",
+          "at": "13:39",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "1",
+          "at": "13:43",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "4.9",
+          "at": "13:45",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "1",
+          "at": "13:49",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 15,
+          "value": "6",
+          "at": "13:51",
+          "role": "keyframes of track moon-visibility: time",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "0",
+          "at": "13:53",
+          "role": "keyframes of track moon-visibility: value",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "5.3",
+          "at": "15:3",
+          "role": "->x",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "0.022",
+          "at": "16:3",
+          "role": "->h",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "0xd9e9dc",
+          "at": "17:3",
+          "role": "into ->fill via solid",
+          "colour": "#d9e9dc"
+        },
+        {
+          "knob": 20,
+          "value": "64",
+          "at": "19:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "1",
+          "at": "20:14",
+          "role": "into ->w via swap in the array body",
+          "colour": null
+        },
+        {
+          "knob": 22,
+          "value": "1.8",
+          "at": "20:28",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 23,
+          "value": "0.65",
+          "at": "21:30",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 24,
+          "value": "0.135",
+          "at": "27:3",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 25,
+          "value": "0x031322",
+          "at": "28:3",
+          "role": "into ->fill via linear",
+          "colour": "#031322"
+        },
+        {
+          "knob": 26,
+          "value": "0x167c89",
+          "at": "28:12",
+          "role": "into ->fill via linear",
+          "colour": "#167c89"
+        },
+        {
+          "knob": 27,
+          "value": "0",
+          "at": "28:22",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 28,
+          "value": "-0.5",
+          "at": "28:24",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 29,
+          "value": "0",
+          "at": "28:30",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 30,
+          "value": "0.5",
+          "at": "28:32",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 31,
+          "value": "80",
+          "at": "29:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 32,
+          "value": "7.9",
+          "at": "30:8",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 33,
+          "value": "0",
+          "at": "31:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 34,
+          "value": "0",
+          "at": "31:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 35,
+          "value": "6",
+          "at": "31:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 36,
+          "value": "12.56637061436",
+          "at": "31:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 37,
+          "value": "2.0",
+          "at": "32:19",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 38,
+          "value": "5.9",
+          "at": "32:25",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 39,
+          "value": "0.5",
+          "at": "34:5",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 40,
+          "value": "4.5",
+          "at": "34:11",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 41,
+          "value": "0.038",
+          "at": "40:3",
+          "role": "->h",
+          "colour": null
+        },
+        {
+          "knob": 42,
+          "value": "0xa0cece",
+          "at": "41:3",
+          "role": "into ->fill via solid",
+          "colour": "#a0cece"
+        },
+        {
+          "knob": 43,
+          "value": "30",
+          "at": "42:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 44,
+          "value": "0",
+          "at": "43:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 45,
+          "value": "0",
+          "at": "43:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 46,
+          "value": "6",
+          "at": "43:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 47,
+          "value": "25.13274122872",
+          "at": "43:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 48,
+          "value": "2.37",
+          "at": "43:40",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 49,
+          "value": "0.11",
+          "at": "44:5",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 50,
+          "value": "5.3",
+          "at": "44:12",
+          "role": "into ->x via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 51,
+          "value": "0",
+          "at": "45:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 52,
+          "value": "0",
+          "at": "45:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 53,
+          "value": "6",
+          "at": "45:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 54,
+          "value": "6.28318530718",
+          "at": "45:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 55,
+          "value": "5.24925861106",
+          "at": "46:5",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 56,
+          "value": "2",
+          "at": "46:25",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 57,
+          "value": "1.4",
+          "at": "46:29",
+          "role": "into ->y via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 58,
+          "value": "4.0",
+          "at": "47:5",
+          "role": "into ->y via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 59,
+          "value": "1",
+          "at": "47:11",
+          "role": "into ->y via f in the array body",
+          "colour": null
+        },
+        {
+          "knob": 60,
+          "value": "4.5",
+          "at": "47:19",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        },
+        {
+          "knob": 61,
+          "value": "0",
+          "at": "48:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 62,
+          "value": "0",
+          "at": "48:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 63,
+          "value": "6",
+          "at": "48:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 64,
+          "value": "25.13274122872",
+          "at": "48:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 65,
+          "value": "1.73",
+          "at": "48:40",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 66,
+          "value": "0.16",
+          "at": "49:5",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 67,
+          "value": "0.8",
+          "at": "49:12",
+          "role": "into ->w via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 68,
+          "value": "1.2",
+          "at": "49:20",
+          "role": "into ->w via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 69,
+          "value": "0.35",
+          "at": "49:26",
+          "role": "into ->w via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 70,
+          "value": "0",
+          "at": "50:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 71,
+          "value": "0",
+          "at": "50:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 72,
+          "value": "6",
+          "at": "50:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 73,
+          "value": "25.13274122872",
+          "at": "50:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 74,
+          "value": "2.13",
+          "at": "50:40",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 75,
+          "value": "0.22",
+          "at": "51:5",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 76,
+          "value": "0.48",
+          "at": "51:12",
+          "role": "into ->alpha via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 77,
+          "value": "1",
+          "at": "51:19",
+          "role": "into ->alpha via f in the array body",
+          "colour": null
+        },
+        {
+          "knob": 78,
+          "value": "0.65",
+          "at": "51:23",
+          "role": "into ->alpha via * in the array body",
+          "colour": null
+        }
+      ],
+      "moreKnobs": null,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "panel": {
+    "uid": "rectsl_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nA tide of tall, thin bars across the whole wall, rising and falling like a wave that travels from left to right. Deep sea colours, darker towards the bottom.\n<<progress>>\nStarting AI conversation\n<<progress>>\nRectSLStudyGuide finished (5 ms)\n<<progress>>\nInspectRectSLStudy finished (2 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (186 ms)\n<<progress>>\nRectSLStudyGuide finished (2 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nRectSLStudyGuide finished (0 ms)\n<<progress>>\nEditRectSLStudy finished (930 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (186 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/cabeecbcd5fa30e101ec.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r2-be7239fd9faa: frames at 0, 1.5, 3, 4.5 s_\n\n![tool image](images/e20aa209531586f54312.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/0d2cb88e615141872d66.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nImplemented **80 tall, thin bars** spanning the wall, with teal tops fading into deep navy at the bottom.\n\nTheir heights rise and fall in a broad wave travelling **left to right**, looping seamlessly every six seconds. The live capture matches the requested appearance; sampled frames confirm the wave\u2019s motion. Compilation and visual checks passed.\n<<you>>\nAdd a moon that rises slowly on the right, with a shimmer of its light on the water beneath it.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectRectSLStudy finished (1 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (30 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nVisualizing moon effects\n**Visualizing moon effects**\n\nI'm thinking about how to create a moon effect using horizontal slices, with rectangles forming a circle. The height and width calculations are essential for getting the right proportions. I want to include reflections on the water\u2019s surface while managing light glints and variations. I need to ensure smooth transitions, especially when the moon fades. I am considering whether to keep the moon as a crescent or a full disk, and I want to layer it appropriately with quotes from the tracks. Everything seems doable!\n\nNext tool: `PatchRectSLStudy`\n<<progress>>\nPatchRectSLStudy finished (1654 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (34 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/f87e128ad8ed7886abf8.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r3-b9a2b7cda376: frames at 0.8, 2.5, 4.5, 5.5 s; second row r2-be7239fd9faa, third row the difference_\n\n![tool image](images/c9f3842b3747d013ce39.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/7a6d5e8d2ded96490845.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nAdded a pale round moon rising slowly on the right, with a broken silver-blue shimmer beneath it. The reflection flickers and widens towards the bottom, following the water\u2019s height.\n\nThe live view matches the requested composition, and sampled frames show the rise. The original tide is unchanged; moonlight fades gently at the loop boundary. Compilation and visual checks passed.\n<<you>>\nMake the wave twice as fast, but leave the moon and its shimmer exactly as they are \u2014 and show me they didn't change.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectRectSLStudy finished (3 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nEvaluating object preservation\n**Evaluating object preservation**\n\nI need to focus on preserving objects rather than just pixel occlusion, which is an important caveat to explain. It seems like I might need to compare tools multiple times, maybe up to eight. I\u2019m planning to use scales of 0 to 6 in increments of 0.5. It looks like I\u2019ll also determine if seven times is sufficient for capturing the necessary data. It\u2019s all about capturing the right information clearly!\n\nNext tool: `CaptureRenderWindowRequest`\n<<progress>>\nCaptureRenderWindowRequest finished (41 ms)\n<<progress>>\nPatchRectSLStudy finished (1493 ms)\n<<progress>>\nCompareRectSLStudy finished (988 ms)\n<<progress>>\nCompareRectSLStudy finished (821 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (33 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/670b5df32d4b1dfc2c1f.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r5-7fdf61ff2754: frames at 0.75, 1.5, 3, 4.5 s; second row r4-c3c9527402fc, third row the difference_\n\n![tool image](images/46fe34c6c7a14394b453.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r4-c3c9527402fc \u2192 r5-7fdf61ff2754: before | after | difference, per time_\n\n![tool image](images/b0800cd864810b7a266b.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r4-c3c9527402fc \u2192 r5-7fdf61ff2754: before | after | difference, per time_\n\n![tool image](images/a358fed64fb852ff3f34.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/d28c288927758b75c138.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nThe wave now runs **twice as fast: one cycle every 3 seconds**, instead of 6.\n\nThe before/after comparisons above checked nine times across the clip:\n\n| Elements | Result |\n|---|---|\n| 80 tide bars | Only animated position and height changed |\n| 64 moon slices | Unchanged, including your widened shape |\n| 30 shimmer strokes | Unchanged |\n| Objects added or removed | None |\n\nThe live view retains the pale oval moon and broken reflection over the teal bars. **Overlap can look different** because the water moves faster; the moon\u2019s rise, fade, and the shimmer\u2019s original timing remain untouched.\n\nCompilation and visual checks passed."
+  },
+  "notices": [
+    "Initiating AI Conversation",
+    "AI4: [info,ai.chat] chatGeneral(): lang=RectSL codeChars=1780 attachments=3 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab85eea53a0819381f38f9ec92d1e60030e6d685208f9ea fileKey=afield://rectsl_conversation_tide/rectsl_source/rectSL inputChars=16830 maxOutputTokens=10000 attachments=3 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-27T001300-440600Z-8599fbcb.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f8cb7e481938968171c1c9c0f07 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_030e6d685208f9ea006ab85f8cb7e481938968171c1c9c0f07 outputItems=1 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectRectSLStudy callId=call_EzDGakhHWVmIJuYZTlz2KuyR {\"revision\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectRectSLStudy r4-c3c9527402fc revision, parent, description, source, liveSourceHash, dirty, liveSource, liveCheck, history, otherRevisions, scene, warnings, lines, knobs, moreKn...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 2169ms (attempt 2/5, suggested*1.5=2169ms)",
+    "saved file at <<timeago:1790467985444>>",
+    "saved file at <<timeago:1790467990551>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f925f0c8193975eb44a701b1f8a status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f925f0c8193975eb44a701b1f8a outputItems=3",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_vBlaLxSZn2LB0PHOv8ElkjVi {\"note\":\"Baseline before doubling tide speed; preserve the widened moon and original shimmer animation.\",\"settleMs\":0,\"target...",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=0 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 214 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467995643>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f97a3208193ad83c2c26168feef status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f97a3208193ad83c2c26168feef outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=PatchRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=PatchRectSLStudy callId=call_4oSr3WxVQ0myfHwircDfiyPN {\"description\":\"Double only tide speed; preserve current moon and shimmer exactly\",\"edits\":[{\"after\":\"# chosen: 80 bottom-anchored bars...",
+    "AI4: [info,ai.bridge] tool: result name=PatchRectSLStudy r5-7fdf61ff2754 Patched, checked and activated images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790468001517>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f9ec3b88193b36da19e48bf05c7 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f9ec3b88193b36da19e48bf05c7 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CompareRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 4/24)",
+    "AI4: [info,ai.bridge] tool: name=CompareRectSLStudy callId=call_OHrrwRJmVGBUhUJsqNkFH2p6 {\"afterRevision\":\"r5-7fdf61ff2754\",\"allowedRegion\":[-8,-4.5,8,3.4],\"beforeRevision\":\"r4-c3c9527402fc\",\"mode\":\"rgb\",\"seconds\":[0,0.75,...",
+    "AI4: [info,ai.bridge] tool: result name=CompareRectSLStudy r5-7fdf61ff2754 before, after, mode, region, results, preservedOutsideRegion, rectangles, imageFile, renderSeconds, method images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85fa3762c8193872fb9fe46925de2 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85fa3762c8193872fb9fe46925de2 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=CompareRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 5/24)",
+    "AI4: [info,ai.bridge] tool: name=CompareRectSLStudy callId=call_Kox9LIIxo3H0368ievTewYYm {\"afterRevision\":\"r5-7fdf61ff2754\",\"allowedRegion\":[-8,-4.5,8,3.4],\"beforeRevision\":\"r4-c3c9527402fc\",\"mode\":\"rgb\",\"seconds\":[4.5,5.2...",
+    "saved file at <<timeago:1790468006428>>",
+    "AI4: [info,ai.bridge] tool: result name=CompareRectSLStudy r5-7fdf61ff2754 before, after, mode, region, results, preservedOutsideRegion, rectangles, imageFile, renderSeconds, method images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 623ms (attempt 2/5, suggested*1.5=623ms)",
+    "saved file at <<timeago:1790468011332>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85fa954ac81939f6b3e39b7eec039 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85fa954ac81939f6b3e39b7eec039 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 6/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_gamivMRdC5mVc5Kxh6MZ2tBz {\"note\":\"Final live check: doubled tide phase speed; widened moon and original shimmer retained unchanged.\",\"settleMs\":0,\"tar...",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=0 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 214 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 3243ms (attempt 2/5, suggested*1.5=3243ms)",
+    "saved file at <<timeago:1790468016406>>",
+    "saved file at <<timeago:1790468021473>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85fb0ceb081938ae18fe985f831c6 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85fb0ceb081938ae18fe985f831c6 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_030e6d685208f9ea006ab85fb0ceb081938ae18fe985f831c6 textChars=636 commentaryCount=0 (42520ms)",
+    "Finished AI conversation"
+  ]
+}

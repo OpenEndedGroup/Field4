@@ -15,8 +15,14 @@ internal object Ai4BackdoorTools {
     /** The same registry used by in-Field chat; availability follows the wired providers. */
     val registry: ToolRegistry = ToolRegistry().also(::registerBuiltInAgentTools)
 
-    /** Build a [ToolExecutionContext] wiring the shared document and runtime providers for [sessionInfo]. */
-    fun buildContext(sessionInfo: SessionInformation): ToolExecutionContext {
+    /**
+     * Build a [ToolExecutionContext] wiring the shared document and runtime providers for [sessionInfo].
+     *
+     * [focusBox] (a uid or a unique name) plays the part of the box whose chat is open, so a tool that
+     * scopes itself to the focused box answers a backdoor call exactly as it answers the chat panel.
+     * The focused property is the box's `default_property`, else `code`.
+     */
+    fun buildContext(sessionInfo: SessionInformation, focusBox: String? = null): ToolExecutionContext {
         val docPath = sessionInfo.filename
         val docName = File(docPath).name
         val agentMemory = memoryByDocument.computeIfAbsent(docPath) { AgentMemoryState() }
@@ -187,7 +193,13 @@ internal object Ai4BackdoorTools {
             agentMemory = agentMemory,
             documentGuides = DocumentGuideTools.forSession(sessionInfo),
             compileKotlin = codeTools.compileKotlin,
-            evaluateKotlinExpression = codeTools.evaluateKotlinExpression
+            evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
+            focus = focusBox?.let { token ->
+                val box = boxByIdOrNull(token)
+                    ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })
+                    ?: throw IllegalArgumentException("focusBox '$token' names no box in ${sessionInfo.filename}")
+                ToolFocus(docPath, box, (box.getPropertyRaw("default_property") as? String)?.takeIf { it.isNotBlank() } ?: "code")
+            }
         )
     }
 }

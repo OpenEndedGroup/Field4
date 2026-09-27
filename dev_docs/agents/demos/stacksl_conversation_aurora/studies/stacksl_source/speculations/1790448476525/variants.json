@@ -1,0 +1,23 @@
+{
+  "against" : "r4-7eb0909143e2",
+  "liveSourceHash" : "7eb0909143e22226c77fd613fa92591f45519c69939aeadc3ffba032aa2c3248",
+  "adopted" : "open-sky",
+  "variants" : [ {
+    "label" : "sky-only",
+    "note" : "Diagnostic: remove only aurora light. The supposed mountain disappears; the stars sit in an ordinary smooth sky above the real hills.",
+    "file" : "sky-only.stacksl"
+  }, {
+    "label" : "cutoff",
+    "note" : "Diagnostic: the wavy light-admission mask creates the false mountain outline; it is not the terrain mask.",
+    "file" : "cutoff.stacksl"
+  }, {
+    "label" : "soft-glow",
+    "note" : "Replace the abrupt hem cutoff with a continuous Gaussian fade below the curtain, keeping the existing waves.",
+    "file" : "soft-glow.stacksl"
+  }, {
+    "label" : "open-sky",
+    "note" : "Diffuse irregular ray tips and shallower broad folds remove the mountain-like silhouette while retaining the aurora curtain.",
+    "file" : "open-sky.stacksl"
+  } ],
+  "as" : "r5-85cc71890bb4"
+}

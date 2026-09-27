@@ -1,0 +1,1567 @@
+{
+  "label": "02b-checkin",
+  "action": "checkin",
+  "surface": "study card in Field's browser",
+  "clicked": true,
+  "values": [],
+  "revisionBefore": "r3-ff83596de4c7",
+  "revisionAfter": "r4-830d250a0b67",
+  "dirtyAfter": false,
+  "before": {
+    "revision": "r3-ff83596de4c7",
+    "facts": {
+      "revision": "r3-ff83596de4c7",
+      "parent": "r2-dc01649093cf",
+      "description": "Turn the unison score into a canon: middle +1 beat, bottom +2 beats.",
+      "source": "# (asked) A Fischinger-inspired visual score: vertical rectangles, 120 BPM, 4/4, stronger first beat; lower rows answer in a one-beat canon.\n# (chosen) Three symmetrical rows; cream and vermilion on black. Top leads, middle +0.5 s, bottom +1 s; six-second loop.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x000000\n\n# One two-second bar: sharp attacks every 0.5 s, short releases, and a larger downbeat.\nlinear-track \"four-beats\" '( 0=2.1  0.22=0.62  0.44=0.62  0.5=1.4  0.72=0.62  0.94=0.62  1=1.4  1.22=0.62  1.44=0.62  1.5=1.4  1.72=0.62  1.94=0.62  2=2.1 )\n\n# Upper register: nine cream strokes, gently taller toward the centre.\n\"upper-cream\" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Eight vermilion strokes interleaved in the upper register.\n\"upper-vermilion\" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Central register answers the top one beat later, retaining its heavier weight.\n\"middle-vermilion\" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Central cream strokes share the middle row's one-beat delay.\n\"middle-cream\" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Lower register answers another beat later: two beats behind the top.\n\"lower-cream\" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Lower vermilion strokes share the bottom row's two-beat delay.\n\"lower-vermilion\" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n",
+      "liveSourceHash": "830d250a0b671a3eb208e991a2af4e55dc9ebf038d80f9cb34999428cc0585b5",
+      "dirty": true,
+      "liveSource": "# (asked) A Fischinger-inspired visual score: vertical rectangles, 120 BPM, 4/4, stronger first beat; lower rows answer in a one-beat canon.\n# (chosen) Three symmetrical rows; cream and vermilion on black. Top leads, middle +0.5 s, bottom +1 s; six-second loop.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x0e0a08\n\n# One two-second bar: sharp attacks every 0.5 s, short releases, and a larger downbeat.\nlinear-track \"four-beats\" '( 0=2.1  0.22=0.62  0.44=0.62  0.5=1.4  0.72=0.62  0.94=0.62  1=1.4  1.22=0.62  1.44=0.62  1.5=1.4  1.72=0.62  1.94=0.62  2=2.1 )\n\n# Upper register: nine cream strokes, gently taller toward the centre.\n\"upper-cream\" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Eight vermilion strokes interleaved in the upper register.\n\"upper-vermilion\" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Central register answers the top one beat later, retaining its heavier weight.\n\"middle-vermilion\" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Central cream strokes share the middle row's one-beat delay.\n\"middle-cream\" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Lower register answers another beat later: two beats behind the top.\n\"lower-cream\" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Lower vermilion strokes share the bottom row's two-beat delay.\n\"lower-vermilion\" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n",
+      "liveCheck": {
+        "compiles": true,
+        "warnings": null
+      },
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-dc01649093cf",
+          "description": "A three-row visual score: 120 BPM, four-beat bars with enlarged downbeats, cream and vermilion on black."
+        },
+        {
+          "id": "r3-ff83596de4c7",
+          "description": "Turn the unison score into a canon: middle +1 beat, bottom +2 beats."
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#000000",
+        "rects": 51,
+        "groups": 0,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 51
+          },
+          {
+            "seconds": 2.0,
+            "visible": 51
+          },
+          {
+            "seconds": 4.0,
+            "visible": 51
+          },
+          {
+            "seconds": 5.994,
+            "visible": 51
+          }
+        ]
+      },
+      "warnings": null,
+      "lines": [
+        {
+          "line": 12,
+          "text": "\"upper-cream\" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill",
+          "comment": "Upper register: nine cream strokes, gently taller toward the centre.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "upper-cream"
+          ]
+        },
+        {
+          "line": 13,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "upper-cream-copy",
+            "upper-cream-copy-2",
+            "upper-cream-copy-3",
+            "upper-cream-copy-4",
+            "upper-cream-copy-5",
+            "upper-cream-copy-6"
+          ]
+        },
+        {
+          "line": 16,
+          "text": "\"upper-vermilion\" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill",
+          "comment": "Eight vermilion strokes interleaved in the upper register.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "upper-vermilion"
+          ]
+        },
+        {
+          "line": 17,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "upper-vermilion-copy",
+            "upper-vermilion-copy-2",
+            "upper-vermilion-copy-3",
+            "upper-vermilion-copy-4",
+            "upper-vermilion-copy-5",
+            "upper-vermilion-copy-6"
+          ]
+        },
+        {
+          "line": 20,
+          "text": "\"middle-vermilion\" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill",
+          "comment": "Central register answers the top one beat later, retaining its heavier weight.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "middle-vermilion"
+          ]
+        },
+        {
+          "line": 21,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "middle-vermilion-copy",
+            "middle-vermilion-copy-2",
+            "middle-vermilion-copy-3",
+            "middle-vermilion-copy-4",
+            "middle-vermilion-copy-5",
+            "middle-vermilion-copy-6"
+          ]
+        },
+        {
+          "line": 24,
+          "text": "\"middle-cream\" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill",
+          "comment": "Central cream strokes share the middle row's one-beat delay.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "middle-cream"
+          ]
+        },
+        {
+          "line": 25,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "middle-cream-copy",
+            "middle-cream-copy-2",
+            "middle-cream-copy-3",
+            "middle-cream-copy-4",
+            "middle-cream-copy-5",
+            "middle-cream-copy-6"
+          ]
+        },
+        {
+          "line": 28,
+          "text": "\"lower-cream\" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill",
+          "comment": "Lower register answers another beat later: two beats behind the top.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-cream"
+          ]
+        },
+        {
+          "line": 29,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "lower-cream-copy",
+            "lower-cream-copy-2",
+            "lower-cream-copy-3",
+            "lower-cream-copy-4",
+            "lower-cream-copy-5",
+            "lower-cream-copy-6"
+          ]
+        },
+        {
+          "line": 32,
+          "text": "\"lower-vermilion\" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill",
+          "comment": "Lower vermilion strokes share the bottom row's two-beat delay.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-vermilion"
+          ]
+        },
+        {
+          "line": 33,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "lower-vermilion-copy",
+            "lower-vermilion-copy-2",
+            "lower-vermilion-copy-3",
+            "lower-vermilion-copy-4",
+            "lower-vermilion-copy-5",
+            "lower-vermilion-copy-6"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "3:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "3:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "4:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "5:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x000000",
+          "at": "6:14",
+          "role": "->background colour",
+          "colour": "#000000"
+        },
+        {
+          "knob": 5,
+          "value": "0",
+          "at": "9:30",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "2.1",
+          "at": "9:32",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 7,
+          "value": "0.22",
+          "at": "9:37",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 8,
+          "value": "0.62",
+          "at": "9:42",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 9,
+          "value": "0.44",
+          "at": "9:48",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "0.62",
+          "at": "9:53",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0.5",
+          "at": "9:59",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "1.4",
+          "at": "9:63",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "0.72",
+          "at": "9:68",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "0.62",
+          "at": "9:73",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 15,
+          "value": "0.94",
+          "at": "9:79",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "0.62",
+          "at": "9:84",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "1",
+          "at": "9:90",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "1.4",
+          "at": "9:92",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "1.22",
+          "at": "9:97",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 20,
+          "value": "0.62",
+          "at": "9:102",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "1.44",
+          "at": "9:108",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 22,
+          "value": "0.62",
+          "at": "9:113",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 23,
+          "value": "1.5",
+          "at": "9:119",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 24,
+          "value": "1.4",
+          "at": "9:123",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 25,
+          "value": "1.72",
+          "at": "9:128",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 26,
+          "value": "0.62",
+          "at": "9:133",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 27,
+          "value": "1.94",
+          "at": "9:139",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 28,
+          "value": "0.62",
+          "at": "9:144",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 29,
+          "value": "2",
+          "at": "9:150",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 30,
+          "value": "2.1",
+          "at": "9:152",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 31,
+          "value": "2.65",
+          "at": "12:21",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 32,
+          "value": "0.30",
+          "at": "12:31",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 33,
+          "value": "0xf3e8cc",
+          "at": "12:41",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 34,
+          "value": "9",
+          "at": "13:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 35,
+          "value": "6.4",
+          "at": "13:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 36,
+          "value": "2",
+          "at": "13:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 37,
+          "value": "-0.25",
+          "at": "13:62",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 38,
+          "value": "1",
+          "at": "13:70",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 39,
+          "value": "2.65",
+          "at": "16:25",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 40,
+          "value": "0.22",
+          "at": "16:35",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 41,
+          "value": "0xe34227",
+          "at": "16:45",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 42,
+          "value": "8",
+          "at": "17:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 43,
+          "value": "5.6",
+          "at": "17:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 44,
+          "value": "2",
+          "at": "17:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 45,
+          "value": "-0.25",
+          "at": "17:62",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 46,
+          "value": "1",
+          "at": "17:70",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 47,
+          "value": "0",
+          "at": "20:26",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 48,
+          "value": "0.38",
+          "at": "20:33",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 49,
+          "value": "0xe34227",
+          "at": "20:43",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 50,
+          "value": "9",
+          "at": "21:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 51,
+          "value": "6.4",
+          "at": "21:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 52,
+          "value": "2",
+          "at": "21:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 53,
+          "value": "0.5",
+          "at": "21:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 54,
+          "value": "-0.30",
+          "at": "21:77",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 55,
+          "value": "1.18",
+          "at": "21:85",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 56,
+          "value": "0",
+          "at": "24:22",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 57,
+          "value": "0.26",
+          "at": "24:29",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 58,
+          "value": "0xf3e8cc",
+          "at": "24:39",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 59,
+          "value": "8",
+          "at": "25:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 60,
+          "value": "5.6",
+          "at": "25:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 61,
+          "value": "2",
+          "at": "25:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 62,
+          "value": "0.5",
+          "at": "25:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 63,
+          "value": "-0.30",
+          "at": "25:77",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 64,
+          "value": "1.18",
+          "at": "25:85",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 65,
+          "value": "-2.65",
+          "at": "28:21",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 66,
+          "value": "0.30",
+          "at": "28:32",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 67,
+          "value": "0xf3e8cc",
+          "at": "28:42",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 68,
+          "value": "9",
+          "at": "29:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 69,
+          "value": "6.4",
+          "at": "29:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 70,
+          "value": "2",
+          "at": "29:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 71,
+          "value": "1",
+          "at": "29:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 72,
+          "value": "-0.25",
+          "at": "29:75",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 73,
+          "value": "1",
+          "at": "29:83",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 74,
+          "value": "-2.65",
+          "at": "32:25",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 75,
+          "value": "0.22",
+          "at": "32:36",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 76,
+          "value": "0xe34227",
+          "at": "32:46",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 77,
+          "value": "8",
+          "at": "33:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 78,
+          "value": "5.6",
+          "at": "33:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 79,
+          "value": "2",
+          "at": "33:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        }
+      ],
+      "moreKnobs": 3,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "after": {
+    "revision": "r4-830d250a0b67",
+    "facts": {
+      "revision": "r4-830d250a0b67",
+      "parent": "r3-ff83596de4c7",
+      "description": "edited by hand",
+      "source": "# (asked) A Fischinger-inspired visual score: vertical rectangles, 120 BPM, 4/4, stronger first beat; lower rows answer in a one-beat canon.\n# (chosen) Three symmetrical rows; cream and vermilion on black. Top leads, middle +0.5 s, bottom +1 s; six-second loop.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x0e0a08\n\n# One two-second bar: sharp attacks every 0.5 s, short releases, and a larger downbeat.\nlinear-track \"four-beats\" '( 0=2.1  0.22=0.62  0.44=0.62  0.5=1.4  0.72=0.62  0.94=0.62  1=1.4  1.22=0.62  1.44=0.62  1.5=1.4  1.72=0.62  1.94=0.62  2=2.1 )\n\n# Upper register: nine cream strokes, gently taller toward the centre.\n\"upper-cream\" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Eight vermilion strokes interleaved in the upper register.\n\"upper-vermilion\" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Central register answers the top one beat later, retaining its heavier weight.\n\"middle-vermilion\" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Central cream strokes share the middle row's one-beat delay.\n\"middle-cream\" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;\n\n# Lower register answers another beat later: two beats behind the top.\n\"lower-cream\" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill\n9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n\n# Lower vermilion strokes share the bottom row's two-beat delay.\n\"lower-vermilion\" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill\n8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;\n",
+      "liveSourceHash": "830d250a0b671a3eb208e991a2af4e55dc9ebf038d80f9cb34999428cc0585b5",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-dc01649093cf",
+          "description": "A three-row visual score: 120 BPM, four-beat bars with enlarged downbeats, cream and vermilion on black."
+        },
+        {
+          "id": "r3-ff83596de4c7",
+          "description": "Turn the unison score into a canon: middle +1 beat, bottom +2 beats."
+        },
+        {
+          "id": "r4-830d250a0b67",
+          "description": "edited by hand"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#0e0a08",
+        "rects": 51,
+        "groups": 0,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 51
+          },
+          {
+            "seconds": 2.0,
+            "visible": 51
+          },
+          {
+            "seconds": 4.0,
+            "visible": 51
+          },
+          {
+            "seconds": 5.994,
+            "visible": 51
+          }
+        ]
+      },
+      "warnings": null,
+      "lines": [
+        {
+          "line": 12,
+          "text": "\"upper-cream\" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill",
+          "comment": "Upper register: nine cream strokes, gently taller toward the centre.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "upper-cream"
+          ]
+        },
+        {
+          "line": 13,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "upper-cream-copy",
+            "upper-cream-copy-2",
+            "upper-cream-copy-3",
+            "upper-cream-copy-4",
+            "upper-cream-copy-5",
+            "upper-cream-copy-6"
+          ]
+        },
+        {
+          "line": 16,
+          "text": "\"upper-vermilion\" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill",
+          "comment": "Eight vermilion strokes interleaved in the upper register.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "upper-vermilion"
+          ]
+        },
+        {
+          "line": 17,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "upper-vermilion-copy",
+            "upper-vermilion-copy-2",
+            "upper-vermilion-copy-3",
+            "upper-vermilion-copy-4",
+            "upper-vermilion-copy-5",
+            "upper-vermilion-copy-6"
+          ]
+        },
+        {
+          "line": 20,
+          "text": "\"middle-vermilion\" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill",
+          "comment": "Central register answers the top one beat later, retaining its heavier weight.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "middle-vermilion"
+          ]
+        },
+        {
+          "line": 21,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "middle-vermilion-copy",
+            "middle-vermilion-copy-2",
+            "middle-vermilion-copy-3",
+            "middle-vermilion-copy-4",
+            "middle-vermilion-copy-5",
+            "middle-vermilion-copy-6"
+          ]
+        },
+        {
+          "line": 24,
+          "text": "\"middle-cream\" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill",
+          "comment": "Central cream strokes share the middle row's one-beat delay.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "middle-cream"
+          ]
+        },
+        {
+          "line": 25,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "middle-cream-copy",
+            "middle-cream-copy-2",
+            "middle-cream-copy-3",
+            "middle-cream-copy-4",
+            "middle-cream-copy-5",
+            "middle-cream-copy-6"
+          ]
+        },
+        {
+          "line": 28,
+          "text": "\"lower-cream\" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill",
+          "comment": "Lower register answers another beat later: two beats behind the top.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-cream"
+          ]
+        },
+        {
+          "line": 29,
+          "text": "9 '( fc 6.4 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 8,
+          "rects": 8,
+          "ids": [
+            "lower-cream-copy",
+            "lower-cream-copy-2",
+            "lower-cream-copy-3",
+            "lower-cream-copy-4",
+            "lower-cream-copy-5",
+            "lower-cream-copy-6"
+          ]
+        },
+        {
+          "line": 32,
+          "text": "\"lower-vermilion\" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill",
+          "comment": "Lower vermilion strokes share the bottom row's two-beat delay.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "lower-vermilion"
+          ]
+        },
+        {
+          "line": 33,
+          "text": "8 '( fc 5.6 * ->x  \"four-beats\" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;",
+          "comment": null,
+          "nodes": 7,
+          "rects": 7,
+          "ids": [
+            "lower-vermilion-copy",
+            "lower-vermilion-copy-2",
+            "lower-vermilion-copy-3",
+            "lower-vermilion-copy-4",
+            "lower-vermilion-copy-5",
+            "lower-vermilion-copy-6"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "3:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "3:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "4:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "5:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x0e0a08",
+          "at": "6:14",
+          "role": "->background colour",
+          "colour": "#0e0a08"
+        },
+        {
+          "knob": 5,
+          "value": "0",
+          "at": "9:30",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "2.1",
+          "at": "9:32",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 7,
+          "value": "0.22",
+          "at": "9:37",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 8,
+          "value": "0.62",
+          "at": "9:42",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 9,
+          "value": "0.44",
+          "at": "9:48",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "0.62",
+          "at": "9:53",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0.5",
+          "at": "9:59",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "1.4",
+          "at": "9:63",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "0.72",
+          "at": "9:68",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "0.62",
+          "at": "9:73",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 15,
+          "value": "0.94",
+          "at": "9:79",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "0.62",
+          "at": "9:84",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "1",
+          "at": "9:90",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "1.4",
+          "at": "9:92",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "1.22",
+          "at": "9:97",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 20,
+          "value": "0.62",
+          "at": "9:102",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "1.44",
+          "at": "9:108",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 22,
+          "value": "0.62",
+          "at": "9:113",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 23,
+          "value": "1.5",
+          "at": "9:119",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 24,
+          "value": "1.4",
+          "at": "9:123",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 25,
+          "value": "1.72",
+          "at": "9:128",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 26,
+          "value": "0.62",
+          "at": "9:133",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 27,
+          "value": "1.94",
+          "at": "9:139",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 28,
+          "value": "0.62",
+          "at": "9:144",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 29,
+          "value": "2",
+          "at": "9:150",
+          "role": "keyframes of track four-beats: time",
+          "colour": null
+        },
+        {
+          "knob": 30,
+          "value": "2.1",
+          "at": "9:152",
+          "role": "keyframes of track four-beats: value",
+          "colour": null
+        },
+        {
+          "knob": 31,
+          "value": "2.65",
+          "at": "12:21",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 32,
+          "value": "0.30",
+          "at": "12:31",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 33,
+          "value": "0xf3e8cc",
+          "at": "12:41",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 34,
+          "value": "9",
+          "at": "13:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 35,
+          "value": "6.4",
+          "at": "13:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 36,
+          "value": "2",
+          "at": "13:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 37,
+          "value": "-0.25",
+          "at": "13:62",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 38,
+          "value": "1",
+          "at": "13:70",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 39,
+          "value": "2.65",
+          "at": "16:25",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 40,
+          "value": "0.22",
+          "at": "16:35",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 41,
+          "value": "0xe34227",
+          "at": "16:45",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 42,
+          "value": "8",
+          "at": "17:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 43,
+          "value": "5.6",
+          "at": "17:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 44,
+          "value": "2",
+          "at": "17:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 45,
+          "value": "-0.25",
+          "at": "17:62",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 46,
+          "value": "1",
+          "at": "17:70",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 47,
+          "value": "0",
+          "at": "20:26",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 48,
+          "value": "0.38",
+          "at": "20:33",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 49,
+          "value": "0xe34227",
+          "at": "20:43",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 50,
+          "value": "9",
+          "at": "21:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 51,
+          "value": "6.4",
+          "at": "21:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 52,
+          "value": "2",
+          "at": "21:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 53,
+          "value": "0.5",
+          "at": "21:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 54,
+          "value": "-0.30",
+          "at": "21:77",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 55,
+          "value": "1.18",
+          "at": "21:85",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 56,
+          "value": "0",
+          "at": "24:22",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 57,
+          "value": "0.26",
+          "at": "24:29",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 58,
+          "value": "0xf3e8cc",
+          "at": "24:39",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 59,
+          "value": "8",
+          "at": "25:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 60,
+          "value": "5.6",
+          "at": "25:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 61,
+          "value": "2",
+          "at": "25:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 62,
+          "value": "0.5",
+          "at": "25:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 63,
+          "value": "-0.30",
+          "at": "25:77",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 64,
+          "value": "1.18",
+          "at": "25:85",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 65,
+          "value": "-2.65",
+          "at": "28:21",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 66,
+          "value": "0.30",
+          "at": "28:32",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 67,
+          "value": "0xf3e8cc",
+          "at": "28:42",
+          "role": "into ->fill via solid",
+          "colour": "#f3e8cc"
+        },
+        {
+          "knob": 68,
+          "value": "9",
+          "at": "29:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 69,
+          "value": "6.4",
+          "at": "29:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 70,
+          "value": "2",
+          "at": "29:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 71,
+          "value": "1",
+          "at": "29:55",
+          "role": "into ->h via delay-time in the array body",
+          "colour": null
+        },
+        {
+          "knob": 72,
+          "value": "-0.25",
+          "at": "29:75",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 73,
+          "value": "1",
+          "at": "29:83",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 74,
+          "value": "-2.65",
+          "at": "32:25",
+          "role": "->y",
+          "colour": null
+        },
+        {
+          "knob": 75,
+          "value": "0.22",
+          "at": "32:36",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 76,
+          "value": "0xe34227",
+          "at": "32:46",
+          "role": "into ->fill via solid",
+          "colour": "#e34227"
+        },
+        {
+          "knob": 77,
+          "value": "8",
+          "at": "33:1",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 78,
+          "value": "5.6",
+          "at": "33:9",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 79,
+          "value": "2",
+          "at": "33:43",
+          "role": "into ->h via loop-time in the array body",
+          "colour": null
+        }
+      ],
+      "moreKnobs": 3,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  }
+}

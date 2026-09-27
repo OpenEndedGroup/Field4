@@ -1,0 +1,16 @@
+{
+  "id" : "r3-b9a2b7cda376",
+  "parent" : "r2-be7239fd9faa",
+  "description" : "Add a slowly rising right-hand moon and shimmering silver-blue reflection",
+  "created" : "2026-09-27T00:11:55.891218Z",
+  "sourceHash" : "b9a2b7cda3762ef1328b2265816ec08fa071083eb8a3750cfd708e9aade1fb79",
+  "facts" : {
+    "warnings" : [ "Heavy overlap (first at 0.067 s): moon-copy (line 22), moon-copy-2 (line 22), tide-copy-65 (line 35), tide-copy-66 (line 35), …." ],
+    "animated" : true,
+    "rects" : 174,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 79,
+    "materials" : [ ]
+  }
+}

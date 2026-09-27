@@ -1,0 +1,10 @@
+{
+  "against" : "r3-bac36ccd993c",
+  "liveSourceHash" : "bac36ccd993c9d36fcec2d33a6e2e15c93e76a2991cbc1d40499d8fc40cd2f79",
+  "adopted" : null,
+  "variants" : [ {
+    "label" : "hill-check",
+    "note" : "Diagnostic, not for adoption: isolate the existing pixels at or below the ridge to measure temporal change.",
+    "file" : "hill-check.stacksl"
+  } ]
+}

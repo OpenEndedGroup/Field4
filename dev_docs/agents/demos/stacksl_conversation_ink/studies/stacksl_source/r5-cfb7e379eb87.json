@@ -1,0 +1,16 @@
+{
+  "id" : "r5-cfb7e379eb87",
+  "parent" : "r4-59e28da4f79d",
+  "description" : "Slow honey-and-copper illumination in clear water only; preserve all ink pixels and the user's 0.06t rate",
+  "created" : "2026-09-26T18:37:43.357175Z",
+  "sourceHash" : "cfb7e379eb87502407263818bc287b767121d257bd3c5f0bd9e9094c64eb4bb1",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 123,
+    "knobs" : 60,
+    "stages" : 20
+  }
+}

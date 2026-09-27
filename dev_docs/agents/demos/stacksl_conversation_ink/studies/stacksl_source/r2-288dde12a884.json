@@ -1,0 +1,16 @@
+{
+  "id" : "r2-288dde12a884",
+  "parent" : "r1-4d2baeb1ffda",
+  "description" : "Slow anchored indigo ink bloom in amber water, with evolving four-dimensional turbulence",
+  "created" : "2026-09-26T18:34:48.667209Z",
+  "sourceHash" : "288dde12a88490929d5292cfd6a291beae89abfb4e8b6bd4cb5576cd62b2e83f",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 52,
+    "knobs" : 33,
+    "stages" : 9
+  }
+}

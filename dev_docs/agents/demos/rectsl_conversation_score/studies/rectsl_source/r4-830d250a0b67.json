@@ -1,0 +1,16 @@
+{
+  "id" : "r4-830d250a0b67",
+  "parent" : "r3-ff83596de4c7",
+  "description" : "edited by hand",
+  "created" : "2026-09-27T00:17:28.998995Z",
+  "sourceHash" : "830d250a0b671a3eb208e991a2af4e55dc9ebf038d80f9cb34999428cc0585b5",
+  "facts" : {
+    "warnings" : [ ],
+    "animated" : true,
+    "rects" : 51,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 83,
+    "materials" : [ ]
+  }
+}

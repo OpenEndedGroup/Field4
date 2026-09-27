@@ -1,0 +1,458 @@
+{
+  "label": "01-tide",
+  "status": "completed",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "A tide of tall, thin bars across the whole wall, rising and falling like a wave that travels from left to right. Deep sea colours, darker towards the bottom.\n",
+  "elapsedSeconds": 52.044,
+  "before": {
+    "revision": "r1-ebfa39bf30b2",
+    "facts": {
+      "revision": "r1-ebfa39bf30b2",
+      "parent": null,
+      "description": "the starting scene",
+      "source": "# A blank wall, 16 by 9 metres, six seconds long. Describe what you want to see in this box's AI4 chat.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x14141a\n",
+      "liveSourceHash": "ebfa39bf30b201c9925517ef1300647619935fb7bf15f6c885826d7ed2673571",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#14141a",
+        "rects": 0,
+        "groups": 0,
+        "animated": false,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 0
+          },
+          {
+            "seconds": 2.0,
+            "visible": 0
+          },
+          {
+            "seconds": 4.0,
+            "visible": 0
+          },
+          {
+            "seconds": 5.994,
+            "visible": 0
+          }
+        ]
+      },
+      "warnings": [
+        "The scene has no rectangles: it draws only its background.",
+        "Mostly blank from 0 to 6 s."
+      ],
+      "lines": [],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "2:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "2:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "3:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "4:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x14141a",
+          "at": "5:14",
+          "role": "->background colour",
+          "colour": "#14141a"
+        }
+      ],
+      "moreKnobs": null,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "after": {
+    "revision": "r2-be7239fd9faa",
+    "facts": {
+      "revision": "r2-be7239fd9faa",
+      "parent": "r1-ebfa39bf30b2",
+      "description": "A full-width tide of slender deep-sea bars with a rightward travelling crest",
+      "source": "# asked: tall thin bars across the wall, a tide travelling left to right;\n# deep sea colours, darker towards the bottom.\n# chosen: 80 bottom-anchored bars, one broad rolling wave, seamless six-second loop.\n->wall 16 9 meters\n->duration 6\n->fps 30\n->background 0x030c16\n\n# The tide: each bar rises and falls, its foot held at the bottom of the wall.\n# Subtracting the horizontal phase makes the crest travel to the right.\n\"tide\" rect\n  0.135 ->w\n  0x031322 0x167c89  0 -0.5  0 0.5 linear ->fill\n  80 '(\n    fc 7.9 * ->x\n    '( 0=0 6=6.28318530718 ) linear\n    f tau * - sin 2.0 * 5.9 +\n    dup ->h\n    0.5 * 4.5 - ->y\n  ) array ;\n",
+      "liveSourceHash": "be7239fd9faaef938d9e1e9f4cbb57427d32c6748b1d2284795669f0e84b3fd8",
+      "dirty": false,
+      "liveSource": null,
+      "liveCheck": null,
+      "history": [
+        {
+          "id": "r1-ebfa39bf30b2",
+          "description": "the starting scene"
+        },
+        {
+          "id": "r2-be7239fd9faa",
+          "description": "A full-width tide of slender deep-sea bars with a rightward travelling crest"
+        }
+      ],
+      "otherRevisions": null,
+      "scene": {
+        "wall": "16.0 \u00d7 9.00 meters, origin centre, +y up",
+        "duration": 6.0,
+        "fps": 30.0,
+        "background": "#030c16",
+        "rects": 80,
+        "groups": 0,
+        "animated": true,
+        "materials": null,
+        "visible": [
+          {
+            "seconds": 0.0,
+            "visible": 80
+          },
+          {
+            "seconds": 2.0,
+            "visible": 80
+          },
+          {
+            "seconds": 4.0,
+            "visible": 80
+          },
+          {
+            "seconds": 5.994,
+            "visible": 80
+          }
+        ]
+      },
+      "warnings": null,
+      "lines": [
+        {
+          "line": 11,
+          "text": "\"tide\" rect",
+          "comment": "Subtracting the horizontal phase makes the crest travel to the right.",
+          "nodes": 1,
+          "rects": 1,
+          "ids": [
+            "tide"
+          ]
+        },
+        {
+          "line": 20,
+          "text": ") array ;",
+          "comment": null,
+          "nodes": 79,
+          "rects": 79,
+          "ids": [
+            "tide-copy",
+            "tide-copy-2",
+            "tide-copy-3",
+            "tide-copy-4",
+            "tide-copy-5",
+            "tide-copy-6"
+          ]
+        }
+      ],
+      "knobs": [
+        {
+          "knob": 0,
+          "value": "16",
+          "at": "4:8",
+          "role": "->wall width",
+          "colour": null
+        },
+        {
+          "knob": 1,
+          "value": "9",
+          "at": "4:11",
+          "role": "->wall height",
+          "colour": null
+        },
+        {
+          "knob": 2,
+          "value": "6",
+          "at": "5:12",
+          "role": "->duration seconds",
+          "colour": null
+        },
+        {
+          "knob": 3,
+          "value": "30",
+          "at": "6:7",
+          "role": "->fps frames per second",
+          "colour": null
+        },
+        {
+          "knob": 4,
+          "value": "0x030c16",
+          "at": "7:14",
+          "role": "->background colour",
+          "colour": "#030c16"
+        },
+        {
+          "knob": 5,
+          "value": "0.135",
+          "at": "12:3",
+          "role": "->w",
+          "colour": null
+        },
+        {
+          "knob": 6,
+          "value": "0x031322",
+          "at": "13:3",
+          "role": "into ->fill via linear",
+          "colour": "#031322"
+        },
+        {
+          "knob": 7,
+          "value": "0x167c89",
+          "at": "13:12",
+          "role": "into ->fill via linear",
+          "colour": "#167c89"
+        },
+        {
+          "knob": 8,
+          "value": "0",
+          "at": "13:22",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 9,
+          "value": "-0.5",
+          "at": "13:24",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 10,
+          "value": "0",
+          "at": "13:30",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 11,
+          "value": "0.5",
+          "at": "13:32",
+          "role": "into ->fill via linear",
+          "colour": null
+        },
+        {
+          "knob": 12,
+          "value": "80",
+          "at": "14:3",
+          "role": "array",
+          "colour": null
+        },
+        {
+          "knob": 13,
+          "value": "7.9",
+          "at": "15:8",
+          "role": "into ->x via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 14,
+          "value": "0",
+          "at": "16:8",
+          "role": "= in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 15,
+          "value": "0",
+          "at": "16:10",
+          "role": "= argument 1 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 16,
+          "value": "6",
+          "at": "16:12",
+          "role": "= argument 2 of 2 in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 17,
+          "value": "6.28318530718",
+          "at": "16:14",
+          "role": "left on the stack in the linear body",
+          "colour": null
+        },
+        {
+          "knob": 18,
+          "value": "2.0",
+          "at": "17:19",
+          "role": "into ->h via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 19,
+          "value": "5.9",
+          "at": "17:25",
+          "role": "into ->h via + in the array body",
+          "colour": null
+        },
+        {
+          "knob": 20,
+          "value": "0.5",
+          "at": "19:5",
+          "role": "into ->y via * in the array body",
+          "colour": null
+        },
+        {
+          "knob": 21,
+          "value": "4.5",
+          "at": "19:11",
+          "role": "into ->y via - in the array body",
+          "colour": null
+        }
+      ],
+      "moreKnobs": null,
+      "pendingVariants": null,
+      "exports": null,
+      "frame": "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. Colours are sRGB as typed: 0x808080 shows as mid grey."
+    }
+  },
+  "panel": {
+    "uid": "rectsl_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nA tide of tall, thin bars across the whole wall, rising and falling like a wave that travels from left to right. Deep sea colours, darker towards the bottom.\n<<progress>>\nStarting AI conversation\n<<progress>>\nRectSLStudyGuide finished (5 ms)\n<<progress>>\nInspectRectSLStudy finished (2 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (186 ms)\n<<progress>>\nRectSLStudyGuide finished (2 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nRectSLStudyGuide finished (1 ms)\n<<progress>>\nRectSLStudyGuide finished (0 ms)\n<<progress>>\nEditRectSLStudy finished (930 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (186 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/cabeecbcd5fa30e101ec.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r2-be7239fd9faa: frames at 0, 1.5, 3, 4.5 s_\n\n![tool image](images/e20aa209531586f54312.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'RectSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/0d2cb88e615141872d66.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nImplemented **80 tall, thin bars** spanning the wall, with teal tops fading into deep navy at the bottom.\n\nTheir heights rise and fall in a broad wave travelling **left to right**, looping seamlessly every six seconds. The live capture matches the requested appearance; sampled frames confirm the wave\u2019s motion. Compilation and visual checks passed."
+  },
+  "notices": [
+    "AI4: [info,ai.bridge] Initialized OpenAiIdeCodexBridge(model=gpt-6-astra)",
+    "Initializing AI support v4",
+    "Initiating AI Conversation",
+    "AI4: [info,ai.bridge] startThread(): fileKey=afield://rectsl_conversation_tide/rectsl_source/rectSL",
+    "AI4: [info,ai.bridge] startThread(): conversationId=conv_6ab85eea53a0819381f38f9ec92d1e60030e6d685208f9ea localThreadId=b22d4c08-40c8-47bb-9f80-722b6e905e26 (2202ms)",
+    "AI4: [info,ai.chat] chatGeneral(): lang=RectSL codeChars=167 attachments=3 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab85eea53a0819381f38f9ec92d1e60030e6d685208f9ea fileKey=afield://rectsl_conversation_tide/rectsl_source/rectSL inputChars=15297 maxOutputTokens=10000 attachments=3 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-27T001019-955728Z-5f054441.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "saved file at <<timeago:1790467822113>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85eec602881938abb3a3eab929fa6 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_030e6d685208f9ea006ab85eec602881938abb3a3eab929fa6 outputItems=1 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_fZL6nSFSxVHZPZeHsCdH9YPw {\"search\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 7751 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85eeecb9481938772236ac8e4bf85 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85eeecb9481938772236ac8e4bf85 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=InspectRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectRectSLStudy callId=call_iFA1FBEeIj4NIPgkGaO2Qhqo {\"revision\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectRectSLStudy r1-ebfa39bf30b2 revision, parent, description, source, liveSourceHash, dirty, liveSource, liveCheck, history, otherRevisions, scene, warnings, lines, knobs, moreKn...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85ef092808193aade21d5d2bb2169 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85ef092808193aade21d5d2bb2169 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_5e17r3Zea9Y013g0SSqauKXy {\"note\":\"Starting blank wall before adding the travelling deep-sea tide.\",\"settleMs\":0,\"target\":\"\",\"uid\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=0 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 32 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467827218>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85ef332f48193bd7cfc5eba08e25f status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85ef332f48193bd7cfc5eba08e25f outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 4/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_4i3nSslKU1UNFLnX0YW0etWD {\"search\":\"linear\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 2581 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467832279>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85ef6a9d08193a96915e67b0f99bb status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85ef6a9d08193a96915e67b0f99bb outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 5/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_3oJOYqh1K0fZ9hHNrT54E3p6 {\"search\":\"time\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 8515 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467837363>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85ef990a88193940a89b3c1db1e74 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85ef990a88193940a89b3c1db1e74 outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 6/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_kM1brvb6Z5nkAqab9pCaoDYD {\"search\":\"sin\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 4504 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467842446>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85efdb6d0819389f72a3d4348e4fb status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85efdb6d0819389f72a3d4348e4fb outputItems=2",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] output[0] reasoning status=null",
+    "AI4: [info,ai.bridge] output[1] function_call name=RectSLStudyGuide",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 7/24)",
+    "AI4: [info,ai.bridge] tool: name=RectSLStudyGuide callId=call_P9NHC03LNajhmQNV2d8FGSLW {\"search\":\"->h\"}",
+    "AI4: [info,ai.bridge] tool: result name=RectSLStudyGuide guide 182 chars",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467852621>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f0812388193b879fc87d61c2197 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f0812388193b879fc87d61c2197 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=EditRectSLStudy",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 8/24)",
+    "AI4: [info,ai.bridge] tool: name=EditRectSLStudy callId=call_U96rHkVU1ww6nod7AU3h3ju5 {\"description\":\"A full-width tide of slender deep-sea bars with a rightward travelling crest\",\"expectedRevision\":\"r1-ebfa39bf30b2\",\"expe...",
+    "AI4: [info,ai.bridge] tool: result name=EditRectSLStudy r2-be7239fd9faa Compiled, checked and activated images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467857730>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f11abc88193809ebcbbb98fde0b status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f11abc88193809ebcbbb98fde0b outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 9/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_Bat3njCVIFTSBvIeRb1ze3GO {\"note\":\"Verify the live tide: slender bars spanning the wall, teal crests and dark navy feet.\",\"settleMs\":150,\"target\":\"\",\"u...",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1920x1080 settledMs=150 title=RectSL study message=Captured RectSL study (1920 x 1080; JPEG 208 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790467867896>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_030e6d685208f9ea006ab85f175e208193bd2f9e8ec1591e2d status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_030e6d685208f9ea006ab85f175e208193bd2f9e8ec1591e2d outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_030e6d685208f9ea006ab85f175e208193bd2f9e8ec1591e2d textChars=349 commentaryCount=0 (48462ms)",
+    "Finished AI conversation"
+  ]
+}

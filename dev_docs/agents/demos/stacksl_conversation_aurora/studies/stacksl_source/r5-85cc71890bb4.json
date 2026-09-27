@@ -1,0 +1,16 @@
+{
+  "id" : "r5-85cc71890bb4",
+  "parent" : "r4-7eb0909143e2",
+  "description" : "Make the space under the aurora read as open sky: replace the silhouette-like cutoff with diffuse irregular ray tips and shallower folds",
+  "created" : "2026-09-26T18:48:04.356433Z",
+  "sourceHash" : "85cc71890bb4bdd879826cb554b4c4956875e48bafd16dbc040ff0ef556350f8",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 214,
+    "knobs" : 93,
+    "stages" : 34
+  }
+}

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Twice as fast, the moon untouched · A tide under a rising moon · Field AI4</title><link rel="stylesheet" href="../conversation.css"></head>
+<body><main><nav class="top" aria-label="Document"><a href="../../../rectsl_conversation/">← Talking a scene into existence</a><a href="03-faster.txt">Raw transcript</a></nav>
+<header><div class="eyebrow">Field · AI4 / A tide under a rising moon / turn 03</div><h1>Twice as fast, the moon untouched</h1>
+<p>The recorded exchange: the request, the tool activity, every image the tools returned to the model, and its reply. Expand tool activity to read the steps; open an image to see it full size.</p>
+<nav class="chapters" aria-label="Recorded turns"><a href="01-tide.html" title="The tide" aria-label="1: The tide">01</a><a href="02-moon.html" title="A moon and its shimmer" aria-label="2: A moon and its shimmer">02</a><a href="03-faster.html" title="Twice as fast, the moon untouched" aria-label="3: Twice as fast, the moon untouched" aria-current="page">03</a></nav></header>
+<section class="turn person" aria-label="The person, in Field, before this turn"><div class="role">The person, in Field, before this turn</div><ul><li>Moved knob 22 to 1.8 with its slider in the study card and pressed Keep → <code>r4-c3c9527402fc</code> “numbers set by hand: k22 1.3→1.8”</li></ul></section><section class="turn you" aria-label="You"><div class="role">You</div><p>Make the wave twice as fast, but leave the moon and its shimmer exactly as they are — and show me they didn't change.</p></section><details class="tool-run"><summary>Tool activity · 10 steps</summary><ol><li><details><summary>Starting AI conversation</summary><div class="body"></div></details></li><li><details><summary>InspectRectSLStudy finished (3 ms)</summary><div class="body"></div></details></li><li><details><summary>Waiting for model</summary><div class="body"></div></details></li><li><details><summary>Evaluating object preservation</summary><div class="body"><p><strong>Evaluating object preservation</strong></p>
+<p>I need to focus on preserving objects rather than just pixel occlusion, which is an important caveat to explain. It seems like I might need to compare tools multiple times, maybe up to eight. I’m planning to use scales of 0 to 6 in increments of 0.5. It looks like I’ll also determine if seven times is sufficient for capturing the necessary data. It’s all about capturing the right information clearly!</p>
+<p>Next tool: <code>CaptureRenderWindowRequest</code></p></div></details></li><li><details><summary>CaptureRenderWindowRequest finished (41 ms)</summary><div class="body"></div></details></li><li><details><summary>PatchRectSLStudy finished (1493 ms)</summary><div class="body"></div></details></li><li><details><summary>CompareRectSLStudy finished (988 ms)</summary><div class="body"></div></details></li><li><details><summary>CompareRectSLStudy finished (821 ms)</summary><div class="body"></div></details></li><li><details><summary>CaptureRenderWindowRequest finished (33 ms)</summary><div class="body"></div></details></li><li><details><summary>Completed</summary><div class="body"></div></details></li></ol></details><figure class="window"><a href="images/670b5df32d4b1dfc2c1f.jpg" title="Open full size"><img src="images/670b5df32d4b1dfc2c1f.jpg" alt="The live window, captured for the model" loading="lazy"></a><figcaption>The live window, captured for the model</figcaption></figure><figure class="evidence"><a href="images/46fe34c6c7a14394b453.png" title="Open full size"><img src="images/46fe34c6c7a14394b453.png" alt="r5-7fdf61ff2754: frames at 0.75, 1.5, 3, 4.5 s; second row r4-c3c9527402fc, third row the difference" loading="lazy"></a><figcaption>r5-7fdf61ff2754: frames at 0.75, 1.5, 3, 4.5 s; second row r4-c3c9527402fc, third row the difference</figcaption></figure><figure class="evidence"><a href="images/b0800cd864810b7a266b.png" title="Open full size"><img src="images/b0800cd864810b7a266b.png" alt="r4-c3c9527402fc → r5-7fdf61ff2754: before | after | difference, per time" loading="lazy"></a><figcaption>r4-c3c9527402fc → r5-7fdf61ff2754: before | after | difference, per time</figcaption></figure><figure class="evidence"><a href="images/a358fed64fb852ff3f34.png" title="Open full size"><img src="images/a358fed64fb852ff3f34.png" alt="r4-c3c9527402fc → r5-7fdf61ff2754: before | after | difference, per time" loading="lazy"></a><figcaption>r4-c3c9527402fc → r5-7fdf61ff2754: before | after | difference, per time</figcaption></figure><figure class="window"><a href="images/d28c288927758b75c138.jpg" title="Open full size"><img src="images/d28c288927758b75c138.jpg" alt="The live window, captured for the model" loading="lazy"></a><figcaption>The live window, captured for the model</figcaption></figure><section class="turn ai" aria-label="AI4 · gpt-6-astra / openai"><div class="role">AI4 · gpt-6-astra / openai</div><p>The wave now runs <strong>twice as fast: one cycle every 3 seconds</strong>, instead of 6.</p>
+<p>The before/after comparisons above checked nine times across the clip:</p>
+<table>
+<thead>
+<tr>
+<th>Elements</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>80 tide bars</td>
+<td>Only animated position and height changed</td>
+</tr>
+<tr>
+<td>64 moon slices</td>
+<td>Unchanged, including your widened shape</td>
+</tr>
+<tr>
+<td>30 shimmer strokes</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td>Objects added or removed</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>The live view retains the pale oval moon and broken reflection over the teal bars. <strong>Overlap can look different</strong> because the water moves faster; the moon’s rise, fade, and the shimmer’s original timing remain untouched.</p>
+<p>Compilation and visual checks passed.</p></section><footer><a rel="prev" href="02-moon.html">← A moon and its shimmer</a><a href="../../../rectsl_conversation/">Back to the walkthrough →</a></footer></main></body></html>

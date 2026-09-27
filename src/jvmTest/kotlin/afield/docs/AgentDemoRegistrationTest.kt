@@ -131,6 +131,19 @@ class AgentDemoRegistrationTest {
             "read_only_session",
             "skinned_characters",
             "solidsl_inverse",
+            // Landed 2026-09-26: the blank starter and three recorded sessions of the StackSL
+            // conversation ("Talking a shader into existence"). All four are demo documents, and
+            // all four are in UNVERIFIED for the reason the function conversation is.
+            "stacksl_conversation",
+            "stacksl_conversation_aurora",
+            "stacksl_conversation_ink",
+            "stacksl_conversation_tiles",
+            // Landed 2026-09-27: the RectSL conversation ("Talking a scene into existence"), its blank
+            // starter and three recorded sessions, in UNVERIFIED for the same reason.
+            "rectsl_conversation",
+            "rectsl_conversation_lanterns",
+            "rectsl_conversation_score",
+            "rectsl_conversation_tide",
         )
 
         /**
@@ -159,7 +172,7 @@ class AgentDemoRegistrationTest {
          * **It grew again on 2026-09-23, and this time the prescribed fix is not free.** The two
          * `function_conversation` documents are demo documents, so the `flow_grain` reasoning does
          * not reach them: their box Kotlin — a 198-line tools box, byte-identical in both — is
-         * compiled by nothing. Their only driver, `tools/run_function_conversation.py`, sends a
+         * compiled by nothing. Their only driver, `tools/conversation_demo.py record`, sends a
          * real AI4 model turn, is referenced by no Gradle task and carries no `FIELD_TEST`, so it
          * can never be the gate. A `COMPILE_ONLY` transcript each is still the right fix and would
          * compile both bodies without a model. What stops it being a nightly-CI edit is the
@@ -175,15 +188,47 @@ class AgentDemoRegistrationTest {
         val UNVERIFIED = mapOf(
             "function_conversation" to
                 "Kept out of the transcript registry by decision (Marc, 2026-09-26): the demo is an " +
-                "AI4 conversation and needs an OpenAI platform key to use, so it ships as the zip " +
-                "download on public/docs/function_conversation.md rather than as a gallery transcript. " +
-                "Its box Kotlin is therefore compiled by nothing here. A COMPILE_ONLY transcript would " +
-                "compile the tools box without a key (compiling calls no model), should that change.",
+                "AI4 conversation and needs a provider key to use, so it ships as the zip download on " +
+                "public/docs/function_conversation.md rather than as a gallery transcript. Since " +
+                "2026-09-26 its study tools are library code (afield.stdlib.FunctionStudyTools, covered " +
+                "by FunctionStudyTest and the demo checks in tools/test_conversation_demos.py), so the " +
+                "only box Kotlin is the function source itself, which the study compiles when it opens.",
             "function_conversation_example" to
-                "The worked example beside the blank starter (`7fc49b2ed`), kept out for the same " +
-                "reason and shipped the same way: the zip download on " +
-                "public/docs/function_conversation.md. Same byte-identical tools box, same " +
-                "COMPILE_ONLY option if the decision changes.",
+                "The worked example beside the blank starter, kept out for the same reason and shipped " +
+                "the same way. Its study recompiles the checked revision when the document opens; nothing " +
+                "here compiles it as a transcript.",
+            "stacksl_conversation" to
+                "The StackSL counterpart of function_conversation, kept out of the transcript registry " +
+                "for the same reason (an AI4 conversation needs a provider key) and shipped the same " +
+                "way: the starter zip on public/docs/stacksl_conversation.md, built by " +
+                "tools/package_stacksl_conversation.py. Its program is StackSL, not Kotlin; its one Kotlin " +
+                "box, the window, is compiled by nothing here.",
+            "stacksl_conversation_aurora" to
+                "A recorded session beside the stacksl_conversation starter, with the starter's window " +
+                "box (tools/stacksl_conversation_documents.py --check holds them equal). " +
+                "StackSLConversationExamplesTest replays its revisions and recorded comparisons.",
+            "stacksl_conversation_ink" to
+                "A recorded session beside the stacksl_conversation starter; same window box, same " +
+                "replay test, same gap as stacksl_conversation_aurora.",
+            "stacksl_conversation_tiles" to
+                "A recorded session beside the stacksl_conversation starter; same window box, same " +
+                "replay test, same gap as stacksl_conversation_aurora.",
+            "rectsl_conversation" to
+                "The RectSL counterpart of stacksl_conversation, kept out of the transcript registry for " +
+                "the same reason and shipped the same way: the starter zip on " +
+                "public/docs/rectsl_conversation.md, built by tools/package_rectsl_conversation.py. Its " +
+                "scene is RectSL (RectSLLanguageTest compiles it); its one Kotlin box, the window, is " +
+                "compiled by nothing here.",
+            "rectsl_conversation_lanterns" to
+                "A recorded session beside the rectsl_conversation starter, with the starter's window box " +
+                "(tools/rectsl_conversation_documents.py --check holds them equal). " +
+                "RectSLConversationExamplesTest replays its revisions and recorded comparisons.",
+            "rectsl_conversation_score" to
+                "A recorded session beside the rectsl_conversation starter; same window box, same replay " +
+                "test, same gap as rectsl_conversation_lanterns.",
+            "rectsl_conversation_tide" to
+                "A recorded session beside the rectsl_conversation starter; same window box, same replay " +
+                "test, same gap as rectsl_conversation_lanterns.",
         )
     }
 

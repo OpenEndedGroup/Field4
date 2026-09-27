@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Half speed, measured · An aurora over hills · Field AI4</title><link rel="stylesheet" href="../conversation.css"></head>
+<body><main><nav class="top" aria-label="Document"><a href="../../../stacksl_conversation/">← Talking a shader into existence</a><a href="05-slower.txt">Raw transcript</a></nav>
+<header><div class="eyebrow">Field · AI4 / An aurora over hills / turn 05</div><h1>Half speed, measured</h1>
+<p>The recorded exchange: the request, the tool activity, every image the tools returned to the model, and its reply. Expand tool activity to read the steps; open an image to see it full size.</p>
+<nav class="chapters" aria-label="Recorded turns"><a href="01-aurora.html" title="Night sky and aurora" aria-label="1: Night sky and aurora">01</a><a href="02-still-hills.html" title="Still, black hills" aria-label="2: Still, black hills">02</a><a href="03-mound.html" title="What is that mound?" aria-label="3: What is that mound?">03</a><a href="04-folds.html" title="Folds like fabric, three ways" aria-label="4: Folds like fabric, three ways">04</a><a href="05-slower.html" title="Half speed, measured" aria-label="5: Half speed, measured" aria-current="page">05</a></nav></header>
+<section class="turn person" aria-label="The person, in Field, before this turn"><div class="role">The person, in Field, before this turn</div><ul><li>Adopted variant <strong>C</strong> in the study card → <code>r6-608989c206df</code> “adopt variant C: Gathered silk: irregularly spaced folds, fine creases on rounded faces, and more billowing toward the bottom.”</li></ul></section><section class="turn you" aria-label="You"><div class="role">You</div><p>I took C in the card. Now slow the whole ripple to about half speed, keeping everything else exactly as it is, and show me it really moves about half as much.</p></section><details class="tool-run"><summary>Tool activity · 9 steps</summary><ol><li><details><summary>Starting AI conversation</summary><div class="body"></div></details></li><li><details><summary>InspectStackSLStudy finished (1 ms)</summary><div class="body"></div></details></li><li><details><summary>Waiting for model</summary><div class="body"></div></details></li><li><details><summary>Measuring and comparing data</summary><div class="body"><p><strong>Measuring and comparing data</strong></p>
+<p>I need to observe and measure values both before and after specific intervals: [0, 0.5, 1, 2] and then doubled to [0, 2, 4]. The tool I'm using works with pixel levels in a nonlinear fashion, focusing on small intervals around 0.5. I'm aiming to match these metrics exactly, but there’s a challenge in cross-referencing times. After capturing the data, I’ll compare the old [0, 1, 2] sizes to the new [0, 1, 2, 4] metrics set at size 256. I think I’ll need about five calls in total.</p>
+<p>Next tool: <code>CaptureRenderWindowRequest</code></p></div></details></li><li><details><summary>CaptureRenderWindowRequest finished (34 ms)</summary><div class="body"></div></details></li><li><details><summary>ObserveStackSLStudy finished (331 ms)</summary><div class="body"></div></details></li><li><details><summary>SetStackSLNumbers finished (1153 ms)</summary><div class="body"></div></details></li><li><details><summary>CaptureRenderWindowRequest finished (1038 ms)</summary><div class="body"></div></details></li><li><details><summary>Completed</summary><div class="body"></div></details></li></ol></details><figure class="window"><a href="images/0502a655498a65451fab.jpg" title="Open full size"><img src="images/0502a655498a65451fab.jpg" alt="The live window, captured for the model" loading="lazy"></a><figcaption>The live window, captured for the model</figcaption></figure><figure class="evidence"><a href="images/243d18472bf8a1670414.png" title="Open full size"><img src="images/243d18472bf8a1670414.png" alt="r6-608989c206df: frames at 0.00, 1.00, 2.00 s" loading="lazy"></a><figcaption>r6-608989c206df: frames at 0.00, 1.00, 2.00 s</figcaption></figure><figure class="evidence"><a href="images/cb7adf284db2c09b739e.png" title="Open full size"><img src="images/cb7adf284db2c09b739e.png" alt="r7-988cdeeb24a0: frames at 0.00, 1.00, 2.00, 4.00 s; second row r6-608989c206df, third row the difference" loading="lazy"></a><figcaption>r7-988cdeeb24a0: frames at 0.00, 1.00, 2.00, 4.00 s; second row r6-608989c206df, third row the difference</figcaption></figure><figure class="window"><a href="images/804f9a6512820314a518.jpg" title="Open full size"><img src="images/804f9a6512820314a518.jpg" alt="The live window, captured for the model" loading="lazy"></a><figcaption>The live window, captured for the model</figcaption></figure><section class="turn ai" aria-label="AI4 · gpt-6-astra / openai"><div class="role">AI4 · gpt-6-astra / openai</div><p>Done—<strong>C now runs at exactly half speed</strong>. Only its three time rates changed; fold shapes, colours, stars, and black hills are untouched.</p>
+<p>Measured over the same first second:</p>
+<table>
+<thead>
+<tr>
+<th>Frame-change measure</th>
+<th style="text-align: right;">Original C</th>
+<th style="text-align: right;">Half-speed C</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mean pixel change</td>
+<td style="text-align: right;">0.6932</td>
+<td style="text-align: right;">0.3478</td>
+</tr>
+<tr>
+<td>Pixels changing above threshold</td>
+<td style="text-align: right;">15.60%</td>
+<td style="text-align: right;">7.71%</td>
+</tr>
+</tbody>
+</table>
+<p>That’s <strong>50.2% of the original image change</strong>. This measures image change, not physical travel distance.</p>
+<p>The slowed frames at <strong>2 and 4 seconds</strong> also reproduce the original’s <strong>1- and 2-second</strong> states. At time zero, the before/after comparison reports <strong>zero difference</strong>.</p>
+<p>Compilation passed. The live view retains C’s gathered green-violet folds, faint stars, and solid black hills.</p></section><footer><a rel="prev" href="04-folds.html">← Folds like fabric, three ways</a><a href="../../../stacksl_conversation/">Back to the walkthrough →</a></footer></main></body></html>

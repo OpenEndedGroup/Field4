@@ -2,8 +2,9 @@
 
 A working Field/AI4 experiment: seven real Astra conversations turn three flat
 channels into an editable one-hour function, then reshape it without losing the
-rest. The function is ordinary Kotlin returning `Functions.Fn` values. Tool request
-classes and handlers are defined in the document, where they can be edited live.
+rest. The function is ordinary Kotlin returning `Functions.Fn` values, in a function study box whose
+AI4 chat has the study tools (`afield.stdlib.FunctionStudyTools`). The recorded turns used an
+earlier arrangement in which those tools were a box of this document.
 
 Open the function_conversation_example folder as a Field document. For a fresh
 conversation, use the separate blank function_conversation starter.
@@ -16,9 +17,8 @@ It is assembled from the untouched `conversations/01-create.md` through
 `07-restore-background.md` records; image sidecars are embedded for portability.
 These older transcripts did not record per-response model badges, so the UI labels
 them “Model not recorded.” The archive records the run configuration below.
-On a fresh Field launch, first run **Observation tools — run first**. It restores
-checked source history, registers the tools, and draws the overview. The last
-working revision is **r9-82456e1e48ac**. Manual source edits are reported as dirty
+Opening the document restores the checked source history (`studies/function_source/`) and draws
+the overview. The last working revision is **r9-82456e1e48ac**. Manual source edits are reported as dirty
 until admitted through a guarded candidate transaction.
 
 ## The saved conversations
@@ -29,13 +29,13 @@ Model/provider: **gpt-6-astra / OpenAI**, using Field's existing configuration.
 
 | Request | Checked source | Wall time |
 | --- | --- | --- |
-| [Create six events](conversations/01-create.md) | [r3-66fd67f6fe7c](revisions/r3-66fd67f6fe7c.kt) | 100.1 s |
-| [Move e3 by 40 seconds](conversations/02-move.md) | [r4-f7f9ef4f2f47](revisions/r4-f7f9ef4f2f47.kt) | 52.1 s |
-| [Double its rise; pin the hold length](conversations/03-stretch.md) | [r5-2aa6023ddfca](revisions/r5-2aa6023ddfca.kt) | 68.1 s |
-| [Lag y, then catch up](conversations/04-lag.md) | [r6-deb1b1738cb0](revisions/r6-deb1b1738cb0.kt) | 168.1 s |
-| [Delete e4](conversations/05-delete.md) | [r7-ebc54198e3ae](revisions/r7-ebc54198e3ae.kt) | 227.1 s |
-| [Warp a pinned background passage](conversations/06-warp.md) | [r8-e4aea058bc8b](revisions/r8-e4aea058bc8b.kt) | 286.4 s |
-| [Restore background; retain event work](conversations/07-restore-background.md) | [r9-82456e1e48ac](revisions/r9-82456e1e48ac.kt) | 236.2 s |
+| [Create six events](conversations/01-create.md) | [r3-66fd67f6fe7c](studies/function_source/r3-66fd67f6fe7c.kt) | 100.1 s |
+| [Move e3 by 40 seconds](conversations/02-move.md) | [r4-f7f9ef4f2f47](studies/function_source/r4-f7f9ef4f2f47.kt) | 52.1 s |
+| [Double its rise; pin the hold length](conversations/03-stretch.md) | [r5-2aa6023ddfca](studies/function_source/r5-2aa6023ddfca.kt) | 68.1 s |
+| [Lag y, then catch up](conversations/04-lag.md) | [r6-deb1b1738cb0](studies/function_source/r6-deb1b1738cb0.kt) | 168.1 s |
+| [Delete e4](conversations/05-delete.md) | [r7-ebc54198e3ae](studies/function_source/r7-ebc54198e3ae.kt) | 227.1 s |
+| [Warp a pinned background passage](conversations/06-warp.md) | [r8-e4aea058bc8b](studies/function_source/r8-e4aea058bc8b.kt) | 286.4 s |
+| [Restore background; retain event work](conversations/07-restore-background.md) | [r9-82456e1e48ac](studies/function_source/r9-82456e1e48ac.kt) | 236.2 s |
 
 Times include model calls and provider rate-limit backoff; the later turns incurred
 multiple retries. Token usage is not exposed by AI4's SendResult and is not claimed.
@@ -46,12 +46,12 @@ its working revision survived compiler-plugin errors and a stalled diagnostic qu
 
 Original six-event composition:
 
-![Initial AI4-created function](revisions/r3-66fd67f6fe7c-0.0-3600.0.png)
+![Initial AI4-created function](studies/function_source/r3-66fd67f6fe7c-0.0-3600.0.png)
 
 Final function: e3 moved and lengthened, y briefly delayed, e4 deleted, original
 background restored. The timings of e1, e2, e5 and e6 are unchanged.
 
-![Final function](revisions/r9-82456e1e48ac-0.0-3600.0.png)
+![Final function](studies/function_source/r9-82456e1e48ac-0.0-3600.0.png)
 
 The overview shows min/max excursions. It does not resolve pulse ordering; the
 conversation artifacts include local waveform plots and measured peak times.
@@ -112,6 +112,5 @@ The current overview uses the interactive Plotly signal viewer with shared time
 zoom and pan, follows the active revision, and preserves its viewport. Saved PNGs
 above remain the historical evidence from the original conversations.
 
-When switching between the starter and the worked example in one Field session,
-rerun the tools box in the document you want to chat with. The most recently
-registered handlers belong to that document.
+Each study's tools act on the box whose chat is open, so the starter and this example can be open at
+once, each with its own history.

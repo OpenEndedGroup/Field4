@@ -86,6 +86,8 @@ private fun String.isHttpUrl(): Boolean =
 
 private fun cleanupDetachedSession(info: SessionInformation) {
     if (info.sessions.isNotEmpty()) return
+    // An automation client asked for this named document to keep running between its invocations.
+    if (info.keepRunningWhenDetached && !info.ephemeral) return
     detachRootFromMetaroot(info.root)
     info.cleanup()
     if (info.ephemeral) {
@@ -285,6 +287,8 @@ internal fun attachDocumentSession(
         scheduleStartupActionDocumentResync(found)
         found.topologyGeneration++
         found.scheduleAutorunBoxes()
+        // Study cards are drawn by library code, not by a run this page could see; give it the last of each.
+        afield.stdlib.BoxStudies.replayTo(session, found)
         return found
     }
 
@@ -710,6 +714,7 @@ private fun snapshotFor(box: Box): AgentBoxSnapshot {
         metadata = box.getPropertyRaw("metadata") as? String,
         notes = box.getPropertyRaw("notes") as? String,
         code_language = box.getPropertyRaw("code_language") as? String,
+        default_property = (box.getPropertyRaw("default_property") as? String)?.takeIf { it.isNotBlank() },
         autorun = box.getPropertyRaw("autorun").isTrue(),
         layers = box.getPropertyRaw("layers") as? String,
         visible = (box.getPropertyRaw("visible") as? Boolean) ?: true,
@@ -1164,6 +1169,7 @@ fun installAgentBackdoorHandlers() {
             agentManaged = true,
             readOnly = request.readOnly
         )
+        if (request.keepRunning && !info.ephemeral) info.keepRunningWhenDetached = true
         reply(Message("agent-open-document").payload(buildAgentSnapshot(info)))
         Handled.yes
     })
@@ -1177,9 +1183,11 @@ fun installAgentBackdoorHandlers() {
     // Provider-neutral ai4 tool surface (Tier-1: Macro*/SemanticRetrieval*/agent memory).
     // Reuses the same ToolRegistry the OpenAI harness uses; gates hide any tool whose
     // provider is not wired for the backdoor context. Surfaced over MCP by field_mcp.py.
-    handlers["agent-ai-tools-list"] = mutableSetOf({ _, reply ->
+    handlers["agent-ai-tools-list"] = mutableSetOf({ message, reply ->
         val info = thisSessionInfo.get()
-        val ctx = Ai4BackdoorTools.buildContext(info)
+        val focusBox = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("focusBox")
+            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
+        val ctx = Ai4BackdoorTools.buildContext(info, focusBox)
         val tools = Ai4BackdoorTools.registry.describe(ctx)
         reply(Message("agent-ai-tools-list").payload(AgentAiToolsListResponse(tools = tools)))
         Handled.yes
@@ -1195,7 +1203,7 @@ fun installAgentBackdoorHandlers() {
             thisSession.set(session)
             thisSessionInfo.set(info)
             try {
-                val ctx = Ai4BackdoorTools.buildContext(info)
+                val ctx = Ai4BackdoorTools.buildContext(info, request.focusBox)
                 val argsJson = request.arguments?.toString() ?: "{}"
                 val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson)
                 val resultJson = Json.parseToJsonElement(aiToolMapper.writeValueAsString(result))

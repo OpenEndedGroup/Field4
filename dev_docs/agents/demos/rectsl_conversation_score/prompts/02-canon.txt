@@ -1,0 +1,1 @@
+Make the lower rows answer the top row, each one a beat later, like a canon.

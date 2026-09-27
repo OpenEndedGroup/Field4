@@ -31,10 +31,19 @@ import java.util.concurrent.CopyOnWriteArrayList
  * ```
  *
  * Call it once, from wherever the owning code is first touched — a personal package's `init`, a
- * `Box` helper, an installer. Registration is idempotent **per tool name**: registering another class
- * with the same [Class.getSimpleName] replaces the handler rather than adding a second one, so a re-run
- * of a live-coded box does not accumulate duplicates. The name, not the `Class`, is the key on purpose;
- * see "Live coding" below.
+ * `Box` helper, an installer. Registration is idempotent **per tool name and scope**: registering
+ * another class with the same [Class.getSimpleName] in the same scope replaces the handler rather than
+ * adding a second one, so a re-run of a live-coded box does not accumulate duplicates. The name, not
+ * the `Class`, is the key on purpose; see "Live coding" below.
+ *
+ * # Scopes
+ *
+ * A tool defined in a document's box should belong to that document. Pass `scope` (the document's
+ * filename is the natural key) and two open documents can each register a tool of the same name: a
+ * call goes to the most recently registered handler whose `available` gate passes under the call's
+ * context, so each document's gate — typically "is the conversation in this document?", via
+ * [ToolExecutionContext.focus] — picks its own handler. Without a scope a registration replaces every
+ * other unscoped registration of that name, as it always has.
  *
  * The request class is the tool's schema. Annotate it with [JsonClassDescription] and its fields with
  * `@JsonPropertyDescription`; the same reflection that describes a built-in tool describes this one, so
@@ -75,11 +84,13 @@ import java.util.concurrent.CopyOnWriteArrayList
  */
 object AgentToolExtensions {
 
-    /** One registered tool: its request class, its availability gate, and its handler. */
+    /** One registered tool: its request class, its availability gate, its handler and its scope. */
     class Registration<T : Any> internal constructor(
         val toolClass: Class<T>,
         val available: (ToolExecutionContext) -> Boolean,
         val handler: (ToolExecutionContext, T) -> Any,
+        /** Who owns this registration — see "Scopes" above; `null` for an unscoped tool. */
+        val scope: Any? = null,
     )
 
     private val registrations = CopyOnWriteArrayList<Registration<*>>()
@@ -117,6 +128,7 @@ object AgentToolExtensions {
     fun <T : Any> register(
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean = { true },
+        scope: Any? = null,
         handler: (ToolExecutionContext, T) -> Any,
     ) {
         val name = toolClass.simpleName
@@ -128,11 +140,42 @@ object AgentToolExtensions {
                     "model sees, so it has to be unique across every tool in the conversation."
             )
         }
-        registrations.removeAll { it.toolClass.simpleName == name }
-        registrations.add(Registration(toolClass, available, handler))
-        live.forEach {
-            if (!it.registerExtension(toolClass, available, handler)) reportRefusal(name, "register")
+        registrations.removeAll { it.toolClass.simpleName == name && it.scope == scope }
+        registrations.add(Registration(toolClass, available, handler, scope))
+        publish(name, live, "register")
+    }
+
+    /** The registrations of [name], oldest first. */
+    private fun named(name: String) = registrations.filter { it.toolClass.simpleName == name }
+
+    /** The registration of [name] a call under [ctx] goes to: the newest whose gate passes. */
+    private fun chosen(name: String, ctx: ToolExecutionContext): Registration<*>? =
+        named(name).lastOrNull { it.available(ctx) }
+
+    /**
+     * Put one entry for [name] into each of [into]: the newest registration's request class (its
+     * schema), a gate that passes when any registration's does, and a handler that runs the one
+     * [chosen] for the call. A request built from one scope's class is converted to the chosen one's,
+     * because a re-run box compiles its request class into a fresh classloader.
+     */
+    private fun publish(name: String, into: List<ToolRegistry>, where: String) {
+        val newest = named(name).lastOrNull()
+        if (newest == null) {
+            into.forEach { it.unregisterExtension(name) }
+            return
         }
+        @Suppress("UNCHECKED_CAST")
+        val schema = newest.toolClass as Class<Any>
+        val gate: (ToolExecutionContext) -> Boolean = { ctx -> chosen(name, ctx) != null }
+        val handler: (ToolExecutionContext, Any) -> Any = { ctx, request ->
+            @Suppress("UNCHECKED_CAST")
+            val target = (chosen(name, ctx) ?: throw IllegalStateException(
+                "Extension tool '$name' is not available in this context."
+            )) as Registration<Any>
+            val typed = if (target.toolClass.isInstance(request)) request else aiToolMapper.convertValue(request, target.toolClass)
+            target.handler(ctx, typed)
+        }
+        into.forEach { if (!it.registerExtension(schema, gate, handler)) reportRefusal(name, where) }
     }
 
     /**
@@ -178,20 +221,24 @@ object AgentToolExtensions {
         )
     }
 
-    /** Drop a tool. Mostly for tests, and for a live-coded registration being retired. */
+    /** Drop a tool, in every scope. Mostly for tests, and for a live-coded registration being retired. */
     fun unregister(toolClass: Class<*>) = unregister(toolClass.simpleName)
 
     /**
      * Drop a tool by the name the model sees, for a box retiring a registration whose request class it
-     * no longer has in scope — which, after an edit that renamed or deleted the class, is normal.
+     * no longer has in scope — which, after an edit that renamed or deleted the class, is normal. With
+     * [scope], only that scope's registration goes; the others keep answering.
      */
-    fun unregister(name: String) {
-        registrations.removeAll { it.toolClass.simpleName == name }
-        bound().forEach { it.unregisterExtension(name) }
+    fun unregister(name: String, scope: Any? = ALL_SCOPES) {
+        registrations.removeAll { it.toolClass.simpleName == name && (scope === ALL_SCOPES || it.scope == scope) }
+        publish(name, bound(), "unregister")
     }
 
-    /** Every registered tool's request class, for diagnostics and for a status readout. */
-    fun registeredToolNames(): List<String> = registrations.map { it.toolClass.simpleName }.sorted()
+    /** Marks an [unregister] of every scope. */
+    private val ALL_SCOPES = Any()
+
+    /** Every registered tool's name, once each, for diagnostics and for a status readout. */
+    fun registeredToolNames(): List<String> = registrations.map { it.toolClass.simpleName }.distinct().sorted()
 
     /**
      * True if [name] is registered here and its gate passes under [ctx].
@@ -200,12 +247,11 @@ object AgentToolExtensions {
      * what they think — core's own registry is `internal`, so a tool set living outside core cannot inspect
      * itself through it. That gap made the house tool set's own smoke untestable after the move.
      */
-    fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
-        registrations.any { it.toolClass.simpleName == name && it.available(ctx) }
+    fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean = chosen(name, ctx) != null
 
     /** The names of every extension tool available under [ctx], sorted. */
     fun availableToolNames(ctx: ToolExecutionContext): List<String> =
-        registrations.filter { it.available(ctx) }.map { it.toolClass.simpleName }.sorted()
+        registrations.filter { it.available(ctx) }.map { it.toolClass.simpleName }.distinct().sorted()
 
     /**
      * Runs an extension tool by name with JSON arguments, exactly as a model's tool call would.
@@ -215,11 +261,9 @@ object AgentToolExtensions {
      * silently returning nothing would make a closed gate look like a working tool.
      */
     fun execute(ctx: ToolExecutionContext, name: String, argsJson: String): Any {
-        val registration = registrations.firstOrNull { it.toolClass.simpleName == name }
-            ?: throw IllegalArgumentException("No extension tool registered for: $name")
-        if (!registration.available(ctx)) {
-            throw IllegalStateException("Extension tool '$name' is not available in this context.")
-        }
+        if (named(name).isEmpty()) throw IllegalArgumentException("No extension tool registered for: $name")
+        val registration = chosen(name, ctx)
+            ?: throw IllegalStateException("Extension tool '$name' is not available in this context.")
         @Suppress("UNCHECKED_CAST")
         val typed = registration as Registration<Any>
         val args: Any = aiToolMapper.readValue(argsJson.ifBlank { "{}" }, typed.toolClass)
@@ -233,8 +277,8 @@ object AgentToolExtensions {
      * built-in's from the outside and anything reading descriptors needs no special case for them.
      */
     fun describe(ctx: ToolExecutionContext): List<String> =
-        registrations.filter { it.available(ctx) }
-            .sortedBy { it.toolClass.simpleName }
+        registrations.map { it.toolClass.simpleName }.distinct().sorted()
+            .mapNotNull { chosen(it, ctx) }
             .map { registration ->
                 buildJsonObject {
                     put("name", registration.toolClass.simpleName)
@@ -266,13 +310,7 @@ object AgentToolExtensions {
      */
     internal fun applyTo(tools: ToolRegistry) {
         synchronized(boundRegistries) { boundRegistries.add(tools) }
-        registrations.forEach { registration ->
-            @Suppress("UNCHECKED_CAST")
-            val typed = registration as Registration<Any>
-            if (!tools.registerExtension(typed.toolClass, typed.available, typed.handler)) {
-                reportRefusal(typed.toolClass.simpleName, "applyTo")
-            }
-        }
+        registrations.map { it.toolClass.simpleName }.distinct().forEach { publish(it, listOf(tools), "applyTo") }
     }
 }
 

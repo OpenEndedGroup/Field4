@@ -7,6 +7,7 @@ internal val monacoPropertyNames = arrayOf(
     "vertex",
     "fragment",
     "stackSL",
+    "rectSL",
     "msl",
     "vertex_fragment",
     "compute",
@@ -41,6 +42,7 @@ internal val monacoPropertyDescriptions = arrayOf(
     "Vertex Shader (GLSL)",
     "Fragment Shader (GLSL)",
     "StackSL Shader Function",
+    "RectSL Scene",
     "Vertex+Fragment Shader (Metal, visionOS)",
     "Shared Vertex+Fragment Shader (Slang)",
     "Compute Shader (GLSL)",
@@ -75,6 +77,7 @@ internal val monacoPropertyLanguages = arrayOf(
     "glsl",
     "glsl",
     "stacksl",
+    "rectsl",
     "msl",
     "slang",
     "glsl",
@@ -175,13 +178,17 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
     disposePropertySwitchActions(w.propertyActionDisposables)
     ed.afieldPropertySwitchActionsInstalled = true
 
-    val keyCodes = arrayOf(
-        monaco.KeyCode.KeyM,
-        monaco.KeyCode.KeyV,
-        monaco.KeyCode.KeyF,
-        monaco.KeyCode.KeyM,
-        monaco.KeyCode.KeyP,
-        monaco.KeyCode.KeyD
+    // By name, as quickpick.js's palettePropertySwitchKeybindings has them. These were once matched
+    // to monacoPropertyNames by position, and inserting "msl" silently moved Alt-P and Alt-D down
+    // one property each.
+    val keyCodes = mapOf(
+        "code" to monaco.KeyCode.KeyM,
+        "vertex" to monaco.KeyCode.KeyV,
+        "fragment" to monaco.KeyCode.KeyF,
+        "stackSL" to monaco.KeyCode.KeyM,
+        "rectSL" to monaco.KeyCode.KeyM,
+        "vertex_fragment" to monaco.KeyCode.KeyP,
+        "compute" to monaco.KeyCode.KeyD
     )
 
     val disposables = mutableListOf<dynamic>()
@@ -195,8 +202,9 @@ internal fun monacoInstallPropertySwitchActions(monaco: dynamic, ed: dynamic) {
         action.contextMenuGroupId = "navigation"
         action.contextMenuOrder = 2.0
 
-        if (i < keyCodes.size) {
-            val binding = (monaco.KeyMod.Alt as Int) or (keyCodes[i] as Int)
+        val keyCode = keyCodes[monacoPropertyNames[i]]
+        if (keyCode != null) {
+            val binding = (monaco.KeyMod.Alt as Int) or (keyCode as Int)
             action.keybindings = arrayOf(binding)
         } else {
             action.keybindings = emptyArray<Int>()

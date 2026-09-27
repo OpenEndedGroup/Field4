@@ -1,0 +1,16 @@
+{
+  "id" : "r2-be7239fd9faa",
+  "parent" : "r1-ebfa39bf30b2",
+  "description" : "A full-width tide of slender deep-sea bars with a rightward travelling crest",
+  "created" : "2026-09-27T00:10:56.353600Z",
+  "sourceHash" : "be7239fd9faaef938d9e1e9f4cbb57427d32c6748b1d2284795669f0e84b3fd8",
+  "facts" : {
+    "warnings" : [ ],
+    "animated" : true,
+    "rects" : 80,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 22,
+    "materials" : [ ]
+  }
+}

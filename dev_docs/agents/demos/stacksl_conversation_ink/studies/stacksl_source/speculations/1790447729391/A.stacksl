@@ -1,0 +1,24 @@
+# Ink in amber water. Time changes the noise's fourth dimension, never scrolls xy.
+: folds
+  >q
+  <q fbm4
+  <q [7.1,3.8,2.4,0] + fbm4
+  vec2 0.5 - 2.8 * <q +
+;
+# Fixed spatial anchor, slow internal evolution.
+p 3.8 * 0.035t >w >domain
+<domain folds folds >flow
+# Feathered concentration around a stationary central bloom.
+<flow fbm4 0.78 *
+p [1,0.85,0,0] * length 0.92 * - 0.27 +
+0.28 0.62 ramp smooth >ink
+# Amber water with a gentle falloff toward the edges.
+[0.78,0.40,0.10] [0.42,0.16,0.028] p length 0.85 * mix >water
+# Dilute indigo at the edges, near-black indigo in the pooled pigment.
+<water [0.105,0.095,0.235] <ink 0.0 0.68 ramp smooth mix
+[0.008,0.012,0.060] <ink 0.30 1.0 ramp smooth mix
+# Soft blue veils, confined to the denser ink.
+[0.15,0.19,0.38]
+<flow [2.3,5.7,1.2,0] + fbm4 0.28 0.70 ramp smooth
+<ink 0.45 0.95 ramp smooth * 0.72 * mix
+saturate

@@ -1,0 +1,16 @@
+{
+  "id" : "r3-c4e66cc017b5",
+  "parent" : "r2-288dde12a884",
+  "description" : "adopt variant B: Fine threads: narrow blue-lilac contour filaments, with deep indigo between them.",
+  "created" : "2026-09-26T18:36:16.727662Z",
+  "sourceHash" : "c4e66cc017b5bf635e0a5e5c879a137259594e53a61b327aa1220d3e9cc48237",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 71,
+    "knobs" : 41,
+    "stages" : 12
+  }
+}

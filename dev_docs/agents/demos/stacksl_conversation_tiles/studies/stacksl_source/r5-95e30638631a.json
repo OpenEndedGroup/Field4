@@ -1,0 +1,16 @@
+{
+  "id" : "r5-95e30638631a",
+  "parent" : "r4-4c4b0185fbb2",
+  "description" : "edited by hand",
+  "created" : "2026-09-26T18:44:21.980300Z",
+  "sourceHash" : "95e30638631a39b3f1650c647ffbb6583a83983d21408b6245b0aa012012f4af",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 165,
+    "knobs" : 64,
+    "stages" : 27
+  }
+}

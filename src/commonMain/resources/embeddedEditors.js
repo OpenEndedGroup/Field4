@@ -39,6 +39,7 @@ const PROPERTY_LANGUAGES = {
 	vertex:       "glsl",
 	fragment:     "glsl",
 	stackSL:      "stacksl",
+	rectSL:       "rectsl",
 	msl:          "msl",
 	vertex_fragment:"slang",
 	compute:      "glsl",

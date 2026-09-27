@@ -1,0 +1,10 @@
+/backups/
+/studies/*/observations/
+/studies/*/thumbnails/
+/studies/*/speculations/*/sheet.png
+/history_metrics.edn
+/transcript.edn
+/operations.yaml
+/document.md
+/conversations/images/
+/files/*.png

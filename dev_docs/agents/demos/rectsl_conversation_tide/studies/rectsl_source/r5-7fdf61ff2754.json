@@ -1,0 +1,16 @@
+{
+  "id" : "r5-7fdf61ff2754",
+  "parent" : "r4-c3c9527402fc",
+  "description" : "Double only tide speed; preserve current moon and shimmer exactly",
+  "created" : "2026-09-27T00:13:17.541232Z",
+  "sourceHash" : "7fdf61ff2754d5d8c508b8ae4023266056cd2a25e6828bdbdad521894849e794",
+  "facts" : {
+    "warnings" : [ "Heavy overlap (first at 0.067 s): moon-copy (line 22), moon-copy-2 (line 22), tide-copy-65 (line 35), tide-copy-66 (line 35), …." ],
+    "animated" : true,
+    "rects" : 174,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 79,
+    "materials" : [ ]
+  }
+}

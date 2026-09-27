@@ -1,0 +1,10 @@
+{
+  "against" : "r4-7eb0909143e2",
+  "liveSourceHash" : "7eb0909143e22226c77fd613fa92591f45519c69939aeadc3ffba032aa2c3248",
+  "adopted" : null,
+  "variants" : [ {
+    "label" : "black-check",
+    "note" : "Verification only, not for adoption: below-ridge output must be uniformly zero at all tested times.",
+    "file" : "black-check.stacksl"
+  } ]
+}

@@ -1,0 +1,16 @@
+{
+  "id" : "r5-d3311447473f",
+  "parent" : "r4-830d250a0b67",
+  "description" : "Extend only the downbeat release from 0.22 to 0.34 seconds; preserve all other source.",
+  "created" : "2026-09-27T00:17:55.558976Z",
+  "sourceHash" : "d3311447473f3a9cafe4305a7766c384044bca1021f1515d0a87fbe2868a2056",
+  "facts" : {
+    "warnings" : [ ],
+    "animated" : true,
+    "rects" : 51,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 83,
+    "materials" : [ ]
+  }
+}

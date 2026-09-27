@@ -6,6 +6,7 @@ import afield.ai.core.LogDispatcher
 import afield.ai.core.LogSink
 import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolExecutionContext
+import afield.ai.core.ToolFocus
 import afield.ai.core.ToolImage
 import afield.ai.core.ToolRegistry
 import afield.ai.core.registerBuiltInAgentTools
@@ -879,4 +880,47 @@ class AgentToolExtensionsTest {
 
     private fun JsonObject.description(name: String): String =
         this[name]!!.jsonObject["description"]!!.jsonPrimitive.content
+
+    // ------------------------------------------------------------------ scopes
+
+    /**
+     * Two documents each define a tool of the same name in their own box, and both stay usable: a call
+     * goes to the registration whose gate passes for the conversation's focus. Before scopes, the
+     * second document's box silently took the tool from the first ("rerun the tools box in the document
+     * you want to chat with").
+     */
+    @Test
+    fun twoDocumentsKeepTheirOwnToolOfTheSameName() {
+        fun focusOn(document: String) = ToolExecutionContext(focus = ToolFocus(document, afield.Box("program"), "code"))
+        val inA = focusOn("a.document")
+        val inB = focusOn("b.document")
+        AgentToolExtensions.register(GenerationOne.NightlyReloaded::class.java, { it.focus?.document == "a.document" }, scope = "a.document") { _, r ->
+            NightlyLateResult(r.note, "a")
+        }
+        AgentToolExtensions.register(GenerationTwo.NightlyReloaded::class.java, { it.focus?.document == "b.document" }, scope = "b.document") { _, r ->
+            NightlyLateResult(r.note, "b")
+        }
+        val tools = ToolRegistry()
+        registerBuiltInAgentTools(tools)
+
+        assertEquals("a", (tools.executeByName(inA, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+        assertEquals("b", (tools.executeByName(inB, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+        assertEquals("a", (AgentToolExtensions.execute(inA, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+        assertFalse(tools.isAvailable(ctx, "NightlyReloaded"), "a conversation in neither document sees neither")
+        assertEquals(1, AgentToolExtensions.describe(inA).count { "NightlyReloaded" in it }, "one tool, not two")
+
+        // Re-running document a's box replaces a's tool only.
+        AgentToolExtensions.register(GenerationOne.NightlyReloaded::class.java, { it.focus?.document == "a.document" }, scope = "a.document") { _, r ->
+            NightlyLateResult(r.note, "a, second run")
+        }
+        assertEquals("a, second run", (tools.executeByName(inA, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+        assertEquals("b", (tools.executeByName(inB, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+
+        // Retiring a's leaves b's answering.
+        AgentToolExtensions.unregister("NightlyReloaded", scope = "a.document")
+        assertFalse(tools.isAvailable(inA, "NightlyReloaded"))
+        assertEquals("b", (tools.executeByName(inB, "NightlyReloaded", "{}") as NightlyLateResult).generation)
+        AgentToolExtensions.unregister("NightlyReloaded")
+        assertFalse(tools.isAvailable(inB, "NightlyReloaded"))
+    }
 }

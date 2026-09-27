@@ -1,0 +1,16 @@
+{
+  "id" : "r3-8b5b2a536c7b",
+  "parent" : "r2-72e434d058df",
+  "description" : "Scatter lantern positions and launch phases; vary size and ascent speed while preserving gentle sway and the 18-second loop.",
+  "created" : "2026-09-26T22:50:29.104985Z",
+  "sourceHash" : "8b5b2a536c7bfdc3a13a4b5b903d09c3bbdd497ecee337c8fd33d6af38301367",
+  "facts" : {
+    "warnings" : [ "Heavy overlap (first at 0.00 s): night (line 11), stars (line 14), stars-copy (line 15), stars-copy-2 (line 15), …." ],
+    "animated" : true,
+    "rects" : 65,
+    "groups" : 5,
+    "duration" : 18.0,
+    "knobs" : 116,
+    "materials" : [ ]
+  }
+}

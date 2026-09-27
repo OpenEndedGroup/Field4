@@ -1,0 +1,5 @@
+# A blank wall, 16 by 9 metres, six seconds long. Describe what you want to see in this box's AI4 chat.
+->wall 16 9 meters
+->duration 6
+->fps 30
+->background 0x14141a

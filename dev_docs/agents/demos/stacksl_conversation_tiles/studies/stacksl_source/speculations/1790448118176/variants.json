@@ -1,0 +1,23 @@
+{
+  "against" : "r2-fd567658740f",
+  "liveSourceHash" : "fd567658740ffb900662d4945051173a2d1578f6ea753df17bee477f59c354ec",
+  "adopted" : "10 points",
+  "variants" : [ {
+    "label" : "6 points",
+    "note" : "Broader six-petal rosettes; same scale, palette and grout, with a matching hexagonal hub.",
+    "file" : "6_points.stacksl"
+  }, {
+    "label" : "8 points",
+    "note" : "The original eight-point mosaic, unchanged visually.",
+    "file" : "8_points.stacksl"
+  }, {
+    "label" : "10 points",
+    "note" : "Finer ten-petal rosettes; same scale, palette and grout, with a matching decagonal hub.",
+    "file" : "10_points.stacksl"
+  }, {
+    "label" : "12 points",
+    "note" : "Dense twelve-petal rosettes; same scale, palette and grout, with a matching twelve-sided hub.",
+    "file" : "12_points.stacksl"
+  } ],
+  "as" : "r3-e4e25cfdb90a"
+}

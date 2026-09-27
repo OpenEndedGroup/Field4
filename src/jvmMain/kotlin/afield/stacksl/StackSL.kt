@@ -292,6 +292,92 @@ object StackSLCompiler {
             )
         )
     }
+
+    /**
+     * [source]'s words and definitions, as the tokenizer and parser behind [compile] see them, with
+     * nothing compiled.
+     *
+     * This exists so that tools can walk a program word by word — render what is on top of the stack
+     * after each line, or read the stack at one pixel after each word — without restating the
+     * tokenizer's rules (`#`, `//` and `( … )` comments, whitespace-separated words, `: name … ;`
+     * definitions). A second tokenizer would drift from this one silently; this one cannot.
+     */
+    fun outline(source: String): StackSLOutline {
+        val parsed = parse(tokenize(source), mutableListOf())
+        return StackSLOutline(
+            root = parsed.root.map { StackSLWord(it.text, it.location) },
+            definitions = parsed.definitions.map { definition ->
+                StackSLOutlineDefinition(
+                    definition.name,
+                    definition.location,
+                    definition.body.map { StackSLWord(it.text, it.location) }
+                )
+            }
+        )
+    }
+}
+
+/**
+ * One word of a StackSL program: its text exactly as written, and where it starts.
+ *
+ * A word is what [StackSLCompiler.compile] consumes — a vector literal such as `[1,0,-1]`, or a
+ * number carrying modifiers such as `0.5s2`, is one word, never several.
+ */
+data class StackSLWord(val text: String, val location: StackSLSourceLocation) {
+    /** The characters of the source this word occupies. */
+    val range: IntRange get() = location.index until location.index + text.length
+}
+
+/** A `: name … ;` definition: its name, where that name is written, and the words of its body. */
+data class StackSLOutlineDefinition(
+    val name: String,
+    val location: StackSLSourceLocation,
+    val body: List<StackSLWord>
+)
+
+/**
+ * A StackSL program's shape: the root words in order, and the definitions they may call.
+ *
+ * Every prefix of a concatenative program is itself a program, and [rootPrefix] is how to write one
+ * down: it keeps the definitions, comments and line breaks where they were and removes only the root
+ * words after the first `count`, so a diagnostic about the prefix points at the same line and column
+ * as it would in the whole.
+ */
+data class StackSLOutline(val root: List<StackSLWord>, val definitions: List<StackSLOutlineDefinition>) {
+    /** [source] with every root word after the first [count] blanked out. [source] must be the text this outline came from. */
+    fun rootPrefix(source: String, count: Int): String {
+        require(count in 0..root.size) { "prefix of $count words, program has ${root.size}" }
+        if (count == root.size) return source
+        val text = StringBuilder(source)
+        root.drop(count).forEach { word ->
+            require(source.regionMatches(word.location.index, word.text, 0, word.text.length)) {
+                "outline does not match this source at ${word.location}"
+            }
+            for (i in word.range) text.setCharAt(i, ' ')
+        }
+        return text.toString()
+    }
+
+    /**
+     * The mark the root's word number [count] (1-based) stores into, if it is a move into a local mark
+     * (`>name`) — `null` for any other word, including the lane words `>x` `>y` `>z` `>w`.
+     */
+    fun storedMark(count: Int): String? {
+        val word = root.getOrNull(count - 1)?.text ?: return null
+        if (word in localMarkMoveReservedWords) return null
+        return localMarkMoveRegex.matchEntire(word)?.groupValues?.get(1)
+    }
+
+    /**
+     * What the first [count] root words produce, as a program: [rootPrefix], and when the last of
+     * those words moves a value into a mark, that mark read back. A line ending in `>name` leaves only
+     * the program's input on top of the stack, which says nothing about the line; the value it stored
+     * does.
+     */
+    fun stageProgram(source: String, count: Int): String {
+        val prefix = rootPrefix(source, count)
+        return storedMark(count)?.let { "$prefix\n<$it" } ?: prefix
+    }
 }
 
 fun compileStackSL(source: String, options: StackSLCompileOptions = StackSLCompileOptions()): StackSLCompileResult =

@@ -1,0 +1,33 @@
+# (asked) A Fischinger-inspired visual score: vertical rectangles, 120 BPM, 4/4, stronger first beat; lower rows answer in a one-beat canon.
+# (chosen) Three symmetrical rows; cream and vermilion on black. Top leads, middle +0.5 s, bottom +1 s; six-second loop.
+->wall 16 9 meters
+->duration 6
+->fps 30
+->background 0x0e0a08
+
+# One two-second bar: sharp attacks every 0.5 s, short releases, and a larger downbeat.
+linear-track "four-beats" '( 0=2.1  0.22=0.62  0.44=0.62  0.5=1.4  0.72=0.62  0.94=0.62  1=1.4  1.22=0.62  1.44=0.62  1.5=1.4  1.72=0.62  1.94=0.62  2=2.1 )
+
+# Upper register: nine cream strokes, gently taller toward the centre.
+"upper-cream" rect  2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill
+9 '( fc 6.4 * ->x  "four-beats" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;
+
+# Eight vermilion strokes interleaved in the upper register.
+"upper-vermilion" rect  2.65 ->y  0.22 ->w  0xe34227 solid ->fill
+8 '( fc 5.6 * ->x  "four-beats" track-ref 2 loop-time fc abs -0.25 * 1 + value* ->h ) array ;
+
+# Central register answers the top one beat later, retaining its heavier weight.
+"middle-vermilion" rect  0 ->y  0.38 ->w  0xe34227 solid ->fill
+9 '( fc 6.4 * ->x  "four-beats" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;
+
+# Central cream strokes share the middle row's one-beat delay.
+"middle-cream" rect  0 ->y  0.26 ->w  0xf3e8cc solid ->fill
+8 '( fc 5.6 * ->x  "four-beats" track-ref 2 loop-time 0.5 delay-time fc abs -0.30 * 1.18 + value* ->h ) array ;
+
+# Lower register answers another beat later: two beats behind the top.
+"lower-cream" rect  -2.65 ->y  0.30 ->w  0xf3e8cc solid ->fill
+9 '( fc 6.4 * ->x  "four-beats" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;
+
+# Lower vermilion strokes share the bottom row's two-beat delay.
+"lower-vermilion" rect  -2.65 ->y  0.22 ->w  0xe34227 solid ->fill
+8 '( fc 5.6 * ->x  "four-beats" track-ref 2 loop-time 1 delay-time fc abs -0.25 * 1 + value* ->h ) array ;

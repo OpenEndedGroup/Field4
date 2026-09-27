@@ -444,8 +444,8 @@ Define reusable words with `: name ... ;`. A call consumes one input value, runs
 **A definition must therefore be net zero on the stack: consume its input, leave its result.** It is not an error: an unbalanced definition compiles, the surplus is pruned, and everything downstream silently takes the wrong operand. Open a definition with `>name`, which *moves* the top, and not `=name`, which *copies* it:
 
 ```diffstatic {data-lang=stacksl}
-: half  >x  <x 0.5 *  ;      # right: consumes one, leaves one
-: half  =x  <x 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
+: half  >v  <v 0.5 *  ;      # right: consumes one, leaves one
+: half  =v  <v 0.5 *  ;      # wrong: leaves its input under its result, so every call pushes two
 ```
 
 `stack.auto` reports this. A slot whose program has an unbalanced definition, or any warning at all, writes a card into the box's `stack.auto` output channel and closes it again once the program is clean. Ask directly with `stackAutoShaderReport("…", "slotName")`, which returns a `StackAutoReport` carrying `problems`, `warnings` and `notes` and renders itself as HTML for `display()`.
@@ -521,6 +521,13 @@ Local marks name a stack value inside the current root program or definition. Th
 | `>name` | `a --` | move the current top into `name`. |
 | `<name` | `-- a` | push a marked value back onto the stack. |
 | `name` | `-- a` | bare read of an existing mark, useful after `=name`. |
+
+</div>
+
+A mark cannot be called `x`, `y`, `z` or `w`: `>x` is already the word that replaces one lane of a
+value, so `>x <x` reads a mark that was never made.
+
+<div data-code-lang="stacksl" markdown>
 
 </div>
 
