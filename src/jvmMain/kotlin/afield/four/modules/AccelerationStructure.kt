@@ -18,9 +18,10 @@ import org.lwjgl.vulkan.VK13.*
 import org.lwjgl.vulkan.*
 import kotlin.math.max
 
-interface HasAccelerationStructure {
+/** A BLAS device address usable in a TLAS instance, including NV cluster BLAS without a Vk handle. */
+interface AccelerationStructureAddress { fun deviceAddress(): Long }
+interface HasAccelerationStructure : AccelerationStructureAddress {
     val vkAccelerationStructure: Long
-    fun deviceAddress(): Long
 }
 
 data class AccelerationStructureTriangles(
@@ -49,7 +50,7 @@ data class AccelerationStructureAabbs(
 )
 
 data class RayTracingInstance(
-    val accelerationStructure: HasAccelerationStructure,
+    val accelerationStructure: AccelerationStructureAddress,
     val transform: FloatArray = identityTransform3x4(),
     val customIndex: Int = 0,
     val mask: Int = 0xff,
@@ -80,6 +81,7 @@ class AccelerationStructure(
     private var type: Int = VK_ACCELERATION_STRUCTURE_TYPE_GENERIC_KHR
     private var cachedDeviceAddress: Long = 0L
     private var handleDisposer: AutoDisposer.Token? = null
+    private var gpuInstanceContract: Pair<Int,Int>? = null
 
     override fun deviceAddress(): Long {
         if (cachedDeviceAddress != 0L) return cachedDeviceAddress
@@ -99,6 +101,7 @@ class AccelerationStructure(
         aabbs: List<AccelerationStructureAabbs> = emptyList(),
         flags: Int = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
     ): AccelerationStructure {
+        require(gpuInstanceContract==null) { "Use a separate acceleration structure for a GPU-instance TLAS" }
         require(renderer.device.supportsAccelerationStructures) { "Device has no enabled VK_KHR_acceleration_structure." }
         require(triangles.isNotEmpty() || aabbs.isNotEmpty()) { "BLAS build needs at least one triangles or AABB geometry." }
 
@@ -165,6 +168,7 @@ class AccelerationStructure(
         instances: List<RayTracingInstance>,
         flags: Int = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
     ): AccelerationStructure {
+        require(gpuInstanceContract==null) { "Use a separate acceleration structure for a GPU-instance TLAS" }
         require(renderer.device.supportsAccelerationStructures) { "Device has no enabled VK_KHR_acceleration_structure." }
         require(instances.isNotEmpty()) { "TLAS build needs at least one instance." }
 
@@ -217,6 +221,31 @@ class AccelerationStructure(
 
             build(command, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, flags, geometries, primitiveCounts, ranges)
         }
+        return this
+    }
+
+    /** GPU-produced instance records, on a fresh owner. The first call fixes count and flags:
+     * recreate the TLAS to change them, retiring the old owner after GPU completion. This avoids
+     * resizing its storage/scratch while previous frames still reference them. Update transforms
+     * and addresses within those fixed records freely. Caller owns and synchronizes the producer
+     * buffer on Field's graphics queue. No host mapping or per-frame upload occurs. */
+    fun buildTopLevel(command: CommandBuffer, instances: VulkanBuffer, instanceCount: Int,
+        flags: Int = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR): AccelerationStructure {
+        val contract=instanceCount to flags
+        require(gpuInstanceContract?.let { it==contract } ?: (vkAccelerationStructure==0L)) {
+            "GPU-instance TLAS count and flags are fixed; recreate the owner and defer retiring the previous one"
+        }
+        require(renderer.device.supportsAccelerationStructures && instances.renderer === renderer)
+        require(instanceCount > 0 && instances.requestedSize >= instanceCount.toLong()*VkAccelerationStructureInstanceKHR.SIZEOF)
+        require(instances.usage and VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR != 0 && instances.gpuAddress > 0)
+        MemoryStack.stackPush().use { stack ->
+            val geometries=VkAccelerationStructureGeometryKHR.calloc(1,stack).`sType$Default`()
+                .geometryType(VK_GEOMETRY_TYPE_INSTANCES_KHR).flags(VK_GEOMETRY_OPAQUE_BIT_KHR)
+            geometries.geometry().instances().`sType$Default`().arrayOfPointers(false).data().deviceAddress(instances.getGPUAddress(command))
+            val ranges=VkAccelerationStructureBuildRangeInfoKHR.calloc(1,stack).primitiveCount(instanceCount)
+            build(command,VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,flags,geometries,stack.ints(instanceCount),ranges)
+        }
+        gpuInstanceContract=contract
         return this
     }
 
@@ -371,6 +400,7 @@ class AccelerationStructure(
         storage = null
         scratch = null
         instancesBuffer = null
+        gpuInstanceContract = null
     }
 
     private data class BuildSizes(val accelerationStructureSize: Long, val buildScratchSize: Long)

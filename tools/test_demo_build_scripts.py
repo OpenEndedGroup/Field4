@@ -90,6 +90,9 @@ CORPUS = {
     "optical_flow",
     "optical_flow_pingpong",
     "ray_reconstruction",
+    "path_traced_reconstruction",
+    "computed_ray_geometry",
+    "gpu_shader_learning",
     "reconstruction_plumbing",
     "rr_plumbing",
     # Landed 2026-09-22 in `b5b9ad9e0`, the twenty-second directory and the only one that is not a

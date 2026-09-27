@@ -398,6 +398,9 @@ object DemoTranscriptExecSmokeTest {
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
         "neural_reconstruction", // Optional NGX evaluation is covered by ReconstructionSmoke on the NVIDIA machine.
         "ray_reconstruction", // Real NGX/RTXDI evaluation: RayReconstructionSmoke.
+        "path_traced_reconstruction", // PathTracedReconstructionSmoke; optional NGX.
+        "computed_ray_geometry", // ClusterGeometrySmoke; optional NV cluster AS.
+        "gpu_shader_learning", // GpuShaderTrainingSmoke; optional cooperative-vector training.
         "optical_flow", // Dedicated optical-flow queue: OpticalFlowSmoke.
         "optical_flow_pingpong", // Editable source history -> sampled motion: check_flow_pingpong.py.
         "learned_shader", // Frozen weights / cooperative vectors: LearnedShaderSmoke.

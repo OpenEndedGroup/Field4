@@ -1111,3 +1111,5 @@ One timing note, because it bites the code most likely to check the result. The 
 next frame is what notices the new pipeline and discards accumulation. So waiting on a
 sample count immediately after a reload is satisfied by the count the **old** integrator
 left behind. Wait for `samples` to fall first, or for `lastResetReason` to change.
+
+The opaque path tracer can also feed [Ray Reconstruction](path_traced_reconstruction.md), with raw and progressive views retained.

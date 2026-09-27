@@ -21,6 +21,11 @@
   "steps": 6000,
   "batch": 512,
   "validationSamples": 8192,
-  "validationMse": 0.0003262809186708182,
-  "sha256": "8b109d359438d0f5a7cbcb1e45bfc103dfa114a3a03cef1cfa9d5666183b72ea"
+  "validationMse": 0.0012659673811867833,
+  "sha256": "4ed9f1e90618b17bf50b289be3d966e9248239757b9aae8a01ccf00954c4afa0",
+  "trainingSeconds": 13.614853675000631,
+  "numpyVersion": "2.5.3",
+  "pythonVersion": "3.14.6",
+  "trainerSha256": "977814e56230ca8a56c8516886696d2bad8571245d99cd491ef240d18092d035",
+  "sourceKind": "builtin"
 }

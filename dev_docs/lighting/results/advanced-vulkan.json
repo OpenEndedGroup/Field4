@@ -1,0 +1,273 @@
+{
+  "computed_ray_geometry": {
+    "marker": "COMPUTED CLUSTERS CHECK DONE",
+    "exitCode": 0,
+    "vulkanValidationErrors": 0,
+    "frames": 120,
+    "measurements": {
+      "triangles": 98304,
+      "clusterCount": 768,
+      "builderBytes": 6893336,
+      "buildMs": {
+        "count": 100,
+        "p50": 1.298048,
+        "p95": 1.3072
+      },
+      "wholePassMs": {
+        "count": 100,
+        "p50": 2.362336,
+        "p95": 2.390688
+      },
+      "enabled": true,
+      "limits": "Limits(vertices=256, triangles=256, scratchAlignment=256, clusterAlignment=128, blasAlignment=256, maxGeometryId=16777215)"
+    }
+  },
+  "gpu_shader_learning": {
+    "marker": "GPU SHADER TRAINING CHECK DONE",
+    "exitCode": 0,
+    "vulkanValidationErrors": 0,
+    "frames": 120,
+    "measurements": {
+      "initialMse": 0.35005599857129,
+      "iterationsPerFrame": 8,
+      "trainingBytes": 5824,
+      "trainingMs": {
+        "count": 100,
+        "p50": 0.188352,
+        "p95": 0.19968
+      },
+      "heldOutParameter": 0.173,
+      "stripe": {
+        "sourceEdgeRgbL1": 1.0936412811279297,
+        "xRange": [
+          -0.12,
+          0.12
+        ],
+        "edgeBandLinearRgbMse": 0.023312764117281497,
+        "edgeBandHalfWidthNormalized": 0.02,
+        "fullImageLinearRgbMse": 0.0018585698680385295,
+        "rgb": [
+          0.95,
+          0.04,
+          0.8
+        ],
+        "edgeBandPixelFraction": 0.03958333333333333,
+        "awayFromEdgesLinearRgbMse": 0.0009743406039699476,
+        "maxAbsoluteRgbError": 0.40921873
+      },
+      "batch": 256,
+      "allocatedBytes": 68636928,
+      "steps": 4001,
+      "layouts": [
+        "Layer(inputs=16, outputs=32, matrixOffset=0, biasOffset=1536, matrixBytes=1536)",
+        "Layer(inputs=32, outputs=32, matrixOffset=1600, biasOffset=5184, matrixBytes=3584)",
+        "Layer(inputs=32, outputs=3, matrixOffset=5248, biasOffset=5760, matrixBytes=512)"
+      ],
+      "fittedMse": 0.0018585698682605397
+    }
+  },
+  "path_traced_reconstruction": {
+    "marker": "PATH RR CHECK DONE",
+    "exitCode": 0,
+    "vulkanValidationErrors": 0,
+    "frames": 96,
+    "measurements": {
+      "RAY_QUERY-motionX": 2.1916122,
+      "COMPUTE_BVH-motionX": 2.1916122,
+      "1920x1080": {
+        "rawMse": 0.019344558893167985,
+        "rrMse": 6.890189390546404e-05,
+        "sdkBytes": 0,
+        "wholePassMs": {
+          "count": 80,
+          "p50": 11.863104,
+          "p95": 12.161632
+        },
+        "ngxMs": {
+          "count": 80,
+          "p50": 6.094112,
+          "p95": 6.216992
+        },
+        "guideBytes": 322928640
+      },
+      "960x540": {
+        "rawMse": 0.01975445839509775,
+        "rrMse": 0.00014541507438895827,
+        "sdkBytes": 0,
+        "wholePassMs": {
+          "count": 80,
+          "p50": 11.587072,
+          "p95": 11.691072
+        },
+        "ngxMs": {
+          "count": 80,
+          "p50": 6.593568,
+          "p95": 6.665824
+        },
+        "guideBytes": 84172800
+      },
+      "sdk": "310.9.1"
+    }
+  },
+  "advanced-capabilities.json": {
+    "cooperativeVectors": {
+      "enabled": true,
+      "supported": true
+    },
+    "cluster": {
+      "enabled": true,
+      "supported": true
+    },
+    "cooperativeTraining": {
+      "enabled": true,
+      "supported": true
+    },
+    "rayQueryEnabled": true,
+    "java": "25.0.2+10-jvmci-b01",
+    "os": "Linux",
+    "queues": [
+      {
+        "flags": 15,
+        "count": 16,
+        "family": 0
+      },
+      {
+        "flags": 12,
+        "count": 2,
+        "family": 1
+      },
+      {
+        "flags": 14,
+        "count": 8,
+        "family": 2
+      },
+      {
+        "flags": 44,
+        "count": 1,
+        "family": 3
+      },
+      {
+        "flags": 76,
+        "count": 2,
+        "family": 4
+      },
+      {
+        "flags": 268,
+        "count": 1,
+        "family": 5
+      }
+    ],
+    "vulkanApiEncoded": 4211029,
+    "driverEncoded": -1735737216,
+    "toolchains": {
+      "rtxns": {
+        "path": "optional/lighting/RTXNS",
+        "sampleSlangVersion": "2026.10",
+        "revision": "f309ae68677a67060cc6ded2d0af925a3931435f"
+      },
+      "slang": {
+        "archives": {
+          "macos-x86_64": {
+            "sha256": "af1f4f51a472fc6a56541db2396eaacff1bdf7efe028928156b471798b3aa092",
+            "url": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-macos-x86_64.zip"
+          },
+          "linux-aarch64": {
+            "sha256": "3fa8e91d5562b9151509dea1430b6bc4126d6f6d12571135a202d2fc65a11e25",
+            "url": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-linux-aarch64.zip"
+          },
+          "macos-aarch64": {
+            "sha256": "d06187a6f90aaee68a5ceef453cf973016e2d3adfc61ce51b1cd6a0d204cfca2",
+            "url": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-macos-aarch64.zip"
+          },
+          "windows-x86_64": {
+            "sha256": "1339d7b3050ae680c11152b8ccff977173591ce8e9c1d2a5cff2eb904d52e50d",
+            "url": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-windows-x86_64.zip"
+          },
+          "linux-x86_64": {
+            "sha256": "516cbcb524f89a8e6185c12e59d4dcd203292e7d75d162325234ce6525f5f614",
+            "url": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-linux-x86_64.zip"
+          }
+        },
+        "release": "https://github.com/shader-slang/slang/releases/tag/v2026.18.3",
+        "version": "2026.18.3"
+      }
+    },
+    "rayPipelineEnabled": true,
+    "gpu": "NVIDIA GeForce RTX 4090"
+  },
+  "startingPoints": {
+    "computed_ray_geometry": {
+      "commandsPassed": 22,
+      "reloadOrCut": true,
+      "resize": true,
+      "relaunch": true,
+      "stop": true
+    },
+    "gpu_shader_learning": {
+      "commandsPassed": 21,
+      "reloadOrCut": true,
+      "resize": true,
+      "relaunch": true,
+      "stop": true,
+      "teacherVariant": "hard magenta stripe, 2026-09-27"
+    },
+    "path_traced_reconstruction": {
+      "commandsPassed": 19,
+      "reloadOrCut": true,
+      "resize": true,
+      "relaunch": true,
+      "stop": true
+    },
+    "vulkanValidationErrors": 0
+  },
+  "ordinaryPathTracer": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "seams",
+        "elapsedSeconds": 2.668565263,
+        "status": "PASS"
+      },
+      {
+        "stage": "base",
+        "elapsedSeconds": 158.959193336,
+        "status": "PASS"
+      },
+      {
+        "stage": "camera",
+        "elapsedSeconds": 22.407349036,
+        "status": "PASS"
+      }
+    ],
+    "vulkanValidationErrors": 0
+  },
+  "shaderBuild": {
+    "rtxnsCommit": "f309ae68677a67060cc6ded2d0af925a3931435f",
+    "rtxnsSampleSlangVersion": "2026.10",
+    "rtxnsPath": "optional/lighting/RTXNS",
+    "host": "linux-x86_64",
+    "slangVersion": "2026.18.3",
+    "slangArchiveUrl": "https://github.com/shader-slang/slang/releases/download/v2026.18.3/slang-2026.18.3-linux-x86_64.zip",
+    "slangArchiveSha256": "516cbcb524f89a8e6185c12e59d4dcd203292e7d75d162325234ce6525f5f614",
+    "slangSha256": "6b42ed03eaef9f5e84433de3ee40edec28da1b680a71a94f813881e38c732a4f",
+    "sourceSha256": "2095bf1b4fc494b984c952e89b4d45f084af2ed777327928dff25c96339cecea",
+    "binaries": {
+      "scalar": "554220fe68bce1d9c7c489f2cced9ea825d3ebfa217e6578bbbf323788d38551",
+      "coop": "16a89935a485e7ed88018061b51ec426fc606e3ddcbc989ebd8fa78b643aa0d8",
+      "training-train": "7d1bef063e8c07a9d7914324b54048e589b2466d9a7036eef44d3f1ee0ec4784",
+      "training-optimize": "cbd6b473cdf733a29b2c8c4b27f3a356da1a984fd2ba2cde3af47033da1a5ab0",
+      "training-evaluate": "15f3513fc5bed4fd9a1a291dc666a5a29be875e70f5dddaf6ce115e93f18f065"
+    },
+    "trainingSourceSha256": "7981c2b574eb2337a66b6fccc5d30907b60cd5e8096d9156ac549f742e083106"
+  },
+  "sourceHashes": {
+    "src/jvmMain/resources/afield/four/geometry/clusters.comp": "02229086b0dc78e93e6d387523645d286943bd6dad3666284a14b1039b6aa005",
+    "src/jvmMain/resources/afield/four/geometry/terrain.comp": "25ae45ac65babc0545a50d58b73605a97867b88d479eae27c899c25880a9e579",
+    "src/jvmMain/resources/afield/four/geometry/terrain.rchit": "eda1fe9d51f0144383abc93575301279818beae03eaaf3ff26bcad3596cfbdc1",
+    "src/jvmMain/resources/afield/four/geometry/terrain.rgen": "e1a57dd7e3c92116bdaf34ad989213cdc5e58d42fd1d30aaaf4aeb3d4a2a96a4",
+    "src/jvmMain/resources/afield/four/geometry/terrain.rmiss": "89c4d8ea21f73c75a940b3b9b6a02bafb561ed83884372ef710452f7396c8153",
+    "src/jvmMain/resources/afield/four/neural/learned.slang": "2095bf1b4fc494b984c952e89b4d45f084af2ed777327928dff25c96339cecea",
+    "src/jvmMain/resources/afield/four/neural/teacher.frag": "a0e56c4a78f4ac918a03ff4647fec40d26360c47d3b31a881190e1305d02d860",
+    "src/jvmMain/resources/afield/four/neural/train.slang": "7981c2b574eb2337a66b6fccc5d30907b60cd5e8096d9156ac549f742e083106"
+  }
+}

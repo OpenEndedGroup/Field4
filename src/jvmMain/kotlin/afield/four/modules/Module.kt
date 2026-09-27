@@ -111,6 +111,8 @@ data class Parameters(
     var rayTracingGroups: RayTracingGroups? = null,
     var maxRayRecursionDepth: Int = 1,
     var rayTracingPipelineFlags: Int = 0,
+    /** Explicit pipeline opt-in for NV cluster geometry. Baseline pipelines need no extension. */
+    var allowClusterAccelerationStructure: Boolean = false,
     var name: String = "unnamed module",
     var errorHandler: (String, Throwable?) -> Unit = { desc, it ->
         lprintln("error,graphics", "error $desc while creating Module: $it")

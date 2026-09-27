@@ -22,9 +22,9 @@ data class ReconstructionInputs(val color: HasImageView,val depth: HasImageView,
 /** RR guides at input resolution. Diffuse/specular albedo are the actual BRDF response;
  * normals.xyz are world-space unit normals and .w is linear roughness. Matrices are unjittered
  * column-major right-multiply (equivalent to NGX's row-major left-multiply convention).
- * No specular hit distance is supplied: it is optional, never fabricated. */
+ * Optional specular hit distance is world-space distance from the primary surface; sky=65504. */
 data class RayReconstructionGuides(val diffuseAlbedo: HasImageView,val specularAlbedo: HasImageView,
-    val normalRoughness: HasImageView,val worldToView: afield.stdlib.linalg.Matrix4f,val viewToClip: afield.stdlib.linalg.Matrix4f)
+    val normalRoughness: HasImageView,val worldToView: afield.stdlib.linalg.Matrix4f,val viewToClip: afield.stdlib.linalg.Matrix4f,val specularHitDistance: HasImageView?=null)
 data class ReconstructionFrame(val index: Long,val jitter: ReconstructionJitter,val milliseconds: Float=16.6667f,
     val preExposure: Float=1f,val reset: Boolean=false,val revision: Long=0) {
     init { require(milliseconds.isFinite() && milliseconds>0 && preExposure.isFinite() && preExposure>0) }
@@ -59,7 +59,7 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
         rec.validate(inputSize,outputSize,mode)
     }
     private val arena=Arena.ofShared()
-    private val images=arena.allocate(224,8)
+    private val images=arena.allocate(256,8)
     private val matrices=arena.allocate(128,4)
     private val frameData=arena.allocate(16,4)
     private val handleSlot=arena.allocate(ADDRESS)
@@ -84,8 +84,9 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
         check(!closed && !command.inRenderPassInstance)
         require(frame.index>=0 && frame.index!=lastFrame) { "A view must evaluate once per frame" }
         require(rayReconstruction==(guides!=null)) { "RR requires its BRDF guides and camera matrices on every frame" }
+        images.fill(0)
         val views=listOf(inputs.color,inputs.depth,inputs.motion,storage)+
-            (guides?.let { listOf(it.diffuseAlbedo,it.specularAlbedo,it.normalRoughness) } ?: emptyList())
+            (guides?.let { listOf(it.diffuseAlbedo,it.specularAlbedo,it.normalRoughness)+listOfNotNull(it.specularHitDistance) } ?: emptyList())
         views.forEachIndexed { i,source ->
             if(i!=3)(source as? PreparesSampledImages)?.prepareSampledImagesFor(command)
             val v=source.imageView;val image=requireNotNull(v.underlyingImage) { "NGX inputs require a Field-owned image" }
@@ -100,6 +101,7 @@ class DlssReconstruction(val renderer: Renderer,val inputSize: ReconstructionSiz
             }
             require(when(i) {
                 0,3,4,5,6 -> image.format==VK_FORMAT_R16G16B16A16_SFLOAT || image.format==VK_FORMAT_R32G32B32A32_SFLOAT
+                7 -> image.format==VK_FORMAT_R32_SFLOAT
                 1 -> image.format==VK_FORMAT_R32_SFLOAT || image.format==VK_FORMAT_D32_SFLOAT
                 else -> image.format==VK_FORMAT_R16G16_SFLOAT || image.format==VK_FORMAT_R32G32_SFLOAT
             }) { "Unsupported NGX input format ${image.format} at slot $i" }

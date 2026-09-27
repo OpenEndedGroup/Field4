@@ -1,6 +1,6 @@
 # A learned shader function
 
-A small network can approximate a function that is expensive to evaluate at every pixel. This experiment trains a smooth animated color function outside Field, then evaluates its frozen weights inside a Vulkan shader. The function, training recipe, weights, and error view are all inspectable. You can also train directly on your own `moduleHere()` output: its GLSL stays in Field.
+A small network can approximate a function that is expensive to evaluate at every pixel. This experiment trains an animated color function with a hard-edged vertical stripe outside Field, then evaluates its frozen weights inside a Vulkan shader. The function, training recipe, weights, and error view are all inspectable. You can also train directly on your own `moduleHere()` output: its GLSL stays in Field.
 
 ![Original function, learned approximation, and amplified RGB error](assets/learned_shader/cooperative.png)
 
@@ -9,6 +9,8 @@ A small network can approximate a function that is expensive to evaluate at ever
 Open **Starting points → learned_shader** after building the optional shaders. **Compare** shows the original function, the learned approximation, and absolute RGB error multiplied by eight. The other views fill the image with either the original or the approximation.
 
 Switch **Cooperative vectors** to compare NVIDIA's accelerated matrix-vector operations with ordinary shader arithmetic. Both use the same weights. **Animate time** traverses the training interval; the API rejects time outside −1 to 1 instead of implying that extrapolation has been tested.
+
+Both examples on this page now include a magenta vertical stripe: x from −0.12 to +0.12 in the normalized image, covering 12% of its width. Its edges are hard steps, with no smoothing in the source. The same small network has to approximate those jumps while fitting the animated background. Watch the edges in the learned panel and the bright bands in **error × 8**; the stripe makes the model's finite transition width visible.
 
 ![Learned shader controls](assets/learned_shader/controls.png)
 
@@ -27,11 +29,13 @@ Open **Starting points → learned_from_module**. This is the complete workflow:
 
 <video controls muted loop playsinline preload="metadata" src="assets/learned_shader/from-module.mp4" width="1920" height="1080" style="max-width:100%;height:auto;aspect-ratio:16/9"></video>
 
-The bundled editable shader was captured at 1920 × 1080: 98,304 training samples and 26,624 validation samples at separate parameter values. With 12,000 training steps, held-out RGB MSE was **0.0000291**; the full GPU image at an additional parameter value measured **0.0000262**. The [training manifest](assets/learned_shader/from-module-training.json) and [GPU check](assets/learned_shader/from-module-measurements.json) record the domain, errors and timings.
+The bundled editable shader was captured at 1920 × 1080: 98,304 training samples and 26,624 validation samples at separate parameter values. With 12,000 training steps, held-out RGB MSE was **0.000234**; the full GPU image at an additional parameter value measured **0.000194**. These results include the hard stripe. The [training manifest](assets/learned_shader/from-module-training.json) and [GPU check](assets/learned_shader/from-module-measurements.json) record the domain, errors and timings.
 
 ![Capture, training and replacement controls](assets/learned_shader/module-controls.png)
 
 The example deliberately keeps the teacher in ordinary GLSL. No Python copy of its formula and no modification of the Slang inference shader are needed. Editing the teacher and pressing the button again creates a new dataset and model. A failed job or invalid model preserves the working view. Stopping the box cancels its training process.
+
+The stripe is the final `step`/`mix` operation in the editable **fragment** property. Change its two edge positions or its colour, then capture and train again. The stripe is part of the training image, so switching to **Learned** asks the network to reproduce it too; it is not composited onto the learned output afterwards.
 
 ### Put the module's output somewhere capturable
 
@@ -141,7 +145,8 @@ float3 original(float3 v) {
     float3 result=0;
     for(int k=1;k<=48;k++){float a=k*.61803399;
         for(int c=0;c<3;c++)result[c]+=sin((v.x*cos(a)+v.y*sin(a))*3+v.z*(.3+.1*c)+c*2+a)*(.35/k);}
-    return .5+.35*tanh(result*3);
+    float stripe=step(-.12,v.x)*(1-step(.12,v.x));
+    return lerp(.5+.35*tanh(result*3),float3(.95,.04,.8),stripe);
 }
 void features(float3 v,out float f[16]) {
     float x=v.x,y=v.y,t=v.z;const float pi=3.14159265359;
@@ -286,11 +291,20 @@ The bundled model is 3,456 bytes of little-endian FP16 weights and biases, with 
 
 ## What was measured
 
-The held-out training set has RGB MSE 0.000326 across 8,192 points after FP16 weight conversion. The GPU check compares both execution paths with an independent CPU evaluation of those quantized weights. [Recorded timings and numerical errors](assets/learned_shader/measurements.json) compare the original function, ordinary network arithmetic, and cooperative-vector inference at 1920 × 1080 after warm-up.
+The built-in striped function's held-out training set has RGB MSE **0.00127** across 8,192 points after 6,000 updates and FP16 weight conversion. The GPU check compares both execution paths with an independent CPU evaluation of those quantized weights. [Recorded timings and numerical errors](assets/learned_shader/measurements.json) compare the original function, ordinary network arithmetic, and cooperative-vector inference at 1920 × 1080 after warm-up.
 
-On this RTX 4090, the network takes **5.63 ms** with ordinary arithmetic and **0.267 ms** with cooperative vectors—about 21 times faster. Maximum sampled disagreement with the CPU is 0.000914 RGB for cooperative inference. The original wave function itself takes about **0.26 ms**, so this particular approximation does **not** beat the original shader. It demonstrates a fast learned function and an inspectable tradeoff, rather than a reason to replace every analytic function with a network.
+On this RTX 4090, the network takes **5.57 ms** with ordinary arithmetic and **0.307 ms** with cooperative vectors—about 18 times faster. Maximum sampled disagreement with the CPU is 0.00105 RGB for cooperative inference. The original striped wave function itself takes about **0.279 ms**, so this particular approximation does **not** beat the original shader. It demonstrates a fast learned function and an inspectable tradeoff, rather than a reason to replace every analytic function with a network.
 
-The newer **learned_from_module** workflow measures the complete comparison target as well as inference. In its current 1080p run, cooperative inference alone was **0.218 ms median**, but the learned view including buffer-to-texture resolve and comparison display was **2.77 ms**, versus **0.539 ms** for the source view. These spans exclude final window presentation. The original source pass was verified to be skipped in learned-only mode. This reusable capture/training/replacement path is working, but its extra passes currently outweigh any saving for this teacher; use the full-path timings when deciding whether to replace your shader.
+The **learned_from_module** workflow measures the complete comparison target as well as inference. In its current 1080p run, cooperative inference alone was **0.257 ms median**, but the learned view including buffer-to-texture resolve and comparison display was **5.58 ms**, versus **1.98 ms** for the source view. These spans exclude final window presentation. The original source pass was verified to be skipped in learned-only mode. Its extra passes currently outweigh any saving for this teacher; use the full-path timings when deciding whether to replace your shader. These are warmed runs under Wayland with automatic GPU clocks, not a fixed-clock comparison with earlier captures.
+
+The discontinuity deserves its own measurement. The edge band covers pixels within 0.02 normalized x units of either stripe boundary—about 19 pixels on either side at 1920 pixels wide, or 3.96% of the image in total. Both rows below compare linear RGB from the real source and learned GPU images, using cooperative inference:
+
+| Study | Whole-image MSE | Edge-band MSE | MSE away from edges |
+| --- | ---: | ---: | ---: |
+| Built-in function, parameter 0.25 | 0.00118 | 0.0175 | 0.000503 |
+| Captured `moduleHere()`, held-out parameter 0.173 | 0.000194 | 0.00321 | 0.0000700 |
+
+Maximum individual RGB error is about **0.50** in both studies, despite their much smaller image-wide averages. The network uses continuous features and ReLU layers, so it approximates a hard step with a finite transition. The two studies use different backgrounds, training data and step counts; this table describes their respective fits rather than ranking training methods.
 
 This is an approximation, and the error panel is part of the instrument. The network can lose small details or smooth a deliberate discontinuity. Its fixed training domain and small architecture are useful constraints for an experiment, not evidence that arbitrary shaders can be compressed this way.
 
@@ -302,7 +316,7 @@ Prepare the optional shader toolchain once from the Field checkout:
 ./gradlew buildLearnedShaders
 ```
 
-This uses the same optional-build and shared download-cache mechanism as Field's native dependencies. It initializes the pinned [RTX Neural Shading SDK](https://github.com/NVIDIA-RTX/RTXNS/tree/f309ae68677a67060cc6ded2d0af925a3931435f) Git submodule at **`optional/lighting/RTXNS`**, fetches its Slang 2026.10 compiler with a verified SHA-256 checksum, and builds both inference variants. There is no need to configure or build NVIDIA's sample renderer.
+This uses the same optional-build and shared download-cache mechanism as Field's native dependencies. It initializes the pinned [RTX Neural Shading SDK](https://github.com/NVIDIA-RTX/RTXNS/tree/f309ae68677a67060cc6ded2d0af925a3931435f) Git submodule at **`optional/lighting/RTXNS`**, fetches Field’s shared Slang 2026.18.3 compiler with a verified SHA-256 checksum, and builds both inference variants plus the optional GPU-training entry points. The upstream sample’s compiler pin remains independently recorded. There is no need to configure or build NVIDIA's sample renderer.
 
 SDK source lives outside `build/`. Compiler downloads live in Field's per-user native cache, shared across checkouts; `AFIELD_NATIVE_DOWNLOAD_CACHE` can relocate it. Generated SPIR-V and its provenance go to **`build/lighting/learned-shader/`**. After `clean`, run the same task again: it reuses the source checkout and cached compiler. Once prepared, `./gradlew buildLearnedShaders --offline` also works.
 
@@ -317,3 +331,5 @@ The NVIDIA upstream inference example was also built and run on this machine bef
 Field loads the compiled SPIR-V and frozen weights; it does not load the SDK at runtime. Ordinary arithmetic remains available without cooperative vectors. GPU training, online weight updates, neural texture compression, and custom DLSS weights are separate projects.
 
 To place the learned output in a larger image pipeline, see [From modules to reconstruction](reconstruction_plumbing.md). It shows the render-target and pass ordering for DLAA/SR and RR, including which guides must still come from your scene.
+
+For training directly from a live render target on the GPU, see [GPU shader learning](gpu_shader_learning.md). It saves the same frozen weight format and uses the same editable host shader.

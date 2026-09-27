@@ -165,3 +165,12 @@ candy-wrapper box had not compiled since the day it landed: a two-mesh-to-one-me
 time — the same act this audit is a record of — and it is now found by CI. That is the argument for
 a COMPILE_ONLY transcript in one sentence: **opening an artifact finds what reading it does not, and
 a transcript is the only way to make CI open one.**
+
+### 26 September: three additional Vulkan transcript sources
+
+`computed_ray_geometry`, `gpu_shader_learning` and `path_traced_reconstruction` add editable source
+folders, not handwritten saved demo documents or build.yaml files. Their YAML transcripts are
+registered COMPILE_ONLY; AgentTranscriptMaterializer generates the public Starting Points. Both
+named demo registries include them. Actual NVIDIA execution, reload, resize, relaunch and Stop are
+checked separately by `tools/lighting/check_advanced_starting_points.py`; see
+`dev_docs/lighting/ADVANCED_VULKAN.md` for numerical GPU checks and retained evidence.

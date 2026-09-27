@@ -12,7 +12,8 @@ sys.path.insert(0,str(ROOT/'public'))
 import docs_hooks
 
 PAGES=('direct_lighting','neural_reconstruction','ray_reconstruction','optical_flow',
-       'learned_shader','reconstruction_plumbing','path_tracing','ray_tracing_examples')
+       'learned_shader','reconstruction_plumbing','path_tracing','ray_tracing_examples',
+       'path_traced_reconstruction','computed_ray_geometry','gpu_shader_learning')
 
 
 class HardwareDocsGatingTest(unittest.TestCase):

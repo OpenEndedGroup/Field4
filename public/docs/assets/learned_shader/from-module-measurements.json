@@ -1,29 +1,47 @@
 {
+  "fullImageLinearRgbMse": 1.9444890473017202E-4,
+  "sourceViewGpuMs": {
+    "count": 100,
+    "p50": 1.976288,
+    "p95": 1.999616
+  },
+  "sourcePassSkippedInReplacement": true,
+  "cooperative": true,
   "output": [
     1920,
     1080
   ],
-  "sourceShaderDigest": "990a414e09dcc0540f920ed2347f0262409c6bec16dabae4cad53dc363461bdc",
+  "sourceShaderDigest": "e1ec6c31e15dccebd66238ad45eced6edca4a3c562d185a72843555b344667c7",
   "frameCount": 120,
   "heldOutParameter": 0.173,
   "learnedViewGpuMs": {
     "count": 100,
-    "p50": 2.769184,
-    "p95": 3.21136
+    "p50": 5.5792,
+    "p95": 5.600448
   },
   "incompatibleModelPreservedWorkingView": true,
   "learnedComputeGpuMs": {
     "count": 100,
-    "p50": 0.218432,
-    "p95": 0.487744
+    "p50": 0.256544,
+    "p95": 0.26128
   },
-  "fullImageLinearRgbMse": 2.61594839968798E-5,
-  "sourceViewGpuMs": {
-    "count": 100,
-    "p50": 0.538624,
-    "p95": 0.940384
+  "stripe": {
+    "sourceEdgeRgbL1": 1.0936412811279297,
+    "xRange": [
+      -0.12,
+      0.12
+    ],
+    "edgeBandLinearRgbMse": 0.0032131362763032903,
+    "edgeBandHalfWidthNormalized": 0.02,
+    "fullImageLinearRgbMse": 1.944489047301302E-4,
+    "rgb": [
+      0.95,
+      0.04,
+      0.8
+    ],
+    "edgeBandPixelFraction": 0.03958333333333333,
+    "awayFromEdgesLinearRgbMse": 7.003445774555308E-5,
+    "maxAbsoluteRgbError": 0.50003904
   },
-  "sourcePassSkippedInReplacement": true,
-  "cooperative": true,
-  "maxAbsoluteRgbError": 0.02882564
+  "maxAbsoluteRgbError": 0.50003904
 }

@@ -118,7 +118,7 @@ def compiler(config: dict,offline: bool) -> tuple[Path,dict]:
         'slangArchiveSha256':info['sha256'],'slangSha256':digest(executable)}
 
 
-def compile_shaders(slang: Path,source: Path,output: Path,report: dict) -> dict:
+def compile_shaders(slang: Path,source: Path,output: Path,report: dict,training_source: Path | None=None) -> dict:
     # Compile both before replacing any working binary. A failed compiler leaves the old pair intact.
     output.parent.mkdir(parents=True,exist_ok=True)
     report={**report,'sourceSha256':digest(source),'binaries':{}}
@@ -131,9 +131,16 @@ def compile_shaders(slang: Path,source: Path,output: Path,report: dict) -> dict:
             if mode=='coop':command+=['-capability','spvCooperativeVectorNV']
             subprocess.run(command,check=True)
             report['binaries'][mode]=digest(dest)
+        if training_source is not None:
+            report['trainingSourceSha256']=digest(training_source)
+            for entry in ['train','optimize','evaluate']:
+                dest=prepared/f'training-{entry}.spv'
+                subprocess.run([str(slang),str(training_source),'-target','spirv','-profile','sm_6_6',
+                    '-entry',entry,'-stage','compute','-capability','spvCooperativeVectorNV','-o',str(dest)],check=True)
+                report['binaries'][f'training-{entry}']=digest(dest)
         (prepared/'learned-build.json').write_text(json.dumps(report,indent=2)+'\n')
         output.mkdir(parents=True,exist_ok=True)
-        for name in ['learned-scalar.spv','learned-coop.spv','learned-build.json']:
+        for name in ['learned-scalar.spv','learned-coop.spv','learned-build.json'] + ([f'training-{e}.spv' for e in ['train','optimize','evaluate']] if training_source is not None else []):
             (prepared/name).replace(output/name)
     return report
 
@@ -142,12 +149,15 @@ def main() -> None:
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--offline',action='store_true')
     args=parser.parse_args();pins=json.loads(MANIFEST.read_text())
     sdk=ensure_sdk(pins['rtxns'],args.offline)
-    # This is the version selected by the pinned SDK, without configuring its entire sample renderer.
-    if f'set(SHADERMAKE_SLANG_VERSION "{pins["slang"]["version"]}"' not in (sdk/'CMakeLists.txt').read_text():
-        raise RuntimeError('RTXNS and Field Slang pins disagree')
+    # The source SDK's sample pin and Field's compiler are independent, explicit choices.
+    # Field also uses this compiler for live shaders and GPU training; do not configure or
+    # silently edit the upstream sample to select our newer, separately verified compiler.
+    if f'set(SHADERMAKE_SLANG_VERSION "{pins["rtxns"]["sampleSlangVersion"]}"' not in (sdk/'CMakeLists.txt').read_text():
+        raise RuntimeError('RTXNS sample compiler version disagrees with its recorded source pin')
     slang,provenance=compiler(pins['slang'],args.offline)
     report=compile_shaders(slang,SOURCE,OUT,{'rtxnsCommit':pins['rtxns']['revision'],
-        'rtxnsPath':pins['rtxns']['path'],**provenance})
+        'rtxnsSampleSlangVersion':pins['rtxns']['sampleSlangVersion'],
+        'rtxnsPath':pins['rtxns']['path'],**provenance},SOURCE.with_name('train.slang'))
     # Reuse this compiler from Field's existing SlangCompiler when no PATH compiler is installed.
     # This checkout-local pointer is a generated artifact, not dependency source or provenance.
     pointer=OUT.parent/'slangc.path'
