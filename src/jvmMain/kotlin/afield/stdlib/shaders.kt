@@ -4603,13 +4603,41 @@ fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
 }
 
 /**
+ * Paint an error on [box] for each graphics stage whose shader the caller put in [p] and [Box._moduleHere]
+ * is about to replace with the box's own. `moduleHere { vertex = … }` compiles and does nothing, so without
+ * this the first sign of it is a mesh writer or push constant that the shader actually running lacks.
+ * Text equal to the box's property, raw or prepared, is not reported: nothing is lost by dropping it.
+ */
+private fun reportShadersAssignedInModuleBlock(box: Box, p: Parameters) {
+    val dropped = listOf(
+        Triple("vertex", p.vertex, box._vertex),
+        Triple("fragment", p.fragment, box._fragment)
+    ).filter { (stage, assigned, prepared) ->
+        assigned.isNotBlank() && assigned != prepared && assigned != shaderPropertyValue(box, stage)
+    }.map { it.first }
+    if (dropped.isEmpty()) return
+    val stages = dropped.joinToString(" and ") { "`$it`" }
+    val noun = if (dropped.size == 1) "property" else "properties"
+    val shaders = if (dropped.size == 1) "shader" else "shaders"
+    box.error(
+        "moduleHere ignored the $stages $shaders assigned inside its block. The module is built from this " +
+            "box's $stages $noun, which moduleHere seeds with a default shader when empty. Put the GLSL in " +
+            "the $noun (or set it with `once.${dropped.first()} { … }` in an earlier `//%-` fragment), or " +
+            "build the module directly: `Module(parameters(renderer) { … }).pointer()`.",
+        "code"
+    )
+}
+
+/**
  * Build this box's graphics module and store it as `box._shader` — the function every expanded
  * `moduleHere` call actually ends up in.
  *
  * Takes its GLSL from the *prepared* `_vertex` / `_fragment` properties, overwriting whatever the caller
- * put in [p], which is the mechanism behind "assigning `vertex` inside the lambda does nothing". Throws
- * a `NullPointerException` if no prepare pass has run — normally impossible from an expanded macro,
- * easy to hit when calling this by hand.
+ * put in [p], which is the mechanism behind "assigning `vertex` inside the lambda does nothing". A shader
+ * that was assigned there and differs from the box's own is reported as an error on the box, because the
+ * module otherwise runs the box's shader (often the seeded default) with no hint that the assignment was
+ * dropped. Throws a `NullPointerException` if no prepare pass has run — normally impossible from an
+ * expanded macro, easy to hit when calling this by hand.
  *
  * Also installed here: the box's include resolvers and source names (so shader errors point at box
  * lines), a texture resolver that finds samplers by matching their GLSL name against this box's
@@ -4623,6 +4651,7 @@ fun Box._moduleHere(p: Parameters.() -> Unit): ModulePointer {
  * provoked them.
  */
 fun Box._moduleHere(p: Parameters = parameters {}): ModulePointer {
+    reportShadersAssignedInModuleBlock(this, p)
     val vertexSourceProperty = sourcePropertyForStage(this, "vertex")
     val fragmentSourceProperty = sourcePropertyForStage(this, "fragment")
     if (!shaderPropertyValue(this, sharedVertexFragmentProperty).isNullOrBlank()) {
