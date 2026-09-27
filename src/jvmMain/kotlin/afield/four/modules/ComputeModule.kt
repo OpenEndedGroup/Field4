@@ -64,6 +64,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         if (m.valid) {
             m.copyMeshesFrom(current)
             m.enabled = current.enabled
+            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
             current = m
             return true
         }
@@ -171,6 +172,7 @@ class ComputeModule(val parameters: Parameters) : Renderable {
 
             ci.ubos.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             ci.ssbo.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ModuleRebuild.created(liveUniformStructures)
 
             val layoutMap = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 

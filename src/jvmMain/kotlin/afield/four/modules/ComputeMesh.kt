@@ -296,8 +296,8 @@ class ComputeMesh(var renderer: Renderer = fromContext()) : ComputeTask {
 
     class FromUniform {
         operator fun getValue(inside: ComputeModulePointer, property: KProperty<*>): Structure {
-            return inside.current.liveUniformStructures[property.name]
-                ?: throw IllegalArgumentException(" can't find '${property.name}' in this module ${inside.current.liveUniformStructures.keys}")
+            return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name]
+                ?: throw IllegalArgumentException(" can't find '${property.name}' in this module ${inside.current.liveUniformStructures.keys}"))
         }
     }
 

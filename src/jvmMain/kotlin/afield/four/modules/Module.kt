@@ -235,9 +235,9 @@ interface Renderable {
 
 class FromUniform {
     operator fun getValue(inside: ModulePointer, property: KProperty<*>): Structure {
-        return inside.current.liveUniformStructures[property.name] ?: throw IllegalArgumentException(
+        return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name] ?: throw IllegalArgumentException(
             " can't find '${property.name}' in this module, options are ${inside.current.liveUniformStructures.keys}"
-        )
+        ))
     }
 }
 
@@ -326,6 +326,7 @@ class ModulePointer(var current: Module) : Renderable {
         if (m.valid) {
             m.copyMeshesFrom(current)
             m.enabled = current.enabled
+            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
             current = m
             return true
         }
@@ -587,6 +588,7 @@ class Module(val parameters: Parameters) : Renderable {
             fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             vi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
             fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ModuleRebuild.created(liveUniformStructures)
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
 

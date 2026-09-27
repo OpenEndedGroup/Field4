@@ -1002,6 +1002,10 @@ internal fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit
     sliderCallbacks[sliderId] = callback
 }
 
+internal fun unregisterSliderCallback(sliderId: String) {
+    sliderCallbacks.remove(sliderId)
+}
+
 internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
     return sliderCallbacks[sliderId]
 }

@@ -215,7 +215,7 @@ typed boundaries, interpolation and persistence.
 
     The working way to keyframe a module's uniform is therefore the plain `Structure` overload
     against `module.<block>`, which resolves to that same live structure
-    (`Module.kt:238#return inside.current.liveUniformStructures[property.name] ?:`). The next section drives a uniform that way, on a GPU.
+    (`Module.kt:238#return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name] ?:`). The next section drives a uniform that way, on a GPU.
 
 !!! note "`capture()` reads either kind of property, and writes back a binding"
 
@@ -640,7 +640,7 @@ straight line) once each, where they are defined.
 
     `KeyframeScope.camera(camera)` takes a live `Camera`, and `Camera`'s constructor is
     `Camera(val renderer: Renderer = fromContext())` (`Camera.kt:16#class Camera(val renderer: Renderer = fromContext()) {`), which resolves a renderer from
-    the box context. So the *registration* is one of the eight declarations no unit test reaches
+    the box context. So the *registration* is one of the eleven declarations no unit test reaches
     (the full list is in `dev_docs/KEYFRAMER_COVERAGE.md`); the pose arithmetic
     above, which is all of the behaviour, is tested. Note also that the target accepts a
     `CameraPose` or a bare `DualQuaternionf` and **silently ignores any other type**
@@ -860,6 +860,10 @@ instead, which `updateCodeEscapesDollarInASourceBlock` holds in place.
 through AWT: it throws on a headless JVM, and it replaces whatever the user had copied.
 
 ## Blending two programs, not just two numbers
+
+A key can hold a `stack.auto` slot's *numbers* without its code: `stackAutoNumbers(module, name)` registers
+one lane per number, which a key turns on the GPU with no recompile (see [its numbers,
+live](stacksl_examples.md#its-numbers-live)).
 
 A key can hold code — a `stack.auto` StackSL program registered with `stackAuto`, or a Kotlin
 expression captured by the `sourceBlock { }` macro. By default `interpolate` **steps** those: the

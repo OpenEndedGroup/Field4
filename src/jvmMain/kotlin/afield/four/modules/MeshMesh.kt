@@ -40,8 +40,8 @@ class MeshMesh(var renderer: Renderer = fromContext()) : MeshTask {
 
     class FromUniform {
         operator fun getValue(inside: MeshModulePointer, property: KProperty<*>): Structure {
-            return inside.current.liveUniformStructures[property.name]
-                ?: throw IllegalArgumentException(" can't find '${property.name}' in this module, options are ${inside.current.liveUniformStructures.keys}")
+            return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name]
+                ?: throw IllegalArgumentException(" can't find '${property.name}' in this module, options are ${inside.current.liveUniformStructures.keys}"))
         }
     }
 

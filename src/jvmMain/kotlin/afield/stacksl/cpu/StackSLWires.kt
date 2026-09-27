@@ -58,9 +58,14 @@ import java.util.Locale
  */
 object StackSLWires {
 
-    /** The compile options for a wired program: [StackSLCpu.stackAutoOptions] plus externalisation. */
-    fun wiredOptions(slot: String, sampleTexture: String = "source"): StackSLCompileOptions =
-        StackSLCpu.stackAutoOptions(slot, sampleTexture).copy(externalizeConstants = true)
+    /**
+     * The compile options for a wired program: [StackSLCpu.stackAutoOptions] plus externalisation, and —
+     * for a `stack.auto.slot:word` slot — [entrypoint] as the root.
+     */
+    fun wiredOptions(slot: String, sampleTexture: String = "source", entrypoint: String? = null): StackSLCompileOptions =
+        StackSLCpu.stackAutoOptions(slot, sampleTexture).copy(externalizeConstants = true).let {
+            if (entrypoint == null) it else it.copy(entrypoint = entrypoint, useEntrypointAsRoot = true)
+        }
 
     /** The global a lowered wire lives in. */
     fun globalName(prefix: String, index: Int): String = "${prefix}_wire_$index"
@@ -69,8 +74,8 @@ object StackSLWires {
      * Compile [program] with its literals lifted, and lower the result to something the CPU
      * backend can parse.
      */
-    fun lift(program: String, slot: String = "program", sampleTexture: String = "source"): WiredProgram {
-        val result = StackSLCompiler.compile(program, wiredOptions(slot, sampleTexture))
+    fun lift(program: String, slot: String = "program", sampleTexture: String = "source", entrypoint: String? = null): WiredProgram {
+        val result = StackSLCompiler.compile(program, wiredOptions(slot, sampleTexture, entrypoint))
         if (!result.ok) {
             val errors = result.diagnostics.filter { it.severity == StackSLSeverity.ERROR }
             throw IllegalArgumentException(

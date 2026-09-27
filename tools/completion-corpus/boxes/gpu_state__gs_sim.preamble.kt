@@ -162,6 +162,8 @@ var MeshModulePointer.force: String
 /*compute-pc-structure:dt*/ var Structure.dt by Structure.FromStructure<Any>()
 /*compute-pc-binding:dt*/ var ComputeMesh.dt by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:dt*/ var ComputeMeshGroup.dt by ComputeMeshGroup.BoundFromStructure<Float>()
+/*compute-ubo:force_numbers*/ val ModulePointer.force_numbers by FromUniform()
+/*compute-ubo-mesh:force_numbers*/ var Mesh.force_numbers by Mesh.FromStructure<Structure>()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /**/
 val Once.gsStateA by Onceing<FrameBufferGroup>() /**/

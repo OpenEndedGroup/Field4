@@ -292,3 +292,22 @@ numbers changes. Inspect lists each key with what it would change. The keys rend
 capturing one does not rebuild the card and lose the sliders' unkept positions. Not yet done: sweeps
 over keys as variants, a model tool that captures or proposes keys, and animating one number (RectSL
 first, whose source already has keyframe quotes).
+
+### StackSL inside someone else's shader: `stack.auto` numbers — 2026-09-27
+
+Steps 1 and 2 of bringing the study's help to embedded StackSL. A slot's numbers compile into a
+uniform block of its own (`StackAutoNumbers`: `foo_numbers`, `foo_live` plus 128 numbers, guarded so
+an untouched slot reads its literals), so they turn without a recompile. The block is an ordinary
+module uniform, so `module.foo_numbers`, keyframe structure targets and the new
+`KeyframeScope.stackAutoNumbers(module, "foo")` lanes all drive the same live values, and the box's
+**stack.auto numbers** card (`StackAutoCard`) drags them in the real window with the whole host shader.
+Its layout is fixed because Field's in-place pipeline update refuses any uniform-block change; a
+blank slot declares the same block, since binding a program to a blank slot is the common first update.
+Full reloads carry values over (`ModuleRebuild`). The first live run drew black: uniform memory
+starts uninitialised, so `foo_live` is now written 0 as modules make their structures. **Render this
+function alone** is the separate debugging view, on the study's frame and input.
+
+Not done yet: line notes and completion inside the Kotlin string (step 4), writing numbers back when
+the program is built rather than written out (step 3 needs a real region map), observing the host's
+own output (step 5), and a model-facing study for a slot (step 6). Ray-tracing stages keep baked
+numbers.
