@@ -13,19 +13,30 @@ This is the RectSL counterpart of [Talking a shader into existence](stacksl_conv
 languages: a box under a RectSL root is a scene, played live in the window above it. Its AI4 chat has
 tools that check, draw, compare and version the scene.
 
-## Start from a blank document
+## Start
 
-[Download the blank starter](assets/rectsl_conversation/rectsl_conversation.zip). Unzip it into
-your Field workspace, keeping the `rectsl_conversation` folder intact, then open that document.
-Configure an AI provider through Field's welcome page if you have not already; see
-[AI features](aiFeatures.md).
+In any document, select a box — press **n** to make one — and choose **Make a RectSL Scene** from
+the command palette. A root box, **RectSL window**, appears above it and opens a window; the box
+becomes a scene, a wall with one turning gold square, and plays in it. Select the scene and press
+**command/ctrl-4** to open AI4 chat. Configure an AI provider through Field's welcome page if you have
+not already; see [AI features](aiFeatures.md).
 
-Opening the document opens a window called *RectSL study* and plays the scene in it. The starter
-has two boxes:
+The scene box edits its `rectSL` property, and the window follows every edit that compiles; a
+problem is marked on its line — `Unknown word: ->yy (did you mean '->xy' or '->y'?)` — and the window
+keeps the last scene that compiled. Running the box (command/ctrl-return) checks your scene in as a
+revision. The root holds no code: it is the box whose main language is RectSL, and it opens its
+window when a scene beneath it starts. Stopping the root, or closing the window, stops the scenes in
+it; running one again reopens the window. **Set Main Language: RectSL** on a box you made yourself
+does the same, and every box beneath it is a scene.
+
+The recorded sessions below started from a blank wall.
+[Download that starter](assets/rectsl_conversation/rectsl_conversation.zip) to begin from the same
+place: unzip it into your Field workspace, keeping the `rectsl_conversation` folder intact, and open
+it. It has two boxes:
 
 | Box | What it is |
 | --- | --- |
-| **window** | Owns the window. Its main language is RectSL, so the box beneath it is a RectSL scene. |
+| **RectSL window** | The RectSL root. It holds no code; its window opens when the scene starts. |
 | **the scene — talk here (AI4)** | The scene. Select it and press **command/ctrl-4** to open AI4 chat. |
 
 The scene starts as an empty wall:
@@ -46,24 +57,25 @@ Try this in the scene box's chat:
 > orange against deep blue.
 
 An accepted edit appears in the scene box as RectSL, one object per paragraph with a comment on
-each, and in the window as soon as it is accepted. Type in the scene box yourself and the window
-follows every edit that compiles; a problem is marked on its line — `Unknown word: ->yy (did you mean
-'->xy' or '->y'?)` — and the window keeps the last scene that compiled. Running the box
-(command/ctrl-return) checks your scene in as a revision.
+each, and in the window as soon as it is accepted. Every RectSL box's chat has the study tools, and
+each scene keeps its own history under `studies/<box id>/` in its document.
 
-## From scratch, in any document
+## The editor and the window
 
-Nothing in the starter is special. To write RectSL anywhere:
+The editor and the window point at each other. Put the cursor on a line of the scene and the window
+outlines the rectangles that line makes: a `rect`, the copies an `array` below it makes, every part
+of a `group` from the group's line, or — from a comment — the statement beneath it. Click a
+rectangle in the window and the editor goes to the line that made it, selecting the scene box if it
+was not selected.
 
-1. Make a box that owns a window. The starter's window box is eight lines of Kotlin: a `Window`, a
-   `Renderer`, and `start(renderer::run)`.
-2. Give that box **Set Main Language: RectSL** from the command palette.
-3. Make a box beneath it. It starts with a small scene — a wall and one turning square — in its
-   `rectSL` property. Run it: the scene plays in the window and follows your edits from then on.
-   Stop the box to take it out of the window.
+The model sees the same thing: `InspectRectSLStudy`, which it reads before editing, reports the line
+the person's cursor is on, so "make this one sway more", said after clicking a lantern, names a line.
 
-Every RectSL box's chat has the study tools, and each scene keeps its own history under
-`studies/<box id>/` in its document.
+![The finished lanterns in their window at 13.5 seconds, with the editor's cursor on the flame's line: the small flame at the mouth of each lantern in view is outlined in pale blue](assets/rectsl_conversation/outline.png)
+
+The window of the finished lanterns, held at 13.5 seconds, with the editor's cursor on line 36,
+`"flame" rect …`. The line makes the flame of the lantern template, and the array below it copied
+that into every lantern, so every flame in view is outlined.
 
 ## The wall, the window and the GPU
 
@@ -118,12 +130,12 @@ that box's scene. They are library code, in
 | Tool | Purpose |
 | --- | --- |
 | `RectSLStudyGuide` | How to work on a study — the wall, idioms, traps and style — or the words guide searched for a word. |
-| `InspectRectSLStudy` | Read the checked scene, any unchecked hand edit, history, the lines that make rectangles, warnings and knobs. |
+| `InspectRectSLStudy` | Read the checked scene, any unchecked hand edit, history, the lines that make rectangles, warnings, knobs, and the line the person's cursor is on. |
 | `EditRectSLStudy` | Replace the whole scene: compile, check, activate, and return a preview against the parent. |
 | `PatchRectSLStudy` | Exact local text replacements, through the same checks. |
 | `SetRectSLNumbers` | Change numbers and hex colours by knob index, rewritten in place. |
 | `ObserveRectSLStudy` | Frames at chosen times, with what is visible, palette, detail and motion. |
-| `TimelineRectSLStudy` | The whole clip as frames, a chart of what is visible and moving, and the events in it — each named with its line. |
+| `TimelineRectSLStudy` | The whole clip as frames, a chart of what is visible and moving, and what happens in it — each object once, with the lines that made it. |
 | `TraceRectSLStudy` | Every visible rectangle outlined and labelled with the line that made it, or the scene after each line. |
 | `KnobsRectSLStudy` | What reads each number, and how much a 10% nudge to it changes the frames. |
 | `SweepRectSLNumber` | One number at several values, side by side, without publishing. |
@@ -161,8 +173,8 @@ slider value, editing the scene by hand.
 > orange against deep blue.
 
 The model read the guide, searched the words guide for loops and delays, and wrote the scene with
-one `EditRectSLStudy`: a lantern of eleven rectangles — crown, paper, lit fold, seams, lower lip,
-mouth and flame — inside a group that sways, and five deep copies of it, each starting later
+one `EditRectSLStudy`: a lantern of nine rectangles — crown, paper, lit fold, paper fold, two seams,
+lower lip, mouth and flame — inside a group that sways, and five deep copies of it, each starting later
 (`->delay-all-time`) on an 18-second rise. It looked at the window before replying:
 
 ![The live window after the first edit: three warm paper lanterns rising through a deep blue sky](assets/rectsl_conversation/lanterns/images/ae68409c3cd4d6b72b2c.jpg)
@@ -488,8 +500,10 @@ message continues from the last revision.
   than a pixel at that size can vanish from a frame without vanishing from the scene, and a
   comparison holds at pixel centres and at those times.
 - Visibility and events come from the scene, not the pixels: a rectangle is visible when it is not
-  transparent and meets the wall, even if another covers it. An object built from many rectangles
-  reports each part's events, so the lanterns' timeline lists hundreds.
+  transparent and meets the wall, even if another covers it. An object — a top-level group, or a
+  rectangle in none — enters with its first part and leaves with its last; touching is reported
+  between objects of comparable size, so a lantern passing a star, or the sky it rises through, is not
+  an event.
 - Comparisons match rectangles by name. An unnamed rectangle's id (`rect-12`) moves when a line
   above it adds one.
 - `{{ … }}` Kotlin escapes work, and compile once each on a Kotlin engine of their own the first
@@ -505,9 +519,16 @@ message continues from the last revision.
     wrote the scene box's `rectSL` through the property the editor syncs to; no keystrokes were
     simulated. Each action is recorded in `conversations/*.human.json`. Both halves are
     `tools/conversation_demo.py` (`record` and `act`), which keeps the document running between
-    invocations. The three screenshots of Field itself come from
+    invocations. The four screenshots of Field itself come from
     `tools/capture_rectsl_conversation.py`, which reopens a copy of the lanterns document and first
-    checks that the chat Field restores is byte for byte the one saved.
+    checks that the chat Field restores is byte for byte the one saved. For the outline it puts the
+    editor's cursor on the flame's line through the editor, as a click there would. A click in the
+    window reaches the same code, but no automation here can click a native window without moving
+    the person's own pointer, so that path is checked by calling it from a box.
+
+    The sessions were recorded with a box of Kotlin above the scene that opened the window. Since
+    then the root holds no code and the language opens the window itself; the documents lost that
+    box's Kotlin, and nothing the tools saw depended on which opened it.
 
     The first lanterns turn was recorded twice. The first recording drew the window in linear light,
     where the model's faint 2.5% glows around each lantern came out as dark maroon boxes; that is

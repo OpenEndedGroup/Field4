@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Capture the StackSL conversation page's two screenshots of Field itself.
+"""Capture the StackSL conversation page's three screenshots of Field itself.
 
-Both come from the recorded aurora document, reopened: ``card.png`` is the program box with its study
-card and the window running, and ``saved-chat.png`` the same box with its saved AI4 chat restored. The
+All three come from the recorded aurora document, reopened: ``card.png`` is the program box with its
+study card and the window running, ``stage.png`` the program's own window held at one stage by a
+click on that stage's tile in the card, and ``saved-chat.png`` the same box with its saved AI4 chat
+restored. The
 document is a copy in a temporary workspace, on a Field this script starts and owns, and nothing here
 makes a model call. Before capturing, the script checks that the chat Field restores is byte-for-byte
 the saved chat, which ``metadata.edn`` holds only as a ``#afield/file`` reference to its sidecar, and
@@ -10,7 +12,7 @@ that the card's evidence frame was rendered on the GPU. The blank starter is ope
 that it comes up by itself (window and program); it is not pictured.
 
 The window must be able to open (an awake display). Run the packager afterwards; ``--check`` requires
-both screenshots to exist.
+all three screenshots to exist.
 Use: uv run --project . --group backdoor python tools/capture_stacksl_conversation.py [--port 9796]
 """
 
@@ -124,6 +126,24 @@ async def capture(port: int, workspace: Path) -> None:
           content.dispatchEvent(new MouseEvent('mouseup', {bubbles: true}));
           await new Promise(r => setTimeout(r, 800)); return true; })()""")
         await shoot("card", "card.png")
+
+        # The window held at one stage, as a click on the stage's tile in the card holds it: the line
+        # that stores the aurora's curtain, which the tile — and so the window — shows by the value
+        # stored; failing that, the last stage the card shows that stores anything.
+        held = await evaluate("""(async () => {
+          const cells = [...document.querySelectorAll('.stacksl-study .cell.stage')];
+          const stores = cells.filter(c => c.textContent.includes('\u2192'));
+          const cell = cells.find(c => c.textContent.includes('\u2192 curtain')) || stores[stores.length - 1] || cells[Math.floor(cells.length / 2)];
+          cell.click(); await new Promise(r => setTimeout(r, 2500));
+          return {stage: cell.querySelector('span').textContent, text: cell.querySelector('span.muted').textContent,
+                  pinned: cell.classList.contains('pinned')}; })()""")
+        assert held["pinned"], f"the stage tile did not take the click: {held}"
+        await command(f"native-screenshot {ASSETS / 'stage.png'} --uid stacksl_window")
+        with Image.open(ASSETS / "stage.png") as shot:
+            if shot.width > 1000:
+                shot.resize((shot.width // 2, shot.height // 2), Image.LANCZOS).save(ASSETS / "stage.png")
+        print("captured stage.png:", held, flush=True)
+        await evaluate("document.querySelector('.stacksl-study .cell.stage.pinned').click(); true")
 
         await evaluate(f"window.openAiChatForBox('{PROGRAM}', 'stackSL'); true")
         restored = await evaluate("""(async () => {

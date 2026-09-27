@@ -174,6 +174,7 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
 
     fun walk(block: List<Token>, quoteRole: String?) {
         var consumer: Pair<String, Int>? = null // literal-reading word, and how many of its literals have been seen
+        val readForward = HashSet<Int>() // the literals a word before them read out of the source, not off the stack
         block.forEachIndexed { index, token ->
             val start = offsets[token]
             when (token) {
@@ -199,7 +200,7 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
                     val raw = source.substring(start, end).trimEnd(',')
                     val (line, column) = rectSLLineAndColumn(source, start)
                     val literal = consumer?.takeIf { it.first != "->background" || token is Token.ColorLit }?.let { (word, seen) ->
-                        LITERAL_ARGUMENTS.getValue(word).getOrNull(seen)?.let { part -> consumer = word to seen + 1; "$word $part" }
+                        LITERAL_ARGUMENTS.getValue(word).getOrNull(seen)?.let { part -> consumer = word to seen + 1; readForward += index; "$word $part" }
                     }
                     if (consumer?.first == "->background") consumer = null
                     val role = when {
@@ -210,7 +211,8 @@ fun rectSLKnobs(source: String): List<RectSLKnob> {
                             // What reads it: the word right after it, or — when that is arithmetic —
                             // the mutator the arithmetic feeds (`fc 6.5 * ->x` is "into ->x via *").
                             val body = quoteRole?.removePrefix("in a quote")?.removePrefix(" before ")?.takeIf { it.isNotBlank() }?.let { " in the $it body" }.orEmpty()
-                            val run = block.subList(0, index + 1).takeLastWhile { it !is Token.Word && it !is Token.Quote }.size
+                            // The numbers pushed before it, back to the last word — not counting `->fps 30`'s 30 on the line above.
+                            val run = (0..index).reversed().takeWhile { block[it] !is Token.Word && block[it] !is Token.Quote && it !in readForward }.size
                             val arity = block.drop(index + 1).takeWhile { it !is Token.Word && it !is Token.Quote }.size + run
                             val direct = (block.drop(index + 1).firstOrNull { it is Token.Word || it is Token.Quote } as? Token.Word)?.name
                             val mutator = block.drop(index + 1).firstOrNull { it is Token.Word && it.name.startsWith("->") }?.let { (it as Token.Word).name }

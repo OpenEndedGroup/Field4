@@ -155,3 +155,68 @@ Not done: `box.display` from library code still needs the box to have run (libra
 `BoxStudies.show`); only study cards are replayed to a late page, not box outputs in general; the
 StackSL compiler itself still prunes an unbalanced definition's surplus silently; the RectSL editor
 extension's own diagnostics stay lexical, beside the runtime's real ones.
+
+## Second pass — 2026-09-27
+
+The same questions again, with all three studies landed. This time the evidence was a from-scratch
+attempt in a live Field — a new document, a new box, **Set Main Language: RectSL**, a child, run —
+and a count over every recorded tool call (`conversations/tool-io/`, 32 turns across the three
+studies).
+
+**From scratch still took Kotlin.** A RectSL or StackSL root drew nothing until a box above the scene
+held eight lines of window Kotlin, and a scene with no window said nothing about it: its run reported
+success and the "no window" answer was swallowed. In the attempt, running that window box — command-return,
+the first thing a person tries — left its window at frame 0, where launching it drew. The docs'
+"From scratch" section was three steps long because of this, and every starter document carried the
+Kotlin.
+
+**Nothing pointed from the picture back to the program.** Trace answers "which line made this" for
+the model, as an image; a person had no way to ask it of the window. The score session's third
+request was exactly that question, and it cost the model a Trace to answer something a click could
+have.
+
+**Most of every Inspect was the knob list.** A RectSL Inspect was 11.6k characters, 8k of them knobs
+as JSON objects; a StackSL one 16.8k, 11.3k knobs; and every StackSL edit, patch or number change sent
+the whole list again (12–13k per call). The models called Inspect first in every turn and used a
+knob index twice in 32 turns.
+
+**The timeline could not be read.** The lanterns' 872 raw events — every part of every lantern
+entering, leaving, touching the sky and passing each star — were one line each. Reading them grouped
+showed the page's own claim was wrong: the lantern is nine rectangles, not eleven.
+
+**Smaller edges:** a knob after `->fps 30` on the line above was labelled "argument 2 of 2" (the 30
+was counted); the backdoor's `screenshot-window`, `editor-open` and `record-*` opened `code` rather
+than a box's own property, so a scene's editor came up empty in every capture; the function study
+refused a blank revision (`Unknown revision `), which the recorded model sent, where the other two
+studies read it as current. A Kotlin compiler exception in the same recording (a local `fun` inside
+`with(Functions) { … }`) no longer reproduces.
+
+What changed:
+
+1. **A language root opens its own window** (`LanguageRoots.ensure`): a RectSL or StackSL root with no
+   Kotlin gets a `Window` and `Renderer` in its `window`/`renderer` properties when a scene beneath it
+   starts, its render loop running as the root's job. Stopping the root or closing the window stops
+   the scenes in it; running one reopens it. A root with Kotlin of its own is left to it, and a scene
+   that has no window after three seconds says why. The eight starter and example documents lost their
+   window Kotlin.
+2. **Make a RectSL Scene / Make a StackSL Program** (`LanguageRoots.adopt`): the selected box goes
+   beneath a root of that language — made just above it if there is none — gets a starter if it is
+   empty, is marked autorun, and starts. With **Make a Function Study** already there, all three
+   studies start with one command. The StackSL starter is no longer an empty program.
+3. **The editor and the window point at each other** (`RectSLWindowLinks`): the rectangles the RectSL
+   editor's line makes — with a group's parts and an array's copies — are outlined in the window, and a
+   click on a rectangle puts the editor on its line. A StackSL window can be held at one stage from the
+   card, or follow the editor's line (`StackSLLive.wanted`). Every study's Inspect reports the line the
+   person's cursor is on (`BoxStudies.personAt`), so "this one" names a line for the model too.
+4. **Knobs are one line each** (`k7 L9:32 0.22 keyframes of track four-beats: time`) and edits report a
+   count; the timeline names each object once — entering with its first part and leaving with its last,
+   touching only objects of comparable size, recurring happenings folded — so the lanterns' 872 events
+   are seven lines.
+5. The knob count, the backdoor's default property, and the function study's blank revision are fixed.
+
+Not done, still: the StackSL compiler's silent pruning of an unbalanced definition (the study's
+`diagnose` reports it; changing the compiler would refuse programs elsewhere that rely on it); the
+window's click reaches `pick` through GLFW, which no automation here can drive without moving the
+person's real pointer, so everything after the click was checked by calling `pick` from a box and
+GLFW's delivery of the click is untested; and run versus launch for a hand-written window box — the
+case the language roots now avoid — is unchanged and not understood.

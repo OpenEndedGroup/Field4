@@ -3079,7 +3079,8 @@ def build_command_parser() -> argparse.ArgumentParser:
 
     editor_open = subparsers.add_parser("editor-open", add_help=False)
     editor_open.add_argument("uid")
-    editor_open.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    editor_open.add_argument("--property", default=None)
     editor_open.add_argument("--open-outputs", action="store_true")
     editor_open.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
     editor_open.add_argument("--padding", type=float, default=12.0)
@@ -3089,7 +3090,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_window = subparsers.add_parser("screenshot-window", add_help=False)
     screenshot_window.add_argument("path")
     screenshot_window.add_argument("--uid")
-    screenshot_window.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    screenshot_window.add_argument("--property", default=None)
     screenshot_window.add_argument("--with-editor", action="store_true")
     screenshot_window.add_argument("--open-outputs", action="store_true")
     screenshot_window.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
@@ -3102,7 +3104,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_editor = subparsers.add_parser("screenshot-editor", add_help=False)
     screenshot_editor.add_argument("uid")
     screenshot_editor.add_argument("path")
-    screenshot_editor.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    screenshot_editor.add_argument("--property", default=None)
     screenshot_editor.add_argument("--padding", type=float, default=12.0)
     screenshot_editor.add_argument("--open-outputs", action="store_true")
     screenshot_editor.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
@@ -3135,7 +3138,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_window = subparsers.add_parser("record-window", add_help=False)
     record_window.add_argument("path")
     record_window.add_argument("--uid")
-    record_window.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    record_window.add_argument("--property", default=None)
     record_window.add_argument("--with-editor", action="store_true")
     record_window.add_argument("--open-outputs", action="store_true")
     record_window.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
@@ -3149,7 +3153,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_editor = subparsers.add_parser("record-editor", add_help=False)
     record_editor.add_argument("uid")
     record_editor.add_argument("path")
-    record_editor.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    record_editor.add_argument("--property", default=None)
     record_editor.add_argument("--padding", type=float, default=12.0)
     record_editor.add_argument("--open-outputs", action="store_true")
     record_editor.add_argument("--expect-outputs", dest="expect_outputs", default="panel", choices=["panel", "inline", "none"])
@@ -3163,7 +3168,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     record_box = subparsers.add_parser("record-box", add_help=False)
     record_box.add_argument("uid")
     record_box.add_argument("path")
-    record_box.add_argument("--property", default="code")
+    # None: the box's own default_property (a RectSL scene shows its rectSL), else code.
+    record_box.add_argument("--property", default=None)
     record_box.add_argument("--padding", type=float, default=12.0)
     record_box.add_argument("--no-pan", action="store_true")
     record_box.add_argument("--duration", type=float, default=5.0)
@@ -3341,6 +3347,21 @@ def build_command_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# The commands whose --property, when not given, is the box's own default_property.
+PROPERTY_FOLLOWING_COMMANDS = {"editor-open", "screenshot-window", "screenshot-editor", "record-window", "record-editor", "record-box"}
+
+
+def default_property_of(client: "FieldBackdoor", uid: str | None) -> str:
+    """The property a box shows in its editor: its default_property (a RectSL scene's rectSL), else code."""
+    if not uid:
+        return "code"
+    try:
+        _, target = client.require_box_reference(uid)
+    except BackdoorError:
+        return "code"
+    return target.get("default_property") or "code"
+
+
 def parse_command(command_line: str) -> argparse.Namespace:
     parser = build_command_parser()
     try:
@@ -3516,6 +3537,9 @@ async def dispatch_command(
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
+
+    if args.command in PROPERTY_FOLLOWING_COMMANDS and getattr(args, "property", "code") is None:
+        args.property = default_property_of(client, getattr(args, "uid", None))
 
     if args.command == "editor-open":
         timeout = command_timeout(args.timeout, client.default_timeout)

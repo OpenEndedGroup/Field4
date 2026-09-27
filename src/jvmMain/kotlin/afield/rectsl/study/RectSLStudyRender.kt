@@ -91,8 +91,12 @@ object RectSLStudyShader {
     /** The sRGB transfer function's inverse: a drawn byte's value (0..1) as linear light. */
     fun linear(v: Double): Double = if (v <= 0.04045) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
 
-    /** [scene] at [time], with its background as the first rectangle — the mesh every study draw writes. */
-    fun mesh(scene: SceneProgram, time: Double): RectMesh {
+    /**
+     * [scene] at [time], with its background as the first rectangle — the mesh every study draw writes.
+     * The rectangles named in [outlined] get an outline drawn over everything, two [pixel]s wide (in wall
+     * units): the live window's way of showing which rectangles the editor's line makes.
+     */
+    fun mesh(scene: SceneProgram, time: Double, outlined: Set<String> = emptySet(), pixel: Double = 0.0): RectMesh {
         val sampled = scene.sample(time)
         val wall = scene.wall
         val centre = if (wall.origin == Origin.TopLeft) Vec2d(wall.width / 2, wall.height / 2) else Vec2d(0.0, 0.0)
@@ -101,16 +105,34 @@ object RectSLStudyShader {
             scale = Vec2d(1.0, 1.0), alpha = 1.0, z = Double.NEGATIVE_INFINITY, fill = PaintSpec.Solid(scene.background),
             material = MaterialBinding(0), tags = emptySet()
         )
-        return lowerSampledScene(sampled.copy(rects = listOf(background) + sampled.rects))
+        val outlines = if (outlined.isEmpty() || pixel <= 0) emptyList()
+            else sampled.rects.filter { it.id in outlined && it.alpha > 0.01 }.let { picked ->
+                // A dark halo under a bright line, so the outline reads over light and dark alike.
+                picked.flatMap { edges(it, 4.0 * pixel, OUTLINE_HALO) } + picked.flatMap { edges(it, 2.0 * pixel, OUTLINE) }
+            }
+        return lowerSampledScene(sampled.copy(rects = listOf(background) + sampled.rects + outlines))
+    }
+
+    private val OUTLINE = afield.Color4(0.36, 0.88, 1.0, 1.0)
+    private val OUTLINE_HALO = afield.Color4(0.0, 0.0, 0.0, 0.6)
+
+    /** Four thin rectangles, [thickness] wide, along [r]'s edges and turned with it. */
+    private fun edges(r: SampledRect, thickness: Double, colour: afield.Color4): List<SampledRect> {
+        val hw = 0.5 * r.size.x * kotlin.math.abs(r.scale.x); val hh = 0.5 * r.size.y * kotlin.math.abs(r.scale.y)
+        val c = kotlin.math.cos(r.rotation); val s = kotlin.math.sin(r.rotation)
+        fun edge(x: Double, y: Double, w: Double, h: Double) = SampledRect(
+            id = "outline-${r.id}", objectId = -1, center = Vec2d(r.center.x + c * x - s * y, r.center.y + s * x + c * y),
+            size = Vec2d(w, h), rotation = r.rotation, scale = Vec2d(1.0, 1.0), alpha = 1.0, z = Double.POSITIVE_INFINITY,
+            fill = PaintSpec.Solid(colour), material = MaterialBinding(0), tags = emptySet())
+        return listOf(edge(0.0, hh, 2 * hw + thickness, thickness), edge(0.0, -hh, 2 * hw + thickness, thickness),
+            edge(-hw, 0.0, thickness, 2 * hh + thickness), edge(hw, 0.0, thickness, 2 * hh + thickness))
     }
 
     /**
-     * The world-to-clip transform that fits the wall into a [width] by [height] target the way the
-     * scene's `->fit` asks: `contain` (the default) shows the whole wall centred with black around it,
-     * `cover` fills the target and crops the wall, `stretch` fills it and distorts. When the aspects
-     * agree — every study frame — all three are exactly the wall.
+     * The part of the wall a [width] by [height] target shows, as its centre and size — `cx, cy, w, h` in
+     * wall units — under the scene's `->fit` (see [contain]).
      */
-    fun contain(scene: SceneProgram, width: Int, height: Int): Matrix4f {
+    fun visible(scene: SceneProgram, width: Int, height: Int): DoubleArray {
         val wall = scene.wall
         val target = width.toDouble() / max(1, height)
         val aspect = wall.width / wall.height
@@ -121,6 +143,28 @@ object RectSLStudyShader {
             FitPolicy.Contain -> if (wider) wall.height * target to wall.height else wall.width to wall.width / target
         }
         val (cx, cy) = if (wall.origin == Origin.TopLeft) wall.width / 2 to wall.height / 2 else 0.0 to 0.0
+        return doubleArrayOf(cx, cy, w, h)
+    }
+
+    /**
+     * The wall point under ([u], [v]) of a [width] by [height] target, `u` across from the left and `v`
+     * down from the top, both 0..1: where a click in the window lands in the scene.
+     */
+    fun wallPoint(scene: SceneProgram, width: Int, height: Int, u: Double, v: Double): Vec2d {
+        val (cx, cy, w, h) = visible(scene, width, height)
+        val x = cx - w / 2 + u * w
+        return Vec2d(x, if (scene.wall.origin == Origin.TopLeft) cy - h / 2 + v * h else cy + h / 2 - v * h)
+    }
+
+    /**
+     * The world-to-clip transform that fits the wall into a [width] by [height] target the way the
+     * scene's `->fit` asks: `contain` (the default) shows the whole wall centred with black around it,
+     * `cover` fills the target and crops the wall, `stretch` fills it and distorts. When the aspects
+     * agree — every study frame — all three are exactly the wall.
+     */
+    fun contain(scene: SceneProgram, width: Int, height: Int): Matrix4f {
+        val wall = scene.wall
+        val (cx, cy, w, h) = visible(scene, width, height)
         return if (wall.origin == Origin.TopLeft) {
             Matrix4f().ortho((cx - w / 2).toFloat(), (cx + w / 2).toFloat(), (cy + h / 2).toFloat(), (cy - h / 2).toFloat(), -1f, 1f)
         } else {
@@ -137,7 +181,13 @@ object RectSLStudyShader {
 }
 
 /** What a study draws: a compiled scene, the source it came from (the key a GPU pipeline is cached by), and its compiled materials. */
-class RectSLDrawable(val source: String, val scene: SceneProgram, val materials: List<StackSLRectMaterialCompileResult>)
+class RectSLDrawable(
+    val source: String,
+    val scene: SceneProgram,
+    val materials: List<StackSLRectMaterialCompileResult>,
+    /** Which line made each rectangle, by id — what the live window outlines and picks by. */
+    val origins: Map<String, afield.rectsl.RectSLOrigin> = emptyMap()
+)
 
 /**
  * Where a RectSL study's frames come from: the GPU when a window is running ([RectSLGpuRasterizer]),

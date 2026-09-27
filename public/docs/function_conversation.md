@@ -14,16 +14,26 @@ the assistant a new way to observe and act, with no Field rebuild.
 [Talking a shader into existence](stacksl_conversation.md) does the same for a
 StackSL program drawn live in a window.
 
-## Start from a blank document
+## Start
 
-[Download the blank starter](assets/function_conversation/function_conversation.zip).
-Unzip it into your Field workspace, keeping the `function_conversation` folder
-intact, then open that document. Configure an AI provider through Field's welcome
-page if you have not already; see [AI features](aiFeatures.md).
+In any document, select a box — press **n** to make one — and choose **Make a
+Function Study** from the command palette. An empty box is given the starter's
+source, below, which is checked in as the first revision and drawn in the box's
+signal viewer; a box whose Kotlin already returns a `StudyComposition` keeps it.
+Select the box and press **command/ctrl-4** to open AI4 chat. Configure an AI
+provider through Field's welcome page if you have not already; see
+[AI features](aiFeatures.md).
 
-The starter has one box, **The function — talk here (AI4)**. Opening the
-document checks its source in as the first revision and draws it in the box's
-viewer. Select the box and press **command/ctrl-4** to open AI4 chat.
+[Talking a shader into existence](stacksl_conversation.md) and
+[Talking a scene into existence](rectsl_conversation.md) start the same way, with
+**Make a StackSL Program** and **Make a RectSL Scene**.
+
+The recorded conversation below started from the same source, in a document of its
+own. [Download that starter](assets/function_conversation/function_conversation.zip)
+to begin from the same place: unzip it into your Field workspace, keeping the
+`function_conversation` folder intact, and open it. It has one box,
+**The function — talk here (AI4)**; opening the document checks its source in and
+draws the viewer.
 
 ![The starter in Field: the function study box and its signal viewer, three flat channels](assets/function_conversation/starter.png)
 
@@ -31,11 +41,9 @@ The source initially returns three zero-valued channels, named x, y and z, over
 3,600 seconds. There are no crescendos, previous conversations, or inherited
 revisions; the first checked revision belongs to your own session. Each study
 keeps its history under `studies/<box id>/` in its document, so the starter and
-the worked example below can be open at once.
-
-Any box whose Kotlin returns a `StudyComposition` can be a function study: select
-it and choose **Make a Function Study** from the command palette. An empty box
-is given this starter's source.
+the worked example below can be open at once. `InspectFunctionStudy`, which the
+model reads before editing, includes the line your editor's cursor is on, so
+"change this" can name a line.
 
 ### The starting Kotlin
 

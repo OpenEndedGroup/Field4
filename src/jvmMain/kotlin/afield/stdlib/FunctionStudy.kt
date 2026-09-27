@@ -68,6 +68,10 @@ class FunctionStudy(
 ) {
     private val revisions = linkedMapOf<String, StudyRevision>()
     private val cancelled = AtomicLong()
+
+    /** The line the person's editor cursor is on in this study's box, or null — see [BoxStudies.personAt]. */
+    @Volatile
+    var editorLine: () -> Int? = { null }
     private val mapper = jacksonObjectMapper()
     private var selected = emptyList<String>()
     private var selection = 0.0 to 3600.0
@@ -110,9 +114,10 @@ class FunctionStudy(
         }
         return ids.reversed()
     }
+    /** A revision by id, or the active one for `"current"` or a blank id — as a model often sends. */
     @Synchronized
     fun revision(id: String = "current"): StudyRevision {
-        val key = if (id == "current") active else id
+        val key = if (id.isBlank() || id == "current") active else id
         revisions[key]?.let { return it }
         require(key.matches(Regex("r[0-9]+-[a-f0-9]{12}"))) { "Unknown revision $key" }
         val sourceFile = File(directory, "$key.kt")
@@ -143,6 +148,7 @@ class FunctionStudy(
             "events" to r.composition.events.sortedBy { it.start }, "choices" to r.composition.choices,
             "source" to r.source, "liveSourceHash" to hash(live), "dirty" to (live != revision().source),
             "liveSource" to live.takeIf { live != revision().source },
+            "personAt" to BoxStudies.personAt(editorLine(), live),
             "selectedIds" to selected, "selectionSeconds" to listOf(selection.first, selection.second),
             "history" to historyIds(),
             "semantics" to "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."))

@@ -35,10 +35,10 @@ STARTER = "rectsl_conversation"
 CHAT_FILE = "rectsl_source_ai4_chat_history_.md"
 SCENE_FILE = "rectsl_source_rectSL_.rectsl"
 STUDY = "studies/rectsl_source"
-STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE, "rectsl_window_code_.kt")
+STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE)
 TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyTools.kt"
 # Screenshots of Field itself, taken by tools/capture_rectsl_conversation.py rather than built here.
-CAPTURED = ("card.png", "saved-chat.png", "window.png")
+CAPTURED = ("card.png", "saved-chat.png", "window.png", "outline.png")
 IMAGE_REF = re.compile(r"\]\((images/[0-9a-f]{20}\.(?:png|jpg))\)")
 
 EXAMPLES = {

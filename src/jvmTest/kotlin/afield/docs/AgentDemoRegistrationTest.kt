@@ -201,34 +201,35 @@ class AgentDemoRegistrationTest {
                 "The StackSL counterpart of function_conversation, kept out of the transcript registry " +
                 "for the same reason (an AI4 conversation needs a provider key) and shipped the same " +
                 "way: the starter zip on public/docs/stacksl_conversation.md, built by " +
-                "tools/package_stacksl_conversation.py. Its program is StackSL, not Kotlin; its one Kotlin " +
-                "box, the window, is compiled by nothing here.",
+                "tools/package_stacksl_conversation.py. It holds no Kotlin: since 2026-09-27 its root has no " +
+                "code (the language opens the window, afield.stdlib.LanguageRoots), and its program is " +
+                "StackSL, which StackSLLanguageTest compiles.",
             "stacksl_conversation_aurora" to
-                "A recorded session beside the stacksl_conversation starter, with the starter's window " +
-                "box (tools/stacksl_conversation_documents.py --check holds them equal). " +
+                "A recorded session beside the stacksl_conversation starter, with the starter's codeless " +
+                "root (tools/stacksl_conversation_documents.py --check holds them equal). " +
                 "StackSLConversationExamplesTest replays its revisions and recorded comparisons.",
             "stacksl_conversation_ink" to
-                "A recorded session beside the stacksl_conversation starter; same window box, same " +
-                "replay test, same gap as stacksl_conversation_aurora.",
+                "A recorded session beside the stacksl_conversation starter; same root, same replay " +
+                "test, same reason as stacksl_conversation_aurora.",
             "stacksl_conversation_tiles" to
-                "A recorded session beside the stacksl_conversation starter; same window box, same " +
-                "replay test, same gap as stacksl_conversation_aurora.",
+                "A recorded session beside the stacksl_conversation starter; same root, same replay " +
+                "test, same reason as stacksl_conversation_aurora.",
             "rectsl_conversation" to
                 "The RectSL counterpart of stacksl_conversation, kept out of the transcript registry for " +
                 "the same reason and shipped the same way: the starter zip on " +
-                "public/docs/rectsl_conversation.md, built by tools/package_rectsl_conversation.py. Its " +
-                "scene is RectSL (RectSLLanguageTest compiles it); its one Kotlin box, the window, is " +
-                "compiled by nothing here.",
+                "public/docs/rectsl_conversation.md, built by tools/package_rectsl_conversation.py. It " +
+                "holds no Kotlin: its root has no code (the language opens the window) and its scene is " +
+                "RectSL, which RectSLLanguageTest compiles.",
             "rectsl_conversation_lanterns" to
-                "A recorded session beside the rectsl_conversation starter, with the starter's window box " +
+                "A recorded session beside the rectsl_conversation starter, with the starter's codeless root " +
                 "(tools/rectsl_conversation_documents.py --check holds them equal). " +
                 "RectSLConversationExamplesTest replays its revisions and recorded comparisons.",
             "rectsl_conversation_score" to
-                "A recorded session beside the rectsl_conversation starter; same window box, same replay " +
-                "test, same gap as rectsl_conversation_lanterns.",
+                "A recorded session beside the rectsl_conversation starter; same root, same replay test, " +
+                "same reason as rectsl_conversation_lanterns.",
             "rectsl_conversation_tide" to
-                "A recorded session beside the rectsl_conversation starter; same window box, same replay " +
-                "test, same gap as rectsl_conversation_lanterns.",
+                "A recorded session beside the rectsl_conversation starter; same root, same replay test, " +
+                "same reason as rectsl_conversation_lanterns.",
         )
     }
 

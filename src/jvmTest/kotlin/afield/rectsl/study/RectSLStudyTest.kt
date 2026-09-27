@@ -114,6 +114,20 @@ class RectSLStudyTest {
     }
 
     @Test
+    fun theTimelineNamesEachHappeningOnceRatherThanEachPart() {
+        // The recorded lanterns: five copies of a nine-part lantern rising past nineteen stars. The raw
+        // analysis names every part entering, leaving and touching the sky, the stars and its neighbours;
+        // the timeline names what each lantern does, and folds its sway into one line.
+        val source = afield.testRepoRoot().resolve("dev_docs/agents/demos/rectsl_conversation_lanterns/rectsl_source_rectSL_.rectsl").toFile().readText()
+        val scene = RectSLStudy.drawable(source).scene
+        val raw = afield.rectsl.analyzeAnimation(scene, afield.rectsl.AnalysisSettings(fps = 10.0)).events
+        val lines = RectSLStudy.describeEvents(raw, scene, RectSLStudy.compile(source).origins, 10.0)
+        assertTrue(lines.size <= 12 && raw.size > 20 * lines.size, "${raw.size} raw events became ${lines.size}:\n${lines.joinToString("\n")}")
+        assertTrue(lines.any { Regex("lantern \\(9 rectangles, .*\\) enters the wall, 5 times").containsMatchIn(it) }, lines.joinToString("\n"))
+        assertTrue(lines.none { "night" in it || "stars" in it }, "touching the sky, or a star, is not an event: ${lines.joinToString("\n")}")
+    }
+
+    @Test
     fun traceIdentifiesEachRectangleByLine() {
         val report = started().study.trace(seconds = 2.0)
         @Suppress("UNCHECKED_CAST") val lines = report.facts["lines"] as List<Map<String, Any?>>

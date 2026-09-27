@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Write the metadata.edn of each RectSL conversation document from its loose box files.
 
-A RectSL conversation document is two boxes: a window (``rectsl_window``) whose main language is
-RectSL, and the scene (``rectsl_source``), its child, whose ``rectSL`` property is the program. Both
-autorun: opening the document opens the window and plays the scene in it, and the scene's AI4 chat
-has the study tools (they are library code, ``afield.rectsl.study``, not a box). Box text lives in
+A RectSL conversation document is two boxes: a root (``rectsl_window``) whose main language is
+RectSL and which holds no Kotlin, and the scene (``rectsl_source``), its child, whose ``rectSL``
+property is the program. The scene autoruns: opening the document plays it, which opens the root's
+window (``afield.stdlib.LanguageRoots``), and the scene's AI4 chat has the study tools (they are
+library code, ``afield.rectsl.study``, not a box). Box text lives in
 sidecar files beside ``metadata.edn`` — ``<uid>_<property>_.<ext>`` — so an edit is a normal diff;
 this script writes the ``metadata.edn`` that makes the folder an openable Field document, in the
 bytes Field's codec writes (``checkAgentDemos`` holds that).
 
-The window box and ``AGENTS.md`` are the same in every document: the recorded examples copy the
-starter's. A recorded example also carries its AI4 chat, referenced from ``metadata.edn`` as a
+``AGENTS.md`` is the same in every document: the recorded examples copy the starter's. A recorded example also carries its AI4 chat, referenced from ``metadata.edn`` as a
 ``#afield/file`` rather than inlined. The study's words guide, a library resource, is generated here
 from the public cheatsheet. ``--check`` fails if anything differs from what this script would write.
 
@@ -34,15 +34,16 @@ CHAT = "rectsl_source_ai4_chat_history_.md"
 # (a different renderer from the one a study draws with).
 SKIPPED_SECTIONS = {"Kotlin entry points", "Lowering to GLSL: a scene as a signed distance field"}
 
-# Frames are [x y w h]; kept within the agent-demo layout ceiling (620 x 170). The window owns the
-# renderer and is the RectSL root, so the scene beneath it runs as RectSL and plays in it.
+# Frames are [x y w h]; kept within the agent-demo layout ceiling (620 x 170). The root is the RectSL
+# root, so the scene beneath it runs as RectSL, and the window the scene plays in is the root's own.
 BOXES = (
     {
         "id": "rectsl_window",
-        "name": "window",
+        "name": "RectSL window",
         "frame": (70.0, 40.0, 240.0, 60.0),
-        "files": {"code": "rectsl_window_code_.kt"},
+        "files": {},
         "extra": {"mainLanguage": "rectsl"},
+        "autorun": False,
         "parents": ("root",),
         "children": ("rectsl_source",),
     },
@@ -56,7 +57,7 @@ BOXES = (
         "children": (),
     },
 )
-SHARED_FILES = ("rectsl_window_code_.kt",)
+SHARED_FILES: tuple[str, ...] = ()
 # Guides every document carries unchanged; they are not box properties, so they are not in metadata.edn.
 SHARED_GUIDES = ("AGENTS.md",)
 
@@ -154,7 +155,7 @@ def metadata(folder: Path) -> str:
             )
         for key, value in box["extra"].items():
             properties.append(f"{edn_string(key)} {edn_string(value)}")
-        properties += ['"preamble" ""', '"attic" ""', '"autorun" true', '"nested" #{}']
+        properties += ['"preamble" ""', '"attic" ""', f'"autorun" {"true" if box.get("autorun", True) else "false"}', '"nested" #{}']
         if box["id"] == "rectsl_source" and (folder / CHAT).is_file():
             # The chat is megabytes of inline images; Field reads a #afield/file reference from the
             # sidecar on load, so metadata.edn need not carry a second copy of it.

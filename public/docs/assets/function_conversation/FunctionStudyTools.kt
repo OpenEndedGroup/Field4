@@ -108,6 +108,7 @@ object FunctionStudies {
         synchronized(box) {
             (box.getPropertyRaw("_functionStudy", null) as? FunctionStudy)?.let { return it }
             val study = FunctionStudy(BoxStudies.directory(box), { box.getPropertyRaw("code", "") as? String ?: "" }, BoxStudies.replacer(box, "code"))
+            study.editorLine = { BoxStudies.editorLine(box, "code") }
             study.resume()
             box.properties["_functionStudy"] = study
             return study

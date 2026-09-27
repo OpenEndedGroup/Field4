@@ -27,6 +27,7 @@ import afield.inMain
 import afield.isTrue
 import afield.autorun
 import afield.logger.lprintln
+import afield.newRoot
 import afield.plugins
 import afield.runtime.MainLanguageRuntime
 import afield.runtime.TopologyWatcher
@@ -35,6 +36,8 @@ import afield.runtime.isMainLanguage
 import afield.runtime.registerMainLanguageRuntime
 import afield.payload
 import afield.send
+import afield.stdlib.Action
+import afield.stdlib.actions
 import afield.stdlib.begin
 import afield.stdlib.preprocess
 import afield.stdlib.stackAutoShaderSources
@@ -57,11 +60,12 @@ import java.util.concurrent.Executors
  *
  *  - compiles it with the real compiler and puts every error and warning on the line it belongs to;
  *  - draws it, live, in the window above it — the first box up the parent chain that holds a running
- *    `renderer`, usually the root itself — following every edit that compiles until it is stopped;
+ *    `renderer`, usually the root itself, which opens one of its own when it holds no Kotlin
+ *    ([afield.stdlib.LanguageRoots]) — following every edit that compiles until it is stopped;
  *  - checks the program in as a revision of the box's study (under `studies/<box id>/` in the
  *    document) and shows the study's card in the box's output.
  *
- * A box that is not under a window still runs: its card carries a live WebGL preview.
+ * A program whose window is closed still runs: its card carries a live WebGL preview.
  *
  * The study tools ([installStackSLStudyTools]) are offered to any AI4 conversation opened on a box's
  * `stackSL` property, and work on that box — so a program needs no tools box, and two programs, or
@@ -76,6 +80,9 @@ object StackSLPrograms {
 
     /** The main-language id, as `mainLanguage` stores it. */
     const val LANGUAGE = "stacksl"
+
+    /** Where the window a StackSL root opens for itself goes, and its size: square, 720 by 720. */
+    val WINDOW = afield.Rect(80.0, 80.0, 720.0, 720.0)
 
     /** The open document [box] belongs to, or `null` for a box in no open document. */
     fun sessionOf(box: Box): SessionInformation? = afield.stdlib.BoxStudies.documentOf(box)
@@ -100,6 +107,7 @@ object StackSLPrograms {
                 afield.stdlib.BoxStudies.replacer(box, PROPERTY)
             )
             study.rasterizer = StackSLGpuRasterizer({ rendererFor(box) })
+            study.editorLine = { afield.stdlib.BoxStudies.editorLine(box, PROPERTY) }
             study.resume()
             box.properties["_stackSLStudy"] = study
             return study
@@ -116,6 +124,9 @@ object StackSLPrograms {
         viewer(box)
         return study
     }
+
+    /** Run [box] as the editor's run does: draw it, follow its edits, and check it in. */
+    fun run(box: Box) = box.ke.executeAll(box, Execute(box.id, "run", 1, box.getPropertyRaw(PROPERTY, "") as? String ?: "", false, property = PROPERTY)) {}
 
     /** The card showing [box]'s study, created (and shown) on first use. */
     fun viewer(box: Box): StackSLStudyViewer {
@@ -171,6 +182,35 @@ class StackSLLive internal constructor(private val box: Box) {
 
     /** The program the window above the box is drawing, or `null` — also when that window closed or changed. */
     val showing: String? get() = shown?.takeIf { renderer?.isClosed == false && StackSLPrograms.rendererFor(box) === renderer }
+
+    /** A stage the card holds the window at — how many root words have run — or null for the whole program. */
+    @Volatile
+    var pinnedStage: Int? = null
+
+    /** Whether the window shows the stage the editor's cursor line ends, rather than the whole program. */
+    @Volatile
+    var followCursor: Boolean = false
+
+    private var wantedFor: Triple<String, Int?, Int?>? = null
+    private var wantedIs: String = ""
+
+    /**
+     * What the window should draw for [program]: the stage the card holds it at, else — when it follows
+     * the cursor — the stage [cursorLine] ends, else the whole program. A stage is the program up to
+     * that line ([afield.stacksl.StackSLOutline.stageProgram]): what that line leaves on the stack, drawn.
+     */
+    fun wanted(program: String, cursorLine: Int?): String {
+        val key = Triple(program, pinnedStage, cursorLine?.takeIf { followCursor })
+        if (key == wantedFor) return wantedIs
+        val words = key.second ?: key.third?.let { line ->
+            runCatching { StackSLStudyShader.stages(program).filter { it.line == line }.maxOfOrNull { it.wordsThrough } }.getOrNull()
+        }
+        val result = words?.let { n ->
+            runCatching { afield.stacksl.StackSLCompiler.outline(program).let { o -> if (n >= o.root.size) program else o.stageProgram(program, n) } }.getOrNull()
+        } ?: program
+        wantedFor = key; wantedIs = result
+        return result
+    }
 
     /**
      * Draw [source] in the window above the box. Returns `null` when it is drawing, otherwise why not:
@@ -278,8 +318,14 @@ class StackSLExecution(val inside: Box) : BoxExecution {
         val trace = ExecutionTrace.forEngine(inside, execute, if (checkIn) "run" else "launch", reply)
         inMain {
             configureOutputProxies(inside, trace.reply, originSession)
+            // Starting a program is what opens its window, when its root has none (see LanguageRoots).
+            val noWindow = afield.stdlib.LanguageRoots.ensure(inside, StackSLPrograms.LANGUAGE, "StackSL", StackSLPrograms.WINDOW)
+            val startedAt = System.currentTimeMillis()
+            var toldNoWindow = noWindow == null
             val generation = inside.runGeneration.getOrPut(strand) { -1 } + 1
             inside.runGeneration[strand] = generation
+            // Running as Field counts it, so what stops a box's dependents — a window's teardown — stops this program too.
+            inside.currentRunningStates[strand] = afield.RunningState(generation, StackSLPrograms.LANGUAGE)
             send(Message("is-running").payload(IsRunning(execute.uid, true, generation, strand)))
             val live = StackSLPrograms.live(inside)
             var lastGood = if (report(first, trace.reply, originSession)) first else null
@@ -310,14 +356,25 @@ class StackSLExecution(val inside: Box) : BoxExecution {
                             (inside.getPropertyRaw("_stackSLViewer", null) as? StackSLStudyViewer)?.refreshLater()
                         }
                         val good = lastGood
-                        if (good != null && live.showing != good) {
-                            live.show(good)?.takeIf { !it.startsWith("no window") }?.let {
-                                inside.error(it, StackSLPrograms.PROPERTY, 1)
+                        // The whole program, or the stage the card or the editor's line asks for.
+                        val wanted = good?.let { live.wanted(it, if (live.followCursor) afield.stdlib.BoxStudies.editorLine(inside, StackSLPrograms.PROPERTY) else null) }
+                        if (good != null && wanted != null && live.showing != wanted) {
+                            val refused = live.show(wanted)?.takeIf { !it.startsWith("no window") }
+                            // A stage the GPU refuses falls back to the whole program; only the program itself failing is an error.
+                            if (refused != null && wanted != good) live.show(good)
+                            else if (refused != null) {
+                                inside.error(refused, StackSLPrograms.PROPERTY, 1)
                                 lastGood = null
                             }
                         }
+                        // Say why there is no window — after a moment, since a root's own Kotlin may be opening one.
+                        if (!toldNoWindow && live.showing == null && System.currentTimeMillis() - startedAt > NO_WINDOW_GRACE_MS) {
+                            toldNoWindow = true
+                            afield.notify("'${inside.name}': $noWindow", StackSLPrograms.LANGUAGE)
+                        }
                     }
                 } finally {
+                    if (inside.currentRunningStates[strand]?.watermark == generation) inside.currentRunningStates.remove(strand)
                     send(Message("is-running").payload(IsRunning(execute.uid, false, generation, strand)))
                 }
             }
@@ -359,6 +416,9 @@ class StackSLExecution(val inside: Box) : BoxExecution {
 
         /** How long an edit must stand before the card is rebuilt to show it. */
         const val SETTLE_MS = 1200L
+
+        /** How long a started program waits for a window before saying why it has none. */
+        const val NO_WINDOW_GRACE_MS = 3000L
     }
 }
 
@@ -385,6 +445,37 @@ fun installStackSLLanguageWatcher() {
     TopologyWatcher(StackSLPrograms.LANGUAGE) { stackSLTopologyNeedsUpdating(it) }.start()
 }
 
+/** The program a new StackSL box starts with: layered noise over slowly drifting coordinates, coloured. */
+const val STACKSL_STARTER = """# A StackSL program. The window above draws it; edit a number and watch it change.
+# Coordinates, zoomed and drifting slowly, through layered noise, into colour.
+uv 5.0 *
+time 0.12 * +
+fbm
+palette
+saturate
+"""
+
+/**
+ * "Make a StackSL Program": the selected box becomes a program beneath a StackSL root — a new one just
+ * above it, if it has none, which opens a window of its own — and starts drawing. A selected root gets a
+ * new program beneath it.
+ */
+@RunsAt(newRoot)
+fun installStackSLProgramAction(root: Box) {
+    root.actions["make-stacksl-program"] = Action(
+        desc = "Make a StackSL Program",
+        detail = "The selected box becomes a StackSL program, drawn live in a window of its own. Its AI4 chat gets tools that check, render, compare and version it.",
+    ) { selection ->
+        inMain {
+            afield.stdlib.LanguageRoots.adopt(selection, StackSLPrograms.LANGUAGE, "StackSL window", "StackSL program", StackSLPrograms.PROPERTY, STACKSL_STARTER).forEach { program ->
+                program.properties["_stackSLAutostarted"] = true
+                StackSLPrograms.run(program)
+                afield.notify("'${program.name}' is a StackSL program: edit it and watch the window, or describe what you want in its AI4 chat", StackSLPrograms.LANGUAGE)
+            }
+        }
+    }
+}
+
 /**
  * Give every child of a StackSL root a [StackSLExecution] that edits `stackSL`, and hand a child back to
  * Kotlin when no StackSL root claims it any more.
@@ -402,7 +493,7 @@ fun stackSLTopologyNeedsUpdating(values: Collection<Box>) {
             if ((child.getPropertyRaw("default_property", null) as? String).isNullOrBlank()) {
                 child.setPropertyRaw("default_property", StackSLPrograms.PROPERTY, doResync = true)
             }
-            if (child.getPropertyRaw(StackSLPrograms.PROPERTY, null) == null) child.setPropertyRaw(StackSLPrograms.PROPERTY, "", doResync = true)
+            if (child.getPropertyRaw(StackSLPrograms.PROPERTY, null) == null) child.setPropertyRaw(StackSLPrograms.PROPERTY, STACKSL_STARTER, doResync = true)
             // Field's autorun pass may run before this box became StackSL, so an autorun program starts
             // itself — once: attach is repeated on every graph change.
             if (child.autorun.isTrue() && child.getPropertyRaw("_stackSLAutostarted", null) != true) {

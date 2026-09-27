@@ -361,6 +361,37 @@ object BoxStudies {
         return null
     }
 
+    /**
+     * The editor's cursor line in [box]'s [property], while a page on its document has the box selected
+     * with that property in the editor; else null. The page reports its selection
+     * ([afield.server.documentSelection]) and the editor's view state (`<property>_editorState`), each
+     * within a tenth of a second.
+     */
+    fun editorLine(box: afield.Box, property: String): Int? {
+        val document = documentOf(box) ?: return null
+        val selection = afield.server.documentSelection(document) ?: return null
+        if (selection.selectedUids.lastOrNull() != box.id || selection.property != property) return null
+        val state = box.getPropertyRaw("${property}_editorState", null) as? String ?: return null
+        return lineOfViewState(state)
+    }
+
+    /**
+     * What an Inspect says about where the person is looking: the line their editor cursor is on in
+     * [source], and its text — or null when the box is not open in their editor. "This one" in a request
+     * usually means it; in a RectSL scene, clicking a rectangle in the window puts the cursor on its line.
+     */
+    fun personAt(line: Int?, source: String): Map<String, Any?>? = line?.let {
+        linkedMapOf("line" to it, "text" to source.lines().getOrNull(it - 1)?.trim()?.take(160),
+            "meaning" to "the line the person's editor cursor is on; 'this', 'here' or 'that one' in their request usually means it")
+    }
+
+    /** The cursor's line in a Monaco view state (`editor.saveViewState()` as JSON), or null. */
+    fun lineOfViewState(viewState: String?): Int? = runCatching {
+        mapper.readTree(viewState ?: return null)["cursorState"]?.get(0)?.get("position")?.get("lineNumber")?.asInt()
+    }.getOrNull()?.takeIf { it > 0 }
+
+    private val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+
     /** `studies/<box id>` in [box]'s document. */
     fun directory(box: afield.Box): File {
         val session = documentOf(box) ?: throw IllegalStateException("'${box.name}' is not in an open document")

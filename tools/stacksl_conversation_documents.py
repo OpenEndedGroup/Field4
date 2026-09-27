@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Write the metadata.edn of each StackSL conversation document from its loose box files.
 
-A StackSL conversation document is two boxes: a window (``stacksl_window``) whose main language is
-StackSL, and the program (``stacksl_source``), its child, whose ``stackSL`` property is the shader.
-Both autorun: opening the document opens the window and draws the program in it, and the program's
-AI4 chat has the study tools (they are library code, ``afield.stacksl.study``, not a box). Box text
+A StackSL conversation document is two boxes: a root (``stacksl_window``) whose main language is
+StackSL and which holds no Kotlin, and the program (``stacksl_source``), its child, whose ``stackSL``
+property is the shader. The program autoruns: opening the document draws it, which opens the root's
+window (``afield.stdlib.LanguageRoots``), and the program's AI4 chat has the study tools (they are
+library code, ``afield.stacksl.study``, not a box). Box text
 lives in sidecar files beside ``metadata.edn`` — ``<uid>_<property>_.<ext>`` — so an edit is a normal
 diff; this script writes the ``metadata.edn`` that makes the folder an openable Field document, in
 the bytes Field's codec writes (``checkAgentDemos`` holds that).
 
-The window box and ``AGENTS.md`` are the same in every document: the recorded examples copy the
-starter's. A recorded example also carries its AI4 chat, referenced from ``metadata.edn`` as a
+``AGENTS.md`` is the same in every document: the recorded examples copy the starter's. A recorded example also carries its AI4 chat, referenced from ``metadata.edn`` as a
 ``#afield/file`` rather than inlined. The study's words guide, a library resource, is generated here
 from the public cheatsheet. ``--check`` fails if anything differs from what this script would write.
 
@@ -33,15 +33,16 @@ CHAT = "stacksl_source_ai4_chat_history_.md"
 # single-pass study refuses.
 SKIPPED_SECTIONS = {"Kotlin helpers", "Feedback sampling, store, and host values"}
 
-# Frames are [x y w h]; kept within the agent-demo layout ceiling (620 x 170). The window owns the
-# renderer and is the StackSL root, so the program beneath it runs as StackSL and draws in it.
+# Frames are [x y w h]; kept within the agent-demo layout ceiling (620 x 170). The root is the
+# StackSL root, so the program beneath it runs as StackSL, and the window it draws in is the root's own.
 BOXES = (
     {
         "id": "stacksl_window",
-        "name": "window",
+        "name": "StackSL window",
         "frame": (70.0, 40.0, 240.0, 60.0),
-        "files": {"code": "stacksl_window_code_.kt"},
+        "files": {},
         "extra": {"mainLanguage": "stacksl"},
+        "autorun": False,
         "parents": ("root",),
         "children": ("stacksl_source",),
     },
@@ -55,7 +56,7 @@ BOXES = (
         "children": (),
     },
 )
-SHARED_FILES = ("stacksl_window_code_.kt",)
+SHARED_FILES: tuple[str, ...] = ()
 # Guides every document carries unchanged; they are not box properties, so they are not in metadata.edn.
 SHARED_GUIDES = ("AGENTS.md",)
 
@@ -148,7 +149,7 @@ def metadata(folder: Path) -> str:
             )
         for key, value in box["extra"].items():
             properties.append(f"{edn_string(key)} {edn_string(value)}")
-        properties += ['"preamble" ""', '"attic" ""', '"autorun" true', '"nested" #{}']
+        properties += ['"preamble" ""', '"attic" ""', f'"autorun" {"true" if box.get("autorun", True) else "false"}', '"nested" #{}']
         if box["id"] == "stacksl_source" and (folder / CHAT).is_file():
             # The chat is megabytes of inline images; Field reads a #afield/file reference from the
             # sidecar on load, so metadata.edn need not carry a second copy of it.

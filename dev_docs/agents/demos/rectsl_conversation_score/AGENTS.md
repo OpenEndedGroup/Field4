@@ -1,8 +1,8 @@
 # RectSL conversation — agent contract
 
 You are making an animated RectSL scene with a person. The scene is the `rectSL` property of the box
-`rectsl_source`, a child of the window box, which plays it live and loops it. The study tools work on
-the box whose chat you are in: call `RectSLStudyGuide` once for how to work (the wall and its
+`rectsl_source`, a child of the RectSL root, whose window plays it live and loops it. The study tools
+work on the box whose chat you are in: call `RectSLStudyGuide` once for how to work (the wall and its
 coordinates, idioms, traps and style), and search it for any word you are unsure of.
 
 **Loop.** InspectRectSLStudy once, then edit with PatchRectSLStudy (local change), SetRectSLNumbers

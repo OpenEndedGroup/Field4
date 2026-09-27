@@ -14,6 +14,8 @@ class FunctionStudyTest {
         }
         try {
             val first = study.edit("empty", FunctionStudy.hash(source), source, "initial").revision
+            // A blank revision is the current one, as the other studies read it; models send "" for it.
+            assertEquals(first, study.revision("").id)
             val originalHash = FunctionStudy.hash(source)
             assertFailsWith<IllegalArgumentException> { study.patch(first, originalHash, listOf(StudySourceEdit("val", "var")), "ambiguous") }
             assertFailsWith<IllegalArgumentException> { study.patch(first, originalHash,

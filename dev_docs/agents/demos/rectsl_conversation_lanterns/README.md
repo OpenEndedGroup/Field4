@@ -7,7 +7,7 @@ came from its GPU. The public walkthrough is `public/docs/rectsl_conversation.md
 
 | Step | What happened | Revision |
 | --- | --- | --- |
-| 01-lanterns | Asked for paper lanterns drifting up a night sky; one `EditRectSLStudy` (a lantern built from eleven rectangles in a swaying group, five staggered deep copies), checked against the live window. | r2 |
+| 01-lanterns | Asked for paper lanterns drifting up a night sky; one `EditRectSLStudy` (a lantern built from nine rectangles in a swaying group, five staggered deep copies), checked against the live window. | r2 |
 | 02-scatter | Asked for a less orderly sky; a patch varying start places, sizes and speeds. | r3 |
 | 03-moods | Asked for three sky moods without changing the lanterns' motion; three variants (dusk, midnight, festival), nothing published. | r3 |
 | 03a (person) | Adopted variant **dusk** in the card. | r4 |

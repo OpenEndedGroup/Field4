@@ -109,19 +109,12 @@ async def _open(fb, document: Path, port: int, study: Study, label: str, what: s
     await client.connect()
     await client.open_document(document.name, scratch=False, must_exist=True, keep_running=True, timeout=120)
     if study.window_box:
-        # The window opens with the document (autorun) and stays up between invocations
-        # (keepRunning); launch it only if it is not there.
-        wait = f"wait-native-renderer {study.window_box} --frames 3 --timeout 30"
-        if not (await fb.dispatch_command(client, fb.parse_command(wait), wait))["ok"]:
-            for line in (f"launch {study.window_box} --timeout 120", f"wait-native-renderer {study.window_box} --frames 5 --timeout 120"):
-                result = await fb.dispatch_command(client, fb.parse_command(line), line)
-                if not result["ok"]:
-                    raise RuntimeError(line + " failed: " + json.dumps(result)[:2000])
-        # The study box draws in that window only while it runs; a window that had to be relaunched
-        # took the running program with it.
+        # The window is the root's own: the study box opens it when it starts — with the document,
+        # since it autoruns — and it stays up between invocations (keepRunning). A study box that is
+        # not running (its window was closed, which stops it) is started again, reopening the window.
         status = await fb.dispatch_command(client, fb.parse_command("status"), "status")
-        if study.box not in (status.get("data") or {}).get("runningBoxes", []):
-            line = f"launch {study.box} --timeout 120"
+        lines = [] if study.box in (status.get("data") or {}).get("runningBoxes", []) else [f"launch {study.box} --timeout 120"]
+        for line in lines + [f"wait-native-renderer {study.window_box} --frames 5 --timeout 120"]:
             result = await fb.dispatch_command(client, fb.parse_command(line), line)
             if not result["ok"]:
                 raise RuntimeError(line + " failed: " + json.dumps(result)[:2000])
