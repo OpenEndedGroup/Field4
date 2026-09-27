@@ -338,3 +338,23 @@ own. Fixed: only the catch-all logs.
   exercised in an aside.
 - Sending to another machine over Wi-Fi, and the macOS firewall prompt, were not exercised.
 - TUIO 2.0 and the `/tuio/2Dblb` profile are unsupported by `TuioReceiver`; not tested.
+
+## Traps met while measuring
+
+- **The smoke runner does not see output that a run-mode box produces after it returns.** Three of
+  the page's figures display from a handler's generator, which gets its first pass only after the
+  box has finished running. The docs capture waits for the output channel and was fine; the
+  `backdoor-box` FIELD_TEST collected only the `run` command's own events and failed with "No
+  output-area events were emitted". Only the `launch` path flushes with `output @last` afterwards,
+  so those three FIELD_TESTs say `execution: launch`. Changing the runner to flush after every
+  run-mode test would be more general, but it would also newly expose late errors in every existing
+  smoke, which wants a full catalog run to land.
+- **A listener left over from an earlier command answers instead of the one you just started.** A
+  python listener started with a 25 s lifetime was still bound when the next experiment started a
+  second one on the same port; the second failed with `Errno 48`, and the first one's output landed
+  in the same file. Give listeners short lifetimes and distinct ports per experiment.
+- **Send times as `d`.** python-osc's default for a Python `float` is `f` (float32), useless for a
+  Unix timestamp.
+- **The backdoor's `sleep` is the only window in which a peer's messages reach the box's output.**
+  Start the invocation in the background, send from the peer inside the window, and read with
+  `output @last` at the end.
