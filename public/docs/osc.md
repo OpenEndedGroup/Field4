@@ -108,9 +108,52 @@ pass until it finishes. A pass is not a display frame: the loop runs whenever it
 figure counts a few hundred passes a second. Count time, not `yield()`s, when a handler has to span
 an interval. Every `yield()` hands back the message that started the generator.
 
-In practice: do the work a message causes inside the generator, where it cannot race with the rest
-of the box. An empty `gather<OscServer.Message> { }` is fine when the lambda has already done
-everything.
+That is what the generator is for. A handler can span passes, easing a value toward the fader over
+half a second for instance, without a thread of its own, and whatever it changes it changes on the
+same thread as the rest of the box. So do the work a message causes inside the generator. An empty
+`gather<OscServer.Message> { }` is fine when the lambda has already done everything.
+
+### A fader that drives a drawing
+
+The shape most controller code takes: a handler stores the latest value, and an animation reads it.
+
+<!--
+FIELD_TEST
+id: docs.osc.fader
+runner: backdoor-box
+execution: launch
+tags: [docs, osc]
+timeoutSec: 60
+waitSec: 3
+expect:
+  outputContains:
+    - "/1/fader1 = 0."
+-->
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's main output channel: an amber bar whose length follows the fader, above the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true name="osc-fader" w="760" h="140"}
+:::static
+var level = 0f   // the fader, as last received
+
+osc(57308).on("/1/fader1") { m ->
+    gather<OscServer.Message> { level = (m.arguments[0] as Number).toFloat() }
+}
+
+// a stand-in for the phone: sweep its fader up and down
+val phone = oscClient("127.0.0.1", 57308)
+var t = 0.0
+
+animate {
+    t += 1 / 60.0
+    phone.send("/1/fader1", (0.5 + 0.5 * kotlin.math.sin(t * 2)).toFloat())
+    display("main", "<div style='width:${(level * 400).toInt()}px;height:24px;background:#e8b04a'></div>" +
+        "<p>/1/fader1 = ${"%.2f".format(level)}</p>")
+}
+```
+
+`level` is written by the generator and read by `animate`, both on the main thread, so the value the
+bar draws is always one the handler finished writing. Delete the stand-in, the lines that mention
+`phone` and `t`, and point a real control surface at port 57308 to drive it by hand. Stopping the box
+stops the animation but not the handler, which goes on writing to the stopped run's `level` until the
+box runs again and registers its replacement.
 
 `server.debug = false` turns off the line `OSC: /step = …` that every server prints for every
 message it receives. That line goes to the console Field was started from, not to the box, so it is
