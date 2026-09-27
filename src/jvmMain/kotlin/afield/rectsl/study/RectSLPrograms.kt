@@ -576,6 +576,18 @@ fun installRectSLLanguage() {
     )
 }
 
+/**
+ * A RectSL scene's lines, for the editor's completion popup and cursor notes: the scene built up to each,
+ * at the time its window is showing ([RectSLStudy.lineNote]).
+ */
+@RunsAt(plugins)
+fun installRectSLLineNotes() {
+    afield.stdlib.LineNotes.register(RectSLPrograms.PROPERTY, { it.ke is RectSLExecution }) { box, source, line ->
+        val live = RectSLPrograms.live(box)
+        RectSLPrograms.study(box).lineNote(source, line, if (live.showing != null) live.time() else 0.0)
+    }
+}
+
 /** Re-apply [rectSLTopologyNeedsUpdating] whenever the graph changes. */
 @RunsAt(plugins)
 fun installRectSLLanguageWatcher() {

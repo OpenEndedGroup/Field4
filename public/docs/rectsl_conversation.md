@@ -68,6 +68,12 @@ of a `group` from the group's line, or — from a comment — the statement bene
 rectangle in the window and the editor goes to the line that made it, selecting the scene box if it
 was not selected.
 
+The editor also shows how far the scene has got at the cursor. Rest the cursor on a line, or open
+completion there, and the note beside the cursor — and the top of the completion popup — draws the
+scene cut after that line's statement, at the time the window is showing, with the rectangles the
+line makes outlined. Completion itself offers every word RectSL knows, with its stack effect and the
+cheatsheet's description, and the scene's own definitions.
+
 The model sees the same thing: `InspectRectSLStudy`, which it reads before editing, reports the line
 the person's cursor is on, so "this one" names a line — as in the last turn of the
 [lanterns session](#lanterns-at-dusk), where it named the flame.

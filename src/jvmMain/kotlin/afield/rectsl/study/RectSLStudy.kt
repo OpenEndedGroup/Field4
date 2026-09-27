@@ -223,6 +223,9 @@ class RectSLStudy(
         /** More than this many of the same happening to the same kind of object is reported as recurring. */
         private const val RECURRING = 4
 
+        /** A line note's picture, in pixels along the wall's longer side. */
+        const val LINE_NOTE_LONG = 192
+
         /** The times a clip is shown at when nobody asked: evenly spaced, never the last instant (the loop's first). */
         fun defaultTimes(scene: SceneProgram, count: Int): List<Double> =
             if (count <= 1 || scene.duration <= 0) listOf(0.0) else List(count) { round4(scene.duration * it / count) }
@@ -791,6 +794,59 @@ class RectSLStudy(
             lineOf[i] to (if (i == lineOf.lastIndex) source else source.substring(0, starts[i + 1]))
         }
     }
+
+    /**
+     * What [line] of [source] shows, for the editor ([afield.stdlib.LineNotes]): the scene built up to the
+     * end of the statement the line is in — the program cut there, as Trace's build mode cuts it — at
+     * [seconds], with the rectangles the line itself makes outlined. So a line reads as how far the
+     * scene has got, as a StackSL line reads as its stage. Null when the scene does not compile up to
+     * the line. Recent notes are kept.
+     */
+    fun lineNote(source: String, line: Int, seconds: Double): afield.stdlib.LineNotes.Note? {
+        val t = Math.round(seconds * 10) / 10.0
+        val key = "${SourceStudy.hash(source)}:$line:$t"
+        synchronized(lineNotes) { lineNotes[key]?.let { return it.orElse(null) } }
+        val note = runCatching {
+            val full = runCatching { drawable(source) }.getOrNull()
+            val made = full?.let { RectSLWindowLinks.idsForLine(it, line) }.orEmpty()
+            val (through, pd) = cuts(source).filter { it.first >= line }
+                .firstNotNullOfOrNull { (l, prefix) -> runCatching { l to drawable(prefix) }.getOrNull() } ?: return@runCatching null
+            val raster = framesOf(pd, LINE_NOTE_LONG, listOf(t)).single()
+            val shown = StackSLStudyShader.presented(raster)
+            val w = raster.width; val h = raster.height
+            val image = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
+            image.setRGB(0, 0, w, h, shown.toArgb(), 0, w)
+            val wall = pd.scene.wall
+            fun px(x: Double) = if (wall.origin == Origin.TopLeft) x / wall.width * w else (x + wall.width / 2) / wall.width * w
+            fun py(y: Double) = if (wall.origin == Origin.TopLeft) y / wall.height * h else (wall.height / 2 - y) / wall.height * h
+            val sampled = pd.scene.sample(t).rects
+            val outlined = sampled.filter { it.id in made }
+            val g = image.createGraphics()
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+            g.stroke = BasicStroke(1.5f); g.color = Color(0x5c, 0xe1, 0xff)
+            outlined.forEach { r ->
+                val hw = 0.5 * r.size.x * abs(r.scale.x); val hh = 0.5 * r.size.y * abs(r.scale.y)
+                val c = cos(r.rotation); val sn = sin(r.rotation)
+                val corners = listOf(-hw to -hh, hw to -hh, hw to hh, -hw to hh).map { (x, y) -> px(r.center.x + c * x - sn * y) to py(r.center.y + sn * x + c * y) }
+                g.drawPolygon(corners.map { it.first.toInt() }.toIntArray(), corners.map { it.second.toInt() }.toIntArray(), 4)
+            }
+            g.dispose()
+            val argb = IntArray(w * h).also { image.getRGB(0, 0, w, h, it, 0, w) }
+            val onWall = sampled.count { visibleOn(it, pd.scene) }
+            val scope = if (through == line) "the scene so far" else "the scene through line $through, where its statement ends"
+            afield.stdlib.LineNotes.Note(
+                "$scope, at ${secs(t)} s: $onWall rectangle${if (onWall == 1) "" else "s"} on the wall" +
+                    (if (outlined.isNotEmpty()) ", the ${outlined.size} it makes outlined" else "") + " · ${rasterizer.description}",
+                PngEncoder.encode(argb, w, h))
+        }.getOrNull()
+        synchronized(lineNotes) {
+            lineNotes[key] = java.util.Optional.ofNullable(note)
+            while (lineNotes.size > 64) lineNotes.remove(lineNotes.keys.first())
+        }
+        return note
+    }
+
+    private val lineNotes = LinkedHashMap<String, java.util.Optional<afield.stdlib.LineNotes.Note>>()
 
     private fun buildUp(r: SourceRevision<RectSLCheck>, seconds: Double, size: Int): StudyReport {
         val d = drawableOf(r)

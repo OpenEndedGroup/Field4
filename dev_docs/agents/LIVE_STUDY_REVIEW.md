@@ -234,3 +234,18 @@ case the language roots now avoid — is unchanged and not understood; and the f
 cursor action, on a browser page that had just loaded, left the server's record of the selection
 empty, so Inspect reported no `personAt`. A second attempt on the same page worked, and the cause of
 the first was not found.
+
+### Completion, and what a line shows — 2026-09-27, validating the docs
+
+Trying the StackSL page by hand, `pale` completed to nothing. Both languages' runtimes answered
+Field's `complete` request with an empty stub, and the editors' hand-written word tables, which
+completion fell back to, had drifted from the compilers: StackSL's described 159 of 314 words, with
+`palette`, `fbm3`, `min` and `max` among the missing, and neither offered aliases. They are now
+answered on the server from each compiler's own vocabulary and the cheatsheet-derived words guide
+(`StackSLVocabulary`, `RectSLVocabulary`), as every other language with a runtime already was.
+
+The per-line pictures the studies render — StackSL stages, RectSL scenes built up line by line — are
+now offered back to the editor through a language-neutral registry, `afield.stdlib.LineNotes`, and a
+`line-note` request: the completion popup shows the note for the line it opened on, and the note beside
+the cursor shows it as the cursor rests. Any language can register a provider for its property.
+

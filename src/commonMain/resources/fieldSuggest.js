@@ -188,6 +188,42 @@ const requestWithReply = (
     }
   });
 
+// ---- Line notes ---------------------------------------------------------------------------------
+// What a box's program shows at one line — a sentence and, when a language can draw it, a picture of
+// that line's partial evaluation (afield.stdlib.LineNotes on the server: a StackSL stage, a RectSL
+// scene built up to the line). Any language whose runtime registers a provider gets them, here in the
+// completion popup and, through bootstrapMonaco.js, in the notes beside the cursor.
+const LINE_NOTE_TIMEOUT_MS = 5000;
+const lineNoteCache = new Map();
+
+const textHash = (text) => {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36) + ":" + text.length;
+};
+
+export const requestLineNote = (uid, property, allCode, line) => {
+  if (!uid || !property || !line) return Promise.resolve(null);
+  const key = `${uid}\u001f${property}\u001f${line}\u001f${textHash(allCode || "")}`;
+  if (lineNoteCache.has(key)) return lineNoteCache.get(key);
+  const pending = requestWithReply("line-note", { uid, property, allCode: allCode || "", line }, "line-note", LINE_NOTE_TIMEOUT_MS)
+    .then((note) => (note && (note.image || note.caption) ? note : null));
+  lineNoteCache.set(key, pending);
+  if (lineNoteCache.size > 128) lineNoteCache.delete(lineNoteCache.keys().next().value);
+  // A line with nothing to say, or an answer that timed out, is asked about again next time.
+  pending.then((note) => { if (!note) lineNoteCache.delete(key); });
+  return pending;
+};
+
+export const lineNoteHtml = (note) =>
+  note
+    ? `<figure class="afield-line-note">${note.image ? `<img src="${note.image}" alt="">` : ""}` +
+      `<figcaption>line ${Number(note.line) || ""} · ${escapeHtml(note.caption || "")}</figcaption></figure>`
+    : "";
+
+window.requestLineNote = requestLineNote;
+window.lineNoteHtml = lineNoteHtml;
+
 const titleForCategory = (category) => {
   const key = String(category || "")
     .trim()
@@ -1239,6 +1275,14 @@ class FieldSuggestController {
     this.renderLoading();
     this.reposition();
 
+    // What this line shows, if its language can say (a StackSL stage, a RectSL scene so far).
+    this.lineNote = null;
+    requestLineNote(target.uid, target.property, model.getValue(), position.lineNumber).then((note) => {
+      if (generation !== this.requestGeneration || !note) return;
+      this.lineNote = note;
+      if (this.isVisible()) this.renderDoc();
+    });
+
     const quickItems = this.quickItems(model, position, languageId);
     const localItems = this.localItems(model, position, languageId);
     this.rawItems = this.dedupeItems([...quickItems, ...localItems]);
@@ -1394,7 +1438,7 @@ class FieldSuggestController {
         : `<div class="afield-suggest-empty">No completions</div>`;
       this.root.querySelector(".afield-suggest-doc").innerHTML = waiting
         ? `<div class="afield-suggest-doc-empty"></div>`
-        : `<div class="afield-suggest-doc-empty"></div>`;
+        : lineNoteHtml(this.lineNote) || `<div class="afield-suggest-doc-empty"></div>`;
       this.reposition();
       if (!waiting) this.recordPresentation();
       return;
@@ -1573,11 +1617,12 @@ class FieldSuggestController {
       return;
     }
     const item = this.items[this.activeIndex];
+    const note = lineNoteHtml(this.lineNote);
     if (!item) {
-      doc.innerHTML = `<div class="afield-suggest-doc-empty">No documentation available</div>`;
+      doc.innerHTML = note || `<div class="afield-suggest-doc-empty">No documentation available</div>`;
       return;
     }
-    doc.innerHTML = renderDocumentation(item) + this.renderNavControl();
+    doc.innerHTML = note + renderDocumentation(item) + this.renderNavControl();
     prepareRuntimeDocumentation(doc);
     highlightCodeBlocks(doc);
     this.resolveDocumentation(item);

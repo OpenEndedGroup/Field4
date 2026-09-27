@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15329 public symbols across 400 source files**, 9046 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15338 public symbols across 401 source files**, 9055 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,8 +26,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 94 | 2711 | 1174 (43%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 5 | 134 | 110 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 94 | 2715 | 1178 (43%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 6 | 139 | 115 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -230,6 +230,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LeastSquares.kt](math.md#leastsquares-kt) | Math | 19 | 2 | A Levenberg–Marquardt nonlinear least-squares solver, pure Kotlin and self-contained. |  |
 | [Lexer.kt](languages.md#lexer-kt) | Languages | 5 | 5 | FieldML's first stage: source text in, a flat list of `Token`s out, and a diagnostic for anything that could not be read. |  |
 | [linalg.kt](math.md#linalg-kt) | Math | 86 | 77 | The short vector aliases (`Vec2`, `Vec3`, `Vec4`, `Quat`, `DualQuat`) plus the constructors and point-cloud helpers that sit on top of Field's generated `afield.stdlib.linalg` types. | [FLine examples (Field graphics)](../fline_examples.md), [Meshes and 3D geometry](../mesh_examples.md), [Datalog in a box](../datalog.md) |
+| [LineNotes.kt](workspace.md#linenotes-kt) | Workspace | 5 | 5 |  |  |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 110 | 67 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
 | [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
@@ -343,12 +344,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
-| [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 39 | 33 |  |  |
+| [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 40 | 34 |  |  |
 | [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 | What to *do* with a RectSL distance field once you have one. | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. | [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md) |
 | [RectSLSource.kt](languages.md#rectslsource-kt) | Languages | 26 | 14 | RectSL read as *source*: what the editor and the study tools need that a plain compile does not give — where things are. |  |
-| [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 49 | 38 |  |  |
+| [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 50 | 39 |  |  |
 | [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 29 | 20 |  |  |
 | [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 39 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
 | [RectSLStudyViewer.kt](languages.md#rectslstudyviewer-kt) | Languages | 9 | 6 |  |  |
@@ -396,8 +397,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
 | [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 27 | 24 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
 | [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 13 | 7 |  |  |
-| [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 38 | 30 |  |  |
-| [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 45 | 37 |  |  |
+| [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 39 | 31 |  |  |
+| [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 46 | 38 |  |  |
 | [StackSLStudyEvidence.kt](languages.md#stackslstudyevidence-kt) | Languages | 22 | 14 |  |  |
 | [StackSLStudyShader.kt](languages.md#stackslstudyshader-kt) | Languages | 39 | 38 |  |  |
 | [StackSLStudyTools.kt](languages.md#stackslstudytools-kt) | Languages | 38 | 6 |  | [Talking a shader into existence](../stacksl_conversation.md) |

@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 109 | nothing |
+| `/ws` **command** names (`handlers`) | 110 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -254,7 +254,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-109 command names, in the `handlers` table. This is the real command API, it is roughly twice
+110 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -270,7 +270,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 47 |
+| `Server.kt` | 48 |
 | `agent_backdoor.kt` | 19 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
@@ -382,6 +382,7 @@ no sandbox between a `/ws` frame and that.
 | `launch-all` | `executing.kt` |
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |
+| `line-note` | `Server.kt` |
 | `list-history-versions` | `history.kt` |
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
@@ -465,7 +466,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 109 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 110 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

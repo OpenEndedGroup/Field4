@@ -440,6 +440,14 @@ fun installStackSLLanguage() {
     )
 }
 
+/** A StackSL program's lines, for the editor's completion popup and cursor notes: the stage each ends ([StackSLStudy.lineNote]). */
+@RunsAt(plugins)
+fun installStackSLLineNotes() {
+    afield.stdlib.LineNotes.register(StackSLPrograms.PROPERTY, { it.ke is StackSLExecution }) { box, source, line ->
+        StackSLPrograms.study(box).lineNote(source, line)
+    }
+}
+
 /** Re-apply [stackSLTopologyNeedsUpdating] whenever the graph changes. */
 @RunsAt(plugins)
 fun installStackSLLanguageWatcher() {

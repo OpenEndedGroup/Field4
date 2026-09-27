@@ -53,8 +53,10 @@ Try this in the program box's chat:
 > sliding across the frame.
 
 An accepted edit appears in the program box as StackSL, one stage per line with a comment on each,
-and in the window as soon as it is accepted. Every StackSL box's chat has the study tools, and each
-program keeps its own history under `studies/<box id>/` in its document.
+and in the window as soon as it is accepted. Completion in the program box offers every word the
+compiler accepts, with its stack effect and the cheatsheet's description, and the program's own
+definitions and marks. Every StackSL box's chat has the study tools, and each program keeps its own
+history under `studies/<box id>/` in its document.
 
 ## The window, the card and the GPU
 
@@ -89,7 +91,9 @@ The **study card** in the program box's output is the person's side of the study
 - the program's stages, each a small picture of what that line produced — for a line that stores
   into a mark (`>sky`), the value it stored. Click one and the window shows that stage instead of
   the whole program; click it again to go back. With **the window shows the editor's line** ticked,
-  the window follows the cursor instead, showing what the line under it leaves on the stack;
+  the window follows the cursor instead, showing what the line under it leaves on the stack. The
+  editor offers the same picture of any line: rest the cursor on it, or open completion there, and
+  it appears in the note beside the cursor and at the top of the completion popup;
 - any variants the model has offered, each with **Adopt**;
 - the revision history, each with **Restore**;
 - exports in progress, which can be cancelled;

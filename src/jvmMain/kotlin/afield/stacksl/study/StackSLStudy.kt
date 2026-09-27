@@ -74,6 +74,37 @@ class StackSLStudy(
     internal fun frame(program: String, size: Int, seconds: Double, parallel: Boolean = true): CpuRaster =
         frames(program, size, listOf(seconds), parallel).single()
 
+    /**
+     * What [line] of [source] shows, for the editor ([afield.stdlib.LineNotes]): the stage the line ends
+     * — the program up to it, or the value it stores for a line ending `>name` — drawn at the card's
+     * reference time and scaled to its own range when it runs outside `0..1`, as the card's stage tiles
+     * are. Null for a line that ends no stage (a comment, a definition's body) or one whose prefix does
+     * not compile. Recent notes are kept, so moving the cursor back is free.
+     */
+    fun lineNote(source: String, line: Int): afield.stdlib.LineNotes.Note? {
+        val key = SourceStudy.hash(source) + ":" + line
+        synchronized(lineNotes) { lineNotes[key]?.let { return it.orElse(null) } }
+        val note = runCatching {
+            val stage = StackSLStudyShader.stages(source).filter { it.line == line }.maxByOrNull { it.wordsThrough } ?: return@runCatching null
+            val outline = StackSLCompiler.outline(source)
+            if (!StackSLCpu.compile(outline.rootPrefix(source, stage.wordsThrough)).ok) return@runCatching null
+            val raw = frame(outline.stageProgram(source, stage.wordsThrough), LINE_NOTE_SIZE, StackSLStudyShader.REFERENCE_TIME, parallel = false)
+            val (tile, scaled) = StackSLStudyEvidence.normalizedTile(raw, "", "")
+            val stored = outline.storedMark(stage.wordsThrough)
+            val what = stored?.let { "the value it stores in >$it" } ?: "what it leaves on the stack"
+            afield.stdlib.LineNotes.Note(
+                "$what, at t = ${StackSLStudyShader.REFERENCE_TIME} s" + (if (scaled) ", scaled to its range" else "") + " · ${rasterizer.description}",
+                afield.util.PngEncoder.encode(tile.argb!!, tile.width, tile.height))
+        }.getOrNull()
+        synchronized(lineNotes) {
+            lineNotes[key] = java.util.Optional.ofNullable(note)
+            while (lineNotes.size > 64) lineNotes.remove(lineNotes.keys.first())
+        }
+        return note
+    }
+
+    private val lineNotes = LinkedHashMap<String, java.util.Optional<afield.stdlib.LineNotes.Note>>()
+
     private data class Speculation(val label: String, val note: String, val source: String)
     private val speculations = linkedMapOf<String, Speculation>()
     private var speculationBase: Pair<String, String>? = null
@@ -87,6 +118,9 @@ class StackSLStudy(
     var editorLine: () -> Int? = { null }
 
     companion object {
+        /** A line note's picture, in pixels on a side: big enough to read a field, small enough to render as the cursor moves. */
+        const val LINE_NOTE_SIZE = 96
+
         /** The size an edit's preview frames are rendered at: enough to judge, cheap enough to wait for. */
         const val PREVIEW_SIZE = 128
 
