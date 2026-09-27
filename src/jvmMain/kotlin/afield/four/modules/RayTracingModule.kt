@@ -463,6 +463,12 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
                 .maxPipelineRayRecursionDepth(maxDepth)
                 .layout(pipelineLayout)
 
+            if (parameters.allowClusterAccelerationStructure) {
+                require(parameters.renderer.device.supportsClusterAccelerationStructure) { "Cluster acceleration structures were not enabled" }
+                createInfo.pNext(org.lwjgl.vulkan.VkRayTracingPipelineClusterAccelerationStructureCreateInfoNV.calloc(stack)
+                    .`sType$Default`().allowClusterAccelerationStructure(true).address())
+            }
+
             vkCheck(
                 vkCreateRayTracingPipelinesKHR(
                     parameters.renderer.device.vkDevice,

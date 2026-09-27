@@ -1,0 +1,38 @@
+{
+  "initialMse": 0.35005599857129,
+  "iterationsPerFrame": 8,
+  "trainingBytes": 5824,
+  "trainingMs": {
+    "count": 100,
+    "p50": 0.188352,
+    "p95": 0.19968
+  },
+  "heldOutParameter": 0.173,
+  "stripe": {
+    "sourceEdgeRgbL1": 1.0936412811279297,
+    "xRange": [
+      -0.12,
+      0.12
+    ],
+    "edgeBandLinearRgbMse": 0.023312764117281497,
+    "edgeBandHalfWidthNormalized": 0.02,
+    "fullImageLinearRgbMse": 0.0018585698680385295,
+    "rgb": [
+      0.95,
+      0.04,
+      0.8
+    ],
+    "edgeBandPixelFraction": 0.03958333333333333,
+    "awayFromEdgesLinearRgbMse": 0.0009743406039699476,
+    "maxAbsoluteRgbError": 0.40921873
+  },
+  "batch": 256,
+  "allocatedBytes": 68636928,
+  "steps": 4001,
+  "layouts": [
+    "Layer(inputs=16, outputs=32, matrixOffset=0, biasOffset=1536, matrixBytes=1536)",
+    "Layer(inputs=32, outputs=32, matrixOffset=1600, biasOffset=5184, matrixBytes=3584)",
+    "Layer(inputs=32, outputs=3, matrixOffset=5248, biasOffset=5760, matrixBytes=512)"
+  ],
+  "fittedMse": 0.0018585698682605397
+}

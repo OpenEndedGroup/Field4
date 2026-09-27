@@ -65,7 +65,10 @@ comparison, and the clean procedural source flatters Lucas–Kanade.
 Live starting points on the same Mac, replayed into fresh documents: 0 `VUID-` and
 0 `[error,execution]` lines. In `optical_flow_pingpong`, the moving pair's median error against
 `expectedMotion` was 0.031, 0.067 and 0.127 px in the three checks run against the final code
-(29,464 samples each), and exactly 0 while paused.
+(29,464 samples each), and exactly 0 while paused. These ping-pong measurements used the original
+repeating-circle source. The later [NVIDIA investigation](../lighting/NEURAL_TOOLS.md#correction-and-repeated-verification-26-september-2026)
+adds distinctive luminance texture to that Starting point; the revised source has not been rerun on
+this Mac. The portable algorithm and its separate smoke fixture are unchanged.
 
 ## How each change moved the numbers (same smoke, same pair)
 

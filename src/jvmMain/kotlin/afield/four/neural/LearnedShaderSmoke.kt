@@ -48,6 +48,8 @@ object LearnedShaderSmoke {
                         demo.view=view;pump(32);val start=demo.gpuMilliseconds.size;pump(100)
                         val times=demo.gpuMilliseconds.drop(start).sorted();check(times.size>=95)
                         result.put(if(view==0)"originalGpuMs" else "learnedGpuMs",JSONObject().put("count",times.size).put("p50",times[times.size/2]).put("p95",times[(times.size*.95).toInt()]))
+                        if(view==0)result.put("stripe",ShaderLearningChecks.stripeMetrics(
+                            ReconstructionCapture.read(renderer,demo.output),pixels,demo.width,demo.height))
                     }
                     demo.view=2;pump(2)
                     ReconstructionCapture.save(File(dir,if(cooperative)"cooperative.png" else "arithmetic.png"),ReconstructionCapture.read(renderer,demo.output),demo.width,demo.height)

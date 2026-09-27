@@ -44,7 +44,7 @@ NVSDK_NGX_Resource_VK resource(const Image& i,bool write) {
         {i.aspect,0,1,0,1},VkFormat(i.format),i.width,i.height,write);
 }
 }
-API int f4ngx_abi() { return 3; }
+API int f4ngx_abi() { return 4; }
 API int f4ngx_image_size() { return sizeof(Image); }
 API const char* f4ngx_error() { return error.c_str(); }
 // Paths are UTF-8 converted by the caller to native wchar_t (UTF-32 on this Linux ABI).
@@ -128,6 +128,8 @@ API int f4ngx_rr_evaluate(void* view,uint64_t command,const Image* images,const 
     auto diffuse=resource(images[4],false),specular=resource(images[5],false),normal=resource(images[6],false);
     NVSDK_NGX_VK_DLSSD_Eval_Params p{};p.pInColor=&color;p.pInOutput=&output;p.pInDepth=&depth;p.pInMotionVectors=&motion;
     p.pInDiffuseAlbedo=&diffuse;p.pInSpecularAlbedo=&specular;p.pInNormals=&normal;p.pInRoughness=&normal;
+    NVSDK_NGX_Resource_VK distance{};
+    if(images[7].image) { distance=resource(images[7],false);p.pInSpecularHitDistance=&distance; }
     p.InRenderSubrectDimensions={images[0].width,images[0].height};p.InJitterOffsetX=frame[0];p.InJitterOffsetY=frame[1];
     p.InFrameTimeDeltaInMsec=frame[2];p.InPreExposure=frame[3];p.InExposureScale=1.f;p.InMVScaleX=1.f;p.InMVScaleY=1.f;p.InReset=reset;
     p.pInWorldToViewMatrix=const_cast<float*>(matrices);p.pInViewToClipMatrix=const_cast<float*>(matrices+16);

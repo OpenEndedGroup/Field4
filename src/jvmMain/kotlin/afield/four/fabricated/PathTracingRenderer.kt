@@ -296,6 +296,16 @@ class PathTracingRenderer(
     private var installed = false
     private var closed = false
     val triangleCount: Int get() = packed.triangles.size
+    /** Optional unaccumulated radiance and matching primary guides. The tracer owns their lifetime. */
+    var frameOutput: PathTraceFrameOutput? = null
+        private set
+    fun enableFrameOutput(): PathTraceFrameOutput {
+        check(!closed)
+        require(packed.materials.all { !it.transmission && it.alphaMode == PathTraceMaterial.AlphaMode.OPAQUE }) {
+            "Reconstruction guides currently require opaque materials; retain progressive output for glass/coverage"
+        }
+        return frameOutput ?: PathTraceFrameOutput(this).also { frameOutput = it; reset("frame output enabled") }
+    }
 
     init {
         require(width in 1..8192 && height in 1..8192 && width.toLong() * height <= 16_777_216)
@@ -427,6 +437,11 @@ class PathTracingRenderer(
 
     override fun render(command: CommandBuffer, index: Int) {
         if (paused || closed) return
+        frameOutput?.let {
+            require(apertureRadius == 0f && mediumDensity == 0f && fogDensity == 0f && (showEnvironment || background.w == 1f)) {
+                "Path reconstruction requires a pinhole, opaque surface signal without fog/participating media"
+            }
+        }
         updateFrame()
         memoryBarrier(command, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT,
             VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT or VK_ACCESS_2_SHADER_WRITE_BIT)
@@ -617,7 +632,7 @@ class PathTracingRenderer(
             }
         }
         if (hardReset || cameraChanged) samples = 0
-        if (hardReset || (cameraChanged && !temporalReuse)) sequenceIndex = 0
+        if (hardReset || (cameraChanged && !temporalReuse && frameOutput == null)) sequenceIndex = 0
         previousCamera = values; seenReset = revision
         if (temporalReuse && historyBuffers.isEmpty()) {
             // Two disjoint histories: this dispatch only reads the previous one and writes the other.
@@ -632,7 +647,10 @@ class PathTracingRenderer(
         // In disabled mode the shader never dereferences these placeholders.
         buffers["historyRead"] = historyBuffers.getOrNull(1-historyWriteIndex) ?: accumulation
         buffers["historyWrite"] = historyBuffers.getOrNull(historyWriteIndex) ?: accumulation
+        buffers["frameOutput"] = frameOutput?.buffer ?: accumulation
         val frame = materialModule.current.liveUniformStructures.getValue("Frame")
+        frame["reconstruction"] = frameOutput?.let { Vector4f(it.jitter.x, it.jitter.y, it.near, it.far) } ?: Vector4f(0f)
+        frame["frameOutputEnabled"] = Int4(if (frameOutput != null) 1 else 0, if (hardReset) 1 else 0, 0, 0)
         frame["previousOrigin"] = previousFrameCamera[0]
         frame["previousRight"] = previousFrameCamera[1]
         frame["previousUp"] = previousFrameCamera[2]
@@ -702,6 +720,7 @@ class PathTracingRenderer(
     override fun close() {
         if (closed) return
         closed = true
+        frameOutput?.close()
         if (installed) {
             renderer.computeList.others.remove(name, this)
             renderer.renderList.preTargets.remove("$name-output", outputPass)

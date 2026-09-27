@@ -94,6 +94,9 @@ class AgentDemoRegistrationTest {
             "optical_flow",
             "optical_flow_pingpong",
             "ray_reconstruction",
+            "computed_ray_geometry",
+            "gpu_shader_learning",
+            "path_traced_reconstruction",
             "reconstruction_plumbing",
             "rr_plumbing",
             // Landed 2026-09-22 in `b5b9ad9e0`. Not a document — no `metadata.edn` — so it is named

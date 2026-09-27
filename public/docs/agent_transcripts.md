@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 157 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 160 transcripts on every build, at three
 depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-68 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+71 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2661,3 +2661,26 @@ this same box *given* that parent, which is how the
 context, and one triangle arrives.
 
 ![A right triangle filling a native Vulkan window against black, filled with a smooth interpolated gradient from deep blue at its lower-left corner to green at its upper-right](assets/afield_four_graphics/00-traditional-triangle.png)
+
+### path_traced_reconstruction
+
+Multi-bounce path tracing with raw, progressive and Ray Reconstruction views at 1080p.
+Optional NGX; opaque surfaces and a pinhole camera. See [Path-Traced Reconstruction](path_traced_reconstruction.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/path_traced_reconstruction/metadata.edn)
+
+### computed_ray_geometry
+
+Edit a compute shader that generates triangle clusters, rebuilds their acceleration structures,
+and ray traces the result. Requires enabled NV cluster acceleration structures and ray-tracing pipelines.
+See [Compute your ray-traced geometry](computed_ray_geometry.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/computed_ray_geometry/metadata.edn)
+
+### gpu_shader_learning
+
+Train directly on an editable moduleHere render target, freeze the fit, and export portable learned weights.
+Requires cooperative-vector training and the optional Slang shader build.
+See [Learn from a shader on the GPU](gpu_shader_learning.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gpu_shader_learning/metadata.edn)

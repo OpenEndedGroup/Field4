@@ -49,6 +49,22 @@ class OptionalShaderBuildTest(unittest.TestCase):
                 with self.assertRaises(subprocess.CalledProcessError):build.compile_shaders(Path('slangc'),source,output,{})
             self.assertTrue(all(p.read_bytes()==b'previous' for p in output.iterdir()))
 
+    def test_failed_training_compile_preserves_inference_and_training_set(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);source=root/'test.slang';source.write_text('test')
+            output=root/'output';output.mkdir()
+            names=['learned-scalar.spv','learned-coop.spv','training-train.spv',
+                   'training-optimize.spv','training-evaluate.spv','learned-build.json']
+            for name in names:(output/name).write_bytes(b'previous')
+            def compile_one(command,**kwargs):
+                dest=Path(command[command.index('-o')+1])
+                if 'evaluate' in dest.name:raise subprocess.CalledProcessError(1,command)
+                dest.write_bytes(b'new')
+            with patch.object(build.subprocess,'run',side_effect=compile_one):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    build.compile_shaders(Path('slangc'),source,output,{},training_source=source)
+            self.assertEqual({p.name:p.read_bytes() for p in output.iterdir()},dict.fromkeys(names,b'previous'))
+
     @unittest.skipIf(os.name == 'nt', 'Unix compiler packages use symlinks')
     def test_unix_library_links_stay_inside_package(self):
         with tempfile.TemporaryDirectory() as temporary:

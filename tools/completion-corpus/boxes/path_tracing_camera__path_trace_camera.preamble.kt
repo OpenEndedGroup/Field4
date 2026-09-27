@@ -128,6 +128,37 @@ fun BufferParameters.asHistoryPixel(): HistoryPixel =
     buffer.asHistoryPixel()
 /*end*/
 /*start*/
+/*compute-structure-type:FramePixel:FramePixel*/
+class FramePixel(
+    members: List<Introspected.Member> = FramePixelLayoutMembers(),
+    baseOffset: Int = 0,
+    pathPrefix: String = "",
+    root: Structure? = null
+) : Structure(members, baseOffset, pathPrefix, root) {
+    init { setMembers(members) }
+    var radiance by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var positionDepth by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var normalRoughness by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var diffuse by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var specular by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    var motion by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+}
+fun FramePixelByteSize(): Long = 96L
+fun FramePixelLayoutMembers(): List<Introspected.Member> =
+    listOf(
+        Introspected.Member("radiance", 0, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("positionDepth", 16, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("normalRoughness", 32, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("diffuse", 48, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("specular", 64, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("motion", 80, PrimitiveType.vec4.left(), 0, false),
+    )
+fun HasBuffer.asFramePixel(): FramePixel =
+    asStructure(FramePixel(), FramePixelLayoutMembers())
+fun BufferParameters.asFramePixel(): FramePixel =
+    buffer.asFramePixel()
+/*end*/
+/*start*/
 /*compute-structure-type:Triangles:Triangles*/
 class Triangles(
     members: List<Introspected.Member> = TrianglesLayoutMembers(),
@@ -136,12 +167,15 @@ class Triangles(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun TrianglesByteSize(): Long = 16L
+fun TrianglesByteSize(): Long = 208L
 fun TrianglesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asTriangles(): Triangles =
     asStructure(Triangles(), TrianglesLayoutMembers())
@@ -157,12 +191,15 @@ class Nodes(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun NodesByteSize(): Long = 16L
+fun NodesByteSize(): Long = 208L
 fun NodesLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asNodes(): Nodes =
     asStructure(Nodes(), NodesLayoutMembers())
@@ -178,12 +215,15 @@ class Materials(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun MaterialsByteSize(): Long = 16L
+fun MaterialsByteSize(): Long = 208L
 fun MaterialsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asMaterials(): Materials =
     asStructure(Materials(), MaterialsLayoutMembers())
@@ -199,12 +239,15 @@ class Accumulation(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun AccumulationByteSize(): Long = 16L
+fun AccumulationByteSize(): Long = 208L
 fun AccumulationLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asAccumulation(): Accumulation =
     asStructure(Accumulation(), AccumulationLayoutMembers())
@@ -220,12 +263,15 @@ class Distribution(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun DistributionByteSize(): Long = 16L
+fun DistributionByteSize(): Long = 208L
 fun DistributionLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asDistribution(): Distribution =
     asStructure(Distribution(), DistributionLayoutMembers())
@@ -241,12 +287,15 @@ class Directions(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun DirectionsByteSize(): Long = 16L
+fun DirectionsByteSize(): Long = 208L
 fun DirectionsLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asDirections(): Directions =
     asStructure(Directions(), DirectionsLayoutMembers())
@@ -262,12 +311,15 @@ class TextureData(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun TextureDataByteSize(): Long = 16L
+fun TextureDataByteSize(): Long = 208L
 fun TextureDataLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asTextureData(): TextureData =
     asStructure(TextureData(), TextureDataLayoutMembers())
@@ -283,17 +335,44 @@ class History(
     root: Structure? = null
 ) : Structure(members, baseOffset, pathPrefix, root) {
     init { setMembers(members) }
-    var items by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
 }
-fun HistoryByteSize(): Long = 16L
+fun HistoryByteSize(): Long = 208L
 fun HistoryLayoutMembers(): List<Introspected.Member> =
     listOf(
-        Introspected.Member("items", 0, PrimitiveType.vec4.left(), 16, false),
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
     )
 fun HasBuffer.asHistory(): History =
     asStructure(History(), HistoryLayoutMembers())
 fun BufferParameters.asHistory(): History =
     buffer.asHistory()
+/*end*/
+/*start*/
+/*compute-structure-type:FramePixels:FramePixels*/
+class FramePixels(
+    members: List<Introspected.Member> = FramePixelsLayoutMembers(),
+    baseOffset: Int = 0,
+    pathPrefix: String = "",
+    root: Structure? = null
+) : Structure(members, baseOffset, pathPrefix, root) {
+    init { setMembers(members) }
+    val items: Triangle
+        get() = childStructure("items") { members, baseOffset, pathPrefix, root ->
+            Triangle(members, baseOffset, pathPrefix, root)
+        }
+}
+fun FramePixelsByteSize(): Long = 208L
+fun FramePixelsLayoutMembers(): List<Introspected.Member> =
+    listOf(
+        Introspected.Member("items", 0, TriangleLayoutMembers().right(), 240, false),
+    )
+fun HasBuffer.asFramePixels(): FramePixels =
+    asStructure(FramePixels(), FramePixelsLayoutMembers())
+fun BufferParameters.asFramePixels(): FramePixels =
+    buffer.asFramePixels()
 /*end*/
 /*start*/
 /*compute-structure-type:SceneBuffers:SceneBuffers*/
@@ -315,8 +394,9 @@ class SceneBuffers(
     var historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
     var emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
     var emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+    var frameOutput by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 }
-fun SceneBuffersByteSize(): Long = 88L
+fun SceneBuffersByteSize(): Long = 96L
 fun SceneBuffersLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("triangles", 0, PrimitiveType.deviceptr.left(), 0, true),
@@ -330,6 +410,7 @@ fun SceneBuffersLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("historyWrite", 64, PrimitiveType.deviceptr.left(), 0, true),
         Introspected.Member("emitterTable", 72, PrimitiveType.deviceptr.left(), 0, true),
         Introspected.Member("emitterLookup", 80, PrimitiveType.deviceptr.left(), 0, true),
+        Introspected.Member("frameOutput", 88, PrimitiveType.deviceptr.left(), 0, true),
     )
 fun HasBuffer.asSceneBuffers(): SceneBuffers =
     asStructure(SceneBuffers(), SceneBuffersLayoutMembers())
@@ -367,8 +448,10 @@ class Frame(
     var mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
     var mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
     var mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
+    var reconstruction by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // projection jitter in input pixels, near, far
+    var frameOutputEnabled by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
 }
-fun FrameByteSize(): Long = 352L
+fun FrameByteSize(): Long = 384L
 fun FrameLayoutMembers(): List<Introspected.Member> =
     listOf(
         Introspected.Member("origin", 0, PrimitiveType.vec4.left(), 0, false),
@@ -393,6 +476,8 @@ fun FrameLayoutMembers(): List<Introspected.Member> =
         Introspected.Member("mediumOptions", 304, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("mediumLow", 320, PrimitiveType.vec4.left(), 0, false),
         Introspected.Member("mediumHigh", 336, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("reconstruction", 352, PrimitiveType.vec4.left(), 0, false),
+        Introspected.Member("frameOutputEnabled", 368, PrimitiveType.vec4.left(), 0, false),
     )
 fun HasBuffer.asFrame(): Frame =
     asStructure(Frame(), FrameLayoutMembers())
@@ -411,6 +496,7 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:SceneBuffers:historyWrite*/ var Structure.historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:emitterTable*/ var Structure.emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:emitterLookup*/ var Structure.emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
+/*compute-ubo-member:SceneBuffers:frameOutput*/ var Structure.frameOutput by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo:Frame*/ val ComputeModulePointer.Frame by ComputeMesh.FromUniform()
 /*compute-ubo-member:Frame:origin*/ var Structure.origin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 /*compute-ubo-member:Frame:right*/ var Structure.right by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
@@ -434,6 +520,8 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:Frame:mediumOptions*/ var Structure.mediumOptions by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // Henyey-Greenstein g, bounded flag, reserved, reserved
 /*compute-ubo-member:Frame:mediumLow*/ var Structure.mediumLow by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds minimum when bounded, w unused
 /*compute-ubo-member:Frame:mediumHigh*/ var Structure.mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
+/*compute-ubo-member:Frame:reconstruction*/ var Structure.reconstruction by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // projection jitter in input pixels, near, far
+/*compute-ubo-member:Frame:frameOutputEnabled*/ var Structure.frameOutputEnabled by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
 var Box.window by Inheritance<Window>() /**/
 val Once.window by Onceing<Window>() /**/
 var Box.renderer by Inheritance<Renderer>() /**/

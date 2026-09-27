@@ -21,12 +21,16 @@ layout(buffer_reference,std430,buffer_reference_align=16) readonly buffer Textur
 // value is unfogged radiance. normal.w is roughness, or -1 if unsafe; albedoCount.w is sample count.
 struct HistoryPixel { vec4 value; vec4 position; vec4 normal; vec4 albedoCount; };
 layout(buffer_reference,std430,buffer_reference_align=16) buffer History { HistoryPixel items[]; };
+// Six vec4s, 96 bytes per pixel; no accumulated values enter this contract.
+struct FramePixel { vec4 radiance; vec4 positionDepth; vec4 normalRoughness; vec4 diffuse; vec4 specular; vec4 motion; };
+layout(buffer_reference,std430,buffer_reference_align=16) buffer FramePixels { FramePixel items[]; };
+FramePixel primary;
 layout(set=0,binding=3,std140) uniform SceneBuffers {
     Triangles triangles; Nodes nodes; Materials materials; Accumulation accumulation; Distribution distribution; Directions directions; TextureData textures;
     History historyRead; History historyWrite;
     // emitterTable: cumulative probability and triangle index per emissive triangle.
     // emitterLookup: selection probability and area per triangle, the inverse map MIS needs.
-    Distribution emitterTable; Distribution emitterLookup;
+    Distribution emitterTable; Distribution emitterLookup; FramePixels frameOutput;
 } ptScene;
 layout(set=0,binding=0) uniform Frame {
     vec4 origin; vec4 right; vec4 up; vec4 forward;
@@ -47,6 +51,8 @@ layout(set=0,binding=0) uniform Frame {
     vec4 mediumOptions; // Henyey-Greenstein g, bounded flag, reserved, reserved
     vec4 mediumLow; // bounds minimum when bounded, w unused
     vec4 mediumHigh; // bounds maximum when bounded, w unused
+    vec4 reconstruction; // projection jitter in input pixels, near, far
+    ivec4 frameOutputEnabled; // enabled, reset (no previous camera), reserved
 } frame;
 layout(set=0,binding=1) uniform sampler2D environmentMap;
 
@@ -408,6 +414,16 @@ vec3 sampleVisibleNormal(vec3 n,vec3 wo,float alpha,vec2 xi) {
     vec3 h=disk.x*tangent+disk.y*bitangent+sqrt(max(0.0,1.0-dot(disk,disk)))*stretched;
     return localToWorld*normalize(vec3(alpha*h.xy,max(1e-6,h.z)));
 }
+// Directional-hemispherical GGX reflectance fit: NGX RR guide appendix,
+// EnvBRDFApprox2 (Ray Tracing Gems ch.32). Arguments use alpha=roughness^2.
+vec3 specularGuide(vec3 f0,float alpha,float nv) {
+    float v=abs(nv),v2=v*v,v3=v2*v,a2=alpha*alpha,a3=a2*alpha;
+    float bias=((.99044-1.28514*v)+(1.29678-.755907*v)*alpha)/
+        ((1+2.92338*v+59.4188*v3)+(20.3225-27.0302*v+222.592*v3)*alpha+(121.563+626.13*v+316.627*v3)*a3);
+    float scale=((.0365463+3.32707*v)+(9.0632-9.04756*v)*alpha)/
+        ((1+3.59685*v2-1.36772*v3)+(9.04401-16.3174*v2+9.22949*v3)*alpha+(5.56589+19.7886*v2-20.2123*v3)*a3);
+    return f0*max(scale,0)+max(bias,0)*clamp(f0.g*50,0,1);
+}
 vec3 evaluate(Material m,vec3 n,vec3 wo,vec3 wi,out float pdf) {
     pdf=0.0; float nv=dot(n,wo),nl=dot(n,wi);
     if (nv<=0.0 || nl<=0.0) return vec3(0);
@@ -566,6 +582,20 @@ vec4 tracePath(vec3 ro,vec3 rd,out HistoryPixel guide,out float primaryDepth) {
         if (bounce==0) primaryDepth=distance(point,frame.origin.xyz);
         m=shadeMaterial(m,PathTraceSurface(point,n,geometric,-rd,hit.bary,int(t.a.w),hitUV(t,hit.bary,0),hitColor(t,hit.bary)));
         bool glass=m.optical.x>0.5;
+        if (bounce==0 && frame.frameOutputEnabled.x!=0) {
+            float z=dot(point-frame.origin.xyz,frame.forward.xyz);
+            float near=frame.reconstruction.z,far=frame.reconstruction.w;
+            primary.positionDepth=vec4(point,clamp(far/(far-near)-far*near/((far-near)*z),0.0,1.0));
+            primary.normalRoughness=vec4(n,clamp(m.emission.w,0.0,1.0));
+            // Match evaluate(): Lambertian base*(1-metallic), Schlick F0=mix(.04,base,metallic).
+            primary.diffuse=vec4(m.base.rgb*(1.0-m.base.w),1);
+            primary.specular=vec4(specularGuide(mix(vec3(.04),m.base.rgb,m.base.w),m.emission.w*m.emission.w,dot(n,-rd)),1);
+            // A real stochastic GGX reflection ray from this primary surface. Independent guide
+            // traversal, no fabricated distance for paths that selected the diffuse lobe.
+            vec3 specularDirection=reflect(rd,sampleVisibleNormal(n,-rd,max(m.emission.w*m.emission.w,.001),sample2(domain+1u)));
+            Hit reflected=intersectScene(point+geometric*frame.lighting.z,specularDirection,false);
+            primary.motion.z=reflected.triangle<0 ? 65504.0 : min(reflected.t,65504.0);
+        }
         if (bounce==0 && frame.temporal.x>=0) {
             guide.position=vec4(point,float(hit.triangle));
             // Glossy reuse can deliberately keep reflected images attached to the first surface.
@@ -760,9 +790,11 @@ void main() {
     ivec2 pixel=ivec2(gl_GlobalInvocationID.xy); if (any(greaterThanEqual(pixel,frame.image.xy))) return;
     int index=pixel.y*frame.image.x+pixel.x; pixelSeed=hash(uint(index));
     vec4 sum=vec4(0),fogSum=vec4(0);HistoryPixel guide;
+    primary=FramePixel(vec4(0),vec4(0,0,0,1),vec4(0,0,1,1),vec4(.5,.5,.5,1),vec4(0),vec4(0,0,65504,0));
     for (int s=0;s<frame.image.w;s++) {
         sampleIndex=uint(frame.temporal.y+s);
         vec2 subpixel=vec2(0.5)+(sample2(0u)-0.5)*frame.sampling.y;
+        if (frame.frameOutputEnabled.x!=0) subpixel=vec2(.5)-frame.reconstruction.xy;
         vec2 uv=(vec2(pixel)+subpixel)/vec2(frame.image.xy)*2.0-1.0;
         vec3 direction=frame.forward.xyz+frame.right.xyz*uv.x-frame.up.xyz*uv.y;
         vec3 origin=frame.origin.xyz;
@@ -783,6 +815,20 @@ void main() {
             else if (!sameSurface(guide,sampleGuide,worldPixel(guide.position.xyz,frame.origin,frame.up,frame.forward)))
                 guide.normal.w=-1.0;
         }
+    }
+    if (frame.frameOutputEnabled.x!=0) {
+        primary.radiance=sum/float(frame.image.w);
+        vec2 currentPixel=vec2(pixel)+.5-frame.reconstruction.xy;
+        vec2 ndc=currentPixel/vec2(frame.image.xy)*2-1;
+        vec3 direction=frame.forward.xyz+frame.right.xyz*ndc.x-frame.up.xyz*ndc.y;
+        vec3 previousRelative=primary.positionDepth.w<1 ? primary.positionDepth.xyz-frame.previousOrigin.xyz : direction;
+        float previousZ=dot(previousRelative,frame.previousForward.xyz);
+        if (frame.frameOutputEnabled.y==0 && previousZ>0) {
+            vec2 previousNdc=vec2(dot(previousRelative,frame.previousRight.xyz)/dot(frame.previousRight.xyz,frame.previousRight.xyz),
+                -dot(previousRelative,frame.previousUp.xyz)/dot(frame.previousUp.xyz,frame.previousUp.xyz))/previousZ;
+            primary.motion.xy=(previousNdc*.5+.5)*vec2(frame.image.xy)-currentPixel;
+        }
+        ptScene.frameOutput.items[index]=primary;
     }
     vec4 old=vec4(0);float count=0.0;
     if (frame.temporal.x<0) {

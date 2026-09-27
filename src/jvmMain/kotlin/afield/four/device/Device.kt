@@ -51,6 +51,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     /** Optional shader/vision features. SDKs are not required to enable these Vulkan features. */
     val supportsOpticalFlow: Boolean
     val supportsCooperativeVector: Boolean
+    val supportsCooperativeVectorTraining: Boolean
+    val supportsClusterAccelerationStructure: Boolean
 
     var usePresentIndexing = !Options.isMac
     var enableMeshShading = !Options.isMac
@@ -181,6 +183,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             supportsRayTracing = enableRayTracing
             supportsRayQuery = Options.enableRayTracing && raySupport.queryUsable
             rayTracingLimits = if (raySupport.accelerationUsable) queryRayTracingLimits(stack) else null
+            val clusterFeatures=VkPhysicalDeviceClusterAccelerationStructureFeaturesNV.calloc(stack).`sType$Default`()
             val opticalFeatures=VkPhysicalDeviceOpticalFlowFeaturesNV.calloc(stack).`sType$Default`()
             val vectorFeatures=VkPhysicalDeviceCooperativeVectorFeaturesNV.calloc(stack).`sType$Default`()
             val replicatedFeatures=VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT.calloc(stack).`sType$Default`()
@@ -191,9 +194,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             if(hasExt(NVCooperativeVector.VK_NV_COOPERATIVE_VECTOR_EXTENSION_NAME))probeExtra(vectorFeatures.address())
             if(hasExt(EXTShaderReplicatedComposites.VK_EXT_SHADER_REPLICATED_COMPOSITES_EXTENSION_NAME))probeExtra(replicatedFeatures.address())
             probeExtra(memoryModelFeatures.address())
+            if(hasExt(NVClusterAccelerationStructure.VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME))probeExtra(clusterFeatures.address())
+            supportsClusterAccelerationStructure=supportsAccelerationStructures && clusterFeatures.clusterAccelerationStructure() &&
+                !java.lang.Boolean.getBoolean("afield.clusterAccelerationStructure.disabled")
             supportsOpticalFlow=opticalFeatures.opticalFlow() && !java.lang.Boolean.getBoolean("afield.opticalFlow.disabled")
             supportsCooperativeVector=vectorFeatures.cooperativeVector() && replicatedFeatures.shaderReplicatedComposites() &&
                 memoryModelFeatures.vulkanMemoryModel() && !java.lang.Boolean.getBoolean("afield.cooperativeVector.disabled")
+            supportsCooperativeVectorTraining=supportsCooperativeVector && vectorFeatures.cooperativeVectorTraining() &&
+                !java.lang.Boolean.getBoolean("afield.cooperativeVectorTraining.disabled")
 
             // SteamVR's Linux XR_KHR_vulkan_enable2 implementation appends a
             // VkPhysicalDeviceTimelineSemaphoreFeatures while creating the device. Vulkan forbids
@@ -237,6 +245,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 if (supportsAccelerationStructures) {
                     add(KHRDeferredHostOperations.VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
                     add(KHRAccelerationStructure.VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
+                    if(supportsClusterAccelerationStructure)add(NVClusterAccelerationStructure.VK_NV_CLUSTER_ACCELERATION_STRUCTURE_EXTENSION_NAME)
                     if (supportsRayTracing) add(KHRRayTracingPipeline.VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
                     addIfSupported(KHRSpirv14.VK_KHR_SPIRV_1_4_EXTENSION_NAME)
                     addIfSupported(KHRShaderFloatControls.VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME)
@@ -423,12 +432,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 opticalFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,opticalFeatures.address());tail=opticalFeatures.address()
             }
             if(supportsCooperativeVector) {
-                // Offline training is separate; the Field shader adapter only requests inference.
-                vectorFeatures.cooperativeVectorTraining(false).pNext(0L)
+                vectorFeatures.cooperativeVectorTraining(supportsCooperativeVectorTraining).pNext(0L)
                 memPutAddress(tail+VkBaseOutStructure.PNEXT,vectorFeatures.address());tail=vectorFeatures.address()
                 replicatedFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,replicatedFeatures.address());tail=replicatedFeatures.address()
             }
 
+            if(supportsClusterAccelerationStructure) {
+                clusterFeatures.pNext(0L);memPutAddress(tail+VkBaseOutStructure.PNEXT,clusterFeatures.address());tail=clusterFeatures.address()
+            }
             if (supportsExtendedDynamicState) {
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, eds.address()); tail = eds.address()
             }

@@ -1,0 +1,55 @@
+{
+  "jvm": "25.0.2",
+  "samePairDuringReadback": true,
+  "imageHandles": [
+    49478023249965,
+    42880953483303
+  ],
+  "kind": "moving",
+  "expected": [
+    -5.5070686,
+    3.8881516
+  ],
+  "inputWidth": 960,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "driverVersionRaw": -1735737216,
+  "lwjgl": "3.4.3+4",
+  "fieldFrame": 34739,
+  "glfwPlatform": 393219,
+  "inputHeight": 540,
+  "width": 240,
+  "sourceMaxDifference": 0.6397705,
+  "vulkanApi": "1.4.341",
+  "backend": "HARDWARE",
+  "validationRequested": true,
+  "height": 135,
+  "population": 29464,
+  "borderFlowTexels": 4,
+  "medianEpe": 0.22442594477582148,
+  "p95Epe": 69.31971630093554,
+  "maxEpe": 107.72229860817902,
+  "outlierPixels": 5.0,
+  "outlierCount": 4260,
+  "outlierFraction": 0.14458322020092315,
+  "costLimit": 64,
+  "costSelectedCount": 22365,
+  "costCoverage": 0.7590619060548466,
+  "costSelectedP95Epe": 68.94465932546689,
+  "costSelectedOutlierFraction": 0.07788955957970042,
+  "rounded34PixelAliasCounts": {
+    "2,0": 4145,
+    "1,0": 83,
+    "3,1": 21,
+    "1,1": 10,
+    "3,0": 1
+  },
+  "fullFieldSpeedMedian": 6.675002926029321,
+  "fullFieldSpeedP95": 64.00012207019608,
+  "fullFieldSpeedMax": 103.81714694596457,
+  "passed": false,
+  "failures": [
+    "More than 10% of the raw interior has EPE > 5 px",
+    "Cost-selected p95 EPE >= 1 px (or empty selection)"
+  ],
+  "artifact": "run-01/pair-7918743584487"
+}

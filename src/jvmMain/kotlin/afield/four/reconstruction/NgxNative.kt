@@ -38,7 +38,7 @@ internal class NgxNative private constructor(path: Path, sdk: Path) {
     val close=bind("close",null,ADDRESS)
     private val error=bind("error",ADDRESS)
     init {
-        check(bind("abi",JAVA_INT).invokeWithArguments()==3 && bind("image_size",JAVA_INT).invokeWithArguments()==32) {
+        check(bind("abi",JAVA_INT).invokeWithArguments()==4 && bind("image_size",JAVA_INT).invokeWithArguments()==32) {
             "Incompatible Field NGX ABI; rebuild with bash tools/lighting/build_ngx.sh"
         }
         Arena.ofShared().use { arena ->

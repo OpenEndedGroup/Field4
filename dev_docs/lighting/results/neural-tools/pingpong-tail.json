@@ -1,0 +1,132 @@
+{
+  "sourceCommit": "d5b2d8929",
+  "gpu": "RTX 4090",
+  "driver": "610.43.02",
+  "expectedMotion": [
+    -5.034678,
+    5.162674
+  ],
+  "readbackState": "expected=(-5.034678, 5.162674); after=(-5.034678, 5.162674); handles=[197912092999860, 204509162766522]; afterHandles=[197912092999860, 204509162766522]; frame=36583; afterFrame=36583; backend=HARDWARE",
+  "interiorSamples": 29464,
+  "errorPercentiles": {
+    "median": 0.10600657507909605,
+    "p95": 48.03669079637786,
+    "max": 75.88064640164487
+  },
+  "outlierCountOver5Pixels": 2190,
+  "outlierFractionOver5Pixels": 0.07432799348357318,
+  "borderSweep": [
+    {
+      "borderFlowTexels": 4,
+      "samples": 29464,
+      "p95": 48.03669079637786,
+      "outlierFraction": 0.07432799348357318
+    },
+    {
+      "borderFlowTexels": 8,
+      "samples": 26656,
+      "p95": 48.25356770119656,
+      "outlierFraction": 0.08118247298919568
+    },
+    {
+      "borderFlowTexels": 16,
+      "samples": 21424,
+      "p95": 48.82957651253961,
+      "outlierFraction": 0.08966579536967886
+    },
+    {
+      "borderFlowTexels": 24,
+      "samples": 16704,
+      "p95": 48.01000955094114,
+      "outlierFraction": 0.07393438697318008
+    },
+    {
+      "borderFlowTexels": 32,
+      "samples": 12496,
+      "p95": 47.48831398104859,
+      "outlierFraction": 0.06402048655569782
+    }
+  ],
+  "costSweep": [
+    {
+      "costLimit": 0,
+      "coverage": 0.20526744501764865,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.003472222222222222
+    },
+    {
+      "costLimit": 16,
+      "coverage": 0.7195900081455335,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.0031129138760494293
+    },
+    {
+      "costLimit": 32,
+      "coverage": 0.8569780070594624,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.005425742574257425
+    },
+    {
+      "costLimit": 64,
+      "coverage": 0.8829079554710834,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.011147843468901361
+    },
+    {
+      "costLimit": 80,
+      "coverage": 0.8874219386369807,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.014265498910008797
+    },
+    {
+      "costLimit": 128,
+      "coverage": 0.9108064078197122,
+      "p95": 0.16632917350843787,
+      "outlierFraction": 0.0245938291846773
+    },
+    {
+      "costLimit": 240,
+      "coverage": 0.9548941080640782,
+      "p95": 33.847161909552476,
+      "outlierFraction": 0.05036431491025413
+    }
+  ],
+  "sourceArtifact": "build/neural-tools/pingpong-investigation/original/live/pair-7109912007472",
+  "roundedCellResiduals": [
+    {
+      "cells": [
+        -1,
+        1
+      ],
+      "count": 2094
+    },
+    {
+      "cells": [
+        0,
+        1
+      ],
+      "count": 37
+    },
+    {
+      "cells": [
+        -2,
+        1
+      ],
+      "count": 31
+    },
+    {
+      "cells": [
+        2,
+        0
+      ],
+      "count": 26
+    },
+    {
+      "cells": [
+        -1,
+        0
+      ],
+      "count": 2
+    }
+  ]
+}

@@ -50,3 +50,5 @@ RR can make noisy illumination substantially smoother, but history can also soft
 Use the same optional [NGX installation](neural_reconstruction.md#optional-installation) as DLAA/SR. RR availability is queried separately, including its required extensions before device creation. Ordinary rendering remains available when the SDK or feature is absent.
 
 The capstone [From modules to reconstruction](reconstruction_plumbing.md#extend-the-graph-to-ray-reconstruction) exposes the five-guide conversion and command ordering in the **rr_plumbing** Starting Point, ready to adapt to your own render targets.
+
+For multi-bounce lighting from Field’s existing path tracer, see [Path-traced reconstruction](path_traced_reconstruction.md).

@@ -24,13 +24,14 @@ def features(p):
 
 def target(p):
     x,y,t=p.T
-    # Many weak waves make a deliberately expensive, smooth pigment-like function.
+    # Many weak waves plus a hard vertical stripe; keep the Slang original() in sync.
     result=np.zeros((len(p),3),np.float32)
     for k in range(1,49):
         a=k*.61803399
         for c in range(3):
             result[:,c]+=np.sin((x*np.cos(a)+y*np.sin(a))*3 + t*(.3+.1*c)+c*2+a)*(.35/k)
-    return .5+.35*np.tanh(result*3)
+    stripe=((x>=-.12)&(x<.12)).astype(np.float32)[:,None]
+    return (.5+.35*np.tanh(result*3))*(1-stripe)+np.array([.95,.04,.8],np.float32)*stripe
 
 def load_dataset(folder):
     manifest=json.loads((folder/'dataset.json').read_text())
