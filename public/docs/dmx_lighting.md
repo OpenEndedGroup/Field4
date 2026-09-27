@@ -87,6 +87,13 @@ patch.mapImage(imgFromFile("sky.png"))               // the rig's bounding box s
 scattered rig. `mapImage` samples an `Img` bilinearly (it uses the imaging library's own
 `sampleBilinear`), which turns a matrix of fixtures into a very low resolution screen.
 
+For a white of a given warmth, `colorTemperature(3200.0)` returns the colour of a black body at that
+temperature (a curve fit, fine for looks; not a fixture calibration):
+
+```diffstatic {data-lang=kotlin}
+patch.map { _, _, _ -> colorTemperature(3200.0) }   // tungsten; 5600.0 is daylight
+```
+
 `stripAlong` places a strip on a drawn curve instead of a straight line: LED tape stuck to a shape.
 
 ```diffstatic {data-lang=kotlin}
@@ -115,7 +122,8 @@ re-running the box replaces it, and it ends when the box is stopped.
 ## Seeing the rig without the rig
 
 `showPatch(patch)` draws the patched fixtures in their current colours into the box's output;
-`patch.toFLines()` is the same drawing as `FLine`s for your own composition. `showUniverse(input, n)`
+`patch.toFLines()` is the same drawing as `FLine`s for your own composition, and a `Patch` or a
+`DmxUniverse` left as the last value of a box draws itself inline. `showUniverse(input, n)`
 draws what a receiver has for universe `n`, decoded as the fixtures that drive it:
 
 ```diffstatic {data-lang=kotlin}

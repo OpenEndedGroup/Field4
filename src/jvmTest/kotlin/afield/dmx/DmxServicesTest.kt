@@ -86,6 +86,18 @@ class DmxServicesTest {
     }
 
     @Test
+    fun colorTemperatureRunsWarmToCool() {
+        val warm = colorTemperature(2700.0)
+        val cool = colorTemperature(9000.0)
+        assertEquals(1.0, warm.x.toDouble(), 1e-6, "below 6600 K red is saturated")
+        assertTrue(warm.z < 0.6f && warm.y < 0.8f, "2700 K is orange: $warm")
+        assertEquals(1.0, cool.z.toDouble(), 1e-6, "above 6600 K blue is saturated")
+        assertTrue(cool.x < 0.9f, "9000 K is bluish: $cool")
+        val white = colorTemperature(6600.0)
+        assertTrue(white.x > 0.95f && white.y > 0.95f && white.z > 0.95f, "6600 K is near white: $white")
+    }
+
+    @Test
     fun gammaIsAppliedBeforeQuantisation() {
         val data = ByteArray(512)
         val p = Patch()
@@ -133,6 +145,8 @@ class DmxServicesTest {
         }
         assertEquals(1 + 170, universeToFLines(ByteArray(512), rgb = true).size)
         assertEquals(1 + 512, universeToFLines(ByteArray(512)).size)
+        assertTrue("<svg" in p.toHTML(), "a patch evaluated in a box draws itself")
+        assertTrue("<svg" in DmxUniverse(1).toHTML())
         // An RGBW universe read back as fixtures: white adds to every primary.
         val rgbw = ByteArray(512).also { it[4] = 255.toByte(); it[7] = 128.toByte() } // fixture 2: R = 1, W = 0.5
         val cells = universeToFLines(rgbw, profile = FixtureProfile.RGBW)

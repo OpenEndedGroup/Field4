@@ -21,8 +21,9 @@ enum class DmxProtocol { ARTNET, SACN }
  *
  * Channels are **1-based** at this API, as on every console and fixture manual (`u[1]` is the first
  * slot); [data] is the raw 0-based array for bulk copies. Values are clamped into 0..255.
+ * Evaluating one in a box draws its slots.
  */
-class DmxUniverse(val number: Int) {
+class DmxUniverse(val number: Int) : afield.ToHTML {
     /** The raw slots, 0-based. Writing here directly is fine; the sender copies it each tick. */
     val data = ByteArray(512)
 
@@ -50,6 +51,11 @@ class DmxUniverse(val number: Int) {
 
     /** Zero every slot. */
     fun clear() = java.util.Arrays.fill(data, 0)
+
+    /** Evaluating a universe in a box draws its slots as a 32 × 16 grid of gray cells, see [universeToFLines]. */
+    override fun toHTML(): String =
+        afield.graphics.linesToHTML(universeToFLines(data, length = length), 384.0, 192.0, fitToSize = true) +
+            "<div style='font-family:monospace;font-size:11px'>universe $number</div>"
 
     override fun toString() = "DmxUniverse($number, first slots ${(1..minOf(12, length)).map { get(it) }})"
 }

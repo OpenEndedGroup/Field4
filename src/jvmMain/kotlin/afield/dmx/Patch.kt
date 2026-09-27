@@ -2,7 +2,9 @@
 
 package afield.dmx
 
+import afield.ToHTML
 import afield.graphics.FLine
+import afield.graphics.linesToHTML
 import afield.stdlib.Img
 import afield.stdlib.Vec2
 import afield.stdlib.Vec3
@@ -164,9 +166,10 @@ class Fixture(
  *
  * Colours are set by the mappers — [map] (a function of position and time), [mapAlong] (of distance
  * along the fixture list), [mapImage] (sampled from an [Img]) — or directly on [Fixture.color].
- * [render] writes every fixture into a [DmxOutput]; [toFLines] draws the rig in its current colours.
+ * [render] writes every fixture into a [DmxOutput]; [toFLines] draws the rig in its current colours,
+ * and evaluating a patch in a box shows that drawing inline.
  */
-class Patch(val startUniverse: Int = 1) {
+class Patch(val startUniverse: Int = 1) : ToHTML {
     /** Every fixture, in the order it was added. */
     val fixtures = mutableListOf<Fixture>()
 
@@ -319,8 +322,39 @@ class Patch(val startUniverse: Int = 1) {
         return this
     }
 
+    /**
+     * Evaluating a patch in a box draws it: the fixtures in their current colours ([toFLines]) above
+     * the [toString] summary.
+     */
+    override fun toHTML(): String {
+        val summary = toString().replace("&", "&amp;").replace("<", "&lt;")
+        val picture = if (fixtures.isEmpty()) "" else linesToHTML(toFLines(), 480.0, 180.0, fitToSize = true)
+        return "<div class='afield-dmx-patch'>$picture<div style='font-family:monospace;font-size:11px'>$summary</div></div>"
+    }
+
     override fun toString(): String {
         val byProfile = fixtures.groupingBy { it.profile.name }.eachCount()
         return "Patch(${fixtures.size} fixtures $byProfile, universes $universes)"
     }
+}
+
+/**
+ * The colour of a black body at [kelvin], as sRGB-ish 0..1 components with the largest at 1 —
+ * Tanner Helland's curve fit to Mitchell Charity's blackbody table, good from about 1000 K to 40000 K.
+ * 2700 K is a warm incandescent, 3200 K tungsten stage light, 5600 K daylight, 6500 K roughly white.
+ *
+ * Useful as a mapper target (`patch.map { _, _, _ -> colorTemperature(3200.0) }`), or to tint white
+ * with `vec(c.x * level, c.y * level, c.z * level)`. It is a perceptual convenience, not colorimetry:
+ * the fit is to display primaries, and a real fixture's white point differs.
+ */
+fun colorTemperature(kelvin: Double): Vec3 {
+    val t = kelvin.coerceIn(1000.0, 40000.0) / 100.0
+    val r = if (t <= 66) 255.0 else 329.698727446 * (t - 60).pow(-0.1332047592)
+    val g = if (t <= 66) 99.4708025861 * kotlin.math.ln(t) - 161.1195681661 else 288.1221695283 * (t - 60).pow(-0.0755148492)
+    val b = when {
+        t >= 66 -> 255.0
+        t <= 19 -> 0.0
+        else -> 138.5177312231 * kotlin.math.ln(t - 10) - 305.0447927307
+    }
+    return vec((r / 255).coerceIn(0.0, 1.0), (g / 255).coerceIn(0.0, 1.0), (b / 255).coerceIn(0.0, 1.0))
 }
