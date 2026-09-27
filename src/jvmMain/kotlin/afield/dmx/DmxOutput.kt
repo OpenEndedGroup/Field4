@@ -64,12 +64,14 @@ class DmxUniverse(val number: Int) {
  * - **Send on change.** A universe whose bytes differ from what was last sent is sent on the next
  *   tick. Ticks are at most 44 Hz by default, the DMX512 full-frame rate that both protocols treat
  *   as the ceiling for a universe.
- * - **Keep-alive.** An unchanged universe is re-sent every [keepAliveMs] (default 1000 ms). E1.31-2016
- *   §6.6.2 asks a source that suppresses unchanged data to send three packets of the unchanged
- *   values and then one keep-alive every 800–1000 ms, and receivers drop a source after
+ * - **Keep-alive.** An unchanged universe is re-sent once [keepAliveMs] (default 900 ms) have
+ *   passed, on the next tick — so the real interval is 900 ms plus up to one tick period (22.7 ms at
+ *   44 Hz). E1.31-2016 §6.6.2 asks a source that suppresses unchanged data to send three packets of
+ *   the unchanged values and then one keep-alive every 800–1000 ms, and receivers drop a source after
  *   E131_NETWORK_DATA_LOSS_TIMEOUT (2.5 s); Art-Net 4 likewise expects an unchanged universe to be
- *   refreshed at least every 4 s. One second satisfies both, and this class sends the three
- *   post-change repeats for both protocols because Art-Net nodes do not mind them.
+ *   refreshed at least every 4 s. The default satisfies both. (It was 1000 ms until a Python decoder
+ *   timed the keep-alives at 1.022 s — the tick granularity pushed them past the window.) The three
+ *   post-change repeats are sent for both protocols, because Art-Net nodes do not mind them.
  * - **Sync (optional).** With [sync] on, every tick that sent anything ends with one ArtSync, or one
  *   sACN synchronization packet on [syncUniverse] (data packets then carry that sync address), so a
  *   multi-universe strip updates in one step instead of tearing across universes.
@@ -91,7 +93,7 @@ class DmxOutput(
     val priority: Int = Sacn.DEFAULT_PRIORITY,
     val cid: UUID = UUID.randomUUID(),
     val maxRateHz: Double = 44.0,
-    val keepAliveMs: Long = 1000,
+    val keepAliveMs: Long = 900,
     val sync: Boolean = false,
     val syncUniverse: Int = 7962,
     val discovery: Boolean = protocol == DmxProtocol.SACN,

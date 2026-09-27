@@ -1,11 +1,16 @@
 """Independent decoders for the Art-Net / sACN packets Field's afield.dmx sends.
 
 Written from the protocol documents, not from the Kotlin encoder, so it can disagree with it.
-Three modes, all listening on 127.0.0.1:
+Receivers, all listening on 127.0.0.1:
 
   artnet      hand-rolled struct parse of ArtDmx / ArtSync / ArtPoll / ArtPollReply
   sacn        hand-rolled struct parse of E1.31 data / sync / discovery packets
   sacn-lib    the third-party `sacn` package (pip: sacn) as the receiver
+
+Senders, for the other direction (Field's DmxInput decoding someone else's packets):
+
+  send-artnet     hand-packed ArtDmx to 127.0.0.1:--port, universe --universe, 10 Hz
+  send-sacn-lib   the `sacn` package's sACNsender, unicast to 127.0.0.1:5568, universe --universe
 
 Usage (see dev_docs/dmx_lighting.md for the recorded runs):
 
@@ -126,10 +131,48 @@ def sacn_lib(port, universe, seconds):
     print(f"sacn-lib received {len(got)} packets", flush=True)
 
 
+def pattern(i, k):
+    """Slot i of frame k: a ramp that moves, so a receiver can tell frames apart."""
+    return (i * 3 + k) % 256
+
+
+def send_artnet(port, universe, seconds):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    end = time.time() + seconds
+    k = 0
+    while time.time() < end:
+        data = bytes(pattern(i, k) for i in range(512))
+        net, subuni = (universe >> 8) & 0x7F, universe & 0xFF
+        pkt = b"Art-Net\x00" + struct.pack("<H", 0x5000) + struct.pack(">HBBBBH", 14, (k % 255) + 1, 0, subuni, net, 512) + data
+        s.sendto(pkt, ("127.0.0.1", port))
+        k += 1
+        time.sleep(0.1)
+    print(f"sent {k} ArtDmx to 127.0.0.1:{port} universe {universe}; last frame k={k - 1}", flush=True)
+
+
+def send_sacn_lib(universe, seconds):
+    import sacn  # third-party
+    # bind_port defaults to 5568, the very port the Field receiver under test needs; move it aside.
+    sender = sacn.sACNsender(source_name="python sacn lib", bind_port=15600)
+    sender.start()
+    sender.activate_output(universe)
+    sender[universe].multicast = False
+    sender[universe].destination = "127.0.0.1"
+    sender[universe].priority = 120
+    end = time.time() + seconds
+    k = 0
+    while time.time() < end:
+        sender[universe].dmx_data = tuple(pattern(i, k) for i in range(512))
+        k += 1
+        time.sleep(0.1)
+    sender.stop()
+    print(f"sacn lib sent universe {universe}; last frame k={k - 1}", flush=True)
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["artnet", "sacn", "sacn-lib"])
-    ap.add_argument("--port", type=int, required=True)
+    ap.add_argument("mode", choices=["artnet", "sacn", "sacn-lib", "send-artnet", "send-sacn-lib"])
+    ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--seconds", type=float, default=5)
     ap.add_argument("--universe", type=int, default=1)
     ap.add_argument("--limit", type=int, default=40)
@@ -138,6 +181,10 @@ if __name__ == "__main__":
         listen(a.port, a.seconds, decode_artnet, a.limit)
     elif a.mode == "sacn":
         listen(a.port, a.seconds, decode_sacn, a.limit)
-    else:
+    elif a.mode == "sacn-lib":
         sacn_lib(a.port, a.universe, a.seconds)
+    elif a.mode == "send-artnet":
+        send_artnet(a.port, a.universe, a.seconds)
+    else:
+        send_sacn_lib(a.universe, a.seconds)
     sys.exit(0)

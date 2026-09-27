@@ -130,6 +130,8 @@ nav:
       - DoughDSP Sound Examples: dough_dsp_sound.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
+    - Lighting:
+      - "Driving Lights: Art-Net and sACN": dmx_lighting.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
       - Field Audio Service Reference: field_audio_service_reference.md
