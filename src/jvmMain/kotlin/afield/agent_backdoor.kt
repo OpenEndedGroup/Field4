@@ -9,6 +9,8 @@ import afield.four.synth.patClock
 import afield.four.util.Window
 import afield.four.util.openWindowsSnapshot
 import afield.logger.lprintln
+import afield.stdlib.Action
+import afield.stdlib.actions
 import afield.server.refreshFileProxyBoxes
 import io.ktor.websocket.Frame
 import io.ktor.websocket.WebSocketSession
@@ -867,7 +869,7 @@ internal fun disposeBoxRenderer(box: Box): Boolean {
     box.properties.remove("renderer")
     box.properties.remove("window")
 
-    beginRendererTeardown(box) {
+    val stopped = beginRendererTeardown(box) {
         runCatching {
             val before = openWindowsSnapshot().size
             try {
@@ -884,7 +886,95 @@ internal fun disposeBoxRenderer(box: Box): Boolean {
             lprintln("warning,agent_backdoor", "graphics context dispose failed: ${it.stackTraceToString()}")
         }
     }
+    offerRelaunchOfStoppedDependents(box, stopped)
     return true
+}
+
+/**
+ * The box action a renderer box carries after its teardown stopped dependents: one command-palette
+ * entry (with that box selected) or `field_backdoor.py --command 'action <uid> relaunch-stopped-dependents'`.
+ * See [relaunchRendererDependents].
+ */
+internal const val RELAUNCH_STOPPED_DEPENDENTS_ACTION = "relaunch-stopped-dependents"
+
+/** By renderer-box id: the dependents its most recent teardown stopped, parents before children. */
+private val rendererTeardownStopped = java.util.concurrent.ConcurrentHashMap<String, List<Box>>()
+
+/** The dependents [owner]'s most recent renderer teardown stopped and has not relaunched yet. */
+internal fun stoppedByRendererTeardown(owner: Box): List<Box> = rendererTeardownStopped[owner.id].orEmpty()
+
+/**
+ * Remember what teardown stopped under [owner], and offer to put it back. Stopping a renderer box
+ * stops its dependents (they would otherwise write into freed GPU memory), so restarting only
+ * the renderer used to strand them. The offer is the [RELAUNCH_STOPPED_DEPENDENTS_ACTION] action
+ * on [owner]; a later teardown of the same box replaces it.
+ */
+internal fun offerRelaunchOfStoppedDependents(owner: Box, stopped: List<Box>) {
+    if (stopped.isEmpty()) {
+        rendererTeardownStopped.remove(owner.id)
+        owner.actions.remove(RELAUNCH_STOPPED_DEPENDENTS_ACTION)
+        return
+    }
+    rendererTeardownStopped[owner.id] = stopped
+    val names = stopped.joinToString { it.name.ifBlank { it.id } }
+    owner.actions[RELAUNCH_STOPPED_DEPENDENTS_ACTION] = Action(
+        desc = "Relaunch the ${stopped.size} box(es) stopping this renderer stopped",
+        detail = "Stopping this renderer also stopped $names. Relaunches this box first if it has no " +
+            "renderer, then those boxes, parents before children."
+    ) { relaunchRendererDependents(owner) }
+    needsResync.add(owner to "actions")
+    lprintln(
+        "info,agent_backdoor",
+        "renderer box ${owner.name.ifBlank { owner.id }}: to start the ${stopped.size} stopped box(es) again, " +
+            "run its '$RELAUNCH_STOPPED_DEPENDENTS_ACTION' action (command palette with the box selected, " +
+            "or backdoor `action ${owner.id} $RELAUNCH_STOPPED_DEPENDENTS_ACTION`)"
+    )
+}
+
+/**
+ * Launch again the boxes [owner]'s last renderer teardown stopped, in the order they were found
+ * (parents before children), preceded by [owner] itself when it holds no renderer, so the
+ * children find one. Consumes the record and withdraws the action. Returns the boxes launched.
+ */
+internal fun relaunchRendererDependents(
+    owner: Box,
+    launch: (List<Box>) -> Unit = ::launchBoxesInOrder,
+): List<Box> {
+    val stopped = rendererTeardownStopped.remove(owner.id).orEmpty()
+    owner.actions.remove(RELAUNCH_STOPPED_DEPENDENTS_ACTION)
+    needsResync.add(owner to "actions")
+    val batch = buildList {
+        if (owner.getPropertyRaw("renderer") !is Renderer) add(owner)
+        stopped.filterTo(this) { it !== owner }
+    }
+    if (batch.isNotEmpty()) launch(batch)
+    lprintln(
+        "info,agent_backdoor",
+        "relaunched ${batch.size} box(es) for renderer box ${owner.name.ifBlank { owner.id }}: " +
+            batch.joinToString { it.name.ifBlank { it.id } }
+    )
+    return batch
+}
+
+/** Launch [boxes] as one ordered batch, the way `launch-batch` does, each on its default property. */
+private fun launchBoxesInOrder(boxes: List<Box>) {
+    val reply: (Message) -> Unit = { send(it) }
+    val requests = boxes.map { box ->
+        val property = (box.getPropertyRaw("default_property") as? String)?.ifBlank { null } ?: "code"
+        box to Execute(
+            uid = box.id,
+            type = "launch",
+            line = 0,
+            code = box.getPropertyRaw(property) as? String ?: "",
+            singleLine = false,
+            property = property,
+        )
+    }
+    if (requests.all { it.first.ke is KotlinExecution }) {
+        KotlinExecution.launchBatch(requests, reply)
+    } else {
+        requests.forEach { (box, exec) -> box.ke.launchAll(box, exec, exec.code, exec.strand, reply) }
+    }
 }
 
 /** How long renderer teardown waits for stopped dependents to unwind before disposing anyway. */
@@ -917,6 +1007,9 @@ internal fun rendererDependents(owner: Box): List<Box> {
  * same main runloop that runs [dispose], so blocking it would wait for work that can never run.
  * A dependent that has not finished by the deadline is logged by name and [dispose] runs anyway;
  * device-owned resources then refuse use loudly (see `VulkanBuffer.map`) rather than fault.
+ *
+ * Returns the dependents it stopped, parents before children, so the caller can offer to launch
+ * them again ([offerRelaunchOfStoppedDependents]).
  */
 internal fun beginRendererTeardown(
     owner: Box,
@@ -924,7 +1017,7 @@ internal fun beginRendererTeardown(
     onRenderThread: (suspend () -> Unit) -> Unit = { block -> inMain { block() } },
     stopBox: (Box) -> Unit = { it.ke.stop(it) },
     dispose: () -> Unit,
-) {
+): List<Box> {
     val dependents = rendererDependents(owner).filter {
         it.jobs.isNotEmpty() || it.currentRunningStates.isNotEmpty() || it.stopHooks.isNotEmpty()
     }
@@ -962,6 +1055,7 @@ internal fun beginRendererTeardown(
         }
         dispose()
     }
+    return dependents
 }
 
 /**

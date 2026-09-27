@@ -1,5 +1,6 @@
 package afield
 
+import afield.stdlib.actions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -171,5 +172,46 @@ class RendererTeardownOrderTest {
         }
         assertTrue(disposed.await(5, TimeUnit.SECONDS))
         assertTrue(elapsedMs in 0 until 1_000, "an idle child must not cost the join bound, took ${elapsedMs} ms")
+    }
+
+    /**
+     * N0926-3: teardown reports the boxes it stopped, and the renderer box then offers to launch
+     * them again, itself first when it has lost its renderer, so restarting only the renderer no
+     * longer strands its children. The launch is faked; the order and the bookkeeping are the point.
+     */
+    @Test
+    fun teardownRecordsWhatItStoppedAndOffersToRelaunchIt() {
+        val owner = Box("renderer-owner-relaunch")
+        val child = Box("relaunch-child")
+        val grandchild = Box("relaunch-grandchild")
+        val idle = Box("relaunch-idle-child")
+        link(owner, child)
+        link(child, grandchild)
+        link(owner, idle)
+        val device = FakeDevice()
+        launchWriter(child, device)
+        launchWriter(grandchild, device)
+        waitFor("the writers to be writing") { device.writes >= 10 }
+
+        val disposed = CountDownLatch(1)
+        val stopped = beginRendererTeardown(owner, onRenderThread = { block -> scope.launch { block() } }) {
+            disposed.countDown()
+        }
+        assertTrue(disposed.await(5, TimeUnit.SECONDS))
+        assertEquals(listOf(child, grandchild), stopped, "teardown returns the running dependents it stopped, parents first")
+
+        offerRelaunchOfStoppedDependents(owner, stopped)
+        assertEquals(stopped, stoppedByRendererTeardown(owner))
+        assertTrue(RELAUNCH_STOPPED_DEPENDENTS_ACTION in owner.actions, "the renderer box offers the relaunch as an action")
+
+        val launched = mutableListOf<List<Box>>()
+        val relaunched = relaunchRendererDependents(owner) { launched += it }
+        assertEquals(listOf(owner, child, grandchild), relaunched, "no renderer on the owner: it launches first, then its dependents")
+        assertEquals(listOf(relaunched), launched, "one ordered batch")
+        assertTrue(stoppedByRendererTeardown(owner).isEmpty(), "the record is consumed")
+        assertFalse(RELAUNCH_STOPPED_DEPENDENTS_ACTION in owner.actions, "and the action withdrawn")
+
+        offerRelaunchOfStoppedDependents(owner, emptyList())
+        assertFalse(RELAUNCH_STOPPED_DEPENDENTS_ACTION in owner.actions, "nothing stopped, nothing offered")
     }
 }
