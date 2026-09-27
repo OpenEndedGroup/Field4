@@ -172,8 +172,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, unusedAttachmentFeatureProbe)
                 unusedAttachmentFeatures.dynamicRenderingUnusedAttachments()
             } else false
+            // Field sets only the depth-clamp dynamic state, so that is the EDS3 feature that decides
+            // support. polygonMode is requested only where offered: KosmicKrisp has EDS3 without it
+            // (and without fillModeNonSolid), and asking for it anyway fails vkCreateDevice.
+            val eds3Supported = VkPhysicalDeviceExtendedDynamicState3FeaturesEXT.calloc(stack).`sType$Default`()
+            if (hasExtDynamicState3) probeFeatures(stack, eds3Supported.address())
             supportsExtendedDynamicState = hasExtDynamicState
-            supportsExtendedDynamicState3 = hasExtDynamicState3
+            supportsExtendedDynamicState3 = hasExtDynamicState3 && eds3Supported.extendedDynamicState3DepthClampEnable()
+            val eds3PolygonMode = eds3Supported.extendedDynamicState3PolygonMode()
             supportsMultiview = hasExt(KHRMultiview.VK_KHR_MULTIVIEW_EXTENSION_NAME)
             raySupport = RayDeviceSupport.probe(physicalDevice.vkPhysicalDevice, supportedExtensions)
             supportsAccelerationStructures = Options.enableRayTracing && raySupport.accelerationUsable
@@ -285,7 +291,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
                 addIfSupported(KHRShaderNonSemanticInfo.VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)
                 addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState.VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
-                addIfSupported(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
+                if (supportsExtendedDynamicState3) add(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)
 
                 if (Options.enableVR) {
                     val d = Instance.getOpenXRRequiredDeviceExts(physicalDevice.vkPhysicalDevice.address())
@@ -314,9 +320,21 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             // --- Core features via VkPhysicalDeviceFeatures2 + Vulkan12/13
             val features = VkPhysicalDeviceFeatures2.calloc(stack).apply {
                 sType(VK12.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2)
-                features().fragmentStoresAndAtomics(true)
-                features().vertexPipelineStoresAndAtomics(true)
-                features().shaderInt64(true)
+                // Requested where offered, and named when not, so a driver missing one reports it here
+                // rather than failing vkCreateDevice with VK_ERROR_FEATURE_NOT_PRESENT. KosmicKrisp
+                // before SDK 1.4.357 lacked vertexPipelineStoresAndAtomics.
+                val core = supportedCoreFeatures.features()
+                val missing = listOfNotNull(
+                    "fragmentStoresAndAtomics".takeUnless { core.fragmentStoresAndAtomics() },
+                    "vertexPipelineStoresAndAtomics".takeUnless { core.vertexPipelineStoresAndAtomics() },
+                    "shaderInt64".takeUnless { core.shaderInt64() },
+                )
+                if (missing.isNotEmpty()) {
+                    lprintln("warning,vulkan", "${physicalDevice.driverName} lacks $missing; shaders that need them will fail to build")
+                }
+                features().fragmentStoresAndAtomics(core.fragmentStoresAndAtomics())
+                features().vertexPipelineStoresAndAtomics(core.vertexPipelineStoresAndAtomics())
+                features().shaderInt64(core.shaderInt64())
                 features().shaderInt16(supportedCoreFeatures.features().shaderInt16())
                 // Guard: geometryShader is unsupported on Apple Silicon / MoltenVK.
                 features().geometryShader(physicalDevice.vkPhysicalDeviceFeatures.geometryShader())
@@ -376,7 +394,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
 
             val eds3 = VkPhysicalDeviceExtendedDynamicState3FeaturesEXT.calloc(stack)
                 .sType(org.lwjgl.vulkan.EXTExtendedDynamicState3.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT)
-                .extendedDynamicState3PolygonMode(true)
+                .extendedDynamicState3PolygonMode(eds3PolygonMode)
                 .extendedDynamicState3DepthClampEnable(true)
 
             val eds = VkPhysicalDeviceExtendedDynamicStateFeaturesEXT.calloc(stack)
@@ -606,6 +624,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     fun cleanup() {
         if (ngxDelegate.isInitialized()) ngxRuntime.getOrNull()?.close()
         vkDestroyDevice(vkDevice, null)
+    }
+
+    /** Fill the feature struct at [address] (its sType set, pNext 0) with what the device supports. */
+    private fun probeFeatures(stack: MemoryStack, address: Long) {
+        VK11.vkGetPhysicalDeviceFeatures2(
+            physicalDevice.vkPhysicalDevice,
+            VkPhysicalDeviceFeatures2.calloc(stack).`sType$Default`().pNext(address)
+        )
     }
 
     private fun MutableList<String>.addIfSupported(name: String) {

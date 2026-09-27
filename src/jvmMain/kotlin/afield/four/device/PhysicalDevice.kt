@@ -14,6 +14,17 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
     var vkPhysicalDeviceProperties: VkPhysicalDeviceProperties
     var vkQueueFamilyProps: VkQueueFamilyProperties.Buffer
 
+    /** `VkDriverId` of the ICD behind this device, e.g. [VK12.VK_DRIVER_ID_MOLTENVK]; 0 if unknown. */
+    var driverId: Int = 0
+        private set
+    var driverName: String = ""
+        private set
+    var driverInfo: String = ""
+        private set
+
+    val isMoltenVK: Boolean get() = driverId == VK12.VK_DRIVER_ID_MOLTENVK
+    val isKosmicKrisp: Boolean get() = driverId == VK12.VK_DRIVER_ID_MESA_KOSMICKRISP
+
     init {
         MemoryStack.stackPush().use { stack ->
             this.vkPhysicalDevice = vkPhysicalDevice
@@ -22,6 +33,15 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
             // Get device properties
             vkPhysicalDeviceProperties = VkPhysicalDeviceProperties.calloc()
             VK10.vkGetPhysicalDeviceProperties(vkPhysicalDevice, vkPhysicalDeviceProperties)
+            if (vkPhysicalDeviceProperties.apiVersion() >= VK12.VK_API_VERSION_1_2) {
+                val driver = VkPhysicalDeviceDriverProperties.calloc(stack).`sType$Default`()
+                VK11.vkGetPhysicalDeviceProperties2(
+                    vkPhysicalDevice, VkPhysicalDeviceProperties2.calloc(stack).`sType$Default`().pNext(driver.address())
+                )
+                driverId = driver.driverID()
+                driverName = driver.driverNameString()
+                driverInfo = driver.driverInfoString()
+            }
 
             // Get device extensions
             vkCheck(
@@ -128,9 +148,20 @@ class PhysicalDevice private constructor(vkPhysicalDevice: VkPhysicalDevice) {
                     }
                 }
 
-                // No preferred device or it does not meet requirements, just pick the first one
-                selectedPhysicalDevice =
-                    if (selectedPhysicalDevice == null && !devices.isEmpty()) devices.removeAt(0) else selectedPhysicalDevice
+                // No preferred device or it does not meet requirements: on macOS take the requested
+                // driver's device if the loader offered more than one driver, else the first one.
+                if (selectedPhysicalDevice == null && devices.isNotEmpty()) {
+                    val wantedDriver = if (Options.isMac) Options.resolvedMacVulkanDriver.driverId else 0
+                    val index = devices.indexOfFirst { it.driverId == wantedDriver }.takeIf { it >= 0 } ?: 0
+                    if (wantedDriver != 0 && devices[index].driverId != wantedDriver) {
+                        println("WARNING: requested Vulkan driver ${Options.resolvedMacVulkanDriver.name.lowercase()} was not enumerated; " +
+                            "using ${devices[index].driverName.ifEmpty { "driver ${devices[index].driverId}" }}")
+                    }
+                    selectedPhysicalDevice = devices.removeAt(index)
+                }
+                selectedPhysicalDevice?.let {
+                    println("INFO: Vulkan device ${it.deviceName}, driver ${it.driverName} (${it.driverInfo})")
+                }
 
                 if (selectedPhysicalDevice == null && xrPreferredPhys != null) {
                     println("ERROR: OpenXR-selected physical device not available or lacks required graphics/swapchain support")
