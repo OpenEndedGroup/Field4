@@ -408,6 +408,92 @@ class ImpossibilityClaimContractTest {
     }
 
     /**
+     * `@Test fun x()` on one line is a reproducer, as much as the two-line form is; being near a
+     * one-line test does not make a function one.
+     *
+     * Dozens of files in src/jvmTest write their tests the one-line way. Until 2026-09-27 the guard
+     * only looked above the `fun`, so none of those could be cited, and a test in a sibling branch had
+     * to be split onto two lines to be citable. Scanning upward also credited any line that *began* with
+     * `@Test`, so the helper directly under a one-line test inherited that test's annotation — which
+     * the rejections below pin.
+     */
+    @Test
+    fun aOneLineTestIsAReproducerAndItsNeighboursAreNot() {
+        val tmp = createTempDir("impossibility-oneline")
+        try {
+            File(tmp, "settings.gradle.kts").writeText("")
+            val test = File(tmp, "src/jvmTest/kotlin/afield/OneLine.kt")
+            test.parentFile.mkdirs()
+            test.writeText(
+                """
+                |package afield
+                |class OneLine {
+                |    @Test
+                |    fun twoLineForm() { }
+                |
+                |    @Test fun oneLineForm() { }
+                |    fun helperDirectlyBelowAOneLineTest() { }
+                |
+                |    @Test @Timeout(5) fun testThenAnotherAnnotation() { }
+                |
+                |    @Timeout(value = 5, unit = TimeUnit.SECONDS) @Test fun anotherAnnotationThenTest() { }
+                |
+                |    @Test internal fun oneLineWithAModifier() { }
+                |
+                |    @kotlin.test.Test fun qualifiedOneLine() { }
+                |
+                |    @Test
+                |    @Timeout(5) fun testAboveAndAnnotationOnTheLine() { }
+                |
+                |    @Suppress("unused") fun annotatedButNotATest() { }
+                |
+                |    @TestOnly fun calledByTestsButNotOne() { }
+                |
+                |    @Test fun precedingTest() { }; fun sharesALineWithATest() { }
+                |
+                |    // @Test fun commentedOut() { }
+                |    fun belowACommentedOutTest() { }
+                |}
+                |""".trimMargin()
+            )
+
+            fun why(spec: String) = ImpossibilityClaimGuard.validateReproducer(tmp, spec)
+            val at = "src/jvmTest/kotlin/afield/OneLine.kt#"
+
+            for (anchor in listOf(
+                "fun twoLineForm",
+                "fun oneLineForm",
+                "oneLineForm", // a bare-name anchor lands on the same `fun`
+                "fun testThenAnotherAnnotation",
+                "fun anotherAnnotationThenTest",
+                "fun oneLineWithAModifier",
+                "fun qualifiedOneLine",
+                "fun testAboveAndAnnotationOnTheLine",
+                "fun precedingTest",
+            )) {
+                assertEquals(null, why(at + anchor), "`$anchor` is a @Test and must be accepted")
+            }
+
+            for (anchor in listOf(
+                "fun helperDirectlyBelowAOneLineTest",
+                "fun annotatedButNotATest",
+                "fun calledByTestsButNotOne",
+                "fun sharesALineWithATest",
+                "sharesALineWithATest",
+                "fun belowACommentedOutTest",
+            )) {
+                val reason = why(at + anchor)
+                assertTrue(
+                    reason != null && "no `@Test`" in reason,
+                    "`$anchor` is not a @Test, and must be rejected as one that nothing runs: $reason",
+                )
+            }
+        } finally {
+            tmp.deleteRecursively()
+        }
+    }
+
+    /**
      * The counterfactual, floored at a number rather than at "differs at all".
      *
      * Planting five unmarked claims of five different shapes beside the real corpus must produce at

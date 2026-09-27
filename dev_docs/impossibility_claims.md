@@ -83,9 +83,10 @@ paragraph standing behind four independent assertions, three of which were wrong
 Not "the path exists". A reproducer is a promise that a future reader can re-run the refusal, so the
 guard also checks it is something runnable:
 
-- a `.kt` under `src/jvmTest/` whose anchor names a function with `@Test` in the annotation prelude
-  **directly** above it — not within some line window, because a helper sitting a few lines below a
-  real test would inherit that test's annotation and be accepted;
+- a `.kt` under `src/jvmTest/` whose anchor names a function with `@Test` ahead of its `fun` on the
+  same line (`@Test fun x()`) or in the annotation prelude **directly** above it — not within some
+  line window, because a helper sitting a few lines below a real test would inherit that test's
+  annotation and be accepted;
 - a `.kt` under `src/jvmMain/` with a `fun main(`;
 - a `.py` under `tools/` that defines something;
 - a transcript under `dev_docs/agents/transcripts/`.

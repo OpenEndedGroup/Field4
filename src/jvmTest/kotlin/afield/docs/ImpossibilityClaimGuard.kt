@@ -373,8 +373,10 @@ object ImpossibilityClaimGuard {
     // ---------------------------------------------------------------------------------------------
 
     /**
-     * True when `@Test` sits in the **annotation/comment prelude** directly above the declaration at
-     * 1-based [declarationLine].
+     * True when `@Test` annotates the function declared at 1-based [declarationLine]: either on that
+     * line ahead of the `fun` — `@Test fun x()`, `@Test @Timeout(5) fun x()` — or in the
+     * **annotation/comment prelude** directly above it. [anchor] picks out which `fun` on the line is
+     * the cited one.
      *
      * Deliberately not a fixed line window. A window of `n` lines is wrong in both directions: `@Test`
      * is often separated from its function by a multi-line KDoc, and — the failure that motivated this —
@@ -385,13 +387,26 @@ object ImpossibilityClaimGuard {
      *
      * So: walk upward through annotations, comments and KDoc only, and stop at the first line that is
      * none of those — a blank line included, because a blank line is what ends a declaration's prelude.
+     * A line that *starts* with annotations but goes on to declare something, `@Test fun other() { }`,
+     * is a neighbour and not a prelude: until the one-line form was accepted here, a helper directly
+     * beneath a one-line test inherited its `@Test` that way.
      */
-    fun hasTestAnnotation(lines: List<String>, declarationLine: Int): Boolean {
+    fun hasTestAnnotation(lines: List<String>, declarationLine: Int, anchor: String = "fun "): Boolean {
+        val declaration = lines[declarationLine - 1]
+        val beforeFun = declaration.substring(0, declaredFunAt(declaration, anchor))
+        val (sameLine, end) = preludeOf(beforeFun)
+        // Code ahead of the `fun` on its own line (`fun a() { }; fun b() { }`) means the declaration
+        // does not start this line, so neither that code nor the lines above are its prelude.
+        if (end < beforeFun.length) return false
+        if (sameLine.any(::isTestAnnotation)) return true
         var i = declarationLine - 2
         while (i >= 0) {
             val t = lines[i].trim()
             if (t.startsWith("@")) {
-                if (t.startsWith("@Test")) return true
+                val (annotations, stop) = preludeOf(t)
+                val rest = t.substring(stop)
+                if (rest.isNotEmpty() && !rest.startsWith("//") && !rest.startsWith("/*")) return false
+                if (annotations.any(::isTestAnnotation)) return true
                 i--; continue
             }
             if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) { i--; continue }
@@ -399,6 +414,49 @@ object ImpossibilityClaimGuard {
         }
         return false
     }
+
+    /**
+     * Where the cited `fun ` begins on [line]: the last one that starts no later than the end of
+     * [anchor], so `#fun b` and a bare `#b` both land on `fun b` and not on an earlier `fun a`.
+     */
+    private fun declaredFunAt(line: String, anchor: String): Int {
+        val at = line.indexOf(anchor)
+        val found = if (at < 0) -1 else line.lastIndexOf("fun ", at + anchor.length - "fun ".length)
+        return if (found >= 0) found else line.indexOf("fun ").coerceAtLeast(0)
+    }
+
+    /**
+     * One annotation — `@Test`, `@Timeout(5)`, `@Tag("slow")`, `@kotlin.test.Test`, with one level of
+     * nested parentheses allowed in its arguments — or one word, which [preludeOf] accepts only if it
+     * is in [MODIFIERS].
+     */
+    private val PRELUDE_TOKEN = Regex("""@[\w.]+(?:\((?:[^()]|\([^()]*\))*\))?|\w+""")
+
+    private val MODIFIERS = setOf(
+        "public", "private", "protected", "internal", "open", "final", "abstract", "override",
+        "suspend", "inline", "tailrec", "operator", "infix", "external", "expect", "actual",
+    )
+
+    /** The annotations and modifiers that [text] starts with, and the index at which they stop. */
+    private fun preludeOf(text: String): Pair<List<String>, Int> {
+        val tokens = mutableListOf<String>()
+        var i = 0
+        while (true) {
+            while (i < text.length && text[i].isWhitespace()) i++
+            val m = PRELUDE_TOKEN.matchAt(text, i)
+            if (m == null || (!m.value.startsWith("@") && m.value !in MODIFIERS)) return tokens to i
+            tokens += m.value
+            i = m.range.last + 1
+        }
+    }
+
+    /**
+     * `@Test`, `@Test()` or a qualified `@kotlin.test.Test`, matched as the whole annotation name.
+     * A prefix match would also accept `@TestOnly`, which marks code a test may *call*, not a test.
+     */
+    private val TEST_ANNOTATION = Regex("""@(?:[\w.]+\.)?Test""")
+
+    private fun isTestAnnotation(token: String) = TEST_ANNOTATION.matches(token.substringBefore('('))
 
     /**
      * Why [spec] is not a usable reproducer, or null when it is one.
@@ -440,9 +498,9 @@ object ImpossibilityClaimGuard {
                 if (!declaration.contains("fun ")) {
                     "`$spec` resolves to $rel:${resolved.line}, which is not a function declaration " +
                         "(`${declaration.trim().take(70)}`). Anchor the test function itself, e.g. `#fun myTest`."
-                } else if (!hasTestAnnotation(lines, resolved.line)) {
-                    "`$spec` resolves to a function at $rel:${resolved.line} with no `@Test` in the " +
-                        "annotation prelude directly above it, so nothing runs it"
+                } else if (!hasTestAnnotation(lines, resolved.line, anchor)) {
+                    "`$spec` resolves to a function at $rel:${resolved.line} with no `@Test` ahead of " +
+                        "its `fun` or in the annotation prelude directly above it, so nothing runs it"
                 } else null
             }
 
