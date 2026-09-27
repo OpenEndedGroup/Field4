@@ -399,8 +399,7 @@ fun HasBuffer.asFrame(): Frame =
 fun BufferParameters.asFrame(): Frame =
     buffer.asFrame()
 /*end*/
-/*compute-ubo:SceneBuffers*/ val ModulePointer.SceneBuffers by FromUniform()
-/*compute-ubo-mesh:SceneBuffers*/ var Mesh.SceneBuffers by Mesh.FromStructure<Structure>()
+/*compute-ubo:SceneBuffers*/ val ComputeModulePointer.SceneBuffers by ComputeMesh.FromUniform()
 /*compute-ubo-member:SceneBuffers:triangles*/ var Structure.triangles by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:nodes*/ var Structure.nodes by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:materials*/ var Structure.materials by Structure.FromStructure<afield.four.buffers.HasBuffer>()
@@ -412,8 +411,7 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:SceneBuffers:historyWrite*/ var Structure.historyWrite by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:emitterTable*/ var Structure.emitterTable by Structure.FromStructure<afield.four.buffers.HasBuffer>()
 /*compute-ubo-member:SceneBuffers:emitterLookup*/ var Structure.emitterLookup by Structure.FromStructure<afield.four.buffers.HasBuffer>()
-/*compute-ubo:Frame*/ val ModulePointer.Frame by FromUniform()
-/*compute-ubo-mesh:Frame*/ var Mesh.Frame by Mesh.FromStructure<Structure>()
+/*compute-ubo:Frame*/ val ComputeModulePointer.Frame by ComputeMesh.FromUniform()
 /*compute-ubo-member:Frame:origin*/ var Structure.origin by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 /*compute-ubo-member:Frame:right*/ var Structure.right by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()
 /*compute-ubo-member:Frame:up*/ var Structure.up by Structure.FromStructure<afield.stdlib.linalg.Vector4f>()

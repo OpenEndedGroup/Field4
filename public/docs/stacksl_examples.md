@@ -1122,6 +1122,18 @@ literals; assigning the same text again leaves them alone, so a box can re-run
 without losing what was turned. A full shader reload carries the values over.
 Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot as before.
 
+### In the editor
+
+The StackSL inside the box's Kotlin gets the editor's StackSL help where it sits:
+a string assigned to one of the box's slots (`module.program = """…"""`, or a
+one-line `module.program = "uv 4 * fbm"`), or any string whose first line is
+`#stacksl`. Completion opened inside it offers the StackSL vocabulary, with each
+word's stack effect and cheatsheet entry, and the program's own definitions. Rest
+the cursor on a line and the note beside it shows that line's stage, drawn alone
+as **Render this function alone** draws it, which the caption says. Only a
+`#stacksl` string is coloured as StackSL; a slot's string without the header is
+still coloured as a Kotlin string.
+
 ??? aside "How this was checked"
     On 2026-09-27, the fullscreen example above, with a vignette added to the host
     shader, ran in a real window. Turning `k2` from 4 to 9 re-zoomed the noise in
