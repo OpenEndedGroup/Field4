@@ -94,12 +94,22 @@ object StackSLPrograms {
     fun rendererFor(box: Box): Renderer? = afield.stdlib.BoxStudies.rendererAbove(box)
 
     /**
+     * The lock a box's study and card are made under — not the box's own monitor. Making a study resumes
+     * it, which renders probe frames on the window's GPU and so waits for a frame the main thread draws;
+     * the main thread, finishing a run's verdict, takes the box's monitor (`ExecutionReports`). Holding
+     * that monitor here deadlocked the two: the scene's run never replied, and Field stopped drawing.
+     */
+    private val creationLocks = java.util.WeakHashMap<Box, Any>()
+
+    private fun creationLock(box: Box): Any = synchronized(creationLocks) { creationLocks.getOrPut(box) { Any() } }
+
+    /**
      * [box]'s study, created on first use. Publishing an accepted edit writes the box's `stackSL`
      * property on the main thread, refusing if the editor changed it since the edit was based on it.
      */
     fun study(box: Box): StackSLStudy {
         (box.getPropertyRaw("_stackSLStudy", null) as? StackSLStudy)?.let { return it }
-        synchronized(box) {
+        synchronized(creationLock(box)) {
             (box.getPropertyRaw("_stackSLStudy", null) as? StackSLStudy)?.let { return it }
             val study = StackSLStudy(
                 afield.stdlib.BoxStudies.directory(box),
@@ -131,7 +141,7 @@ object StackSLPrograms {
     /** The card showing [box]'s study, created (and shown) on first use. */
     fun viewer(box: Box): StackSLStudyViewer {
         (box.getPropertyRaw("_stackSLViewer", null) as? StackSLStudyViewer)?.let { return it }
-        synchronized(box) {
+        synchronized(creationLock(box)) {
             (box.getPropertyRaw("_stackSLViewer", null) as? StackSLStudyViewer)?.let { return it }
             val viewer = StackSLStudyViewer(study(box), box, CHANNEL)
             box.properties["_stackSLViewer"] = viewer

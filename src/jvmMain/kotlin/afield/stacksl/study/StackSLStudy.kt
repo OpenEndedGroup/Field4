@@ -533,8 +533,9 @@ class StackSLStudy(
         val r = revisions.revision(id)
         val base = if (sensitivity) frame(r.source, 48, seconds) else null
         val epoch = revisions.epoch()
+        val names = knobNames(r.source, r.value.knobs)
         val rows = r.value.knobs.mapIndexed { i, k ->
-            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k), "context" to k.context)
+            val summary: Map<String, Any?> = linkedMapOf("knob" to knobSummary(k, names[k.knob]), "context" to k.context)
             if (base == null || i >= 40) return@mapIndexed summary
             if (revisions.isCancelled(epoch)) throw CancellationException()
             val step = if (abs(k.value) > 1e-3) abs(k.value) * 0.1 else 0.05

@@ -34,6 +34,7 @@ PAGE = ROOT / "public/docs/rectsl_conversation.md"
 STARTER = "rectsl_conversation"
 CHAT_FILE = "rectsl_source_ai4_chat_history_.md"
 SCENE_FILE = "rectsl_source_rectSL_.rectsl"
+TOOL_EXAMPLE = ROOT / "src/jvmMain/kotlin/afield/examples/rectsl/RectSLDocumentToolSmoke.kt"
 STUDY = "studies/rectsl_source"
 STARTER_FILES = ("README.md", "AGENTS.md", "metadata.edn", SCENE_FILE)
 TOOLS_SOURCE = ROOT / "src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyTools.kt"
@@ -212,8 +213,10 @@ def source_blocks() -> dict[str, str]:
     for name in EXAMPLES:
         assert finals[name] == revision(name, heads[name].split("-")[0]), f"{name}: the box does not hold HEAD"
     sky = ("# Blue", '"night" rect')
+    example = TOOL_EXAMPLE.read_text().split("// example:start\n", 1)[1].split("// example:end", 1)[0]
     return {
         "starter": fence((DEMOS / STARTER / SCENE_FILE).read_text()),
+        "rectangles-tool": "```diffstatic {data-lang=kotlin}\n" + example.rstrip() + "\n```",
         "lanterns-dusk": edit(lines_with(revision("lanterns", "r3"), *sky), lines_with(revision("lanterns", "r4"), *sky)),
         "tide-faster": edit(excerpt(revision("tide", "r4"), '"tide" rect', ") array ;"), excerpt(revision("tide", "r5"), '"tide" rect', ") array ;")),
         "lanterns-flame": edit(lines_with(revision("lanterns", "r4"), '"flame" rect'), lines_with(revision("lanterns", "r5"), '"flame" rect')),

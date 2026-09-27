@@ -57,8 +57,10 @@ data class ObserveRectSLStudy(val revision: String = "current", val seconds: Lis
 data class TimelineRectSLStudy(val revision: String = "current",
     @JsonPropertyDescription("How many frames, 2..16") val frames: Int = 8)
 
-@JsonClassDescription("Find which line made what. mode identify draws the frame at seconds with every visible rectangle outlined in its line's colour and labelled L<line>, and lists the lines with example rectangles (centre, size, fill); use it to answer 'which of these is the one on line 12?' or 'what is that shape?'. mode build shows the scene after each line that makes something.")
-data class TraceRectSLStudy(val revision: String = "current", val seconds: Double = 0.0, val mode: String = "identify")
+@JsonClassDescription("Find which line made what. mode identify draws the frame at seconds with every visible rectangle outlined in its line's colour and labelled L<line>, and lists the lines with example rectangles (centre, size, fill); use it to answer 'which of these is the one on line 12?' or 'what is that shape?'. mode build shows the scene after each line that makes something. Give probeX and probeY (a wall point) to also get everything covering that point at seconds, topmost first, with the line that made each — the way to answer 'what is this, and why is it here?'.")
+data class TraceRectSLStudy(val revision: String = "current", val seconds: Double = 0.0, val mode: String = "identify",
+    @JsonPropertyDescription("x of a wall point to probe, in wall units (the frame's convention); omit for none") val probeX: Double? = null,
+    @JsonPropertyDescription("y of a wall point to probe, in wall units; omit for none") val probeY: Double? = null)
 
 @JsonClassDescription("List the knobs (typed numbers and colours) with what reads each and, unless sensitivity is false, how strongly a 10% nudge to each changes the frames — which numbers matter and which do nothing at these times.")
 data class KnobsRectSLStudy(val revision: String = "current", val seconds: List<Double> = emptyList(), val sensitivity: Boolean = true)
@@ -79,11 +81,12 @@ data class RestoreRectSLRevision(val expectedRevision: String, val expectedSourc
 data class CompareRectSLStudy(val beforeRevision: String, val afterRevision: String = "current", val seconds: List<Double> = emptyList(),
     val mode: String = "rgb", val allowedRegion: List<Double> = emptyList())
 
-@JsonClassDescription("Export a checked revision into this document's files directory: kind png (one frame at seconds) or mp4 (the whole clip at the scene's fps, repeated loops times; needs ffmpeg). Runs in the background and returns at once; tell the person where the file will appear. Progress is in InspectRectSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.")
+@JsonClassDescription("Export a checked revision into this document's files directory: kind png (one frame at seconds) or mp4 (the whole clip at the scene's fps, repeated loops times; needs ffmpeg). Runs in the background and returns at once with an estimate, timed from one real frame, and refuses one over maxMinutes with a size that fits; tell the person where the file will appear and how long it should take. Progress is in InspectRectSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.")
 data class ExportRectSLStudy(val revision: String, val expectedSourceHash: String, val filename: String, val kind: String = "png",
     @JsonPropertyDescription("Pixels along the wall's longer side; 0 means 1920 for png and 1280 for mp4") val size: Int = 0,
     @JsonPropertyDescription("The still's time in seconds") val seconds: Double = 0.0,
-    val loops: Int = 1, val overwrite: Boolean = false)
+    val loops: Int = 1, val overwrite: Boolean = false,
+    @JsonPropertyDescription("Refuse an export estimated to take longer than this many minutes; the refusal names a size that fits. Raise it only if the person agrees to wait") val maxMinutes: Double = 10.0)
 
 /** The working guide and the words guide the [RectSLStudyGuide] tool serves. */
 object RectSLStudyGuides {
@@ -140,7 +143,7 @@ fun installRectSLStudyTools() {
         studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.associate { it.knob to it.value }, q.description, q.previewSeconds) }
     r.register(ObserveRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).observe(q.revision, q.seconds, q.size, q.compareTo) }
     r.register(TimelineRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).timeline(q.revision, q.frames) }
-    r.register(TraceRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).trace(q.revision, q.seconds, q.mode) }
+    r.register(TraceRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).trace(q.revision, q.seconds, q.mode, probeX = q.probeX ?: Double.NaN, probeY = q.probeY ?: Double.NaN) }
     r.register(KnobsRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).knobs(q.revision, q.seconds, q.sensitivity) }
     r.register(SweepRectSLNumber::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).sweep(q.revision, q.knob, q.values, q.seconds) }
     r.register(TryRectSLVariants::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).tryVariants(q.variants, q.seconds) }
@@ -155,7 +158,7 @@ fun installRectSLStudyTools() {
         val box = scene(ctx)
         val session = RectSLPrograms.sessionOf(box) ?: throw IllegalStateException("'${box.name}' is not in an open document")
         val file = FileManager.forSession(session).file("%document/${q.filename}")
-        studyOf(ctx).startExport(q.revision.ifBlank { "current" }, q.expectedSourceHash, file, q.kind, q.size, q.seconds, q.loops, q.overwrite)
+        studyOf(ctx).startExport(q.revision.ifBlank { "current" }, q.expectedSourceHash, file, q.kind, q.size, q.seconds, q.loops, q.overwrite, q.maxMinutes)
     }
 }
 

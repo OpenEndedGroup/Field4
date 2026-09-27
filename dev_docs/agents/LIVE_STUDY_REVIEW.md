@@ -321,3 +321,25 @@ cheatsheet entry, and the smoothstep line's note shows its stage on the GPU. The
 a slot's string as Kotlin unless it has the `#stacksl` header: the client does not know slot names.
 Also fixed on the way: `computeModuleHere` gave a compute uniform block a graphics `ModulePointer`
 accessor, so `module.<block>` did not resolve on a compute module.
+
+### RectSL parity sweep — 2026-09-28
+
+A sweep against the StackSL study and the function study found RectSL level on the shared machinery
+and behind on these, now closed. Knob labels are corrected from the evaluator's own record of which
+word popped each literal (`RectLangVm.onLiteralTaken`, `RectSLCompiled.takenBy`), keeping the token
+guess where it already names that word ("into ->x via *"); numbers in a `material` quote are labelled
+by StackSL's compiler. Inspect lists up to 400 knobs, not 80. SetNumbers refuses values the reader
+cannot hold. Export estimates from a timed frame and has a `maxMinutes` budget. Trace probes a wall
+point. The card can pin the window to a line, or have it follow the editor's. `#rectsl` strings in
+Kotlin complete and have line notes (`EmbeddedRectSL`). The page has an "Adding a tool of your own"
+section, backed by a new `rectsl.study.document-tool` smoke. The score, tide, ink and tiles demos have
+stored knob names; both Knobs tools report them.
+
+Two real bugs came out of it. The RectSL capture hang was a deadlock: `RectSLPrograms.viewer` and
+`study` held the box's monitor while resuming the study, which renders on the window's GPU and waits
+for a frame the main thread draws, while the main thread, finishing the run's verdict, waited for that
+monitor in `ExecutionReports`. Both languages now make their study and card under a private per-box
+lock. And the `field-slider-input` event added with the card's Field sliders fired for every slider
+whenever controls were laid out, so the RectSL card sent a preview of the unchanged scene that then
+held the window (pins and editor edits alike were ignored) and the StackSL card counted every slider
+as turned. Only a drag, or a page's own `window.updateFieldSlider`, announces a move now.

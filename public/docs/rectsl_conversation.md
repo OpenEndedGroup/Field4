@@ -111,10 +111,14 @@ The **study card** in the scene box's output is the person's side of the study. 
 
 - the clip as a filmstrip, frames evenly across it;
 - the window's clock: **play**, **restart**, and a scrubber that holds the window at any moment;
+- what the window shows: each line's **window** button shows the scene as it stands after that
+  line, and pressing it again shows the whole scene; with **the window shows the scene up to the
+  editor's line** ticked, the window follows the cursor instead;
 - a slider for every number in the scene, grouped under the line it is on and the comment that says
   what that line does, and a swatch for every colour. Each is labelled with what turning it changes
-  (see the StackSL page's card for where those names come from), and clicking the label selects the
-  number in the editor. Moving one previews the change **in the window** as you drag, without
+  (see the StackSL page's card for where those names come from), from what the evaluator saw take the
+  number — the word, and which of its inputs — and, for a number inside a `material` quote, from what
+  the StackSL compiler took it as. Clicking the label selects the number in the editor. Moving one previews the change **in the window** as you drag, without
   touching the program; **Keep these numbers** makes the new values a revision, **Reset** puts the
   window back;
 - keys: every number at once, captured under a name, to apply or blend between in the window, as
@@ -144,17 +148,17 @@ that box's scene. They are library code, in
 | `InspectRectSLStudy` | Read the checked scene, any unchecked hand edit, history, the lines that make rectangles, warnings, knobs, and the line the person's cursor is on. |
 | `EditRectSLStudy` | Replace the whole scene: compile, check, activate, and return a preview against the parent. |
 | `PatchRectSLStudy` | Exact local text replacements, through the same checks. |
-| `SetRectSLNumbers` | Change numbers and hex colours by knob index, rewritten in place. |
+| `SetRectSLNumbers` | Change numbers and hex colours by knob index, rewritten in place; a value its reader cannot hold (a wall, duration or frame rate that is not positive, an `rgb` channel outside 0..1) is refused, with the reason. |
 | `ObserveRectSLStudy` | Frames at chosen times, with what is visible, palette, detail and motion. |
 | `TimelineRectSLStudy` | The whole clip as frames, a chart of what is visible and moving, and what happens in it — each object once, with the lines that made it. |
-| `TraceRectSLStudy` | Every visible rectangle outlined and labelled with the line that made it, or the scene after each line. |
+| `TraceRectSLStudy` | Every visible rectangle outlined and labelled with the line that made it, or the scene after each line; given a wall point, everything covering it, topmost first, with its line. |
 | `KnobsRectSLStudy` | What reads each number, and how much a 10% nudge to it changes the frames. |
 | `SweepRectSLNumber` | One number at several values, side by side, without publishing. |
 | `TryRectSLVariants` | Up to eight candidate scenes beside the current one, without publishing; held for Adopt. |
 | `AdoptRectSLVariant` | Publish a held variant as a revision. |
 | `RestoreRectSLRevision` | Make an earlier revision current again, as a new revision. |
 | `CompareRectSLStudy` | Show that an edit changed only what it should: in pixels outside a region, and in which rectangles moved, appeared or went. |
-| `ExportRectSLStudy` | Draw a still or the whole clip into the document's `files/` folder, in the background. |
+| `ExportRectSLStudy` | Draw a still or the whole clip into the document's `files/` folder, in the background, with an estimate timed from one real frame; an export over its time budget is refused, with a size that fits. |
 
 Every edit carries the revision and the source hash it was based on. If you type while the model is
 preparing an edit, the stale edit is refused and your text stays. A refused or failed edit changes
@@ -170,6 +174,33 @@ rectangles by name across revisions.
 A document can add tools of its own from a box, as
 [the StackSL page shows](stacksl_conversation.md#adding-a-tool-of-your-own); gate one on a
 conversation focused on `rectSL` and it sits beside these.
+
+### Adding a tool of your own
+
+A document can teach the assistant something more, from a box: register a request class with the
+document as its scope, and gate it on the conversation's focus. Run the box and the next turn has
+the tool; two documents can each have their own tool of the same name.
+
+<!-- rectsl-study-source:rectangles-tool -->
+```diffstatic {data-lang=kotlin}
+import afield.ai.core.AgentToolExtensions
+import afield.rectsl.compileRectSLWithSource
+import com.fasterxml.jackson.annotation.JsonClassDescription
+
+@JsonClassDescription("The rectangles a RectSL scene makes, by the line that makes them.")
+data class RectanglesOfRectSLStudy(val revision: String = "current")
+
+val document = inside.filename
+AgentToolExtensions.register(RectanglesOfRectSLStudy::class.java,
+    { it.focus?.document == document && it.focus?.property == "rectSL" }, scope = document) { ctx, _ ->
+    val scene = ctx.focus!!.box.getPropertyRaw("rectSL", "") as String
+    compileRectSLWithSource(scene).origins.entries.groupBy({ it.value.line }, { it.key }).toSortedMap()
+}
+```
+<!-- /rectsl-study-source:rectangles-tool -->
+
+The model reads what the handler returns, as JSON: here the rectangles the scene makes, by the line
+that makes each.
 
 ## Three recorded sessions
 

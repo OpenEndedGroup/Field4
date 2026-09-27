@@ -1701,6 +1701,17 @@ class RectLangVm(
     private val evaluating = ArrayList<Token>()
 
     /**
+     * Told when a number or colour typed in the program is taken off the stack: its token, the word
+     * taking it, and how many values that word had already taken (0 for the top of the stack). What a
+     * study's knob labels rest on, in place of guessing from the tokens around a number; null costs
+     * nothing.
+     */
+    var onLiteralTaken: ((token: Token, word: String, depth: Int) -> Unit)? = null
+    private val literalTokens = java.util.IdentityHashMap<Value, Token>()
+    private var takingWord: String? = null
+    private var takenByWord = 0
+
+    /**
      * The innermost token that was being evaluated when evaluation last failed, or null once an
      * enclosing token finished normally (a word that caught the failure and carried on).
      */
@@ -1752,9 +1763,9 @@ class RectLangVm(
         evaluating += token
         try {
             when (token) {
-                is Token.Number -> push(VNum(token.value))
+                is Token.Number -> push(VNum(token.value).also { if (onLiteralTaken != null) literalTokens[it] = token })
                 is Token.StringLit -> push(VStr(token.value))
-                is Token.ColorLit -> push(VColor(token.color))
+                is Token.ColorLit -> push(VColor(token.color).also { if (onLiteralTaken != null) literalTokens[it] = token })
                 is Token.Quote -> push(VQuote(token.tokens, token.source))
                 is Token.KotlinEscape -> push(evalKotlinEscape(token.source))
                 is Token.Word -> evalWord(token.name)
@@ -1859,7 +1870,15 @@ class RectLangVm(
         }
 
         val word = words[name] ?: throw RectLangException(unknownWordMessage(name))
-        word.apply(this)
+        val (outerWord, outerTaken) = takingWord to takenByWord
+        takingWord = name
+        takenByWord = 0
+        try {
+            word.apply(this)
+        } finally {
+            takingWord = outerWord
+            takenByWord = outerTaken
+        }
     }
 
     private fun unknownWordMessage(name: String): String {
@@ -1910,8 +1929,16 @@ class RectLangVm(
         stack.addLast(v)
     }
 
-    fun pop(): Value =
-        if (stack.isEmpty()) throw RectLangException("Stack underflow") else stack.removeLast()
+    fun pop(): Value {
+        if (stack.isEmpty()) throw RectLangException("Stack underflow")
+        val value = stack.removeLast()
+        onLiteralTaken?.let { hook ->
+            val word = takingWord
+            literalTokens.remove(value)?.let { token -> if (word != null) hook(token, word, takenByWord) }
+            if (word != null) takenByWord++
+        }
+        return value
+    }
 
     fun peek(): Value =
         if (stack.isEmpty()) throw RectLangException("Stack underflow") else stack.last()
