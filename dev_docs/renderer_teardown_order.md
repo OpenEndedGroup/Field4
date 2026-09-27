@@ -61,8 +61,9 @@ no way to see those.
   `Queue.globalQueueLock` before its `waitIdle`, and `submit` checks under the same lock, so a
   submit either lands before the wait (which then covers it) or is refused. A descriptor push
   reads its buffer through `VulkanBuffer.descriptorBinding()`, which throws "… used after its
-  Renderer was disposed …" in the same case, and "… was released (cleanup() or pushCleanup())
-  while a module still binds it …" when the buffer itself was freed. The renderer's own
+  Renderer was disposed …" in the same case, and "… used after cleanup() destroyed it …" once a
+  buffer released with `cleanup()` has actually been destroyed (see
+  [Immediate cleanup mid-frame](#immediate-cleanup-mid-frame-now-retired)). The renderer's own
   per-frame `vkQueueSubmit2` calls are not routed through `Queue.submit`; they run on the thread
   that runs cleanup, and `render()` refuses once cleanup has begun.
 - Stopping the renderer box also stops its running children. Before 2026-09-26 they kept
@@ -137,8 +138,8 @@ alone cannot tell "null" from "destroyed".
   `Renderer.recordGraphicsPass`.
 - `hs_err_pid73905` (2026-05-01): thread `main`, `TexturePreviewCache.capture` → `Queue.submit`,
   MoltenVK encoding a `vkCmdCopyImageToBuffer` whose buffer is the staging buffer created 30
-  lines earlier in the same function and freed only in its `finally`. No lifetime in today's code
-  explains a null handle there. Not reproduced, and not claimed fixed.
+  lines earlier in the same function. Explained, reproduced, and already fixed upstream on
+  2026-05-02: see [The TexturePreviewCache crash](#the-texturepreviewcache-crash-hs_err_pid73905).
 
 **What frees or nulls a buffer under a live renderer.** Not the obvious suspects. Garbage-collected
 `VulkanBuffer`s go through `AutoDisposer.drain(device)` onto `Renderer.cleanup`, and that list is
@@ -192,17 +193,70 @@ one, drained every renderer's collected objects into whichever renderer drained 
 
 **Test.** `four.live-frame-buffer-lifetime.smoke` (`LiveFrameBufferLifetimeSmoke.kt`) checks the
 three lifetimes on a real device without relying on a driver to fault: 27 million reads of the
-handle across 20 000 reallocs see no zero; a released buffer refuses a binding by name; after
+handle across 20 000 reallocs see no zero; a buffer released with `cleanup()` stays valid for
+the frames in flight (25 frames on this Mac) and then refuses a binding by name; after
 `Renderer.cleanup()`, `Queue.submit` and `descriptorBinding()` refuse by name. Negative control,
 run once: putting back `buffer = 0L` before `allocate` made it fail with 25.8 million zero handles
 in 27.2 million reads, which is also a measure of how wide the window was.
 
-**Still immediate, still "call when safe".** `VulkanBuffer.cleanup()`, `Module.cleanup()` and the
-helpers built on them (`GpuRadixSort.cleanup()`, `GaussianSplatRenderer`'s `Cloud.cleanup()`)
-destroy at once. Called while a frame that uses them is being recorded or is in flight, they
-are still unsafe; the descriptor-push guard turns the push case into an exception, but a pipeline
-bind or a buffer-device-address read is not guarded. Prefer `renderer.cleanup += Runnable { … }`,
-which is what `VulkanBuffer.pushCleanup()` does.
+## Immediate cleanup mid-frame, now retired
+
+Written 2026-09-27, later the same night.
+
+Until `f11771b33`, `VulkanBuffer.cleanup()`, `Module.cleanup()` and `ComputeModule.cleanup()`
+destroyed their Vulkan handles at once, and so did everything built on them
+(`GpuRadixSort.cleanup()`, `GaussianSplatRenderer`'s `Cloud.cleanup()`, `ImageReducer`, the RectSL
+sequence renderer). Three child boxes under the renderer box above measured what that costs, each
+run through `field_backdoor.py` on port 8472 with the lesson-1b shaders:
+
+| Child box | at `28fa63187` | with `f11771b33` |
+| --- | --- | --- |
+| a raw thread replaces each of the module's per-frame camera UBOs with a new `VulkanBuffer` and calls `cleanup()` on the old one, 5 000 times | 2 of 3 runs crashed the JVM (`MVKBuffer::getMTLBuffer()+0x10` ← `Module$Uniform.pushDescriptorSet`, after `VUID-VkDescriptorBufferInfo-buffer-parameter`); the third survived only because the `descriptorBinding()` refusal threw on the render worker, which stopped the renderer box | 0 of 3; all 5 000 swaps done, no VUID, a box run afterwards printed |
+| the same swap from the box's own `loop {}`, once per frame for 600 frames | 0 of 2 crashed, but each run logged `VUID-vkDestroyBuffer-buffer-00922` 40 times: a buffer destroyed while a submitted frame still used it. MoltenVK survives that; the spec calls it undefined | 0 of 2, no VUID |
+| `module.current.cleanup()` on the box's own, still-installed module at frame 60 | 3 of 3 crashed the JVM (`MVKCmdBindGraphicsPipeline::isTessellationPipeline`, after `VUID-vkCmdBindPipeline-pipeline-parameter` and `VUID-vkDestroyPipeline-pipeline-00765`) | 0 of 3; the loop reached frame 300, no VUID |
+
+The loop-only case is the one ordinary box code hits: box code runs on the runloop, which
+`render()` blocks while it records, so it can never free a handle *during* recording, only while
+earlier frames are still executing. The thread case is the race a worker, a raw `thread {}` or a
+parallel recording pass can hit.
+
+The fix uses the retirement queue that `realloc` already used rather than inventing one:
+
+- `VulkanBuffer.cleanup()` queues the destruction on `renderer.cleanup`, released
+  `8 × numImages` submitted frames later, while the renderer is alive; it destroys at once only
+  after the renderer has closed (device idle; the teardown drain calls it that way). Between the
+  two the buffer is still valid, and a render worker that read it a moment before is fine; after
+  destruction, `map`, `unmap`, `descriptorBinding` refuse with "… used after cleanup() destroyed
+  it …", and `realloc` of a released buffer refuses at once. `pushCleanup()` is now the same call.
+- `Module.cleanup()` and `ComputeModule.cleanup()` set `valid = false` at once (now `@Volatile`),
+  so no new frame records them, and retire the pipeline, layout, shader modules and descriptor
+  layouts through the same queue.
+
+The cost is that released memory is held for about 25 frames longer (measured in the smoke), the
+same as a `realloc`'s old buffer.
+
+The smoke covers the buffer half (valid across the frames in flight, refused after). The module
+half is covered only by the live-Field runs above: a jvm-main smoke would need a whole shader
+pipeline to build a `Module`.
+
+## The TexturePreviewCache crash (`hs_err_pid73905`)
+
+`git log -S "cpuOnly = true" -- src/jvmMain/kotlin/afield/four/FourVisualizers.kt` answers it. On
+2026-05-01 `TexturePreviewCache.capture` created its staging buffer with `cpuOnly = true`. A
+CPU-only `VulkanBuffer` is a `memAlloc`ed host block with `buffer = 0`; it has no VkBuffer. The
+capture recorded `vkCmdCopyImageToBuffer(…, staging.buffer, …)` with that 0, and MoltenVK, which
+encodes Metal commands at submit time, dereferenced the null `MVKBuffer*` inside
+`MVKCmdBufferImageCopy::encode` during `vkQueueSubmit`: the `Queue.submit` frame in the hs_err.
+`ed7fd0c26` ("harden docs capture pipeline", 2026-05-02, the next day) removed `cpuOnly = true`.
+
+Reproduced on 2026-09-27 by putting that one line back and running the FIELD_TEST
+`docs.fabricate.ambient-occlusion`, which drives `StandardRendererDocsHarness.captureFinalImage`
+exactly as the hs_err's stack does: **2 of 2 runs crashed** with the same signature
+(`MVKBuffer::getMTLBuffer()+0x10` ← `MVKCmdBufferImageCopy<1>::encode` ← `Queue.submit` ←
+`TexturePreviewCache.capture`, on `field-runloop-main`). Without the line, 2 of 2 passed. Nothing
+in this branch was needed for it; no code in `src/jvmMain` passes a CPU-only buffer to a transfer
+command today (the only `cpuOnly = …` left is `magic.kt`'s inlined buffers), and
+`descriptorBinding()` refuses a CPU-only buffer by name for the descriptor case.
 
 ## Two residual risks from 2026-09-26, checked
 
@@ -378,3 +432,41 @@ renderer too; it then does (`relaunched 2 box(es) for renderer box Rend: Rend, S
 server log), but reports `ok: false` for the stderr reason under
 [Relaunching what teardown stopped](#relaunching-what-teardown-stopped), and the backdoor stops
 the invocation there.
+
+### Immediate `Module.cleanup()` mid-frame
+
+Same renderer box and shaders as above; replace the stress box with `module_cleanup_box.kt` and
+drop the `stop`/`action` lines (run on 2026-09-27 at `28fa63187` and at `f11771b33`):
+
+```kotlin
+var m = Mesh()
+var module = moduleHere()
+module += "mainMesh" to m
+renderer += module
+m.set(3, 1) {
+    pos.add(0, 0, 0, 1, 0, 0, 0, 1, 0)
+    3 { col.add(1, 1, 1, 1) }
+    tri.add(0, 1, 2)
+}
+
+// Free this box's own pipeline with Module.cleanup() while the module is still installed and
+// frames that bound it are in flight, the way a `Cloud.cleanup()` or a sort's cleanup() can.
+val report = java.io.File(System.getProperty("user.dir"), "build/live-frame-cleanup.txt")
+var n = 0
+loop {
+    n++
+    if (n == 60) {
+        module.current.cleanup()
+        report.appendText("MODULE_CLEANED at frame $n\n")
+    }
+    if (n == 300) report.appendText("LOOP_REACHED $n\n")
+    frame()
+}
+```
+
+At `28fa63187` the JVM dies right after frame 60 (`MVKCmdBindGraphicsPipeline` in the hs_err).
+With `f11771b33`, `build/live-frame-cleanup.txt` reads `MODULE_CLEANED at frame 60` then
+`LOOP_REACHED 300` and the server log has no `VUID-`. The window stays up but shows nothing
+either way: this box never writes its camera UBO, so its triangle is degenerate before and after
+the cleanup. The test is that the JVM and the renderer survive, not a picture.
+
