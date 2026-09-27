@@ -117,6 +117,8 @@ The **study card** in the scene box's output is the person's side of the study. 
   number in the editor. Moving one previews the change **in the window** as you drag, without
   touching the program; **Keep these numbers** makes the new values a revision, **Reset** puts the
   window back;
+- keys: every number at once, captured under a name, to apply or blend between in the window, as
+  on the StackSL card (a colour blends channel by channel);
 - any variants the model has offered, each with **Adopt**;
 - the revision history, each with **Restore**;
 - exports in progress, which can be cancelled;

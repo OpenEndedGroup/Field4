@@ -286,6 +286,7 @@ class StackSLStudy(
             "nonFiniteFraction" to r.value.nonFiniteFraction,
             "stages" to r.value.stages.map { mapOf("stage" to it.stage, "line" to it.line, "text" to it.text, "comment" to it.comment) },
             "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.map { knobSummary(it, names[it.knob]) } },
+            "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
             "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
             "exports" to exports().ifEmpty { null },
             "frame" to FRAME
@@ -306,11 +307,15 @@ class StackSLStudy(
      * The names the person's card shows [knobs] of [source] by ([KnobNames]), those that are known; [ask]
      * asks the fast model for the rest, calling [ready] once they are stored.
      */
-    internal fun knobNames(source: String, knobs: List<StackSLKnob>, ask: Boolean = false, ready: () -> Unit = {}): Map<Int, String> {
+    internal fun knobNames(source: String, knobs: List<StackSLKnob>, ask: Boolean = false, ready: () -> Unit = {}): Map<Int, String> =
+        KnobNames.names("StackSL", ABOUT_FOR_NAMES, source, namingKnobs(source, knobs), directory, ask, ready).orEmpty()
+
+    /** The shape of [source] that knob names and the card's keys belong to ([KnobNames.shape]). */
+    internal fun knobShape(source: String, knobs: List<StackSLKnob>): String = KnobNames.shape("StackSL", source, namingKnobs(source, knobs))
+
+    private fun namingKnobs(source: String, knobs: List<StackSLKnob>): List<KnobNames.Knob> {
         val lines = source.lines()
-        return KnobNames.names("StackSL", ABOUT_FOR_NAMES, source,
-            knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) },
-            directory, ask, ready).orEmpty()
+        return knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) }
     }
 
     // ---- Publishing ---------------------------------------------------------------------------

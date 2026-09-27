@@ -460,7 +460,12 @@ class RectSLStudy(
      * asks the fast model for the rest, calling [ready] once they are stored.
      */
     internal fun knobNames(source: String, knobs: List<RectSLKnob>, ask: Boolean = false, ready: () -> Unit = {}): Map<Int, String> =
-        KnobNames.names("RectSL", ABOUT_FOR_NAMES, source, knobs.map { KnobNames.Knob(it.knob, it.line, it.text, it.role) }, directory, ask, ready).orEmpty()
+        KnobNames.names("RectSL", ABOUT_FOR_NAMES, source, namingKnobs(knobs), directory, ask, ready).orEmpty()
+
+    /** The shape of [source] that knob names and the card's keys belong to ([KnobNames.shape]). */
+    internal fun knobShape(source: String, knobs: List<RectSLKnob>): String = KnobNames.shape("RectSL", source, namingKnobs(knobs))
+
+    private fun namingKnobs(knobs: List<RectSLKnob>) = knobs.map { KnobNames.Knob(it.knob, it.line, it.text, it.role) }
 
     /** Everything a model needs before editing: source, live-edit state, history, the scene's shape, lines and knobs. */
     fun inspect(id: String = "current"): StudyReport {
@@ -487,6 +492,7 @@ class RectSLStudy(
             "scene" to sceneSummary(r.value), "warnings" to r.value.warnings.ifEmpty { null },
             "lines" to r.value.lines,
             "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.take(80).map { knobSummary(it, names[it.knob]) } },
+            "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
             "moreKnobs" to (r.value.knobs.size - 80).takeIf { it > 0 },
             "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
             "exports" to exports().ifEmpty { null },

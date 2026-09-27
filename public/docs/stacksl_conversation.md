@@ -96,6 +96,13 @@ The **study card** in the program box's output is the person's side of the study
   until the names arrive, and it stays on the slider's tooltip. The names are stored with the study,
   by the program's shape, so turning or keeping a number never asks again, and the model's Inspect
   lists each knob by the same name;
+- **keys**: **Capture these numbers as a key** keeps every number at once, under a name. A key is a
+  keyframe key like any other ([keyframer](keyframer_examples.md)), saved in the study's folder with its
+  version history. Click a key to move every slider to it, or choose two and drag **blend** to move
+  between them, with the preview following; **Keep these numbers** then makes what you see a
+  revision. A key applies to the program it was captured from, with any of its numbers changed, but
+  not once the text around them has changed. The model's Inspect lists the keys, and what each
+  would change;
 - the program's stages, each a small picture of what that line produced — for a line that stores
   into a mark (`>sky`), the value it stored. Click one and the window shows that stage instead of
   the whole program; click it again to go back. With **the window shows the editor's line** ticked,

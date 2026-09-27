@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-7 source file(s), 140 public symbol(s), 116 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+8 source file(s), 140 public symbol(s), 116 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -184,6 +184,10 @@ Where a study of one box keeps its revisions: `studies/<box id>` in the box's do
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">lineOfViewState</span><span class="p">(</span><span class="n">viewState</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/SourceStudy/#L402) | The cursor's line in a Monaco view state (`editor.saveViewState()` as JSON), or null. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">directory</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">File</span></code>](source/jvmMain/afield/stdlib/SourceStudy/#L409) | `studies/<box id>` in `box`'s document. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">replacer</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/SourceStudy/#L418) | A replace-source function for a study of `box`'s `property`: on the main thread, only if the property still holds what the edit was based on, and marking the sidecar for saving. |
+
+## StudyKeys.kt { #studykeys-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/StudyKeys.kt` — [read the source](source/jvmMain/afield/stdlib/StudyKeys/)
 
 ## props.kt { #props-kt }
 

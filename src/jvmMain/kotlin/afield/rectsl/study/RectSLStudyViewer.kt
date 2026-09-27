@@ -109,6 +109,15 @@ class RectSLStudyViewer(
                 "time" -> { live.hold(message["seconds"].asDouble()); return "holding at ${RectSLStudy.secs(message["seconds"].asDouble())} s" }
                 "play" -> { live.hold(null); return "playing" }
                 "restart" -> { live.restart(); return "playing from the start" }
+                // A key: every number as the card holds it now, kept by name for this scene's shape.
+                // The card adds it in place, so the sliders keep what has not been kept.
+                "capture-key" -> {
+                    val revision = study.revisions.revision()
+                    val values = message["values"].properties().associate { it.key.toInt() to it.value.asDouble() }
+                    val name = message["name"]?.asText()?.let { afield.stdlib.StudyKeys.slug(it) } ?: afield.stdlib.StudyKeys.nextName(study.directory)
+                    afield.stdlib.StudyKeys.save(study.directory, name, study.knobShape(revision.source, revision.value.knobs), values, "captured on the card from ${revision.id}")
+                    return "captured $name"
+                }
                 // The editor, not the scene: put it on a knob's number, or on a line.
                 "locate" -> {
                     val revision = study.revisions.revision()
@@ -188,7 +197,7 @@ class RectSLStudyViewer(
         val (fw, fh) = if (aspect >= 1) 240 to (240 / aspect).toInt() else (160 * aspect).toInt() to 160
         val (tw, th) = if (aspect >= 1) 120 to (120 / aspect).toInt() else (90 * aspect).toInt() to 90
         val config = mapper.writeValueAsString(linkedMapOf("id" to id, "action" to actionId, "revision" to r.id, "checkedHash" to SourceStudy.hash(r.source),
-            "duration" to c.duration))
+            "duration" to c.duration, "keys" to afield.stdlib.StudyKeys.config(study.directory, study.knobShape(r.source, c.knobs))))
         return buildString {
             append("<div id='$id' class='rectsl-study' onpointerdown='event.stopPropagation()' onmousedown='event.stopPropagation()' onclick='event.stopPropagation()' onwheel='event.stopPropagation()'>")
             append("""<style>
@@ -213,6 +222,8 @@ class RectSLStudyViewer(
                 #$id input[type=color]{width:100%;height:22px;border:1px solid #444;background:none;padding:0}
                 #$id button{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer}
                 #$id button:hover{background:#333}
+                #$id select{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:2px 6px;border-radius:4px}
+                #$id .blendslider .field-label{width:auto}
                 #$id .strip{display:flex;flex-wrap:wrap;gap:8px}
                 #$id .cell{width:${tw}px;font-size:11px;color:#aaa}
                 #$id .cell img{width:${tw}px;height:${th}px;border:1px solid #333;display:block;margin-bottom:3px;background:#000}
@@ -268,7 +279,10 @@ class RectSLStudyViewer(
                 }
             }
             if (folded) append("</details>")
-            if (c.knobs.isNotEmpty()) append("<div style='margin-top:6px'><button data-act='keep'>Keep these numbers</button> <button data-act='reset'>Reset</button></div>")
+            if (c.knobs.isNotEmpty()) {
+                append("<div style='margin-top:6px'><button data-act='keep'>Keep these numbers</button> <button data-act='reset'>Reset</button></div>")
+                append(afield.stdlib.StudyKeys.section(afield.buildSliderHtml("$id-blend", "blend", 0.0, 1.0, 0.005, 0.0, send = false, extraAttributes = "data-blend='1'")))
+            }
             if (variants.isNotEmpty()) {
                 append("<h4>Variants held for adoption</h4><div class='strip'>")
                 variants.forEach { (label, note, source) ->
@@ -335,6 +349,16 @@ class RectSLStudyViewer(
               p.dataset.rgb.split(',').forEach((k,i)=>{ const s=sliders.find(x=>x.dataset.knob===k); if(s) setKnob(s,Math.round(rgb[i]*1000)/1000); });
               p.parentElement.querySelector('.field-value').textContent=p.value;
             }));
+            // Keys (StudyKeys.SCRIPT): every knob's number now, and moving the sliders and swatches to a set of them.
+            const knobValues=()=>{ const o={}; current.forEach((v,k)=>{ o[k]=v; }); return o; };
+            const applyValues=(vals)=>{ Object.entries(vals).forEach(([k,v])=>{
+              const s=sliders.find(x=>x.dataset.knob===k); if(s){ setKnob(s,v); return; }
+              const h=hexes.find(x=>x.dataset.hex===k); if(!h) return; const hex='#'+Math.round(v).toString(16).padStart(6,'0');
+              h.value=hex; h.parentElement.querySelector('.field-value').textContent=hex; current.set(k,Math.round(v)); preview(); }); };
+            // A hex colour mixes channel by channel; any other number, straight.
+            const blendValue=(a,b,t,k)=>{ if(!hexes.some(h=>h.dataset.hex===k)) return a+(b-a)*t;
+              return [16,8,0].reduce((o,sh)=>o+(Math.round(((a>>sh)&255)+(((b>>sh)&255)-((a>>sh)&255))*t)<<sh),0); };
+""".trimIndent() + "\n" + afield.stdlib.StudyKeys.SCRIPT.trimIndent() + "\n" + """
             root.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',(ev)=>{
               ev.stopPropagation(); const act=b.dataset.act;
               if(act==='play'||act==='restart'){ if(scrubValue) scrubValue.textContent='playing'; send({action:act}); return; }

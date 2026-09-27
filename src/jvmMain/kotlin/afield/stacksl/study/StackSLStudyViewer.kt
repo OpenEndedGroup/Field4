@@ -108,6 +108,15 @@ class StackSLStudyViewer(
                     live.pinnedStage = words?.takeIf { it != live.pinnedStage }
                     return live.pinnedStage?.let { "the window shows the stage after word $it" } ?: "the window shows the whole program"
                 }
+                // A key: every number as the card holds it now, kept by name for this program's shape.
+                // The card adds it in place, so the sliders keep what has not been kept.
+                "capture-key" -> {
+                    val revision = study.revisions.revision()
+                    val values = message["values"].properties().associate { it.key.toInt() to it.value.asDouble() }
+                    val name = message["name"]?.asText()?.let { afield.stdlib.StudyKeys.slug(it) } ?: afield.stdlib.StudyKeys.nextName(study.directory)
+                    afield.stdlib.StudyKeys.save(study.directory, name, study.knobShape(revision.source, revision.value.knobs), values, "captured on the card from ${revision.id}")
+                    return "captured $name"
+                }
                 "locate" -> {
                     val revision = study.revisions.revision()
                     val knob = message["knob"]?.asInt()?.let { revision.value.knobs.getOrNull(it) }
@@ -161,7 +170,8 @@ class StackSLStudyViewer(
             "id" to id, "action" to actionId, "revision" to r.id, "checkedHash" to SourceStudy.hash(r.source),
             "vertex" to webgl?.vertex, "fragment" to webgl?.fragment,
             "wires" to webgl?.wires?.map { listOf(it.first, it.second) }, "knobWires" to wireOf,
-            "animated" to r.value.animated
+            "animated" to r.value.animated,
+            "keys" to afield.stdlib.StudyKeys.config(study.directory, study.knobShape(r.source, knobs))
         ))
         fun range(k: StackSLKnob): Triple<Double, Double, Double> {
             val v = k.value
@@ -201,6 +211,8 @@ class StackSLStudyViewer(
                 #$id input[type=color]{width:100%;height:22px;border:1px solid #444;background:none;padding:0}
                 #$id button{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer}
                 #$id button:hover{background:#333}
+                #$id select{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:2px 6px;border-radius:4px}
+                #$id .blendslider .field-label{width:auto}
                 #$id .strip{display:flex;flex-wrap:wrap;gap:8px}
                 #$id .cell{width:96px;font-size:11px;color:#aaa}
                 #$id .cell img{width:96px;height:96px;border:1px solid #333;display:block;margin-bottom:3px}
@@ -250,7 +262,10 @@ class StackSLStudyViewer(
                 }
             }
             if (folded) append("</details>")
-            if (knobs.isNotEmpty()) append("<div style='margin-top:6px'><button data-act='keep'>Keep these numbers</button> <button data-act='reset'>Reset</button></div>")
+            if (knobs.isNotEmpty()) {
+                append("<div style='margin-top:6px'><button data-act='keep'>Keep these numbers</button> <button data-act='reset'>Reset</button></div>")
+                append(afield.stdlib.StudyKeys.section(afield.buildSliderHtml("$id-blend", "blend", 0.0, 1.0, 0.005, 0.0, send = false, extraAttributes = "data-blend='1'")))
+            }
             append("</div></div>")
             if (stages.isNotEmpty()) {
                 val unit = r.value.stages.firstOrNull()?.granularity ?: "line"
@@ -406,6 +421,11 @@ class StackSLStudyViewer(
               const on=!c.classList.contains('pinned'); root.querySelectorAll('.cell.stage').forEach(x=>x.classList.remove('pinned'));
               if(on) c.classList.add('pinned'); send({action:'stage',words:parseInt(c.dataset.words)}); }));
             root.querySelectorAll('input.follow').forEach(f=>f.addEventListener('change',(ev)=>{ ev.stopPropagation(); send({action:'follow',on:f.checked}); }));
+            // Keys (StudyKeys.SCRIPT): every knob's number now, and moving the sliders to a set of them.
+            const knobValues=()=>{ const o={}; sliders.forEach(s=>{ o[s.dataset.knob]=parseFloat(s.dataset.value); }); return o; };
+            const applyValues=(vals)=>{ Object.entries(vals).forEach(([k,v])=>{ const s=sliders.find(x=>x.dataset.knob===k); if(s) setKnob(s,v); }); };
+            const blendValue=(a,b,t)=>a+(b-a)*t;
+""".trimIndent() + "\n" + afield.stdlib.StudyKeys.SCRIPT.trimIndent() + "\n" + """
             root.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',(ev)=>{
               ev.stopPropagation(); const act=b.dataset.act;
               if(act==='pause'){ const now=performance.now(); if(paused){ start=now; paused=false; b.textContent='pause'; } else { offset=offset+(now-start)/1000; paused=true; b.textContent='play'; } return; }

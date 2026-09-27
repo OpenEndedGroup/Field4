@@ -280,3 +280,15 @@ running heartbeats stopped with it, so it looked like the main thread stalling. 
 and on two more lanterns runs under a watchdog set to dump the threads if it recurred (it did not), so
 it is not understood. Both the scene's autostart and the `run` had started, and neither had reported,
 when the heartbeats stopped. That is the evidence to look for if it happens again.
+
+### Keys on the card — 2026-09-27
+
+The first step of a bridge to the keyframer: **Capture these numbers as a key** saves every knob as a
+`KeyframeScope` key (`StudyKeys`, in the study's `keys/`, with `.versions` history), and the card
+applies a key or blends between two, in the browser, so the preview follows the drag. Keys are
+addressed by knob index plus the program's shape — the same shape the knob names use — so a key
+survives **Keep** (numbers change, shape does not) and is offered, disabled, once the text around the
+numbers changes. Inspect lists each key with what it would change. The keys render client-side, so
+capturing one does not rebuild the card and lose the sliders' unkept positions. Not yet done: sweeps
+over keys as variants, a model tool that captures or proposes keys, and animating one number (RectSL
+first, whose source already has keyframe quotes).
