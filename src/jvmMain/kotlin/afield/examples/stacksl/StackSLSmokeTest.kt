@@ -985,6 +985,20 @@ object StackSLSmokeTest {
         require(missingStackSL.isEmpty()) {
             "gallery workspace boxes lack a stackSL property: $missingStackSL"
         }
+
+        // Field runs the loose sidecar and the offline viewer shows the inline copy, so the
+        // two can disagree without either one failing. Hold them equal, and hold the file to
+        // what the codec writes, so a refresh on a clean tree changes nothing.
+        val saving = afield.SavingContext()
+        val dir = edn.parentFile
+        val stale = saving.readInlineFileSnapshots(dir.absolutePath)
+            .filter { java.io.File(dir, it.path).readText() != it.inline }
+            .map { it.path }
+        val refresh = "refresh with afield.SavingContext().refreshInlineFilesFromDisk(\"${dir.path}\")"
+        require(stale.isEmpty()) { "metadata.edn inline copies differ from their sidecars: $stale; $refresh" }
+        require(edn.readText() == saving.canonicalInlineMetadata(dir.absolutePath).metadataEdn) {
+            "metadata.edn is not what Field's EDN codec writes; $refresh"
+        }
     }
 
     private fun compilesCreativeFreedomVariants() {
