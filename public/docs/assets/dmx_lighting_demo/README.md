@@ -7,7 +7,7 @@ goes over UDP to this machine and comes back.
 | box | action | what it shows |
 | --- | --- | --- |
 | **1. Art-Net receiver** | launch first | Field as an Art-Net node on UDP 6454. Draws universes 1 and 2 as they arrive, one cell per RGB pixel. |
-| **2. Patch + pixel mapper** | launch | 200 RGB pixels of LED tape along a curve, coloured by a function of (x, y, t) on the sender's 44 Hz clock and sent as Art-Net. 170 pixels fit in universe 1; the other 30 roll into universe 2, which box 1 shows as a part-filled second grid. |
+| **2. Pixel mapper** | launch | 200 RGB pixels of LED tape along a curve, coloured by a function of (x, y, t) on the sender's 44 Hz clock and sent as Art-Net. 170 pixels fit in universe 1; the other 30 roll into universe 2, which box 1 shows as a part-filled second grid. |
 | **3. ArtPoll** | run | Art-Net discovery. With box 1 running, Field answers its own poll as a node. |
 | **4. sACN matrix** | launch | An image on a 16 × 8 matrix of RGBW fixtures, sent as E1.31 and received again in the same box. The received universe is drawn as RGBW fixtures in wire order, so every other row runs backwards — the matrix is wired serpentine. |
 

@@ -10,6 +10,13 @@ an image.
 Nothing here needs hardware to try. Open `public/docs/assets/dmx_lighting_demo/` as a document: its
 four boxes send over the network to this machine, receive the packets again and draw what arrived.
 
+![The demo document running: an Art-Net receiver drawing two universes, a 200-pixel strip on a curve, and an sACN RGBW matrix with the universe it received](assets/dmx_lighting/demo_document_running.png)
+
+On the left, Field is an Art-Net node drawing the two universes it receives. In the middle is the
+sender: 200 pixels on a curve, 170 in universe 1 and the remaining 30 in universe 2, which is why the
+second grid on the left is mostly empty. On the right, a matrix of RGBW fixtures is sent as sACN and
+received back in the same box.
+
 ## Five lines to a light
 
 ```diffstatic {data-lang=kotlin}
@@ -194,9 +201,11 @@ not hold Art-Net frames for it.
 
 ??? aside "How this page's pictures were made"
     Every picture is real output from the code on this page, run by an agent through Field's backdoor
-    on 2026-09-27, not a docs-runner capture. The two Art-Net universes were drawn inside Field
-    from what its `DmxInput` had received over UDP (`renderLinesPng(universeToFLines(...))`); the
-    strip and matrix pictures are the SVG the demo boxes displayed, rasterised. They would ideally be
+    on 2026-09-27, not a docs-runner capture. The first is a Playwright screenshot of the demo
+    document, loaded from the committed bundle, with its three launched boxes running. The two
+    Art-Net universes further down were drawn inside Field from what its `DmxInput` had received
+    over UDP (`renderLinesPng(universeToFLines(...))`); the strip and matrix pictures are the SVG
+    the demo boxes displayed, rasterised. They would ideally be
     capture fences, but a capture that needs two launched boxes exchanging packets is not something
     the runner does today. The protocol claims were checked against a decoder written separately
     from the encoder, in Python, and against the third-party `sacn` package; the record is

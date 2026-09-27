@@ -96,7 +96,10 @@ the committed bundle* (`open dmx_lighting_demo --must-exist`, then `launch dmx-r
 the ArtPoll box printed Field's own `ArtPollReply(127.0.0.1 "Field4" …)`; the receiver displayed
 both universes, the matrix box both its channels. A box assembled from every snippet on the public
 page also ran. Pixels were looked at: the received universes rendered in-box with `renderLinesPng`,
-and the displayed SVGs rasterised (these are the page's images). Multicast on this Mac: joining
+and the displayed SVGs rasterised (these are the page's images). With `--with-playwright`,
+`screenshot-window --uid dmx-sender --open-outputs` on the backdoor-managed Field returned a real
+4400 × 5600 capture of the running document (not the 48 × 48 placeholder `screenshot-box` gives on
+some headless paths); that capture is the page's first image. Multicast on this Mac: joining
 239.255.0.77 and sending to it delivered the packet (`received=1 ch1=123`).
 
 ## Traps found tonight
@@ -113,6 +116,10 @@ and the displayed SVGs rasterised (these are the page's images). Multicast on th
   `set-output` events across a `sleep` undercounts a running loop (it looked like the matrix box had
   drawn once). Use `wait-output` to sample a later frame.
 - **A closed output channel is 0 × 0**: `showPatch`/`showUniverse` call `displayOpen`.
+- **The first bundle layout overlapped in the real UI.** Output panels open beneath a box and are
+  about 480 canvas px wide and 180 px tall per channel, and a box widens to fit a long name — so
+  boxes 110 px apart vertically put one box's outputs under the next box. Only the Playwright
+  window capture showed it; the bundle now lays the boxes out in three columns 520–620 px apart.
 - **`FLine.cubicTo(x0, y0, z0 = 0, x1, …)`** has defaulted z parameters in the middle, so six
   positional numbers mean the wrong thing; use names (the demo does).
 
