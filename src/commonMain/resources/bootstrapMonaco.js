@@ -10,7 +10,7 @@ import {
 	monacoGetEnclosingScope
 } from "./afield.mjs"
 import { renderFieldMarkdown } from "./markdownView.js"
-import { installFieldSuggest } from "./fieldSuggest.js"
+import { installFieldSuggest, requestLineNote, lineNoteHtml } from "./fieldSuggest.js"
 
 if (!window.require || typeof window.require.config !== "function") {
         throw new Error("Monaco AMD loader is missing; expected /min/vs/loader.js to define window.require before bootstrapMonaco.js")
@@ -188,7 +188,11 @@ const setEditorContextBadge = (editor, payload = null) => {
         if (!node) return
 
         const previousState = captureBadgeViewState(node)
-        const next = ((payload && payload.html) || "").trim()
+        // What the cursor's line shows (fieldSuggest.js#requestLineNote), under whatever the word says.
+        const lineNote = editor._afieldLineNote
+        const cursor = editor.getPosition && editor.getPosition()
+        const noteHtml = lineNote && cursor && lineNote.line === cursor.lineNumber ? lineNote.html : ""
+        const next = (((payload && payload.html) || "") + noteHtml).trim()
         if (next.length === 0) {
                 node.innerHTML = ""
                 node.style.opacity = "0"
@@ -658,6 +662,27 @@ const installEditorBottomOverlayFade = (editor) => {
 
 window.installEditorBottomOverlayFade = installEditorBottomOverlayFade
 
+// Ask what the cursor's line shows, and redraw the badge with it when the answer is still for that line.
+const refreshLineNote = (editor, resolveContext) => {
+        const model = editor.getModel && editor.getModel()
+        const position = editor.getPosition && editor.getPosition()
+        const context = resolveContext ? resolveContext(editor) : null
+        if (!model || !position || !context || !context.uid || !context.property) {
+                editor._afieldLineNote = null
+                return
+        }
+        const line = position.lineNumber
+        const version = model.getVersionId()
+        requestLineNote(context.uid, context.property, model.getValue(), line).then((note) => {
+                const now = editor.getPosition && editor.getPosition()
+                if (!now || now.lineNumber !== line || editor.getModel() !== model || model.getVersionId() !== version) return
+                const html = note ? lineNoteHtml(note) : ""
+                const before = editor._afieldLineNote ? editor._afieldLineNote.html : ""
+                editor._afieldLineNote = html ? { line, html } : null
+                if (html !== before) setEditorContextBadge(editor, editor._afieldSymbolContextMeta)
+        })
+}
+
 const installSymbolContextMonitor = (editor, resolveContext) => {
         if (!editor || editor._afieldSymbolContextInstalled) return
         editor._afieldSymbolContextInstalled = true
@@ -672,6 +697,7 @@ const installSymbolContextMonitor = (editor, resolveContext) => {
                         const suggestSignatureUntil = Number(editor._afieldSuggestSignatureUntil || 0)
                         if (suggestSignatureUntil > Date.now()) return
                         if (suggestSignatureUntil > 0) editor._afieldSuggestSignatureUntil = 0
+                        refreshLineNote(editor, resolveContext)
                         const localPayload = buildLanguageContextPayload(editor, resolveContext)
                         if (localPayload) {
                                 const state = ensureSymbolContextState()

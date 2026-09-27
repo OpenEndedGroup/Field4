@@ -310,6 +310,25 @@ data class CompletionRequest(
     val property: String = "code",
 )
 
+/** Asks what [line] (1-based) of a box's [property], holding [allCode], shows — see `afield.stdlib.LineNotes`. */
+@Serializable
+data class LineNoteRequest(
+    val uid: String,
+    val property: String,
+    val allCode: String,
+    val line: Int,
+)
+
+/** What a line shows: a sentence, and a picture as a `data:` URL; both empty when there is nothing to say. */
+@Serializable
+data class LineNoteReply(
+    val uid: String,
+    val property: String,
+    val line: Int,
+    val caption: String = "",
+    val image: String = "",
+)
+
 /**
  * One completion exactly as Field's popup presented it. This is intentionally a client report,
  * rather than a copy of the server response: `fieldSuggest.js` merges quick, language, compiler,

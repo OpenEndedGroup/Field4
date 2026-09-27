@@ -658,6 +658,12 @@ private fun leaveSelectionContexts(session: WebSocketSession) {
 private fun selectionContextOf(session: WebSocketSession): String? =
     selectionContextSessions.entries.firstOrNull { it.value.contains(session) }?.key
 
+/** The newest `line-note` request for each box, so the worker skips the ones the editor has moved past. */
+private val lineNoteRequests = ConcurrentHashMap<String, LineNoteRequest>()
+
+/** Where line notes are drawn: a provider usually renders, and must not hold up a socket or the main thread. */
+private val lineNoteWorker = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "line-notes").apply { isDaemon = true } }
+
 private val aiKotlinNotifyThrottle = ConcurrentHashMap<String, Long>()
 private val aiKotlinCompletionsInFlight = AtomicInteger(0)
 
@@ -2602,6 +2608,28 @@ class Server {
 
                 box.ke.complete(box, exec, reply)
 
+                Handled.yes
+            })
+
+            // What one line of a box's program shows (afield.stdlib.LineNotes), for the completion popup
+            // and the notes beside the cursor. Providers usually render a picture, so they run on a
+            // thread of their own, one at a time; the newest request for a box replaces any still waiting.
+            handlers["line-note"] = mutableSetOf({ message, reply ->
+                val request = Json.decodeFromJsonElement<LineNoteRequest>(message.payload!!)
+                val box = box(request.uid, createIfMissing = false)
+                lineNoteRequests[box.id] = request
+                lineNoteWorker.execute {
+                    if (lineNoteRequests[box.id] !== request) {
+                        reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line)))
+                        return@execute
+                    }
+                    val note = runCatching { afield.stdlib.LineNotes.note(box, request.property, request.allCode, request.line) }
+                        .onFailure { lprintln("warning,study", "line note for '${box.name}' line ${request.line} failed: $it") }
+                        .getOrNull()
+                    reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line,
+                        note?.caption.orEmpty(),
+                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty())))
+                }
                 Handled.yes
             })
 

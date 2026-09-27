@@ -707,3 +707,32 @@
         max-height: 32vh;
     }
 }
+
+/* A line note: what the program shows at the line completion opened on (fieldSuggest.js#requestLineNote). */
+.afield-line-note {
+  margin: 0 0 10px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.afield-line-note img {
+  display: block;
+  max-width: 100%;
+  max-height: 180px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.afield-line-note figcaption {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #9a9aa0;
+}
+/* Beside the cursor, smaller, under the word's note. */
+.hoverlay-left .afield-line-note {
+  margin: 6px 0 0;
+  padding: 6px 0 0;
+  border-bottom: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hoverlay-left .afield-line-note img {
+  max-height: 96px;
+}

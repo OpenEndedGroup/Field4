@@ -439,8 +439,9 @@ class RectSLExecution(val inside: Box) : BoxExecution {
         RectSLPrograms.live(inside).hide()
     }
 
-    // Completion comes from rectsl.js in the browser.
-    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {}
+    /** The evaluator's vocabulary and the scene's own definitions ([afield.rectsl.RectSLVocabulary.complete]). */
+    override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) =
+        reply(Message("complete").payload(afield.rectsl.RectSLVocabulary.complete(completionRequest.allCode, completionRequest.position)))
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun start(execute: Execute, first: String, strand: String, reply: (Message) -> Unit, checkIn: Boolean) {
@@ -573,6 +574,18 @@ fun installRectSLLanguage() {
             applyTopology = ::rectSLTopologyNeedsUpdating,
         ),
     )
+}
+
+/**
+ * A RectSL scene's lines, for the editor's completion popup and cursor notes: the scene built up to each,
+ * at the time its window is showing ([RectSLStudy.lineNote]).
+ */
+@RunsAt(plugins)
+fun installRectSLLineNotes() {
+    afield.stdlib.LineNotes.register(RectSLPrograms.PROPERTY, { it.ke is RectSLExecution }) { box, source, line ->
+        val live = RectSLPrograms.live(box)
+        RectSLPrograms.study(box).lineNote(source, line, if (live.showing != null) live.time() else 0.0)
+    }
 }
 
 /** Re-apply [rectSLTopologyNeedsUpdating] whenever the graph changes. */
