@@ -6,7 +6,8 @@ study card, ``window.png`` the scene's own window, held at one moment with the c
 ``outline.png`` the same window with the editor's cursor on the flame's line, which outlines every
 lantern's flame, and ``saved-chat.png`` the scene box with its saved AI4 chat restored. The document
 is a copy in a temporary workspace, on a Field this script starts and owns, and nothing here makes a
-model call.
+model call: the card's sliders are named from the names stored with the study (``knob-names.json``,
+written by the fast model when the demo was recorded).
 Before capturing, the script checks that the chat Field restores is byte-for-byte the saved chat,
 which ``metadata.edn`` holds only as a ``#afield/file`` reference to its sidecar, and that the card's
 frames were drawn on the GPU. The blank starter is opened too, as a check that it comes up by itself
@@ -52,7 +53,7 @@ CARD_READY = """(async () => {
     if (film.length && film.every(img => img.complete && img.naturalWidth > 0) && summary.includes('GPU')) {
       await new Promise(r => setTimeout(r, 1200));
       return {text: card.querySelector('div.muted')?.textContent ?? '', frames: film.length,
-              sliders: card.querySelectorAll('input[type=range][data-knob]').length, scrub: !!card.querySelector('.scrub')};
+              sliders: card.querySelectorAll('.field-slider[data-knob]').length, scrub: !!card.querySelector('.field-slider[data-scrub]')};
     }
     await new Promise(r => setTimeout(r, 100));
   }
@@ -140,9 +141,9 @@ async def capture(port: int, workspace: Path) -> None:
 
         # Hold the window with the card's scrubber, as a person would, and photograph the window itself.
         await evaluate(f"""(async () => {{
-          const scrub = document.querySelector('.rectsl-study .scrub');
-          scrub.value = '{HELD_AT}'; scrub.dispatchEvent(new Event('input'));
-          await new Promise(r => setTimeout(r, 1500)); return scrub.value; }})()""")
+          const scrub = document.querySelector('.rectsl-study .field-slider[data-scrub]');
+          window.updateFieldSlider(scrub, {HELD_AT});
+          await new Promise(r => setTimeout(r, 1500)); return scrub.dataset.value; }})()""")
         await native("window.png")
         print("captured window.png at", HELD_AT, "s", flush=True)
 

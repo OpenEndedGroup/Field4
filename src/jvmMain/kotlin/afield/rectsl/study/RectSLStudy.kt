@@ -29,6 +29,7 @@ import afield.stacksl.cpu.CpuRaster
 import afield.stacksl.study.StackSLDifference
 import afield.stacksl.study.StackSLStudyEvidence
 import afield.stacksl.study.StackSLStudyShader
+import afield.stdlib.KnobNames
 import afield.stdlib.SourceRevision
 import afield.stdlib.SourceStudy
 import afield.stdlib.StudyAdmission
@@ -103,6 +104,11 @@ class RectSLStudy(
     private var heldBatch: File? = null
 
     companion object {
+        /** What RectSL is, for the fast model that names a scene's knobs ([knobNames]). */
+        internal const val ABOUT_FOR_NAMES = "RectSL is a stack-based language for animated rectangles on a wall: each statement makes a named " +
+            "rectangle, words starting with -> set its position, size, colour, fill and motion, and '( … ) quotes give values over time " +
+            "(time=value keyframes)."
+
         /** How coordinates and time work, in the words every tool result repeats. */
         const val FRAME = "Each frame shows the whole wall (->wall width height units) and nothing outside it. The wall's centre is (0, 0), +x is right and +y is up, " +
             "so a wall 16 wide and 9 tall runs from x -8 to 8 and y -4.5 to 4.5. Time runs from 0 to the scene's ->duration in seconds, and the window loops it. " +
@@ -442,11 +448,19 @@ class RectSLStudy(
 
     /**
      * One knob as one short line — `k7 L9:32 0.22 keyframes of track four-beats: time` — index, where, as
-     * typed, and what reads it (and the colour an `rgb`'s number is part of): a scene has dozens, and a list
-     * of objects was most of every Inspect.
+     * typed, what reads it (and the colour an `rgb`'s number is part of), and the name the person's card
+     * shows it by when it has one: a scene has dozens, and a list of objects was most of every Inspect.
      */
-    private fun knobSummary(k: RectSLKnob): String =
-        "k${k.knob} L${k.line}:${k.column} ${k.text} ${k.role}" + (k.colour?.takeIf { !k.text.startsWith("0x") }?.let { " ($it)" } ?: "")
+    private fun knobSummary(k: RectSLKnob, name: String? = null): String =
+        "k${k.knob} L${k.line}:${k.column} ${k.text} ${k.role}" + (k.colour?.takeIf { !k.text.startsWith("0x") }?.let { " ($it)" } ?: "") +
+            (name?.let { " [$it]" } ?: "")
+
+    /**
+     * The names the person's card shows [knobs] of [source] by ([KnobNames]), those that are known; [ask]
+     * asks the fast model for the rest, calling [ready] once they are stored.
+     */
+    internal fun knobNames(source: String, knobs: List<RectSLKnob>, ask: Boolean = false, ready: () -> Unit = {}): Map<Int, String> =
+        KnobNames.names("RectSL", ABOUT_FOR_NAMES, source, knobs.map { KnobNames.Knob(it.knob, it.line, it.text, it.role) }, directory, ask, ready).orEmpty()
 
     /** Everything a model needs before editing: source, live-edit state, history, the scene's shape, lines and knobs. */
     fun inspect(id: String = "current"): StudyReport {
@@ -472,7 +486,7 @@ class RectSLStudy(
             "otherRevisions" to (revisions.allRevisions().size - history.size).takeIf { it > 0 },
             "scene" to sceneSummary(r.value), "warnings" to r.value.warnings.ifEmpty { null },
             "lines" to r.value.lines,
-            "knobs" to r.value.knobs.take(80).map(::knobSummary),
+            "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.take(80).map { knobSummary(it, names[it.knob]) } },
             "moreKnobs" to (r.value.knobs.size - 80).takeIf { it > 0 },
             "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
             "exports" to exports().ifEmpty { null },

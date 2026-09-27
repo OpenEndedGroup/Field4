@@ -1,11 +1,9 @@
 package afield.rectsl.study
 
 import afield.Box
-import afield.Message
-import afield.SelectAndEditBox
 import afield.rectsl.SampledRect
 import afield.rectsl.SceneProgram
-import afield.payload
+import afield.stdlib.BoxStudies
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -25,7 +23,7 @@ import kotlin.math.sin
  */
 object RectSLWindowLinks {
     /** The editor's cursor line in [box]'s `rectSL`, while the box is selected with that property showing; else null. */
-    fun cursorLine(box: Box): Int? = afield.stdlib.BoxStudies.editorLine(box, RectSLPrograms.PROPERTY)
+    fun cursorLine(box: Box): Int? = BoxStudies.editorLine(box, RectSLPrograms.PROPERTY)
 
     /**
      * The rectangles [line] of [source] makes, by id: those whose own word is on it and those of the
@@ -71,9 +69,5 @@ object RectSLWindowLinks {
         }
 
     /** Select [box] and put its editor on [line] of `rectSL`, in every page open on its document. */
-    fun reveal(box: Box, line: Int) {
-        val document = RectSLPrograms.sessionOf(box) ?: return
-        afield._send(Message("select-and-edit-box").payload(SelectAndEditBox(box.id, RectSLPrograms.PROPERTY, line, line, center = true)),
-            document = Regex.escape(document.filename))
-    }
+    fun reveal(box: Box, line: Int) = BoxStudies.reveal(box, RectSLPrograms.PROPERTY, line)
 }

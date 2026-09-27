@@ -249,3 +249,34 @@ now offered back to the editor through a language-neutral registry, `afield.stdl
 `line-note` request: the completion popup shows the note for the line it opened on, and the note beside
 the cursor shows it as the cursor rests. Any language can register a provider for its property.
 
+
+### The card's controls — 2026-09-27, from the first hand validation
+
+Three notes on the StackSL card. It drew the CPU reference still beside the live preview, labelled "the
+model's evidence"; that still is already in the model's replies, and the card now draws it only when the
+program does not translate to WebGL. Its sliders were bare `<input type=range>`s; both cards now use
+Field's own slider control (`buildSliderHtml` with `send = false`, which `sliders.js` announces as a
+`field-slider-input` event rather than sending), and RectSL's time scrubber is one too. And a label such
+as `k5 0.2 · 6:1` gave the number twice (the value was beside it) and a line:column no one could read.
+
+A label now says what turning the number changes. StackSL's compiler records the operand each literal
+was first taken as (`StackSLDanglingWire.consumedAs`: `mix amount`, `smoothstep high`, `multiply b`),
+which is exact, and caught a real reading error the first time it ran: in `uv fbm 0.35 0.9 smoothstep`
+the 0.9 is the value tested, not the upper edge. But an animated program is mostly scaling and offset,
+and the aurora read as a column of `multiplies`. So the fast model names every knob of a program in
+one request, given the program with its comments and each knob's line, spelling and operand
+(`KnobNames`); the aurora's 95 came back as `hem drift speed`, `ridge noise y scale`, `horizon
+gradient curve`. The operand is the label until the names arrive and stays on the tooltip. Names are
+kept by the program's shape (its text with the numbers blanked), so keeping a number never asks again,
+and are stored beside the study's revisions, so a demo carries them — which is how the docs captures
+show them without a model call. The model's Inspect lists each knob with the same name in brackets, so
+the model and the person can both say "the drift speed".
+
+Clicking a label selects the number in the editor (`select-and-edit-box` now takes a column range, and
+focuses the editor), so typing replaces it; a line's heading goes to the line.
+
+A RectSL docs capture once hung, never replying to `run` on the lanterns document. Field's half-second
+running heartbeats stopped with it, so it looked like the main thread stalling. It passed on the retry,
+and on two more lanterns runs under a watchdog set to dump the threads if it recurred (it did not), so
+it is not understood. Both the scene's autostart and the `run` had started, and neither had reported,
+when the heartbeats stopped. That is the evidence to look for if it happens again.

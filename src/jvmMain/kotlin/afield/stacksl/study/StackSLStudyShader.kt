@@ -283,7 +283,7 @@ object StackSLStudyShader {
                     knob = knobs.size, wire = wire.index, value = value, token = word,
                     line = line, spans = listOf(span),
                     role = if (wire.note == "number") "number" else wire.note,
-                    feeds = feeds, context = lines.getOrElse(line - 1) { "" }.trim()
+                    feeds = feeds, context = lines.getOrElse(line - 1) { "" }.trim(), takenAs = wire.consumedAs
                 )
             }
         }
@@ -415,7 +415,12 @@ data class StackSLKnob(
     /** For a plain literal, the next word — usually the one that consumes it. */
     val feeds: String?,
     /** The source line, trimmed. */
-    val context: String
+    val context: String,
+    /**
+     * The operand the compiler took the number as, in its own words — `"mix amount"`, `"smoothstep high"`,
+     * `"multiply b"` — or null when nothing took it ([afield.stacksl.StackSLDanglingWire.consumedAs]).
+     */
+    val takenAs: String? = null
 ) {
     /** 1-based column of the first digit. */
     val column: Int get() = spans.first().column

@@ -30,7 +30,10 @@ Use:
       --document dev_docs/agents/demos/stacksl_conversation_ink --label 02a-adopt --port 9788 adopt B
 
 The Field on ``--port`` must already be running with the document's workspace (the demo needs it to
-stay up between turns); start it with ``./field.sh <workspace>`` and ``PORT=<port>``.
+stay up between turns); start it with ``./field.sh <workspace>`` and ``PORT=<port>``. Add
+``AFIELD_AI_KNOB_NAMES=1`` there too: a document opened through the backdoor does not otherwise ask the
+fast model to name the card's sliders, and the names it stores (``studies/<box>/knob-names.json``) are
+what the demo's card shows when the docs captures reopen it.
 """
 from __future__ import annotations
 
@@ -259,10 +262,11 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
             elif action == "keep":
                 knob, value = values
                 script = f"""(() => {{ const c = document.querySelector({card});
-                    const s = c.querySelector('input[type=range][data-knob="{int(knob)}"]');
+                    const s = c.querySelector('.field-slider[data-knob="{int(knob)}"]');
                     if (!s) throw new Error('no knob {int(knob)}');
-                    s.value = {float(value)}; s.dispatchEvent(new Event('input'));
-                    c.querySelector('button[data-act=keep]').click(); return s.value; }})()"""
+                    // Field's slider, moved as a drag moves it: sliders.js updates it and announces the value.
+                    window.updateFieldSlider(s, {float(value)});
+                    c.querySelector('button[data-act=keep]').click(); return s.dataset.value; }})()"""
             elif action == "checkin":
                 script = f"""(() => {{ const b = document.querySelector({card} + ' button[data-act=checkin]');
                     if (!b) throw new Error('the editor holds no unchecked edit'); b.click(); return true; }})()"""

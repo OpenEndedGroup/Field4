@@ -21,7 +21,8 @@ import java.util.concurrent.atomic.AtomicReference
  *
  *  - **Filmstrip** — frames evenly across the clip, drawn as the window draws them.
  *  - **Window** — hold the window at a time on a scrubber, play again, or restart the loop.
- *  - **Knobs** — a slider per number and a swatch per colour, grouped under the line they are on. Moving
+ *  - **Knobs** — one of Field's sliders per number and a swatch per colour, grouped under the line they
+ *    are on and labelled with what reads them. Clicking a label selects its number in the editor. Moving
  *    one previews the changed scene in the window without touching the program; **Keep these numbers**
  *    writes them in as a new revision through [RectSLStudy.setNumbers], checked like any other edit, and
  *    **Reset** puts the window back.
@@ -87,8 +88,9 @@ class RectSLStudyViewer(
 
     /**
      * Carry out one browser action — `keep`, `preview`, `reset`, `adopt`, `restore`, `checkin`, `time`,
-     * `play`, `restart`, `cancel-export` or `refresh` — and say what happened. Previews and window
-     * controls leave the card as it is, so a slider being dragged is not rebuilt under the pointer.
+     * `play`, `restart`, `locate`, `cancel-export` or `refresh` — and say what happened. Previews, window
+     * controls and `locate`, which puts the editor on a number or a line, leave the card as it is, so a
+     * slider being dragged is not rebuilt under the pointer.
      */
     internal fun handleAction(json: String): String {
         val message = runCatching { mapper.readTree(json) }.getOrNull() ?: return "unreadable action"
@@ -107,6 +109,17 @@ class RectSLStudyViewer(
                 "time" -> { live.hold(message["seconds"].asDouble()); return "holding at ${RectSLStudy.secs(message["seconds"].asDouble())} s" }
                 "play" -> { live.hold(null); return "playing" }
                 "restart" -> { live.restart(); return "playing from the start" }
+                // The editor, not the scene: put it on a knob's number, or on a line.
+                "locate" -> {
+                    val revision = study.revisions.revision()
+                    val knob = message["knob"]?.asInt()?.let { revision.value.knobs.getOrNull(it) }
+                    val line = knob?.line ?: message["line"]?.asInt() ?: return "nothing to show"
+                    // The card's columns are the checked scene's; while the editor holds an edit, only the line is sure.
+                    val exact = knob != null && (owner.getPropertyRaw(RectSLPrograms.PROPERTY, null) as? String) == revision.source
+                    afield.stdlib.BoxStudies.reveal(owner, RectSLPrograms.PROPERTY, line,
+                        if (exact) knob!!.column else -1, if (exact) knob!!.column + knob.text.length else -1)
+                    return knob?.let { "k${it.knob} is line ${it.line} of the scene" } ?: "line $line of the scene"
+                }
                 "keep" -> {
                     val values = message["values"].properties().associate { it.key.toInt() to it.value.asDouble() }
                     val knobs = study.revisions.revision().value.knobs
@@ -184,11 +197,20 @@ class RectSLStudyViewer(
                 #$id h4{font-weight:400;margin:14px 0 6px;color:#aaa;letter-spacing:.06em;text-transform:uppercase;font-size:11px}
                 #$id .row{display:flex;gap:16px;align-items:flex-start}
                 #$id .film{display:flex;gap:10px} #$id .film img{width:${fw}px;height:${fh}px;border:1px solid #333;display:block;background:#000}
-                #$id .knob{display:grid;grid-template-columns:330px 1fr 90px;gap:10px;align-items:center;margin:3px 0}
-                #$id .knob label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+                #$id .field-control{padding:2px 10px;margin:3px 0}
+                #$id .field-slider,#$id .kcolour{max-width:640px}
+                #$id .field-slider .field-label{width:300px;overflow:hidden;text-overflow:ellipsis}
+                #$id .field-slider-visual{height:26px}
+                #$id .field-value{min-width:64px}
+                #$id .locate{cursor:pointer} #$id .locate:hover{color:var(--field-accent,#5ce1ff)}
+                #$id .locate .purpose{text-transform:none;letter-spacing:0;opacity:.85}
+                #$id .kcolour{display:flex;align-items:center;gap:10px}
+                #$id .kcolour .field-label{width:300px;font-size:11px;color:var(--field-accent-text-soft)} #$id .kcolour input{flex:1}
+                #$id .scrubber{display:inline-flex;width:420px;vertical-align:middle}
+                #$id .scrubber .field-label{width:auto}
                 #$id .kline{margin:10px 0 2px;color:#b8b8be;font-size:12px;border-top:1px solid #222;padding-top:6px}
+                #$id .kline.locate:hover{color:var(--field-accent,#5ce1ff)}
                 #$id input[type=color]{width:100%;height:22px;border:1px solid #444;background:none;padding:0}
-                #$id input[type=range]{width:100%}
                 #$id button{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:3px 10px;border-radius:4px;cursor:pointer}
                 #$id button:hover{background:#333}
                 #$id .strip{display:flex;flex-wrap:wrap;gap:8px}
@@ -208,13 +230,16 @@ class RectSLStudyViewer(
                 append("<div style='margin-top:8px'>")
                 if (windowed) {
                     append("<span class='muted'>window:</span> <button data-act='play'>play</button> <button data-act='restart'>restart</button> ")
-                    append("<input class='scrub' type='range' min='0' max='${c.duration}' step='${c.duration / 400}' value='${live.held ?: 0.0}' style='width:320px;vertical-align:middle'> <span class='muted scrubvalue'>${live.held?.let { "held at ${RectSLStudy.secs(it)} s" } ?: "playing"}</span>")
+                    append("<span class='scrubber'>" + afield.buildSliderHtml("$id-time", "time", 0.0, c.duration, c.duration / 400, live.held ?: 0.0, send = false, extraAttributes = "data-scrub='time'") + "</span>")
+                    append(" <span class='muted scrubvalue'>${live.held?.let { "held at ${RectSLStudy.secs(it)} s" } ?: "playing"}</span>")
                 } else append("<span class='muted'>Run the box under a window to see it play; the sliders below then preview there as you drag.</span>")
                 append("</div>")
             }
             append("<h4>Knobs</h4>")
             if (c.knobs.isEmpty()) append("<div class='muted'>This scene has no typed numbers.</div>")
             val lines = r.source.lines()
+            // What each number does, named by the fast model once per scene shape; until then (and in the tooltip), what reads it.
+            val names = study.knobNames(r.source, c.knobs, ask = afield.stdlib.KnobNames.shouldAsk(owner)) { refreshLater() }
             var shownCount = 0
             var folded = false
             c.knobs.groupBy { it.line }.forEach { (line, onLine) ->
@@ -223,21 +248,21 @@ class RectSLStudyViewer(
                     folded = true
                 }
                 val heading = RectSLStudy.comment(lines, line) ?: lines.getOrNull(line - 1)?.substringBefore('#')?.trim().orEmpty()
-                append("<div class='kline'>line $line · ${esc(heading.take(80))}</div>")
+                append("<div class='kline locate' data-line='$line' title='show line $line in the editor'>line $line · ${esc(heading.take(80))}</div>")
                 val colourDone = HashSet<String>()
                 onLine.forEach { k ->
+                    val locate = "class='locate' data-locate='${k.knob}' title='${esc(k.role)} · ${esc(k.context)} — click to select ${esc(k.text)} in the editor'"
                     if (k.text.startsWith("0x", ignoreCase = true)) {
-                        append("<div class='knob'><label title='${esc(k.context)}'>${esc(k.role)} <span class='muted'>${esc(k.text)}</span></label>")
-                        append("<input type='color' data-hex='${k.knob}' value='${k.colour ?: "#000000"}'><span class='value'>${k.colour}</span></div>")
+                        append("<div class='field-control kcolour'><span class='field-label'><span $locate>k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: k.role)}</span></span></span>")
+                        append("<input type='color' data-hex='${k.knob}' value='${k.colour ?: "#000000"}'><span class='field-value'>${k.colour}</span></div>")
                     } else {
                         if (k.colour != null && k.role.endsWith("red") && colourDone.add(k.colour)) {
                             val parts = onLine.filter { it.colour == k.colour && it.knob in k.knob..k.knob + 2 }.map { it.knob }
-                            append("<div class='knob'><label>rgb colour</label><input type='color' data-rgb='${parts.joinToString(",")}' value='${k.colour}'><span class='value'>${k.colour}</span></div>")
+                            append("<div class='field-control kcolour'><span class='field-label'>rgb colour</span><input type='color' data-rgb='${parts.joinToString(",")}' value='${k.colour}'><span class='field-value'>${k.colour}</span></div>")
                         }
                         val (lo, hi, step) = range(k)
-                        append("<div class='knob'><label title='${esc(k.context)}'>k${k.knob} <span class='muted'>${esc(k.role)}</span></label>")
-                        append("<input type='range' data-knob='${k.knob}' min='${minOf(lo, k.value)}' max='${maxOf(hi, k.value)}' step='$step' value='${k.value}'>")
-                        append("<span class='value'>${esc(k.text)}</span></div>")
+                        val label = "<span $locate>k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: k.role)}</span></span>"
+                        append(afield.buildSliderHtml("$id-k${k.knob}", label, minOf(lo, k.value), maxOf(hi, k.value), step, k.value, send = false, extraAttributes = "data-knob='${k.knob}'"))
                     }
                     shownCount++
                 }
@@ -285,31 +310,38 @@ class RectSLStudyViewer(
         private val SCRIPT = """
             const root=document.getElementById(C.id); if(!root) return;
             const send=(o)=>{ if(window.handleStringInput) window.handleStringInput({id:C.action,value:JSON.stringify(o)}); };
-            const sliders=[...root.querySelectorAll('input[type=range][data-knob]')];
+            // Field's own sliders (sliders.js), kept off the wire: each move is announced as field-slider-input.
+            const sliders=[...root.querySelectorAll('.field-slider[data-knob]')];
             const hexes=[...root.querySelectorAll('input[type=color][data-hex]')];
-            const original=new Map(); sliders.forEach(s=>original.set(s.dataset.knob,parseFloat(s.value)));
+            const original=new Map(); sliders.forEach(s=>original.set(s.dataset.knob,parseFloat(s.dataset.value)));
             hexes.forEach(h=>original.set(h.dataset.hex,parseInt(h.value.slice(1),16)));
             const current=new Map(original);
             const changed=()=>{ const o={}; current.forEach((v,k)=>{ if(Math.abs(v-original.get(k))>1e-12) o[k]=v; }); return o; };
             let timer=null;
             const preview=()=>{ if(timer) return; timer=setTimeout(()=>{ timer=null; send({action:'preview',revision:C.revision,values:changed()}); },90); };
-            const fmt=(v)=>String(Math.round(v*100000)/100000);
-            sliders.forEach(s=>s.addEventListener('input',()=>{ const v=parseFloat(s.value); current.set(s.dataset.knob,v); s.parentElement.querySelector('.value').textContent=fmt(v); preview(); }));
-            hexes.forEach(h=>h.addEventListener('input',()=>{ current.set(h.dataset.hex,parseInt(h.value.slice(1),16)); h.parentElement.querySelector('.value').textContent=h.value; preview(); }));
+            const scrubValue=root.querySelector('.scrubvalue');
+            let resetting=false;
+            root.addEventListener('field-slider-input',(ev)=>{ const s=ev.target.closest&&ev.target.closest('.field-slider'); if(!s||resetting) return;
+              if(s.dataset.scrub){ const t=ev.detail.value; if(scrubValue) scrubValue.textContent='held at '+t.toFixed(2)+' s'; send({action:'time',seconds:t}); return; }
+              if(s.dataset.knob===undefined) return; current.set(s.dataset.knob,ev.detail.value); preview(); });
+            const setKnob=(s,v)=>{ if(window.updateFieldSlider) window.updateFieldSlider(s,v); else { current.set(s.dataset.knob,v); preview(); } };
+            hexes.forEach(h=>h.addEventListener('input',()=>{ current.set(h.dataset.hex,parseInt(h.value.slice(1),16)); h.parentElement.querySelector('.field-value').textContent=h.value; preview(); }));
+            // A slider's label, or a line's heading, puts the editor on its number or its line.
+            root.querySelectorAll('[data-locate]').forEach(el=>el.addEventListener('click',(ev)=>{ ev.stopPropagation(); send({action:'locate',knob:parseInt(el.dataset.locate)}); }));
+            root.querySelectorAll('.kline[data-line]').forEach(el=>el.addEventListener('click',(ev)=>{ ev.stopPropagation(); send({action:'locate',line:parseInt(el.dataset.line)}); }));
             // An rgb swatch sets the three numbers after rgb, which RectSL reads as sRGB 0..1, as typed.
             root.querySelectorAll('input[type=color][data-rgb]').forEach(p=>p.addEventListener('input',()=>{
               const rgb=[1,3,5].map(i=>parseInt(p.value.substr(i,2),16)/255);
-              p.dataset.rgb.split(',').forEach((k,i)=>{ const s=sliders.find(x=>x.dataset.knob===k); if(!s) return; s.value=String(Math.round(rgb[i]*1000)/1000); s.dispatchEvent(new Event('input')); });
-              p.parentElement.querySelector('.value').textContent=p.value;
+              p.dataset.rgb.split(',').forEach((k,i)=>{ const s=sliders.find(x=>x.dataset.knob===k); if(s) setKnob(s,Math.round(rgb[i]*1000)/1000); });
+              p.parentElement.querySelector('.field-value').textContent=p.value;
             }));
-            const scrub=root.querySelector('.scrub'); const scrubValue=root.querySelector('.scrubvalue');
-            if(scrub) scrub.addEventListener('input',()=>{ const t=parseFloat(scrub.value); scrubValue.textContent='held at '+t.toFixed(2)+' s'; send({action:'time',seconds:t}); });
             root.querySelectorAll('button[data-act]').forEach(b=>b.addEventListener('click',(ev)=>{
               ev.stopPropagation(); const act=b.dataset.act;
               if(act==='play'||act==='restart'){ if(scrubValue) scrubValue.textContent='playing'; send({action:act}); return; }
-              if(act==='reset'){ sliders.forEach(s=>{ s.value=original.get(s.dataset.knob); s.parentElement.querySelector('.value').textContent=fmt(original.get(s.dataset.knob)); });
-                hexes.forEach(h=>{ h.value='#'+original.get(h.dataset.hex).toString(16).padStart(6,'0'); });
-                original.forEach((v,k)=>current.set(k,v)); send({action:'reset'}); return; }
+              // Back to the typed numbers exactly: a slider snaps what it is given to its step, so its record is set after it.
+              if(act==='reset'){ resetting=true; sliders.forEach(s=>{ const v=original.get(s.dataset.knob); setKnob(s,v); s.dataset.value=String(v); }); resetting=false;
+                hexes.forEach(h=>{ h.value='#'+original.get(h.dataset.hex).toString(16).padStart(6,'0'); h.parentElement.querySelector('.field-value').textContent=h.value; });
+                if(timer){ clearTimeout(timer); timer=null; } original.forEach((v,k)=>current.set(k,v)); send({action:'reset'}); return; }
               if(act==='keep'){ const o=changed(); if(Object.keys(o).length===0) return; b.disabled=true; send({action:'keep',revision:C.revision,sourceHash:C.checkedHash,values:o}); return; }
               b.disabled=true;
               send({action:act,revision:C.revision,sourceHash:C.checkedHash,label:b.dataset.label,id:b.dataset.id});

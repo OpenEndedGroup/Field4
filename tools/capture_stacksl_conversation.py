@@ -6,9 +6,10 @@ study card and the window running, ``stage.png`` the program's own window held a
 click on that stage's tile in the card, and ``saved-chat.png`` the same box with its saved AI4 chat
 restored. The
 document is a copy in a temporary workspace, on a Field this script starts and owns, and nothing here
-makes a model call. Before capturing, the script checks that the chat Field restores is byte-for-byte
+makes a model call: the card's sliders are named from the names stored with the study
+(``knob-names.json``, written by the fast model when the demo was recorded). Before capturing, the script checks that the chat Field restores is byte-for-byte
 the saved chat, which ``metadata.edn`` holds only as a ``#afield/file`` reference to its sidecar, and
-that the card's evidence frame was rendered on the GPU. The blank starter is opened too, as a check
+that the card's live WebGL preview is running. The blank starter is opened too, as a check
 that it comes up by itself (window and program); it is not pictured.
 
 The window must be able to open (an awake display). Run the packager afterwards; ``--check`` requires
@@ -42,10 +43,14 @@ IGNORED = shutil.ignore_patterns("backups", "observations", "thumbnails", "files
 CARD_READY = """(async () => {
   for (let i = 0; i < 300; i++) {
     const card = document.querySelector('.stacksl-study');
+    const canvas = card?.querySelector('canvas');
+    // Drawn: the live preview running (a card whose program does not translate shows its CPU still instead).
     const still = card?.querySelector('img.still');
-    if (card && card.querySelector('canvas') && still && still.complete && still.naturalWidth > 0) {
+    const drawn = canvas && (canvas.style.display !== 'none' ? card.querySelector('.time')?.textContent !== 't = 0.00 s'
+                                                             : still && still.complete && still.naturalWidth > 0);
+    if (card && drawn) {
       await new Promise(r => setTimeout(r, 1200));
-      return {evidence: still.nextElementSibling?.textContent ?? '', sliders: card.querySelectorAll('input[type=range]').length};
+      return {preview: card.querySelector('.glerror')?.textContent || 'live', sliders: card.querySelectorAll('.field-slider[data-knob]').length};
     }
     await new Promise(r => setTimeout(r, 100));
   }
@@ -87,7 +92,7 @@ async def capture(port: int, workspace: Path) -> None:
         await command("wait-native-renderer stacksl_window --frames 5 --timeout 120")
         await command(f"run {PROGRAM} --timeout 240")
         card = await evaluate(CARD_READY)
-        assert "GPU" in card["evidence"], "The card's evidence was not rendered on the GPU: " + card["evidence"]
+        assert card["preview"] == "live", "The card's live preview is not running: " + card["preview"]
         print(name, "card", card, flush=True)
         return card
 

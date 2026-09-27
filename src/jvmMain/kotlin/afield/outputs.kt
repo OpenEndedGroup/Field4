@@ -1144,7 +1144,7 @@ fun Box.sliders(
  * control correct before any JavaScript has run, and `ControlSurfaceProbeTest` asserts that the two
  * computations of it agree to well under a pixel.
  */
-private fun buildSliderHtml(
+internal fun buildSliderHtml(
     sliderId: String,
     label: String,
     min: Double,
@@ -1152,7 +1152,11 @@ private fun buildSliderHtml(
     step: Double,
     value: Double,
     spec: ControlLawSpec = ControlLawSpec(ControlLaw.LINEAR, min, max),
-    significantDigits: Int = defaultSignificantDigits(spec.law)
+    significantDigits: Int = defaultSignificantDigits(spec.law),
+    // For a page that owns its sliders (a study card): attributes of its own on the control, and
+    // `send = false` to keep drags off the wire — `sliders.js` announces them as `field-slider-input`.
+    extraAttributes: String = "",
+    send: Boolean = true,
 ): String {
     val stepDecimals = calculateDecimalPlaces(step)
     val clampedValue = value.coerceIn(minOf(min, max), maxOf(min, max))
@@ -1164,6 +1168,7 @@ private fun buildSliderHtml(
     val padding = 14
     val trackLength = viewWidth - (padding * 2)
     val cx = padding + (trackLength * spec.normalizedFor(clampedValue))
+    val ownAttributes = (if (send) "" else " data-send=\"false\"") + (if (extraAttributes.isBlank()) "" else " $extraAttributes")
     return """
         <div class="field-control field-slider"
              data-slider-id="$sliderId"
@@ -1177,7 +1182,7 @@ private fun buildSliderHtml(
              data-significant-digits="$significantDigits"
              data-value="$value"
              data-view-width="$viewWidth"
-             data-padding="$padding">
+             data-padding="$padding"$ownAttributes>
             <span class="field-label">$label</span>
             <svg class="field-slider-visual" viewBox="0 0 $viewWidth $viewHeight" preserveAspectRatio="xMidYMid meet">
                 <rect x="0" y="0" width="$viewWidth" height="$viewHeight" class="slider-hitbox"></rect>

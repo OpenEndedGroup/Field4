@@ -1912,7 +1912,9 @@ private fun navigateToBoxProperty(
     scrollToLine: Int? = null,
     highlightLine: Int? = null,
     syncEditor: Boolean = true,
-    center: Boolean = false
+    center: Boolean = false,
+    column: Int = -1,
+    endColumn: Int = -1
 ): Boolean {
     val box = findBoxElementByUid(uid) ?: return false
     openNestedDisclosuresForNavigation(box)
@@ -1936,9 +1938,14 @@ private fun navigateToBoxProperty(
                 runCatching {
                     editor.revealLineInCenter(targetLine)
                     val lineToHighlight = highlightLine ?: targetLine
-                    val range = js("new monaco.Range(lineToHighlight, 1, lineToHighlight, 1)")
+                    // A column range selects that stretch of the line (a study card's number) and hands
+                    // the keyboard to the editor, so typing replaces it.
+                    val from = if (column > 0) column else 1
+                    val to = if (column > 0 && endColumn > column) endColumn else from
+                    val range = js("new monaco.Range(lineToHighlight, from, lineToHighlight, to)")
                     editor.setSelection(range)
                     editor.revealLineInCenter(lineToHighlight)
+                    if (column > 0) editor.focus()
                 }.onFailure {
                     console.info("[nav] failed to scroll to line", it)
                 }
@@ -5918,7 +5925,8 @@ suspend fun main() {
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
-        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine, center = sel.center)
+        navigateToBoxProperty(sel.uid, sel.property, sel.scrollToLine, sel.highlightLine, center = sel.center,
+            column = sel.column, endColumn = sel.endColumn)
 
         Handled.yes
     }

@@ -376,6 +376,19 @@ object BoxStudies {
     }
 
     /**
+     * Select [box] with [property] in the editor of every page open on its document, and put the cursor
+     * on [line] — selecting columns [column] up to [endColumn] (1-based, end exclusive) and focusing the
+     * editor when a column is given, so what is typed next replaces them. A study card uses it to take the
+     * person from a control to the number it turns; a RectSL window, from a rectangle to its line.
+     */
+    fun reveal(box: afield.Box, property: String, line: Int, column: Int = -1, endColumn: Int = -1) {
+        val document = documentOf(box) ?: return
+        afield._send(afield.Message("select-and-edit-box").payload(
+            afield.SelectAndEditBox(box.id, property, line, line, center = true, column = column, endColumn = endColumn)),
+            document = Regex.escape(document.filename))
+    }
+
+    /**
      * What an Inspect says about where the person is looking: the line their editor cursor is on in
      * [source], and its text — or null when the box is not open in their editor. "This one" in a request
      * usually means it; in a RectSL scene, clicking a rectangle in the window puts the cursor on its line.
