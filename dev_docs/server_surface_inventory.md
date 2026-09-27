@@ -62,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-38 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+39 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -102,6 +102,7 @@ mutation; it is a different one.
 | `GET /api/semantic-search/settings` | `Server.kt` | none |
 | `GET /api/semantic-search/status` | `Server.kt` | none |
 | `GET /api/source` | `Server.kt` | none |
+| `GET /api/vulkan-status` | `Server.kt` | loopback + same-site |
 | `GET /api/welcome-changelog` | `Server.kt` | none |
 | `GET /api/welcome-docs` | `Server.kt` | none |
 | `GET /api/welcome-docs/stream` | `Server.kt` | none |

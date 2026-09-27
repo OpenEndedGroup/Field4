@@ -703,6 +703,70 @@
             gap: 6px;
         }
 
+        .vulkan-body {
+            padding: 0 12px 12px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .vulkan-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            font-size: 11px;
+            color: var(--field-text-soft);
+        }
+
+        .vulkan-guide {
+            color: var(--field-text-soft);
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .vulkan-guide p,
+        .vulkan-guide ol {
+            margin: 0 0 6px;
+        }
+
+        .vulkan-guide ol {
+            padding-left: 18px;
+        }
+
+        .vulkan-guide b {
+            color: var(--field-text);
+        }
+
+        .vulkan-guide a {
+            color: var(--field-cyan);
+        }
+
+        .vulkan-cmd {
+            margin: 0 0 6px;
+            padding: 6px 8px;
+            border: 1px solid var(--field-border);
+            border-radius: 6px;
+            background: var(--field-panel-strong);
+            color: var(--field-text);
+            font-size: 10px;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            cursor: copy;
+        }
+
+        .vulkan-missing {
+            color: var(--field-danger);
+        }
+
+        .vulkan-notice {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--field-danger);
+        }
+
+        .vulkan-notice a {
+            color: var(--field-cyan);
+        }
+
         .runtime-info-grid {
             display: grid;
             grid-template-columns: minmax(82px, auto) minmax(0, 1fr);
@@ -1885,6 +1949,9 @@
             <button id="run-docs-annotation-improvement" type="button">Improve annotated docs</button>
             <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
+        <div id="vulkan-notice" class="vulkan-notice" hidden>
+            Vulkan is not set up on this machine, so graphics windows will not open. <a href="#vulkan-details" id="vulkan-notice-link">How to install it</a>
+        </div>
     </section>
 
     <section class="panel new-doc">
@@ -2005,6 +2072,51 @@
                     <div class="runtime-info-body">
                         <div id="runtime-info-grid" class="runtime-info-grid"></div>
                         <pre id="runtime-info-args" class="runtime-info-args" hidden></pre>
+                    </div>
+                </details>
+                <details id="vulkan-details">
+                    <summary>
+                        <span>Vulkan</span>
+                        <span id="vulkan-summary" class="changelog-count">checking</span>
+                    </summary>
+                    <div class="vulkan-body">
+                        <div id="vulkan-grid" class="runtime-info-grid"></div>
+                        <div class="vulkan-actions">
+                            <button id="vulkan-recheck" type="button">Check again</button>
+                            <span id="vulkan-status" aria-live="polite"></span>
+                        </div>
+                        <div class="segmented-control vulkan-os-tabs" role="tablist" aria-label="Operating system">
+                            <button class="segmented-button" type="button" data-vulkan-os="macos">macOS</button>
+                            <button class="segmented-button" type="button" data-vulkan-os="windows">Windows</button>
+                            <button class="segmented-button" type="button" data-vulkan-os="linux">Linux</button>
+                        </div>
+                        <div class="vulkan-guide" data-vulkan-guide="macos">
+                            <p><b>Nothing is required.</b> LWJGL carries MoltenVK inside its jar, so graphics runs on a fresh Mac.</p>
+                            <p><b>Recommended:</b> the LunarG Vulkan SDK. It adds the validation layers (Field turns them on to report shader and API mistakes), <code>vulkaninfo</code>, <code>slangc</code>, and on Apple silicon with macOS 26 the <b>KosmicKrisp</b> driver.</p>
+                            <ol>
+                                <li>Download the macOS SDK from <a href="https://vulkan.lunarg.com/sdk/home#mac" target="_blank" rel="noopener">vulkan.lunarg.com</a> and run its installer.</li>
+                                <li>Keep the default location, <code>~/VulkanSDK/&lt;version&gt;</code>. Field uses the newest one there. Tick <i>KosmicKrisp (Vulkan on Metal)</i>. <i>System Global Installation</i> is not needed.</li>
+                                <li>Restart Field. It chooses its loader at startup.</li>
+                            </ol>
+                            <p>From a terminal, with the SDK zip unpacked:</p>
+                            <pre class="vulkan-cmd">vulkansdk-macOS-&lt;v&gt;.app/Contents/MacOS/vulkansdk-macOS-&lt;v&gt; --root ~/VulkanSDK/&lt;v&gt; --accept-licenses --default-answer --confirm-command install com.lunarg.vulkan.core com.lunarg.vulkan.kosmic</pre>
+                            <p>To try KosmicKrisp instead of MoltenVK:</p>
+                            <pre class="vulkan-cmd">AFIELD_VULKAN_DRIVER=kosmickrisp ./field.sh</pre>
+                        </div>
+                        <div class="vulkan-guide" data-vulkan-guide="windows" hidden>
+                            <p><b>Required:</b> a current GPU driver from <a href="https://www.nvidia.com/drivers" target="_blank" rel="noopener">NVIDIA</a>, <a href="https://www.amd.com/support" target="_blank" rel="noopener">AMD</a> or <a href="https://www.intel.com/content/www/us/en/download-center/home.html" target="_blank" rel="noopener">Intel</a>. It installs the Vulkan runtime (<code>vulkan-1.dll</code>). Drivers from Windows Update sometimes leave it out, so get the vendor's.</p>
+                            <p><b>Recommended:</b> the LunarG Vulkan SDK, for the validation layers and <code>vulkaninfo</code>:</p>
+                            <pre class="vulkan-cmd">winget install -e --id KhronosGroup.VulkanSDK</pre>
+                            <p>Or use the installer from <a href="https://vulkan.lunarg.com/sdk/home#windows" target="_blank" rel="noopener">vulkan.lunarg.com</a>. Then open a new terminal and restart Field.</p>
+                        </div>
+                        <div class="vulkan-guide" data-vulkan-guide="linux" hidden>
+                            <p><b>Required:</b> the Vulkan loader and a driver for your GPU. With Mesa (AMD, Intel):</p>
+                            <pre class="vulkan-cmd">sudo apt install libvulkan1 mesa-vulkan-drivers vulkan-tools vulkan-validationlayers</pre>
+                            <pre class="vulkan-cmd">sudo dnf install vulkan-loader mesa-vulkan-drivers vulkan-tools vulkan-validation-layers</pre>
+                            <pre class="vulkan-cmd">sudo pacman -S vulkan-icd-loader vulkan-tools vulkan-validation-layers vulkan-radeon vulkan-intel</pre>
+                            <p>For NVIDIA, the proprietary driver supplies the Vulkan driver: <code>sudo ubuntu-drivers install</code> on Ubuntu, <code>nvidia-utils</code> on Arch. Install the loader and validation packages above as well.</p>
+                            <p><code>vulkaninfo --summary</code> should then list your GPU. Restart Field.</p>
+                        </div>
                     </div>
                 </details>
                 <details id="python-settings-details">
@@ -3343,6 +3455,135 @@
         if (!node) return;
         node.textContent = text || "";
         node.classList.toggle("error", !!isError);
+    }
+
+    // Vulkan panel. The server probes in a child JVM (a bad driver can crash whoever loads it), keeps
+    // the answer, and re-probes on "Check again". Nothing here needs Vulkan to work.
+    const vulkanOsNames = { macos: "macOS", windows: "Windows", linux: "Linux" };
+
+    function guessVulkanOs() {
+        const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+        if (/mac/i.test(platform)) return "macos";
+        if (/win/i.test(platform)) return "windows";
+        return "linux";
+    }
+
+    function showVulkanGuide(os) {
+        document.querySelectorAll("[data-vulkan-os]").forEach((button) => {
+            button.classList.toggle("active", button.dataset.vulkanOs === os);
+            button.setAttribute("aria-selected", button.dataset.vulkanOs === os ? "true" : "false");
+        });
+        document.querySelectorAll("[data-vulkan-guide]").forEach((guide) => {
+            guide.hidden = guide.dataset.vulkanGuide !== os;
+        });
+    }
+
+    function renderVulkanStatus() {
+        const status = state.vulkanStatus;
+        const summary = document.getElementById("vulkan-summary");
+        const grid = document.getElementById("vulkan-grid");
+        const notice = document.getElementById("vulkan-notice");
+        const recheck = document.getElementById("vulkan-recheck");
+        if (recheck) {
+            recheck.disabled = !!state.checkingVulkan;
+            recheck.textContent = state.checkingVulkan ? "Checking…" : "Check again";
+        }
+        if (!grid) return;
+        if (!status) {
+            if (summary) summary.textContent = "checking";
+            grid.innerHTML = "";
+            return;
+        }
+        const device = (status.devices || [])[0];
+        if (summary) {
+            summary.textContent = status.ok
+                ? [device && device.driverName, status.sdkVersion && `SDK ${status.sdkVersion}`].filter(Boolean).join(" · ") || "ok"
+                : "not found";
+            summary.classList.toggle("vulkan-missing", !status.ok);
+        }
+        if (notice) notice.hidden = !!status.ok;
+        if (!status.ok && !state.vulkanAutoOpened) {
+            openVulkanPanel(false);
+            state.vulkanAutoOpened = true;
+        }
+
+        const loader = {
+            sdk: "Vulkan SDK loader",
+            system: "system loader",
+            "lwjgl-moltenvk": "MoltenVK bundled with LWJGL (no loader)",
+            none: "not found"
+        }[status.loaderSource] || status.loaderSource;
+        const rows = [
+            ["status", status.ok ? "ready for graphics" : `<span class="vulkan-missing">${escapeHtml(status.error || "not ready")}</span>`],
+            ["loader", escapeHtml([loader, status.loaderPath].filter(Boolean).join(" · "))],
+            ["instance", escapeHtml(status.instanceVersion || "—")],
+            ...(status.devices || []).map((d, i) => [
+                i === 0 ? "device" : "",
+                escapeHtml(`${d.name} (${d.type}) · ${d.driverName || "driver"} ${d.driverInfo || ""} · Vulkan ${d.apiVersion}`)
+            ]),
+            ["validation", status.validationLayer ? "Khronos validation layer found" : "not installed (optional; install the SDK)"],
+            ["SDK", escapeHtml(status.sdkPath ? `${status.sdkVersion || ""} · ${status.sdkPath}` : "none")]
+        ];
+        if (status.os === "macos") {
+            rows.push(["driver", escapeHtml(`${status.requestedDriver || "moltenvk"} requested` +
+                (status.kosmicKrispAvailable ? " · KosmicKrisp available" : " · no KosmicKrisp in this SDK"))]);
+        }
+        grid.innerHTML = rows.map(([label, value]) =>
+            `<div class="runtime-info-label">${escapeHtml(label)}</div><div class="runtime-info-value">${value}</div>`
+        ).join("");
+        if (!state.vulkanOsChosen) showVulkanGuide(vulkanOsNames[status.os] ? status.os : guessVulkanOs());
+    }
+
+    async function loadVulkanStatus(refresh = false) {
+        state.checkingVulkan = true;
+        renderVulkanStatus();
+        const statusNode = document.getElementById("vulkan-status");
+        try {
+            const response = await fetch(`/api/vulkan-status${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            state.vulkanStatus = await response.json();
+            if (statusNode) statusNode.textContent = refresh ? `checked in ${state.vulkanStatus.probeMs} ms` : "";
+        } catch (error) {
+            console.error("Failed to load Vulkan status", error);
+            if (statusNode) statusNode.textContent = "Could not ask the server about Vulkan.";
+        } finally {
+            state.checkingVulkan = false;
+            renderVulkanStatus();
+        }
+    }
+
+    function installVulkanHandlers() {
+        document.getElementById("vulkan-recheck")?.addEventListener("click", () => loadVulkanStatus(true));
+        document.querySelectorAll("[data-vulkan-os]").forEach((button) => {
+            button.addEventListener("click", () => {
+                state.vulkanOsChosen = true;
+                showVulkanGuide(button.dataset.vulkanOs);
+            });
+        });
+        document.querySelectorAll(".vulkan-cmd").forEach((pre) => {
+            pre.title = "click to copy";
+            pre.addEventListener("click", () => navigator.clipboard?.writeText(pre.textContent || ""));
+        });
+        document.getElementById("vulkan-notice-link")?.addEventListener("click", (event) => {
+            event.preventDefault();
+            openVulkanPanel(true);
+        });
+        showVulkanGuide(guessVulkanOs());
+        // /welcome#vulkan opens the panel, so an error about a missing Vulkan can link straight to it.
+        if (location.hash === "#vulkan" || location.hash === "#vulkan-details") openVulkanPanel(true);
+    }
+
+    // The side panels are an accordion, and the Changelog starts open: its load-time `toggle` event
+    // arrives after this runs and would shut the Vulkan panel again. Closing it first means that
+    // event finds it closed and does nothing.
+    function openVulkanPanel(scroll) {
+        const details = document.getElementById("vulkan-details");
+        if (!details) return;
+        details.closest("[data-accordion]")?.querySelectorAll("details[open]").forEach((other) => {
+            if (other !== details) other.open = false;
+        });
+        details.open = true;
+        if (scroll) requestAnimationFrame(() => details.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
 
     function renderPythonSettings() {
@@ -6599,6 +6840,8 @@
     renderMavenClasspath();
     renderOscSettings();
     installHandlers();
+    installVulkanHandlers();
+    loadVulkanStatus();
     // Stream documents in for an immediate first paint, then fetch the full payload (settings,
     // projects, tags) which reconciles state against a now-warm server-side cache.
     streamWelcomeDocs().finally(() => loadWelcomeDocs());

@@ -717,9 +717,20 @@ class Renderer(
             // Prepare OpenXR instance/system and fetch graphics requirements before VkDevice creation.
             Instance.prepareOpenXRBootstrap()
         }
-        instance = Instance(Options.validate)
-        physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
-        device = Device(physicalDevice, instance)
+        // A missing loader, no Vulkan driver, or a driver lacking a feature Field needs all fail here,
+        // and on a fresh machine this is the first place the user meets Vulkan. The welcome page's
+        // Vulkan panel says which of those it is and how to install what is missing.
+        try {
+            instance = Instance(Options.validate)
+            physicalDevice = PhysicalDevice.createPhysicalDevice(instance, Options.preferredDevice)
+            device = Device(physicalDevice, instance)
+        } catch (t: Throwable) {
+            throw IllegalStateException(
+                "Could not start Vulkan: ${t.message ?: t.javaClass.simpleName}. " +
+                    "See https://localhost:${afield.globalServerPort}/welcome#vulkan for what this machine has and how to install Vulkan.",
+                t
+            )
+        }
         Options.chooseDefaultDepthFormat(physicalDevice.vkPhysicalDevice)
         if (Options.dumpToolingInfo) {
             instance.dumpToolingInfo(instance.vkInstance, physicalDevice.vkPhysicalDevice)

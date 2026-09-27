@@ -715,8 +715,11 @@ private object DocsImprovementTask {
 private val docsProxyClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8))
     .followRedirects(HttpClient.Redirect.NORMAL).build()
 
-/** Resolved once per JVM: re-reading the environment per request would make the posture unauditable. */
-private val docsAccessPolicy: DocsAccessPolicy by lazy { resolveDocsAccessPolicy() }
+/**
+ * Resolved once per JVM: re-reading the environment per request would make the posture unauditable.
+ * Internal because `Server.kt`'s `/api/vulkan-status` borrows the same-site guard below.
+ */
+internal val docsAccessPolicy: DocsAccessPolicy by lazy { resolveDocsAccessPolicy() }
 
 /** Likewise once: the directory a run edits must not be able to change between the log line and the run. */
 private val docsImprovementDirectory: DocsImprovementDirectory by lazy {
@@ -766,7 +769,7 @@ private suspend fun ApplicationCall.refuseUnlessLocalDocsClient(policy: DocsAcce
  * reached by several names — `localhost`, `127.0.0.1`, the LAN address, all live here —
  * those are not the same question.
  */
-private suspend fun ApplicationCall.refuseUnlessSameSiteDocsClient(policy: DocsAccessPolicy): Boolean {
+internal suspend fun ApplicationCall.refuseUnlessSameSiteDocsClient(policy: DocsAccessPolicy): Boolean {
     if (refuseUnlessLocalDocsClient(policy)) return true
     val refusal = refuseCrossSiteDocsRequest(
         policy,

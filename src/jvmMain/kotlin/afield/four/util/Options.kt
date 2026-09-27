@@ -27,7 +27,63 @@ object Options {
         else throw IllegalStateException("Unsupported OS: $it")
     }
 
-    var vulkan_library_name = "/Users/marc/VulkanSDK/1.4.335.1/macOS/lib/libvulkan.1.dylib"
+    /**
+     * The macOS Vulkan driver (ICD) Field asks the loader for. The SDK ships two, and they differ in
+     * ways Field's code can see — see `dev_docs/KOSMICKRISP.md`.
+     *
+     * - [MacVulkanDriver.MOLTENVK]: the portability driver Field grew up on; the only one on Intel Macs
+     *   and before macOS 26. Has `VK_EXT_metal_objects`, which the IOSurface export/import paths use.
+     * - [MacVulkanDriver.KOSMICKRISP]: LunarG's Mesa driver layered on Metal 4 — Apple silicon and
+     *   macOS 26 or later only, conformant rather than a portability subset.
+     * - [MacVulkanDriver.AUTO]: currently MoltenVK. Flipping AUTO to KosmicKrisp is a one-line change in
+     *   [resolvedMacVulkanDriver], to be made once the sweep in that doc comes back clean.
+     *
+     * `-Dafield.four.vulkanDriver=kosmickrisp` or `AFIELD_VULKAN_DRIVER=kosmickrisp`.
+     */
+    enum class MacVulkanDriver(val icdManifest: String, val driverId: Int) {
+        AUTO("", 0),
+        MOLTENVK("MoltenVK_icd.json", org.lwjgl.vulkan.VK12.VK_DRIVER_ID_MOLTENVK),
+        KOSMICKRISP("libkosmickrisp_icd.json", org.lwjgl.vulkan.VK12.VK_DRIVER_ID_MESA_KOSMICKRISP),
+    }
+
+    var macVulkanDriver: MacVulkanDriver = System.getProperty(
+        "afield.four.vulkanDriver",
+        System.getenv("AFIELD_VULKAN_DRIVER")
+    )?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+        MacVulkanDriver.entries.firstOrNull { it.name.equals(raw.replace("-", ""), ignoreCase = true) }
+            ?: error("Unknown Vulkan driver '$raw'. Use auto, moltenvk or kosmickrisp.")
+    } ?: MacVulkanDriver.AUTO
+
+    /** [macVulkanDriver] with AUTO decided. */
+    val resolvedMacVulkanDriver: MacVulkanDriver
+        get() = if (macVulkanDriver == MacVulkanDriver.AUTO) MacVulkanDriver.MOLTENVK else macVulkanDriver
+
+    /**
+     * The macOS SDK root (`…/VulkanSDK/<version>/macOS`) whose loader Field uses: `VULKAN_SDK` when set,
+     * else the newest version under `~/VulkanSDK`. Null when there is none, in which case LWJGL loads its
+     * own bundled MoltenVK directly, with no loader, and KosmicKrisp cannot be reached at all.
+     */
+    val macVulkanSdk: File? by lazy {
+        if (!isMac) return@lazy null
+        System.getenv("VULKAN_SDK")?.let { File(it) }?.takeIf { File(it, "lib/libvulkan.1.dylib").exists() }
+            ?: File(System.getProperty("user.home"), "VulkanSDK").listFiles()
+                ?.filter { File(it, "macOS/lib/libvulkan.1.dylib").exists() }
+                ?.maxWithOrNull(compareBy<File, List<Int>>(VersionComparator) { dir -> dir.name.split('.').map { it.toIntOrNull() ?: 0 } })
+                ?.let { File(it, "macOS") }
+    }
+
+    private object VersionComparator : Comparator<List<Int>> {
+        override fun compare(a: List<Int>, b: List<Int>): Int {
+            for (i in 0 until maxOf(a.size, b.size)) {
+                val c = (a.getOrElse(i) { 0 }).compareTo(b.getOrElse(i) { 0 })
+                if (c != 0) return c
+            }
+            return 0
+        }
+    }
+
+    var vulkan_library_name: String? = System.getProperty("afield.four.vulkanLibrary", System.getenv("AFIELD_VULKAN_LIBRARY"))
+        ?: macVulkanSdk?.let { File(it, "lib/libvulkan.1.dylib").path }
     val useVulkanSDK = true
     val robustness = false
     var profiling = System.getProperty(
@@ -94,10 +150,71 @@ object Options {
     var enableVR = false
 
     fun doVulkanSDK() {
-        if (useVulkanSDK && isMac && File(vulkan_library_name).exists()) Configuration.VULKAN_LIBRARY_NAME.set(vulkan_library_name)
+        val loader = vulkan_library_name?.takeIf { File(it).exists() }
+        if (useVulkanSDK && isMac && loader != null) {
+            Configuration.VULKAN_LIBRARY_NAME.set(loader)
+            pinMacVulkanDriver()
+        } else if (isMac) {
+            lprintln("warning,vulkan", "No Vulkan SDK loader found (VULKAN_SDK, ~/VulkanSDK); LWJGL's bundled MoltenVK will be used" +
+                if (macVulkanDriver == MacVulkanDriver.KOSMICKRISP) ", so the requested KosmicKrisp driver is unavailable" else "")
+        }
 
         if (isWindows) // too many vulkan extensions on latest nvidia!!
             Configuration.STACK_SIZE.set(512)
+    }
+
+    /**
+     * Point the loader at exactly one driver manifest, from the same SDK as the loader.
+     *
+     * Left to itself the SDK loader does not look in its own `share/vulkan/icd.d`: it finds whatever
+     * sits in `/usr/local/share/vulkan/icd.d` and `~/.local/share/vulkan/icd.d`, which is whichever SDK
+     * last did a system-global install plus any hand-built Mesa. Field would then take the first
+     * device enumerated — MoltenVK today, by the loader's ordering, not by anyone's choice. Pinning
+     * `VK_DRIVER_FILES` makes the driver a decision. A `VK_DRIVER_FILES` or `VK_ICD_FILENAMES` already
+     * in the environment is the user's decision and is left alone.
+     *
+     * The loader reads the C environment when it scans for drivers, so this is a `setenv(3)` in this
+     * process and has to run before the first Vulkan call, which `doVulkanSDK` does.
+     *
+     * Child processes inherit the C environment, so a `jvm-main` smoke started by a pinned Field sees
+     * our `VK_DRIVER_FILES`. [PINNED_BY_FIELD] marks it as ours, so the child re-decides from its own
+     * `AFIELD_VULKAN_DRIVER` rather than mistaking the parent's choice for the user's.
+     */
+    private fun pinMacVulkanDriver() {
+        val ours = System.getenv(PINNED_BY_FIELD)?.let { it == System.getenv("VK_DRIVER_FILES") } == true
+        if (!ours && (System.getenv("VK_DRIVER_FILES") != null || System.getenv("VK_ICD_FILENAMES") != null)) {
+            lprintln("info,vulkan", "Vulkan driver chosen by the environment: " +
+                (System.getenv("VK_DRIVER_FILES") ?: System.getenv("VK_ICD_FILENAMES")))
+            return
+        }
+        val driver = resolvedMacVulkanDriver
+        val manifest = macVulkanSdk?.let { File(it, "share/vulkan/icd.d/${driver.icdManifest}") }
+        if (manifest == null || !manifest.exists()) {
+            lprintln("warning,vulkan", "Vulkan SDK at $macVulkanSdk has no ${driver.icdManifest}; " +
+                "leaving driver discovery to the loader" +
+                if (driver == MacVulkanDriver.KOSMICKRISP) " (install the SDK's KosmicKrisp component)" else "")
+            return
+        }
+        runCatching { nativeSetenv("VK_DRIVER_FILES", manifest.path); nativeSetenv(PINNED_BY_FIELD, manifest.path) }
+            .onSuccess { lprintln("info,vulkan", "Vulkan driver: ${driver.name.lowercase()} ($manifest)") }
+            .onFailure { lprintln("warning,vulkan", "Could not pin the Vulkan driver ($it); leaving discovery to the loader") }
+    }
+
+    private const val PINNED_BY_FIELD = "AFIELD_VK_DRIVER_FILES_PINNED"
+
+    private fun nativeSetenv(name: String, value: String) {
+        val linker = java.lang.foreign.Linker.nativeLinker()
+        val setenv = linker.downcallHandle(
+            linker.defaultLookup().find("setenv").orElseThrow(),
+            java.lang.foreign.FunctionDescriptor.of(
+                java.lang.foreign.ValueLayout.JAVA_INT,
+                java.lang.foreign.ValueLayout.ADDRESS, java.lang.foreign.ValueLayout.ADDRESS, java.lang.foreign.ValueLayout.JAVA_INT
+            )
+        )
+        java.lang.foreign.Arena.ofConfined().use { arena ->
+            val rc = setenv.invokeWithArguments(arena.allocateFrom(name), arena.allocateFrom(value), 1) as Int
+            check(rc == 0) { "setenv($name) returned $rc" }
+        }
     }
 
     private val requestedDepthFormat = System.getProperty(
