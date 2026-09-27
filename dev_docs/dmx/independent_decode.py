@@ -6,6 +6,7 @@ Receivers, all listening on 127.0.0.1:
   artnet      hand-rolled struct parse of ArtDmx / ArtSync / ArtPoll / ArtPollReply
   sacn        hand-rolled struct parse of E1.31 data / sync / discovery packets
   sacn-lib    the third-party `sacn` package (pip: sacn) as the receiver
+  artnet-lib  the third-party `stupidArtnet` package (pip: stupidArtnet) as the receiver
 
 Senders, for the other direction (Field's DmxInput decoding someone else's packets):
 
@@ -131,6 +132,22 @@ def sacn_lib(port, universe, seconds):
     print(f"sacn-lib received {len(got)} packets", flush=True)
 
 
+def artnet_lib(port, universe, seconds):
+    from stupidArtnet import StupidArtnetServer  # third-party
+    server = StupidArtnetServer(port=port)
+    got = []
+
+    def on_packet(data):
+        got.append(len(data))
+        print(f"stupidArtnet universe={universe} slots={len(data)} first={list(data[:12])}", flush=True)
+
+    server.register_listener(universe=universe, is_simplified=True, callback_function=on_packet)
+    print(f"stupidArtnet receiving on :{port} universe {universe} for {seconds}s", flush=True)
+    time.sleep(seconds)
+    server.close()
+    print(f"stupidArtnet received {len(got)} packets", flush=True)
+
+
 def pattern(i, k):
     """Slot i of frame k: a ramp that moves, so a receiver can tell frames apart."""
     return (i * 3 + k) % 256
@@ -171,7 +188,7 @@ def send_sacn_lib(universe, seconds):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["artnet", "sacn", "sacn-lib", "send-artnet", "send-sacn-lib"])
+    ap.add_argument("mode", choices=["artnet", "sacn", "sacn-lib", "artnet-lib", "send-artnet", "send-sacn-lib"])
     ap.add_argument("--port", type=int, default=0)
     ap.add_argument("--seconds", type=float, default=5)
     ap.add_argument("--universe", type=int, default=1)
@@ -183,6 +200,8 @@ if __name__ == "__main__":
         listen(a.port, a.seconds, decode_sacn, a.limit)
     elif a.mode == "sacn-lib":
         sacn_lib(a.port, a.universe, a.seconds)
+    elif a.mode == "artnet-lib":
+        artnet_lib(a.port, a.universe, a.seconds)
     elif a.mode == "send-artnet":
         send_artnet(a.port, a.universe, a.seconds)
     else:

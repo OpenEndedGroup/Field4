@@ -51,9 +51,9 @@ is `public/docs/dmx_lighting.md`; the loadable demo is `public/docs/assets/dmx_l
 | E131_NETWORK_DATA_LOSS_TIMEOUT 2.5 s; discovery every 10 s on universe 64214 | E1.31-2016 App. A, §8 | `Sacn`, `DmxInput` |
 
 These were written from knowledge of the specifications, not checked against the PDF text tonight
-(no network). The byte layouts are cross-checked by an independent decoder *and* by the third-party
-`sacn` package (below), which is strong evidence for the E1.31 layouts; the Art-Net timing numbers
-(4 s, 10 s) are the least verified claims here.
+(no network). The byte layouts are cross-checked by an independent decoder and by third-party packages (`sacn`
+for E1.31 in both directions, `stupidArtnet` for received ArtDmx, below). The Art-Net timing
+numbers (4 s refresh and sync timeout, 10 s merge timeout) are the least verified claims here.
 
 ## Verification record (2026-09-27)
 
@@ -84,6 +84,13 @@ Every flags-and-length word, vector and DMP header field is asserted by the deco
 The third-party `sacn` package (`uv run --no-project --with sacn …  sacn-lib`), receiving an
 animated universe at 5 Hz, reported 17 successive frames with correct values and saw the terminate
 as the universe going away.
+
+**Field → third-party Art-Net receiver.** The `stupidArtnet` package's `StupidArtnetServer`
+(`uv run --no-project --with stupidArtnet … artnet-lib --port 16480 --universe 2`) accepted Field's
+ArtDmx: its header check (`Art-Net\0`, OpCode `0x5000` low byte first, ProtVer 14) passed and its
+port-address mask matched universe 2. It logged 11+ successive animated frames whose first pixel's blue,
+37, is the expected `(1 − 170/199) · 255` for pixel 170, the first pixel to roll into universe 2. So
+the Art-Net layout is now also checked by code this agent did not write.
 
 **Independent sender, Python → Field.** A hand-packed Python ArtDmx sender (universe 3) and the `sacn`
 package's own `sACNsender` (universe 4, priority 120) fed a box holding `artnetIn(port = 16471)` and
