@@ -624,8 +624,8 @@ expect:
 <img src="../assets/rectsl/rectsl-fit-to-target.png" alt="fit a distribution to a target"
      style="width:100%;max-width:640px;border-radius:8px;">
 
-The top (blue) row is the target silhouette; the middle (brown) row is the seed,
-whose two lobes start merged in the wrong place; the bottom (gold) row is the
+The bottom (blue) row is the target silhouette; the middle (brown) row is the seed,
+whose two lobes start merged in the wrong place; the top (gold) row is the
 fitted curve, which the optimiser has brought back to the target's two-lobe shape.
 `fitBest` tuned the seed's lobe positions, widths, and heights by gradient descent;
 RectSL only sampled the result. Reach for `fitBest` when you have a shape in mind

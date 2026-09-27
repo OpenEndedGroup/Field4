@@ -1,0 +1,16 @@
+{
+  "id" : "r1-ebfa39bf30b2",
+  "parent" : null,
+  "description" : "the starting scene",
+  "created" : "2026-09-27T00:15:08.428954Z",
+  "sourceHash" : "ebfa39bf30b201c9925517ef1300647619935fb7bf15f6c885826d7ed2673571",
+  "facts" : {
+    "warnings" : [ "The scene has no rectangles: it draws only its background.", "Mostly blank from 0 to 6 s." ],
+    "animated" : false,
+    "rects" : 0,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 5,
+    "materials" : [ ]
+  }
+}

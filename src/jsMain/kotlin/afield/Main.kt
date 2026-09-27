@@ -5730,6 +5730,11 @@ suspend fun main() {
                     notifyEmbeddedEditorOfRemoteUpdate(u, "stackSL", set.value)
                 }
 
+                "rectSL" -> {
+                    found.unsafeCast<dynamic>().rectSL = set.value
+                    notifyEmbeddedEditorOfRemoteUpdate(u, "rectSL", set.value)
+                }
+
                 "vertex_fragment" -> {
                     found.unsafeCast<dynamic>().vertex_fragment = set.value
                     notifyEmbeddedEditorOfRemoteUpdate(u, "vertex_fragment", set.value)

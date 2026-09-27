@@ -41,6 +41,8 @@ For a complete conversation that changes code and inspects its result, try
 [Talking a function into existence](function_conversation.md). It provides a
 blank three-channel signal document, a developed example with saved conversations,
 and editable tools for plotting, checking and exporting the function.
+[Talking a shader into existence](stacksl_conversation.md) does the same for a
+StackSL program drawn live in a window, with three recorded sessions.
 
 ## Chat at an editor location
 

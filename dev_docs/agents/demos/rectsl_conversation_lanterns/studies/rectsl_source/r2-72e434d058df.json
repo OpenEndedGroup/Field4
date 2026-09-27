@@ -1,0 +1,16 @@
+{
+  "id" : "r2-72e434d058df",
+  "parent" : "r1-ebfa39bf30b2",
+  "description" : "Warm paper lanterns ascending in a sparse, gently swaying stream against a deep-blue night.",
+  "created" : "2026-09-26T22:49:28.580550Z",
+  "sourceHash" : "72e434d058df2168c52527523fd8b05356599fb93565a88846dd9a8de96309da",
+  "facts" : {
+    "warnings" : [ "Heavy overlap (first at 0.00 s): night (line 10), stars (line 13), stars-copy (line 14), stars-copy-2 (line 14), …." ],
+    "animated" : true,
+    "rects" : 65,
+    "groups" : 5,
+    "duration" : 18.0,
+    "knobs" : 107,
+    "materials" : [ ]
+  }
+}

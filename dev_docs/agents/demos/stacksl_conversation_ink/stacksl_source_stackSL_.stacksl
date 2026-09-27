@@ -1,0 +1,36 @@
+# Ink in amber water. Time changes the noise's fourth dimension, never scrolls xy.
+: folds
+  >q
+  <q fbm4
+  <q [7.1,3.8,2.4,0] + fbm4
+  vec2 0.5 - 2.8 * <q +
+;
+# Fixed spatial anchor, slow internal evolution.
+p 3.8 * 0.06t >w >domain
+<domain folds folds >flow
+# Feathered concentration around a stationary central bloom.
+<flow fbm4 0.78 *
+p [1,0.85,0,0] * length 0.92 * - 0.27 + =concentration
+0.28 0.62 ramp smooth >ink
+# Amber water with a gentle falloff toward the edges.
+[0.78,0.40,0.10] [0.42,0.16,0.028] p length 0.85 * mix >water
+# Dilute indigo at the edges, near-black indigo in the pooled pigment.
+<water [0.105,0.095,0.235] <ink 0.0 0.68 ramp smooth mix
+[0.008,0.012,0.060] <ink 0.30 1.0 ramp smooth mix
+# Fine pale threads tracing the folded internal field.
+[0.25,0.30,0.50]
+<flow fbm4 42 * sin abs 1- 4 pow
+<ink 0.45 0.95 ramp smooth * 0.58 * mix
+saturate
+# Keep the entire original ink rendering, including the user's speed and threads.
+>original
+# Broad water-light ripples evolve independently, more slowly than the ink.
+p 2.4 * 0.014t >w fbm4 >waterNoise
+p x 7 * p y 4 * + <waterNoise 5 * + 0.07t + sin 0.5 * 0.5 + >light
+# Copper shade to honey light, applied only to clear water.
+<original
+<water [0.64,0.48,0.34,1] * <water [1.22,1.20,1.10,1] * <light mix
+<concentration 0.10 0.28 ramp smooth 1- mix
+# Exact guard: every pixel with any ink keeps its original RGBA.
+<original <ink 0 > select
+saturate

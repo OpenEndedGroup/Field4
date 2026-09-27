@@ -1702,7 +1702,11 @@ class FieldBackdoor:
         timeout: float,
         read_only: bool = False,
         must_exist: bool = False,
+        keep_running: bool = False,
     ) -> dict[str, Any]:
+        # keep_running asks Field to leave this named document's windows and running boxes up
+        # after this client disconnects (by default a document's last client leaving cleans them
+        # up), so a later invocation finds the window it left. Ignored for scratch documents.
         # read_only is not scratch. scratch throws the document name away and synthesises a new
         # directory under ~/.agent-scratch/; read_only opens the real named document with Field's
         # write-back path switched off, which is what inspecting a demo committed to a repository
@@ -1733,6 +1737,7 @@ class FieldBackdoor:
                 "scratch": scratch,
                 "username": "agent",
                 "readOnly": read_only,
+                "keepRunning": keep_running,
             },
             timeout=timeout,
         )
@@ -2302,9 +2307,13 @@ class FieldBackdoor:
         # stale cached preview. Explicit inline source is handled by the callers.
         return await self.get_property(uid=resolved, property_name=property_name, timeout=timeout)
 
-    async def ai_tools_list(self, *, timeout: float) -> list[dict[str, Any]]:
-        """List the ai4 agent tools available for the attached document."""
-        event = await self.call_for_single_reply("agent-ai-tools-list", {}, timeout=timeout)
+    async def ai_tools_list(self, *, timeout: float, focus_box: str | None = None) -> list[dict[str, Any]]:
+        """List the ai4 agent tools available for the attached document.
+
+        ``focus_box`` (a uid or unique name) stands in for the box whose chat is open, so tools that
+        scope themselves to the focused box are listed as that box's chat would see them.
+        """
+        event = await self.call_for_single_reply("agent-ai-tools-list", {"focusBox": focus_box}, timeout=timeout)
         payload = event.get("payload")
         tools = payload.get("tools") if isinstance(payload, dict) else None
         return tools if isinstance(tools, list) else []
@@ -3048,6 +3057,14 @@ def build_command_parser() -> argparse.ArgumentParser:
             "server's workspace. Say this whenever you mean an existing document."
         ),
     )
+    open_parser.add_argument(
+        "--keep-running",
+        action="store_true",
+        help=(
+            "leave the document's windows and running boxes up after this invocation ends, so a "
+            "later invocation finds them (by default they are cleaned up when the last client leaves)"
+        ),
+    )
 
     subparsers.add_parser("status", add_help=False)
     subparsers.add_parser("snapshot", add_help=False)
@@ -3239,7 +3256,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     for command_name in ("run", "launch", "continue"):
         exec_parser = subparsers.add_parser(command_name, add_help=False)
         exec_parser.add_argument("uid")
-        exec_parser.add_argument("--property", default="code")
+        # None: the box's own default_property (a StackSL program box runs its stackSL), else code.
+        exec_parser.add_argument("--property", default=None)
         exec_parser.add_argument("--value")
         exec_parser.add_argument("--file")
         exec_parser.add_argument("--timeout", type=float)
@@ -3382,6 +3400,7 @@ async def dispatch_command(
             timeout=client.default_timeout,
             read_only=getattr(args, "read_only", False),
             must_exist=getattr(args, "must_exist", False),
+            keep_running=getattr(args, "keep_running", False),
         )
         if getattr(args, "must_exist", False):
             if args.scratch or not args.document:
@@ -3812,6 +3831,9 @@ async def dispatch_command(
         if args.file:
             value = client.read_text_source(args.file, command_line=command_line)
         timeout = args.timeout or client.default_timeout
+        if args.property is None:
+            _, target = client.require_box_reference(args.uid)
+            args.property = target.get("default_property") or "code"
         if args.command == "run":
             data, events, timed_out = await client.run_box(args.uid, property_name=args.property, value=value, timeout=timeout)
         elif args.command == "launch":

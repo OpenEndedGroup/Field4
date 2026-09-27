@@ -1,0 +1,47 @@
+# (asked) Paper lanterns drifting up a night sky, a few at a time,
+# swaying a little as they rise, warm orange against deep blue.
+# (chosen) An 18-second loop, five irregularly scattered lanterns with varied sizes and rise speeds.
+# (asked, refined) Natural starting places and gentle sway, not an orderly procession.
+->wall 16 9 meters
+->duration 18
+->fps 30
+->background 0x07132d
+
+# Deep midnight: near-black navy overhead and a faint blue horizon.
+"night" rect 16 9 ->wh 0x09162e 0x01030c 0 -0.5 0 0.5 linear ->fill ;
+
+# A sparse scattering of very faint distant stars.
+"stars" rect 0.018 ->square 0x92aed1 solid ->fill
+19 '( i 2.399 * sin 7.5 * ->x i 1.713 * sin 3.8 * 0.3 + ->y f 0.25 * 0.15 + ->alpha ) array ;
+
+# The whole paper lantern sways as a unit; its rise wraps only outside the wall.
+"lantern" group
+  '( 0=-6 18=6 ) 18 loop-time ->y
+  '( 0=-0.18 3=0.18 6=-0.18 ) ease-in-out 6 loop-time ->x
+  '( 0=-0.045 3=0.045 6=-0.045 ) ease-in-out 6 loop-time ->rot
+
+  # Narrow crown and broad warm paper body.
+  "crown" rect 0 0.45 ->xy 0.55 0.13 ->wh 0xe98230 solid ->fill ;
+  "paper" rect 0.67 0.88 ->wh 0xffb74d 0xdb6225 0 -0.5 0 0.5 linear ->fill ;
+
+  # A luminous central fold with darker seams along the sides.
+  "lit-fold" rect 0 -0.04 ->xy 0.43 0.74 ->wh 0xffd57a 0xf08b35 0 -0.5 0 0.5 linear ->fill ;
+  "left-seam" rect -0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;
+  "right-seam" rect 0.23 0 ->xy 0.018 0.83 ->wh 0xb74e22 solid ->fill 0.4 ->alpha ;
+  "paper-fold" rect 0.02 0.02 ->xy 0.013 0.77 ->wh 0xffe2a2 solid ->fill 0.24 ->alpha ;
+
+  # The folded bottom lip, bright opening, and little heat source.
+  "lower-fold" rect 0 -0.46 ->xy 0.54 0.12 ->wh 0xef8e32 solid ->fill ;
+  "mouth" rect 0 -0.505 ->xy 0.35 0.045 ->wh 0xffdf92 solid ->fill ;
+  "flame" rect 0 -0.42 ->xy 0.095 0.13 ->wh 0xffedb4 solid ->fill ;
+end
+
+# Deep copies keep the paper details together. Independent variations avoid a diagonal procession.
+# Rise durations vary, with a short offscreen pause so every path still loops cleanly at 18 s.
+"lantern" ->select
+5 '(
+  '( 0=-6 14=6 ) linear i 1.7 * sin 0.14 * 1.05 + time* 18 loop-time ->y
+  i 2.399 * sin 5.9 * 0 ->offset
+  i 2.63 * sin 0.18 * 0.85 + ->scale
+  i 1.71 * sin -6 * -8 + ->delay-all-time
+) array ;

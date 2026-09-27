@@ -33,7 +33,7 @@ object CompletionInteractionLogger {
         "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
         "vertex_s", "fragment_s", "compute_s", "task_s", "mesh_s",
         "raygen_s", "miss_s", "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
-        "stackSL", "msl", "customization", "remote_js"
+        "stackSL", "rectSL", "msl", "customization", "remote_js"
     )
 
     @Serializable

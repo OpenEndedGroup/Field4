@@ -48,6 +48,29 @@ data class InlineMetadata(val paths: List<String>, val metadataEdn: String)
 
 private data class BoxRef(val id: String)
 private data class FileRef(val path: String)
+
+/**
+ * The size above which a sidecar is referenced from `metadata.edn` (`#afield/file`) instead of
+ * inlined into it as well (`#afield/file-inline`).
+ *
+ * The inline copy is a fallback for a document whose loose files went missing, and it is worth its
+ * bytes for source. It is not worth them for an AI4 chat history — megabytes of base64 images — which
+ * was being rewritten into `metadata.edn` on every save and backed up twice (as the sidecar and inside
+ * `metadata.edn`): five turns of one conversation left 127 MB of backups. A sidecar loads from its
+ * file either way.
+ */
+internal const val INLINE_SIDECAR_LIMIT = 256 * 1024
+
+/** Whether [property]'s sidecar, holding [contents], is referenced from `metadata.edn` rather than inlined. */
+internal fun referencesSidecar(property: String, contents: String): Boolean =
+    property == afield.ai.core.AiBoxConversation.PROPERTY || contents.length > INLINE_SIDECAR_LIMIT
+
+/** [properties] as `metadata.edn` carries them: large sidecars as references, everything else as is. */
+private fun referencingLargeSidecars(properties: Map<String, Any?>): Map<String, Any?> =
+    if (properties.values.none { it is FileInline }) properties
+    else properties.mapValuesTo(LinkedHashMap()) { (name, value) ->
+        if (value is FileInline && referencesSidecar(name, value.inline)) FileRef(value.path) else value
+    }
 private data class FileInline(val path: String, val inline: String)
 
 class SavingContext {
@@ -480,7 +503,7 @@ class SavingContext {
                     val payloadBoxes = snapshot.transfers.map { transfer ->
                         linkedMapOf<String, Any?>(
                             "id" to transfer.id,
-                            "properties" to transfer.properties
+                            "properties" to referencingLargeSidecars(transfer.properties)
                         )
                     }
                     val payload = linkedMapOf<String, Any?>(
@@ -1317,8 +1340,12 @@ class SavingContext {
                 value.copy(inline = target.readText())
             }
 
+            // What Field would save: a large sidecar is referenced, not inlined (see referencingLargeSidecars).
             is Map<*, *> -> LinkedHashMap<Any?, Any?>().also { out ->
-                value.forEach { (key, item) -> out[refresh(key)] = refresh(item) }
+                value.forEach { (key, item) ->
+                    val refreshedItem = refresh(item)
+                    out[refresh(key)] = if (refreshedItem is FileInline && key is String && referencesSidecar(key, refreshedItem.inline)) FileRef(refreshedItem.path) else refreshedItem
+                }
             }
 
             is List<*> -> value.map(::refresh)
@@ -1374,7 +1401,12 @@ class SavingContext {
         initIfCreated: Boolean = true
     ): Any? = when (value) {
         null -> null
-        is FileRef -> File(directory, value.path).readText()
+        is FileRef -> File(directory, value.path).let { file ->
+            if (file.isFile) file.readText() else {
+                lprintln("warning,save", "document refers to sidecar ${value.path}, which is missing from $directory; loading it as empty")
+                ""
+            }
+        }
         is FileInline -> {
             val file = File(directory, value.path)
             if (!preferInlineFiles && file.exists()) file.readText() else value.inline

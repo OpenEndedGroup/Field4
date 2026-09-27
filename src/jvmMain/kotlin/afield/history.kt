@@ -40,6 +40,7 @@ object HistoryManager {
         "code",
         "fragment",
         "stackSL",
+        "rectSL",
         "vertex",
         "vertex_fragment",
         "compute",

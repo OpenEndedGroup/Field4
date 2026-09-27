@@ -814,6 +814,7 @@ fun installAi4() {
         val docName = File(sessionInfo.filename).name
         val docPath = sessionInfo.filename
         val documentGuides = DocumentGuideTools.forSession(sessionInfo)
+        val focus = ToolFocus(docPath, box, exec.property)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
@@ -1795,6 +1796,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1827,6 +1829,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -1875,6 +1878,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1907,6 +1911,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1939,6 +1944,7 @@ fun installAi4() {
                             semanticRetrievalRebuild = semanticRetrievalRebuild,
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
+                            focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )

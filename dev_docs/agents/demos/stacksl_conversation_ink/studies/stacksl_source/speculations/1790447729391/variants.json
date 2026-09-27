@@ -1,0 +1,19 @@
+{
+  "against" : "r2-288dde12a884",
+  "liveSourceHash" : "288dde12a88490929d5292cfd6a291beae89abfb4e8b6bd4cb5576cd62b2e83f",
+  "adopted" : "B",
+  "variants" : [ {
+    "label" : "A",
+    "note" : "Soft veils: broad translucent blue layers within the dark body; the quietest treatment.",
+    "file" : "A.stacksl"
+  }, {
+    "label" : "B",
+    "note" : "Fine threads: narrow blue-lilac contour filaments, with deep indigo between them.",
+    "file" : "B.stacksl"
+  }, {
+    "label" : "C",
+    "note" : "Warm channels: folded, wider amber-lilac ribbons suggesting water seen through thinner pigment.",
+    "file" : "C.stacksl"
+  } ],
+  "as" : "r3-c4e66cc017b5"
+}

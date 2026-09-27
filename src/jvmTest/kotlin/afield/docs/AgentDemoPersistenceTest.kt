@@ -60,6 +60,30 @@ class AgentDemoPersistenceTest {
         assertEquals(canonical.metadataEdn, saving.canonicalInlineMetadata(demo.path).metadataEdn)
     }
 
+    /**
+     * An AI4 chat history is megabytes of base64 images, and a large sidecar's inline fallback costs
+     * its size twice on every save (and twice again in backups). Such sidecars are referenced from
+     * `metadata.edn`; small source stays inline.
+     */
+    @Test
+    fun largeSidecarsAndChatHistoriesAreReferencedNotInlined() {
+        val demo = Files.createTempDirectory("agent-demo-large").toFile()
+        File(demo, "box_code_.kt").writeText("println(\"small\")\n")
+        File(demo, "box_ai4_chat_history_.md").writeText("<<you>>\nhello\n")
+        File(demo, "box_notes_.md").writeText("x".repeat(300 * 1024))
+        File(demo, SavingContext.METADATA_EDN).writeText(
+            """{"version" 2 "boxes" [{"id" "box" "properties" {""" +
+                """"code" #afield/file-inline {"path" "box_code_.kt" "inline" ""} """ +
+                """"ai4_chat_history" #afield/file-inline {"path" "box_ai4_chat_history_.md" "inline" ""} """ +
+                """"notes" #afield/file-inline {"path" "box_notes_.md" "inline" ""}}}]}"""
+        )
+        val canonical = SavingContext().canonicalInlineMetadata(demo.path).metadataEdn
+        assertTrue("\"code\" #afield/file-inline {\"path\" \"box_code_.kt\" \"inline\" \"println" in canonical, canonical.take(400))
+        assertTrue("\"ai4_chat_history\" #afield/file \"box_ai4_chat_history_.md\"" in canonical, canonical.take(400))
+        assertTrue("\"notes\" #afield/file \"box_notes_.md\"" in canonical)
+        assertTrue(canonical.length < 2000, "no inline copy of the large sidecar")
+    }
+
     @Test
     fun refreshRefusesAnInlinePathOutsideTheDocument() {
         val parent = Files.createTempDirectory("agent-demo-escape").toFile()

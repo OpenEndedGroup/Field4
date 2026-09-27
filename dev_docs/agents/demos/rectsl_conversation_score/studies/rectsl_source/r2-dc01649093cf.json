@@ -1,0 +1,16 @@
+{
+  "id" : "r2-dc01649093cf",
+  "parent" : "r1-ebfa39bf30b2",
+  "description" : "A three-row visual score: 120 BPM, four-beat bars with enlarged downbeats, cream and vermilion on black.",
+  "created" : "2026-09-27T00:15:44.559099Z",
+  "sourceHash" : "dc01649093cffda7c0e473d4ef0c3eb3fb3dbc37ba2b1dccf0b04f0e2cf52a9a",
+  "facts" : {
+    "warnings" : [ ],
+    "animated" : true,
+    "rects" : 51,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 79,
+    "materials" : [ ]
+  }
+}

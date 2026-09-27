@@ -641,7 +641,15 @@ data class AgentOpenDocument(
      * under `~/.agent-scratch/`. This opens the real thing, read-only, which is what inspecting a
      * demo committed to a repository needs.
      */
-    val readOnly: Boolean = false
+    val readOnly: Boolean = false,
+    /**
+     * Keep the named document running — its windows and running boxes — after this client
+     * disconnects, instead of the cleanup a document gets when its last client leaves.
+     *
+     * For automation that spans several invocations (a recorded conversation: one invocation per
+     * turn) against a document whose window must stay up between them. Ignored for scratch documents.
+     */
+    val keepRunning: Boolean = false
 )
 
 @Serializable
@@ -719,6 +727,8 @@ data class AgentBoxSnapshot(
     val metadata: String? = null,
     val notes: String? = null,
     val code_language: String? = null,
+    /** The property the box edits and runs by default (`stackSL` for a StackSL program); `null` means `code`. */
+    val default_property: String? = null,
     val autorun: Boolean = false,
     val layers: String? = null,
     val visible: Boolean = true,

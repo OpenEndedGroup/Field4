@@ -1,0 +1,1 @@
+I took ten points in the card. Now recolour it in terracotta, cream and a deep green instead of cobalt and saffron — but don't change the geometry at all, and prove that you didn't.

@@ -1065,6 +1065,7 @@ const PALETTE_PROPERTY_INFO = {
         vertex: ["Vertex Shader (GLSL)", "GLSL vertex stage inherited by graphics modules that use this box."],
         fragment: ["Fragment Shader (GLSL)", "GLSL fragment stage, often the quickest place to sketch material and image behavior."],
         stackSL: ["StackSL Shader Function", "StackSL shader function source for Field's stack-oriented shader workflow."],
+        rectSL: ["RectSL Scene", "RectSL source: an animated scene of rectangles, drawn in the window above the box when its parent is a RectSL root."],
         vertex_fragment: ["Shared Vertex+Fragment Shader (Slang)", "Slang source shared by vertex and fragment shader stages."],
         compute: ["Compute Shader (GLSL)", "GLSL compute shader source for GPU data generation or transformation."],
         task: ["Task Shader (GLSL)", "GLSL task shader stage used with mesh shader pipelines."],
@@ -1099,6 +1100,7 @@ const PALETTE_PROPERTY_LANGUAGE = {
         vertex: "glsl",
         fragment: "glsl",
         stackSL: "stacksl",
+        rectSL: "rectsl",
         vertex_fragment: "slang",
         compute: "glsl",
         task: "glsl",
@@ -1833,6 +1835,7 @@ const palettePropertySwitchKeybindings = (property) => {
                 vertex: "KeyV",
                 fragment: "KeyF",
                 stackSL: "KeyM",
+                rectSL: "KeyM",
                 vertex_fragment: "KeyP",
                 compute: "KeyD",
         }
@@ -2049,7 +2052,7 @@ const collectPropertyCommandItems = () => {
         if (!box) return []
         const uid = paletteBoxUid(box)
         const priority = [
-                "code", "fragment", "vertex", "stackSL", "vertex_fragment",
+                "code", "fragment", "vertex", "stackSL", "rectSL", "vertex_fragment",
                 "compute", "task", "mesh", "preamble", "notes", "metadata",
                 "contents", "attic", "introduction",
         ]

@@ -1,0 +1,16 @@
+{
+  "id" : "r7-988cdeeb24a0",
+  "parent" : "r6-608989c206df",
+  "description" : "Half-speed C: halve only the two hem-wave rates and the gathered-fold sway rate; preserve all appearance parameters",
+  "created" : "2026-09-26T18:51:21.168640Z",
+  "sourceHash" : "988cdeeb24a065f988d8220632f8cabeafca36004992234daa11c126980e9c35",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 221,
+    "knobs" : 95,
+    "stages" : 36
+  }
+}

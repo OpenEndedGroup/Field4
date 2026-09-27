@@ -4,16 +4,15 @@ Start with three flat lines. Describe how they should move. Look at the result,
 zoom into a passage, and ask for a change. Each accepted change becomes ordinary
 Kotlin in a Field box, with a saved revision you can inspect or return to.
 
-This example uses AI4 chat to build a one-hour, three-channel signal. It also
-shows how to **extend AI4 from inside Field**. One box holds the function. The
-other defines the tools AI4 uses to edit it, plot it, and check what changed.
-Those tools are ordinary Kotlin in the document: edit a handler, rerun its box,
-and the next tool call uses the new implementation. There is no Field rebuild.
+This example uses AI4 chat to build a one-hour, three-channel signal. The box
+that holds the function is a *function study*: its AI4 chat has tools to edit
+the Kotlin, plot it, and check what changed, and its output shows the signal
+viewer. The tools ship with Field, and a document can add its own from a box —
+the working document can extend the environment you are working in, and teach
+the assistant a new way to observe and act, with no Field rebuild.
 
-There is something Emacs-like about this: the working document can extend the
-environment you are working in. Here it can also teach the assistant a new way
-to observe and act. The conversation, editable function, and observation tools
-stay together.
+[Talking a shader into existence](stacksl_conversation.md) does the same for a
+StackSL program drawn live in a window.
 
 ## Start from a blank document
 
@@ -22,27 +21,21 @@ Unzip it into your Field workspace, keeping the `function_conversation` folder
 intact, then open that document. Configure an AI provider through Field's welcome
 page if you have not already; see [AI features](aiFeatures.md).
 
-The starter has two boxes:
+The starter has one box, **The function — talk here (AI4)**. Opening the
+document checks its source in as the first revision and draws it in the box's
+viewer. Select the box and press **command/ctrl-4** to open AI4 chat.
 
-| Box | What to do |
-| --- | --- |
-| **Observation tools — run first** | Run it to register the tools and open the signal viewer. |
-| **function_source** | Select it and press **command/ctrl-4** to open AI4 chat. |
-
-![The two-box starter in Field: the editable function and its live observation tools](assets/function_conversation/two-boxes.png)
-
-The left box is the thing you are making; the right box teaches AI4 how to work
-on it. Running the right box installs the document's tools into AI4's live tool
-registry. Opening chat in the left box then gives the model those capabilities.
-
-If you switch between the starter and the worked example in the same Field
-session, rerun the tools box in the document you want to chat with. This selects
-that document's tool handlers.
+![The starter in Field: the function study box and its signal viewer, three flat channels](assets/function_conversation/starter.png)
 
 The source initially returns three zero-valued channels, named x, y and z, over
 3,600 seconds. There are no crescendos, previous conversations, or inherited
-revisions. Running the tools checks this initial source; the first checked
-revision therefore belongs to your own session.
+revisions; the first checked revision belongs to your own session. Each study
+keeps its history under `studies/<box id>/` in its document, so the starter and
+the worked example below can be open at once.
+
+Any box whose Kotlin returns a `StudyComposition` can be a function study: select
+it and choose **Make a Function Study** from the command palette. An empty box
+is given this starter's source.
 
 ### The starting Kotlin
 
@@ -106,10 +99,10 @@ entirely. Zoom in before you judge a detail.
 ## A worked conversation
 
 [Download the developed example](assets/function_conversation/function_conversation_example.zip)
-to open **function_conversation_example**. It contains the finished source, the
-same tools, all nine saved revisions, and the actual conversations and plots.
-Run its tools box to restore the checked composition and explore the viewer.
-Then select **The function — talk here (AI4)** and press **command/ctrl-4**.
+to open **function_conversation_example**. It contains the finished source, all
+nine saved revisions, and the actual conversations and plots. Opening it restores
+the checked composition and draws the viewer. Then select **The function — talk
+here (AI4)** and press **command/ctrl-4**.
 The seven recorded turns are already in that box's chat, with their original
 prompts, replies, tool traces and plot images. Scroll back to watch the function
 grow, or send a new message to continue from the finished example. Simply opening
@@ -444,30 +437,34 @@ finding no difference in the preserved regions, the hold values, or under
 random-access evaluation order. It also exercised failed compilation and the
 stale-edit guard. That is sampling, not proof.
 
-## The tools are part of the document
+## The tools, and adding your own
 
-The [tools box source](assets/function_conversation/function_tools.kt) registers
-eight tools through [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own).
-Rerun the box after changing a handler. For example, these are the request and
-handler for sampling specific times, taken from the tools box:
+AI4 offers the study tools to any conversation opened on a function study's
+Kotlin, and each works on that box's study. They are library code,
+[`FunctionStudyTools.kt`](assets/function_conversation/FunctionStudyTools.kt),
+registered through [AI4's tool interface](aiFeatures.md#give-the-ai-a-tool-of-your-own).
+For example, these are the request and handler for sampling specific times:
 
 ```diffstatic {data-lang=kotlin}
 data class SampleFunctionStudy(val revision: String, val timesSeconds: List<Double>)
 
-AgentToolExtensions.register(SampleFunctionStudy::class.java, available) { _, request ->
-    studio.sample(request.revision, request.timesSeconds)
+r.register(SampleFunctionStudy::class.java, onAFunctionStudy, LIBRARY) { ctx, q ->
+    FunctionStudies.ready(studyBox(ctx)).sample(q.revision, q.timesSeconds)
 }
 ```
 
-The request class supplies the tool's input schema; the handler runs against the
-study held by that box. `available` scopes the tool to this document. You can
-change a measurement, add a plot, or register another request class here, then
-rerun the box and keep chatting. The observation tools return both numerical
-evidence and actual image inputs to AI4, so the assistant can inspect what its
-Kotlin does before making the next edit.
+The request class supplies the tool's input schema; the gate offers it when the
+conversation's focus is a function study, and the handler works on that box.
+A document can register tools of its own the same way from one of its boxes —
+a measurement, a plot, another request class — scoped to itself, then run the box
+and keep chatting; [Talking a shader into existence](stacksl_conversation.md#adding-a-tool-of-your-own)
+has a worked example. The observation tools return both numerical evidence and
+actual image inputs to AI4, so the assistant can inspect what its Kotlin does
+before making the next edit.
 
 | Tool | Purpose |
 | --- | --- |
+| `FunctionStudyGuide` | How to work on a study: the Kotlin contract, the edit and export loop, and the limits of the evidence. |
 | `InspectFunctionStudy` | Read live source, checked revision, history and any manual edits. |
 | `SelectFunctionStudy` | Resolve an event or passage before editing it. |
 | `EditFunctionStudy` | Compile and check a complete candidate before publishing it. |

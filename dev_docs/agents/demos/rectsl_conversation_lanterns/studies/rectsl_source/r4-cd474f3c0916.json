@@ -1,0 +1,16 @@
+{
+  "id" : "r4-cd474f3c0916",
+  "parent" : "r3-8b5b2a536c7b",
+  "description" : "adopt variant dusk: Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion.",
+  "created" : "2026-09-27T00:04:31.617670Z",
+  "sourceHash" : "cd474f3c0916da94a434dfb76b43c0046d57a1d4023f86224f2caf64d82abf4c",
+  "facts" : {
+    "warnings" : [ "Heavy overlap (first at 0.00 s): night (line 11), stars (line 14), stars-copy (line 15), stars-copy-2 (line 15), …." ],
+    "animated" : true,
+    "rects" : 65,
+    "groups" : 5,
+    "duration" : 18.0,
+    "knobs" : 116,
+    "materials" : [ ]
+  }
+}

@@ -204,6 +204,17 @@ private fun Value.describe(): String = when (this) {
 class RectLangTokenizer(private val source: String) {
     private var i = 0
 
+    /**
+     * Where each token began in the source, by identity. Tokens are data classes — two `1`s are equal —
+     * so only identity tells them apart; [compileRectSLWithSource] reads this to put a problem, and
+     * each rectangle, on the line it came from.
+     */
+    val offsets: java.util.IdentityHashMap<Token, Int> = java.util.IdentityHashMap()
+
+    /** Where the tokenizer gave up, when [tokenize] threw: the opening of an unclosed quote, string or escape, or the unexpected character. */
+    var failureOffset: Int? = null
+        private set
+
     private companion object {
         // Longest match first so multi-char operators aren't split by their prefixes.
         private val OPERATORS = listOf("<=", ">=", "!=", "<>", "<", ">", "=")
@@ -214,18 +225,22 @@ class RectLangTokenizer(private val source: String) {
         while (true) {
             skipWhitespaceAndComments()
             if (i >= source.length) break
-            if (source.startsWith("'(", i)) {
-                tokens += parseQuote()
-            } else if (source.startsWith("{{", i)) {
-                tokens += parseKotlinEscape()
-            } else {
-                tokens += parseSingleToken()
+            tokens += located {
+                if (source.startsWith("'(", i)) parseQuote()
+                else if (source.startsWith("{{", i)) parseKotlinEscape()
+                else parseSingleToken()
             }
         }
         return tokens
     }
 
+    private inline fun located(parse: () -> Token): Token {
+        val start = i
+        return parse().also { offsets[it] = start }
+    }
+
     private fun parseKotlinEscape(): Token.KotlinEscape {
+        val openedAt = i
         i += 2 // consume "{{"
         val start = i
         var depth = 0
@@ -241,27 +256,30 @@ class RectLangTokenizer(private val source: String) {
             }
             i++
         }
+        failureOffset = openedAt
         throw RectLangException("Unterminated {{ … }} Kotlin escape")
     }
 
     private fun parseQuote(): Token.Quote {
+        val openedAt = i
         val contentStart = i + 2
         i += 2
         val tokens = mutableListOf<Token>()
         while (true) {
             skipWhitespaceAndComments()
-            if (i >= source.length) throw RectLangException("Unterminated quote literal")
+            if (i >= source.length) {
+                if (failureOffset == null) failureOffset = openedAt
+                throw RectLangException("Unterminated quote literal: this '( has no closing )")
+            }
             if (source[i] == ')') {
                 val raw = source.substring(contentStart, i)
                 i++
                 return Token.Quote(tokens, raw.trim())
             }
-            if (source.startsWith("'(", i)) {
-                tokens += parseQuote()
-            } else if (source.startsWith("{{", i)) {
-                tokens += parseKotlinEscape()
-            } else {
-                tokens += parseSingleToken(inQuote = true)
+            tokens += located {
+                if (source.startsWith("'(", i)) parseQuote()
+                else if (source.startsWith("{{", i)) parseKotlinEscape()
+                else parseSingleToken(inQuote = true)
             }
         }
     }
@@ -273,7 +291,7 @@ class RectLangTokenizer(private val source: String) {
             i++
             return Token.Word(ch.toString())
         }
-        if (ch == ')' && inQuote) throw RectLangException("Unexpected ')' in quote")
+        if (ch == ')' && inQuote) { failureOffset = i; throw RectLangException("Unexpected ')' in quote") }
 
         // Comparison operators and the track-pair separator `=` are punctuation.
         // Recognise them explicitly (longest match first) so `0=0.2` splits into
@@ -289,7 +307,7 @@ class RectLangTokenizer(private val source: String) {
             if (source.startsWith("'(", i)) break
             i++
         }
-        if (start == i) throw RectLangException("Unexpected character '${source[i]}'")
+        if (start == i) { failureOffset = i; throw RectLangException("Unexpected character '${source[i]}'") }
         val raw = source.substring(start, i)
         return atom(raw)
     }
@@ -328,6 +346,7 @@ class RectLangTokenizer(private val source: String) {
                 }
             }
         }
+        failureOffset = start
         throw RectLangException(unterminatedStringMessage(start))
     }
 
@@ -1449,6 +1468,13 @@ data class MotionMetrics(
     val opacityChange: Double
 )
 
+/**
+ * What one sampled frame shows. A rectangle counts as *visible* when it is not transparent and meets
+ * the wall, and the areas count only the part of it inside the wall (its bounding box's share, for a
+ * rotated one) — so a rectangle waiting below the wall to rise into it is not counted. Until
+ * 2026-09-27 every opaque rectangle counted wherever it was, which made a scene whose rectangles had
+ * all left the wall look fully occupied, and [AnimationWarning.MostlyBlank] never fire for it.
+ */
 data class FrameSemanticMetrics(
     val time: Double,
     val visibleObjectCount: Int,
@@ -1672,6 +1698,17 @@ class RectLangVm(
     internal val loopStack = ArrayDeque<LoopFrame>()
     private var tokens: List<Token> = emptyList()
     private var pc: Int = 0
+    private val evaluating = ArrayList<Token>()
+
+    /**
+     * The innermost token that was being evaluated when evaluation last failed, or null once an
+     * enclosing token finished normally (a word that caught the failure and carried on).
+     */
+    var failedAt: Token? = null
+        private set
+
+    /** The tokens being evaluated right now, outermost first: a root-level word, the definition it runs, a word inside that, … */
+    fun evaluatingTokens(): List<Token> = evaluating.toList()
 
     // --- Plotting layer (rectsl-plot-axes) --------------------------------------
     // A shared data→world coordinate frame so several series overlay in one domain,
@@ -1712,13 +1749,23 @@ class RectLangVm(
     }
 
     private fun evalToken(token: Token) {
-        when (token) {
-            is Token.Number -> push(VNum(token.value))
-            is Token.StringLit -> push(VStr(token.value))
-            is Token.ColorLit -> push(VColor(token.color))
-            is Token.Quote -> push(VQuote(token.tokens, token.source))
-            is Token.KotlinEscape -> push(evalKotlinEscape(token.source))
-            is Token.Word -> evalWord(token.name)
+        evaluating += token
+        try {
+            when (token) {
+                is Token.Number -> push(VNum(token.value))
+                is Token.StringLit -> push(VStr(token.value))
+                is Token.ColorLit -> push(VColor(token.color))
+                is Token.Quote -> push(VQuote(token.tokens, token.source))
+                is Token.KotlinEscape -> push(evalKotlinEscape(token.source))
+                is Token.Word -> evalWord(token.name)
+            }
+            failedAt = null
+        } catch (t: Throwable) {
+            // The innermost evaluation catches first; enclosing ones keep what it recorded.
+            if (failedAt == null) failedAt = token
+            throw t
+        } finally {
+            evaluating.removeAt(evaluating.lastIndex)
         }
     }
 
@@ -3731,6 +3778,12 @@ class SceneBuilder {
 
     private val nodes = linkedMapOf<String, NodeDraft>()
     private val active = ArrayDeque<NodeRef>()
+
+    /**
+     * Told each node id as it enters the scene — created, cloned, or renamed into (with the id it had) —
+     * so a caller can say which line of the source made each rectangle. See [compileRectSLWithSource].
+     */
+    internal var onNode: ((id: String, renamedFrom: String?) -> Unit)? = null
     private val groupStack = ArrayDeque<String>()
     private val materials = linkedMapOf(
         "plain" to MutableMaterialSpec("plain", 0, null),
@@ -3770,6 +3823,7 @@ class SceneBuilder {
         val rid = uniqueId(id ?: "rect-${nextNodeId++}")
         val draft = RectDraft(rid)
         nodes[rid] = draft
+        onNode?.invoke(rid, null)
         groupStack.lastOrNull()?.let { parent -> group(parent).children += rid }
         active.addLast(NodeRef.Rect(rid))
         return VRect(rid)
@@ -3779,6 +3833,7 @@ class SceneBuilder {
         val gid = uniqueId(id ?: "group-${nextNodeId++}")
         val draft = GroupDraft(gid)
         nodes[gid] = draft
+        onNode?.invoke(gid, null)
         groupStack.lastOrNull()?.let { parent -> group(parent).children += gid }
         groupStack.addLast(gid)
         active.addLast(NodeRef.Group(gid))
@@ -3796,6 +3851,7 @@ class SceneBuilder {
             group(parentId).children.indexOfFirst { it in selectedIds }.takeIf { it >= 0 }
         }
         nodes[gid] = draft
+        onNode?.invoke(gid, null)
 
         nodes.values.filterIsInstance<GroupDraft>().forEach { group ->
             group.children.removeAll(selectedIds)
@@ -3839,6 +3895,7 @@ class SceneBuilder {
         val fresh = uniqueId(newId)
         node.id = fresh
         nodes[fresh] = node
+        onNode?.invoke(fresh, oldId)
         nodes.values.filterIsInstance<GroupDraft>().forEach { group ->
             group.children.replaceAll { if (it == oldId) fresh else it }
         }
@@ -4274,10 +4331,12 @@ class SceneBuilder {
         return when (node) {
             is RectDraft -> {
                 nodes[id] = node.cloneAs(id)
+                onNode?.invoke(id, null)
                 NodeRef.Rect(id)
             }
             is GroupDraft -> {
                 nodes[id] = node.cloneShallowAs(id)
+                onNode?.invoke(id, null)
                 NodeRef.Group(id)
             }
         }
@@ -4289,12 +4348,14 @@ class SceneBuilder {
         return when (node) {
             is RectDraft -> {
                 nodes[id] = node.cloneAs(id)
+                onNode?.invoke(id, null)
                 NodeRef.Rect(id)
             }
             is GroupDraft -> {
                 val clone = node.cloneShallowAs(id)
                 clone.children.clear()
                 nodes[id] = clone
+                onNode?.invoke(id, null)
                 node.children.forEach { childId ->
                     clone.children += cloneNodeDeepRef(refFor(childId)).id
                 }
@@ -4514,7 +4575,7 @@ fun sampledFramePacket(program: SceneProgram, time: Double): FramePacket {
         time = time,
         mesh = lowerSampledScene(sampled),
         materialTable = program.materialTable,
-        semantic = SemanticFrame(sampled.rects, contacts, frameMetrics(time, sampled.rects, emptyMap()))
+        semantic = SemanticFrame(sampled.rects, contacts, frameMetrics(time, sampled.rects, emptyMap(), program.wall))
     )
 }
 
@@ -4643,7 +4704,7 @@ fun analyzeAnimation(program: SceneProgram, settings: AnalysisSettings = Analysi
         previousContactPairs.clear()
         previousContactPairs += contactPairs
 
-        frameMetrics += frameMetrics(current.time, current.rects, motions)
+        frameMetrics += frameMetrics(current.time, current.rects, motions, program.wall)
         if (contacts.size >= 4) warnings += AnimationWarning.ExcessiveOverlap(current.time, contacts.flatMap { listOf(it.a, it.b) }.distinct())
     }
 
@@ -4693,7 +4754,7 @@ private fun motionMetric(a: SampledRect, b: SampledRect, t0: Double, t1: Double)
     )
 }
 
-private fun frameMetrics(time: Double, rects: List<SampledRect>, motion: Map<String, MotionMetrics>): FrameSemanticMetrics {
+private fun frameMetrics(time: Double, rects: List<SampledRect>, motion: Map<String, MotionMetrics>, wall: WallSpec): FrameSemanticMetrics {
     var count = 0
     var area = 0.0
     var weightedArea = 0.0
@@ -4702,7 +4763,7 @@ private fun frameMetrics(time: Double, rects: List<SampledRect>, motion: Map<Str
     var weightedSpeed = 0.0
     var weightedAngular = 0.0
     rects.forEach { rect ->
-        val a = abs(rect.size.x * rect.scale.x * rect.size.y * rect.scale.y)
+        val a = abs(rect.size.x * rect.scale.x * rect.size.y * rect.scale.y) * onWallFraction(rect, wall)
         if (rect.alpha > 0.001 && a > 1e-12) count++
         area += a
         val weight = a * rect.alpha.coerceIn(0.0, 1.0)
@@ -4743,6 +4804,19 @@ private fun blankIntervals(metrics: List<FrameSemanticMetrics>, threshold: Doubl
     val finalStart = start
     if (finalStart != null && metrics.isNotEmpty()) intervals += finalStart to metrics.last().time
     return intervals
+}
+
+/** The share of [rect]'s bounding box that lies inside [wall]: 1 for a rectangle wholly on it, 0 for one wholly off. */
+private fun onWallFraction(rect: SampledRect, wall: WallSpec): Double {
+    val corners = rectCornersWorld(rect)
+    val minX = corners.minOf { it.x }; val maxX = corners.maxOf { it.x }
+    val minY = corners.minOf { it.y }; val maxY = corners.maxOf { it.y }
+    val (wx0, wy0, wx1, wy1) = if (wall.origin == Origin.TopLeft) listOf(0.0, 0.0, wall.width, wall.height)
+        else listOf(-wall.width * 0.5, -wall.height * 0.5, wall.width * 0.5, wall.height * 0.5)
+    val box = (maxX - minX) * (maxY - minY)
+    if (box <= 1e-18) return if (minX >= wx0 && maxX <= wx1 && minY >= wy0 && maxY <= wy1) 1.0 else 0.0
+    val overlap = max(0.0, min(maxX, wx1) - max(minX, wx0)) * max(0.0, min(maxY, wy1) - max(minY, wy0))
+    return (overlap / box).coerceIn(0.0, 1.0)
 }
 
 private fun isVisible(rect: SampledRect, wall: WallSpec): Boolean {

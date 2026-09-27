@@ -1,0 +1,49 @@
+# Still zellige: all geometry and glaze depend only on position.
+# Fold a point into one of ten mirrored wedges.
+: wedge
+  polar >pol
+  <pol y 0.314159265 + 0.628318531 mod 0.314159265 - abs
+  <pol x swap vec2 cart
+;
+# Ten-point star with the same tip and valley radii as the original.
+: star
+  wedge dup x swap y 1.707717 * + 0.465 - 1.707717 dup * 1 + sqrt /
+;
+# Ten-sided central white medallion.
+: medallion
+  wedge x
+;
+# Four by four repeating rosettes.
+uv 4 * >grid
+<grid fract 0.5 - >q
+<q star >edge
+<q wedge >fold
+<q medallion 0.132 - >hub
+# Alternating terracotta facets, cream ground, tiny deep-green corner diamonds.
+[0.92,0.84,0.68,1] >ivory
+[0.48,0.135,0.065,1] [0.62,0.205,0.105,1]
+<q polar y 0.314159265 + 0.628318531 / floor 2 mod mix >cobalt
+<ivory <cobalt -0.0015 0.0015 <edge smoothstep 1- mix
+<ivory -0.0015 0.0015 <hub smoothstep 1- mix
+>ceramic
+# A small deep-green diamond sits at each junction of four repeats.
+<q abs 0.5 swap - x+y 0.105 - 0.707107 * >goldedge
+<ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <goldedge smoothstep 1- mix
+>ceramic
+# Deep-green centre jewel, deliberately much smaller than the terracotta petals.
+<q abs x+y 0.045 - 0.707107 * >jewel
+<ceramic [0.012,0.095,0.045,1] -0.0015 0.0015 <jewel smoothstep 1- mix
+>ceramic
+# Grout follows star edges, hub, centre jewels and the ten petal divisions.
+<edge abs <hub abs min <goldedge abs min <jewel abs min >joint
+<fold x 0.309016994 * <fold y 0.951056516 * - abs
+<hub 0.004 > * <hub 0.004 <= 1 * +
+<joint min >joint
+# Straight background joints end at the rosette and corner diamonds.
+<q abs dup x swap y max 0.5 swap -
+<edge 0.006 > * <edge 0.006 <= 1 * +
+<joint min >joint
+# Subtle static glaze variation; dark, narrow recessed mortar.
+<ceramic uv 95 * noise 0.045 * 0.955 + *
+>glaze
+[0.024,0.028,0.035,1] <glaze 0.003 0.005 <joint smoothstep mix

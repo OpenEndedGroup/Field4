@@ -20,5 +20,3 @@ largeFrames:
   interaction_nets_lambda/metadata.edn#lambda-normalise: Saved demo document rather than a transcript; the box holds the eight-term table it prints, which is 80 columns wide.
   interaction_nets_lambda/metadata.edn#lambda-reduction: Saved demo document; the box holds the five-panel reduction figure, which is ~1300px of graphic by design.
   interaction_nets_lambda/metadata.edn#lambda-oracle: Saved demo document; the box holds the 25-row corpus table and its four-scheduler summary.
-  function_conversation/metadata.edn#function_tools: Saved demo document; the box displays into itself the Plotly overview the README tells you to run it for, and SignalViewerOptions renders that at its default width of 1100px.
-  function_conversation_example/metadata.edn#function_tools: Saved demo document; the same tools box as the blank starter, holding the same 1100px SignalViewer overview and the 1050px preservation-checks panel.

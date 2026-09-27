@@ -1,0 +1,2303 @@
+{
+  "label": "04-folds",
+  "status": "completed",
+  "transport": "Field ai-assist kind=general (AI4 UI path)",
+  "prompt": "Make the curtain hang more like fabric, with vertical folds. Try two or three versions and I'll choose.\n",
+  "elapsedSeconds": 98.175,
+  "before": {
+    "name": "InspectStackSLStudy",
+    "ok": true,
+    "result": {
+      "revision": "r5-85cc71890bb4",
+      "facts": {
+        "revision": "r5-85cc71890bb4",
+        "parent": "r4-7eb0909143e2",
+        "description": "Make the space under the aurora read as open sky: replace the silhouette-like cutoff with diffuse irregular ray tips and shallower folds",
+        "source": "# (asked) Night sky, dark hills, green fading to violet aurora, slow ripples, faint stars.\n# (chosen) A luminous pleated curtain above a low, perfectly still, pure-black horizon.\n\n# A gently folding lower edge; one coordinate in, one height out.\n: aurora-hem >q\n  <q x 7 * time 0.12 * + sin 0.035 * 0.43 +\n  <q x 17 * time 0.08 * - sin 0.018 * +\n;\n# Soft, fixed pinpoints; one star position in, one brightness out.\n: starlight length 620 * dup * neg exp ;\n# Static hills with smaller irregularities along their crest.\n: hill-line >q\n  <q x 6 * 0.8 + sin 0.044 * 0.15 +\n  <q x 15 * sin 0.022 * +\n  <q [32,2,0,0] * fbm 0.018 * +\n;\n\n# Midnight blue, subtly lighter toward the horizon.\n[0.002,0.004,0.014] [0.008,0.019,0.033] uv y 1- 2 pow mix >sky\n\n# A few faint stars, kept still while the curtain moves.\nuv [0.08,0.78] - starlight\nuv [0.19,0.92] - starlight 0.7 * +\nuv [0.31,0.69] - starlight 0.6 * +\nuv [0.43,0.88] - starlight +\nuv [0.57,0.95] - starlight 0.55 * +\nuv [0.69,0.76] - starlight 0.8 * +\nuv [0.83,0.91] - starlight 0.6 * +\nuv [0.94,0.65] - starlight +\nuv [0.13,0.37] - starlight 0.45 * +\nuv [0.75,0.34] - starlight 0.5 * +\n[0.15,0.18,0.24] * <sky + >sky\n\n# Height above the rippling hem.\nuv time >w aurora-hem >hem\nuv y <hem - >height\n\n# Fine vertical pleats bend gently as they rise.\nuv x\nuv y 5 * uv x 9 * + time 0.1 * + sin 0.018 * +\ntime 0.008 * + >fold\n<fold 170 * uv y 2 * time 0.025 * + vec2 noise\n2 pow 0.8 * 0.2 + >rays\n<fold 410 * sin 0.5 * 0.5 + 0.3 * 0.7 + <rays * >rays\n\n# Diffuse lower tips of varied length, rather than a single silhouetted edge.\n<height 0 min\n<fold 37 * 0 vec2 noise 0.1 * 0.08 + /\ndup * neg exp\n<height 0 max 6 * neg exp *\n0.72 1.0 uv y smoothstep 1- *\n<rays * >curtain\n\n# Emerald at the hem blends into violet higher in the curtain.\n[0.025,0.46,0.13] [0.22,0.028,0.4]\n0.035 0.28 <height smoothstep mix\n<curtain * <sky + >scene\n\n# A near-black hill silhouette occludes everything behind it.\nuv hill-line >ridge\n[0.001,0.002,0.0035] <scene\n-0.001 0.002 uv y <ridge - smoothstep mix\nsaturate\n# Exact black at/below the static ridge; leave every above-ridge pixel untouched.\nblack uv y <ridge <= select\n",
+        "liveSourceHash": "85cc71890bb4bdd879826cb554b4c4956875e48bafd16dbc040ff0ef556350f8",
+        "dirty": false,
+        "liveSource": null,
+        "liveCheck": null,
+        "history": [
+          {
+            "id": "r1-4d2baeb1ffda",
+            "description": "the starting program"
+          },
+          {
+            "id": "r2-2e8e7a0ad33f",
+            "description": "Night sky with slowly rippling green-to-violet aurora, faint stars and a dark rolling hill line"
+          },
+          {
+            "id": "r3-bac36ccd993c",
+            "description": "Correct star coordinates and pass the live clock into the curtain motif"
+          },
+          {
+            "id": "r4-7eb0909143e2",
+            "description": "Force exact, static black at and below the existing ridge; preserve the entire sky and original above-ridge edge blend"
+          },
+          {
+            "id": "r5-85cc71890bb4",
+            "description": "Make the space under the aurora read as open sky: replace the silhouette-like cutoff with diffuse irregular ray tips and shallower folds"
+          }
+        ],
+        "otherRevisions": null,
+        "warnings": [],
+        "notes": [],
+        "definitions": [
+          {
+            "name": "aurora-hem",
+            "finalDepth": 1,
+            "maxDepth": 4,
+            "pruned": 0
+          },
+          {
+            "name": "starlight",
+            "finalDepth": 1,
+            "maxDepth": 2,
+            "pruned": 0
+          },
+          {
+            "name": "hill-line",
+            "finalDepth": 1,
+            "maxDepth": 3,
+            "pruned": 0
+          }
+        ],
+        "animated": true,
+        "nonFiniteFraction": 0.0,
+        "stages": [
+          {
+            "stage": 1,
+            "line": 19,
+            "text": "[0.002,0.004,0.014] [0.008,0.019,0.033] uv y 1- 2 pow mix >sky",
+            "comment": null
+          },
+          {
+            "stage": 2,
+            "line": 22,
+            "text": "uv [0.08,0.78] - starlight",
+            "comment": null
+          },
+          {
+            "stage": 3,
+            "line": 23,
+            "text": "uv [0.19,0.92] - starlight 0.7 * +",
+            "comment": null
+          },
+          {
+            "stage": 4,
+            "line": 24,
+            "text": "uv [0.31,0.69] - starlight 0.6 * +",
+            "comment": null
+          },
+          {
+            "stage": 5,
+            "line": 25,
+            "text": "uv [0.43,0.88] - starlight +",
+            "comment": null
+          },
+          {
+            "stage": 6,
+            "line": 26,
+            "text": "uv [0.57,0.95] - starlight 0.55 * +",
+            "comment": null
+          },
+          {
+            "stage": 7,
+            "line": 27,
+            "text": "uv [0.69,0.76] - starlight 0.8 * +",
+            "comment": null
+          },
+          {
+            "stage": 8,
+            "line": 28,
+            "text": "uv [0.83,0.91] - starlight 0.6 * +",
+            "comment": null
+          },
+          {
+            "stage": 9,
+            "line": 29,
+            "text": "uv [0.94,0.65] - starlight +",
+            "comment": null
+          },
+          {
+            "stage": 10,
+            "line": 30,
+            "text": "uv [0.13,0.37] - starlight 0.45 * +",
+            "comment": null
+          },
+          {
+            "stage": 11,
+            "line": 31,
+            "text": "uv [0.75,0.34] - starlight 0.5 * +",
+            "comment": null
+          },
+          {
+            "stage": 12,
+            "line": 32,
+            "text": "[0.15,0.18,0.24] * <sky + >sky",
+            "comment": null
+          },
+          {
+            "stage": 13,
+            "line": 35,
+            "text": "uv time >w aurora-hem >hem",
+            "comment": null
+          },
+          {
+            "stage": 14,
+            "line": 36,
+            "text": "uv y <hem - >height",
+            "comment": null
+          },
+          {
+            "stage": 15,
+            "line": 39,
+            "text": "uv x",
+            "comment": null
+          },
+          {
+            "stage": 16,
+            "line": 40,
+            "text": "uv y 5 * uv x 9 * + time 0.1 * + sin 0.018 * +",
+            "comment": null
+          },
+          {
+            "stage": 17,
+            "line": 41,
+            "text": "time 0.008 * + >fold",
+            "comment": null
+          },
+          {
+            "stage": 18,
+            "line": 42,
+            "text": "<fold 170 * uv y 2 * time 0.025 * + vec2 noise",
+            "comment": null
+          },
+          {
+            "stage": 19,
+            "line": 43,
+            "text": "2 pow 0.8 * 0.2 + >rays",
+            "comment": null
+          },
+          {
+            "stage": 20,
+            "line": 44,
+            "text": "<fold 410 * sin 0.5 * 0.5 + 0.3 * 0.7 + <rays * >rays",
+            "comment": null
+          },
+          {
+            "stage": 21,
+            "line": 47,
+            "text": "<height 0 min",
+            "comment": null
+          },
+          {
+            "stage": 22,
+            "line": 48,
+            "text": "<fold 37 * 0 vec2 noise 0.1 * 0.08 + /",
+            "comment": null
+          },
+          {
+            "stage": 23,
+            "line": 49,
+            "text": "dup * neg exp",
+            "comment": null
+          },
+          {
+            "stage": 24,
+            "line": 50,
+            "text": "<height 0 max 6 * neg exp *",
+            "comment": null
+          },
+          {
+            "stage": 25,
+            "line": 51,
+            "text": "0.72 1.0 uv y smoothstep 1- *",
+            "comment": null
+          },
+          {
+            "stage": 26,
+            "line": 52,
+            "text": "<rays * >curtain",
+            "comment": null
+          },
+          {
+            "stage": 27,
+            "line": 55,
+            "text": "[0.025,0.46,0.13] [0.22,0.028,0.4]",
+            "comment": null
+          },
+          {
+            "stage": 28,
+            "line": 56,
+            "text": "0.035 0.28 <height smoothstep mix",
+            "comment": null
+          },
+          {
+            "stage": 29,
+            "line": 57,
+            "text": "<curtain * <sky + >scene",
+            "comment": null
+          },
+          {
+            "stage": 30,
+            "line": 60,
+            "text": "uv hill-line >ridge",
+            "comment": null
+          },
+          {
+            "stage": 31,
+            "line": 61,
+            "text": "[0.001,0.002,0.0035] <scene",
+            "comment": null
+          },
+          {
+            "stage": 32,
+            "line": 62,
+            "text": "-0.001 0.002 uv y <ridge - smoothstep mix",
+            "comment": null
+          },
+          {
+            "stage": 33,
+            "line": 63,
+            "text": "saturate",
+            "comment": null
+          },
+          {
+            "stage": 34,
+            "line": 65,
+            "text": "black uv y <ridge <= select",
+            "comment": null
+          }
+        ],
+        "knobs": [
+          {
+            "knob": 0,
+            "value": 7.0,
+            "word": "7",
+            "at": "6:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 1,
+            "value": 0.12,
+            "word": "0.12",
+            "at": "6:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 2,
+            "value": 0.035,
+            "word": "0.035",
+            "at": "6:30",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 3,
+            "value": 0.43,
+            "word": "0.43",
+            "at": "6:38",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 4,
+            "value": 17.0,
+            "word": "17",
+            "at": "7:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 5,
+            "value": 0.08,
+            "word": "0.08",
+            "at": "7:18",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 6,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "7:31",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 7,
+            "value": 620.0,
+            "word": "620",
+            "at": "10:20",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 8,
+            "value": 6.0,
+            "word": "6",
+            "at": "13:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 9,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "13:12",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 10,
+            "value": 0.044,
+            "word": "0.044",
+            "at": "13:22",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 11,
+            "value": 0.15,
+            "word": "0.15",
+            "at": "13:30",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 12,
+            "value": 15.0,
+            "word": "15",
+            "at": "14:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 13,
+            "value": 0.022,
+            "word": "0.022",
+            "at": "14:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 14,
+            "value": 32.0,
+            "word": "[32,2,0,0]",
+            "at": "15:7",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 15,
+            "value": 2.0,
+            "word": "[32,2,0,0]",
+            "at": "15:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 16,
+            "value": 0.0,
+            "word": "[32,2,0,0]",
+            "at": "15:12",
+            "occurrences": 2,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 17,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "15:23",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 18,
+            "value": 0.002,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 19,
+            "value": 0.004,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 20,
+            "value": 0.014,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:14",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 21,
+            "value": 0.008,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:22",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 22,
+            "value": 0.019,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:28",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 23,
+            "value": 0.033,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:34",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 24,
+            "value": 2.0,
+            "word": "2",
+            "at": "19:49",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "pow"
+          },
+          {
+            "knob": 25,
+            "value": 0.08,
+            "word": "[0.08,0.78]",
+            "at": "22:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 26,
+            "value": 0.78,
+            "word": "[0.08,0.78]",
+            "at": "22:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 27,
+            "value": 0.19,
+            "word": "[0.19,0.92]",
+            "at": "23:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 28,
+            "value": 0.92,
+            "word": "[0.19,0.92]",
+            "at": "23:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 29,
+            "value": 0.7,
+            "word": "0.7",
+            "at": "23:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 30,
+            "value": 0.31,
+            "word": "[0.31,0.69]",
+            "at": "24:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 31,
+            "value": 0.69,
+            "word": "[0.31,0.69]",
+            "at": "24:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 32,
+            "value": 0.6,
+            "word": "0.6",
+            "at": "24:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 33,
+            "value": 0.43,
+            "word": "[0.43,0.88]",
+            "at": "25:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 34,
+            "value": 0.88,
+            "word": "[0.43,0.88]",
+            "at": "25:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 35,
+            "value": 0.57,
+            "word": "[0.57,0.95]",
+            "at": "26:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 36,
+            "value": 0.95,
+            "word": "[0.57,0.95]",
+            "at": "26:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 37,
+            "value": 0.55,
+            "word": "0.55",
+            "at": "26:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 38,
+            "value": 0.69,
+            "word": "[0.69,0.76]",
+            "at": "27:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 39,
+            "value": 0.76,
+            "word": "[0.69,0.76]",
+            "at": "27:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 40,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "27:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 41,
+            "value": 0.83,
+            "word": "[0.83,0.91]",
+            "at": "28:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 42,
+            "value": 0.91,
+            "word": "[0.83,0.91]",
+            "at": "28:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 43,
+            "value": 0.6,
+            "word": "0.6",
+            "at": "28:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 44,
+            "value": 0.94,
+            "word": "[0.94,0.65]",
+            "at": "29:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 45,
+            "value": 0.65,
+            "word": "[0.94,0.65]",
+            "at": "29:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 46,
+            "value": 0.13,
+            "word": "[0.13,0.37]",
+            "at": "30:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 47,
+            "value": 0.37,
+            "word": "[0.13,0.37]",
+            "at": "30:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 48,
+            "value": 0.45,
+            "word": "0.45",
+            "at": "30:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 49,
+            "value": 0.75,
+            "word": "[0.75,0.34]",
+            "at": "31:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 50,
+            "value": 0.34,
+            "word": "[0.75,0.34]",
+            "at": "31:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 51,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "31:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 52,
+            "value": 0.15,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 53,
+            "value": 0.18,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:7",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 54,
+            "value": 0.24,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:12",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 55,
+            "value": 5.0,
+            "word": "5",
+            "at": "40:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 56,
+            "value": 9.0,
+            "word": "9",
+            "at": "40:15",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 57,
+            "value": 0.1,
+            "word": "0.1",
+            "at": "40:26",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 58,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "40:38",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 59,
+            "value": 0.008,
+            "word": "0.008",
+            "at": "41:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 60,
+            "value": 170.0,
+            "word": "170",
+            "at": "42:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 61,
+            "value": 2.0,
+            "word": "2",
+            "at": "42:18",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 62,
+            "value": 0.025,
+            "word": "0.025",
+            "at": "42:27",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 63,
+            "value": 2.0,
+            "word": "2",
+            "at": "43:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "pow"
+          },
+          {
+            "knob": 64,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "43:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 65,
+            "value": 0.2,
+            "word": "0.2",
+            "at": "43:13",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 66,
+            "value": 410.0,
+            "word": "410",
+            "at": "44:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 67,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "44:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 68,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "44:23",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 69,
+            "value": 0.3,
+            "word": "0.3",
+            "at": "44:29",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 70,
+            "value": 0.7,
+            "word": "0.7",
+            "at": "44:35",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 71,
+            "value": 0.0,
+            "word": "0",
+            "at": "47:9",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "min"
+          },
+          {
+            "knob": 72,
+            "value": 37.0,
+            "word": "37",
+            "at": "48:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 73,
+            "value": 0.0,
+            "word": "0",
+            "at": "48:12",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "vec2"
+          },
+          {
+            "knob": 74,
+            "value": 0.1,
+            "word": "0.1",
+            "at": "48:25",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 75,
+            "value": 0.08,
+            "word": "0.08",
+            "at": "48:31",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 76,
+            "value": 0.0,
+            "word": "0",
+            "at": "50:9",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "max"
+          },
+          {
+            "knob": 77,
+            "value": 6.0,
+            "word": "6",
+            "at": "50:15",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 78,
+            "value": 0.72,
+            "word": "0.72",
+            "at": "51:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 79,
+            "value": 1.0,
+            "word": "1.0",
+            "at": "51:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 80,
+            "value": 0.025,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 81,
+            "value": 0.46,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 82,
+            "value": 0.13,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:13",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 83,
+            "value": 0.22,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:20",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 84,
+            "value": 0.028,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:25",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 85,
+            "value": 0.4,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:31",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 86,
+            "value": 0.035,
+            "word": "0.035",
+            "at": "56:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "<height"
+          },
+          {
+            "knob": 87,
+            "value": 0.28,
+            "word": "0.28",
+            "at": "56:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "<height"
+          },
+          {
+            "knob": 88,
+            "value": 0.001,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 89,
+            "value": 0.002,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 90,
+            "value": 0.0035,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:14",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 91,
+            "value": -0.001,
+            "word": "-0.001",
+            "at": "62:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 92,
+            "value": 0.002,
+            "word": "0.002",
+            "at": "62:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          }
+        ],
+        "pendingVariants": null,
+        "exports": null,
+        "frame": "Square frame; the program is called as program(vec4(uv, hash, seconds)): uv runs 0..1 with y up, hash is a per-pixel value in 0..1, seconds is time. The top of the stack is the colour, clamped to 0..1; NaN draws black."
+      }
+    }
+  },
+  "after": {
+    "name": "InspectStackSLStudy",
+    "ok": true,
+    "result": {
+      "revision": "r5-85cc71890bb4",
+      "facts": {
+        "revision": "r5-85cc71890bb4",
+        "parent": "r4-7eb0909143e2",
+        "description": "Make the space under the aurora read as open sky: replace the silhouette-like cutoff with diffuse irregular ray tips and shallower folds",
+        "source": "# (asked) Night sky, dark hills, green fading to violet aurora, slow ripples, faint stars.\n# (chosen) A luminous pleated curtain above a low, perfectly still, pure-black horizon.\n\n# A gently folding lower edge; one coordinate in, one height out.\n: aurora-hem >q\n  <q x 7 * time 0.12 * + sin 0.035 * 0.43 +\n  <q x 17 * time 0.08 * - sin 0.018 * +\n;\n# Soft, fixed pinpoints; one star position in, one brightness out.\n: starlight length 620 * dup * neg exp ;\n# Static hills with smaller irregularities along their crest.\n: hill-line >q\n  <q x 6 * 0.8 + sin 0.044 * 0.15 +\n  <q x 15 * sin 0.022 * +\n  <q [32,2,0,0] * fbm 0.018 * +\n;\n\n# Midnight blue, subtly lighter toward the horizon.\n[0.002,0.004,0.014] [0.008,0.019,0.033] uv y 1- 2 pow mix >sky\n\n# A few faint stars, kept still while the curtain moves.\nuv [0.08,0.78] - starlight\nuv [0.19,0.92] - starlight 0.7 * +\nuv [0.31,0.69] - starlight 0.6 * +\nuv [0.43,0.88] - starlight +\nuv [0.57,0.95] - starlight 0.55 * +\nuv [0.69,0.76] - starlight 0.8 * +\nuv [0.83,0.91] - starlight 0.6 * +\nuv [0.94,0.65] - starlight +\nuv [0.13,0.37] - starlight 0.45 * +\nuv [0.75,0.34] - starlight 0.5 * +\n[0.15,0.18,0.24] * <sky + >sky\n\n# Height above the rippling hem.\nuv time >w aurora-hem >hem\nuv y <hem - >height\n\n# Fine vertical pleats bend gently as they rise.\nuv x\nuv y 5 * uv x 9 * + time 0.1 * + sin 0.018 * +\ntime 0.008 * + >fold\n<fold 170 * uv y 2 * time 0.025 * + vec2 noise\n2 pow 0.8 * 0.2 + >rays\n<fold 410 * sin 0.5 * 0.5 + 0.3 * 0.7 + <rays * >rays\n\n# Diffuse lower tips of varied length, rather than a single silhouetted edge.\n<height 0 min\n<fold 37 * 0 vec2 noise 0.1 * 0.08 + /\ndup * neg exp\n<height 0 max 6 * neg exp *\n0.72 1.0 uv y smoothstep 1- *\n<rays * >curtain\n\n# Emerald at the hem blends into violet higher in the curtain.\n[0.025,0.46,0.13] [0.22,0.028,0.4]\n0.035 0.28 <height smoothstep mix\n<curtain * <sky + >scene\n\n# A near-black hill silhouette occludes everything behind it.\nuv hill-line >ridge\n[0.001,0.002,0.0035] <scene\n-0.001 0.002 uv y <ridge - smoothstep mix\nsaturate\n# Exact black at/below the static ridge; leave every above-ridge pixel untouched.\nblack uv y <ridge <= select\n",
+        "liveSourceHash": "85cc71890bb4bdd879826cb554b4c4956875e48bafd16dbc040ff0ef556350f8",
+        "dirty": false,
+        "liveSource": null,
+        "liveCheck": null,
+        "history": [
+          {
+            "id": "r1-4d2baeb1ffda",
+            "description": "the starting program"
+          },
+          {
+            "id": "r2-2e8e7a0ad33f",
+            "description": "Night sky with slowly rippling green-to-violet aurora, faint stars and a dark rolling hill line"
+          },
+          {
+            "id": "r3-bac36ccd993c",
+            "description": "Correct star coordinates and pass the live clock into the curtain motif"
+          },
+          {
+            "id": "r4-7eb0909143e2",
+            "description": "Force exact, static black at and below the existing ridge; preserve the entire sky and original above-ridge edge blend"
+          },
+          {
+            "id": "r5-85cc71890bb4",
+            "description": "Make the space under the aurora read as open sky: replace the silhouette-like cutoff with diffuse irregular ray tips and shallower folds"
+          }
+        ],
+        "otherRevisions": null,
+        "warnings": [],
+        "notes": [],
+        "definitions": [
+          {
+            "name": "aurora-hem",
+            "finalDepth": 1,
+            "maxDepth": 4,
+            "pruned": 0
+          },
+          {
+            "name": "starlight",
+            "finalDepth": 1,
+            "maxDepth": 2,
+            "pruned": 0
+          },
+          {
+            "name": "hill-line",
+            "finalDepth": 1,
+            "maxDepth": 3,
+            "pruned": 0
+          }
+        ],
+        "animated": true,
+        "nonFiniteFraction": 0.0,
+        "stages": [
+          {
+            "stage": 1,
+            "line": 19,
+            "text": "[0.002,0.004,0.014] [0.008,0.019,0.033] uv y 1- 2 pow mix >sky",
+            "comment": null
+          },
+          {
+            "stage": 2,
+            "line": 22,
+            "text": "uv [0.08,0.78] - starlight",
+            "comment": null
+          },
+          {
+            "stage": 3,
+            "line": 23,
+            "text": "uv [0.19,0.92] - starlight 0.7 * +",
+            "comment": null
+          },
+          {
+            "stage": 4,
+            "line": 24,
+            "text": "uv [0.31,0.69] - starlight 0.6 * +",
+            "comment": null
+          },
+          {
+            "stage": 5,
+            "line": 25,
+            "text": "uv [0.43,0.88] - starlight +",
+            "comment": null
+          },
+          {
+            "stage": 6,
+            "line": 26,
+            "text": "uv [0.57,0.95] - starlight 0.55 * +",
+            "comment": null
+          },
+          {
+            "stage": 7,
+            "line": 27,
+            "text": "uv [0.69,0.76] - starlight 0.8 * +",
+            "comment": null
+          },
+          {
+            "stage": 8,
+            "line": 28,
+            "text": "uv [0.83,0.91] - starlight 0.6 * +",
+            "comment": null
+          },
+          {
+            "stage": 9,
+            "line": 29,
+            "text": "uv [0.94,0.65] - starlight +",
+            "comment": null
+          },
+          {
+            "stage": 10,
+            "line": 30,
+            "text": "uv [0.13,0.37] - starlight 0.45 * +",
+            "comment": null
+          },
+          {
+            "stage": 11,
+            "line": 31,
+            "text": "uv [0.75,0.34] - starlight 0.5 * +",
+            "comment": null
+          },
+          {
+            "stage": 12,
+            "line": 32,
+            "text": "[0.15,0.18,0.24] * <sky + >sky",
+            "comment": null
+          },
+          {
+            "stage": 13,
+            "line": 35,
+            "text": "uv time >w aurora-hem >hem",
+            "comment": null
+          },
+          {
+            "stage": 14,
+            "line": 36,
+            "text": "uv y <hem - >height",
+            "comment": null
+          },
+          {
+            "stage": 15,
+            "line": 39,
+            "text": "uv x",
+            "comment": null
+          },
+          {
+            "stage": 16,
+            "line": 40,
+            "text": "uv y 5 * uv x 9 * + time 0.1 * + sin 0.018 * +",
+            "comment": null
+          },
+          {
+            "stage": 17,
+            "line": 41,
+            "text": "time 0.008 * + >fold",
+            "comment": null
+          },
+          {
+            "stage": 18,
+            "line": 42,
+            "text": "<fold 170 * uv y 2 * time 0.025 * + vec2 noise",
+            "comment": null
+          },
+          {
+            "stage": 19,
+            "line": 43,
+            "text": "2 pow 0.8 * 0.2 + >rays",
+            "comment": null
+          },
+          {
+            "stage": 20,
+            "line": 44,
+            "text": "<fold 410 * sin 0.5 * 0.5 + 0.3 * 0.7 + <rays * >rays",
+            "comment": null
+          },
+          {
+            "stage": 21,
+            "line": 47,
+            "text": "<height 0 min",
+            "comment": null
+          },
+          {
+            "stage": 22,
+            "line": 48,
+            "text": "<fold 37 * 0 vec2 noise 0.1 * 0.08 + /",
+            "comment": null
+          },
+          {
+            "stage": 23,
+            "line": 49,
+            "text": "dup * neg exp",
+            "comment": null
+          },
+          {
+            "stage": 24,
+            "line": 50,
+            "text": "<height 0 max 6 * neg exp *",
+            "comment": null
+          },
+          {
+            "stage": 25,
+            "line": 51,
+            "text": "0.72 1.0 uv y smoothstep 1- *",
+            "comment": null
+          },
+          {
+            "stage": 26,
+            "line": 52,
+            "text": "<rays * >curtain",
+            "comment": null
+          },
+          {
+            "stage": 27,
+            "line": 55,
+            "text": "[0.025,0.46,0.13] [0.22,0.028,0.4]",
+            "comment": null
+          },
+          {
+            "stage": 28,
+            "line": 56,
+            "text": "0.035 0.28 <height smoothstep mix",
+            "comment": null
+          },
+          {
+            "stage": 29,
+            "line": 57,
+            "text": "<curtain * <sky + >scene",
+            "comment": null
+          },
+          {
+            "stage": 30,
+            "line": 60,
+            "text": "uv hill-line >ridge",
+            "comment": null
+          },
+          {
+            "stage": 31,
+            "line": 61,
+            "text": "[0.001,0.002,0.0035] <scene",
+            "comment": null
+          },
+          {
+            "stage": 32,
+            "line": 62,
+            "text": "-0.001 0.002 uv y <ridge - smoothstep mix",
+            "comment": null
+          },
+          {
+            "stage": 33,
+            "line": 63,
+            "text": "saturate",
+            "comment": null
+          },
+          {
+            "stage": 34,
+            "line": 65,
+            "text": "black uv y <ridge <= select",
+            "comment": null
+          }
+        ],
+        "knobs": [
+          {
+            "knob": 0,
+            "value": 7.0,
+            "word": "7",
+            "at": "6:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 1,
+            "value": 0.12,
+            "word": "0.12",
+            "at": "6:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 2,
+            "value": 0.035,
+            "word": "0.035",
+            "at": "6:30",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 3,
+            "value": 0.43,
+            "word": "0.43",
+            "at": "6:38",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 4,
+            "value": 17.0,
+            "word": "17",
+            "at": "7:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 5,
+            "value": 0.08,
+            "word": "0.08",
+            "at": "7:18",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 6,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "7:31",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 7,
+            "value": 620.0,
+            "word": "620",
+            "at": "10:20",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 8,
+            "value": 6.0,
+            "word": "6",
+            "at": "13:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 9,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "13:12",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 10,
+            "value": 0.044,
+            "word": "0.044",
+            "at": "13:22",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 11,
+            "value": 0.15,
+            "word": "0.15",
+            "at": "13:30",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 12,
+            "value": 15.0,
+            "word": "15",
+            "at": "14:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 13,
+            "value": 0.022,
+            "word": "0.022",
+            "at": "14:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 14,
+            "value": 32.0,
+            "word": "[32,2,0,0]",
+            "at": "15:7",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 15,
+            "value": 2.0,
+            "word": "[32,2,0,0]",
+            "at": "15:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 16,
+            "value": 0.0,
+            "word": "[32,2,0,0]",
+            "at": "15:12",
+            "occurrences": 2,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 17,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "15:23",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 18,
+            "value": 0.002,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 19,
+            "value": 0.004,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 20,
+            "value": 0.014,
+            "word": "[0.002,0.004,0.014]",
+            "at": "19:14",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 21,
+            "value": 0.008,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:22",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 22,
+            "value": 0.019,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:28",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 23,
+            "value": 0.033,
+            "word": "[0.008,0.019,0.033]",
+            "at": "19:34",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 24,
+            "value": 2.0,
+            "word": "2",
+            "at": "19:49",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "pow"
+          },
+          {
+            "knob": 25,
+            "value": 0.08,
+            "word": "[0.08,0.78]",
+            "at": "22:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 26,
+            "value": 0.78,
+            "word": "[0.08,0.78]",
+            "at": "22:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 27,
+            "value": 0.19,
+            "word": "[0.19,0.92]",
+            "at": "23:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 28,
+            "value": 0.92,
+            "word": "[0.19,0.92]",
+            "at": "23:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 29,
+            "value": 0.7,
+            "word": "0.7",
+            "at": "23:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 30,
+            "value": 0.31,
+            "word": "[0.31,0.69]",
+            "at": "24:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 31,
+            "value": 0.69,
+            "word": "[0.31,0.69]",
+            "at": "24:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 32,
+            "value": 0.6,
+            "word": "0.6",
+            "at": "24:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 33,
+            "value": 0.43,
+            "word": "[0.43,0.88]",
+            "at": "25:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 34,
+            "value": 0.88,
+            "word": "[0.43,0.88]",
+            "at": "25:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 35,
+            "value": 0.57,
+            "word": "[0.57,0.95]",
+            "at": "26:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 36,
+            "value": 0.95,
+            "word": "[0.57,0.95]",
+            "at": "26:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 37,
+            "value": 0.55,
+            "word": "0.55",
+            "at": "26:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 38,
+            "value": 0.69,
+            "word": "[0.69,0.76]",
+            "at": "27:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 39,
+            "value": 0.76,
+            "word": "[0.69,0.76]",
+            "at": "27:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 40,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "27:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 41,
+            "value": 0.83,
+            "word": "[0.83,0.91]",
+            "at": "28:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 42,
+            "value": 0.91,
+            "word": "[0.83,0.91]",
+            "at": "28:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 43,
+            "value": 0.6,
+            "word": "0.6",
+            "at": "28:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 44,
+            "value": 0.94,
+            "word": "[0.94,0.65]",
+            "at": "29:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 45,
+            "value": 0.65,
+            "word": "[0.94,0.65]",
+            "at": "29:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 46,
+            "value": 0.13,
+            "word": "[0.13,0.37]",
+            "at": "30:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 47,
+            "value": 0.37,
+            "word": "[0.13,0.37]",
+            "at": "30:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 48,
+            "value": 0.45,
+            "word": "0.45",
+            "at": "30:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 49,
+            "value": 0.75,
+            "word": "[0.75,0.34]",
+            "at": "31:5",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 50,
+            "value": 0.34,
+            "word": "[0.75,0.34]",
+            "at": "31:10",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 51,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "31:28",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 52,
+            "value": 0.15,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 53,
+            "value": 0.18,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:7",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 54,
+            "value": 0.24,
+            "word": "[0.15,0.18,0.24]",
+            "at": "32:12",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 55,
+            "value": 5.0,
+            "word": "5",
+            "at": "40:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 56,
+            "value": 9.0,
+            "word": "9",
+            "at": "40:15",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 57,
+            "value": 0.1,
+            "word": "0.1",
+            "at": "40:26",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 58,
+            "value": 0.018,
+            "word": "0.018",
+            "at": "40:38",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 59,
+            "value": 0.008,
+            "word": "0.008",
+            "at": "41:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 60,
+            "value": 170.0,
+            "word": "170",
+            "at": "42:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 61,
+            "value": 2.0,
+            "word": "2",
+            "at": "42:18",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 62,
+            "value": 0.025,
+            "word": "0.025",
+            "at": "42:27",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 63,
+            "value": 2.0,
+            "word": "2",
+            "at": "43:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "pow"
+          },
+          {
+            "knob": 64,
+            "value": 0.8,
+            "word": "0.8",
+            "at": "43:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 65,
+            "value": 0.2,
+            "word": "0.2",
+            "at": "43:13",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 66,
+            "value": 410.0,
+            "word": "410",
+            "at": "44:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 67,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "44:17",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 68,
+            "value": 0.5,
+            "word": "0.5",
+            "at": "44:23",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 69,
+            "value": 0.3,
+            "word": "0.3",
+            "at": "44:29",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 70,
+            "value": 0.7,
+            "word": "0.7",
+            "at": "44:35",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 71,
+            "value": 0.0,
+            "word": "0",
+            "at": "47:9",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "min"
+          },
+          {
+            "knob": 72,
+            "value": 37.0,
+            "word": "37",
+            "at": "48:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 73,
+            "value": 0.0,
+            "word": "0",
+            "at": "48:12",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "vec2"
+          },
+          {
+            "knob": 74,
+            "value": 0.1,
+            "word": "0.1",
+            "at": "48:25",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 75,
+            "value": 0.08,
+            "word": "0.08",
+            "at": "48:31",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "+"
+          },
+          {
+            "knob": 76,
+            "value": 0.0,
+            "word": "0",
+            "at": "50:9",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "max"
+          },
+          {
+            "knob": 77,
+            "value": 6.0,
+            "word": "6",
+            "at": "50:15",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "*"
+          },
+          {
+            "knob": 78,
+            "value": 0.72,
+            "word": "0.72",
+            "at": "51:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 79,
+            "value": 1.0,
+            "word": "1.0",
+            "at": "51:6",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 80,
+            "value": 0.025,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 81,
+            "value": 0.46,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 82,
+            "value": 0.13,
+            "word": "[0.025,0.46,0.13]",
+            "at": "55:13",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 83,
+            "value": 0.22,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:20",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 84,
+            "value": 0.028,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:25",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 85,
+            "value": 0.4,
+            "word": "[0.22,0.028,0.4]",
+            "at": "55:31",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 86,
+            "value": 0.035,
+            "word": "0.035",
+            "at": "56:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "<height"
+          },
+          {
+            "knob": 87,
+            "value": 0.28,
+            "word": "0.28",
+            "at": "56:7",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "<height"
+          },
+          {
+            "knob": 88,
+            "value": 0.001,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:2",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 89,
+            "value": 0.002,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:8",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 90,
+            "value": 0.0035,
+            "word": "[0.001,0.002,0.0035]",
+            "at": "61:14",
+            "occurrences": null,
+            "role": "vec literal",
+            "feeds": null
+          },
+          {
+            "knob": 91,
+            "value": -0.001,
+            "word": "-0.001",
+            "at": "62:1",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          },
+          {
+            "knob": 92,
+            "value": 0.002,
+            "word": "0.002",
+            "at": "62:8",
+            "occurrences": null,
+            "role": "number",
+            "feeds": "uv"
+          }
+        ],
+        "pendingVariants": [
+          {
+            "label": "A",
+            "note": "Fine pleats: about twenty slim vertical folds, evenly hung, with a restrained sway at their lower ends."
+          },
+          {
+            "label": "B",
+            "note": "Broad drapes: about eight rounded, satin-like folds with stronger shading and a slow weighted sway."
+          },
+          {
+            "label": "C",
+            "note": "Gathered silk: irregularly spaced folds, fine creases on rounded faces, and more billowing toward the bottom."
+          }
+        ],
+        "exports": null,
+        "frame": "Square frame; the program is called as program(vec4(uv, hash, seconds)): uv runs 0..1 with y up, hash is a per-pixel value in 0..1, seconds is time. The top of the stack is the colour, clamped to 0..1; NaN draws black."
+      }
+    }
+  },
+  "panel": {
+    "uid": "stacksl_source",
+    "property": "outputarea",
+    "channel": "ai-chat",
+    "value": "<<you>>\nA night sky over a dark hill line: an aurora curtain of green fading into violet, slowly rippling, and a few faint stars.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectStackSLStudy finished (2 ms)\n<<progress>>\nDocumentGuideReadRequest finished (145 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (183 ms)\n<<progress>>\nDocumentGuideReadRequest finished (1 ms)\n<<progress>>\nEditStackSLStudy finished (770 ms)\n<<progress>>\nTraceStackSLStudy finished (3039 ms)\n<<progress>>\nPatchStackSLStudy finished (1000 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (1055 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/87d54b7df3d14cc112b8.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r2-2e8e7a0ad33f: frames at 0.00 s; second row r1-4d2baeb1ffda, third row the difference_\n\n![tool image](images/fb0cc4482f996cc212d6.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r2-2e8e7a0ad33f: what each stage leaves on top of the stack at 0.00 s_\n\n![tool image](images/562d0a9c1ae5c25c85e4.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r3-bac36ccd993c: frames at 0.00, 4.00, 9.00 s; second row r2-2e8e7a0ad33f, third row the difference_\n\n![tool image](images/1ff187b5d7e941c4a3d6.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/e2ea3645e573e44aa602.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nThe live scene now shows a green aurora curtain fading upward into violet, above a near-black rolling hill line, with a few faint stars in a deep-blue sky.\n\nIt matches the requested scene. Compilation and checks passed; I also verified the live image and slow rippling across frames at 0, 4, and 9 seconds.\n<<you>>\nThe hills must stay perfectly still and black. Check whether anything moves below the horizon, and if it does, fix it without touching the sky.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectStackSLStudy finished (1 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (32 ms)\n<<progress>>\nTryStackSLVariants finished (884 ms)\n<<progress>>\nPatchStackSLStudy finished (1139 ms)\n<<progress>>\nCompareStackSLStudy finished (634 ms)\n<<progress>>\nTryStackSLVariants finished (868 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (549 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/579d1177faa564164fd4.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_Variants against r3-bac36ccd993c: first row current, then one row per candidate_\n\n![tool image](images/86c0b37312f4ac1fd092.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r4-7eb0909143e2: frames at 0.00, 4.00, 9.00, 30.0 s; second row r3-bac36ccd993c, third row the difference_\n\n![tool image](images/2cde2f700da3af676c10.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r3-bac36ccd993c \u2192 r4-7eb0909143e2: before | after | difference, per time_\n\n![tool image](images/d938f9c1f9e9f277259a.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_Variants against r4-7eb0909143e2: first row current, then one row per candidate_\n\n![tool image](images/2805fcae122ee387798e.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/a6b6694bef095d213354.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nChecked below the ridge at **0, 4, 9, and 30 seconds**: no motion was detected, but the hills were blue-black rather than pure black.\n\nThey\u2019re now **exactly black**, using the unchanged, time-independent hill boundary. Every pixel above the ridge is preserved, including the aurora and stars.\n\nCompilation passed, the isolated hill check returned uniformly black, and the live view matches the requested result.\n<<you>>\nIn the middle, under the curtain, there's a big soft dark mound that reads like a second, nearer mountain \u2014 with stars in front of it. What is that shape, exactly? Show me what makes it, then make it read as open sky.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectStackSLStudy finished (1 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (52 ms)\n<<progress>>\nWaiting for model\n<<progress>>\nRefining sky diagnostics\n**Refining sky diagnostics**\n\nI need to show the diagnostic variants for the sky without the mountains. I\u2019ll explain the absence of auroras and adjust the envelope to create a coherent cutoff with a lower contrast background that\u2019s uniformly darker. I'd aim for a smooth, lower Gaussian without a zero boundary, adjusting heights with an exponential fade. I should keep the original top smooth while reducing some edge amplitudes and increase focus on softening the envelope. The user wants to maintain the hill shape while enhancing the sky. **Developing diagnostic variations**\n\nI need to start with diagnostics and variations consolidated into one with four labeled baseline diagrams, split into two aesthetics. It\u2019s important to trace the points in the mound clearly and helpfully for the user. I want to explicitly show the tools used in the diagnostic rows to provide clarity. This will ensure the user has a clear understanding of the information presented, making it easier to interpret the results.\n\nNext tool: `TryStackSLVariants`\n<<progress>>\nTryStackSLVariants finished (2373 ms)\n<<progress>>\nAdoptStackSLVariant finished (777 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (555 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/209540814b0b94be1793.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_Variants against r4-7eb0909143e2: first row current, then one row per candidate_\n\n![tool image](images/28c11eb441fccc6df23f.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_r5-85cc71890bb4: frames at 0.00, 3.50, 7.00 s; second row r4-7eb0909143e2, third row the difference_\n\n![tool image](images/5a1fcf4adcf23f6b1469.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/96811fc826fab3420286.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nThat shape was **negative space, not a second mountain**. The aurora\u2019s wavy lower-edge mask abruptly stopped the light, making the exposed sky look like a solid mound. The stars were background stars\u2014not objects drawn in front of terrain.\n\nThe diagnostic views showed this directly:\n- **Sky-only:** no mound.\n- **Cutoff mask:** the exact mountain-like outline.\n\nI replaced that cutoff with softly fading, variable-length rays and reduced the broad folds. The live view now shows light dissolving into sky rather than outlining another ridge. The actual hills remain still and pure black.\n\nCompilation passed, and I checked multiple animation frames and the live window.\n<<you>>\nMake the curtain hang more like fabric, with vertical folds. Try two or three versions and I'll choose.\n<<progress>>\nStarting AI conversation\n<<progress>>\nInspectStackSLStudy finished (1 ms)\n<<progress>>\nCaptureRenderWindowRequest finished (30 ms)\n<<progress>>\nTryStackSLVariants finished (1925 ms)\n<<progress>>\nCompleted\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_afield.four render window 'StackSL study', captured live. Describe what you actually see, then say whether it matches what was asked for._\n\n![tool image](images/3b74d305936b4f8a31a0.jpg)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\n_Variants against r5-85cc71890bb4: first row current, then one row per candidate_\n\n![tool image](images/6064edcfd1b018783bb1.png)\n<<ai>>\n<<model:{\"provider\":\"openai\",\"requestedModel\":\"gpt-6-astra\",\"responseModel\":\"gpt-6-astra\"}>>\nThree checked previews are ready; **nothing has been applied**.\n\n- **A \u2014 Fine pleats:** closely spaced, straight vertical folds with subtle sway.\n- **B \u2014 Broad drapes:** wider, softly rounded folds with deeper shadowed valleys.\n- **C \u2014 Gathered silk:** unevenly spaced folds that bunch together and billow toward the bottom.\n\nAll retain the green-to-violet palette, fading tips, stars, and still black hills. I checked each at **0, 5, and 12 seconds**.\n\nWhich would you like: **A, B, or C**?"
+  },
+  "notices": [
+    "Initiating AI Conversation",
+    "AI4: [info,ai.chat] chatGeneral(): lang=StackSL codeChars=2146 attachments=8 images=0",
+    "AI4: [info,ai.bridge] convId=conv_6ab812b6b9b881979cb527562de6bc6f0094d80c719e0d94 fileKey=afield://stacksl_conversation_aurora/stacksl_source/stackSL inputChars=18915 maxOutputTokens=10000 attachments=8 images=0",
+    "AI4: [info,ai.toolio] log=/Users/marc/.afield/logs/ai4_tool_io/2026-09-26T184836-292647Z-037e9871.jsonl",
+    "AI4: [info,ai.bridge] running prompt <<spinner>>",
+    "saved file at <<timeago:1790448516943>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 17277ms (attempt 2/5, suggested*1.5=17277ms)",
+    "(11 outputs skipped)",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0094d80c719e0d94006ab8139753548197abcfdefb05d6a3dd status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] initial response id=resp_0094d80c719e0d94006ab8139753548197abcfdefb05d6a3dd outputItems=2 <<spinner>>",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 1/24)",
+    "AI4: [info,ai.bridge] tool: name=InspectStackSLStudy callId=call_93kRaU4zAi57nTRQIqL0Q4dH {\"revision\":\"\"}",
+    "AI4: [info,ai.bridge] tool: result name=InspectStackSLStudy r5-85cc71890bb4 revision, parent, description, source, liveSourceHash, dirty, liveSource, liveCheck, history, otherRevisions, warnings, notes, definitions, animat...",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0094d80c719e0d94006ab8139b16188197a6f4c9e86e38bdec status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0094d80c719e0d94006ab8139b16188197a6f4c9e86e38bdec outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=0 functionCalls=1 other=0",
+    "AI4: [info,ai.bridge] output[0] function_call name=CaptureRenderWindowRequest",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 2/24)",
+    "AI4: [info,ai.bridge] tool: name=CaptureRenderWindowRequest callId=call_fauFyt6l0zzN7qLABxwYZuJv {\"note\":\"Baseline before trying fabric-like vertical folds: fine aurora streaks with diffuse tips over the static black hill ...",
+    "AI4: [info,ai.bridge] tool: result name=CaptureRenderWindowRequest success=true images=1 1440x1440 settledMs=0 title=StackSL study message=Captured StackSL study (1440 x 1440; JPEG 94 KiB)",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "saved file at <<timeago:1790448542350>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 8699ms (attempt 2/5, suggested*1.5=8699ms)",
+    "saved file at <<timeago:1790448547311>>",
+    "saved file at <<timeago:1790448562490>>",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0094d80c719e0d94006ab813a8f8bc8197bef8b606eec7fdd4 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0094d80c719e0d94006ab813a8f8bc8197bef8b606eec7fdd4 outputItems=3",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=1 other=1",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] toolCalls=1 (round 3/24)",
+    "AI4: [info,ai.bridge] tool: name=TryStackSLVariants callId=call_GGTuCTFkmpnb3vmFlPyscM0h {\"seconds\":[0,5,12],\"variants\":[{\"edits\":[{\"after\":\"# Fine, regular pleats; anchored above, gently swaying below.\\nuv x\\nuv x 8 * tim...",
+    "AI4: [info,ai.bridge] tool: result name=TryStackSLVariants r5-85cc71890bb4 against, liveDirty, seconds, variants, held, imageFile, published, renderSeconds images=1",
+    "AI4: [info,ai.bridge] creating response (follow-up) <<spinner>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 19274ms (attempt 2/5, suggested*1.5=19274ms)",
+    "saved file at <<timeago:1790448577734>>",
+    "AI4: [warning,ai.bridge] response-create rate limited; retrying in 9420ms (attempt 3/5, suggested*1.5=9420ms)",
+    "AI4: [info,ai.bridge] response provider=openai requestedModel=gpt-6-astra responseModel=ResponsesModel{string=gpt-6-astra} responseId=resp_0094d80c719e0d94006ab813dff880819780f0db9c90f1b1a0 status=completed",
+    "AI4: [info,ai.bridge] ",
+    "AI4: [info,ai.bridge] follow-up response id=resp_0094d80c719e0d94006ab813dff880819780f0db9c90f1b1a0 outputItems=1",
+    "AI4: [info,ai.bridge] output shape: messages=1 functionCalls=0 other=0",
+    "AI4: [info,ai.bridge] message status(es)=completed",
+    "AI4: [info,ai.bridge] no tool calls; finishing",
+    "AI4: [info,ai.bridge] done responseId=resp_0094d80c719e0d94006ab813dff880819780f0db9c90f1b1a0 textChars=491 commentaryCount=0 (96579ms)",
+    "Finished AI conversation",
+    "saved file at <<timeago:1790448613229>>"
+  ]
+}

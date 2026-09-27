@@ -1,0 +1,19 @@
+{
+  "against" : "r5-85cc71890bb4",
+  "liveSourceHash" : "85cc71890bb4bdd879826cb554b4c4956875e48bafd16dbc040ff0ef556350f8",
+  "adopted" : "C",
+  "variants" : [ {
+    "label" : "A",
+    "note" : "Fine pleats: about twenty slim vertical folds, evenly hung, with a restrained sway at their lower ends.",
+    "file" : "A.stacksl"
+  }, {
+    "label" : "B",
+    "note" : "Broad drapes: about eight rounded, satin-like folds with stronger shading and a slow weighted sway.",
+    "file" : "B.stacksl"
+  }, {
+    "label" : "C",
+    "note" : "Gathered silk: irregularly spaced folds, fine creases on rounded faces, and more billowing toward the bottom.",
+    "file" : "C.stacksl"
+  } ],
+  "as" : "r6-608989c206df"
+}

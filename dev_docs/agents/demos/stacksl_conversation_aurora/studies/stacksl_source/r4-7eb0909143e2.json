@@ -1,0 +1,16 @@
+{
+  "id" : "r4-7eb0909143e2",
+  "parent" : "r3-bac36ccd993c",
+  "description" : "Force exact, static black at and below the existing ridge; preserve the entire sky and original above-ridge edge blend",
+  "created" : "2026-09-26T18:46:52.509420Z",
+  "sourceHash" : "7eb0909143e22226c77fd613fa92591f45519c69939aeadc3ffba032aa2c3248",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : true,
+    "nonFiniteFraction" : 0.0,
+    "words" : 200,
+    "knobs" : 90,
+    "stages" : 32
+  }
+}

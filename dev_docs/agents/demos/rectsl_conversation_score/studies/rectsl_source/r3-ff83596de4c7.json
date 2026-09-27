@@ -1,0 +1,16 @@
+{
+  "id" : "r3-ff83596de4c7",
+  "parent" : "r2-dc01649093cf",
+  "description" : "Turn the unison score into a canon: middle +1 beat, bottom +2 beats.",
+  "created" : "2026-09-27T00:16:24.701769Z",
+  "sourceHash" : "ff83596de4c71bf5703223055a886c14f8ae820a58c55a1fab5d5f113a795ca9",
+  "facts" : {
+    "warnings" : [ ],
+    "animated" : true,
+    "rects" : 51,
+    "groups" : 0,
+    "duration" : 6.0,
+    "knobs" : 83,
+    "materials" : [ ]
+  }
+}

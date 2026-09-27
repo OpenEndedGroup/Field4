@@ -325,6 +325,13 @@ class SessionInformation(
     val readOnly: Boolean = ReadOnlyDocuments.global
 ) {
     /**
+     * Keep this document's windows and running boxes when its last client leaves; see
+     * `AgentOpenDocument.keepRunning`. Set by an automation client that asked for it.
+     */
+    @Volatile
+    var keepRunningWhenDetached: Boolean = false
+
+    /**
      * False when nothing in this session may reach the document's directory on disk.
      *
      * One predicate for the four write gates: the autosave loop, `set-string`'s sidecar marking,
@@ -5406,6 +5413,8 @@ fun languageNameForProperty(box: Box, property: String): String {
         "anyhit_s" -> "Slang (any hit)"
         "intersection_s" -> "Slang (intersection)"
         "callable_s" -> "Slang (callable)"
+        "stackSL" -> "StackSL"
+        "rectSL" -> "RectSL"
         else -> "Kotlin"
     }
 }

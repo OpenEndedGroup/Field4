@@ -1,9 +1,8 @@
 # Talking a function into existence
 
 This document is an experimental conversation over ordinary Kotlin/Functions.Fn.
-Read `guides/working.md` for the source contract and current limitations.
-Run **Observation tools — run first** to register the eight document-defined AI4 tools.
-Use AI4 general chat on **The function — talk here (AI4)**.
+Use AI4 general chat on **The function — talk here (AI4)**, a function study box: its chat has the
+study tools, and FunctionStudyGuide returns the source contract and current limitations.
 
 Work from InspectFunctionStudy. Resolve ordinal references to stable event IDs and
 record them with SelectFunctionStudy. Keep prior referents after reordering. Prefer PatchFunctionStudy for small changes, using exact unique before/after snippets.

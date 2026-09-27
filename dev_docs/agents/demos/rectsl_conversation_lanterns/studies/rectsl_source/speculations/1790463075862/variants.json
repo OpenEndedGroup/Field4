@@ -1,0 +1,19 @@
+{
+  "against" : "r3-8b5b2a536c7b",
+  "liveSourceHash" : "8b5b2a536c7bfdc3a13a4b5b903d09c3bbdd497ecee337c8fd33d6af38301367",
+  "adopted" : "dusk",
+  "variants" : [ {
+    "label" : "dusk",
+    "note" : "Dusty rose horizon to blue-violet overhead. Only the sky paint changes; all five lanterns retain their exact motion.",
+    "file" : "dusk.rectsl"
+  }, {
+    "label" : "midnight",
+    "note" : "Near-black navy for stronger amber contrast. Only the sky paint changes; lantern movement is untouched.",
+    "file" : "midnight.rectsl"
+  }, {
+    "label" : "festival",
+    "note" : "Plum-blue festival sky with twelve lanterns. Original five retain exact paths, sizes and timing; seven added lanterns use the unchanged index-based motion rules.",
+    "file" : "festival.rectsl"
+  } ],
+  "as" : "r4-cd474f3c0916"
+}

@@ -122,7 +122,9 @@ enum class AgreementTier(val label: String, val why: String) {
         fun of(emittedGlsl: String): AgreementTier = when {
             Regex("""\btexture\s*\(""").containsMatchIn(emittedGlsl) -> FEEDBACK
             emittedGlsl.contains("_hash11(") -> HASH11_UNBOUNDED
-            emittedGlsl.contains("_hash21(") -> HASH21_AMPLIFIED
+            // `_hash31`/`_hash41` are the volumetric family's (fbm3, fbm4, worley3, …) versions of the
+            // same fract-lattice construction in more dimensions, and amplify the same way.
+            emittedGlsl.contains("_hash21(") || emittedGlsl.contains("_hash31(") || emittedGlsl.contains("_hash41(") -> HASH21_AMPLIFIED
             transcendentals.containsMatchIn(emittedGlsl) -> SMOOTH_TRANSCENDENTAL
             else -> EXACT_OPS
         }

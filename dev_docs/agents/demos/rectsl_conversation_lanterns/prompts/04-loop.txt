@@ -1,0 +1,1 @@
+Make it loop seamlessly: no lantern should pop in or out when the clip wraps around. Show me it doesn't.

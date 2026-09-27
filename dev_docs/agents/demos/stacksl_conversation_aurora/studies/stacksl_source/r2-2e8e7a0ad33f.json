@@ -1,0 +1,16 @@
+{
+  "id" : "r2-2e8e7a0ad33f",
+  "parent" : "r1-4d2baeb1ffda",
+  "description" : "Night sky with slowly rippling green-to-violet aurora, faint stars and a dark rolling hill line",
+  "created" : "2026-09-26T18:45:47.653884Z",
+  "sourceHash" : "2e8e7a0ad33f087068c83eb8d8b6e8bf23158ab6f2d9365b948607c76b0b38e1",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 166,
+    "knobs" : 90,
+    "stages" : 31
+  }
+}

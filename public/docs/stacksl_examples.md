@@ -4,6 +4,8 @@
 
 Each section below puts a short program next to the image or clip it renders. The words, their stack signatures and the arity conventions are in the [StackSL cheatsheet](stacksl_cheatsheet.md); driving the language from Kotlin and [mutating it under a search loop](#notes-for-llms-and-genetic-search) come at the end.
 
+To write StackSL in conversation with AI4, with the program running live in a window and tools that check and record each change, see [Talking a shader into existence](stacksl_conversation.md).
+
 StackSL is vector-first: every stack value is a `vec4`. Numbers become `vec4(n)`, swizzles repack into `vec4`, and most operators work component-wise. The compiler emits one callable function:
 
 ```diffstatic {data-lang=glsl}

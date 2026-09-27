@@ -1,0 +1,16 @@
+{
+  "id" : "r3-e4e25cfdb90a",
+  "parent" : "r2-fd567658740f",
+  "description" : "adopt variant 10 points: Finer ten-petal rosettes; same scale, palette and grout, with a matching decagonal hub.",
+  "created" : "2026-09-26T18:42:28.517312Z",
+  "sourceHash" : "e4e25cfdb90a580c79ac05a571a8bf81c59f3aa492bb8a704e009e84e60dbe5d",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 165,
+    "knobs" : 64,
+    "stages" : 27
+  }
+}

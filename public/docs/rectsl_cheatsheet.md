@@ -7,6 +7,10 @@ Every section below carries a short snippet and a pointer into
 clips. The snippets here are fragments — they assume a scene header and are compiled
 inside one — so when you want a program to copy and run, follow the pointer.
 
+To write a scene with an assistant, and watch it play as you talk, see
+[Talking a scene into existence](rectsl_conversation.md): a RectSL box in Field plays in the window
+above it, and its AI4 chat has tools that draw, trace and compare the scene.
+
 A RectSL string starts with `#rectsl` when embedded in Kotlin:
 
 ```diffstatic {data-lang=kotlin}

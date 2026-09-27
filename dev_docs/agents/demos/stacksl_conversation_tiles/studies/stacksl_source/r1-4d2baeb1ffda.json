@@ -1,0 +1,16 @@
+{
+  "id" : "r1-4d2baeb1ffda",
+  "parent" : null,
+  "description" : "the starting program",
+  "created" : "2026-09-26T18:40:25.262565Z",
+  "sourceHash" : "4d2baeb1ffdaac05d101a27a28298f1e422ccae346c4c6740f37efddf4591359",
+  "facts" : {
+    "warnings" : [ ],
+    "notes" : [ ],
+    "animated" : false,
+    "nonFiniteFraction" : 0.0,
+    "words" : 1,
+    "knobs" : 1,
+    "stages" : 1
+  }
+}

@@ -4,7 +4,7 @@
 
 The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. Build them, compose them, fit them, mutate them, and rewrite their graphs with user-authored patterns.
 
-14 source file(s), 561 public symbol(s), 373 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+15 source file(s), 600 public symbol(s), 389 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1363,6 +1363,114 @@ Experimental observation/transaction layer over Fn. No model transport and no al
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">exportCsv</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outputs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">File</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">sampleRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="n">header</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudy/#L231) | Export a checked immutable revision, staging and verifying every file before replacing destinations. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">sample</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudy/#L329) |  |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">observe</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">compareTo</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudy/#L349) | Revision-consistent pixels + landmarks + measured holds/joins. Same samples feed image and extrema. |
+
+## FunctionStudyTools.kt { #functionstudytools-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/FunctionStudyTools.kt` — [read the source](source/jvmMain/afield/stdlib/FunctionStudyTools/)
+
+**Used in:** [Talking a function into existence](../function_conversation.md)
+
+### Top-level functions { #functionstudytools-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L236) | Register the function study tools once, for every conversation opened on a function study's `code`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyWatcher</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L275) | Show each function study's viewer when its document opens (or a box is marked), without waiting for a tool call. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyMark</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L293) | Keep the `aiStudy` mark with the document. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyAction</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L299) | "Make a Function Study": mark the selected boxes as function studies, seeding an empty one with `FunctionStudies.STARTER`. |
+
+### FunctionStudyGuide { #functionstudytools-kt-functionstudyguide }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FunctionStudyGuide</span><span class="p">(</span><span class="k">val</span> <span class="n">unused</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L27)
+
+### InspectFunctionStudy { #functionstudytools-kt-inspectfunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InspectFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L30)
+
+### EditFunctionStudy { #functionstudytools-kt-editfunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EditFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">previewStartSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">previewEndSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">25.0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L33)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">previewStartSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">previewEndSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### PatchFunctionStudy { #functionstudytools-kt-patchfunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatchFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">edits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StudySourceEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">previewStartSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">previewEndSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">25.0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L44)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">edits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StudySourceEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">previewStartSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### ExportFunctionStudy { #functionstudytools-kt-exportfunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ExportFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">filenames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRateHz</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">100.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">header</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">overwrite</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L49)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">filenames</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">sampleRateHz</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">header</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### ObserveFunctionStudy { #functionstudytools-kt-observefunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ObserveFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">endSeconds</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">3600.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">compareTo</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L54)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">endSeconds</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### SampleFunctionStudy { #functionstudytools-kt-samplefunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SampleFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">timesSeconds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L58)
+
+### SelectFunctionStudy { #functionstudytools-kt-selectfunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SelectFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">eventIds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">startSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">endSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L61)
+
+### CompareFunctionStudy { #functionstudytools-kt-comparefunctionstudy }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CompareFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">beforeRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">afterRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">changedStartSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">changedEndSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">allowedChannels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L64)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">changedStartSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">changedEndSeconds</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">allowedChannels</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code> |  |
+
+### FunctionStudies { #functionstudytools-kt-functionstudies }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">FunctionStudies</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L72)
+
+Function studies, one per box: a box whose `aiStudy` property is `"function"` and whose Kotlin returns a [`StudyComposition`](function.md#functionstudy-kt-studycomposition). The study keeps its revisions in `studies/<box id>` and shows its signal viewer in the box's own output.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MARK</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L74) | The property that marks a box as a study, and the value that says which kind. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">KIND</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L75) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">STARTER</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L78) | The source a new function study starts from: three flat channels over an hour. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">guide</span><span class="p">:</span> <span class="nc">String</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L97) | How to work on a function study: what [`FunctionStudyGuide`](function.md#functionstudytools-kt-functionstudyguide) returns. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">isStudy</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L103) | Whether a conversation focused on `box`'s `property` is about a function study. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">study</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">FunctionStudy</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L106) | `box`'s study, created on first use. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">ready</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">FunctionStudy</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L118) | `study`, with the box's current source checked in as the first revision if there is none, and its viewer showing. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">showSignal</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">revisionId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">,</span> <span class="n">comparisonId</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;overview&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L131) | Show `revisionId` in the box's signal viewer, optionally with `comparisonId` dashed beneath it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">finishEdit</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">report</span><span class="p">:</span> <span class="nc">StudyReport</span><span class="p">,</span> <span class="n">parent</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L153) | An accepted edit's preview, with the viewer moved to the new revision (compared with its parent). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">observe</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nc">ObserveFunctionStudy</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L164) | `FunctionStudy.observe`, with the local maxima of each channel when the interval is short enough to resolve them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">compare</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="nc">CompareFunctionStudy</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L187) | Sampled preservation between two revisions outside the declared interval and channels; see [`CompareFunctionStudy`](function.md#functionstudytools-kt-comparefunctionstudy). |
+
+### FunctionStudyGuideText { #functionstudytools-kt-functionstudyguidetext }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FunctionStudyGuideText</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">core</span><span class="p">.</span><span class="nc">SummarisesForToolLog</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L265)
+
+The [`FunctionStudyGuide`](function.md#functionstudytools-kt-functionstudyguide) tool's answer.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L266) |  |
 
 ## autodiff_fn.kt { #autodiff-fn-kt }
 

@@ -827,7 +827,27 @@ data class ToolExecutionContext(
     val documentGuides: DocumentGuideTools? = null,
 
     // Optional extra tools
-    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null
+    val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+
+    /** What this conversation is about, when it is about one box: see [ToolFocus]. */
+    val focus: ToolFocus? = null
+)
+
+/**
+ * The document, box and property a conversation is focused on — the box whose AI4 chat is open.
+ *
+ * Extension tools read it to scope themselves: a study tool is offered when the focused box is a
+ * study it knows how to work on, and it works on *that* box, so two open documents (or two programs
+ * in one document) never share a tool's state. `null` for conversations that are not about a box,
+ * such as the document-wide chat.
+ */
+data class ToolFocus(
+    /** The document's path, as `SessionInformation.filename`. */
+    val document: String,
+    /** The focused box. */
+    val box: afield.Box,
+    /** The property the chat was opened on, such as `code` or `stackSL`. */
+    val property: String,
 )
 
 fun virtualFilesToAttachments(files: List<afield.ai.VirtualTextFile>): List<ContextAttachment> =

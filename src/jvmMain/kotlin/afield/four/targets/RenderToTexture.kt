@@ -193,7 +193,9 @@ open class RenderToTexture(
         val outputPath: String,
         val attachment: Int,
         val quality: Int,
-        val completion: CompletableFuture<String>
+        val completion: CompletableFuture<String>,
+        /** Set by [readPixelsAsync]: deliver the attachment's bytes as stored instead of writing a JPEG. */
+        val raw: CompletableFuture<ByteArray>? = null
     )
 
     private data class RecordedFileSave(
@@ -269,6 +271,31 @@ open class RenderToTexture(
     @JvmOverloads
     fun saveJpegAsync(outputPath: String, attachment: Int = 0, quality: Int = 90): CompletableFuture<String> =
         saveJpgAsync(outputPath, attachment, quality)
+
+    /**
+     * Queue a copy of a color attachment's pixels exactly as the attachment stores them — for a float
+     * target, the float values the shader wrote, unclamped, NaN included — which a JPEG or an 8-bit
+     * preview cannot carry.
+     *
+     * Like [saveJpgAsync], the copy is recorded the next time this target renders, *after* its draw,
+     * so it holds that frame's image; the future completes once that frame's GPU work has finished.
+     * The bytes are row-major with row 0 first, `width * height * bytesPerPixel(format)` long, in the
+     * device's (little-endian) byte order. Needs `colorTransferSrc = true`.
+     */
+    @JvmOverloads
+    fun readPixelsAsync(attachment: Int = 0): CompletableFuture<ByteArray> {
+        val raw = CompletableFuture<ByteArray>()
+        if (attachment !in colorImageHandles.indices) {
+            raw.completeExceptionally(IllegalArgumentException("attachment $attachment is out of range for $this"))
+            return raw
+        }
+        val completion = CompletableFuture<String>()
+        completion.whenComplete { _, t -> if (t != null) raw.completeExceptionally(t) }
+        synchronized(fileSaveLock) {
+            pendingFileSaves.addLast(FileSaveRequest("", attachment, 0, completion, raw))
+        }
+        return raw
+    }
 
     @JvmOverloads
     fun launchJpgSave(outputPath: String, attachment: Int = 0, quality: Int = 90): CompletableFuture<String> =
@@ -471,6 +498,16 @@ open class RenderToTexture(
 
     private fun completeFileSave(capture: RecordedFileSave) {
         try {
+            capture.request.raw?.let { raw ->
+                var bytes: ByteArray? = null
+                capture.stagingBuffer.mapAndRead_bytes {
+                    rewind()
+                    bytes = ByteArray(remaining()).also { get(it) }
+                }
+                raw.complete(requireNotNull(bytes))
+                capture.request.completion.complete("")
+                return
+            }
             val rgba = readCaptureRgba(capture)
             GpuImageCapture.writeJpeg(
                 capture.request.outputPath,

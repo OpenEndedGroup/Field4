@@ -832,7 +832,12 @@ class Instance(private val validate: Boolean) {
                         else -> lprintln("info,vulkan", "INFO$where: $msg")
                     }
 
-                    if (msg.contains(
+                    // Only what a person must act on reaches a box. INFO and VERBOSE messages — the
+                    // loader's layer-configuration dump among them — land on whichever box built a
+                    // module last, as errors, so every relaunch of a window reported a failed run.
+                    val forBox = isPrintf || (severity and (EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT or
+                            EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) != 0
+                    if (!forBox || msg.contains(
                             "VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart",
                             ignoreCase = true
                         )

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**14821 public symbols across 381 source files**, 8709 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15283 public symbols across 396 source files**, 8998 of them (58%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -19,15 +19,15 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Simulation](simulation.md) | 29 | 873 | 505 (57%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
-| [Function](function.md) | 14 | 561 | 373 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Function](function.md) | 15 | 600 | 389 (64%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 18 | 552 | 486 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 27 | 1091 | 467 (42%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 894 | 292 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 78 | 2286 | 891 (38%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 3 | 92 | 77 (83%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 91 | 2674 | 1138 (42%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 4 | 127 | 103 (81%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -170,6 +170,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 28 | 10 |  | [Talking a function into existence](../function_conversation.md) |
+| [FunctionStudyTools.kt](function.md#functionstudytools-kt) | Function | 39 | 16 |  | [Talking a function into existence](../function_conversation.md) |
 | [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 12 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
 | [GestureBoardVisualization.kt](audio-ai.md#gestureboardvisualization-kt) | Audio AI | 3 | 3 | A gesture board drawn as a picture of itself: prompt regions, onset events and parameter curves on one timeline, each mark labelled with how far into the model it reaches. |  |
@@ -333,7 +334,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RayTracingGpuAudit.kt](renderers.md#raytracinggpuaudit-kt) | Renderers | 3 | 2 |  |  |
 | [RealizationSolver.kt](polytopes.md#realizationsolver-kt) | Polytopes | 34 | 27 | The middle realization verb: improve an embedding you already have. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Realize.kt](polytopes.md#realize-kt) | Polytopes | 16 | 15 | Coordinates from combinatorics alone, and the gauge that makes an answer a *representative*. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
-| [RectSL.kt](languages.md#rectsl-kt) | Languages | 556 | 40 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSL.kt](languages.md#rectsl-kt) | Languages | 560 | 45 | RectSL — Field's rectangle scene language, and the largest single file in the tree. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [RectSL examples](../rectsl_examples.md), [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLCoverage.kt](languages.md#rectslcoverage-kt) | Languages | 35 | 35 | The **exact** coverage a soft raster is approximating, and the measurement of how far off it is. |  |
 | [RectSLEditorExtension.kt](languages.md#rectsleditorextension-kt) | Languages | 6 | 6 | Serves `rectsl.js`, the browser-side RectSL editor support, to the page and to the test that checks it. |  |
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
@@ -341,9 +342,15 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
+| [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 33 | 26 |  |  |
 | [RectSLSdfLook.kt](languages.md#rectslsdflook-kt) | Languages | 31 | 23 | What to *do* with a RectSL distance field once you have one. | [RectSL cheatsheet](../rectsl_cheatsheet.md), [RectSL examples](../rectsl_examples.md) |
 | [RectSLSimplify.kt](languages.md#rectslsimplify-kt) | Languages | 2 | 2 | An algebraic simplifier over the track IR — the last of the four capabilities `ddf732260` said a symbolic IR would allow. |  |
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. | [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md) |
+| [RectSLSource.kt](languages.md#rectslsource-kt) | Languages | 26 | 14 | RectSL read as *source*: what the editor and the study tools need that a plain compile does not give — where things are. |  |
+| [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 48 | 37 |  |  |
+| [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 23 | 17 |  |  |
+| [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 39 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
+| [RectSLStudyViewer.kt](languages.md#rectslstudyviewer-kt) | Languages | 9 | 6 |  |  |
 | [RemoteJS.kt](languages.md#remotejs-kt) | Languages | 28 | 2 | RemoteJS — JavaScript that runs in a *browser somewhere else*, written in a Field box here. |  |
 | [RenderedAudioAnalysis.kt](audio-ai.md#renderedaudioanalysis-kt) | Audio AI | 28 | 14 | The render-to-analysis pipeline: render Field synthesis to a WAV, upload it once, and fan out durable analysis jobs. | [Render Field music, then analyse it](../audio_render_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [Sampling.kt](synthesis.md#sampling-kt) | Synthesis | 81 | 31 | Playback of recorded audio, from reading a buffer straight through to scattering it into grains. |  |
@@ -373,6 +380,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
+| [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 35 | 26 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. |  |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 | The frequency-domain end of the synth: an `FFT`, two short-time transforms built on it, and a wavetable that keeps its waveforms as spectra. |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
@@ -380,10 +388,17 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SpeechEmbeddingMds.kt](audio-ai.md#speechembeddingmds-kt) | Audio AI | 54 | 12 | Speech embedding: decode, pool, and project the learned speech frames stored in an analysis artifact. |  |
 | [SpeechEmbeddingVisualization.kt](audio-ai.md#speechembeddingvisualization-kt) | Audio AI | 6 | 6 | Phase portrait renderers for speech and spectral embedding spaces, synchronized with a shared audio cursor. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
-| [StackSL.kt](languages.md#stacksl-kt) | Languages | 59 | 2 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
+| [StackSL.kt](languages.md#stacksl-kt) | Languages | 70 | 10 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 15 | 14 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
 | [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 27 | 24 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
+| [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 13 | 7 |  |  |
+| [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 31 | 22 |  |  |
+| [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 44 | 36 |  |  |
+| [StackSLStudyEvidence.kt](languages.md#stackslstudyevidence-kt) | Languages | 22 | 14 |  |  |
+| [StackSLStudyShader.kt](languages.md#stackslstudyshader-kt) | Languages | 39 | 38 |  |  |
+| [StackSLStudyTools.kt](languages.md#stackslstudytools-kt) | Languages | 38 | 6 |  | [Talking a shader into existence](../stacksl_conversation.md) |
+| [StackSLStudyViewer.kt](languages.md#stackslstudyviewer-kt) | Languages | 8 | 4 |  |  |
 | [StackSLWires.kt](languages.md#stackslwires-kt) | Languages | 18 | 18 | StackSL's dangling wires, made runnable on the CPU: the free-parameter vector a fit descends. |  |
 | [StandardDrawing.kt](graphics.md#standarddrawing-kt) | Graphics | 41 | 41 | The small vocabulary of `FLine` construction and styling that sketches and examples reach for first. | [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [standardRenderer.kt](renderers.md#standardrenderer-kt) | Renderers | 10 | 4 | The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and the configuration that sizes them. |  |
