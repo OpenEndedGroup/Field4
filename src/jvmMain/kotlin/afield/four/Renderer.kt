@@ -280,7 +280,12 @@ class Renderer(
     private val computeSubmissionCallbacks = mutableMapOf<Pair<Int, Int>, MutableList<(Fence) -> Future<*>?>>()
     private val computePostSubmitTasks = mutableMapOf<Pair<Int, Int>, MutableList<Future<*>>>()
 
-    var cleanup = mutableListOf<Runnable>()
+    /**
+     * Releases to run once the frames now in flight have retired (see [render]). Synchronized:
+     * box threads add to it (`VulkanBuffer.realloc`, staged uploads, `renderer.cleanup += …`)
+     * while the render thread swaps it out.
+     */
+    var cleanup: MutableList<Runnable> = java.util.Collections.synchronizedList(mutableListOf())
     var cleanupStack = mutableListOf<Pair<Long, MutableList<Runnable>>>()
     @Volatile
     private var cleanedUp = false
@@ -750,6 +755,10 @@ class Renderer(
         if (cleanedUp) return
         cleanedUp = true
         running = false
+        // Before the waitIdle below: a Queue.submit from another thread either finished before this
+        // (and the waits cover it) or is refused. Renderer's own frame submits use vkQueueSubmit2
+        // on this thread and render() already refuses once cleanedUp is set.
+        device.closeSubmissions()
         uninstallRunloopGeometryBeginHook()
 
         presentQueue.waitIdle()
@@ -1283,7 +1292,7 @@ class Renderer(
 
         // Deferred cleanup queue (use max frames-in-flight across all contexts)
         if (cleanup.isNotEmpty()) cleanupStack.add(frameCounter to cleanup)
-        cleanup = mutableListOf()
+        cleanup = java.util.Collections.synchronizedList(mutableListOf())
         val thresholdFrame = frameCounter - maxFramesInFlight * 8
         while (cleanupStack.isNotEmpty() && cleanupStack.first().first <= thresholdFrame) {
             val (_, toRun) = cleanupStack.removeAt(0)

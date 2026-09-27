@@ -105,6 +105,8 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
 fun ComputeModule.pointer() = ComputeModulePointer(this)
 
 class ComputeModule(val parameters: Parameters) : Renderable {
+    // Volatile: cleanup() clears it on a box thread while render workers read it.
+    @Volatile
     var valid = false
     var enabled = true
 
@@ -569,8 +571,20 @@ class ComputeModule(val parameters: Parameters) : Renderable {
         }
     }
 
+    /**
+     * Release this module's pipeline, layout, shader module and descriptor layouts. It stops
+     * dispatching at once; while its renderer is alive the handles go through the retirement
+     * queue, as for [Module.cleanup], and at once after the renderer has closed.
+     */
     fun cleanup() {
         if (!pipelineDisposeToken.disable()) return
+        valid = false
+        val renderer = parameters.renderer
+        if (renderer.isClosed) destroyPipelineNow()
+        else renderer.cleanup.add(Runnable { destroyPipelineNow() })
+    }
+
+    private fun destroyPipelineNow() {
         destroyPipelineHandles(pipeline, pipelineLayout, csm)
         pipeline = 0L
         pipelineLayout = 0L

@@ -108,25 +108,42 @@ class VulkanBuffer(
     val cpuOnly: Boolean = false,
 ) : HasBuffer, BufferWriteable, BufferReadable, DynamicallyWriteable {
 
+    // Volatile, like the handle fields below: the render workers read these while recording, on
+    // other threads than the one that reallocates. See [realloc].
+    @Volatile
     var gpuAddress: Long = -1
     private val writeLock = Any()
 
     /** VMA-managed */
+    @Volatile
     private var allocationSize: Long = 0
     var allocationMemoryType: Int = -1
         private set
     var allocationMemoryFlags: Int = 0
         private set
+    @Volatile
     var buffer: Long = 0L
         @JvmName("_getBuffer")
         get() = field
 
     /** VmaAllocation handle (NOT a VkDeviceMemory) */
+    @Volatile
     private var allocation: Long = 0L
 
     /** CPU pointer; stays valid while mapped (we keep it persistently mapped) */
+    @Volatile
     private var mappedMemory: Long = 0L
     private var hostBuffer: ByteBuffer? = null
+
+    /**
+     * The handle and range a descriptor write needs, published as one object so a render worker
+     * never pairs one allocation's handle with another's size. Replaced (never mutated) by
+     * [allocate], [realloc], [cleanup] and [pushCleanup].
+     */
+    class DescriptorBinding internal constructor(val buffer: Long, val range: Long)
+
+    @Volatile
+    private var binding = DescriptorBinding(VK_NULL_HANDLE, VK_WHOLE_SIZE)
 
     var hint_read: Boolean = false
     var hint_write: Boolean = false
@@ -141,31 +158,42 @@ class VulkanBuffer(
     private val autoDisposeToken = AutoDisposer.register(this, "VulkanBuffer(size=$requestedSize)", owner = renderer.device) { /* set after allocate */ }
 
     init {
-        allocate()
+        allocate(requestedSize)
         autoDisposeToken.updateCleanup(snapshotCleanup())
     }
 
-    /** Allocate buffer + suballocation via VMA; keep persistently mapped. */
-    private fun allocate() {
-        mappedMemory = MemoryUtil.NULL
-        gpuAddress = 0L
-        hostBuffer = null
-
+    /**
+     * Allocate a buffer + suballocation of [requested] bytes via VMA (kept persistently mapped), then
+     * publish it.
+     *
+     * Everything is built into locals first and the fields are only written at the end, handle
+     * last and [binding] after it. A render worker recording a frame on another thread therefore
+     * reads either the previous allocation (still alive: [realloc] retires it through the
+     * renderer's frame-retirement queue) or this one, and never `VK_NULL_HANDLE`. Clearing the
+     * handle before allocating, as this used to, let `Module.Uniform.pushDescriptorSet` push a
+     * null buffer mid-[realloc], which MoltenVK dereferences (`MVKBuffer::getMTLBuffer`, address
+     * 0x68). See `dev_docs/renderer_teardown_order.md`, "Live-frame crash".
+     */
+    private fun allocate(requested: Long) {
         if (cpuOnly) {
-            val size = requestedSize.coerceAtLeast(1L).toInt()
-            hostBuffer = MemoryUtil.memAlloc(size)
+            val size = requested.coerceAtLeast(1L).toInt()
+            val host = MemoryUtil.memAlloc(size)
             allocationSize = size.toLong()
             allocationMemoryType = -1
             allocationMemoryFlags = 0
-            mappedMemory = MemoryUtil.memAddress(hostBuffer!!)
-            buffer = 0L
+            hostBuffer = host
+            mappedMemory = MemoryUtil.memAddress(host)
+            gpuAddress = 0L
             allocation = 0L
+            buffer = 0L
+            requestedSize = requested
+            binding = DescriptorBinding(VK_NULL_HANDLE, rangeFor(requested))
             return
         }
 
         MemoryStack.stackPush().use { stack ->
             val usageBits = if (needsDeviceAddress) usage or VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT else usage
-            val size = requestedSize.coerceAtLeast(1L)
+            val size = requested.coerceAtLeast(1L)
 
             val bufCI = VkBufferCreateInfo.calloc(stack).apply {
                 sType(VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO)
@@ -214,48 +242,65 @@ class VulkanBuffer(
             val err = Vma.vmaCreateBuffer(allocator, bufCI, allocCI, pBuffer, pAlloc, null)
             require(err == VK_SUCCESS) { "vmaCreateBuffer failed: $err" }
 
-            buffer     = pBuffer[0]
-            allocation = pAlloc[0]
+            val newBuffer = pBuffer[0]
+            val newAllocation = pAlloc[0]
 
             // Query size + mapped pointer
             val info = VmaAllocationInfo.calloc(stack)
-            Vma.vmaGetAllocationInfo(allocator, allocation, info)
-            allocationSize = info.size()
-            allocationMemoryType = info.memoryType()
-            allocationMemoryFlags = if (allocationMemoryType >= 0) {
-                renderer.physicalDevice.vkMemoryProperties.memoryTypes()[allocationMemoryType].propertyFlags()
+            Vma.vmaGetAllocationInfo(allocator, newAllocation, info)
+            val newMemoryType = info.memoryType()
+            val newMemoryFlags = if (newMemoryType >= 0) {
+                renderer.physicalDevice.vkMemoryProperties.memoryTypes()[newMemoryType].propertyFlags()
             } else {
                 0
             }
-            mappedMemory   = info.pMappedData()
 
-            // Optional: device address
+            // Optional: device address. Eager, so a lazy getGPUAddress() can never cache the
+            // previous allocation's address after a realloc.
+            var newAddress = 0L
             if (needsDeviceAddress) {
                 val addrInfo = VkBufferDeviceAddressInfo.calloc(stack).apply {
                     sType(VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO)
-                    buffer(buffer)
+                    buffer(newBuffer)
                 }
-                gpuAddress = vkGetBufferDeviceAddress(renderer.device.vkDevice, addrInfo)
-                require(gpuAddress != 0L) { "vkGetBufferDeviceAddress returned 0; check features/flags/usage." }
+                newAddress = vkGetBufferDeviceAddress(renderer.device.vkDevice, addrInfo)
+                require(newAddress != 0L) { "vkGetBufferDeviceAddress returned 0; check features/flags/usage." }
             }
+
+            // Publish: everything else first, the handle and the descriptor binding last.
+            allocation = newAllocation
+            allocationSize = info.size()
+            allocationMemoryType = newMemoryType
+            allocationMemoryFlags = newMemoryFlags
+            hostBuffer = null
+            mappedMemory = info.pMappedData()
+            gpuAddress = newAddress
+            buffer = newBuffer
+            requestedSize = requested
+            binding = DescriptorBinding(newBuffer, rangeFor(requested))
         }
     }
 
-    /** Grow-resize with deferred destruction of the old buffer/allocation. */
+    private fun rangeFor(requested: Long): Long = if (requested > 0L) requested else VK_WHOLE_SIZE
+
+    /**
+     * Grow-resize with deferred destruction of the old buffer/allocation.
+     *
+     * Safe against a frame being recorded on another thread: the old allocation stays valid until
+     * the renderer's retirement queue releases it, `8 × numImages` submitted frames later, and the
+     * handle a recorder reads is never zero in between (see [allocate]).
+     */
     fun realloc(bytes: Long) {
         synchronized(writeLock) {
+            // After teardown began the allocator is about to go, and a retirement added now could
+            // miss the final drain.
+            requireLiveRenderer()
+            check(!released) { "$this was released with cleanup(); it cannot be reallocated" }
             val oldBuffer = buffer
             val oldAlloc = allocation
             val oldHost = hostBuffer
 
-            // Clear live handles
-            buffer = 0L
-            allocation = 0L
-            mappedMemory = 0L
-            hostBuffer = null
-
-            requestedSize = bytes
-            allocate()
+            allocate(bytes)
             autoDisposeToken.updateCleanup(snapshotCleanup())
 
             renderer.cleanup.add {
@@ -340,6 +385,31 @@ class VulkanBuffer(
             "$this used after its Renderer was disposed; stop the box writing it before the renderer " +
                 "(or its window, or its document) goes away"
         }
+        check(!destroyed) {
+            "$this used after cleanup() destroyed it; drop every use of a buffer before releasing it"
+        }
+    }
+
+    /**
+     * The handle and range to write into a descriptor for this buffer, read once, as a pair.
+     *
+     * Refuses, with an [IllegalStateException] that names the cause, rather than hand the driver a
+     * handle it will fault on: after [Renderer.cleanup] has begun, and once the retirement queue
+     * has destroyed a buffer that [cleanup] released while a module still binds it (between the
+     * two the handle is still valid, and binding it is allowed). MoltenVK does not
+     * validate a pushed buffer handle; it dereferences it while recording, so either case used to
+     * be a SIGSEGV in `MVKBuffer::getMTLBuffer` on a render worker. A CPU-only buffer has no
+     * VkBuffer and is refused too.
+     */
+    fun descriptorBinding(): DescriptorBinding {
+        requireLiveRenderer()
+        val bound = binding
+        check(bound.buffer != VK_NULL_HANDLE) {
+            if (cpuOnly) "$this is CPU-only and has no VkBuffer to bind to a descriptor"
+            else "$this was released (cleanup() or pushCleanup()) while a module still binds it; " +
+                "drop the binding before releasing it"
+        }
+        return bound
     }
 
     /** Map via VMA (or host-only); keep persistently mapped (recommended). */
@@ -477,32 +547,50 @@ class VulkanBuffer(
         return this
     }
 
-    /** Defer destruction with your renderer.cleanup, or call directly when safe. */
-    fun pushCleanup() {
-        // Ownership of these handles moves to the deferred action. GC must not free them again.
-        if (!autoDisposeToken.disable()) return
-        val oldBuffer = buffer
-        val oldAlloc  = allocation
-        val oldHost   = hostBuffer
+    /**
+     * Same as [cleanup], which now always retires through the renderer's queue while the renderer
+     * is alive. Kept for the callers that used it to ask for exactly that.
+     */
+    fun pushCleanup() = cleanup()
 
-        buffer = 0L
-        allocation = 0L
-        allocationMemoryType = -1
-        allocationMemoryFlags = 0
-        mappedMemory = 0L
-        hostBuffer = null
-        allocationSize = 0L
-        gpuAddress = 0L
-
-        renderer.cleanup.add(Cleaner(renderer, oldBuffer, oldAlloc, oldHost))
-    }
-
+    /**
+     * Release this buffer.
+     *
+     * While its renderer is alive the VkBuffer and its memory are destroyed through the renderer's
+     * retirement queue (`Renderer.cleanup`, released `8 × numImages` submitted frames later), so a
+     * frame that recorded or is executing the buffer, or a render worker that read it a moment
+     * ago, still finds it valid. Until then it behaves as before; afterwards [map], [unmap],
+     * [descriptorBinding] and [realloc] refuse by name. After the renderer has closed (device
+     * idle) it is destroyed at once.
+     *
+     * Destroying immediately, as this used to, was reproducible in a live Field: swapping a
+     * module's per-frame uniform buffers for new ones and calling `cleanup()` on the old from a
+     * thread crashed the JVM in `MVKBuffer::getMTLBuffer` (a destroyed handle pushed by a render
+     * worker); doing it from a box's own `loop {}` logged `VUID-vkDestroyBuffer-buffer-00922`
+     * (destroyed while a submitted frame used it) 40 times in 15 s. See
+     * `dev_docs/renderer_teardown_order.md`, "Immediate cleanup mid-frame".
+     */
     fun cleanup() {
         if (!autoDisposeToken.disable()) return
-        if (hostBuffer != null) MemoryUtil.memFree(hostBuffer)
-        if (buffer != VK_NULL_HANDLE && allocation != 0L) {
-            vmaDestroyBuffer(allocatorForRenderer(renderer), buffer, allocation)
-        }
+        released = true
+        if (renderer.isClosed) destroyNow()
+        else renderer.cleanup.add(Runnable { destroyNow() })
+    }
+
+    /** Set by [cleanup]: the handles are on their way to the retirement queue. */
+    @Volatile
+    private var released = false
+
+    /** Set once the handles are actually destroyed; everything that would touch them refuses. */
+    @Volatile
+    private var destroyed = false
+
+    private fun destroyNow() {
+        destroyed = true
+        binding = DescriptorBinding(VK_NULL_HANDLE, binding.range)
+        val host = hostBuffer
+        val buf = buffer
+        val alloc = allocation
         buffer = VK_NULL_HANDLE
         allocation = 0L
         mappedMemory = 0L
@@ -511,6 +599,10 @@ class VulkanBuffer(
         allocationMemoryFlags = 0
         gpuAddress = 0L
         hostBuffer = null
+        if (host != null) MemoryUtil.memFree(host)
+        if (buf != VK_NULL_HANDLE && alloc != 0L) {
+            vmaDestroyBuffer(allocatorForRenderer(renderer), buf, alloc)
+        }
     }
 
     class Cleaner(

@@ -1483,12 +1483,15 @@ Stopping the box that owns `renderer` also stops every running box connected ben
 frees the GPU device. The same happens when you close the Field window. Field waits up to two
 seconds for those boxes to finish; a `loop {}` stops within a frame. So a child box that writes
 buffers every frame no longer outlives the memory it writes into, which used to crash Field.
-Start the children again once the renderer is back.
+To start them again, select the renderer box and run **Relaunch the N box(es) stopping this
+renderer stopped** from the command palette. It launches the renderer box first if its renderer
+is gone, then the boxes it stopped, parents before children.
 
 Anything that is not a box job, such as a raw `thread {}` or a renderer stashed in a global, is
 not stopped. If it writes a buffer after the device is gone, it gets an `IllegalStateException`
-that says so. Stop that work yourself, from a box you can stop. The order is written up in
-`dev_docs/renderer_teardown_order.md`.
+that says so. A queue submission after the renderer has gone, or a descriptor that still names a
+freed buffer, is refused the same way. Stop that work yourself, from a box you can stop. The
+order is written up in `dev_docs/renderer_teardown_order.md`.
 
 ## Where these examples come from
 

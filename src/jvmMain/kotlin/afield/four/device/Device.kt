@@ -590,6 +590,19 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         vkDeviceWaitIdle(vkDevice)
     }
 
+    /**
+     * False once the owning Renderer's teardown has begun ([closeSubmissions]); [Queue.submit]
+     * then refuses by name instead of queuing work against buffers that are about to be freed.
+     */
+    @Volatile
+    var acceptingSubmissions = true
+        private set
+
+    /** Refuse every later [Queue.submit]; taken under [Queue.globalQueueLock] so none is mid-flight. */
+    fun closeSubmissions() {
+        synchronized(Queue.globalQueueLock) { acceptingSubmissions = false }
+    }
+
     fun cleanup() {
         if (ngxDelegate.isInitialized()) ngxRuntime.getOrNull()?.close()
         vkDestroyDevice(vkDevice, null)

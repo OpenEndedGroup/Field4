@@ -10,7 +10,7 @@ import afield.four.util.vkCheck
 import java.nio.IntBuffer
 import java.nio.LongBuffer
 
-open class Queue(device: Device, queueFamilyIndex: Int, queueIndex: Int) {
+open class Queue(private val device: Device, queueFamilyIndex: Int, queueIndex: Int) {
     val queueFamilyIndex: Int
     var vkQueue: VkQueue
 
@@ -42,6 +42,13 @@ open class Queue(device: Device, queueFamilyIndex: Int, queueIndex: Int) {
             }
             val fenceHandle = fence?.vkFence ?: VK10.VK_NULL_HANDLE
             synchronized(globalQueueLock) {
+                // Under the same lock Renderer.cleanup closes submissions with, so a submit either
+                // lands before its waitIdle (and completes) or is refused here.
+                check(device.acceptingSubmissions) {
+                    "Queue.submit after its Renderer began disposing: the command buffer may reference " +
+                        "buffers that teardown is about to free. Stop the box submitting before the " +
+                        "renderer (or its window, or its document) goes away"
+                }
                 vkCheck(
                     VK10.vkQueueSubmit(vkQueue, submitInfo, fenceHandle),
                     "Failed to submit command to queue"
