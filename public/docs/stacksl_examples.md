@@ -969,7 +969,8 @@ GLSL and drive it from Kotlin, the same way a push constant is a slot you write
 from the host. The difference is that this slot is a whole
 `vec4 NAME(vec4 NAME_in)` function whose body is StackSL.
 
-Put the slot in a fullscreen fragment shader:
+Put the slot in a fullscreen fragment shader. It goes in the box's `fragment`
+property, the shader tab beside `code`:
 
 ```diffstatic {data-lang=glsl}
 #version 450
@@ -984,6 +985,21 @@ void main() {
 }
 ```
 
+The fragment reads `fragUV`, so the box's `vertex` property has to write it.
+There is no vertex buffer: the three vertices, numbered by `gl_VertexIndex`, make
+one triangle big enough to cover the window, the same trick `shadertoyHere` uses.
+
+```diffstatic {data-lang=glsl}
+#version 450
+layout(location = 0) out vec2 fragUV;
+
+void main() {
+    vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+    gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
+    fragUV = pos;
+}
+```
+
 Template expansion emits the `program` function exactly once per stage. Until
 Kotlin binds it, the slot expands to `vec4 program(vec4 program_in) { return vec4(0.0); }`,
 so an unbound slot still contributes a compilable function.
@@ -991,23 +1007,56 @@ so an unbound slot still contributes a compilable function.
 Every discovered `stack.auto.*` name becomes an assignable property on the
 shader module. Assigning it compiles the StackSL first and only swaps the
 running shader if that succeeds, so a bad program leaves the previous one in
-place and you can type into a running window:
+place and you can type into a running window. The box's `code` builds the
+module from those two properties and binds the slot. `fromContext()` finds the
+renderer by walking up the box's parents, so the box has to be connected beneath
+the one that opened the window:
 
 ```diffstatic {data-lang=kotlin}
-val module = moduleHere { fragment = fullscreenFragment }
+val renderer: Renderer = fromContext()
+val module = moduleHere { }
 val mesh = Mesh()
 module += mesh named "fullscreen"
+mesh.resize(3)   // three vertices and no attributes: the vertex shader makes the triangle
 renderer += module
 
 module.program = "uv 4.0 * fbm palette saturate"   // binds and hot-reloads
 ```
+
+!!! note "Put the GLSL in the box's properties"
+    `moduleHere { fragment = … }` compiles, and the assignment is thrown away.
+    `moduleHere` builds its module from the box's `vertex` and `fragment`
+    properties, and when they are empty it fills them with a default shader that
+    has no `{{ stack.auto.program }}` slot, so `module.program` is never generated.
+    To supply the shaders from code instead, set the properties with
+    `once.vertex { … }` and `once.fragment { … }` above a `//%-` line, so that they
+    have run by the time `moduleHere` expands; [Running code in a
+    box](running_code.md#the-fragment-break) explains why the line is needed.
+
+The two stills below are what this box draws, fitted into the gallery's square.
+`StackSLGalleryHarness` renders them with a per-pixel hash in `z` of `stackInput`
+and a fixed time in `w`, but `uv` and `p` build their value from `x` and `y`
+alone, so neither program sees the difference. In a window the same picture is
+stretched to the window's shape.
+
+??? aside "How this snippet was checked"
+    Nothing in the docs build runs this code, since the stills come from the
+    harness. That is how an earlier `moduleHere { fragment = fullscreenFragment }`
+    version, whose `module.program` could never resolve, went unnoticed. On
+    2026-09-27 the form above was run by hand in a scratch document beneath a
+    renderer box. The launch reported no errors, the one-line re-assignment turned
+    the cloud into the kaleidoscope, and both window captures, scaled to 512 × 512,
+    match the stills to within a tenth of a level on average. The
+    `once.vertex`/`once.fragment` route draws a pixel-identical frame.
 
 Before, running `uv 4.0 * fbm palette saturate`:
 
 ![stack.auto before rebinding: a grainy blue-and-orange cloud with no symmetry in it — warm territory through the lower left, cold blue and white through the upper right, and speckled violet borders between them](assets/stacksl/stacksl-auto-before.png)
 
 Re-assigning the same slot swaps the function in place, with no new module and no
-window teardown:
+window teardown. Edit the string and run that one line with `alt-return`, which
+runs it against the `module` the box already built. `alt-0` runs the whole box
+again from the top, which builds a new module:
 
 ```diffstatic {data-lang=kotlin}
 module.program = "p 6 kaleido fbm palette saturate"
@@ -1017,10 +1066,11 @@ After:
 
 ![stack.auto after rebinding: nothing of the cloud survives. A six-fold symmetric figure in burnt orange and violet, a warm star radiating from a single dark point at the exact centre with six thin darker spokes running out of it, ringed by violet lobes at the edges and corners](assets/stacksl/stacksl-auto-after.png)
 
-The gallery above is built this way: one module, one slot, re-bound once per
-program. A module re-registered under the same name replaces the previous one, so
-rebuilding the whole module works as well as rebinding its `stack.auto` body, which
-is handy when the surrounding GLSL, not only the StackSL, is what you are editing.
+The gallery images take a different route. `StackSLGalleryHarness` builds a new
+module for each program and registers it under one name, and a module registered
+under a name already in use replaces the previous one. So rebuilding the whole
+module works as well as rebinding its `stack.auto` body, which is handy when the
+surrounding GLSL, not only the StackSL, is what you are editing.
 
 ## Volumetric noise
 
