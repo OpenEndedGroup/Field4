@@ -105,7 +105,13 @@ data class StackSLDanglingWire(
     val line: Int? = null,
     val column: Int? = null,
     val token: String? = null,
-    val note: String = "constant"
+    val note: String = "constant",
+    /**
+     * The operand the value holding this wire was first taken as — the word's name for it, such as
+     * `"mix amount"`, `"smoothstep high"` or `"multiply b"` — or null when nothing took it (a number
+     * left on the stack as the result).
+     */
+    val consumedAs: String? = null
 )
 
 data class StackSLAnalysis(
@@ -288,7 +294,7 @@ object StackSLCompiler {
                 functions = allFunctions.map { it.analysis },
                 requiredHelpers = helpers,
                 requiredSamplers = requiredSamplers,
-                danglingWires = normalized.wires.wires.toList()
+                danglingWires = normalized.wires.wires.map { it.copy(consumedAs = normalized.wires.consumerOf(it.index)) }
             )
         )
     }
@@ -469,6 +475,17 @@ private class DanglingWireAllocator(
     private val tokenRefs = linkedMapOf<String, Int>()
 
     val count: Int get() = wires.size
+    private val consumers = HashMap<Int, String>()
+    private val wireReference = Regex("""${Regex.escape(arrayName)}\[(\d+)]""")
+
+    /** Record that the value [expression] was taken as [role], for each wire in it that has not been taken before. */
+    fun consumed(expression: String, role: String) {
+        if (!enabled) return
+        wireReference.findAll(expression).forEach { consumers.putIfAbsent(it.groupValues[1].toInt(), role) }
+    }
+
+    /** The operand wire [index] was first taken as; see [StackSLDanglingWire.consumedAs]. */
+    fun consumerOf(index: Int): String? = consumers[index]
 
     fun ref(number: String, token: Token?, note: String): String {
         val initial = normalizeFloat(number)
@@ -2303,7 +2320,7 @@ private class FunctionCompiler(
         return roles.mapIndexed { index, role ->
             val top = stack.lastOrNull()
             if (top != null && !isWordReference(top)) {
-                stack.removeAt(stack.lastIndex)
+                taken(stack.removeAt(stack.lastIndex), role)
             } else {
                 if (top != null && isWordReference(top)) {
                     stack.removeAt(stack.lastIndex)
@@ -2388,7 +2405,7 @@ private class FunctionCompiler(
     }
 
     private fun popItemOrDefault(token: Token?, role: String, defaultExpression: String? = null): Int {
-        if (stack.isNotEmpty()) return stack.removeAt(stack.lastIndex)
+        if (stack.isNotEmpty()) return taken(stack.removeAt(stack.lastIndex), role)
         return defaultValue(token, role, 0, defaultExpression, wrapWarning = true)
     }
 
@@ -2402,10 +2419,16 @@ private class FunctionCompiler(
     private fun pop(token: Token?, role: String, defaultExpression: String? = null, wrap: Boolean = true): Int {
         while (stack.isNotEmpty()) {
             val value = stack.removeAt(stack.lastIndex)
-            if (!isWordReference(value)) return value
+            if (!isWordReference(value)) return taken(value, role)
             warn(token, "Expected a value while reading $role but found word reference '${wordReference(value).word}'; discarding it.")
         }
         return defaultValue(token, role, 0, defaultExpression, wrapWarning = true)
+    }
+
+    /** [id], taken from the stack as [role]: a literal remembers the first operand it became ([StackSLDanglingWire.consumedAs]). */
+    private fun taken(id: Int, role: String): Int {
+        if (!isWordReference(id) && values[id].leaf) options.wires.consumed(values[id].expression, role)
+        return id
     }
 
     private fun optionalDefault(token: Token?, role: String, defaultExpression: String): Int {

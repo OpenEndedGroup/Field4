@@ -5,6 +5,7 @@ import afield.stacksl.StackSLCompiler
 import afield.stacksl.StackSLSeverity
 import afield.stacksl.cpu.CpuRaster
 import afield.stacksl.cpu.StackSLCpu
+import afield.stdlib.KnobNames
 import afield.stdlib.SourceRevision
 import afield.stdlib.SourceStudy
 import afield.stdlib.StudyAdmission
@@ -118,6 +119,11 @@ class StackSLStudy(
     var editorLine: () -> Int? = { null }
 
     companion object {
+        /** What StackSL is, for the fast model that names a program's knobs ([knobNames]). */
+        internal const val ABOUT_FOR_NAMES = "StackSL is a stack-based shader language: numbers are pushed onto a stack and the words after them " +
+            "consume them, and the program leaves a colour for every pixel of the window; >name stores a value and <name reads it back, " +
+            "uv is the pixel's position and time the seconds since the program started."
+
         /** A line note's picture, in pixels on a side: big enough to read a field, small enough to render as the cursor moves. */
         const val LINE_NOTE_SIZE = 96
 
@@ -279,7 +285,8 @@ class StackSLStudy(
             "definitions" to r.value.definitions, "animated" to r.value.animated,
             "nonFiniteFraction" to r.value.nonFiniteFraction,
             "stages" to r.value.stages.map { mapOf("stage" to it.stage, "line" to it.line, "text" to it.text, "comment" to it.comment) },
-            "knobs" to r.value.knobs.map(::knobSummary),
+            "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.map { knobSummary(it, names[it.knob]) } },
+            "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
             "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
             "exports" to exports().ifEmpty { null },
             "frame" to FRAME
@@ -287,12 +294,29 @@ class StackSLStudy(
     }
 
     /**
-     * One knob as one short line — `k3 L6:30 0.035 → *` — index, where, the number as typed, and what reads
-     * it: a program has dozens, and a list of objects was most of every Inspect.
+     * One knob as one short line — `k3 L6:30 0.035 → multiply b [sway speed]` — index, where, the number as
+     * typed, what reads it, and the name the person's card shows it by when it has one: a program has
+     * dozens, and a list of objects was most of every Inspect.
      */
-    private fun knobSummary(k: StackSLKnob): String =
+    private fun knobSummary(k: StackSLKnob, name: String? = null): String =
         "k${k.knob} L${k.line}:${k.column} ${k.token}" + (k.role.takeIf { it != "number" }?.let { " $it" } ?: "") +
-            (k.feeds?.let { " → $it" } ?: "") + (k.spans.size.takeIf { it > 1 }?.let { " (×$it)" } ?: "")
+            (k.takenAs?.let { " → $it" } ?: k.feeds?.let { " → $it" } ?: "") + (k.spans.size.takeIf { it > 1 }?.let { " (×$it)" } ?: "") +
+            (name?.let { " [$it]" } ?: "")
+
+    /**
+     * The names the person's card shows [knobs] of [source] by ([KnobNames]), those that are known; [ask]
+     * asks the fast model for the rest, calling [ready] once they are stored.
+     */
+    internal fun knobNames(source: String, knobs: List<StackSLKnob>, ask: Boolean = false, ready: () -> Unit = {}): Map<Int, String> =
+        KnobNames.names("StackSL", ABOUT_FOR_NAMES, source, namingKnobs(source, knobs), directory, ask, ready).orEmpty()
+
+    /** The shape of [source] that knob names and the card's keys belong to ([KnobNames.shape]). */
+    internal fun knobShape(source: String, knobs: List<StackSLKnob>): String = KnobNames.shape("StackSL", source, namingKnobs(source, knobs))
+
+    private fun namingKnobs(source: String, knobs: List<StackSLKnob>): List<KnobNames.Knob> {
+        val lines = source.lines()
+        return knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) }
+    }
 
     // ---- Publishing ---------------------------------------------------------------------------
 

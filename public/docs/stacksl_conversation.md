@@ -83,11 +83,26 @@ picture. A raw readback, without that encoding, looks much darker than the windo
 The **study card** in the program box's output is the person's side of the study. It shows:
 
 - a WebGL preview of the checked revision, running in the browser, which follows the sliders as you
-  move them;
-- the model's evidence frame, rendered on the window's GPU;
+  move them. The frames the model judged by are in its own replies, so the card does not repeat them;
 - a slider for every number in the program, grouped under the line it is on and the comment that
   says what that line does, with a colour swatch for each colour literal, and **Keep these
-  numbers** to make the new values a revision;
+  numbers** to make the new values a revision. Each slider is labelled with what turning it
+  changes — `hem drift speed`, `horizon gradient curve` — and clicking the label selects the number in the
+  editor, so you can type over it; clicking a line's heading goes to the line. Those names come from
+  Field's fast model, asked once for every number in the program, and given what the compiler
+  already knows about each one: the operand it took the number as (`mix amount`, `smoothstep high`,
+  `multiply b`), the line it is on, and that line's comment. That operand is exact, but a program
+  whose numbers mostly scale and offset reads as a column of `multiplies`. It is what a slider says
+  until the names arrive, and it stays on the slider's tooltip. The names are stored with the study,
+  by the program's shape, so turning or keeping a number never asks again, and the model's Inspect
+  lists each knob by the same name;
+- **keys**: **Capture these numbers as a key** keeps every number at once, under a name. A key is a
+  keyframe key like any other ([keyframer](keyframer_examples.md)), saved in the study's folder with its
+  version history. Click a key to move every slider to it, or choose two and drag **blend** to move
+  between them, with the preview following; **Keep these numbers** then makes what you see a
+  revision. A key applies to the program it was captured from, with any of its numbers changed, but
+  not once the text around them has changed. The model's Inspect lists the keys, and what each
+  would change;
 - the program's stages, each a small picture of what that line produced — for a line that stores
   into a mark (`>sky`), the value it stored. Click one and the window shows that stage instead of
   the whole program; click it again to go back. With **the window shows the editor's line** ticked,

@@ -1349,7 +1349,16 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
 
 // Slideshow messages
 @Serializable
-data class SelectAndEditBox(val uid: String, val property: String = "code", val scrollToLine: Int? = null, val highlightLine: Int? = null, val center: Boolean = false)
+data class SelectAndEditBox(
+    val uid: String,
+    val property: String = "code",
+    val scrollToLine: Int? = null,
+    val highlightLine: Int? = null,
+    val center: Boolean = false,
+    /** When positive, select columns [column] up to [endColumn] (1-based, end exclusive) of the highlighted line, and focus the editor. */
+    val column: Int = -1,
+    val endColumn: Int = -1,
+)
 
 @Serializable
 data class ShowSlideNote(

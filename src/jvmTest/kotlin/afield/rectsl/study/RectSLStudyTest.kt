@@ -57,6 +57,22 @@ class RectSLStudyTest {
         h.study.edit(SourceStudy.EMPTY, SourceStudy.hash(""), source, "first draft")
     }
 
+    // The card's controls are Field's own sliders, each labelled with what reads its number; clicking the
+    // label takes the editor to the number.
+    @Test
+    fun theCardOffersAFieldSliderPerNumberWhoseLabelFindsIt() {
+        val held = started()
+        val viewer = RectSLStudyViewer(held.study, afield.Box("rectsl_card_test"))
+        val html = viewer.html()
+        val knobs = held.study.revisions.revision().value.knobs
+        assertEquals(knobs.count { !it.text.startsWith("0x", ignoreCase = true) }, Regex("field-slider\"[^>]*data-knob=").findAll(html).count())
+        assertTrue("type='range'" !in html, "no bare range inputs")
+        val xy = knobs.first { it.role.startsWith("->xy") }
+        assertTrue("data-locate='${xy.knob}'" in html && "<span class='purpose'>${xy.role.replace(">", "&gt;")}</span>" in html, "the label says what reads the number")
+        // The box is in no open document here, so nothing is sent; the reply still names the number's line.
+        assertEquals("k${xy.knob} is line ${xy.line} of the scene", viewer.handleAction("""{"action":"locate","knob":${xy.knob}}"""))
+    }
+
     @Test
     fun theFirstEditPublishesAndShowsThePreview() {
         val h = Held("")

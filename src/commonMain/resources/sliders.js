@@ -1936,10 +1936,14 @@ function updateSlider(container, value, { send = false } = {}) {
         valueDisplay.textContent = lawFormat(spec, v);
     }
 
-    if (send && sliderId) {
+    // A page that owns its sliders (a study card previewing locally) listens for this rather than a
+    // server round trip; `data-send="false"` keeps such a slider off the wire.
+    container.dispatchEvent(new CustomEvent('field-slider-input', { bubbles: true, detail: { value: v, dragging: send } }));
+    if (send && sliderId && container.dataset.send !== 'false') {
         window.sendSliderUpdate(sliderId, v);
     }
 }
+window.updateFieldSlider = updateSlider;
 
 function startSliderDrag(container, event) {
     event.preventDefault();

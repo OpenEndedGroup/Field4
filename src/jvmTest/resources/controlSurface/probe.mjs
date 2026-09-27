@@ -209,7 +209,8 @@ class StubElement {
      * would make a double-send look like correct behaviour.
      */
     dispatchEvent(event) {
-        event.target = event.target || this;
+        // A real Event (sliders.js dispatches a CustomEvent) has a read-only target; a plain object does not.
+        if (!event.target) Object.defineProperty(event, 'target', { value: this, configurable: true });
         let node = this;
         const chain = [];
         while (node) { chain.push(node); node = node.parentNode; }

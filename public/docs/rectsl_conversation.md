@@ -112,9 +112,13 @@ The **study card** in the scene box's output is the person's side of the study. 
 - the clip as a filmstrip, frames evenly across it;
 - the window's clock: **play**, **restart**, and a scrubber that holds the window at any moment;
 - a slider for every number in the scene, grouped under the line it is on and the comment that says
-  what that line does, and a swatch for every colour. Moving one previews the change **in the
-  window** as you drag, without touching the program; **Keep these numbers** makes the new values a
-  revision, **Reset** puts the window back;
+  what that line does, and a swatch for every colour. Each is labelled with what turning it changes
+  (see the StackSL page's card for where those names come from), and clicking the label selects the
+  number in the editor. Moving one previews the change **in the window** as you drag, without
+  touching the program; **Keep these numbers** makes the new values a revision, **Reset** puts the
+  window back;
+- keys: every number at once, captured under a name, to apply or blend between in the window, as
+  on the StackSL card (a colour blends channel by channel);
 - any variants the model has offered, each with **Adopt**;
 - the revision history, each with **Restore**;
 - exports in progress, which can be cancelled;

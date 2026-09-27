@@ -373,6 +373,26 @@ class StackSLStudyTest {
         assertEquals("Export x1 is already done", study.cancelExport("x1").facts["message"])
     }
 
+    // The card used to label a slider "k5 0.2 · 6:1": the digits, which its value already showed, and a
+    // line:column nobody could read. Now the label is what the compiler took the number as.
+    @Test fun eachSliderSaysWhatItsNumberDoes() {
+        val program = "uv 5 *\n0.35 0.9 uv fbm smoothstep\n[0.5,0.5,0.2] 0.4 mix\n0.5\n"
+        fun said(program: String) = StackSLStudyShader.knobs(program).map { StackSLStudyViewer.purpose(it, program.lines()[it.line - 1]) }
+        assertEquals(listOf("multiplies", "smoothstep low", "smoothstep high", "xy of mix b", "z of mix b", "mix amount", "left on the stack"), said(program))
+        // It is the stack's truth, not the reader's guess: smoothstep reads low, high, then the value tested.
+        assertEquals(listOf("smoothstep high", "smoothstep x"), said("uv fbm 0.35 0.9 smoothstep\n"))
+    }
+
+    @Test fun clickingASlidersLabelSelectsItsNumberInTheEditor() = withStudy("uv 5 *\n0.35 0.9 uv fbm smoothstep\n") { study, _ ->
+        val viewer = StackSLStudyViewer(study, Box("stacksl_tools_test"))
+        val html = viewer.html()
+        assertContains(html, "data-locate='2'")
+        assertTrue(" · 2:" !in html && "k2 <span class='purpose'>smoothstep high</span>" in html, "the label says what the number does, not where it is")
+        // The box is in no open document here, so nothing is sent; the reply still names the number's line.
+        assertEquals("k2 is line 2 of the program", viewer.handleAction("""{"action":"locate","knob":2}"""))
+        assertEquals("line 1 of the program", viewer.handleAction("""{"action":"locate","line":1}"""))
+    }
+
     @Test fun knobsInsideADefinitionNameTheWordTheyFeed() {
         assertEquals(listOf("ramp", "ramp"), StackSLStudyShader.knobs(": shape 0.35 0.9 ramp ;\nuv fbm shape").map { it.feeds })
     }
@@ -380,7 +400,7 @@ class StackSLStudyTest {
     @Test fun theViewerOffersEveryKnobAndCarriesOutKeep() = withStudy("uv 5 * 0.1t + fbm palette saturate\n") { study, editor ->
         val viewer = StackSLStudyViewer(study, Box("stacksl_tools_test"))
         val html = viewer.html()
-        assertEquals(study.revisions.revision().value.knobs.size, Regex("type='range'").findAll(html).count())
+        assertEquals(study.revisions.revision().value.knobs.size, Regex("field-slider\"[^>]*data-knob=").findAll(html).count())
         assertContains(html, "data-act='keep'")
         assertContains(html, "#version 300 es")
         val r = study.currentId()
@@ -395,7 +415,7 @@ class StackSLStudyTest {
         withStudy("uv\n" + (1..30).joinToString("\n") { "${it / 100.0} +" } + "\nsaturate\n") { study, _ ->
             val html = StackSLStudyViewer(study, Box("stacksl_tools_test")).html()
             assertEquals(30, study.revisions.revision().value.knobs.size)
-            assertEquals(30, Regex("type='range'").findAll(html).count())
+            assertEquals(30, Regex("field-slider\"[^>]*data-knob=").findAll(html).count())
             assertContains(html, "6 more numbers")
             assertContains(html, "of 32 lines, evenly spaced")
         }
