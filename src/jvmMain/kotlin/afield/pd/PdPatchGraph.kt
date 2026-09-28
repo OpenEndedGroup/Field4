@@ -214,7 +214,7 @@ class PdPatchGraph private constructor(
                         val text = when (kind) {
                             // An atom box's own fields are width, limits and names, not text.
                             "floatatom", "symbolatom", "listbox" -> ""
-                            else -> body.joinToString(" ").replace(" \\,", ",").replace("\\;", ";").replace(" \\$", " $")
+                            else -> body.joinToString(" ").replace(" \\,", ",").replace("\\;", ";").replace("\\$", "$")
                         }
                         objects += Node(objects.size, kind, f.int(2), f.int(3), text, lineNo)
                     }

@@ -49,6 +49,25 @@ patch's `$0` is `patch.dollarZero` if you need names that are local to one copy.
 
 `pd(File("…/my.pd"))` opens a file instead. Abstractions next to it are found, the way they are in Pd.
 
+### A patch as an effect
+
+Pass `input` and the patch's `[adc~]` hears a Field signal, left and right, so the patch processes
+sound instead of making it:
+
+```diffstatic {data-lang=kotlin}
+:::static
+pd("""
+#X obj 20 20 adc~;
+#X obj 20 60 lop~ 600;
+#X obj 20 100 dac~;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 1 0 2 1;
+""", input = SawOsc(Param(110f)).pan())
+```
+
+What goes in on a block comes out on the same block; libpd adds no latency of its own.
+
 ### Messages both ways
 
 `send`, `bang`, `symbol`, `list` and `message` reach `[r name]`:

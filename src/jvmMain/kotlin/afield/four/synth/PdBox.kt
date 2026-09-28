@@ -53,6 +53,8 @@ import java.io.File
  * @param gain applied on the way into the audio engine
  * @param printToBox send what Pd prints to this box's output
  * @param lineOffset box line on which the patch text starts; inferred when negative
+ * @param input feeds the patch's `[adc~]`, left and right, which makes the patch an effect on a
+ *   Field signal rather than a source; without it `[adc~]` hears silence
  * @throws PdUnavailable when libpd has not been built
  */
 fun Box.pd(
@@ -60,10 +62,11 @@ fun Box.pd(
     gain: Float = 1f,
     printToBox: Boolean = true,
     lineOffset: Int = -1,
+    input: StereoRenderable? = null,
 ): PdLaunch {
     requirePd()
     val engine = FieldAudioEngine.shared()
-    val instance = PdInstance(sampleRate = engine.sampleRate)
+    val instance = PdInstance(sampleRate = engine.sampleRate, inputs = if (input != null) 2 else 0)
     val opened = try {
         instance.openPatchText(patch, "box_${id.filter { it.isLetterOrDigit() }.take(40)}")
     } catch (t: Throwable) {
@@ -72,7 +75,7 @@ fun Box.pd(
     }
     val offset = if (lineOffset >= 0) lineOffset else inferFaustLineOffset(this, patch)
     reportPdProblems(opened, offset)
-    return PdLaunch(instance, opened, gain, if (printToBox) this else null)
+    return PdLaunch(instance, opened, gain, if (printToBox) this else null, input)
 }
 
 /**
@@ -125,7 +128,11 @@ class PdLaunch internal constructor(
     val patch: PdPatch,
     val gain: Float,
     private val printBox: Box?,
+    private val input: StereoRenderable? = null,
 ) : Closeable {
+
+    /** What joins the audio engine: this launch's Pd, fed by its `input` when it has one. */
+    val node: afield.pd.PdNode by lazy { if (input == null) pd.node else afield.pd.PdNode(pd, input) }
 
     private val printing: Closeable? = printBox?.let { box -> pd.onPrint { line -> runCatching { box.println("Pd: $line") } } }
     private val receipts = ArrayList<Closeable>()
@@ -284,7 +291,7 @@ fun registerPdLaunchReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         val launch = returnValue as? PdLaunch ?: return@handler false
 
-        val handle = FieldAudioEngine.shared().register(audio(launch.pd.node, gain = launch.gain))
+        val handle = FieldAudioEngine.shared().register(audio(launch.node, gain = launch.gain))
 
         inMain {
             val job = kotlin.coroutines.coroutineContext[Job]!!

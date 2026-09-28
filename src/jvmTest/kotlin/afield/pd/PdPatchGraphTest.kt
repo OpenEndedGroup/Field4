@@ -17,7 +17,7 @@ class PdPatchGraphTest {
         #X obj 10 50 outlet~;
         #X connect 0 0 1 0;
         #X restore 20 100 pd inner;
-        #X msg 120 20 set 3;
+        #X msg 120 20 set \$1 3;
         #X obj 20 140 dac~;
         #X obj 120 60 s out;
         #X connect 0 0 1 0;
@@ -29,7 +29,7 @@ class PdPatchGraphTest {
 
     @Test fun objectsAreIndexedAsPdIndexesThem() {
         val g = PdPatchGraph.parse(patch)
-        assertEquals(listOf("[r freq]", "[osc~ 220]", "[pd inner]", "[set 3(", "[dac~]", "[s out]"), g.objects.map { it.label })
+        assertEquals(listOf("[r freq]", "[osc~ 220]", "[pd inner]", "[set $1 3(", "[dac~]", "[s out]"), g.objects.map { it.label })
         assertEquals("pd", g.objects[2].kind, "a subpatch is one object of its parent")
         assertEquals(5, g.connections.size, "the subpatch's own connection is not the parent's")
         assertEquals(setOf("out"), g.sendNames)

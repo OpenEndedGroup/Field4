@@ -35,7 +35,7 @@ so every call is made under the `PdInstance`'s own lock after `libpd_set_instanc
 Print output arrives in fragments; lines are reassembled on `\n` in Kotlin rather than with libpd's
 `z_print_util` concatenator.
 
-## Measurements (jvmTest `afield.pd.PdTest`, 11 tests, and `PdPatchGraphTest`, 6)
+## Measurements (jvmTest `afield.pd.PdTest`, 12 tests, and `PdPatchGraphTest`, 6)
 
 All run against the built library on 2026-09-28; they print `SKIPPED` and pass when it is absent.
 
@@ -47,6 +47,8 @@ All run against the built library on 2026-09-28; they print `SKIPPED` and pass w
   before `flush()`/`render`.
 - Arrays: write at an offset, read back, resize; a patch's `[tabplay~]` plays back a ramp Field
   wrote, exact to 1e-6 per sample.
+- `[adc~] → [*~ 0.5]` / `[*~ -1] → [dac~]` with two inputs: output equals the scaled input on the
+  same samples (1e-6), so there is no block of latency inside libpd.
 - Two instances with the same `[r in]`/`[s out]` names are isolated.
 - A patch with `[osc 440]` reports `Pd couldn't create [osc 440]` on line 1 of its source.
 - A headless `hsl` still forwards what it receives (and does **not** clip it to its range — 5000 in,

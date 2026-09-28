@@ -232,4 +232,31 @@ class PdTest {
             file.delete()
         }
     }
+
+    @Test fun aPatchWithAnAdcIsAnEffectOnWhatFeedsIt() {
+        if (!available()) return
+        PdInstance(inputs = 2).use { pd ->
+            pd.openPatchText("""
+                #X obj 20 20 adc~;
+                #X obj 20 60 *~ 0.5;
+                #X obj 80 60 *~ -1;
+                #X obj 20 100 dac~;
+                #X connect 0 0 1 0;
+                #X connect 0 1 2 0;
+                #X connect 1 0 3 0;
+                #X connect 2 0 3 1;
+            """)
+            val n = 256
+            val inL = FloatArray(n) { kotlin.math.sin(it * 0.05).toFloat() }
+            val inR = FloatArray(n) { it / n.toFloat() }
+            val outL = FloatArray(n)
+            val outR = FloatArray(n)
+            pd.render(outL, outR, n, inL, inR)
+            // Same block in, same block out: libpd adds no latency of its own.
+            for (k in 0 until n) {
+                assertEquals(inL[k] * 0.5f, outL[k], 1e-6f, "left $k")
+                assertEquals(-inR[k], outR[k], 1e-6f, "right $k")
+            }
+        }
+    }
 }
