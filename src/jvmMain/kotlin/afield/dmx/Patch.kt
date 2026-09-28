@@ -141,6 +141,45 @@ class Fixture(
         }
     }
 
+    /**
+     * The look this fixture shows, read back from its slots in [data] (a universe's 512 slots,
+     * 0-based, as [DmxInput.universe] returns them): the inverse of [writeInto] as far as the slots
+     * allow. Fine bytes are used, [FixtureProfile.gamma] is undone, white is added back to all
+     * three primaries and amber to red and green (1 : 0.5), and a master dimmer is multiplied in.
+     *
+     * What comes back is `color × dimmer`, not the two separately — an RGB fixture without a dimmer
+     * slot bakes the dimmer into its colour, so nothing on the wire can tell them apart. A lone
+     * dimmer channel reads as a grey of its level. For an 8-bit colour slot at gamma 1, the result
+     * is within half a level (0.5 / 255) of what was sent; that is all the wire carries.
+     */
+    fun decode(data: ByteArray): Vec3 {
+        val slots = profile.slots
+        fun level(i: Int): Double {
+            val at = address - 1 + i
+            val coarse = data[at].toInt() and 0xff
+            val fine = slots.getOrNull(i + 1)?.let { next ->
+                val pairs = (slots[i] == Slot.RED && next == Slot.RED_FINE) || (slots[i] == Slot.GREEN && next == Slot.GREEN_FINE) ||
+                    (slots[i] == Slot.BLUE && next == Slot.BLUE_FINE) || (slots[i] == Slot.DIMMER && next == Slot.DIMMER_FINE)
+                if (pairs) data[at + 1].toInt() and 0xff else null
+            }
+            val l = if (fine == null) coarse / 255.0 else ((coarse shl 8) or fine) / 65535.0
+            return if (profile.gamma == 1.0 || l <= 0.0) l else l.pow(1.0 / profile.gamma)
+        }
+        var r = 0.0; var g = 0.0; var b = 0.0; var dim = -1.0
+        for (i in slots.indices) when (slots[i]) {
+            Slot.RED -> r += level(i)
+            Slot.GREEN -> g += level(i)
+            Slot.BLUE -> b += level(i)
+            Slot.WHITE -> level(i).let { r += it; g += it; b += it }
+            Slot.AMBER -> level(i).let { r += it; g += 0.5 * it }
+            Slot.DIMMER -> dim = level(i)
+            else -> {}
+        }
+        if (!profile.hasColour) return vec(maxOf(dim, 0.0), maxOf(dim, 0.0), maxOf(dim, 0.0))
+        val d = if (dim < 0) 1.0 else dim
+        return vec(min(1.0, r * d), min(1.0, g * d), min(1.0, b * d))
+    }
+
     private fun put16or8(data: ByteArray, at: Int, level: Double, sixteen: Boolean) {
         val l = if (profile.gamma == 1.0) level else level.pow(profile.gamma)
         if (sixteen) {

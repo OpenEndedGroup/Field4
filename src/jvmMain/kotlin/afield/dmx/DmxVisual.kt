@@ -42,7 +42,26 @@ private fun rectLine(x: Double, y: Double, w: Double, h: Double): FLine =
  *
  * @param radius disc radius in rig units; defaults to 40% of the median spacing between consecutive fixtures.
  */
-fun Patch.toFLines(radius: Double? = null, background: Boolean = true, outline: Boolean = fixtures.size <= 64): List<FLine> {
+fun Patch.toFLines(radius: Double? = null, background: Boolean = true, outline: Boolean = fixtures.size <= 64): List<FLine> =
+    drawFixtures(radius, background, outline) { f ->
+        val scale = f.dimmer.coerceIn(0.0, 1.0)
+        vec(f.color.x * scale, f.color.y * scale, f.color.z * scale)
+    }
+
+/**
+ * The patch drawn in the colours its fixtures show in the universes [universeData] returns (a
+ * function from universe number to its 512 slots — `input::universe` for a [DmxInput]), decoded by
+ * [Fixture.decode]. It is [toFLines] with the wire as the source of colour instead of
+ * [Fixture.color]: the rig in the room, lit by what arrived, so a received frame can be set beside
+ * the look that was sent. Each universe is fetched once.
+ */
+fun Patch.receivedToFLines(universeData: (Int) -> ByteArray, radius: Double? = null, background: Boolean = true,
+                           outline: Boolean = fixtures.size <= 64): List<FLine> {
+    val cache = HashMap<Int, ByteArray>()
+    return drawFixtures(radius, background, outline) { f -> f.decode(cache.getOrPut(f.universe) { universeData(f.universe) }) }
+}
+
+private fun Patch.drawFixtures(radius: Double?, background: Boolean, outline: Boolean, colourOf: (Fixture) -> afield.stdlib.Vec3): List<FLine> {
     val out = ArrayList<FLine>(fixtures.size * 2 + 1)
     if (fixtures.isEmpty()) return out
     val r = radius ?: run {
@@ -60,13 +79,12 @@ fun Patch.toFLines(radius: Double? = null, background: Boolean = true, outline: 
     var lastUniverse = fixtures.first().universe
     for (f in fixtures) {
         if (f.universe != lastUniverse) { ring = 1 - ring; lastUniverse = f.universe }
-        val scale = f.dimmer.coerceIn(0.0, 1.0)
-        val c = f.color
+        val c = colourOf(f)
         val px = f.position.x.toDouble()
         val py = f.position.y.toDouble()
         out += disc(px, py, r).apply {
             filled = true; stroked = false
-            color = vec(c.x * scale, c.y * scale, c.z * scale, 1.0)
+            color = vec(c.x, c.y, c.z, 1.0)
         }
         if (outline) out += disc(px, py, r).apply {
             filled = false; stroked = true; thickness = r * 0.18; color = ringColours[ring]
@@ -134,6 +152,16 @@ private fun fixtureColour(data: ByteArray, at: Int, profile: FixtureProfile): af
 /** Show the patch in its current colours in this box's [channel] output. */
 fun Box.showPatch(patch: Patch, channel: String = "lights", w: Double = 640.0, h: Double = 240.0) {
     lines(patch.toFLines(), channel = channel, w = w, h = h, fitToSize = true)
+    displayOpen(channel)
+}
+
+/**
+ * Show [patch] lit by what [input] has received — each fixture decoded from its own universe and
+ * address ([receivedToFLines]) — in this box's [channel] output. Beside [showPatch] it is the sent
+ * look and the received one in the same layout; [showUniverse] is the same data in wire order.
+ */
+fun Box.showReceived(patch: Patch, input: DmxInput, channel: String = "received", w: Double = 640.0, h: Double = 240.0) {
+    lines(patch.receivedToFLines({ input.universe(it) }), channel = channel, w = w, h = h, fitToSize = true)
     displayOpen(channel)
 }
 

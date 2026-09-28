@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos` and `afield.tetgen`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15404 public symbols across 408 source files**, 9111 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15413 public symbols across 409 source files**, 9119 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 97 | 2742 | 1203 (43%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 98 | 2751 | 1211 (44%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 8 | 140 | 116 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -346,6 +346,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLFit.kt](languages.md#rectslfit-kt) | Languages | 21 | 18 | Inverse animation: say where a rect should be and when, and solve for the numbers. | [RectSL Inverse Animation](../rectsl_inverse_animation.md) |
 | [RectSLFn.kt](languages.md#rectslfn-kt) | Languages | 18 | 18 | RectSL tracks as differentiable `Fn` graphs — the third backend. | [RectSL Inverse Animation](../rectsl_inverse_animation.md), [A solid, written down: `afield.solidsl`](../solid_notation.md) |
 | [RectSLGlsl.kt](languages.md#rectslglsl-kt) | Languages | 34 | 28 | RectSL scenes as GLSL signed distance fields. | [RectSL cheatsheet](../rectsl_cheatsheet.md) |
+| [RectSLImg.kt](languages.md#rectslimg-kt) | Languages | 9 | 8 |  |  |
 | [RectSLPattern.kt](languages.md#rectslpattern-kt) | Languages | 22 | 11 | # RectSL's musical layer — the Tidal pattern language as scene structure |  |
 | [RectSLPatternOps.kt](languages.md#rectslpatternops-kt) | Languages | 21 | 3 | The variation and layout halves of RectSL's musical layer. |  |
 | [RectSLPrograms.kt](languages.md#rectslprograms-kt) | Languages | 43 | 37 |  |  |
