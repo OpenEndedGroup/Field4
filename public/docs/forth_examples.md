@@ -34,6 +34,12 @@ s"hypot^2 = " 3 4 hypot2 str str+ println
 
 `: sqr ... ;` defines a new word. `dup` copies the top stack item, `*` multiplies the top two numbers, and `swap` flips the top pair so `hypot2` can reuse `sqr` on both inputs.
 
+The editor keeps a record of what each line did the last time the box ran. Rest the cursor on a line
+and the note beside it draws the data stack as that line left it, top uppermost, or names the words
+the line defined; a run that failed marks the line it stopped on and the lines it never reached. The
+stack outlives a run, so the demo boxes that want a fresh one start with `clear`. See
+[Line notes](language_extensions.md#line-notes).
+
 ## Variables, strings, and output channels
 
 ForthField variables are named storage cells. They are enough for counters, state machines, and launch-time animation state.

@@ -198,6 +198,14 @@ source is keyed `input` rather than `source`.
 
 [funFeatures](funFeatures.md#python) has the round-trip in context.
 
+## What each line came to
+
+Rest the cursor on a statement and the note beside it says what that statement came to the last time
+the cell ran: an expression's value, the value a name was assigned, the function or class it defined,
+or that it ran. The values are recorded as the cell runs, with `repr`, so asking about a line never
+runs it again; a line changed since the run says so. See
+[Line notes](language_extensions.md#line-notes).
+
 ## Setting Python up { #setting-python-up }
 
 Field needs an interpreter that has **JEP's native library** in it. Not merely a Python — a Python

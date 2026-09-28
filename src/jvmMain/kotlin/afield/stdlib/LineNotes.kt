@@ -51,6 +51,10 @@ object LineNotes {
         providers.getOrPut(property) { CopyOnWriteArrayList() }.add(0, Registration(applies, provider))
     }
 
+    /** Whether any provider takes [box]'s [property] — whether asking for its notes can say anything at all. */
+    fun offersFor(box: Box, property: String): Boolean =
+        providers[property]?.any { runCatching { it.applies(box) }.getOrDefault(false) } == true
+
     /** The note for [line] of [box]'s [property], holding [source]; null when no provider takes the box or none has anything to say. */
     fun note(box: Box, property: String, source: String, line: Int): Note? =
         providers[property]?.asSequence()

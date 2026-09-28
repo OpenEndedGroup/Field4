@@ -114,4 +114,19 @@ class LastRunNotesTest {
         // A statement being typed below does not cost the lines above their notes.
         assertNotNull(DatalogLineNotes.note(execution.datalog, "$program\nhalf(", 1, ran))
     }
+
+    @Test
+    fun anAIToolReadsTheSameNotesTheEditorShows() {
+        installLastRunLineNotes() // what @RunsAt(plugins) does in a running Field
+        val box = Box("last-run-tool")
+        val code = "1 2\n+"
+        box.properties["code"] = code
+        ForthInterpreter().evalRecordingLineNotes(box, code, 0)
+        val result = readLineNotes(box, "code", listOf(2, 1, 99))
+        assertEquals(listOf(2, 1, 99), result.notes.map { it.line })
+        assertTrue("<1> 3.0" in result.notes[0].caption!!, result.notes[0].caption)
+        assertEquals("+", result.notes[0].text)
+        assertNull(result.notes[2].caption, "a line past the end has no note")
+        assertEquals(2, result.toolImages.size)
+    }
 }

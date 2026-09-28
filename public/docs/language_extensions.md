@@ -266,6 +266,46 @@ highlighter and flow lens, so FieldSuggest completion, token colors, and the
 context badge all describe the same language. Field's user-facing completion
 goes through FieldSuggest, not Monaco's built-in suggest widget.
 
+## Line notes: what a line did { #line-notes }
+
+Rest the cursor on a line of a box's program, or open completion there, and Field shows a note about
+that line beside the cursor and at the top of the completion popup: a sentence, and a small picture
+when the language has one to draw. Which languages give notes, and what each note says:
+
+| language | the note for a line | picture |
+| --- | --- | --- |
+| StackSL | the stage the line ends, drawn, or the value it stores in a mark | the stage |
+| RectSL | the scene built up to the line's statement, the rectangles it makes outlined | the scene |
+| ForthField | the data stack after the line on the last run, or the words it defined | the stack, top uppermost |
+| Clojure | what each top-level form evaluated to on the last run, and its type | — |
+| Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
+| Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
+
+**A note never runs your code.** StackSL and RectSL can say what part of a program does without
+running it, because a partial StackSL program is still a pure shader and a partial RectSL scene a
+pure description. Forth, Clojure and Python programs print, draw, define things and change state that
+outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports what it
+came to, and the note reads that record back. It says so — "last run, 12 s ago" — follows its line
+when you edit above it, and when the line itself has changed since, says "changed since the last run"
+before telling you what the old text did. A run that failed marks the line it stopped on, and Forth
+marks the lines after it as not reached. Datalog needs no record: a Datalog box accumulates one
+model, and asking it is pure; a rule you have edited but not run is reported as not in the model
+rather than answered for. Directives such as `#reset` are never run for a note.
+
+Two details of the recording are worth knowing. A Clojure value is printed under a bounded
+`*print-length*`, and a lazy sequence nothing has realised is named, not printed — printing it would
+realise it, running code the program never ran. A Python value is described with `repr`, at the
+moment the statement ran; only a plain name is read back after an assignment, so recording evaluates
+nothing the statement did not.
+
+Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
+final value comes back, so a per-line value would need the box's source rewritten before
+compilation. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes.
+FieldML, Morpho and Nano boxes have none.
+
+A box's AI chat can read the same notes: the `ReadLineNotes` tool is offered in a conversation on any
+program that has them, and returns each line's caption with its picture as an image.
+
 ## When to promote
 
 Keep a language out of tree while its syntax and semantics are moving quickly.

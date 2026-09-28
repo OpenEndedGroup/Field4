@@ -1439,6 +1439,14 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
         if (!isOverlayVisible(element)) return@mapNotNull null
         element.getBoundingClientRect().bottom - containerRect.top
     }.maxOrNull() ?: 0.0
+    // A line note beside the cursor (fieldSuggest.js#lineNoteHtml, drawn into the left overlay at the
+    // foot of the pane) is part of what the editor shows about its text, so an editor capture that
+    // trimmed to the text alone would cut off exactly the note being captured. Only a note: the
+    // overlay's other contents (the word under the cursor) keep the clip they always had.
+    val noteBottom = (container.querySelector(".hoverlay-left") as? HTMLElement)
+        ?.takeIf { it.querySelector(".afield-line-note") != null && isOverlayVisible(it) }
+        ?.let { it.getBoundingClientRect().bottom - containerRect.top }
+        ?: 0.0
     val layoutInfo = runCatching { editor.getLayoutInfo?.invoke() }.getOrNull()
     val contentLeft = (layoutInfo?.contentLeft as? Number)?.toDouble() ?: 0.0
     val scrollWidth = runCatching {
@@ -1461,7 +1469,7 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
     }.maxOrNull() ?: 0.0
     val trimmedHeight = max(
         160.0,
-        max(domBottom, headerHeight + contentHeight) + 20.0
+        max(max(domBottom, noteBottom), headerHeight + contentHeight) + 20.0
     ).coerceAtMost(containerRect.height)
     val trimmedWidth = max(
         360.0,

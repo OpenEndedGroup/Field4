@@ -121,6 +121,7 @@ object DatalogLineNotes {
 fun installDatalogLineNotes() {
     LineNotes.register("code", { it.ke is DatalogExecution }) { box, source, line ->
         val execution = box.ke as? DatalogExecution ?: return@register null
+        if (afield.Runloop.isMainThread) return@register DatalogLineNotes.note(execution.datalog, source, line, execution.lastRunAt)
         val answer = CompletableFuture<LineNotes.Note?>()
         inMain { answer.complete(runCatching { DatalogLineNotes.note(execution.datalog, source, line, execution.lastRunAt) }.getOrNull()) }
         runCatching { answer.get(2, TimeUnit.SECONDS) }.getOrNull()

@@ -385,6 +385,12 @@ namespace showing through.
 Completion is the one part of this language that is allowed to be absent: if Compliment is not on
 the classpath, a Clojure box still runs, and the popup is empty rather than broken.
 
+The editor also shows what each form evaluated to the last time the box ran: rest the cursor on a
+form and the note beside the cursor says so, with the value's type, how long ago that was, and
+whether the form has changed since. It is recorded as the box runs, never by evaluating the form
+again, which is why an unrealised lazy sequence is named rather than printed — see
+[Line notes](language_extensions.md#line-notes).
+
 ## What is not here
 
 - **No per-box namespaces.** Every box shares `live.user`, as above.
