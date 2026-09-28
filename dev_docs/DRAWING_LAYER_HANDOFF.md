@@ -90,7 +90,11 @@ What had to learn about zoom (divide screen measurements by `mainZoom`): box dra
 resize (interact.js `deltaRect`/`rect`) in `Main.kt`, `boxWorldRect`, the connection layout snapshot
 in `gestures.kt`, `lastMouse` (new-box placement) in `commands.kt`. Window-sized world-space SVG
 layers (connection splines, overlay and front connection layers, actor arcs) use
-`worldViewBox(w, h)`. The WebGL grid shader takes `u_zoom`, keeps its dot radii in screen pixels,
+`worldViewBox(w, h)`. The offscreen hints in `gestures.kt` (the thick edge lines for boxes outside
+the window, and the name labels of offscreen parents/children of a selected box) test against the
+visible *world* rect, `(-t / zoom, window / zoom)`; their line width and margin are divided by the
+zoom and the labels are counter-scaled about their marker, so they stay screen-sized at the window
+edge. The WebGL grid shader takes `u_zoom`, keeps its dot radii in screen pixels,
 and fades the small dots out below ~0.5× and the large ones below ~0.15×.
 
 Verified at zoom ≠ 1: box screen rect is exactly half its frame at 0.5; ctrl-wheel about (700, 400)
