@@ -316,6 +316,31 @@ object PetriGallery {
         },
 
         Example(
+            name = "seeded-coin",
+            blurb = "Two transitions contend for one token under random conflict; the seed makes the toss repeatable.",
+            source = """
+                #petri
+                !grid 1/8
+                !conflict random
+                !seed 7
+
+                coin : 1
+                coin -[ heads @1/8 w=3 : bd ]-> coin
+                coin -[ tails @1/8     : sd ]-> coin
+            """,
+        ) { net ->
+            fun tosses(of: PetriNet) = of.run().steps(64).flatMap { it.firings }.map { it.transition }
+            val first = tosses(net)
+            check(first == tosses(net)) { "two runs of the same seeded net must toss the same way" }
+            val heads = first.count { it == "heads" }
+            val tails = first.count { it == "tails" }
+            check(heads > 0 && tails > 0) { "both faces should come up in 64 tosses, got $heads heads, $tails tails" }
+            check(heads > tails) { "w=3 should favour heads, got $heads heads, $tails tails" }
+            check(tosses(net.withConflict(seed = 8)) != first) { "a different seed should toss a different sequence" }
+            "$heads heads, $tails tails in ${first.size} tosses, identical on replay; seed 8 tosses differently"
+        },
+
+        Example(
             name = "source-and-drain",
             blurb = "An empty side on either end: a transition can make tokens or eat them.",
             source = """
