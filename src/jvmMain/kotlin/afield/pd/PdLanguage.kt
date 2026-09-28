@@ -118,10 +118,13 @@ class PdExecution(val inside: Box) : BoxExecution {
         try {
             closeables += pd.onPrint { line -> runCatching { box.println(line) } }
             val patch = pd.openPatchText(PdPatchGraph.statementsOnly(code), "box_${box.id.filter { it.isLetterOrDigit() }.take(40)}", source = code)
-            for (p in patch.problems) {
-                if (p.line >= 0) runCatching { box.error(p.message, "code", firstLine + p.line) }
-                runCatching { box.println(p.message) }
-            }
+            // The editor clears a box's errors whenever the box prints, so what Pd printed while opening
+            // is delivered first and the problems placed on lines are painted last. A problem's line is
+            // 0-based in the box's text; the editor's lines are 1-based, counted from firstLine.
+            pd.poll()
+            val (placed, unplaced) = patch.problems.partition { it.line >= 0 }
+            for (p in unplaced) runCatching { box.println(p.message) }
+            for (p in placed) runCatching { box.error(p.message, "code", firstLine + p.line + 1) }
             val graph = PdPatchGraph.parse(code)
             // Listen on every name the patch uses, so a line note can show what went through it.
             for (name in graph.sendNames + graph.receiveNames) closeables += pd.receive(name) {}
