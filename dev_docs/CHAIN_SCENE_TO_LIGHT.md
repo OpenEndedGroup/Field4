@@ -39,7 +39,8 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
 - Aliasing, the 0.25-unit line over 121 frames of the middle 3 s: point sampling is dark in **91 of
   121** frames and lights a whole column (8.0 fixtures' worth) at its peaks; its time-average is 1.98,
   about the truth (2.0). Area averaging in linear light: exactly 2.000 in every frame.
-- Timing: the 44 Hz sender kept up; see the page's readout for the frame cost and arrival gaps.
+- Timing (docs capture run): one look (draw 256 × 128 on the CPU, shrink, map) 8.9 ms median /
+  12.8 ms p95; universe-1 arrivals every 22.72 ms median, 43.7 Hz — the 44 Hz sender keeps up.
 
 ## Traps found
 
@@ -58,8 +59,19 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
 ## Verification record
 
 - `./gradlew jvmTest --tests 'afield.dmx.*'`: DmxServicesTest 17/17, DmxProtocolTest 11/11,
-  SceneOnARigTest 6/6, DmxLightingDemoBundleTest 2/2; SceneOnARigDemoBundleTest 3/3.
+  SceneOnARigTest 7/7 (incl. an Art-Net + ArtSync leg), DmxLightingDemoBundleTest 2/2; SceneOnARigDemoBundleTest 3/3.
 - Demo: a fresh copy of the bundle opened through the backdoor (`open … --must-exist`, 3 boxes) on
   port 9550; `scene-sender` launched, `rig-receiver` launched, window screenshot shows sent and
   received rigs agreeing and universe 1 in wire order; both stopped; `rig-measure` run, printing
   `0 of 9216 slots differ` and the aliasing counts above.
+- Docs: three pipeline captures (`FIELD_DOCS_RUNNER_MODE=always`, port 9550, `--page
+  chain_scene_to_light.md`), each looked at. `./gradlew --no-daemon docsGates --continue`: BUILD
+  SUCCESSFUL. Full Zensical HTML build (`MODE=never`): all local references resolve.
+- Also fixed on `public/docs/dmx_lighting.md`: it described `mapImage` as making a matrix a
+  low-resolution screen without saying it point-samples; it now says so and gives the `resize` idiom.
+
+## Not done
+
+- A second leg as sound or OSC (the brief's stretch). Art-Net + ArtSync is covered by the test only.
+- The spin-loop idiom in `public/docs/assets/dmx_lighting_demo/` was left as is, because verifying a
+  fix means running that demo on the default Art-Net/sACN ports.
