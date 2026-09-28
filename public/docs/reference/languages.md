@@ -8449,7 +8449,7 @@ StackSL written inside a Kotlin box's `code`: where it is, and the editor's help
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L328) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L341) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
 
 ### StackAutoCard { #stackautocard-kt-stackautocard }
 

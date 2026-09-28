@@ -257,13 +257,26 @@ object StackAutoCard {
                 throw IllegalStateException("stack.auto.${slot.name} is in a compute module, which writes buffers rather than a picture; reading those back is not done yet")
             val destinations = modules.flatMap { afield.four.ModuleDestinations.of(renderer, it) }.distinct()
             val shown = destinations.firstOrNull { it !is afield.four.ModuleDestinations.Destination.Headset }
-                ?: throw IllegalStateException(if (destinations.isEmpty()) "the module is not drawn anywhere the renderer reaches: add it to the renderer, or to a render target the renderer draws" else "it draws only in the headset, which is not captured here")
-            val png = fitWithin(afield.four.ModuleDestinations.capture(shown), 1024)
-            val others = destinations.filter { it != shown }
-            "data:image/png;base64," + Base64.getEncoder().encodeToString(png) to
-                "stack.auto.${slot.name} in your shader: $shown, as it is drawing now, at the slot's current numbers" +
-                (if (shown is afield.four.ModuleDestinations.Destination.Window) " — everything the window draws, not only this module" else "") +
-                (if (others.isNotEmpty()) " · also drawn to ${others.joinToString()}" else "")
+            // Where it is drawn, read back — else the module drawn once more, alone, into a target matched to
+            // its pipeline: what reaches a ping-pong or stereo target, one drawn some other way, or none yet.
+            val captured = shown?.let { d -> runCatching { afield.four.ModuleDestinations.capture(d) }.getOrNull()?.let { d to it } }
+            if (captured != null) {
+                val (d, png) = captured
+                val others = destinations.filter { it != d }
+                "data:image/png;base64," + Base64.getEncoder().encodeToString(fitWithin(png, 1024)) to
+                    "stack.auto.${slot.name} in your shader: $d, as it is drawing now, at the slot's current numbers" +
+                    (if (d is afield.four.ModuleDestinations.Destination.Window) " — everything the window draws, not only this module" else "") +
+                    (if (others.isNotEmpty()) " · also drawn to ${others.joinToString()}" else "")
+            } else {
+                val module = modules.filterIsInstance<afield.four.modules.ModulePointer>().firstOrNull()
+                    ?: throw IllegalStateException("this box's module is not one that can be drawn alone")
+                val size = (shown as? afield.four.ModuleDestinations.Destination.Texture)?.target?.let { it.width to it.height } ?: (1024 to 1024)
+                val png = afield.four.ModuleDestinations.renderDisposable(renderer, module, size.first, size.second)
+                "data:image/png;base64," + Base64.getEncoder().encodeToString(fitWithin(png, 1024)) to
+                    "stack.auto.${slot.name} in your shader: the module drawn once more, by itself, into a ${size.first}×${size.second} target of its own, at the slot's current numbers — " +
+                    (if (destinations.isEmpty()) "it is not drawn anywhere the renderer's lists reach (a ping-pong or stereo target, or none yet)" else "where it is drawn could not be read back") +
+                    "; the same module and state, without whatever else draws beside it"
+            }
         } catch (e: Exception) {
             null to "Cannot capture stack.auto.${slot.name} in your shader: ${e.message}"
         }

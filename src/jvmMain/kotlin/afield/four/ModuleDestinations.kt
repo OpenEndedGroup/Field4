@@ -82,6 +82,9 @@ object ModuleDestinations {
         }
         is Destination.Texture -> {
             val t = destination.target
+            // A ping-pong or stereo target swaps or splits its images, so its first attachment is not
+            // reliably this frame's picture; renderDisposable draws such a module alone instead.
+            require(t.javaClass == RenderToTexture::class.java) { "a ${t.javaClass.simpleName} swaps or splits its images, so it is not read back directly" }
             require(t.parameters.colorTransferSrc) { "render target '${destination.name}' was made without colorTransferSrc, so it cannot be read back" }
             val bytes = t.readPixelsAsync().get(timeoutMs, TimeUnit.MILLISECONDS)
             val rgba = GpuImageCapture.readRgba(ByteBuffer.wrap(bytes).order(ByteOrder.nativeOrder()), t.colorFormats.first(), t.width, t.height, destination.name)
@@ -93,4 +96,63 @@ object ModuleDestinations {
         }
         is Destination.Headset -> throw IllegalArgumentException("the headset's frames cannot be captured here")
     }
+
+    private data class TargetShape(val formats: List<Int>, val depthFormat: Int?, val width: Int, val height: Int)
+    private val pool = HashMap<TargetShape, RenderToTexture>()
+    private const val DISPOSABLE = "module-destinations-disposable"
+
+    /**
+     * A PNG of [module] drawn once more, by itself, into a render target of our own — the same module,
+     * with its own state, meshes and uniforms, so a ping-pong module still samples its real previous
+     * frame, and nothing else that draws where it draws is in the picture.
+     *
+     * This covers what [of] cannot find or [capture] cannot read: a ping-pong or stereo target, one drawn
+     * by some other path, a module that is drawn nowhere yet. The target matches the module's pipeline
+     * (its colour formats and depth, as `target.apply()` sets them) at [width] × [height], is readable,
+     * and is kept for the next capture of that shape rather than freed while the GPU may still use it;
+     * it is drawn only for the frame of the capture. A module with several viewports or a multiview mask
+     * is refused. Anything the module writes besides its colour — a storage buffer, say — it writes once
+     * more. Blocks until drawn, so call it off the main thread.
+     */
+    fun renderDisposable(renderer: Renderer, module: ModulePointer, width: Int = 1024, height: Int = 1024, timeoutMs: Long = 8000): ByteArray {
+        val p = module.current.parameters
+        require(p.viewportCount <= 1 && p.viewMask == 0) { "a module with several viewports, or multiview, is not drawn alone here" }
+        val formats = p.colorFormats.ifEmpty { List(p.color) { p.imageFormat } }
+        val shape = TargetShape(formats, p.depthFormat.takeIf { p.depth > 0 }, width, height)
+        val target = onRunloopMain {
+            synchronized(pool) {
+                pool.getOrPut(shape) {
+                    RenderToTexture(renderer) {
+                        this.width = shape.width
+                        this.height = shape.height
+                        this.colorFormats = shape.formats
+                        this.useDepth = shape.depthFormat != null
+                        shape.depthFormat?.let { this.depthFormat = it }
+                        this.colorTransferSrc = true
+                        this.debugName = DISPOSABLE
+                    }
+                }
+            }.also { t ->
+                t.modules.clear()
+                t += DISPOSABLE to module
+                renderer.renderList.preTargets[DISPOSABLE] = t
+            }
+        }
+        try {
+            val bytes = target.readPixelsAsync().get(timeoutMs, TimeUnit.MILLISECONDS)
+            val rgba = GpuImageCapture.readRgba(ByteBuffer.wrap(bytes).order(ByteOrder.nativeOrder()), target.colorFormats.first(), target.width, target.height, DISPOSABLE)
+            val argb = IntArray(target.width * target.height) { i ->
+                val o = i * 4
+                (0xff shl 24) or ((rgba[o].toInt() and 0xff) shl 16) or ((rgba[o + 1].toInt() and 0xff) shl 8) or (rgba[o + 2].toInt() and 0xff)
+            }
+            return PngEncoder.encode(argb, target.width, target.height)
+        } catch (e: java.util.concurrent.TimeoutException) {
+            throw IllegalStateException("the renderer did not draw a frame (is its window hidden or minimised?)")
+        } finally {
+            onRunloopMain { renderer.renderList.preTargets.remove(DISPOSABLE); target.modules.clear() }
+        }
+    }
+
+    private fun <T> onRunloopMain(block: () -> T): T =
+        if (afield.Runloop.isMainThread) block() else runBlocking { kotlinx.coroutines.withContext(afield.Runloop.runLoop.main) { block() } }
 }
