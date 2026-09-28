@@ -4965,3 +4965,35 @@ body.mode-transparent .box.selected:hover::before {
 body.mode-editor-only .field-toast {
     display: none !important;
 }
+
+/* Drawing layer (src/jsMain/kotlin/afield/drawingLayer.kt): an Excalidraw scene over the canvas.
+   Inactive, it is visible but inert and shows none of Excalidraw's UI. */
+.field-drawing-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+}
+
+.field-drawing-layer .field-drawing-root {
+    width: 100%;
+    height: 100%;
+}
+
+.field-drawing-inactive {
+    pointer-events: none;
+}
+
+.field-drawing-inactive .layer-ui__wrapper,
+.field-drawing-inactive .App-bottom-bar,
+.field-drawing-inactive .footer-center {
+    display: none;
+}
+
+.field-drawing-active {
+    z-index: 21;
+}
+
+/* Zoom is pinned to 1 (Field's canvas has no zoom), so the zoom buttons would only lie. */
+.field-drawing-layer .zoom-actions {
+    display: none;
+}

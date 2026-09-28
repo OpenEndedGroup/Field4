@@ -168,6 +168,7 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
 fun restoreScrollPosition(position: ScrollPosition) {
     try {
         mainTranslation = listOf(position.x, position.y)
+        drawingLayerViewportChanged(position.x, position.y)
         mainCanvas.style.transform = "translate(${position.x}px, ${position.y}px)"
         updateBackgroundGrid(position.x, position.y, panning = false)
         canvasGestures.rebuildConnectionGroup()

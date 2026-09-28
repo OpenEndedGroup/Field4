@@ -547,6 +547,13 @@ Debugging checklist:
   - Shared chat in outputs: `Box.withChat(...)` mounts the same chat UI into an output channel (`display("chat", ...)`) using `mountSharedChat(...)` exported from `src/jsMain/kotlin/afield/Main.kt`.
   - Server integration: Field proxies chat RPC to the optional Flask chat server via `src/jvmMain/kotlin/afield/server/chat.kt` (`CHAT_SERVER_URL`, default `http://localhost:5002`; server code in `server/guide_chat_server.py`; data in `chat_data/`).
 
+### Drawing layer (Excalidraw)
+
+- An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
+- Scene coordinates are Field world coordinates; Excalidraw's scroll is `mainTranslation`, and zoom is pinned to 1. Every writer of `mainTranslation` must call `drawingLayerViewportChanged` (there are four: `applyViewportTranslation`, the wheel and middle-drag pans in `Main.kt`, and bookmark restore).
+- One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
+- The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
 ### FLine drawing + rendering (SVG + Vulkan)
 
 - `afield.graphics.FLine` is the core “drawn line / path” type (`src/jvmMain/kotlin/afield/graphics/FLine.kt`), with heavy geometry utilities in:

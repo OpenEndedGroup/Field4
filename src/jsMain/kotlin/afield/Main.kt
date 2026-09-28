@@ -2086,11 +2086,19 @@ private fun applyViewportTranslation(
         )
     }
 
+    drawingLayerViewportChanged(nextX, nextY)
     canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
+}
+
+/** The drawing layer was panned from inside Excalidraw; move Field's canvas to match. */
+fun panViewportForDrawingLayer(nextX: Double, nextY: Double) {
+    if (nextX == mainTranslation[0] && nextY == mainTranslation[1]) return
+    cancelNavigationPanAnimation()
+    applyViewportTranslation(nextX, nextY)
 }
 
 private fun cancelNavigationPanAnimation() {
@@ -5953,6 +5961,11 @@ suspend fun main() {
                     }
                 }
 
+                "drawing" -> {
+                    found.unsafeCast<dynamic>().drawing = set.value
+                    if (u == "root") onRemoteDrawingScene(set.value)
+                }
+
                 else -> {
                     found.unsafeCast<dynamic>()[set.property] = set.value
                 }
@@ -6250,6 +6263,7 @@ suspend fun main() {
 
             (mc as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
             mainTranslation = listOf(x.toDouble(), y.toDouble())
+            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
 
             println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
 
@@ -6300,6 +6314,7 @@ suspend fun main() {
 
             (mc as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
             mainTranslation = listOf(x.toDouble(), y.toDouble())
+            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
 
             println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
 
@@ -7048,6 +7063,7 @@ suspend fun main() {
         initMenuSupport()
         registerBuiltinCommands()
         initializeBookmarkSystem()
+        initializeDrawingLayer()
         initializeDocumentSearch()
         hideMonaco()
 
