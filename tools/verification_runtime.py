@@ -347,6 +347,13 @@ def run_with_watchdog(
     return completed, duration_ms, timed_out
 
 
+#: Set, while a `verification_lock` is held, to the holder's pid. Every child inherits it, and
+#: `settings.gradle.kts` lets a Gradle build carrying the lock owner's pid through while making any
+#: other raw `./gradlew` in the checkout wait. The name is repeated there; keep the two in step
+#: (`tools/test_verification_lock_gradle.py` checks).
+VERIFICATION_LOCK_OWNER_ENV = "AFIELD_VERIFICATION_LOCK_OWNER"
+
+
 @contextmanager
 def verification_lock(
     repo_root: Path,
@@ -407,9 +414,15 @@ def verification_lock(
     handle.truncate()
     handle.write(json.dumps(owner, separators=(",", ":")))
     handle.flush()
+    previous_marker = os.environ.get(VERIFICATION_LOCK_OWNER_ENV)
+    os.environ[VERIFICATION_LOCK_OWNER_ENV] = str(os.getpid())
     try:
         yield
     finally:
+        if previous_marker is None:
+            os.environ.pop(VERIFICATION_LOCK_OWNER_ENV, None)
+        else:
+            os.environ[VERIFICATION_LOCK_OWNER_ENV] = previous_marker
         handle.seek(0)
         handle.truncate()
         handle.flush()

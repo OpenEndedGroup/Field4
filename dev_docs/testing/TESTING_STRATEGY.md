@@ -61,8 +61,14 @@ entrypoints acquire `.field-backdoor/verification.lock`; if another supported
 verification command is active, they print its owner and wait with heartbeats.
 This is intentional: all three compile into or execute from the same Gradle/Kotlin
 outputs, and concurrent builds can corrupt incremental-compiler backups and class
-directories. Raw `./gradlew ...` commands do not participate in this Python lock,
-so run compile/test tasks before or after these entrypoints, never alongside them.
+directories. Since 2026-09-28 raw `./gradlew ...` honours the lock too
+(`settings.gradle.kts`): while another live process holds it, a build prints
+`WAIT gradle: verification lock held by {...}` every 15 s and continues when it is
+released (up to `AFIELD_VERIFICATION_LOCK_WAIT_SEC`, default 1800). Builds the owner
+itself spawns carry `AFIELD_VERIFICATION_LOCK_OWNER=<owner pid>` and go straight
+through. `AFIELD_VERIFICATION_LOCK=fail` stops immediately instead of waiting,
+`AFIELD_VERIFICATION_LOCK=off` disables the check, IDE sync never waits, and a lock
+file naming a dead (or reused) pid is ignored as stale.
 
 Smoke `expect.outputContains` / `outputNotContains` inspect emitted text only:
 `output` and `peer-output` HTML, `set-output` values, and notification text. Source
