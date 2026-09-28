@@ -287,6 +287,7 @@ are the ones Field's own languages give:
 | Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
 | FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |
 | Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
+| Pd | an object: what it is fed by and feeds; an `[s]` or `[r]`: the last value through its name, live from the playing patch; a `#X connect` line: the two ends it joins | — |
 
 The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
 [Python](python.md#what-each-line-came-to) pages show notes in the editor; the [Clojure](clojure.md) and

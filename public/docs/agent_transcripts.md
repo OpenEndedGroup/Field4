@@ -1686,7 +1686,7 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 under it, and four Kotlin boxes that drive a patch from Kotlin. **drone**'s text is its patch: launch
 it, then run the line `freq 330` on its own and the filtered sawtooth moves. **round trip** is
 `[r in] → [+ 1] → [s out]`; running `in 41` prints `out: 42`, and the line note on `[s out]` then
-reads "Last on 'out': 42.0". **typo** has `[osc 440]` on line 3, and launching it marks that line
+reads `'out' = 42.0`, live from the playing patch. **typo** has `[osc 440]` on line 3, and launching it marks that line
 "Pd couldn't create [osc 440] — did you mean [osc~ 440]?". The Kotlin boxes write a wavetable into
 `[table wave]` (2051 points), send a `SawOsc` through a Pd `[lop~]` and read its level back from
 `[s level]`, send numbers to the drone with `pdBox("drone").pdSend(...)`, and render a patch offline:
