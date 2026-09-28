@@ -59,10 +59,10 @@ object EmbeddedRectSL {
 }
 
 /**
- * Line notes for a Kotlin box's `code`: a `#rectsl` scene's, else StackSL's ([EmbeddedStackSL]). One
- * provider answers per property, so this one asks both; it is registered after StackSL's.
+ * Line notes for a Kotlin box's `code` inside a `#rectsl` scene. A line outside one is left to the
+ * other providers of `code` ([EmbeddedStackSL]'s among them): [LineNotes] asks each in turn.
  */
 @RunsAt(plugins)
 fun installEmbeddedRectSLLineNotes() {
-    LineNotes.register("code") { box, source, line -> EmbeddedRectSL.lineNote(box, source, line) ?: EmbeddedStackSL.lineNote(box, source, line) }
+    LineNotes.register("code") { box, source, line -> EmbeddedRectSL.lineNote(box, source, line) }
 }

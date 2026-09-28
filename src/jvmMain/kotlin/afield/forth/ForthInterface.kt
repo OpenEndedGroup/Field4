@@ -132,7 +132,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
             )
             var ok = false
             try {
-                val diagnostics = forth.eval(execute.code)
+                val diagnostics = forth.evalRecordingLineNotes(inside, execute.code, execute.line)
                 if (diagnostics.isEmpty()) {
                     clearExecutionErrorStatus(trace.reply, originSession)
                 }
@@ -203,7 +203,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
             )
 
             // First execute the code to define any words
-            val setupDiags = forth.eval(code)
+            val setupDiags = forth.evalRecordingLineNotes(inside, code, execute.line)
             if (setupDiags.isNotEmpty()) {
                 setupDiags.forEach { diag ->
                     val errLine = if (diag.line >= 0) execute.line + diag.line else execute.line
@@ -350,6 +350,52 @@ class ForthExecution(val inside: Box) : BoxExecution {
 
     /** `forth`, the name this execution reports itself under. */
     override val languageName: String get() = "forth"
+}
+
+/**
+ * [ForthInterpreter.eval] of [code], recording for [box]'s line notes ([afield.stdlib.LastRunNotes])
+ * the data stack after each line — after the last top-level step that ended on it — the words each
+ * line defined, the line a failure stopped on and the lines that never ran. [lineOffset] is where
+ * [code] starts in the box, as `Execute.line` counts.
+ *
+ * A note is read back from this record rather than by evaluating the program up to the line, because
+ * a Forth prefix is not side-effect free: the stack and the variables outlive the run, and words
+ * print, display and reach into the JVM.
+ */
+fun ForthInterpreter.evalRecordingLineNotes(box: Box, code: String, lineOffset: Int): List<ForthDiagnostic> {
+    class Span(val first: Int, val last: Int, val stack: List<String>, val defined: List<String>)
+    val spans = ArrayList<Span>()
+    onTopLevelStep = { first, last, defined ->
+        // A step that starts on a line an earlier step ended on joins it: a line's note is about all of it.
+        var from = first
+        val names = ArrayList<String>()
+        while (spans.isNotEmpty() && spans.last().last >= first) {
+            val earlier = spans.removeAt(spans.size - 1)
+            from = minOf(from, earlier.first)
+            names.addAll(0, earlier.defined)
+        }
+        defined?.let { names += it }
+        spans += Span(from, last, stackSnapshot(), names)
+    }
+    val diagnostics = try { eval(code) } finally { onTopLevelStep = null }
+    val stopped = diagnostics.firstOrNull()?.line?.takeIf { it >= 1 }
+    runCatching {
+        afield.stdlib.LastRunNotes.record(
+            box, "code", code, lineOffset,
+            produced = spans.filter { stopped == null || it.last < stopped }.map { span ->
+                val depth = "<${span.stack.size}>"
+                val stack = if (span.stack.isEmpty()) "the stack is empty" else "the stack after it: $depth " +
+                    afield.stdlib.LastRunNotes.oneLine(span.stack.takeLast(6).joinToString(" "), 90).let { if (span.stack.size > 6) "… $it" else it }
+                val caption = if (span.defined.isNotEmpty()) "defines " + span.defined.joinToString(", ") + " · " + stack else stack
+                afield.stdlib.LastRunNotes.Produced(span.first, span.last, caption,
+                    if (span.defined.isEmpty() || span.stack.isNotEmpty()) afield.stdlib.LineNotePictures.stack(span.stack) else null)
+            },
+            stoppedAt = stopped,
+            stopReason = diagnostics.firstOrNull()?.message?.lineSequence()?.firstOrNull(),
+            notReached = if (stopped == null) emptyList() else tokenize(code).map { it.line }.filter { it > stopped }.distinct(),
+        )
+    }.onFailure { lprintln("warning,forth", "could not record line notes: $it") }
+    return diagnostics
 }
 
 /**

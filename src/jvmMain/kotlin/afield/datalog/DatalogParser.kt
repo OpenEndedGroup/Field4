@@ -67,6 +67,13 @@ object DatalogParser {
 
     fun parse(source: String): DlUnit = Impl(source).unit()
 
+    /**
+     * [source]'s statements in order, each with the lines it spans — what a line note needs to know
+     * which statement a line belongs to. Throws, as [parse] does, at the first statement that does
+     * not parse.
+     */
+    fun statements(source: String): List<DlStatement> = Impl(source).statements()
+
     /** Parse a body conjunction on its own — how [Datalog.query] and `#why` read their goal. */
     fun parseGoal(source: String): List<DlLiteral> {
         val text = source.trim().removeSuffix(".")
@@ -223,6 +230,25 @@ object DatalogParser {
                 }
             }
             return DlUnit(rules, queries, directives)
+        }
+
+        fun statements(): List<DlStatement> {
+            val out = ArrayList<DlStatement>()
+            while (peek().kind != K.EOF) {
+                val first = peek().line
+                when {
+                    isPunct("#") -> directive().let { out += DlStatement(first, it.line, directive = it) }
+                    isPunct("?-") -> {
+                        val start = at
+                        next()
+                        val body = body()
+                        expect(".")
+                        out += DlStatement(first, toks[at - 1].line, query = DlQuery(body, textOf(start, at)))
+                    }
+                    else -> rule().let { out += DlStatement(first, toks[at - 1].line, rule = it) }
+                }
+            }
+            return out
         }
 
         fun goalOnly(): List<DlLiteral> {

@@ -210,8 +210,9 @@ export const requestLineNote = (uid, property, allCode, line) => {
     .then((note) => (note && (note.image || note.caption) ? note : null));
   lineNoteCache.set(key, pending);
   if (lineNoteCache.size > 128) lineNoteCache.delete(lineNoteCache.keys().next().value);
-  // A line with nothing to say, or an answer that timed out, is asked about again next time.
-  pending.then((note) => { if (!note) lineNoteCache.delete(key); });
+  // A line with nothing to say, an answer that timed out, or a note that can change while the text
+  // does not (what the line produced on the last run), is asked about again next time.
+  pending.then((note) => { if (!note || note.volatile) lineNoteCache.delete(key); });
   return pending;
 };
 

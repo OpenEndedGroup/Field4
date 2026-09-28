@@ -2629,7 +2629,8 @@ class Server {
                         .getOrNull()
                     reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line,
                         note?.caption.orEmpty(),
-                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty())))
+                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty(),
+                        note?.volatile == true)))
                 }
                 Handled.yes
             })

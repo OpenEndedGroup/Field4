@@ -658,6 +658,61 @@ def _capture_last_value_inplace(mod: ast.Module, capture_name: str) -> bool:
     ast.fix_missing_locations(assign2)
     return True
 
+# ---------- line notes: what each top-level statement came to, recorded as it runs ----------
+_FIELD_LINE_NOTES = {}
+
+def __field_line_note__(key, first, last, value, kind):
+    try:
+        import reprlib
+        r = reprlib.Repr()
+        r.maxstring = 100
+        r.maxother = 100
+        r.maxlist = r.maxtuple = r.maxset = r.maxdict = 8
+        text = str(value) if kind == "ran" else r.repr(value)
+        _FIELD_LINE_NOTES.setdefault(key, []).append([first, last, kind, type(value).__name__, text])
+    except Exception:
+        pass
+    return None
+
+def __field_line_notes_take__(key):
+    import json
+    return json.dumps(_FIELD_LINE_NOTES.pop(key, []))
+
+def _instrument_line_notes(mod: ast.Module, key: str, capture_name: str):
+    ""${'"'}
+    After each top-level statement, record what it came to for the editor's line notes: an
+    expression's value, the value a plain name was assigned, what a def or class defined, or just
+    that it ran. Runs after _capture_last_value_inplace, so the captured last value is unchanged;
+    only names are read back, so recording evaluates nothing the statement did not.
+    ""${'"'}
+    body = []
+    for st in mod.body:
+        first = st.lineno
+        last = getattr(st, "end_lineno", None) or st.lineno
+        def note(value, kind):
+            call = ast.Expr(value=ast.Call(
+                func=ast.Name(id="__field_line_note__", ctx=ast.Load()),
+                args=[ast.Constant(key), ast.Constant(first), ast.Constant(last), value, ast.Constant(kind)],
+                keywords=[]))
+            ast.copy_location(call, st)
+            ast.copy_location(call.value, st)
+            return call
+        body.append(st)
+        if isinstance(st, ast.Expr):
+            # the value itself, evaluated once: the expression becomes the recorder's argument
+            body.pop()
+            body.append(note(st.value, "value"))
+        elif isinstance(st, ast.Assign) and isinstance(st.targets[0], ast.Name):
+            kind = "value" if st.targets[0].id == capture_name else "assigned " + st.targets[0].id
+            body.append(note(ast.Name(id=st.targets[0].id, ctx=ast.Load()), kind))
+        elif isinstance(st, (ast.AnnAssign, ast.AugAssign)) and isinstance(st.target, ast.Name) and getattr(st, "value", None) is not None:
+            body.append(note(ast.Name(id=st.target.id, ctx=ast.Load()), "assigned " + st.target.id))
+        elif isinstance(st, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            body.append(note(ast.Name(id=st.name, ctx=ast.Load()), "defines " + st.name))
+        else:
+            body.append(note(ast.Constant(type(st).__name__.lower()), "ran"))
+    mod.body = body
+
 def _looks_like_top_level_await_syntax(err: SyntaxError) -> bool:
     msg = (getattr(err, "msg", "") or str(err)).lower()
     needles = ("'await' outside function", "async for outside async function", "async with outside async function")
@@ -672,6 +727,7 @@ async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, 
     try:
         mod = ast.parse(code, mode="exec")
         captured = _capture_last_value_inplace(mod, capture_name)
+        _instrument_line_notes(mod, filename, capture_name)
         ast.fix_missing_locations(mod)
         _ensure_linecache(filename, code)
 
@@ -725,6 +781,7 @@ def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, de
         try:
             mod = ast.parse(code, mode="exec")
             captured = _capture_last_value_inplace(mod, capture_name)
+            _instrument_line_notes(mod, filename, capture_name)
             ast.fix_missing_locations(mod)
             _ensure_linecache(filename, code)
             code_obj = compile(mod, filename, "exec")  # no TLA
@@ -1240,6 +1297,7 @@ _orig_print(" python interpreter has finished starting up ")
                 i.set("_local_storage_", inside._pythonLocals)
                 thisBox = inside
                 thisLineOffset = execute.line
+                takePythonLineNotes(i, inside)
 //                i.exec("_ret = _exec_with_return2(_code, globals(), locals=_local_storage_, source_id='${inside.id}')")
                 i.exec("_ret = _exec_with_return2(_code, globals(), locals=globals(), source_id='${inside.id}')")
                 val ret = i.getValue("_ret")
@@ -1293,7 +1351,9 @@ _orig_print(" python interpreter has finished starting up ")
                     inside.output.proxy("ok", false, resultLine)
                     hasHadOutput = true
                 }
+                recordPythonLineNotes(i, inside, execute)
             } catch (j: JepException) {
+                runCatching { recordPythonLineNotes(interpreter(inside), inside, execute) }
                 j.printStackTrace()
                 hasHadOutput = true
                 val n = j.message!!
@@ -1344,6 +1404,39 @@ _orig_print(" python interpreter has finished starting up ")
                 trace.finish(true)
             }
         }
+    }
+
+    /** What the recorder (`__field_line_note__` in the startup text) holds for [inside]'s runs, emptied. */
+    private fun takePythonLineNotes(i: SharedInterpreter, inside: Box): String {
+        i.exec("_field_line_notes_json = __field_line_notes_take__('<repl:${inside.id}>')")
+        return i.getValue("_field_line_notes_json") as? String ?: "[]"
+    }
+
+    /**
+     * Hand what each top-level statement of [execute]'s code came to over to the box's line notes
+     * ([afield.stdlib.LastRunNotes]). Recorded as the statements ran — the AST is instrumented by
+     * `_instrument_line_notes` — so nothing here evaluates anything. A statement that raised records
+     * nothing, and neither do the ones after it.
+     */
+    private fun recordPythonLineNotes(i: SharedInterpreter, inside: Box, execute: Execute) {
+        runCatching {
+            // `trimIndent` drops a blank first line, so the interpreter's line 1 is the code's line 2.
+            val dropped = if (execute.code.lineSequence().firstOrNull()?.isBlank() == true) 1 else 0
+            val rows = kotlinx.serialization.json.Json.parseToJsonElement(takePythonLineNotes(i, inside)) as kotlinx.serialization.json.JsonArray
+            val produced = rows.map { row ->
+                val cells = (row as kotlinx.serialization.json.JsonArray).map { (it as kotlinx.serialization.json.JsonPrimitive).content }
+                val (first, last, kind, type, text) = cells
+                val caption = when {
+                    kind == "ran" -> "ran (a `$text` statement)"
+                    kind.startsWith("defines ") -> kind
+                    kind.startsWith("assigned ") -> kind.removePrefix("assigned ") + " = " + afield.stdlib.LastRunNotes.oneLine(text) + " · " + type
+                    type == "NoneType" -> "evaluated to None"
+                    else -> "evaluated to " + afield.stdlib.LastRunNotes.oneLine(text) + " · " + type
+                }
+                afield.stdlib.LastRunNotes.Produced(first.toInt() + dropped, last.toInt() + dropped, caption)
+            }
+            afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
+        }.onFailure { lprintln("warning,python", "could not record line notes: $it") }
     }
 
     private fun hackJepThreadContext() {

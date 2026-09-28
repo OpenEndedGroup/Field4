@@ -284,7 +284,7 @@ class ClojureHost(private val defaultNs: String = "user") {
      * that carries none — a bare literal, so `42` or `"s"` or `:k` — falls back to the reader's
      * current line, which for a literal that fits on one line is the same number.
      */
-    private data class ReadForm(val form: Any?, val line: Int)
+    private data class ReadForm(val form: Any?, val line: Int, val endLine: Int = line)
 
     /**
      * Reads `code` one top-level form at a time, with line numbers.
@@ -317,8 +317,9 @@ class ClojureHost(private val defaultNs: String = "user") {
             val form = readFn.invoke(opts, reader)
             if (form === eof) return null
             val fromMeta = ((metaFn.invoke(form) as? ILookup)?.valAt(Keyword.intern("line")) as? Number)?.toInt()
-            val line = fromMeta ?: (getLineNumber.invoke(reader) as? Number)?.toInt() ?: 1
-            return ReadForm(form, line)
+            val end = (getLineNumber.invoke(reader) as? Number)?.toInt()
+            val line = fromMeta ?: end ?: 1
+            return ReadForm(form, line, maxOf(line, end ?: line))
         }
     }
 
@@ -388,7 +389,8 @@ class ClojureHost(private val defaultNs: String = "user") {
         executeIfFn: Boolean = true,
         onStdout: ((String, Int) -> Unit)? = null,
         onStderr: ((String, Int) -> Unit)? = null,
-        onForm: ((Int) -> Unit)? = null
+        onForm: ((Int) -> Unit)? = null,
+        onFormValue: ((firstLine: Int, lastLine: Int, value: Any?, printed: String) -> Unit)? = null
     ): EvalResult {
         boot()
         val evalFn = Clojure.`var`("clojure.core", "eval")
@@ -419,6 +421,7 @@ class ClojureHost(private val defaultNs: String = "user") {
                         } catch (t: Throwable) {
                             return@withClojureIO EvalResult.Err(atLine(extractCompilerError(t), read.line))
                         }
+                        onFormValue?.let { record -> runCatching { record(read.line, read.endLine, last, noteForm(prStr, last)) } }
                     }
                     if (executeIfFn && last is IFn) {
                         try {
@@ -434,6 +437,23 @@ class ClojureHost(private val defaultNs: String = "user") {
             EvalResult.Ok(EvalValue(last, line = lastLine, printed = printedForm(prStr, last)))
         } catch (t: Throwable) {
             EvalResult.Err(atLine(extractCompilerError(t), activeLine))
+        }
+    }
+
+    /**
+     * [value] as a line note shows it: `pr-str` under a `*print-length*` and `*print-level*`, cut to one
+     * short line. A lazy sequence nothing has realised is named rather than printed — printing would
+     * realise it, running code the program never ran.
+     */
+    private fun noteForm(prStr: IFn, value: Any?): String {
+        if (value is IPending && value is ISeq && !value.isRealized) return "an unrealised lazy sequence (a note does not force it)"
+        val printLength = Clojure.`var`("clojure.core", "*print-length*") as Var
+        val printLevel = Clojure.`var`("clojure.core", "*print-level*") as Var
+        Var.pushThreadBindings(PersistentHashMap.create(mapOf(printLength to 12, printLevel to 4)))
+        return try {
+            afield.stdlib.LastRunNotes.oneLine(printedForm(prStr, value), 140)
+        } finally {
+            Var.popThreadBindings()
         }
     }
 
@@ -917,6 +937,7 @@ class ClojureExecution(val inside: Box) : BoxExecution {
             lprintln("error,clojure", "Syntax errs: ${compiled.errors}")
             val first = compiled.errors[0]
             inside.error(first.message, line = boxLine(first.line), property = "code")
+            afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, emptyList(), first.line, first.message)
             return EvalOutcome(ok = false)
         }
         lprintln("info,clojure", "OK, ${(compiled as CompileOnlyResult.Ok).formsCount} forms")
@@ -926,6 +947,8 @@ class ClojureExecution(val inside: Box) : BoxExecution {
         val previousBox = ClojureInterface.thisBox
         val previousLine = ClojureInterface.thisLine
         ClojureInterface.thisBox = inside
+        // What each top-level form came to, for the box's line notes (afield.stdlib.LastRunNotes).
+        val produced = ArrayList<afield.stdlib.LastRunNotes.Produced>()
         try {
             return when (val e = clj.evalPage(
                 execute.code,
@@ -939,8 +962,15 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                     hasOutput = true
                     inside.output.proxy(text, false, boxLine(line))
                 },
-                onForm = { line -> ClojureInterface.thisLine = boxLine(line) }
-            )) {
+                onForm = { line -> ClojureInterface.thisLine = boxLine(line) },
+                onFormValue = { first, last, value, printed ->
+                    val type = value?.javaClass?.simpleName?.let { " · $it" }.orEmpty()
+                    produced += afield.stdlib.LastRunNotes.Produced(first, last, "evaluated to $printed$type")
+                }
+            ).also { result ->
+                val error = (result as? EvalResult.Err)?.error
+                afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced, error?.line, error?.message)
+            }) {
                 is EvalResult.Ok -> {
                     // Clear the marker a *previous* failed run left, so fixing a typo and re-running
                     // takes the red away. Skipped when this run wrote to `*err*`, which arrives as

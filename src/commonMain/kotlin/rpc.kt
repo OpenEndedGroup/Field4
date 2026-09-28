@@ -319,7 +319,11 @@ data class LineNoteRequest(
     val line: Int,
 )
 
-/** What a line shows: a sentence, and a picture as a `data:` URL; both empty when there is nothing to say. */
+/**
+ * What a line shows: a sentence, and a picture as a `data:` URL; both empty when there is nothing to say.
+ * [volatile] when the note can change while the text does not (a last run's value), so the editor asks
+ * again next time rather than keeping it.
+ */
 @Serializable
 data class LineNoteReply(
     val uid: String,
@@ -327,6 +331,7 @@ data class LineNoteReply(
     val line: Int,
     val caption: String = "",
     val image: String = "",
+    val volatile: Boolean = false,
 )
 
 /**
