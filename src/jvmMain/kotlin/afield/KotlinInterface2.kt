@@ -2960,8 +2960,14 @@ class KotlinInterface2(
      * Call this when the KotlinInterface is no longer needed.
      */
     override fun dispose() {
+        disposed = true
         Disposer.dispose(rootDisposable)
     }
+
+    @Volatile
+    private var disposed = false
+
+    override val isDisposed: Boolean get() = disposed
 
 
     companion object {

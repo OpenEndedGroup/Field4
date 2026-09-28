@@ -54,7 +54,7 @@ fun installKEActions(root: Box) {
         // running after the environment it came from is gone.
         stopBoxes(it, "reset")
         it.forEach {
-            it.ki = makeKI(it, reason = "reset action")
+            it.replaceKi(makeKI(it, reason = "reset action"))
         }
     }
 }

@@ -168,6 +168,13 @@ interface KotlinScriptEngine {
      * Not all implementations require disposal; default is a no-op.
      */
     fun dispose() {}
+
+    /**
+     * Whether [dispose] has run on this engine. Lets a caller that replaced or retired an engine —
+     * `Box.replaceKi`, `Box.disposeKi` — be checked for having actually released the one it dropped,
+     * which is the leak those two exist to close. False for an implementation with nothing to dispose.
+     */
+    val isDisposed: Boolean get() = false
 }
 
 private fun sanitizeFieldSourceProperty(property: String): String {

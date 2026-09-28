@@ -108,7 +108,9 @@ fun copyBox(b: Box, offsetFrame: Boolean = true): Box {
 
     b.root.connect(newBox)
     b.inside.boxes[newBox.id] = newBox
-    newBox.ki = makeKI(newBox, reason = "copyBox")
+    // newBox's own engine: `ki` is a per-box delegate, never among the properties copied above, so
+    // nothing here can be the source box's engine.
+    newBox.replaceKi(makeKI(newBox, reason = "copyBox"))
     newBox.name = newName
 
 

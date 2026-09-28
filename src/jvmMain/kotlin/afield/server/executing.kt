@@ -73,7 +73,7 @@ fun executing() {
                     FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
                     // experimental
                     if (box.ke is KotlinExecution)
-                        box.ki = makeKIHere(box, reason = "execute-all handler reset")
+                        box.replaceKi(makeKIHere(box, reason = "execute-all handler reset"))
                     box.properties["_preamble"] = "" // remove record of previous preamble line execs
                     box.properties["_introduction"] = "" // ditto for introduction
                     box.properties.remove("_attic")

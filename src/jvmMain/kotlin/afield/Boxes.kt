@@ -219,6 +219,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * `Unresolved reference '_particle'`, with no preamble execution logged between the rebuild and
      * the compile. Clearing here, synchronously with the disposal, makes the ordering irrelevant —
      * and covers every recycling caller, [reloadPersonal] included, not just the one that found it.
+     *
+     * `_introduction` and `_attic` are the same kind of record — "this text has run in this engine" —
+     * and are forgotten with it: `checkIntroductionAndExecute` runs the introduction only when it differs
+     * from `_introduction`, so a stale copy made the next engine skip the introduction entirely.
      */
     fun disposeKi() {
         if (!kiDelegate.isInitialized) return
@@ -234,7 +238,38 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
         // The engine that ran this preamble no longer exists; see the KDoc above for the race this
         // closes. Deliberately after the reset, so "engine gone" and "preamble not applied" become
         // true together and no caller can observe one without the other.
+        forgetEngineExecutionCaches()
+    }
+
+    /**
+     * Install [engine] as this box's engine, disposing the one it replaces and forgetting what that one
+     * had run — the single way to swap engines, for the sites that used to assign `ki = makeKI…` and
+     * leak the old K2 compilation state (the `reset` action, execute-all, [afield.workspace.copyBox]).
+     *
+     * Only an engine that was actually built is disposed, so a box that never ran costs nothing, and
+     * installing the engine already current is a no-op: `makeKIHere` hands back the existing engine for
+     * a tombstoned box, which disposing would break. The new engine is installed before the old one is
+     * disposed, so no reader of [ki] can be handed a disposed engine.
+     */
+    fun replaceKi(engine: KotlinScriptEngine) {
+        val previous = liveKi
+        if (previous === engine) return
+        ki = engine
+        if (previous != null) {
+            try {
+                previous.dispose()
+            } catch (t: Throwable) {
+                lprintln("error,ki", "replaceKi failed to dispose the previous engine for box $id: ${t.message}")
+            }
+        }
+        forgetEngineExecutionCaches()
+    }
+
+    /** The "already ran in this engine" records: `_preamble`, `_introduction`, `_attic`. */
+    private fun forgetEngineExecutionCaches() {
         properties.remove("_preamble")
+        properties.remove("_introduction")
+        properties.remove("_attic")
     }
 
     var frame by Delegation<Rect>(defaultValue = { Rect(0.0, 0.0, 0.0, 0.0) }, hook = ::onFrameChange)
