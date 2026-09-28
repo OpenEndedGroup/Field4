@@ -3,6 +3,66 @@ package afield
 import java.lang.reflect.Modifier
 import kotlin.system.exitProcess
 
+/** Exit status when the launcher was started without the JVM args `requiredAgentJvmArgs()` supplies. */
+internal const val MISSING_JVM_ARGS_EXIT = 4
+
+/** Set to anything non-blank to skip the startup check (diagnosing a launch line by hand). */
+internal const val SKIP_ARG_CHECK_ENV = "AFIELD_AGENT_LAUNCHER_SKIP_ARG_CHECK"
+
+/**
+ * What the running JVM actually has in effect, for each thing `requiredAgentJvmArgs()` in
+ * agent_backdoor.kt passes. Measured by effect where the platform can report one (a module being
+ * open, native access being enabled, a module being resolved) and by the command line only where it
+ * cannot (`-XstartOnFirstThread`). `startOnFirstThread` is null off macOS, where it is not required.
+ */
+internal data class AgentJvmRequirementProbe(
+    val javaNetOpen: Boolean,
+    val nativeAccessEnabled: Boolean,
+    val vectorModuleResolved: Boolean,
+    val lwjglStackSizeSet: Boolean,
+    val headlessAwt: Boolean,
+    val startOnFirstThread: Boolean?,
+) {
+    companion object {
+        fun current(): AgentJvmRequirementProbe {
+            val self = AgentJvmMainLauncher::class.java.module
+            val onMac = (System.getProperty("os.name") ?: "").lowercase().let {
+                !it.contains("windows") && !it.contains("linux")
+            }
+            val inputArguments = runCatching {
+                java.lang.management.ManagementFactory.getRuntimeMXBean().inputArguments
+            }.getOrDefault(emptyList())
+            return AgentJvmRequirementProbe(
+                javaNetOpen = Any::class.java.module.isOpen("java.net", self),
+                nativeAccessEnabled = self.isNativeAccessEnabled,
+                vectorModuleResolved = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent,
+                lwjglStackSizeSet = System.getProperty("org.lwjgl.system.stackSize") != null,
+                headlessAwt = System.getProperty("java.awt.headless") == "true",
+                startOnFirstThread = if (onMac) "-XstartOnFirstThread" in inputArguments else null,
+            )
+        }
+    }
+}
+
+/** The JVM args whose effect `probe` says is missing, spelled as `requiredAgentJvmArgs()` spells them. */
+internal fun missingAgentJvmRequirements(probe: AgentJvmRequirementProbe): List<String> = buildList {
+    if (!probe.javaNetOpen) add("--add-opens=java.base/java.net=ALL-UNNAMED")
+    if (!probe.nativeAccessEnabled) add("--enable-native-access=ALL-UNNAMED")
+    if (!probe.vectorModuleResolved) add("--add-modules jdk.incubator.vector")
+    if (!probe.lwjglStackSizeSet) add("-Dorg.lwjgl.system.stackSize=256")
+    if (!probe.headlessAwt) add("-Djava.awt.headless=true")
+    if (probe.startOnFirstThread == false) add("-XstartOnFirstThread")
+}
+
+internal fun agentJvmRequirementsMessage(entrypoint: String, missing: List<String>): String =
+    "AgentJvmMainLauncher: refusing to run $entrypoint -- this JVM was started without " +
+        missing.joinToString(", ") + ". A hand-built `java -cp ... afield.AgentJvmMainLauncher` " +
+        "line misses these and then fails somewhere unrelated (e.g. `module java.base does not " +
+        "\"opens java.net\"`). Launch it through the backdoor instead, which supplies " +
+        "requiredAgentJvmArgs(): `field_backdoor.py --command 'run-jvm-main $entrypoint'`, or " +
+        "`tools/run_field_tests.py --id <catalog-id>` for a FIELD_TEST. " +
+        "Set $SKIP_ARG_CHECK_ENV=1 to bypass this check while debugging a launch line."
+
 object AgentJvmMainLauncher {
     @JvmStatic
     fun main(args: Array<String>) {
@@ -12,6 +72,13 @@ object AgentJvmMainLauncher {
         }
 
         val entrypoint = args.first()
+        if (System.getenv(SKIP_ARG_CHECK_ENV).isNullOrBlank()) {
+            val missing = missingAgentJvmRequirements(AgentJvmRequirementProbe.current())
+            if (missing.isNotEmpty()) {
+                System.err.println(agentJvmRequirementsMessage(entrypoint, missing))
+                exitProcess(MISSING_JVM_ARGS_EXIT)
+            }
+        }
         val forwardedArgs = args.drop(1).toTypedArray()
         var exitCode = runCatching {
             invokeEntrypoint(entrypoint, forwardedArgs)
