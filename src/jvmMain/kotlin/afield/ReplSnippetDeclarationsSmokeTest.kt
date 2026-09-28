@@ -24,9 +24,9 @@ expect:
 /**
  * What a box may declare at its top level, and still compile.
  *
- * Two K2 REPL defects made ordinary box code fail, both fixed in field's Kotlin fork
- * (`~/temp/kotlin`, branch `field/repl-implicit-receiver-in-named-functions`) and neither fixed
- * upstream as of 2.4.20-RC2 — upstream's REPL codegen suite has no test for either shape:
+ * K2 REPL defects that made ordinary box code fail, all fixed in field's Kotlin fork
+ * (`~/temp/kotlin`, branch `field/repl-implicit-receiver-in-named-functions`) and none fixed
+ * upstream as of 2.4.20-RC2 — upstream's REPL codegen suite has no test for any of these shapes:
  *
  *  1. **A named function that touches the implicit `Box` receiver.** `fun foo(a: Double) = a + _qqq`
  *     became a member of the snippet class, which has no `$script_receiver_n` parameter, so the
@@ -51,6 +51,12 @@ expect:
  *     Such a property is resolved through a disposable FIR copy of itself; the resolved delegate
  *     expression carries a `::x` reference to that copy, which gets no IR, so fir2ir failed with
  *     `IrPropertySymbolImpl is unbound`. Cases N, Q.
+ *
+ *  4. **A destructuring declaration with a `_` entry** — `val (a, _) = p`. The `_` became a
+ *     snippet-class property `<unused var>` and the class failed to load with
+ *     `ClassFormatError: Illegal method name "get<unused var>"`. The `.kts` path never had this:
+ *     fir2ir skips a script's `_` entries. The fork now builds a snippet's `_` entry as a local of
+ *     `$$eval`. Cases V–Y.
  *
  * Each case drives the real engine: a fresh [KotlinInterface2] with an implicit `Box` receiver, the
  * stdlib `intro`, then [standardExecutionPractice] — the same preamble-then-body snippet sequence a
@@ -385,6 +391,35 @@ object ReplSnippetDeclarationsSmokeTest {
             "U expr body calling _printlnHere directly", null,
             "fun f(a : Double) = _printlnHere(1, a)\nf(10.0)",
             expected = "Unit"
+        )
+
+        println("-- destructuring with an underscore at snippet top level --")
+        // Found 2026-09-28. A top-level `_` entry became a snippet-class property named
+        // `<unused var>`, and loading the class failed with `ClassFormatError: Illegal method name
+        // "get<unused var>"` -- an eval-time diagnostic that Field did not report, so the box
+        // looked as though it never finished. `(a, b)` was always fine. Fixed in the fork: a `_`
+        // entry is a local of `$$eval`, as inside any function body.
+        case(
+            "V (a, _) = pair", null,
+            "val p = 1f to 2f\nval (a, _) = p\na",
+            expected = "= 1.0"
+        )
+        case(
+            "W (_, b) and (_, _, c) positional", null,
+            "val (_, b) = 1 to 2\nval (_, _, c) = Triple(3, 4, 5)\nb * 10 + c",
+            expected = "= 25"
+        )
+        case(
+            "X var (x, _) with a list", null,
+            "var (x, _) = listOf(40, 99)\nx += 2\nx",
+            expected = "= 42"
+        )
+        sequence(
+            "Y named entries of a `_` destructuring stay visible to the next snippet", null,
+            listOf(
+                "val (a, _) = 6 to 0\na" to "= 6",
+                "a * 7" to "= 42",
+            )
         )
 
         println("-- the real keyCamera delegate, as five published sites spell it --")
