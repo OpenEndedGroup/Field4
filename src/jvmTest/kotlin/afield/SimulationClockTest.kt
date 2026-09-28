@@ -1,6 +1,9 @@
 package afield
 
 import kotlinx.coroutines.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
+import kotlin.concurrent.thread
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.test.*
 
@@ -108,4 +111,77 @@ class SimulationClockTest {
         assertIs<IllegalStateException>(failure)
         clock.close()
     }
+
+    /**
+     * Box stop cancels from a foreign thread. The owner can see its own job cancelled and reach
+     * close() while that thread is still propagating to the children (2026-09-28 smoke flake,
+     * `examples.demo-transcript.exec` / simulation_clock under load 100-160). The slow cancelling
+     * handler stands in for the cancelling thread being preempted mid-propagation.
+     */
+    @OptIn(InternalCoroutinesApi::class)
+    @Test
+    fun closeWaitsForCancellationStillPropagatingOnAnotherThread() {
+        val parent = Job()
+        val clock = SimulationClock(parent)
+        var cleaned = false
+        val propagating = CountDownLatch(1)
+        clock.launch {
+            coroutineContext.job.invokeOnCompletion(onCancelling = true) { propagating.countDown(); Thread.sleep(300) }
+            try { delay(1_000_000) } finally { cleaned = true }
+        }
+        clock.runCurrent()
+        val canceller = thread { parent.cancel() }
+        propagating.await()
+        clock.close()
+        canceller.join()
+        assertTrue(cleaned)
+        assertEquals(0, clock.pendingResumes)
+    }
+
+    @Test fun finallyThatNeverResumesIsStillReported() {
+        val clock = SimulationClock(EmptyCoroutineContext)
+        clock.closeGraceMillis = 50
+        clock.launch {
+            try { delay(1_000_000) } finally { withContext(NonCancellable) { suspendCancellableCoroutine<Unit> { } } }
+        }
+        clock.runCurrent()
+        val failure = assertFailsWith<IllegalStateException> { clock.close() }
+        assertTrue("finally blocks must not suspend" in failure.message!!)
+    }
+
+    /** The scene's shape: two children, a frames owner on a Framer, stop from another thread, CPU contention. */
+    @Test
+    fun foreignThreadStopOfFramesOwnerUnderContention() {
+        val failures = ConcurrentLinkedQueue<Throwable>()
+        val hogs = (1..Runtime.getRuntime().availableProcessors() * 2).map {
+            thread(isDaemon = true) { var x = 0.0; while (!Thread.currentThread().isInterrupted) x += Math.sin(x) }
+        }
+        try {
+            repeat(ITERATIONS) { iteration ->
+                val framer = Framer()
+                var started = 0
+                var cleanup = 0
+                val program = frames {
+                    try {
+                        withSimulationClock {
+                            launch(CoroutineName("Orbit")) { started++; try { while (isActive) sleep(stepSeconds) } finally { cleanup++ } }
+                            launch(CoroutineName("Pulse")) { started++; try { while (isActive) { delay(120); delay(350) } } finally { cleanup++ } }
+                            runCurrent()
+                            while (frame()) advance(stepSeconds)
+                        }
+                    } catch (t: IllegalStateException) { if (t !is CancellationException) failures += t }
+                }
+                val job = CoroutineScope(framer + Job()).launch { program.body() }
+                val canceller = thread { Thread.sleep(0, (iteration * 7919) % 50_000); job.cancel() }
+                val deadline = System.nanoTime() + 10_000_000_000L
+                while (!job.isCompleted && System.nanoTime() < deadline) framer.frame()
+                canceller.join()
+                assertTrue(job.isCompleted, "iteration $iteration did not finish")
+                if (failures.isEmpty()) assertEquals(started, cleanup, "iteration $iteration")
+            }
+        } finally { hogs.forEach { it.interrupt() } }
+        assertTrue(failures.isEmpty(), "${failures.size}/$ITERATIONS closes failed: ${failures.firstOrNull()}")
+    }
+
+    private companion object { const val ITERATIONS = 2_000 }
 }
