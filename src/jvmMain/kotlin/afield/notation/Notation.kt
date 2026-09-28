@@ -108,8 +108,19 @@ class Mark internal constructor(
 
     fun contains(p: Vec2): Boolean = bounds.let { p.x >= it.x && p.x <= it.x + it.w && p.y >= it.y && p.y <= it.y + it.h }
 
-    /** The mark's geometry in world coordinates: the polyline of a stroke, or a shape's outline. */
-    fun toFLine(): FLine = json.toFLine()
+    /** The mark's geometry in world coordinates, rotation included: a stroke's polyline, or a shape's outline. */
+    fun toFLine(): FLine = FLine().also { f ->
+        MarkGeometry.of(json).paths.firstOrNull()?.forEachIndexed { i, p -> if (i == 0) f.moveTo(p.x, p.y) else f.lineTo(p.x, p.y) }
+    }
+
+    /** Where this mark crosses the vertical line at world [x]: its y values there (a shape gives its edges). */
+    fun yAt(x: Double): List<Double> = Probe.crossings(MarkGeometry.of(json), ProbeAxis.VERTICAL, x).map { it.y }.sorted()
+
+    /** Where this mark crosses the horizontal line at world [y]: its x values there. */
+    fun xAt(y: Double): List<Double> = Probe.crossings(MarkGeometry.of(json), ProbeAxis.HORIZONTAL, y).map { it.x }.sorted()
+
+    /** The length of the mark's path (a shape's perimeter), in world units. */
+    val length: Double get() = MarkGeometry.of(json).length
 
     override fun toString(): String =
         "Mark(${kind.name.lowercase()} $id${label?.let { " \"$it\"" } ?: ""} at ${bounds.x.toInt()},${bounds.y.toInt()} ${bounds.w.toInt()}×${bounds.h.toInt()})"
@@ -119,7 +130,7 @@ class Mark internal constructor(
 }
 
 /** What changed in the drawing, handed to [Notation.onChange]. */
-class NotationEvent internal constructor(
+class NotationEdit internal constructor(
     val added: List<Mark>,
     val updated: List<Mark>,
     val removed: List<Mark>,
@@ -185,6 +196,69 @@ class Notation internal constructor(private val box: Box) {
 
     /** Arrows (and lines) whose last point is on [box]. */
     fun arrowsTo(box: Box): List<Mark> = marks.filter { it.kind.let { k -> k == MarkType.ARROW || k == MarkType.LINE } && it.toBox == box }
+
+    // ── cutting ─────────────────────────────────────────────────────────────────────────────────
+
+    /** Cut the whole drawing with the vertical line at world [x]; hit values are world y. */
+    fun vertical(x: Double): List<Hit> = cut(marks, ProbeAxis.VERTICAL, x) { it }
+
+    /** Cut the whole drawing with the horizontal line at world [y]; hit values are world x. */
+    fun horizontal(y: Double): List<Hit> = cut(marks, ProbeAxis.HORIZONTAL, y) { it }
+
+    /** Every place the segment [from]–[to] crosses a mark, nearest [from] first; hit values are 0..1 along the segment. */
+    fun intersect(from: Vec2, to: Vec2): List<Hit> = marks.flatMap { m ->
+        Probe.crossings(MarkGeometry.of(m.json), from, to).map { (t, c) ->
+            Hit(m, vec(c.x, c.y), t, null, c.along, 0.0, c.pressure)
+        }
+    }.sortedBy { it.value }
+
+    /** Every place an [FLine] (a probe of any shape) crosses a mark, in order along the FLine. */
+    fun intersect(probe: FLine): List<Hit> {
+        val pts = probe.nodes.mapNotNull { it.toOrNull }.map { vec(it.x, it.y) }
+        return pts.zipWithNext().flatMapIndexed { i, (a, b) ->
+            intersect(a, b).map { h -> Hit(h.mark, h.point, i + h.value, null, h.along, 0.0, h.pressure) }
+        }
+    }
+
+    /**
+     * A region of the drawing read with its own axes — see [NotationSpace]. [region] is the
+     * rectangle; [x] and [y] are what its left→right and top→bottom mean.
+     */
+    fun space(region: Rect, x: ClosedFloatingPointRange<Double>, y: ClosedFloatingPointRange<Double>): NotationSpace =
+        NotationSpace(this, { region }, x, y)
+
+    /** A region that is a box's frame: move the box and the space moves with it. */
+    fun space(region: Box, x: ClosedFloatingPointRange<Double>, y: ClosedFloatingPointRange<Double>): NotationSpace =
+        NotationSpace(this, { region.frame }, x, y)
+
+    /** A region that is the frame (or any mark) labelled [name], wherever it is now. */
+    fun space(name: String, x: ClosedFloatingPointRange<Double>, y: ClosedFloatingPointRange<Double>): NotationSpace =
+        NotationSpace(this, { named(name)?.bounds }, x, y)
+
+    internal fun cut(among: List<Mark>, axis: ProbeAxis, at: Double, map: (Double) -> Double): List<Hit> {
+        val out = ArrayList<Hit>()
+        for (m in among) {
+            val g = MarkGeometry.of(m.json)
+            val cs = Probe.crossings(g, axis, at)
+            if (cs.isEmpty()) continue
+            val across = { c: Crossing -> if (axis == ProbeAxis.VERTICAL) c.y else c.x }
+            if (g.closed) {
+                val sorted = cs.sortedBy(across)
+                var i = 0
+                while (i + 1 < sorted.size) {
+                    val a = map(across(sorted[i])); val b = map(across(sorted[i + 1]))
+                    val lo = min(a, b); val hi = max(a, b)
+                    val mid = (across(sorted[i]) + across(sorted[i + 1])) / 2
+                    val point = if (axis == ProbeAxis.VERTICAL) vec(at, mid) else vec(mid, at)
+                    out += Hit(m, point, (lo + hi) / 2, lo..hi, sorted[i].along, 0.0, null)
+                    i += 2
+                }
+            } else {
+                for (c in cs) out += Hit(m, vec(c.x, c.y), map(across(c)), null, c.along, c.dAcrossDProbe, c.pressure)
+            }
+        }
+        return out.sortedBy { it.value }
+    }
 
     // ── writing ─────────────────────────────────────────────────────────────────────────────────
 
@@ -260,7 +334,7 @@ class Notation internal constructor(private val box: Box) {
      * the handler registered under the same [key]; stopping the box removes it. Changes this code
      * makes itself do not call it back.
      */
-    fun onChange(key: String = "change", handler: (NotationEvent) -> Unit) =
+    fun onChange(key: String = "change", handler: (NotationEdit) -> Unit) =
         register(key, NotationHandler { ev -> handler(ev) })
 
     /** Calls [handler] for each stroke drawn by hand, once it is finished. */
@@ -303,7 +377,7 @@ internal fun Rect.containsPoint(px: Double, py: Double, margin: Double = 0.0): B
     px >= x - margin && px <= x + w + margin && py >= y - margin && py <= y + h + margin
 
 internal fun interface NotationHandler {
-    fun handle(event: NotationEvent)
+    fun handle(event: NotationEdit)
 }
 
 internal var Box.notationHandlers by Delegation<MutableMap<String, NotationHandler>>(defaultValue = { ConcurrentHashMap() })
@@ -317,7 +391,7 @@ internal fun dispatchNotationChange(info: SessionInformation, change: NotationCh
         val handlers = box.notationHandlers
         if (handlers.isEmpty()) continue
         val view = Notation(box)
-        val event = NotationEvent(
+        val event = NotationEdit(
             added = change.added.map { Mark(it, view) },
             updated = change.updated.map { Mark(it, view) },
             removed = change.removed.map { Mark(it, view) },

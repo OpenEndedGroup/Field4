@@ -1,6 +1,7 @@
 # Notation: Field's Kotlin ↔ Excalidraw interface
 
-Status: design + implementation in progress on branch `excalidraw-layer` (2026-09-28). The drawing
+Status (2026-09-29): parts 1 (scene API, reactions, anchoring, selection) and 1b (reading by
+intersection) are implemented and tested; live Kotlin/JS scripts (part 3) are not yet built. The drawing
 layer itself (Alt+D, camera, persistence) is described in `DRAWING_LAYER_HANDOFF.md`; this page is
 about making that drawing *mean* something to code, in both directions.
 
@@ -64,12 +65,68 @@ notation.delete(mark)
 Owned marks carry `customData.fieldOwner` (box uid) and `fieldKey`, and deterministic ids, so a
 re-run *updates* them (Excalidraw sees a version bump) rather than flickering through a delete.
 
+## 1b. Reading by intersection
+
+Notation is interrogated by cutting it: a vertical line is an instant, a horizontal line a pitch.
+That asks for four things beyond querying marks, and the API has each:
+
+**A space.** "Time" and "pitch" exist only once a region is declared as a score and its axes are
+mapped. The region can be a frame, a box (the box *is* the score, and moving it moves the score),
+or a rect; y ranges can run downward so pitch is high at the top:
+
+```kotlin
+val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // 8 beats, MIDI 84 at the top
+```
+
+**Cuts that return hits, not marks.** Different marks answer a cut differently. An open stroke gives
+one hit per crossing (a line that doubles back is two voices at once). A closed shape or a text gives
+a *span*, the stretch of the cut inside it (a piano-roll rectangle covers a pitch range):
+
+```kotlin
+score.vertical(2.0)        // what sounds at beat 2: List<Hit>, sorted by pitch
+score.horizontal(66.0)     // when anything passes F#4: the hits' values are beats
+notation.vertical(x)       // the same on the raw canvas, in world units
+notation.intersect(a, b)   // a cut along any segment, ordered along it
+notation.intersect(fline)  // a cut along any FLine
+mark.yAt(x) / mark.xAt(y)  // one mark, all its crossings
+```
+
+**Detail at the hit.** `value` is the position (pitch), `span` the range for closed marks, `along`
+is how far through the mark's own path the crossing is (0..1), `slope` the rate of change in the
+space's units (semitones per beat, so a glissando's speed), and `pressure` the pen pressure there
+(Excalidraw records it for pen strokes, so it can become dynamics). The mark itself carries colour,
+label and owner.
+
+**Events, not just snapshots.** A playhead needs what began and ended in an interval, or it misses
+short notes between frames:
+
+```kotlin
+score.events               // every mark as start/end/value/endValue/range, sorted by start
+score.between(t0, t1)      // what a playhead moving t0 → t1 has just reached
+score.sounding(t)          // what is held at t
+```
+
+Each mark is flattened once per scene revision into world-space polylines, **with its rotation
+applied**, and cached by content, so a cut every frame only walks segments. Marks count as in a
+space if they overlap it; hits and spans outside it are clipped away.
+
+Verified live (2026-09-29) on a hand-drawn pen stroke across a code-drawn frame: a cut at beat 4
+of a stroke from (120, 450) to (880, 150) in an 800×400 score mapped to 0..8 × 84..48 read pitch
+66.00, slope 3.6 semitones/beat, pressure 0.60 on a 0.3→0.9 pen ramp; the rectangle note read beats
+2..3 at 64.2..66.0.
+
+!!! note "Colours from code and the dark theme"
+    Excalidraw's dark theme draws the whole canvas through `invert(93%) hue-rotate(180deg)`, so a
+    colour given from code is shown transformed: `#ffd43b` (yellow) appears dark brown. Pick
+    colours from Excalidraw's own palette, which is designed for the round trip.
+
 ## 2. Reactions
 
 ```kotlin
-onNotation { n -> … }                   // any change; n.added / n.updated / n.removed
-onStroke { stroke -> … }                // a freedraw stroke was finished
-onArrow { arrow -> … }                  // an arrow was drawn or re-ended
+notation.onChange { edit -> … }         // any change; edit.added / edit.updated / edit.removed
+notation.onStroke { stroke -> … }       // a freedraw stroke was finished
+notation.onArrow { arrow -> … }         // an arrow was drawn or re-ended
+notation.onText { text -> … }           // a text was typed or edited
 ```
 
 Handlers are per box and per key: re-running the box replaces them, stopping it removes them. They
