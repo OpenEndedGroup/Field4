@@ -129,6 +129,25 @@ The sine above gives 440 upward zero crossings in that second, and a peak of the
 given, to within 0.002. `renderPdWav(file, patchText, seconds)` writes the same thing to a 16-bit
 stereo `.wav`, and `pdWaveform(patchText)` plots a few milliseconds in the box.
 
+Here is `pdWaveform` on a sawtooth, drawn with its patch. The patch runs in libpd, and no audio
+device is opened:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/offline-saw.png" alt="A line plot titled 'Pd — 20ms': a sawtooth over twenty milliseconds, rising from about -0.35 to about 0.38 and falling sharply, four and a half cycles, with the corners rounded by the lowpass" wait="8" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="120" name="pure-data-offline-saw" requires="libpd" embed=true}
+val saw = """
+#X obj 20 20 phasor~ 220;
+#X obj 20 60 -~ 0.5;
+#X obj 20 100 lop~ 1500;
+#X obj 20 140 *~ 0.8;
+#X obj 20 180 dac~;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 3 0 4 1;
+"""
+pdWaveform(saw, seconds = 0.02)
+```
+
 Messages sent while nothing is rendering wait for the next block. `pd.flush()` delivers them at once
 and hands Pd's replies to their callbacks, so a message round trip can be checked with no audio at all.
 
@@ -163,6 +182,28 @@ message, written as a Pd message box writes one after a `;`: the receiver, then 
 `freq 330` sends 330 to `[r freq]`, `go` bangs `[r go]`, `voice set 3` sends `set 3`. Those lines and
 `//` comments are removed before Pd reads the patch, and selecting one and running it sends it.
 
+The drawing is `PdPatchGraph.toFLines()`, which reads the text alone and needs no libpd. This is the
+drone patch above:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/drone-patch.png" alt="Six boxes drawn as Pd draws them: r freq above phasor~, above lop~ 1200, above *~ 0.08, above dac~, joined by vertical wires, with r cutoff to the right wired into the right inlet of lop~, and two wires from *~ 0.08 into the dac~" wait="6" capture="box" open-outputs="true" w="900" h="420" padding="18" timeout="120" name="pure-data-drone-patch" embed=true}
+val drone = """
+#N canvas 0 0 500 320 12;
+#X obj 20 20 r freq;
+#X obj 20 60 phasor~;
+#X obj 20 100 lop~ 1200;
+#X obj 140 60 r cutoff;
+#X obj 20 140 *~ 0.08;
+#X obj 20 180 dac~;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 3 0 2 1;
+#X connect 2 0 4 0;
+#X connect 4 0 5 0;
+#X connect 4 0 5 1;
+"""
+lines(afield.pd.PdPatchGraph.parse(drone).toFLines(), channel = "patch", w = 460.0, h = 230.0, fitToSize = true)
+```
+
 The editor's line notes say what the object on a line is wired to. On an `[s]` or `[r]` they also give
 the last value that went through that name.
 
@@ -178,14 +219,13 @@ the last value that went through that name.
 - **One output per launch.** Every patch opened in one Pd sums into that Pd's `[dac~]`; the launch's
   `gain` applies to the sum.
 
-??? aside "Why this page has no figures"
+??? aside "What the two figures need"
 
-    Every capture in these docs is produced by running the real code on the docs build machine, and
-    that machine does not build libpd: `buildDocsNativePrerequisites` does not include
-    `buildLibpdNative` yet. So the numbers above come from `PdTest` in `src/jvmTest`, which skips
-    when libpd is missing, and the loadable scene is `dev_docs/pd/pure_data_demo.yaml`. Adding
-    libpd to the docs prerequisites is what would let this page carry a real waveform and a real
-    patch drawing.
+    The waveform is captured by running the fence on the docs build machine, so that machine
+    needs libpd: the fence says `requires="libpd"`, and `./gradlew buildDocsNativePrerequisites`
+    builds it with the rest. The patch drawing reads text only and needs nothing. The numbers
+    elsewhere on this page come from `PdTest` in `src/jvmTest`, which skips when libpd is not
+    built, and the loadable scene is `dev_docs/pd/pure_data_demo.yaml`.
 
 For where Pd sits among Field's other ways of making a sound, see
 [Making a Sound, Every Path There Is](sound_paths.md).

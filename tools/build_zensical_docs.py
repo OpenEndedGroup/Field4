@@ -106,6 +106,30 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def libpd_library_path(repo_root: Path) -> Path:
+    """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
+
+    TetGen's shape again: `tools/build_libpd_native.py` builds the multi-instance libpd into
+    this repo's `build/`, with a `Release/` variant for CMake's multi-config layout on
+    Windows. Only the environment override is honoured; `-Dafield.pd.library` is a JVM
+    property this process cannot see.
+    """
+    override = os.environ.get("AFIELD_PD_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "libpd-multi.dll"
+    elif sys.platform == "darwin":
+        name = "libpd-multi.dylib"
+    else:
+        name = "libpd-multi.so"
+    candidates = [
+        repo_root / "build" / "field-libpd" / "build" / "libs" / name,
+        repo_root / "build" / "field-libpd" / "build" / "libs" / "Release" / name,
+    ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 def browser_bridge_library_path(repo_root: Path) -> Path:
     """Where `BrowserHandleTransport.forThisPlatform` will look, from Python.
 
@@ -264,6 +288,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "jep": (

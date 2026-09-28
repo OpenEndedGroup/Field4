@@ -3513,7 +3513,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, the native browser bridge and the Electron runtime are built here; Manifold and
+// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
 // cache owned by tools/native_download_cache.py.
@@ -3529,7 +3529,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildFieldBrowserBridge, electronInstall)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
