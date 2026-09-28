@@ -37,7 +37,7 @@ axis. `language_extensions.md:267-278` ("When To Promote") is the route decision
 
 ### Who is on which route
 
-There are **9** registered main languages (Route B). The list is derived, not curated — it is every
+There are **10** registered main languages (Route B). The list is derived, not curated — it is every
 call to `registerMainLanguageRuntime`:
 
 | id | `BoxExecution` | site | anchor |
@@ -51,6 +51,7 @@ call to `registerMainLanguageRuntime`:
 | `forth` | `ForthExecution` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:23` | `class ForthExecution` |
 | `remotejs` | `RemoteJSExectution` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:446` | `class RemoteJSExectution` |
 | `datalog` | `DatalogExecution` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:44` | `class DatalogExecution` |
+| `pd` | `PdExecution` | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt:51` | `class PdExecution` |
 
 and the `registerMainLanguageRuntime` call each one makes:
 
@@ -65,8 +66,9 @@ and the `registerMainLanguageRuntime` call each one makes:
 | `forth` | `src/jvmMain/kotlin/afield/forth/ForthInterface.kt:264` | `id = "forth"` |
 | `remotejs` | `src/jvmMain/kotlin/afield/remotejs/RemoteJS.kt:145` | `id = "remotejs"` |
 | `datalog` | `src/jvmMain/kotlin/afield/datalog/DatalogInterface.kt:280` | `id = "datalog"` |
+| `pd` | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt:269` | `id = "pd"` |
 
-Kotlin is the ninth and is the *absence* of an entry: `mainLanguage = null` means Kotlin
+Kotlin is the eleventh and is the *absence* of an entry: `mainLanguage = null` means Kotlin
 (`MainLanguageRegistry.kt:51-56`), so there is no `KotlinExecution` runtime registered here.
 
 **RectSL, StackSL and Brief are not on this list**, and that is the single most useful fact on this
@@ -269,8 +271,8 @@ rank; it returns everything and `rankItems` scores by fuzzy match, category weig
 server-supplied `contextScore` (`fieldSuggest.js:734-783`). So a server-side engine's leverage is in
 what it *knows*, not in what order it answers.
 
-Field's suggest widget serves **16** languages: `bend`, `brief`, `clojure`, `datalog`, `fieldml`,
-`forth`, `glsl`, `kotlin`, `kotlinjs`, `morphohdl`, `nano`, `python`, `rectsl`, `slang`, `stacksl`,
+Field's suggest widget serves **17** languages: `bend`, `brief`, `clojure`, `datalog`, `fieldml`,
+`forth`, `glsl`, `kotlin`, `kotlinjs`, `morphohdl`, `nano`, `pd`, `python`, `rectsl`, `slang`, `stacksl`,
 `yaml` (`fieldSuggest.js:8-25`). Note `rectsl`, `stacksl` and `brief` are in that set despite being
 Route A — being in `DEFAULT_LANGUAGES` is about *which widget* handles the caret, not about where the
 items come from.
@@ -305,10 +307,10 @@ write a Monarch grammar for a language Monaco already knows.
 
 ### The editor's language modules
 
-**17** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
+**18** editor language modules load at boot (`bootstrapMonaco.js:45-50`): `bithero/glsl`,
 `bithero/slang`, `bithero/msl`, `bithero/forth`, `bithero/fieldml`, `bithero/languageExtensions`,
 `bithero/stacksl`, `bithero/rectsl`, `bithero/datalog`, `bithero/fnrewrite`, `bithero/sonicpi`, `bithero/faust`,
-`bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`.
+`bithero/nano`, `bithero/kotlinjs`, `bithero/morpho`, `bithero/petri`, `bithero/brief`, `bithero/pd`.
 
 That list is the honest census of the editor's language surface, and it does not line up with the
 main-language list: `msl`, `stacksl`, `rectsl`, `fnrewrite`, `brief`, `sonicpi` and `faust` have
@@ -641,14 +643,14 @@ bound what "this page is checked" means.
    concurrent branch touched and could not be made path-disjoint from anybody
    (see `dev_docs/citation_contracts.md`). A `|` in an anchor is written `\|` and unescaped by the test.
 2. **Derived counts.** Four numbers on this page are computed from the code and compared to the prose:
-   the **9** main languages (scraped from `registerMainLanguageRuntime` call sites), the **17** editor
-   language modules (from `FIELD_LANGUAGE_MODULES`), the **16** languages the suggest widget serves
+   the **10** main languages (scraped from `registerMainLanguageRuntime` call sites), the **18** editor
+   language modules (from `FIELD_LANGUAGE_MODULES`), the **17** languages the suggest widget serves
    (from `DEFAULT_LANGUAGES`), and the **8** optional hooks (from `callExtension` calls). Each also
    asserts the individual names appear on the page, so adding a language fails the build until it is
    documented here.
 3. **The Monaco-provider claim.** `msl.js` must remain the only editor resource registering a Monaco
    completion provider.
-4. **Table sizes.** **137** checked citations and **9** coverage guards, both asserted, so deleting a
+4. **Table sizes.** **139** checked citations and **9** coverage guards, both asserted, so deleting a
    ledger row is as loud as breaking one.
 5. **Cross-registry consistency.** The only checks here that compare code to *code* rather than to
    prose, and the only ones that can fail with this page perfectly accurate. For every registered main

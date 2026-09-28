@@ -231,15 +231,17 @@ class PdInstance(
      * The text is written to a temporary folder and opened from there, because libpd opens files and
      * nothing else. A leading blank line and common indentation are removed, so a `"""` literal can
      * sit indented in a box. A missing `#N canvas` header is supplied.
+     *
+     * @param source the text problems are placed against, when it is not [text] itself
      */
-    fun openPatchText(text: String, name: String = "inline"): PdPatch {
+    fun openPatchText(text: String, name: String = "inline", source: String = text): PdPatch {
         val cleaned = normalisePatchText(text)
         val dir = Files.createTempDirectory("field-pd-").toFile().apply { deleteOnExit() }
         val safe = name.filter { it.isLetterOrDigit() || it == '_' || it == '-' }.ifEmpty { "inline" }
         val file = File(dir, "$safe.pd")
         file.writeText(cleaned)
         file.deleteOnExit()
-        return openPatch(file, text)
+        return openPatch(file, source)
     }
 
     private fun drainPrintsForOpen(): List<String> {

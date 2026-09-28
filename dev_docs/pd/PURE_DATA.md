@@ -1,0 +1,83 @@
+# Pure Data (libpd) in Field — design notes and measurements
+
+Added 2026-09-28. User-facing page: `public/docs/pure_data.md`. Loadable scene:
+`dev_docs/pd/pure_data_demo.yaml` (replay with the backdoor:
+`macro write pure_data_demo --file dev_docs/pd/pure_data_demo.yaml` then `macro run pure_data_demo`).
+
+## Pieces
+
+| file | what |
+| --- | --- |
+| `tools/build_libpd_native.py`, `./gradlew buildLibpdNative` | shallow clone of libpd tag `0.16.1` + `pure-data` submodule into `~/Library/Caches/Field4/native-downloads/libpd/` (per-user, shared by worktrees, survives `clean`), verified against pinned commits (libpd `ba0dc632…`, pure-data `f009fd8d…`), cmake build with `PD_MULTI=ON` into `build/field-libpd/build/libs/libpd-multi.dylib`. ~1 min cold on an M-series Mac; `otool -L` shows only libSystem. |
+| `src/jvmMain/kotlin/afield/pd/PdNative.kt` | `PdLibrary` (locate: `-Dafield.pd.library`, `AFIELD_PD_LIBRARY`, then `build/field-libpd/…`) and `PdNative`: FFM downcalls for `z_libpd.h`, upcall stubs for the print/bang/float/symbol/list/message hooks. No wrapper library. |
+| `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | `PdInstance` (one `t_pdinstance`), `PdPatch`, `PdNode : StereoNode` — the seam entry. |
+| `src/jvmMain/kotlin/afield/pd/PdPatchGraph.kt` | the patch text as a graph (object indices as Pd counts them, subpatches as one object), line descriptions, FLine drawing, `statementsOnly`. |
+| `src/jvmMain/kotlin/afield/pd/PdLanguage.kt` | `PdExecution`: Pd as a Main Language; message lines as fragments; LineNotes provider. |
+| `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler. |
+
+## Thread discipline
+
+libpd is not thread-safe. In a `PD_MULTI` build the *current* instance is a thread-local inside libpd,
+so every call is made under the `PdInstance`'s own lock after `libpd_set_instance`.
+
+- Messages to Pd are queued lock-free (`ConcurrentLinkedQueue` of closures) and drained by whichever
+  thread calls `render` — the `FieldAudioEngine` thread live, the caller offline — at the top of the
+  next block, in order. A slider on the main thread never enters libpd.
+- libpd's hooks fire on the rendering thread, inside `libpd_process_float` or a send. They only queue
+  (and must not throw: an exception through an FFM upcall aborts the VM, so every hook is wrapped).
+  `poll()` delivers them on the thread that asks. The box launch loop polls every main-loop frame, so
+  receive lambdas run on `field-runloop-main` — observed live, see below.
+- Structural calls (open/close patch, arrays) take the render lock briefly.
+- `close()` takes the lock, frees the instance, then closes the arena holding the upcall stubs. A
+  render that arrives after close outputs silence rather than touching freed memory, so the order in
+  which the audio registration and the instance are closed does not matter.
+
+Print output arrives in fragments; lines are reassembled on `\n` in Kotlin rather than with libpd's
+`z_print_util` concatenator.
+
+## Measurements (jvmTest `afield.pd.PdTest`, 11 tests, and `PdPatchGraphTest`, 6)
+
+All run against the built library on 2026-09-28; they print `SKIPPED` and pass when it is absent.
+
+- `[osc~ 440] → [*~ 0.25] → [dac~]`, 48 kHz, 1 s: **440** upward zero crossings (asserted ±1), peak
+  0.25 and RMS 0.25/√2 (asserted ±0.002), L == R bit-for-bit.
+- Rendering 300 frames as 1+63+100+136 equals one 300-frame render sample-for-sample (Pd works in
+  64-frame blocks; the remainder carries over).
+- `[r in] → [+ 1] → [s out]`: send 41 → receive 42.0; nothing is delivered on the sender's stack
+  before `flush()`/`render`.
+- Arrays: write at an offset, read back, resize; a patch's `[tabplay~]` plays back a ramp Field
+  wrote, exact to 1e-6 per sample.
+- Two instances with the same `[r in]`/`[s out]` names are isolated.
+- A patch with `[osc 440]` reports `Pd couldn't create [osc 440]` on line 1 of its source.
+- A headless `hsl` still forwards what it receives (and does **not** clip it to its range — 5000 in,
+  5000 out, for a 100–1000 slider).
+
+Live, through the backdoor on port 9530 (a Kotlin box `pd(...)` with a `[metro 250]` counter sent to
+`[s tick]`): `pong 42.0` and `Pd: got: 42` in the box output, ticks arriving at four per second on
+thread `field-runloop-main` (so the audio engine was pulling blocks in real time), and none after
+`stop`. The demo scene's six boxes were each run: see the worklog of that night.
+
+## Traps hit
+
+- **`val (left, _) = …` at the top level of a box never completes** under the K2 REPL: no compile
+  error, no output, and the backdoor reports "Execution did not complete". `val (left, right) = …`
+  works. This is a REPL defect, not a Pd one; the demo avoids it and says so in a comment.
+- Pd 0.55 prefixes each line of a creation error with `error: ` and sometimes `verbose(0): `, then
+  prints `... couldn't create` on its own line. `PdPatch.problemsIn` strips both prefixes.
+- A `.pd` file is a sequence of messages: a bare `freq 440;` statement in one would be *sent* while it
+  loads. The Pd box language keeps message lines and `//` comments in the box, so
+  `PdPatchGraph.statementsOnly` blanks every statement that does not start with `#` (continuation
+  lines of a `#` statement are kept) before Pd sees the text, line for line.
+- `audio(pd.node)` with no `gain` is ambiguous between the `Float` and `Param` overloads — spell
+  `gain = 1f`.
+- Adding a path to `SoundPathMap` moves prose numerals on `sound_paths.md`, `sound.md` and
+  `chain_pattern_particles.md` that no guard reads; they were moved by hand (nine sources, twelve of
+  eighteen on the seam).
+
+## Not done
+
+- MIDI hooks (`libpd_set_noteonhook` …) are not bound.
+- Compiled externals are not loaded (Pd's `extra` is compiled in).
+- The docs build does not build libpd (`buildDocsNativePrerequisites`), so `pure_data.md` has no
+  captured figures.
+- Windows/Linux: the build script and library naming are written for them and untested.

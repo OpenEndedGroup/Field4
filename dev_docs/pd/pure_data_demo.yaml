@@ -1,0 +1,176 @@
+name: pure_data_demo
+description: |
+  **Pure Data inside Field.** Six boxes: a Kotlin root whose children are Pd, three Pd boxes, and
+  two Kotlin boxes that drive a patch from Kotlin.
+
+    - **status** (the root, Kotlin) — says whether libpd is built. Everything below needs it:
+      `./gradlew buildLibpdNative` once (cmake, git, and the network the first time).
+    - **drone** (Pd) — the box's text *is* the patch. Launch it to hear a filtered sawtooth; then
+      select a message line such as `freq 330` or `cutoff 3000` and run just that line.
+    - **round trip** (Pd) — `[r in] → [+ 1] → [s out]`. Run the line `in 41`: `[print]` prints 42,
+      and the line note on `[s out]` shows the last value through it.
+    - **typo** (Pd) — `[osc 440]` for `[osc~ 440]`. Pd's "couldn't create" lands on that line.
+    - **from Kotlin** — `pd("""…""")`: sliders made from the patch's own `hsl`, a wavetable
+      written into a Pd array from Kotlin, and `[s level]` arriving back in a Kotlin lambda.
+    - **offline** — renders a patch with no audio device, measures its frequency and amplitude
+      from the samples, reads back an array Pd recorded, and draws the patch.
+operations:
+  - create:
+      box: pd_root
+      name: "status — children of this box are Pure Data"
+      frame: { x: 40.0, y: 40.0, w: 360.0, h: 90.0 }
+      properties:
+        mainLanguage: pd
+        isPdRoot: true
+        code: |
+          // This root stays Kotlin; its `mainLanguage` makes the three boxes under it Pd.
+          println(afield.pd.PdLibrary.describe())
+  - create:
+      box: pd_drone
+      name: "drone"
+      frame: { x: 40.0, y: 240.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Pd
+        code: |
+          // This text is the patch. Launch the box, then run one of these lines on its own:
+          freq 110
+          freq 330
+          cutoff 400
+          cutoff 3000
+          #N canvas 0 0 500 320 12;
+          #X obj 20 20 r freq;
+          #X msg 20 50 \$1 200;
+          #X obj 20 80 line~;
+          #X obj 20 110 phasor~;
+          #X obj 20 140 lop~ 1200;
+          #X obj 140 110 r cutoff;
+          #X obj 20 170 *~ 0.08;
+          #X obj 20 210 dac~;
+          #X obj 240 20 loadbang;
+          #X msg 240 50 220;
+          #X obj 240 80 print drone;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 2 0 3 0;
+          #X connect 3 0 4 0;
+          #X connect 5 0 4 1;
+          #X connect 4 0 6 0;
+          #X connect 6 0 7 0;
+          #X connect 6 0 7 1;
+          #X connect 8 0 9 0;
+          #X connect 9 0 1 0;
+          #X connect 9 0 10 0;
+  - create:
+      box: pd_roundtrip
+      name: "round trip"
+      frame: { x: 700.0, y: 240.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Pd
+        code: |
+          // Launch, then run "in 41": [+ 1] sends 42 to [s out] and [print] prints it.
+          in 41
+          in 99
+          #N canvas 0 0 400 250 12;
+          #X obj 20 20 r in;
+          #X obj 20 60 + 1;
+          #X obj 20 100 s out;
+          #X obj 120 100 print out;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 1 0 3 0;
+  - create:
+      box: pd_typo
+      name: "typo"
+      frame: { x: 1360.0, y: 240.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Pd
+        code: |
+          // [osc 440] is not a Pd object ([osc~ 440] is). Launch: the error is on its line.
+          #N canvas 0 0 400 250 12;
+          #X obj 20 20 osc 440;
+          #X obj 20 60 dac~;
+          #X connect 0 0 1 0;
+  - create:
+      box: pd_kotlin
+      name: "from Kotlin"
+      frame: { x: 40.0, y: 1000.0, w: 360.0, h: 120.0 }
+      properties:
+        code: |
+          // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
+          val patch = pd("""
+          #N canvas 0 0 520 300 12;
+          #X obj 20 20 hsl 128 15 55 440 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
+          #X msg 20 50 \$1 40;
+          #X obj 20 80 line~;
+          #X obj 20 110 tabosc4~ wave;
+          #X obj 20 140 *~ 0.1;
+          #X obj 20 180 dac~;
+          #X obj 220 20 table wave 2051;
+          #X obj 220 140 env~ 8192;
+          #X obj 220 180 s level;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 2 0 3 0;
+          #X connect 3 0 4 0;
+          #X connect 4 0 5 0;
+          #X connect 4 0 5 1;
+          #X connect 4 0 7 0;
+          #X connect 7 0 8 0;
+          """)
+
+          // tabosc4~ wants 2^n + 3 points: one guard point before, two after.
+          val partials = listOf(1.0, 0.5, 0.33, 0.25, 0.2, 0.16)
+          val wave = FloatArray(2051) { i ->
+              val phase = 2 * PI * (i - 1) / 2048
+              (partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * phase) } * 0.4).toFloat()
+          }
+          patch.writeArray("wave", wave)
+          println("wrote ${patch.arraySize("wave")} points into [table wave]")
+
+          pdControls(patch)          // one slider, from the patch's own hsl
+          patch.send("pitch", 110)
+
+          var n = 0
+          patch.receive("level") { m ->
+              // env~ reports in dB, 100 = full scale; this lambda runs on Field's main thread.
+              if (n++ % 10 == 0) display("level", "<div style='padding:8px'>[s level] ${"%.1f".format(m.float ?: 0f)} dB</div>")
+          }
+          patch
+  - create:
+      box: pd_offline
+      name: "offline"
+      frame: { x: 1000.0, y: 1000.0, w: 360.0, h: 120.0 }
+      properties:
+        code: |
+          // No audio device: render one second, measure it, read back what Pd recorded.
+          val text = """
+          #N canvas 0 0 400 260 12;
+          #X obj 20 20 osc~ 440;
+          #X obj 20 60 *~ 0.25;
+          #X obj 20 100 dac~;
+          #X obj 160 100 tabwrite~ scope;
+          #X obj 160 20 loadbang;
+          #X obj 260 60 table scope 240;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 1 0 2 1;
+          #X connect 1 0 3 0;
+          #X connect 4 0 3 0;
+          """
+          val pd = afield.pd.PdInstance(sampleRate = 48000)
+          pd.openPatchText(text)
+          // Not `val (left, _) = …`: a top-level `_` in a destructuring never completes in a box.
+          val (left, right) = pd.renderOffline(1.0)
+          val scope = pd.readArray("scope")
+          pd.close()
+
+          val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
+          val peak = left.maxOf { abs(it) }
+          println("$ups upward zero crossings in 1 s, peak ${"%.4f".format(peak)}, channels equal: ${left.contentEquals(right)}")
+          showSignals("tabwrite~ scope" to scope.toList(), channel = "scope", title = "[table scope], recorded by Pd")
+          lines(afield.pd.PdPatchGraph.parse(text).toFLines(), channel = "patch", w = 420.0, h = 200.0, fitToSize = true)
+  - connect: { parent: pd_root, child: pd_drone }
+  - connect: { parent: pd_root, child: pd_roundtrip }
+  - connect: { parent: pd_root, child: pd_typo }
+  - execute: { box: pd_root, property: code }
+  - await: {}

@@ -87,7 +87,7 @@ class SoundPathMapGuardTest {
     /**
      * Every path a `page` claims is a page that exists, and every path with no page is a real gap.
      *
-     * The `null`s are the finding, so they are pinned: five of the seventeen paths have no published
+     * The `null`s are the finding, so they are pinned: five of the eighteen paths have no published
      * page, `audio-patch-seam` — the seam the whole realtime stack is built on — among them.
      *
      * Five, not six, after `pat-spatial` arrived: it was declared and documented in the same change,
