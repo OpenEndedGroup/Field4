@@ -13,7 +13,7 @@ a RectSL scene — whose AI4 chat has the study's tools. This module is everythi
            ``adopt LABEL``, ``keep KNOB VALUE``, ``checkin`` click the study card in Field's
            server-owned browser; ``edit OLD NEW`` writes the program through the editor's sync path;
            ``cursor LINE`` selects the box and puts the editor's cursor on that line, where Inspect's
-           ``personAt`` then reports it.
+           ``personAt`` then reports it; ``run`` runs the study box again, as a person would.
            Each action is kept as ``conversations/<label>.human.json``.
 
 and, for the per-demo packagers, the transcript page renderer, the deterministic zip, the listing
@@ -63,12 +63,21 @@ class Study:
     edit_tool: str
     window_box: str | None = None
     card: str | None = None  # CSS selector of the study card, for person-side actions
+    # A stack.auto slot study: the slot every Inspect names (a box with two slots has two studies),
+    # and the box that owns the window, which a slot box does not open itself.
+    slot: str | None = None
+    renderer_box: str | None = None
 
 
 STUDIES = {
     "function": Study("function_source", "code", "InspectFunctionStudy", "EditFunctionStudy"),
     "stacksl": Study("stacksl_source", "stackSL", "InspectStackSLStudy", "EditStackSLStudy", "stacksl_window", ".stacksl-study"),
     "rectsl": Study("rectsl_source", "rectSL", "InspectRectSLStudy", "EditRectSLStudy", "rectsl_window", ".rectsl-study"),
+    # StackSL inside a box's own shaders: two slots of one polytope box, one conversation each.
+    "stackauto-explode": Study("polytope_source", "code", "InspectStackAutoSlot", "EditStackAutoSlot", "polytope_renderer",
+                               ".stack-auto-card", slot="explode", renderer_box="polytope_renderer"),
+    "stackauto-decay": Study("polytope_source", "code", "InspectStackAutoSlot", "EditStackAutoSlot", "polytope_renderer",
+                             ".stack-auto-card", slot="face_decay", renderer_box="polytope_renderer"),
 }
 
 DATA_URL = re.compile(r"data:image/(png|jpeg);base64,([A-Za-z0-9+/=]+)")
@@ -118,7 +127,12 @@ async def _open(fb, document: Path, port: int, study: Study, label: str, what: s
         # since it autoruns — and it stays up between invocations (keepRunning). A study box that is
         # not running (its window was closed, which stops it) is started again, reopening the window.
         status = await fb.dispatch_command(client, fb.parse_command("status"), "status")
-        lines = [] if study.box in (status.get("data") or {}).get("runningBoxes", []) else [f"launch {study.box} --timeout 120"]
+        running = (status.get("data") or {}).get("runningBoxes", [])
+        lines = []
+        # A slot box draws under a renderer box, which must be up first.
+        if study.renderer_box and study.renderer_box not in running:
+            lines += [f"launch {study.renderer_box} --timeout 120", f"wait-native-renderer {study.renderer_box} --frames 3 --timeout 120"]
+        lines += [] if study.box in running else [f"{'run' if study.slot else 'launch'} {study.box} --timeout 120"]
         for line in lines + [f"wait-native-renderer {study.window_box} --frames 5 --timeout 120"]:
             result = await fb.dispatch_command(client, fb.parse_command(line), line)
             if not result["ok"]:
@@ -129,7 +143,7 @@ async def _open(fb, document: Path, port: int, study: Study, label: str, what: s
 async def _inspect(client, study: Study) -> dict:
     last = None
     for _ in range(30):
-        last = await client.ai_tool_call(name=study.inspect_tool, arguments={}, timeout=120, focus_box=study.box)
+        last = await client.ai_tool_call(name=study.inspect_tool, arguments={"slot": study.slot} if study.slot else {}, timeout=120, focus_box=study.box)
         if last.get("ok") and last.get("result"):
             return last["result"]
         await asyncio.sleep(1)
@@ -186,6 +200,8 @@ async def record_turn(study: Study, document: Path, label: str, prompt: str, por
         # — every comparison the model cited as proof — can be replayed later.
         tool_logs = Path.home() / ".afield/logs/ai4_tool_io"
         fresh = [p for p in tool_logs.glob("*.jsonl") if p.stat().st_mtime >= wall_start] if tool_logs.is_dir() else []
+        # The fast model's side calls (naming a card's knobs, naming the box) write logs of their own, without tools.
+        fresh = [p for p in fresh if '"tool_call"' in p.read_text()]
         if len(fresh) == 1:
             (output / "tool-io").mkdir(exist_ok=True)
             (output / "tool-io" / (label + ".jsonl")).write_text(fresh[0].read_text())
@@ -240,6 +256,14 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
             if placed["line"] != line:
                 raise RuntimeError(f"the editor's cursor did not stay on line {line}: {placed}")
             detail = {"surface": "the editor, in Field's browser", "line": line, "text": placed["text"]}
+        elif action == "run":
+            # The box run again, as a person runs it: its Kotlin re-executes, which is what a change to
+            # its mesh or to what its shaders are given needs. The run's own verdict must be ok.
+            line = f"run {study.box} --timeout 180"
+            result = await fb.dispatch_command(client, fb.parse_command(line), line)
+            if not result["ok"]:
+                raise RuntimeError(line + ": " + json.dumps(result.get("data"))[:2000])
+            detail = {"surface": "Field's run command on the box (through the backdoor)", "ran": study.box}
         elif action == "edit":
             old, new = values
             source = await client.get_property(uid=study.box, property_name=study.property, timeout=30)
@@ -278,7 +302,7 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
         while time.monotonic() < deadline:
             await asyncio.sleep(1)
             after = await _inspect(client, study)
-            if after.get("revision") != before.get("revision") or action in ("edit", "cursor"):
+            if after.get("revision") != before.get("revision") or action in ("edit", "cursor", "run"):
                 break
         record = {"label": label, "action": action, **detail,
                   "revisionBefore": before.get("revision"), "revisionAfter": after.get("revision"),
@@ -287,7 +311,7 @@ async def act(study: Study, document: Path, label: str, action: str, values: lis
         # An action that did not take is not kept, so its label can be used again.
         if action == "cursor" and ((after.get("facts") or {}).get("personAt") or {}).get("line") != int(values[0]):
             raise RuntimeError(f"Inspect does not report the person at line {values[0]}: {(after.get('facts') or {}).get('personAt')}")
-        if action not in ("edit", "cursor") and after.get("revision") == before.get("revision"):
+        if action not in ("edit", "cursor", "run") and after.get("revision") == before.get("revision"):
             raise RuntimeError("The card action did not produce a revision; see the card's status line")
         target.write_text(json.dumps(record, indent=2))
         return record
@@ -465,7 +489,7 @@ def main() -> None:
         if name == "record":
             sub.add_argument("--prompt-file", required=True)
         else:
-            sub.add_argument("action", choices=["adopt", "keep", "edit", "checkin", "cursor"])
+            sub.add_argument("action", choices=["adopt", "keep", "edit", "checkin", "cursor", "run"])
             sub.add_argument("values", nargs="*")
     args = parser.parse_args()
     study = STUDIES[args.study]

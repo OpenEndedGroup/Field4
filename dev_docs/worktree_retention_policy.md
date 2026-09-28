@@ -105,6 +105,20 @@ Alongside these, `ORPHANED` still reports worktree-shaped directories that have 
 `git worktree list` — the residue of git unregistering a worktree before it finishes deleting it.
 Nothing reclaims those automatically and the report is the only way they resurface.
 
+**The Finder race, and why `--apply` now finishes what git starts.** On 2026-09-28, with a Finder
+window open on `field4-worktrees`, six of seven removals orphaned: Finder writes `.DS_Store` into
+directories while `git worktree remove` empties them, and git stops at the first "Directory not
+empty", after unregistering, with half the tree still there (2.11 of 4.39 GiB in one). The sweep
+before the attempt cannot win a race that happens during it. So when git abandons a removal it has
+already unregistered, `finish_interrupted_removal` re-sweeps, removes and retries (6 attempts, 0.5 s
+apart) — for that one candidate, which this run has just verified clean, merged, idle and free of
+live cwds, and only after re-checking that it sits directly under a worktree root, is not the repo,
+has a gitfile `.git` or none (never a directory), and has no live cwd inside. That is finishing git's
+own deletion, not a force mode. Orphans found by the startup scan are still only reported.
+Reproduced end to end against a throwaway repo with a thread playing Finder: the old code orphaned
+2 of 2 runs, with real files left; the new code finished 2 of 2, in 2 attempts each. The unit tests
+are `FinishInterruptedRemovalTests` in `tools/test_reap_merged_worktrees.py`.
+
 ## Measured effect
 
 Dry runs against the live 68-worktree set, 2026-09-09, `--disk-floor-gib 19`:

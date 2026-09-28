@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15632 public symbols across 422 source files**, 9276 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15638 public symbols across 422 source files**, 9278 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -12,7 +12,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | --- | --- | --- | --- | --- |
 | [Math](math.md) | 18 | 1586 | 1202 (75%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 703 | 355 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
-| [Graphics](graphics.md) | 32 | 1472 | 1237 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
+| [Graphics](graphics.md) | 32 | 1473 | 1238 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 30 | 657 | 314 (47%) | Turning a scene into pixels on a Vulkan device. |
 | [Polytopes](polytopes.md) | 17 | 581 | 426 (73%) | Polyhedra as topology first and coordinates second. |
 | [Solvers](solvers.md) | 4 | 657 | 270 (41%) | Nonlinear least squares, aimed at geometry. |
@@ -26,7 +26,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 102 | 2807 | 1246 (44%) | Field's small languages, from the host side. |
+| [Languages](languages.md) | 102 | 2812 | 1247 (44%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 11 | 168 | 138 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
@@ -378,7 +378,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SemanticSearchManager.kt](data.md#semanticsearchmanager-kt) | Data | 38 | 0 | Box-facing wrapper around `afield.ai.SemanticRetrievalService`, Field's embedding-based search over source, docs and workspace boxes. |  |
 | [Sequencing.kt](patterns.md#sequencing-kt) | Patterns | 54 | 4 | Notes with times on them, and a lazy player for a stream of them. | [Boolean network music examples](../boolean_network_music_examples.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [ShaderBoids.kt](simulation.md#shaderboids-kt) | Simulation | 37 | 37 | Reynolds boids as a Vulkan compute shader, over a GPU neighbour grid, with the interaction rule swappable for a trained network. | [Neural particle systems](../neural_particles.md) |
-| [shaders.kt](graphics.md#shaders-kt) | Graphics | 180 | 180 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [A learned shader function](../learned_shader.md), [Running code in a box](../running_code.md) |
+| [shaders.kt](graphics.md#shaders-kt) | Graphics | 181 | 181 | The bridge between a box's text and a live Vulkan pipeline: shader source lives in box properties, and this file turns it into modules and keeps them hot-reloading. | [afield.four Graphics](../afield_four_graphics.md), [A learned shader function](../learned_shader.md), [Running code in a box](../running_code.md) |
 | [Signal.kt](synthesis.md#signal-kt) | Synthesis | 104 | 28 | The value types the rest of the synthesis category is written in, and the per-block contract they render under. | [Making a sound in Field: every path there is](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md) |
 | [SignalViewer.kt](visualization.md#signalviewer-kt) | Visualization | 35 | 12 |  | [A function, played and read back](../chain_fn_sound_roundtrip.md), [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [SimdVerlet.kt](simulation.md#simdverlet-kt) | Simulation | 31 | 18 | The particle solver: structure-of-arrays Verlet integration, directed distance constraints, and the vector kernels that run both. |  |
@@ -410,8 +410,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SplatSequence.kt](renderers.md#splatsequence-kt) | Renderers | 28 | 22 | Playing a splat capture over time: the frame reader, the play head, and the box controls that drive it. |  |
 | [StackAutoCard.kt](languages.md#stackautocard-kt) | Languages | 5 | 5 |  |  |
 | [stackAutoNumbers.kt](graphics.md#stackautonumbers-kt) | Graphics | 24 | 24 |  |  |
-| [StackAutoStudy.kt](languages.md#stackautostudy-kt) | Languages | 20 | 18 |  |  |
-| [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 17 | 3 |  | [StackSL examples](../stacksl_examples.md) |
+| [StackAutoStudy.kt](languages.md#stackautostudy-kt) | Languages | 21 | 19 |  |  |
+| [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 21 | 3 |  | [StackSL examples](../stacksl_examples.md) |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 71 | 11 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |

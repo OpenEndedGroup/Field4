@@ -1,0 +1,12 @@
+{
+  "id" : "r2-2145de178a28",
+  "parent" : "r1-d5de05fe435a",
+  "description" : "Distance-driven hot metal: dark iron at home, bright orange at full extension",
+  "created" : "2026-09-28T18:49:29.567891Z",
+  "sourceHash" : "2145de178a285c4f0ce7cee07b885527868a82c5935feac0a99c888c4265287f",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 11
+  }
+}

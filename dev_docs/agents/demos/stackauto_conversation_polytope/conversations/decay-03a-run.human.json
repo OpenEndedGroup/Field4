@@ -1,0 +1,171 @@
+{
+  "label": "decay-03a-run",
+  "action": "run",
+  "surface": "Field's run command on the box (through the backdoor)",
+  "ran": "polytope_source",
+  "revisionBefore": "r6-1d055e9b75e6",
+  "revisionAfter": "r6-1d055e9b75e6",
+  "dirtyAfter": null,
+  "before": {
+    "revision": "r6-1d055e9b75e6",
+    "facts": {
+      "slot": "face_decay",
+      "revision": "r6-1d055e9b75e6",
+      "sourceHash": "1d055e9b75e6ab0ef0a702a5b6fe532db240235b159fb9153d0c6e5e10b6604a",
+      "source": "# Heat follows outward travel\ninput z\n0.65 /\n0 max\n1 min\nsmooth\n# Dark iron to incandescent orange\n[1.355,0.23,-0.037,0] *\n[0.045,0.05,0.055,0] +\n# Host polygon radius: zero at centre, one at the real perimeter\ninput w\n# Deep, stable tears in the remaining rim\ninput xy\n13 *\nfbm\n0.42 *\n+\n0.015 +\n# Eat most of the interior while far out; fully heal on return\ninput z\n0.65 /\n0.55 -\n0.30 /\n0 max\n1 min\nsmooth\n1.07 *\n-\n# Keep a narrow outer thread even at the deepest tears\ninput w\n0.975 -\nmax\n# Host discards alpha below 0.5\n10 *\n0.5 +\n[0,0,0,1] *\n+",
+      "live": {
+        "revision": "r6-1d055e9b75e6",
+        "liveSourceHash": "1d055e9b75e6ab0ef0a702a5b6fe532db240235b159fb9153d0c6e5e10b6604a",
+        "dirty": false,
+        "liveSource": null
+      },
+      "entrypoint": null,
+      "host": [
+        "fragment:10: // face_decay(vec4(place on the face xy, outward travel, polygon radius)):",
+        "fragment:13: {{ stack.auto.face_decay }}",
+        "fragment:16: vec4 d = face_decay(vec4(vLocal.xy * 3.0 + 0.5, vAway, vRadius));"
+      ],
+      "hostMeaning": "The host shader calls face_decay(vec4) and uses what it returns; its input and the use of its output are in these lines, not in StackSL's own frame.",
+      "drawnTo": [
+        "the window"
+      ],
+      "problems": null,
+      "warnings": null,
+      "knobs": [
+        "k0 L3:1 0.65 \u2192 safe divide b [heat color range]",
+        "k1 L4:1 0 \u2192 max b [minimum heat color]",
+        "k2 L5:1 1 \u2192 min b [maximum heat color]",
+        "k3 L8:2 [1.355,0.23,-0.037,0] \u2192 multiply b [red heat brightness]",
+        "k4 L8:8 [1.355,0.23,-0.037,0] \u2192 multiply b [green heat brightness]",
+        "k5 L8:13 [1.355,0.23,-0.037,0] \u2192 multiply b [blue heat brightness]",
+        "k6 L8:20 [1.355,0.23,-0.037,0] \u2192 multiply b [heat opacity]",
+        "k7 L9:2 [0.045,0.05,0.055,0] \u2192 add b [red iron brightness]",
+        "k8 L9:8 [0.045,0.05,0.055,0] \u2192 add b [green iron brightness]",
+        "k9 L9:13 [0.045,0.05,0.055,0] \u2192 add b [blue iron brightness]",
+        "k10 L9:19 [0.045,0.05,0.055,0] \u2192 add b [iron opacity]",
+        "k11 L14:1 13 \u2192 multiply b [tear pattern scale]",
+        "k12 L16:1 0.42 \u2192 multiply b [rim tear depth]",
+        "k13 L18:1 0.015 \u2192 add b [rim tear baseline]",
+        "k14 L21:1 0.65 \u2192 safe divide b [healing distance scale]",
+        "k15 L22:1 0.55 \u2192 subtract b [healing distance threshold]",
+        "k16 L23:1 0.30 \u2192 safe divide b [healing transition width]",
+        "k17 L24:1 0 \u2192 max b [minimum interior erosion]",
+        "k18 L25:1 1 \u2192 min b [maximum interior erosion]",
+        "k19 L27:1 1.07 \u2192 multiply b [interior erosion depth]",
+        "k20 L31:1 0.975 \u2192 subtract b [outer thread radius]",
+        "k21 L34:1 10 \u2192 multiply b [rim opacity strength]",
+        "k22 L35:1 0.5 \u2192 add b [rim opacity threshold]",
+        "k23 L36:2 [0,0,0,1] \u2192 multiply b [rim red channel]",
+        "k24 L36:8 [0,0,0,1] \u2192 multiply b [rim opacity]"
+      ],
+      "keys": null,
+      "history": [
+        {
+          "id": "r1-d5de05fe435a",
+          "description": "the slot's program as the box bound it"
+        },
+        {
+          "id": "r2-2145de178a28",
+          "description": "Distance-driven hot metal: dark iron at home, bright orange at full extension"
+        },
+        {
+          "id": "r3-75bf01122fde",
+          "description": "Ragged interior burn-through near maximum travel, healing on return; preserve iron-to-orange heat"
+        },
+        {
+          "id": "r4-c762b06a2147",
+          "description": "Much larger peak burn with coarse, deep torn edges and full healing at home"
+        },
+        {
+          "id": "r5-bf9185b8cc3c",
+          "description": "Widen peak openings further and sustain the torn-metal phase around maximum extension"
+        },
+        {
+          "id": "r6-1d055e9b75e6",
+          "description": "the slot's program as the box bound it"
+        }
+      ]
+    }
+  },
+  "after": {
+    "revision": "r6-1d055e9b75e6",
+    "facts": {
+      "slot": "face_decay",
+      "revision": "r6-1d055e9b75e6",
+      "sourceHash": "1d055e9b75e6ab0ef0a702a5b6fe532db240235b159fb9153d0c6e5e10b6604a",
+      "source": "# Heat follows outward travel\ninput z\n0.65 /\n0 max\n1 min\nsmooth\n# Dark iron to incandescent orange\n[1.355,0.23,-0.037,0] *\n[0.045,0.05,0.055,0] +\n# Host polygon radius: zero at centre, one at the real perimeter\ninput w\n# Deep, stable tears in the remaining rim\ninput xy\n13 *\nfbm\n0.42 *\n+\n0.015 +\n# Eat most of the interior while far out; fully heal on return\ninput z\n0.65 /\n0.55 -\n0.30 /\n0 max\n1 min\nsmooth\n1.07 *\n-\n# Keep a narrow outer thread even at the deepest tears\ninput w\n0.975 -\nmax\n# Host discards alpha below 0.5\n10 *\n0.5 +\n[0,0,0,1] *\n+",
+      "live": {
+        "revision": "r6-1d055e9b75e6",
+        "liveSourceHash": "1d055e9b75e6ab0ef0a702a5b6fe532db240235b159fb9153d0c6e5e10b6604a",
+        "dirty": false,
+        "liveSource": null
+      },
+      "entrypoint": null,
+      "host": [
+        "fragment:10: // face_decay(vec4(place on the face xy, outward travel, polygon radius)):",
+        "fragment:13: {{ stack.auto.face_decay }}",
+        "fragment:16: vec4 d = face_decay(vec4(vLocal.xy * 3.0 + 0.5, vAway, vRadius));"
+      ],
+      "hostMeaning": "The host shader calls face_decay(vec4) and uses what it returns; its input and the use of its output are in these lines, not in StackSL's own frame.",
+      "drawnTo": [
+        "the window"
+      ],
+      "problems": null,
+      "warnings": null,
+      "knobs": [
+        "k0 L3:1 0.65 \u2192 safe divide b [heat color range]",
+        "k1 L4:1 0 \u2192 max b [minimum heat color]",
+        "k2 L5:1 1 \u2192 min b [maximum heat color]",
+        "k3 L8:2 [1.355,0.23,-0.037,0] \u2192 multiply b [red heat brightness]",
+        "k4 L8:8 [1.355,0.23,-0.037,0] \u2192 multiply b [green heat brightness]",
+        "k5 L8:13 [1.355,0.23,-0.037,0] \u2192 multiply b [blue heat brightness]",
+        "k6 L8:20 [1.355,0.23,-0.037,0] \u2192 multiply b [heat opacity]",
+        "k7 L9:2 [0.045,0.05,0.055,0] \u2192 add b [red iron brightness]",
+        "k8 L9:8 [0.045,0.05,0.055,0] \u2192 add b [green iron brightness]",
+        "k9 L9:13 [0.045,0.05,0.055,0] \u2192 add b [blue iron brightness]",
+        "k10 L9:19 [0.045,0.05,0.055,0] \u2192 add b [iron opacity]",
+        "k11 L14:1 13 \u2192 multiply b [tear pattern scale]",
+        "k12 L16:1 0.42 \u2192 multiply b [rim tear depth]",
+        "k13 L18:1 0.015 \u2192 add b [rim tear baseline]",
+        "k14 L21:1 0.65 \u2192 safe divide b [healing distance scale]",
+        "k15 L22:1 0.55 \u2192 subtract b [healing distance threshold]",
+        "k16 L23:1 0.30 \u2192 safe divide b [healing transition width]",
+        "k17 L24:1 0 \u2192 max b [minimum interior erosion]",
+        "k18 L25:1 1 \u2192 min b [maximum interior erosion]",
+        "k19 L27:1 1.07 \u2192 multiply b [interior erosion depth]",
+        "k20 L31:1 0.975 \u2192 subtract b [outer thread radius]",
+        "k21 L34:1 10 \u2192 multiply b [rim opacity strength]",
+        "k22 L35:1 0.5 \u2192 add b [rim opacity threshold]",
+        "k23 L36:2 [0,0,0,1] \u2192 multiply b [rim red channel]",
+        "k24 L36:8 [0,0,0,1] \u2192 multiply b [rim opacity]"
+      ],
+      "keys": null,
+      "history": [
+        {
+          "id": "r1-d5de05fe435a",
+          "description": "the slot's program as the box bound it"
+        },
+        {
+          "id": "r2-2145de178a28",
+          "description": "Distance-driven hot metal: dark iron at home, bright orange at full extension"
+        },
+        {
+          "id": "r3-75bf01122fde",
+          "description": "Ragged interior burn-through near maximum travel, healing on return; preserve iron-to-orange heat"
+        },
+        {
+          "id": "r4-c762b06a2147",
+          "description": "Much larger peak burn with coarse, deep torn edges and full healing at home"
+        },
+        {
+          "id": "r5-bf9185b8cc3c",
+          "description": "Widen peak openings further and sustain the torn-metal phase around maximum extension"
+        },
+        {
+          "id": "r6-1d055e9b75e6",
+          "description": "the slot's program as the box bound it"
+        }
+      ]
+    }
+  }
+}

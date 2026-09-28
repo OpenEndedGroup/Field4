@@ -1,0 +1,12 @@
+{
+  "id" : "r3-a1887e0c3523",
+  "parent" : "r2-5b2a3ce81d87",
+  "description" : "Keep the downward 4.8-second wave; snap outward in 0.384 seconds, return over 2.4 seconds, shrinking faces by up to 25% in sync with travel.",
+  "created" : "2026-09-28T18:47:07.068420Z",
+  "sourceHash" : "a1887e0c3523de16598d0f8f8cf3b62aee9cda4ef8ed5120abeb631fe9921a32",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 11
+  }
+}

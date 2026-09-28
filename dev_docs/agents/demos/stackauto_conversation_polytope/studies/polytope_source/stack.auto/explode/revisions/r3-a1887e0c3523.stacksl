@@ -1,0 +1,22 @@
+# Repeating 4.8-second phase; higher face centres lead the wave
+input w
+4.8 /
+input y
+0.222817 *
++
+fract
+# Fast attack: reach full extension in 0.384 seconds
+dup
+0.08 /
+# Slow return: back home at phase 0.58, then rest
+swap
+-1 *
+0.58 +
+0.5 /
+min
+# Clamp and ease both ends so the faces rejoin cleanly
+0 max
+1 min
+smooth
+# Synchronized outward travel and shrink about each face centre
+[0.65,0.25,0,0] *

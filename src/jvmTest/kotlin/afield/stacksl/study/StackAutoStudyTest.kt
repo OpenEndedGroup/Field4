@@ -41,6 +41,17 @@ class StackAutoStudyTest {
     }
 
     @Test
+    fun everyToolBuildsIntoARequestTheModelIsSent() {
+        // The OpenAI client checks each tool's schema as it is added, and refuses one with no properties:
+        // the first recorded turn (2026-09-28) failed on StackAutoSlotGuide before the model saw anything.
+        val tools = listOf(StackAutoSlotGuide::class, InspectStackAutoSlot::class, EditStackAutoSlot::class, PatchStackAutoSlot::class,
+            SetStackAutoNumbers::class, ObserveStackAutoSlot::class, SweepStackAutoNumber::class, RestoreStackAutoRevision::class)
+        val request = com.openai.models.responses.ResponseCreateParams.builder().model("gpt-5").input("")
+        tools.forEach { request.addTool(it.java) }
+        assertEquals(tools.size, request.build().tools().get().size)
+    }
+
+    @Test
     fun inspectReadsHowTheHostUsesTheSlotAndWhatEachNumberDoes() {
         val facts = study().inspect().facts
         @Suppress("UNCHECKED_CAST")
