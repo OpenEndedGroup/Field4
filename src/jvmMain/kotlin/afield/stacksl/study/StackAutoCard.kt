@@ -52,7 +52,6 @@ object StackAutoCard {
     private val actions = ConcurrentHashMap<Box, String>()
     private val status = ConcurrentHashMap<Box, String>()
     private val alone = ConcurrentHashMap<String, Pair<String?, String>>()
-    private val rasterizers = ConcurrentHashMap<Box, StackSLRasterizer>()
 
     /** Redraw [box]'s card soon, on the card's own thread; requests while one waits collapse into it. Boxes in no open document have none. */
     fun refreshLater(box: Box) {
@@ -248,71 +247,13 @@ object StackAutoCard {
      * module, is said plainly.
      */
     private fun captureInShader(box: Box, slot: StackAutoNumbers.Slot) {
-        val key = "${box.id}|${slot.name}"
-        inShader[key] = try {
-            val renderer = BoxStudies.rendererAbove(box) ?: throw IllegalStateException("the box has no running renderer above it")
-            val modules = afield.stdlib.stackAutoModulesOf(box)
-            require(modules.isNotEmpty()) { "no module of this box has been built yet" }
-            if (modules.all { it is afield.four.modules.ComputeModulePointer })
-                throw IllegalStateException("stack.auto.${slot.name} is in a compute module, which writes buffers rather than a picture; reading those back is not done yet")
-            val destinations = modules.flatMap { afield.four.ModuleDestinations.of(renderer, it) }.distinct()
-            val shown = destinations.firstOrNull { it !is afield.four.ModuleDestinations.Destination.Headset }
-            // Where it is drawn, read back — else the module drawn once more, alone, into a target matched to
-            // its pipeline: what reaches a ping-pong or stereo target, one drawn some other way, or none yet.
-            val captured = shown?.let { d -> runCatching { afield.four.ModuleDestinations.capture(d) }.getOrNull()?.let { d to it } }
-            if (captured != null) {
-                val (d, png) = captured
-                val others = destinations.filter { it != d }
-                "data:image/png;base64," + Base64.getEncoder().encodeToString(fitWithin(png, 1024)) to
-                    "stack.auto.${slot.name} in your shader: $d, as it is drawing now, at the slot's current numbers" +
-                    (if (d is afield.four.ModuleDestinations.Destination.Window) " — everything the window draws, not only this module" else "") +
-                    (if (others.isNotEmpty()) " · also drawn to ${others.joinToString()}" else "")
-            } else {
-                val module = modules.filterIsInstance<afield.four.modules.ModulePointer>().firstOrNull()
-                    ?: throw IllegalStateException("this box's module is not one that can be drawn alone")
-                val size = (shown as? afield.four.ModuleDestinations.Destination.Texture)?.target?.let { it.width to it.height } ?: (1024 to 1024)
-                val png = afield.four.ModuleDestinations.renderDisposable(renderer, module, size.first, size.second)
-                "data:image/png;base64," + Base64.getEncoder().encodeToString(fitWithin(png, 1024)) to
-                    "stack.auto.${slot.name} in your shader: the module drawn once more, by itself, into a ${size.first}×${size.second} target of its own, at the slot's current numbers — " +
-                    (if (destinations.isEmpty()) "it is not drawn anywhere the renderer's lists reach (a ping-pong or stereo target, or none yet)" else "where it is drawn could not be read back") +
-                    "; the same module and state, without whatever else draws beside it"
-            }
-        } catch (e: Exception) {
-            null to "Cannot capture stack.auto.${slot.name} in your shader: ${e.message}"
-        }
-    }
-
-    /** [png] scaled so its longer side is at most [long] pixels: a window capture is the display's full resolution. */
-    private fun fitWithin(png: ByteArray, long: Int): ByteArray {
-        val image = javax.imageio.ImageIO.read(png.inputStream()) ?: return png
-        val scale = long.toDouble() / maxOf(image.width, image.height)
-        if (scale >= 1.0) return png
-        val w = (image.width * scale).toInt().coerceAtLeast(1); val h = (image.height * scale).toInt().coerceAtLeast(1)
-        val out = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
-        out.createGraphics().apply {
-            setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR)
-            drawImage(image, 0, 0, w, h, null); dispose()
-        }
-        return java.io.ByteArrayOutputStream().also { javax.imageio.ImageIO.write(out, "png", it) }.toByteArray()
+        inShader["${box.id}|${slot.name}"] = StackAutoView.inShader(box, slot.name).let { it.dataUrl to it.note }
     }
 
     /** Draw [slot]'s program by itself at its current numbers, for the card; what it could not do, it says. */
     private fun renderAlone(box: Box, slot: StackAutoNumbers.Slot, knobs: List<StackSLKnob>) {
-        val key = "${box.id}|${slot.name}"
-        alone[key] = try {
-            require(slot.entrypoint == null) { "stack.auto.${slot.name} runs the word ${slot.entrypoint}; drawing a single word alone is not done yet" }
-            val changed = knobs.mapNotNull { k -> StackAutoNumbers.value(box, slot.name, k.wire)?.takeIf { kotlin.math.abs(it - k.value) > 1e-12 }?.let { k.knob to it } }.toMap()
-            val program = if (changed.isEmpty()) slot.source else StackSLStudyShader.setKnobs(slot.source, changed)
-            val compiled = afield.stacksl.StackSLCompiler.compile(program, afield.stacksl.cpu.StackSLCpu.stackAutoOptions("program"))
-            require(compiled.analysis.requiredSamplers.isEmpty()) { "it samples ${compiled.analysis.requiredSamplers.joinToString()}, which only your shader provides" }
-            val rasterizer = rasterizers.getOrPut(box) { StackSLGpuRasterizer({ BoxStudies.rendererAbove(box) }) }
-            val raster = rasterizer.renderAll(program, 256, listOf(StackSLStudyShader.REFERENCE_TIME)).single()
-            val png = "data:image/png;base64," + Base64.getEncoder().encodeToString(StackSLStudyShader.presented(raster).toPngBytes())
-            png to "stack.auto.${slot.name} alone, at its current numbers, at t = ${StackSLStudyShader.REFERENCE_TIME} s, input vec4(uv, hash, 0, time) on a unit square — " +
-                "not the input your shader gives it · ${rasterizer.description}"
-        } catch (e: Exception) {
-            null to "Cannot draw stack.auto.${slot.name} alone: ${e.message}"
-        }
+        val changed = knobs.mapNotNull { k -> StackAutoNumbers.value(box, slot.name, k.wire)?.takeIf { kotlin.math.abs(it - k.value) > 1e-12 }?.let { k.knob to it } }.toMap()
+        alone["${box.id}|${slot.name}"] = StackAutoView.alone(box, slot.name, slot.source, slot.entrypoint, changed).let { it.dataUrl to it.note }
     }
 
     /** The card's browser half: keys per slot (StudyKeys.SCRIPT, once per slot), and the buttons. */

@@ -362,3 +362,20 @@ ping-pong target, one drawn by some other path, a module drawn nowhere yet — i
 matched to its pipeline, for one frame. Checked on a ping-pong feedback module: the capture shows the
 trail, so it sampled the real previous frame. Not done: compute modules (they write buffers; the
 GPU-probe harness is the way in) and the headset.
+
+### Step 6, a study for a slot — 2026-09-28
+
+`StackAutoSlotStudy` (with `StackAutoStudyTools`) is the StackSL study's loop for one `stack.auto` slot
+inside a box's own shader, offered to a conversation on the box's `code` when it has bound slots:
+Inspect (program, the host GLSL lines that declare and call the slot, where the module is drawn,
+knobs with operands and names, keys, history), Edit and Patch (checked as "compiles into this slot",
+bound live through the module's `module.slot` setter, written back into the Kotlin string when it sits
+there verbatim — the reply says when it does not), SetNumbers (live through the block, kept only on
+request), Sweep (one number at several values, each captured in the real shader, then put back),
+Observe and Restore. Every picture is `StackAutoView.inShader`; the alone view is secondary. The card
+and the tools now share `StackAutoView`. Checked live in a window: the tools are offered on `code` and
+not on `fragment`; a sweep of the zoom returned three real in-shader pictures; a patch inverting the
+palette's input was bound, written into the code, captured, and restored as a new revision. A probe
+run as box code on the main thread got no in-shader pictures — a capture waits for a frame the main
+thread draws — which is why the tools run off it; the study's publishing is injectable so tests can
+run without a module or a main thread.

@@ -1135,6 +1135,21 @@ literals; assigning the same text again leaves them alone, so a box can re-run
 without losing what was turned. A full shader reload carries the values over.
 Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot as before.
 
+### Talking to a slot
+
+An AI4 conversation opened on the box's `code` gets tools for its slots, the StackSL
+study's loop pointed at StackSL that lives in your shader. `InspectStackAutoSlot` reads
+the slot's program, the lines of your GLSL that declare and call it (what its input and
+output mean), where the module is drawn, and each number with what it does.
+`EditStackAutoSlot` and `PatchStackAutoSlot` check that a program compiles into the slot,
+bind it live and write it back into the Kotlin string it sits in; `SetStackAutoNumbers`
+turns numbers through the live block, with no recompile, and keeps them only when asked;
+`SweepStackAutoNumber` shows one number at several values, each in the real shader;
+`ObserveStackAutoSlot` shows it now; `RestoreStackAutoRevision` goes back. Every picture
+these return is the end result in your shader, as **Show it in your shader** captures it,
+and the program drawn alone is offered only as a debugging view. Revisions are kept in
+the box's `studies/`, beside the slot's knob names and keys.
+
 ### In the editor
 
 The StackSL inside the box's Kotlin gets the editor's StackSL help where it sits:

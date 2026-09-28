@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-97 source file(s), 2742 public symbol(s), 1203 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+99 source file(s), 2779 public symbol(s), 1224 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -8449,7 +8449,7 @@ StackSL written inside a Kotlin box's `code`: where it is, and the editor's help
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L341) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L282) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
 
 ### StackAutoCard { #stackautocard-kt-stackautocard }
 
@@ -8460,8 +8460,135 @@ The numbers of a box's `stack.auto` slots, as sliders under the box: turn one an
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CHANNEL</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L46) | The output channel the card is drawn in. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">refreshLater</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L58) | Redraw `box`'s card soon, on the card's own thread; requests while one waits collapse into it. Boxes in no open document have none. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L101) | The card's HTML: a section per slot with numbers. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">refreshLater</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L57) | Redraw `box`'s card soon, on the card's own thread; requests while one waits collapse into it. Boxes in no open document have none. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L100) | The card's HTML: a section per slot with numbers. |
+
+## StackAutoStudy.kt { #stackautostudy-kt }
+
+`src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudy.kt` — [read the source](source/jvmMain/afield/stacksl/study/StackAutoStudy/)
+
+### StackAutoView { #stackautostudy-kt-stackautoview }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackAutoView</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L33)
+
+Pictures of a `stack.auto` slot: `inShader` the end result — wherever its module is drawn, found by walking what the renderer draws, else the module drawn alone into a target of its own (`ModuleDestinations`) — and `alone`, the slot's program by itself on the StackSL study's frame. The numbers card and the slot study's tools both show them.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Picture</span><span class="p">(</span><span class="k">val</span> <span class="n">png</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">note</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L35) | A picture (PNG bytes, or null when there is none) and what it is. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">inShader</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Picture</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L40) | `slot` of `box` in the host shader, as it is drawing now; see the object docs. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">alone</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">entrypoint</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">Picture</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L71) | `program` (a slot's, at `numbers` by knob index) drawn alone on the StackSL study's frame, for debugging. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fitWithin</span><span class="p">(</span><span class="n">png</span><span class="p">:</span> <span class="nc">ByteArray</span><span class="p">,</span> <span class="n">long</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L85) | `png` scaled so its longer side is at most `long` pixels: a window capture is the display's full resolution. |
+
+### StackAutoSlotCheck { #stackautostudy-kt-stackautoslotcheck }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackAutoSlotCheck</span><span class="p">(</span><span class="k">val</span> <span class="n">problems</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">warnings</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">knobs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLKnob</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L100)
+
+What a slot study checks a candidate program for: that it compiles into this slot, and what it says.
+
+### StackAutoSlotStudy { #stackautostudy-kt-stackautoslotstudy }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">StackAutoSlotStudy</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span><span class="p">,</span> <span class="n">publisher</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="n">expected</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">replacement</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L116)
+
+A model's study of one `stack.auto` slot, inside a box's own shader: the StackSL study's loop — inspect, edit, turn numbers, observe, sweep, restore — where the program lives in someone else's GLSL.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">directory</span><span class="p">:</span> <span class="nc">File</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">revisions</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L122) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">id</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L186) | Everything a model needs before editing: the slot's program, how the host uses it, its numbers, where it draws, history. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">edit</span><span class="p">(</span><span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L213) | Replace the slot's program: checked, bound live, written back into the code, and shown in the shader. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">patch</span><span class="p">(</span><span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">edits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StudySourceEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L219) | Exact text replacements in the slot's program, through the same checks. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">restore</span><span class="p">(</span><span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L225) | Make an earlier revision the slot's program again, as a new revision. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setNumbers</span><span class="p">(</span><span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">keep</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L241) | Turn numbers live, through the slot's block — no recompile — and show the result in the shader. With `keep`, write them into the program as a new revision too; without, they stay turned but unkept. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sweep</span><span class="p">(</span><span class="n">knob</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L252) | One number at several values, each drawn in the shader for real, then put back as it was. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">observe</span><span class="p">(</span><span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span><span class="p">:</span> <span class="nc">StudyReport</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L273) | The slot as it is drawing now, in the shader — and, with `alone`, its program by itself. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">checkIn</span><span class="p">(</span><span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L279) | Check the slot's live program in as a revision, if it has none or has changed outside the study. |
+
+### StackAutoStudies { #stackautostudy-kt-stackautostudies }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackAutoStudies</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L288)
+
+A box's slot studies, one per slot, made on first use.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">study</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackAutoSlotStudy</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L292) | `box`'s study of `slot`, with the slot's live program checked in. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">slots</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudy/#L299) | The slots of `box` a study can take: those with a program bound. |
+
+## StackAutoStudyTools.kt { #stackautostudytools-kt }
+
+`src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt` — [read the source](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/)
+
+**Used in:** [StackSL examples](../stacksl_examples.md)
+
+### Top-level functions { #stackautostudytools-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoStudyTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L89) | Register the stack.auto slot tools, for every conversation opened on a box's code that has bound slots. |
+
+### StackAutoSlotGuide { #stackautostudytools-kt-stackautoslotguide }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">StackAutoSlotGuide</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L17)
+
+### InspectStackAutoSlot { #stackautostudytools-kt-inspectstackautoslot }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InspectStackAutoSlot</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L20)
+
+### EditStackAutoSlot { #stackautostudytools-kt-editstackautoslot }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">EditStackAutoSlot</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;Complete StackSL source: one transform per line, # comments naming what each stage does&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;Also draw the program alone on StackSL's own frame, a debugging view whose input is not the host's&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L23)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">source</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### PatchStackAutoSlot { #stackautostudytools-kt-patchstackautoslot }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PatchStackAutoSlot</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">edits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StudySourceEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L29)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">edits</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StudySourceEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### StackAutoNumberEdit { #stackautostudytools-kt-stackautonumberedit }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackAutoNumberEdit</span><span class="p">(</span><span class="k">val</span> <span class="n">knob</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L33)
+
+One number to turn: knob index from Inspect, and its new value.
+
+### SetStackAutoNumbers { #stackautostudytools-kt-setstackautonumbers }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SetStackAutoNumbers</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackAutoNumberEdit</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">keep</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L36)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### ObserveStackAutoSlot { #stackautostudytools-kt-observestackautoslot }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ObserveStackAutoSlot</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">alone</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L40)
+
+### SweepStackAutoNumber { #stackautostudytools-kt-sweepstackautonumber }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SweepStackAutoNumber</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">knob</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L43)
+
+### RestoreStackAutoRevision { #stackautostudytools-kt-restorestackautorevision }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">RestoreStackAutoRevision</span><span class="p">(</span><span class="k">val</span> <span class="n">slot</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L46)
+
+### StackAutoGuideText { #stackautostudytools-kt-stackautoguidetext }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StackAutoGuideText</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">core</span><span class="p">.</span><span class="nc">SummarisesForToolLog</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L49)
+
+The [`StackAutoSlotGuide`](languages.md#stackautostudytools-kt-stackautoslotguide) tool's answer.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/#L50) |  |
 
 ## StackSLGpu.kt { #stackslgpu-kt }
 
