@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15631 public symbols across 422 source files**, 9275 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15632 public symbols across 422 source files**, 9276 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -22,7 +22,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 15 | 601 | 391 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 18 | 552 | 486 (88%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 33 | 1224 | 565 (46%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 33 | 1225 | 566 (46%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
@@ -327,7 +327,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |
 | [PdBox.kt](synthesis.md#pdbox-kt) | Synthesis | 40 | 28 | The box-facing side of Pure Data: a patch as a sound source, with messages both ways. | [Pure Data](../pure_data.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [PdInstance.kt](synthesis.md#pdinstance-kt) | Synthesis | 50 | 38 |  |  |
-| [PdLanguage.kt](synthesis.md#pdlanguage-kt) | Synthesis | 16 | 5 |  |  |
+| [PdLanguage.kt](synthesis.md#pdlanguage-kt) | Synthesis | 17 | 6 |  |  |
 | [PdNative.kt](synthesis.md#pdnative-kt) | Synthesis | 7 | 7 |  |  |
 | [PdObjects.kt](synthesis.md#pdobjects-kt) | Synthesis | 5 | 5 |  |  |
 | [PdPatchGraph.kt](synthesis.md#pdpatchgraph-kt) | Synthesis | 15 | 15 |  |  |
