@@ -257,6 +257,7 @@ nav:
     - A λ-Term You Can Hear: chain_lambda_sound.md
     - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
+    - A RectSL Scene on a Light Rig: chain_scene_to_light.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - Talking a Function into Existence: function_conversation.md
