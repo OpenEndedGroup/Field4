@@ -2060,8 +2060,28 @@ def format_result_line(result: dict[str, Any]) -> str:
     return f"{status} {result['id']} ({duration})"
 
 
-def parse_args() -> argparse.Namespace:
+class _NoTimeoutFlag(argparse.Action):
+    """`--timeout` is not a smoke-runner flag, and saying so beats argparse's bare "unrecognized".
+
+    The backdoor and the UI runner take `--timeout`, so it is the flag an agent reaches for here
+    too. Per-test time limits live in each `FIELD_TEST` annotation's `timeoutSec` instead.
+    """
+
+    def __init__(self, option_strings, dest, **kwargs) -> None:
+        kwargs["nargs"] = "?"
+        super().__init__(option_strings, dest, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None) -> None:
+        parser.error(
+            f"{option_string} is not accepted: per-test timeouts come from `timeoutSec` in each "
+            "FIELD_TEST annotation (the backdoor and run_ui_regressions.py have their own "
+            "--timeout; this runner does not). Edit the annotation to change a test's budget."
+        )
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--timeout", action=_NoTimeoutFlag, help=argparse.SUPPRESS)
     parser.add_argument("--catalog", default=str(DEFAULT_CATALOG_PATH))
     parser.add_argument("--results", default=str(DEFAULT_RESULTS_PATH))
     parser.add_argument("--coverage-state", default=str(DEFAULT_COVERAGE_STATE_PATH))
@@ -2114,7 +2134,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Do not start/keep a persistent Field; rely on an already-running server on --port.",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 def requires_native_display(test: dict[str, Any]) -> bool:

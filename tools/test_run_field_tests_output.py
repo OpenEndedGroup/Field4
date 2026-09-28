@@ -69,5 +69,32 @@ class OutputExpectationTests(unittest.TestCase):
                                        eventKinds=["output-control"]), [])
 
 
+
+
+class TimeoutFlagTests(unittest.TestCase):
+    """`--timeout` gets a pointer to `timeoutSec`, not argparse's bare "unrecognized arguments"."""
+
+    def test_timeout_is_refused_with_the_real_knob_named(self) -> None:
+        import contextlib
+        import io
+
+        from tools.run_field_tests import parse_args
+
+        for argv in (["--timeout", "45"], ["--timeout=45"], ["--timeout"]):
+            with self.subTest(argv=argv):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as raised:
+                    parse_args(argv)
+                self.assertEqual(raised.exception.code, 2)
+                self.assertIn("timeoutSec", err.getvalue())
+
+    def test_ordinary_arguments_still_parse(self) -> None:
+        from tools.run_field_tests import parse_args
+
+        args = parse_args(["--id", "a.b", "--port", "9690"])
+        self.assertEqual(args.ids, ["a.b"])
+        self.assertEqual(args.port, 9690)
+
+
 if __name__ == "__main__":
     unittest.main()
