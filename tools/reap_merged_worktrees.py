@@ -51,6 +51,14 @@ unregistered, was invisible to every later run. 640 MiB was lost that way on 202
 diagnosed rather than shrugged at -- if the directory outlived its registration it is reported as an
 ORPHAN. [find_orphans] additionally sweeps for leaks that already happened, which is the only way
 they become visible again.
+
+The sweep before the attempt was not enough. On 2026-09-28, with a Finder window open on the
+worktree root, six of seven removals orphaned: Finder writes ``.DS_Store`` into directories *while*
+git empties them, and git stops at the first failure, leaving half the tree. So when git abandons a
+removal it has already unregistered, [finish_interrupted_removal] finishes it -- re-sweep, remove,
+retry while Finder keeps writing -- for that one just-verified candidate only, after re-checking that
+it is a worktree (gitfile, not a repository) with no live cwd inside. ORPHAN is now what is left when
+even that is refused or fails.
 """
 
 from __future__ import annotations
@@ -345,6 +353,60 @@ def worktree_leftovers(path: Path) -> list[Path]:
         return sorted(path.iterdir())
     except OSError:
         return []
+
+
+FINISH_ATTEMPTS = 6
+FINISH_PAUSE_SECONDS = 0.5
+
+
+def finish_interrupted_removal(
+    path: Path,
+    *,
+    roots: list[Path],
+    repo: Path,
+    cwds: dict[Path, set[int]],
+    attempts: int = FINISH_ATTEMPTS,
+    pause: float = FINISH_PAUSE_SECONDS,
+    remove=shutil.rmtree,
+    sleep=time.sleep,
+) -> tuple[bool, str]:
+    """Finish the deletion ``git worktree remove`` began on [path] and then abandoned.
+
+    Measured 2026-09-28: with a Finder window open on the worktree root, six of seven removals
+    failed. Finder writes ``.DS_Store`` into directories as git empties them, git stops at the first
+    ``Directory not empty`` -- after it has already unregistered the checkout -- and leaves half the
+    tree behind (2.11 of 4.39 GiB in one case). A sweep *before* the attempt cannot win a race that
+    happens *during* it, so this finishes the job git started: re-sweep, remove, and try again while
+    Finder keeps writing, up to [attempts] times.
+
+    This is not a force mode. It is only ever called for the one candidate this run has just
+    verified clean, merged, idle and free of live cwds, whose removal git itself began and whose
+    registration git itself dropped. Everything under it is what git was already deleting: tracked
+    files, ignored build output and Finder metadata. And it re-checks the preconditions that could
+    have changed: the path must sit directly under one of [roots] and not be [repo], its ``.git``
+    must be a worktree's gitfile or already gone -- never a directory, which would be a repository
+    of its own -- and no live process may have its cwd inside it. [find_orphans]' leaks from earlier
+    runs are never passed here; they stay report-only, for a human to look at.
+
+    @return whether [path] is gone, and a reason when it is not, or when it was not attempted
+    """
+    resolved = path.resolve()
+    if resolved == repo.resolve() or resolved.parent not in {root.resolve() for root in roots}:
+        return False, "not directly under a worktree root, so not finished automatically"
+    git_marker = path / ".git"
+    if git_marker.is_dir():
+        return False, "its .git is a directory, a repository of its own, so not finished automatically"
+    busy = pids_inside(path, cwds)
+    if busy:
+        return False, f"live cwd pid(s) {','.join(str(p) for p in sorted(busy))} inside it now"
+    for attempt in range(1, attempts + 1):
+        sweep_finder_metadata(path)
+        remove(path, ignore_errors=True)
+        if not path.exists():
+            return True, f"finished in {attempt} attempt(s)"
+        sleep(pause)
+    left = ", ".join(item.name for item in worktree_leftovers(path)[:8])
+    return False, f"still not empty after {attempts} attempts ({left})"
 
 
 def find_orphans(roots: list[Path], registered: set[Path]) -> list[Path]:
@@ -677,19 +739,29 @@ def main() -> int:
                 for t in parse_worktrees(run_git(repo, "worktree", "list", "--porcelain").stdout)
             )
             if tree.path.exists() and not still_registered:
-                leftovers = worktree_leftovers(tree.path)
-                print(f"  *** ORPHANED: {tree.path}")
-                print(f"      git declined ({reason}) AFTER unregistering it, so this checkout is")
-                print(f"      now on disk and invisible to `git worktree list`. It holds")
-                print(f"      {tree_size_kib(tree.path) / 1048576:.2f} GiB and no later run of this tool will see it.")
-                if leftovers:
-                    shown = ", ".join(item.name for item in leftovers[:8])
-                    more = "" if len(leftovers) <= 8 else f", +{len(leftovers) - 8} more"
-                    print(f"      what blocked it: {shown}{more}")
-                print(f"      reclaim by hand once you have looked: rm -rf {tree.path}")
+                size_gib = tree_size_kib(tree.path) / 1048576
+                finished, how = finish_interrupted_removal(
+                    tree.path, roots=orphan_roots, repo=repo, cwds=live_cwds(),
+                )
+                if finished:
+                    print(f"  git stopped part-way ({reason}) after unregistering it, with {size_gib:.2f} GiB")
+                    print(f"      still on disk; the deletion git began was {how}")
+                else:
+                    leftovers = worktree_leftovers(tree.path)
+                    print(f"  *** ORPHANED: {tree.path}")
+                    print(f"      git declined ({reason}) AFTER unregistering it, so this checkout is")
+                    print(f"      now on disk and invisible to `git worktree list`. It holds")
+                    print(f"      {tree_size_kib(tree.path) / 1048576:.2f} GiB and no later run of this tool will see it.")
+                    print(f"      finishing the removal was refused or failed: {how}")
+                    if leftovers:
+                        shown = ", ".join(item.name for item in leftovers[:8])
+                        more = "" if len(leftovers) <= 8 else f", +{len(leftovers) - 8} more"
+                        print(f"      what blocked it: {shown}{more}")
+                    print(f"      reclaim by hand once you have looked: rm -rf {tree.path}")
+                    continue
             else:
                 print(f"  git declined: {reason}")
-            continue
+                continue
         if not completed:
             assert tree.branch is not None
             deleted = run_git(repo, "branch", "-d", tree.branch, check=False)
