@@ -1,0 +1,13 @@
+# Time phase: one burst every 4.8 seconds
+input w
+4.8 / 6.283185 *
+# Higher face centres lead the phase, so the wave travels downward
+input y
+1.4 * +
+# Positive half-wave eases outward and back; negative half is rest
+sin
+0 max
+2 pow
+# Outward travel, preserving each face's size (output y = 0)
+0.65 *
+[1,0,0,0] *

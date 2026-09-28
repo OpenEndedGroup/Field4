@@ -113,7 +113,7 @@ ${ctx.documentGuides.catalogueContext()}
         toolAds += "- CompileKotlin: compile the current Kotlin code or an afield://.../code ref. Required after ordinary Kotlin edits. A specialized transactional tool may satisfy this itself when it returns compileSuccess=true, checksPassed=true, and the exact activated revision/sourceHash; do not recompile that unchanged source. If it fails, fix and rerun. Inspect setupChanges for preamble/intro/attic mutations."
     }
     if (ctx.reloadShaders != null) {
-        toolAds += "- ReloadShaders: reload graphics/compute/mesh/ray shaders for the current box or target ref. Mandatory after shader edits before ending the turn. If it fails, fix and rerun. With visualCheck=true it also attaches a post-reload screenshot."
+        toolAds += "- ReloadShaders: reload graphics/compute/mesh/ray shaders for the current box or target ref. Mandatory after shader edits before ending the turn, unless the editing tool returned boundLive=true for the exact activated revision: it has already put the new pipeline in place and its pictures show it, so do not reload. If it fails, fix and rerun. With visualCheck=true it also attaches a post-reload screenshot."
     }
     if (ctx.captureRenderWindow != null) {
         toolAds += "- CaptureRenderWindow: capture the live afield.four render window and attach it as an image, so you can see what the running code draws. Needs no shader edit and no successful reload. Use it before editing to see the starting point and after to check the result; pass settleMs to let an animation settle, and note to record what you are looking for. If it reports success=false, read the message: it names the precondition that failed."
@@ -148,7 +148,7 @@ ${ctx.documentGuides.catalogueContext()}
             steps += "Kotlin edits: call CompileKotlin on the edited `code` ref or pass the edited source directly, unless the editing tool already returned compileSuccess=true and checksPassed=true for that exact activated revision/sourceHash. Do not repeat validation of unchanged source. When an edit returns actual preview images, inspect those before requesting another observation; ask for more only if the supplied interval or evidence is insufficient. Do not finalize on compile errors; fix and rerun until success or explain the blocker. If setupChanges reports preamble, intro, or attic changed, mention it."
         }
         if (ctx.reloadShaders != null) {
-            steps += "Shader edits: call ReloadShaders on the edited shader ref or target box. Do not finalize on reload errors; fix and rerun until success or explain the blocker."
+            steps += "Shader edits: call ReloadShaders on the edited shader ref or target box, unless the editing tool returned boundLive=true for that exact activated revision. Do not finalize on reload errors; fix and rerun until success or explain the blocker."
             steps += "Visual shader/rendering work: request ReloadShaders with visualCheck=true. It waits briefly and attaches a fresh screenshot; inspect that image against the user's request. If the screenshot does not look right, edit and reload again before finalizing."
         }
         if (steps.isEmpty()) return@buildString

@@ -65,6 +65,46 @@ object StackAutoView {
         Picture(null, "Cannot capture stack.auto.$slot in your shader: ${e.message}")
     }
 
+    /**
+     * [slot] in the host shader at [moments] moments spread evenly across the next [seconds] seconds, as
+     * it really draws, on one numbered sheet (read left to right, then down). A host that animates the
+     * slot — by time it pushes, say — cannot be moved to a chosen time from here, so this waits for it.
+     * Run it off the main thread: every capture waits for a frame the main thread draws.
+     */
+    fun overTime(box: Box, slot: String, seconds: Double, moments: Int): Picture {
+        require(moments in 2..9) { "2..9 moments" }
+        require(seconds > 0.0 && seconds <= 20.0) { "over 0..20 seconds" }
+        val start = System.nanoTime()
+        val frames = (0 until moments).map { i ->
+            val at = (seconds * i / moments * 1e9).toLong()
+            (at - (System.nanoTime() - start)).takeIf { it > 0 }?.let { Thread.sleep(it / 1_000_000) }
+            (System.nanoTime() - start) / 1e9 to inShader(box, slot)
+        }
+        val first = frames.first().second
+        val images = frames.mapNotNull { (_, p) -> p.png?.let { javax.imageio.ImageIO.read(it.inputStream()) } }
+        if (images.size != frames.size) return Picture(null, first.note)
+        val columns = Math.ceil(Math.sqrt(moments.toDouble())).toInt()
+        val rows = (moments + columns - 1) / columns
+        val cell = 1024 / columns
+        val sheet = java.awt.image.BufferedImage(cell * columns, cell * rows, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        with(sheet.createGraphics()) {
+            setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
+            font = java.awt.Font(java.awt.Font.SANS_SERIF, java.awt.Font.BOLD, maxOf(14, cell / 18))
+            images.forEachIndexed { i, image ->
+                val x = i % columns * cell; val y = i / columns * cell
+                val scale = cell.toDouble() / maxOf(image.width, image.height)
+                drawImage(image, x, y, (image.width * scale).toInt(), (image.height * scale).toInt(), null)
+                color = java.awt.Color(255, 255, 255, 220)
+                drawString("${i + 1}  +%.1f s".format(frames[i].first), x + cell / 30, y + cell / 30 + font.size)
+            }
+            dispose()
+        }
+        val png = java.io.ByteArrayOutputStream().also { javax.imageio.ImageIO.write(sheet, "png", it) }.toByteArray()
+        return Picture(png, "$moments moments across ${"%.1f".format(seconds)} s, numbered and read left to right, then down, each labelled with when it was " +
+            "captured; each is ${first.note}")
+    }
+
     private val rasterizers = ConcurrentHashMap<Box, StackSLRasterizer>()
 
     /** [program] (a slot's, at [numbers] by knob index) drawn alone on the StackSL study's frame, for debugging. */
@@ -133,10 +173,19 @@ class StackAutoSlotStudy internal constructor(
             linkedMapOf("problems" to report.problems.ifEmpty { null }, "warnings" to report.warnings.ifEmpty { null }, "knobs" to knobs.size))
     }
 
+    // The pipeline update the last publish queued: true once the new pipeline draws, false if it failed.
+    @Volatile private var bound: java.util.concurrent.CompletableFuture<Boolean>? = null
+
     /** Bind [replacement] to the slot, live, and write it into the box's code where [expected] sits verbatim. */
     private fun publish(expected: String, replacement: String): Boolean = onMain {
         if (liveSource() != expected) return@onMain false
         val module = stackAutoModulesOf(box).firstOrNull() ?: return@onMain false
+        // Armed before the slot changes, so the update cannot finish unseen.
+        val done = java.util.concurrent.CompletableFuture<Boolean>()
+        val listener: (Box, Boolean) -> Unit = { b, ok -> if (b === box) done.complete(ok) }
+        afield.stdlib.stackAutoShaderUpdated += listener
+        done.whenComplete { _, _ -> afield.stdlib.stackAutoShaderUpdated -= listener }
+        bound = done
         when (module) {
             is ModulePointer -> stackAutoShaderSource(module, slot, replacement)
             is ComputeModulePointer -> stackAutoShaderSource(module, slot, replacement)
@@ -146,21 +195,30 @@ class StackAutoSlotStudy internal constructor(
         val code = box.getPropertyRaw("code", null) as? String
         val at = code?.indexOf(expected)?.takeIf { it >= 0 && expected.isNotBlank() && code.indexOf(expected, it + 1) < 0 }
         if (code != null && at != null) BoxStudies.replacer(box, "code")(code, code.substring(0, at) + replacement + code.substring(at + expected.length))
-        box.stackAutoShaderSources[slot] == replacement
+        // Rebinding the same text queues nothing, and neither does a bind that was refused.
+        val took = box.stackAutoShaderSources[slot] == replacement
+        if (replacement == expected || !took) done.complete(took)
+        took
     }
 
     private fun <T> onMain(block: () -> T): T =
         if (afield.Runloop.isMainThread) block() else kotlinx.coroutines.runBlocking { kotlinx.coroutines.withContext(afield.Runloop.runLoop.main) { block() } }
 
-    /** Wait (off the main thread) until the running pipeline holds [source], so a capture shows it. */
-    private fun awaitCompiled(source: String, timeoutMs: Long = 8000) {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline && StackAutoNumbers.slots(box)[slot]?.source != source) Thread.sleep(30)
-        Thread.sleep(150) // a couple of frames for the new pipeline to draw
+    /**
+     * Wait (off the main thread) until the pipeline the last publish queued is drawing, so a capture shows
+     * it: true when it is, false when the update failed (the old pipeline still draws), null when it did not
+     * finish in time — or there was nothing to wait for, as with a test's publisher.
+     */
+    private fun awaitBound(timeoutMs: Long = 30_000): Boolean? {
+        val done = bound ?: return null
+        val ok = runCatching { done.get(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrNull()
+        if (ok == true) Thread.sleep(100) // the next frame draws it
+        return ok
     }
 
-    private fun pictures(evidence: String, alone: Boolean): List<ToolImage> {
-        val shown = StackAutoView.inShader(box, slot)
+    /** The slot in the shader now, or — [over] seconds > 0 — at [moments] moments across that long; with [alone], its program by itself too. */
+    private fun pictures(evidence: String, alone: Boolean, over: Double = 0.0, moments: Int = 4): List<ToolImage> {
+        val shown = if (over > 0.0) StackAutoView.overTime(box, slot, over, moments) else StackAutoView.inShader(box, slot)
         val out = mutableListOf<ToolImage>()
         shown.dataUrl?.let { out += ToolImage(it, "$evidence — ${shown.note}") }
         if (alone || shown.png == null) {
@@ -210,28 +268,37 @@ class StackAutoSlotStudy internal constructor(
     }
 
     /** Replace the slot's program: checked, bound live, written back into the code, and shown in the shader. */
-    fun edit(expectedRevision: String, expectedSourceHash: String, source: String, description: String, alone: Boolean = false): StudyReport {
+    fun edit(expectedRevision: String, expectedSourceHash: String, source: String, description: String, alone: Boolean = false,
+             over: Double = 0.0, moments: Int = 4): StudyReport {
         val r = revisions.edit(expectedRevision, expectedSourceHash, source, description)
-        return published(r, "after the edit", alone)
+        return published(r, "after the edit", alone, over, moments)
     }
 
     /** Exact text replacements in the slot's program, through the same checks. */
-    fun patch(expectedRevision: String, expectedSourceHash: String, edits: List<StudySourceEdit>, description: String, alone: Boolean = false): StudyReport {
+    fun patch(expectedRevision: String, expectedSourceHash: String, edits: List<StudySourceEdit>, description: String, alone: Boolean = false,
+              over: Double = 0.0, moments: Int = 4): StudyReport {
         val r = revisions.patch(expectedRevision, expectedSourceHash, edits, description)
-        return published(r, "after the patch", alone)
+        return published(r, "after the patch", alone, over, moments)
     }
 
     /** Make an earlier revision the slot's program again, as a new revision. */
     fun restore(expectedRevision: String, expectedSourceHash: String, id: String, description: String): StudyReport =
         published(revisions.restore(expectedRevision, expectedSourceHash, id, description), "restored", false)
 
-    private fun published(r: SourceRevision<StackAutoSlotCheck>, evidence: String, alone: Boolean): StudyReport {
-        awaitCompiled(r.source)
+    private fun published(r: SourceRevision<StackAutoSlotCheck>, evidence: String, alone: Boolean, over: Double = 0.0, moments: Int = 4): StudyReport {
+        val live = awaitBound()
         val written = (box.getPropertyRaw("code", null) as? String)?.contains(r.source) == true
         return StudyReport(r.id, linkedMapOf("message" to "stack.auto.$slot is now ${r.id}", "revision" to r.id, "sourceHash" to SourceStudy.hash(r.source),
+            // What ReloadShaders would do is done: the picture below is the new pipeline drawing.
+            "boundLive" to (live == true),
+            "boundNote" to when (live) {
+                true -> null
+                false -> "the pipeline update failed, so the window still draws the previous program; the box's code shows the error"
+                null -> "the pipeline update had not finished when the picture was taken, so it may still show the previous program"
+            },
             "writtenIntoCode" to written,
             "note" to if (written) null else "the program is live but not written into the box's code (it is not there verbatim), so running the box again puts the old one back",
-            "problems" to r.value.problems.ifEmpty { null }, "warnings" to r.value.warnings.ifEmpty { null }), pictures(evidence, alone))
+            "problems" to r.value.problems.ifEmpty { null }, "warnings" to r.value.warnings.ifEmpty { null }), pictures(evidence, alone, over, moments))
     }
 
     /**
@@ -269,10 +336,10 @@ class StackAutoSlotStudy internal constructor(
             "note" to "each picture is the real shader with only this number changed; nothing was kept"), images)
     }
 
-    /** The slot as it is drawing now, in the shader — and, with [alone], its program by itself. */
-    fun observe(alone: Boolean): StudyReport {
+    /** The slot as it is drawing now, in the shader, or across [over] seconds — and, with [alone], its program by itself. */
+    fun observe(alone: Boolean, over: Double = 0.0, moments: Int = 4): StudyReport {
         val r = revisions.revision()
-        return StudyReport(r.id, linkedMapOf("revision" to r.id, "slot" to slot), pictures("now", alone))
+        return StudyReport(r.id, linkedMapOf("revision" to r.id, "slot" to slot), pictures(if (over > 0.0) "over time" else "now", alone, over, moments))
     }
 
     /** Check the slot's live program in as a revision, if it has none or has changed outside the study. */

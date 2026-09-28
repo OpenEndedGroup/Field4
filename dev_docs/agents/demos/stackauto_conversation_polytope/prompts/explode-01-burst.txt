@@ -1,0 +1,1 @@
+In the explode slot (the vertex shader): make the polytope burst. Every few seconds the faces should fly out from the centre and come back together, and faces nearer the top should go first, so it reads as a wave passing down the solid rather than everything at once.
