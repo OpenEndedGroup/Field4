@@ -8,10 +8,11 @@ import java.util.*
 import kotlin.reflect.*
 import kotlin.script.experimental.api.*
 
-internal const val fieldKotlinLanguageVersion = "2.4"
+internal const val fieldKotlinLanguageVersion = "2.5"
+// At language 2.5 name-based destructuring's full form and `[a, b]` are the default and the short form
+// stays off, so `-Xname-based-destructuring=only-syntax` would only add a "redundant" warning to every box.
 internal val fieldKotlinExperimentalCompilerOptions = listOf(
     "-Xcollection-literals",
-    "-Xname-based-destructuring=only-syntax",
 )
 internal val fieldKotlinJvmCompilerOptions = listOf("-jvm-target", "24") + fieldKotlinExperimentalCompilerOptions
 

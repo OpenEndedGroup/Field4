@@ -1,10 +1,10 @@
 plugins {
-    kotlin("jvm") version "2.4.20-Beta1"
-    kotlin("plugin.serialization") version "2.4.20-Beta1"
+    kotlin("jvm") version "2.5.0-Beta1"
+    kotlin("plugin.serialization") version "2.5.0-Beta1"
     application
 }
 
-val analysisApiVersion = "2.4.20-Beta1"
+val analysisApiVersion = "2.5.0-Beta1"
 val intellijPlatformVersion = "242.8057"
 
 dependencies {

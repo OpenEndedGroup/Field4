@@ -422,7 +422,7 @@ object ReplSnippetDeclarationsSmokeTest {
             )
         )
 
-        println("-- name-based destructuring (-Xname-based-destructuring=only-syntax) at snippet top level --")
+        println("-- name-based destructuring (full form and [a, b]; short form off) at snippet top level --")
         // Field enables the full form and square-bracket positional form, not the short form, so a
         // plain `(a, b)` stays positional (case V). These go through the same snippet path as the
         // `_` fix above; Z2's `val _ = second` is a renamed underscore, which must stay a local.
