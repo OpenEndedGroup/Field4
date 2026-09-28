@@ -404,6 +404,11 @@ private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
         "stack.auto name '$name' must be a GLSL identifier."
     }
+    // The name is the slot's GLSL function's; on macOS a name Metal already has breaks the shader's build.
+    require(name !in afield.four.MetalShaderErrors.reservedNames) {
+        "stack.auto name '$name' is also metal::$name in Metal's standard library. On macOS the shader runs through MoltenVK, " +
+            "which puts both in scope, and the shader will not build. Choose another name."
+    }
 }
 
 private fun validateStackAutoEntrypointName(name: String) {

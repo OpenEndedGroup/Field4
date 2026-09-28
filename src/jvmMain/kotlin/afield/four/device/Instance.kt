@@ -821,15 +821,18 @@ class Instance(private val validate: Boolean) {
                         if (objectsStr.isNotEmpty()) append(" | objects: $objectsStr")
                     }
 
+                    // A Metal compile failure (macOS, through MoltenVK) says what happened in the translated
+                    // source's terms; a name collision with Metal's standard library is said plainly, first.
+                    val said = afield.four.MetalShaderErrors.note(msg)?.let { "$it\n$msg" } ?: msg
                     when {
-                        isPrintf -> lprintln("debug,vulkan", "PRINTF$where: $msg")
+                        isPrintf -> lprintln("debug,vulkan", "PRINTF$where: $said")
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ->
-                            lprintln("error,vulkan", "ERROR$where: $msg")
+                            lprintln("error,vulkan", "ERROR$where: $said")
 
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) != 0 ->
-                            lprintln("warning,vulkan", "WARNING$where: $msg")
+                            lprintln("warning,vulkan", "WARNING$where: $said")
 
-                        else -> lprintln("info,vulkan", "INFO$where: $msg")
+                        else -> lprintln("info,vulkan", "INFO$where: $said")
                     }
 
                     // Only what a person must act on reaches a box. INFO and VERBOSE messages — the
@@ -843,7 +846,7 @@ class Instance(private val validate: Boolean) {
                         )
                     ) {
                     } else {
-                        globalAsyncDebugHandler?.invoke((if (isPrintf) "PRINTF" else "VK") + where + ": " + msg)
+                        globalAsyncDebugHandler?.invoke((if (isPrintf) "PRINTF" else "VK") + where + ": " + said)
                     }
 
 
