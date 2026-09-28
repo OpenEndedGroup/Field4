@@ -513,8 +513,10 @@ class FieldBackdoor:
         default_timeout: float,
         logger: SessionLogger,
         attach_existing: bool = False,
+        allow_unverified_workspace: bool = False,
     ) -> None:
         self.port = port
+        self.allow_unverified_workspace = allow_unverified_workspace
         # A backdoor-managed Field is automation, even when the caller omitted
         # --workspace. Never let it inherit the machine-global interactive
         # preference, which may name a deleted sibling worktree.
@@ -630,6 +632,27 @@ class FieldBackdoor:
             "entirely, or use a --port where this session starts its own Field."
         )
 
+    def refuse_unverifiable_attachment(self) -> None:
+        """`--attach-existing` to a server that cannot say its workspace is a hard error.
+
+        The attach path is how an agent reaches a human's real documents, and `serverWorkspace`
+        is the one fact that says where its writes will land. A server too old to report it used
+        to be attachable with `serverWorkspace: null` in `status`, which the guide then asked the
+        agent to notice. Since 2026-09-28 it fails closed; `--allow-unverified-workspace` is the
+        explicit override for a server that cannot be restarted.
+        """
+        if not self.attach_existing or self.server_workspace is not None:
+            return
+        if self.allow_unverified_workspace:
+            self.logger.log("workspace_unverified_allowed", port=self.port)
+            return
+        raise BackdoorError(
+            f"--attach-existing: the Field on port {self.port} does not report its workspace "
+            "(serverWorkspace is null -- it predates /api/instance-info `workspace`), so nothing "
+            "can confirm where this session's writes would land. Restart that Field from this "
+            "checkout, or pass --allow-unverified-workspace if you have checked by other means."
+        )
+
     async def ensure_server(self) -> None:
         self.logger.log("ensure_server_start", port=self.port, workspace=self.workspace)
         initial_health = health_check(self.port, self.ssl_context)
@@ -663,6 +686,7 @@ class FieldBackdoor:
                 ),
             )
             self.refuse_ignored_workspace()
+            self.refuse_unverifiable_attachment()
             return
 
         if self.attach_existing:
@@ -4351,6 +4375,11 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         ),
     )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
+    parser.add_argument(
+        "--allow-unverified-workspace",
+        action="store_true",
+        help="with --attach-existing, accept a server that does not report its workspace",
+    )
     parser.add_argument("single_command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     args.port, port_source = resolve_cli_port(args.port, attach_existing=args.attach_existing)
@@ -4383,6 +4412,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         default_timeout=args.timeout,
         logger=logger,
         attach_existing=args.attach_existing,
+        allow_unverified_workspace=args.allow_unverified_workspace,
     )
     client.port_source = port_source
     client.graphics_context_enabled = bool(args.graphics_context)

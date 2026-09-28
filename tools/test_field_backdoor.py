@@ -450,6 +450,7 @@ class BoxReferenceTests(unittest.TestCase):
             "repoRoot": str(REPO_ROOT),
             "startedAtEpochMs": 1,
             "pid": 123,
+            "workspace": "/tmp/AFieldWorkspace",
         }
         with (
             mock.patch("tools.field_backdoor.health_check", return_value=True),
@@ -459,7 +460,9 @@ class BoxReferenceTests(unittest.TestCase):
         self.assertTrue(client.reused_existing_server)
         self.assertIsNone(client.managed_process)
 
-    def attach(self, *, requested: str | None, server: str | None) -> FieldBackdoor:
+    def attach(
+        self, *, requested: str | None, server: str | None, allow_unverified: bool = False
+    ) -> FieldBackdoor:
         """Attach to a live server that reports ``server`` as its workspace."""
         client = FieldBackdoor(
             port=9092,
@@ -467,6 +470,7 @@ class BoxReferenceTests(unittest.TestCase):
             default_timeout=0.01,
             logger=_Logger(),
             attach_existing=True,
+            allow_unverified_workspace=allow_unverified,
         )
         instance: dict[str, object] = {
             "repoRoot": str(REPO_ROOT),
@@ -516,11 +520,19 @@ class BoxReferenceTests(unittest.TestCase):
             client = self.attach(requested=str(nested), server=str(nested.resolve()))
         self.assertTrue(client.reused_existing_server)
 
-    def test_a_server_too_old_to_report_a_workspace_is_attachable_but_unverified(self) -> None:
-        # Fail open: refusing would make the new client unable to attach to a Field started
-        # before this change, which is a worse failure than an unverifiable one. `status` says
-        # `serverWorkspace: null`, which is the honest answer.
-        client = self.attach(requested="/tmp/AFieldWorkspace", server=None)
+    def test_a_server_too_old_to_report_a_workspace_is_refused_under_attach_existing(self) -> None:
+        # Until 2026-09-28 this failed open and left `serverWorkspace: null` in `status` for the
+        # agent to notice. The attach path is the one that reaches a human's real documents, so
+        # it now fails closed and names the override.
+        with self.assertRaises(BackdoorError) as raised:
+            self.attach(requested="/tmp/AFieldWorkspace", server=None)
+        self.assertIn("serverWorkspace is null", str(raised.exception))
+        self.assertIn("--allow-unverified-workspace", str(raised.exception))
+        with self.assertRaises(BackdoorError):
+            self.attach(requested=None, server=None)
+
+    def test_the_unverified_workspace_override_restores_the_old_attach(self) -> None:
+        client = self.attach(requested="/tmp/AFieldWorkspace", server=None, allow_unverified=True)
         self.assertTrue(client.reused_existing_server)
         self.assertIsNone(client.server_workspace)
 
