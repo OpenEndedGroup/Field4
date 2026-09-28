@@ -1811,7 +1811,43 @@ private fun layoutGlobalEditor() {
     }
 }
 
+/**
+ * A still of the editor must not land in the dark half of the caret's blink (Monaco's default
+ * `cursorBlinking: "blink"`), which it did about half the time: hold the caret solid while a capture is
+ * prepared and taken, and put the editor's own setting back afterwards ([restoreCaptureCursorBlinking],
+ * which the JVM calls once the screenshot is written). Only the capture page's editor is touched.
+ */
+private fun holdCaretSolidForCapture() {
+    val w = window.asDynamic()
+    val editor = w.globalEditor ?: return
+    if (w.__afieldCaptureCursorBlinking == undefined) {
+        val current = runCatching { editor.getRawOptions().cursorBlinking as? String }.getOrNull()
+        w.__afieldCaptureCursorBlinking = current ?: "blink"
+    }
+    runCatching { editor.updateOptions(js("({ cursorBlinking: 'solid' })")) }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun restoreCaptureCursorBlinking() {
+    val w = window.asDynamic()
+    val previous = w.__afieldCaptureCursorBlinking as? String ?: return
+    val editor = w.globalEditor
+    if (editor != null) {
+        val options = js("({})")
+        options.cursorBlinking = previous
+        runCatching { editor.updateOptions(options) }
+    }
+    w.__afieldCaptureCursorBlinking = undefined
+}
+
+@Suppress("unused")
+private val installRestoreCaptureCursorBlinking = run {
+    window.asDynamic().afieldRestoreCaptureCursorBlinking = ::restoreCaptureCursorBlinking
+}
+
 private fun prepareMonacoForScreenshotLayout() {
+    holdCaretSolidForCapture()
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
     val targetWidth = min(860.0, max(760.0, window.innerWidth.toDouble() * 0.38))
     val targetHeight = min(1200.0, max(840.0, window.innerHeight.toDouble() * 0.72))
