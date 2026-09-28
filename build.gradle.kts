@@ -3391,6 +3391,42 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build libpd — Pure Data as a C library — into build/field-libpd, for afield.pd.
+//
+// There is no wrapper: afield.pd binds z_libpd.h directly through FFM. The script shallow-clones
+// one pinned libpd tag (and its pure-data submodule) into the per-user native download cache,
+// checks both commit hashes, and builds the multi-instance variant (PD_MULTI=ON) that PdInstance
+// requires. Optional like TetGen and not wired into `check`; the libpd tests skip without it.
+//
+//     ./gradlew buildLibpdNative
+//     ./gradlew jvmTest --tests 'afield.pd.PdTest'
+val buildLibpdNative = tasks.register("buildLibpdNative") {
+    group = "build"
+    description = "Builds libpd (multi-instance) into build/field-libpd (needs cmake, git and, once, the network)."
+
+    val script = layout.projectDirectory.file("tools/build_libpd_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
 // one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
 // carries /opt/homebrew in its load commands, so it is not the one to ship (see
