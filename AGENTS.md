@@ -552,6 +552,12 @@ Debugging checklist:
 - An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
 - Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation` (`mainCanvasTransform()`), so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. Every writer of `mainTranslation` must call `drawingLayerViewportChanged` (there are four: `applyViewportTranslation`, the wheel and middle-drag pans in `Main.kt`, and bookmark restore).
 
+### Notation: box code ↔ the drawing
+
+- `notation` (the box is the implicit receiver) reads, writes and reacts to the drawing layer's scene: `notation.marks/strokes/arrows/named()/over(box)`, `notation { rect(); arrow(from = box, to = box); stroke(fline) }` (owned by the box, replaced on re-run), `notation.edit/delete/anchor`, `notation.onStroke/onArrow/onText/onChange { }`. Source in `src/jvmMain/kotlin/afield/notation/`; design and the full API in `dev_docs/NOTATION.md`.
+- Reading by intersection: `notation.space("score", x = 0.0..8.0, y = 84.0..48.0)` maps a region to its own axes; `vertical(t)` / `horizontal(p)` return `Hit`s (value, span, along, slope, pen pressure); `events` / `between(t0, t1)` / `sounding(t)` for playheads.
+- Clients send their scene as `notation-scene`, merged server-side by element version (`NotationScene.merge`). Tests: `NotationTest`, `NotationIntersectionTest`.
+
 ### Canvas zoom
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
