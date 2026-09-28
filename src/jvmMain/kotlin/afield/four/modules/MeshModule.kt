@@ -67,12 +67,16 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
 
         val m = MeshModule(p)
         if (m.valid) {
-            m.copyMeshesFrom(current)
-            m.enabled = current.enabled
-            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
+            val previous = current
+            m.copyMeshesFrom(previous)
+            m.enabled = previous.enabled
+            ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
+            // Retired through the renderer's deferred queue, as in ModulePointer.reload.
+            previous.cleanup()
             return true
         }
+        m.cleanup()
         return false
     }
 
@@ -110,6 +114,8 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
 fun MeshModule.pointer() = MeshModulePointer(this)
 
 class MeshModule(val parameters: Parameters) : Renderable {
+    // Volatile: cleanup() clears it on a box thread while render workers read it.
+    @Volatile
     var valid = false
     var enabled = true
 
@@ -732,8 +738,21 @@ class MeshModule(val parameters: Parameters) : Renderable {
         }
     }
 
+    /**
+     * Release this module's pipeline, layout, shader modules and descriptor layouts. It stops drawing at
+     * once; while its renderer is alive the handles go through the retirement queue, as for
+     * [Module.cleanup] — a full reload retires the module it replaces while frames that recorded it may
+     * still be in flight — and at once after the renderer has closed.
+     */
     fun cleanup() {
         if (!pipelineDisposeToken.disable()) return
+        valid = false
+        val renderer = parameters.renderer
+        if (renderer.isClosed) destroyPipelineNow()
+        else renderer.cleanup.add(Runnable { destroyPipelineNow() })
+    }
+
+    private fun destroyPipelineNow() {
         if (pipeline != 0L) {
             VK10.vkDestroyPipeline(parameters.renderer.device.vkDevice, pipeline, null)
             pipeline = 0L

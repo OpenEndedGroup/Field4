@@ -3526,6 +3526,85 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
 }
 
 /**
+ * The prepared GLSL a reload is about to overwrite, for [restorePreparedStageSources] to put back if the
+ * reload does not commit — so `_vertex` and friends keep describing the module that is actually running,
+ * the same invariant the *Update* paths keep by assigning only after they install.
+ */
+private fun preparedStageSources(box: Box, vararg baseProperties: String): Map<String, String?> =
+    baseProperties.associateWith { base ->
+        when (base) {
+            "vertex" -> box._vertex
+            "fragment" -> box._fragment
+            "compute" -> box._compute
+            "task" -> box._task
+            "mesh" -> box._mesh
+            "raygen" -> box._raygen
+            "miss" -> box._miss
+            "closesthit" -> box._closesthit
+            "anyhit" -> box._anyhit
+            "intersection" -> box._intersection
+            "callable" -> box._callable
+            else -> error("not a shader stage property: $base")
+        }
+    }
+
+private fun restorePreparedStageSources(box: Box, sources: Map<String, String?>) {
+    sources.forEach { (base, source) ->
+        when (base) {
+            "vertex" -> box._vertex = source
+            "fragment" -> box._fragment = source
+            "compute" -> box._compute = source
+            "task" -> box._task = source
+            "mesh" -> box._mesh = source
+            "raygen" -> box._raygen = source
+            "miss" -> box._miss = source
+            "closesthit" -> box._closesthit = source
+            "anyhit" -> box._anyhit = source
+            "intersection" -> box._intersection = source
+            "callable" -> box._callable = source
+        }
+    }
+}
+
+/**
+ * Build the replacement module for a full reload and report whether it was installed — the step that
+ * makes a full reload a transaction rather than a sequence of side effects.
+ *
+ * [reload] is a pointer's `reload`, handed an error handler. The pointers signal failure by returning
+ * `false`: a module that throws while it builds (a pipeline that will not link, a resolver that throws or
+ * comes up empty) catches that itself, reports it to the handler, and stays invalid, and the pointer keeps
+ * its previous module. So the box's own handler — [parameters]' — still hears every error, and the first
+ * one is kept to say, onto `code`, that the reload did not happen; a module adopted through
+ * `attachShader` may have a handler that only logs, and a silent `false` is how this used to go unnoticed.
+ *
+ * The pointer installs the handler it is given as the new module's; it is put back to the box's own
+ * afterwards so the next reload does not wrap it a second time.
+ */
+private fun commitModuleReload(
+    box: Box,
+    logLabel: String,
+    parameters: Parameters,
+    reload: (onError: (String, Throwable?) -> Unit) -> Boolean
+): Boolean {
+    val handler = parameters.errorHandler
+    var firstError: String? = null
+    val installed = reload { message, throwable ->
+        if (firstError == null) firstError = message
+        handler(message, throwable)
+    }
+    parameters.errorHandler = handler
+    if (!installed) {
+        reportShaderStageError(
+            box,
+            "code",
+            logLabel,
+            "${firstError ?: "The new module could not be built."}\nShader reload did not happen: the previous module is still running."
+        )
+    }
+    return installed
+}
+
+/**
  * Recompile this box's vertex and fragment stages from its shader properties and swap the live
  * graphics module — the *Reload Shader* action (`alt-r`), as a function.
  *
@@ -3543,6 +3622,12 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
  * **previous module left running**, so a broken edit does not black out the window. Stale errors from
  * a previous attempt are cleared on the way in and again on success.
  *
+ * It is a transaction: the new module is built first, and only once it is installed are the preamble
+ * rewritten and the module it replaced retired (through the renderer's deferred queue). A module that
+ * compiles but will not build — a pipeline that does not link, a resource that does not resolve — leaves
+ * the old preamble, the old module and the error on `code`, and returns `false`; it used to rewrite the
+ * preamble for an interface that never went live and return `true`.
+ *
  * One rough edge: a box with no graphics module at all throws a `NullPointerException` here, rather
  * than reporting "no shader attached" the way the update path politely does. Check `box._shader != null`
  * first if you cannot be sure.
@@ -3557,6 +3642,8 @@ fun reloadShader(box: Box): Boolean {
         priorStages = mapOf(ShaderKind.VERTEX_SHADER to vertexStage)
     ) ?: return false
 
+    val pointer = box._shader!!
+    val previousSources = preparedStageSources(box, "vertex", "fragment")
     assignPreparedShaderStage(box, vertexStage)
     assignPreparedShaderStage(box, fragmentStage)
 
@@ -3565,14 +3652,14 @@ fun reloadShader(box: Box): Boolean {
 
     if (vErr || fErr) {
         lprintln("error,graphics", "shader compilation failed; skipping module reload.")
+        restorePreparedStageSources(box, previousSources)
         return false
     }
 
-    // keep consistent with the Module path: build Insert and apply to preamble
+    // keep consistent with the Module path: build the Insert now, apply it once the module is live
     val insert = insertForShader(vi!!, fi!!, "_moduleHere", listOf("()"), box)
-    applyInsertToPreamble(box, insert)
 
-    val p = box._shader!!.current.parameters.copy().apply {
+    val p = pointer.current.parameters.copy().apply {
         vertex = box._vertex!!
         fragment = box._fragment!!
         vertexIntrospection = vi
@@ -3580,8 +3667,13 @@ fun reloadShader(box: Box): Boolean {
     }
     attachFieldProbe(box, p)
 
-    // todo: patch error handler if you need finer-grained feedback
-    box._shader!!.reload(p, forceReresolve = true)
+    if (!commitModuleReload(box, "graphics shader reload", p) { onError ->
+            pointer.reload(p, forceReresolve = true, onError = onError)
+        }) {
+        restorePreparedStageSources(box, previousSources)
+        return false
+    }
+    applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
     return true
 }
@@ -3723,32 +3815,38 @@ internal fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
  * action (`alt-r`) as a function.
  *
  * Same contract as [reloadShader]: main runloop only, errors reported onto the `compute` property rather
- * than thrown, `false` means the previous module is still the one running, and the box's preamble is
- * rewritten with the freshly introspected `ComputeMesh` bindings. Likewise throws a
+ * than thrown, `false` means the previous module is still the one running (with the previous preamble),
+ * and on success the box's preamble is rewritten with the freshly introspected `ComputeMesh` bindings
+ * and the replaced module retired. Likewise throws a
  * `NullPointerException` if the box has no compute module to reload.
  */
 fun reloadComputeShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "compute")
     val computeStage = prepareShaderStage(box, ShaderKind.COMPUTE_SHADER, "compute") ?: return false
+    val pointer = box._computeShader!!
+    val previousSources = preparedStageSources(box, "compute")
     assignPreparedShaderStage(box, computeStage)
 
     val (ci, cErr) = compileStage(box, computeStage)
     if (cErr) {
         lprintln("error,graphics", "compute shader compilation failed; skipping compute module reload.")
+        restorePreparedStageSources(box, previousSources)
         return false
     }
 
-    // Rebuild/import bindings like graphics path
+    // Rebuild/import bindings like graphics path, applied once the module is live
     val insert = buildComputeInsert(ci!!, box)
-    applyInsertToPreamble(box, insert)
 
-    val p = box._computeShader!!.current.parameters.copy().apply {
+    val p = pointer.current.parameters.copy().apply {
         compute = box._compute!!
         computeIntrospection = ci
     }
     attachFieldProbe(box, p)
-    // todo: patch error handler if you need finer-grained feedback
-    box._computeShader!!.reload(p)
+    if (!commitModuleReload(box, "compute shader reload", p) { onError -> pointer.reload(p, onError = onError) }) {
+        restorePreparedStageSources(box, previousSources)
+        return false
+    }
+    applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "compute")
     return true
 }
@@ -3921,7 +4019,7 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
  * is an error, not an omission.
  *
  * Main runloop only, errors reported onto the stage properties rather than thrown, `false` leaves the
- * previous module running. There is no ABI-preserving *Update* action for mesh pipelines — only this
+ * previous module and preamble in place — the same transaction as [reloadShader]. There is no ABI-preserving *Update* action for mesh pipelines — only this
  * full reload — which is also why binding a `stack.auto` slot on a mesh module is heavier than on a
  * graphics one. Throws `NullPointerException` if the box has no mesh module.
  */
@@ -3944,6 +4042,8 @@ fun reloadMeshShader(box: Box): Boolean {
         )
     ) ?: return false
 
+    val pointer = box._meshShader!!
+    val previousSources = preparedStageSources(box, "task", "mesh", "fragment")
     assignPreparedShaderStage(box, taskStage)
     assignPreparedShaderStage(box, meshStage)
     assignPreparedShaderStage(box, fragmentStage)
@@ -3954,14 +4054,14 @@ fun reloadMeshShader(box: Box): Boolean {
 
     if (tErr || mErr || fErr) {
         lprintln("error,graphics", "mesh pipeline compilation failed; skipping mesh module reload.")
+        restorePreparedStageSources(box, previousSources)
         return false
     }
 
-    // Rebuild/import bindings like graphics path
+    // Rebuild/import bindings like graphics path, applied once the module is live
     val insert = buildMeshInsert(ti!!, mi!!, fi!!, box)
-    applyInsertToPreamble(box, insert)
 
-    val p = box._meshShader!!.current.parameters.copy().apply {
+    val p = pointer.current.parameters.copy().apply {
         mesh = box._mesh!!
         task = box._task!!
         fragment = box._fragment!!
@@ -3970,8 +4070,11 @@ fun reloadMeshShader(box: Box): Boolean {
         fragmentIntrospection = fi
     }
     attachFieldProbe(box, p)
-    // todo: patch error handler if you need finer-grained feedback
-    box._meshShader!!.reload(p)
+    if (!commitModuleReload(box, "mesh shader reload", p) { onError -> pointer.reload(p, onError = onError) }) {
+        restorePreparedStageSources(box, previousSources)
+        return false
+    }
+    applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
     return true
 }
@@ -4109,24 +4212,27 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
  * binding table is rebuilt from the new stage set.
  *
  * Main runloop only; errors are reported onto the stage properties and `false` leaves the previous
- * module running. Like the mesh path there is no ABI-preserving update action. Throws
+ * module and preamble in place — the same transaction as [reloadShader]. Like the mesh path there is no ABI-preserving update action. Throws
  * `NullPointerException` if the box has no ray-tracing module.
  */
 fun reloadRayTracingShader(box: Box): Boolean {
     clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
     val stages = prepareRayTracingStages(box) ?: return false
+    val pointer = box._rayTracingShader!!
+    val previousSources = preparedStageSources(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
     stages.forEach { assignPreparedShaderStage(box, it) }
 
     val compiled = stages.map { stage -> stage to compileStage(box, stage) }
     if (compiled.any { it.second.hadError || it.second.introspection == null }) {
         lprintln("error,graphics", "ray tracing pipeline compilation failed; skipping ray tracing module reload.")
+        restorePreparedStageSources(box, previousSources)
         return false
     }
 
     val introspections = compiled.map { it.second.introspection!! }
-    applyInsertToPreamble(box, buildRayTracingInsert(introspections))
+    val insert = buildRayTracingInsert(introspections)
 
-    val p = box._rayTracingShader!!.current.parameters.copy().apply {
+    val p = pointer.current.parameters.copy().apply {
         raygen = box._raygen ?: ""
         miss = box._miss ?: ""
         closesthit = box._closesthit ?: ""
@@ -4142,7 +4248,11 @@ fun reloadRayTracingShader(box: Box): Boolean {
         rayTracingGroups = null
     }
     attachFieldProbe(box, p)
-    box._rayTracingShader!!.reload(p)
+    if (!commitModuleReload(box, "ray tracing shader reload", p) { onError -> pointer.reload(p, onError = onError) }) {
+        restorePreparedStageSources(box, previousSources)
+        return false
+    }
+    applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
     return true
 }

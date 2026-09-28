@@ -325,6 +325,13 @@ class Mesh(var renderer: Renderer = fromContext()) {
         push.setMergedPushMembers(inside)
     }
 
+    /**
+     * Lay [push] out as the current module's push-constant members, vertex and fragment merged.
+     *
+     * An empty merge is applied too. It used to be skipped, so a full reload that removed *every* push
+     * constant left the old offsets in place, and setting a member that no longer exists succeeded
+     * silently instead of failing with "can't find … as a push_constant".
+     */
     private fun Structure.setMergedPushMembers(inside: ModulePointer) {
         val mergedMembers = linkedMapOf<String, Introspected.Member>()
         for (pc in inside.current.fi.pushConstants + inside.current.vi.pushConstants) {
@@ -332,9 +339,7 @@ class Mesh(var renderer: Renderer = fromContext()) {
                 mergedMembers[member.name] = member
             }
         }
-        if (mergedMembers.isNotEmpty()) {
-            push.setMembers(mergedMembers.values.sortedBy { it.offset })
-        }
+        push.setMembers(mergedMembers.values.sortedBy { it.offset })
     }
 
     fun write(index: Int, numElements: Int, builder: FloatBuffer.() -> Unit) {
@@ -424,7 +429,11 @@ class Mesh(var renderer: Renderer = fromContext()) {
                 vkCmdBindVertexBuffers(cmd.vkCommandBuffer, 0, vertexBuffer, offsets)
 
             fun pushConstantsForCurrentDispatch(): Boolean {
-                if (pushConstantBuffer.limit() <= 0) return true
+                if (pushConstantBuffer.limit() <= 0) {
+                    // No push constants now; drop a layout left behind by a module that had some.
+                    if (push.offsets.isNotEmpty()) push.setMergedPushMembers(this.inside)
+                    return true
+                }
                 push.setMergedPushMembers(this.inside)
                 try {
                     pushConstantBuffer.clear()

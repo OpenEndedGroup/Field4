@@ -62,12 +62,16 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
 
         val m = ComputeModule(p)
         if (m.valid) {
-            m.copyMeshesFrom(current)
-            m.enabled = current.enabled
-            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
+            val previous = current
+            m.copyMeshesFrom(previous)
+            m.enabled = previous.enabled
+            ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
+            // Retired through the renderer's deferred queue, as in ModulePointer.reload.
+            previous.cleanup()
             return true
         }
+        m.cleanup()
         return false
     }
 

@@ -326,12 +326,19 @@ class ModulePointer(var current: Module) : Renderable {
 
         val m = Module(p)
         if (m.valid) {
-            m.copyMeshesFrom(current)
-            m.enabled = current.enabled
-            ModuleRebuild.rebuilt(this, current.liveUniformStructures, m.liveUniformStructures)
+            val previous = current
+            m.copyMeshesFrom(previous)
+            m.enabled = previous.enabled
+            ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
+            // Retire the module this one replaced now rather than when the GC finds it. cleanup() stops it
+            // rendering at once and defers the handle destruction through the renderer's retirement queue,
+            // so a frame still recording or executing the old pipeline is not pulled out from under.
+            previous.cleanup()
             return true
         }
+        // A module that failed part-way may already hold a shader module or descriptor layout.
+        m.cleanup()
         return false
     }
 
