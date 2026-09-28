@@ -152,12 +152,22 @@ internal object PdNative {
     private val setListHookH by lazy { handle("libpd_set_listhook", v(ADDRESS)) }
     private val setMessageHookH by lazy { handle("libpd_set_messagehook", v(ADDRESS)) }
 
+    private val DISCARD: MethodHandle = MethodHandles.lookup().findStatic(
+        PdNative::class.java, "discard", MethodType.methodType(Void.TYPE, MemorySegment::class.java))
+
+    @JvmStatic
+    private fun discard(@Suppress("UNUSED_PARAMETER") s: MemorySegment) {}
+
     // libpd_init may be called once per process, and before any instance exists.
     private var initialised = false
 
     @Synchronized
     fun ensureInitialised() {
         if (initialised) return
+        // Before init this sets the process-wide default print hook. Without it libpd posts its
+        // version and the banner of every `extra` object to stdout once per JVM; each instance
+        // installs its own hook afterwards, so nothing a patch prints is lost.
+        setPrintHook(linker.upcallStub(DISCARD, v(ADDRESS), Arena.global()))
         initH.invokeExact() as Int
         initialised = true
     }
