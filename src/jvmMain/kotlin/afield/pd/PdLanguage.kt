@@ -289,10 +289,53 @@ fun installPdLanguagePlugin() {
 @RunsAt(plugins, priority = 100)
 fun installPdLineNotes() {
     LineNotes.register("code", { it.ke is PdExecution }) { box, source, line ->
-        val execution = box.ke as? PdExecution
-        val graph = PdPatchGraph.parse(source)
-        graph.describeLine(line - 1) { name -> execution?.running?.pd?.lastValue(name) }?.let { LineNotes.Note(it) }
+        pdLineNote(PdPatchGraph.parse(source), line - 1, (box.ke as? PdExecution)?.running?.pd)
     }
+}
+
+/**
+ * The note for 0-based source [line] of a patch, split the way every language's notes are: a value line
+ * with its results in bold, over a muted meta line.
+ *
+ * An `[s]` or `[r]` shows the last value through its name, from [playing] — the Pd the box is running,
+ * or null when it is stopped, which the meta line says. That value changes while the text does not, so
+ * such a note is [LineNotes.Note.volatile]. Any other object shows what it is wired to, and a
+ * `#X connect` line the two ends it joins; both follow from the text alone. The caption stays
+ * [PdPatchGraph.describeLine]'s whole sentence, for anything that reads a note as text.
+ */
+fun pdLineNote(graph: PdPatchGraph, line: Int, playing: PdInstance?): LineNotes.Note? {
+    val caption = graph.describeLine(line) { name -> playing?.lastValue(name) } ?: return null
+    fun label(index: Int) = graph.objects.getOrNull(index)?.label ?: "#$index"
+    graph.objectOnLine(line)?.let { node ->
+        val name = node.sendsTo ?: node.receivesFrom
+        if (name != null) {
+            val seen = playing?.lastValue(name)
+            val value = if (seen != null) listOf(LineNotes.plain("'$name' = "), LineNotes.strong(seen.args.joinToString(" ").ifEmpty { seen.selector }))
+                else listOf(LineNotes.plain("nothing on '$name' yet"))
+            val meta = if (playing == null) "${node.label} · not playing: launch the box to see what goes through it"
+                else "${node.label} · the last message, live"
+            return LineNotes.Note(caption, volatile = true, meta = meta, value = value)
+        }
+        val value = ArrayList<LineNotes.Segment>()
+        val ins = graph.into(node.index)
+        val outs = graph.outOf(node.index)
+        if (ins.isNotEmpty()) {
+            value += LineNotes.plain("fed by ")
+            ins.forEachIndexed { k, c -> if (k > 0) value += LineNotes.plain(", "); value += LineNotes.strong(label(c.from)) }
+        }
+        if (outs.isNotEmpty()) {
+            value += LineNotes.plain(if (ins.isEmpty()) "feeds " else " · feeds ")
+            outs.forEachIndexed { k, c -> if (k > 0) value += LineNotes.plain(", "); value += LineNotes.strong(label(c.to)) }
+        }
+        if (value.isEmpty()) value += LineNotes.plain(if (node.kind == "text") "a comment" else "connected to nothing")
+        return LineNotes.Note(caption, meta = "${node.label} · object ${node.index}", value = value)
+    }
+    graph.connectionOnLine(line)?.let { c ->
+        if (graph.objects.getOrNull(c.from) == null || graph.objects.getOrNull(c.to) == null) return LineNotes.Note(caption)
+        return LineNotes.Note(caption, meta = "a connection",
+            value = listOf(LineNotes.strong(label(c.from)), LineNotes.plain(" outlet ${c.outlet} → "), LineNotes.strong(label(c.to)), LineNotes.plain(" inlet ${c.inlet}")))
+    }
+    return LineNotes.Note(caption)
 }
 
 fun pdTopologyNeedsUpdating(values: Collection<Box>) {

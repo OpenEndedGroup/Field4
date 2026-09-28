@@ -311,9 +311,10 @@ val drone = """
 lines(afield.pd.PdPatchGraph.parse(drone).toFLines(), channel = "patch", w = 460.0, h = 230.0, fitToSize = true)
 ```
 
-The editor's line notes say what the object on a line is wired to. On an `[s]` or `[r]` they also give
-the last value that went through that name. Here the round-trip patch has been launched and its line
-`in 41` run; the cursor is on `[s out]`:
+The editor's line notes say what the object on a line is wired to, with the objects it meets in bold.
+On an `[s]` or `[r]` the note is instead the last value that went through that name, live from the
+playing patch, and it says so when the box is not playing. Here the round-trip patch has been launched
+and its line `in 41` run; the cursor is on `[s out]`:
 
 ```diffstatic {data-lang=text}
 :::static
@@ -329,7 +330,7 @@ in 41
 #X connect 1 0 3 0;
 ```
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/line-note.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_line_note_roundtrip.yaml" capture-box="pd_doc_roundtrip" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-line-note" alt="A Pd box in Field's editor holding the round-trip patch: a comment, the message line in 41, then the #N and #X statements for r in, + 1, s out and print out. At the editor's foot the line note for line 6 reads: [s out] is object 2; fed by [+ 1] (outlet 0 → inlet 0). Last on 'out': 42.0."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/line-note.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_line_note_roundtrip.yaml" capture-box="pd_doc_roundtrip" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-line-note" alt="A Pd box in Field's editor holding the round-trip patch: a comment, the message line in 41, then the #N and #X statements for r in, + 1, s out and print out. At the editor's foot the line note reads 'out' = 42.0, with 42.0 in bold, over a muted line: line 6 · [s out] · the last message, live."}
 // The setup transcript launched the box and ran its line `in 41`. Put the cursor on `[s out]`
 // (box line 6) and wait for the editor to show that line's note. The still is taken here, clipped to
 // the editor (clip-selector), because a capture after the script re-preps the editor, which resets
@@ -368,7 +369,7 @@ Here a Pd box named "drone" is playing a patch that starts with `[r freq]`, and 
 it has run `pdBox("drone").pdSend("freq", 330)`. With the cursor on the drone's `[r freq]` line,
 the line note shows what arrived:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/send-from-kotlin.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_send_from_kotlin.yaml" capture-box="pd_doc_drone" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-send-from-kotlin" alt="A Pd box named drone in Field's editor, its patch starting #X obj 20 20 r freq, then phasor~ 110, lop~ 1200, *~ 0.05 and dac~. At the editor's foot the line note for line 2 reads: [r freq] is object 0; feeds [phasor~ 110] (outlet 0 → inlet 0). Last on 'freq': 330.0."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/send-from-kotlin.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_send_from_kotlin.yaml" capture-box="pd_doc_drone" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-send-from-kotlin" alt="A Pd box named drone in Field's editor, its patch starting #X obj 20 20 r freq, then phasor~ 110, lop~ 1200, *~ 0.05 and dac~. At the editor's foot the line note reads 'freq' = 330.0, with 330.0 in bold, over a muted line: line 2 · [r freq] · the last message, live."}
 // The setup transcript launched "drone", then ran the Kotlin box `pdBox("drone").pdSend("freq", 330)`.
 // Put the cursor on the drone's `[r freq]` (box line 2) and wait for its note; the still is taken
 // here, clipped to the editor, as in the figure above.
