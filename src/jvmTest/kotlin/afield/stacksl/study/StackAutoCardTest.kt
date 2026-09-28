@@ -31,6 +31,17 @@ class StackAutoCardTest {
     }
 
     @Test
+    fun aSlotWithNoNumbersStillHasItsPictureInTheShader() {
+        val box = Box("stack_auto_card_plain")
+        box.stackAutoShaderSources["program"] = "uv y"
+        preprocess(box, "#version 450\nlayout(location = 0) out vec4 c;\n{{ stack.auto.program }}\nvoid main() { c = program(vec4(0.0)); }\n", ShaderKind.FRAGMENT_SHADER)
+        val html = StackAutoCard.html(box)
+        assertTrue("no numbers to turn" in html && "data-act='in-shader'" in html, html)
+        assertTrue("field-slider\"" !in html.substringBefore("Show it in your shader"), "no sliders, and no Keep")
+        assertTrue("data-act='keep'" !in html)
+    }
+
+    @Test
     fun aLabelIsFoundInsideTheKotlinStringAndResetPutsTheLiteralsBack() {
         val box = box()
         // The program starts on line 1 of the code, after `"""`; its line 3 is the code's line 3.

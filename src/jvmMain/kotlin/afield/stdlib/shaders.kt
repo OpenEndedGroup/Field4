@@ -835,6 +835,10 @@ private fun registerStackAutoShaderOwner(box: Box, module: Any) {
 private fun stackAutoShaderBoxFor(module: Any): Box? =
     stackAutoShaderOwner(module) ?: Box.context.get()
 
+/** The modules [box] owns — graphics, compute and mesh pointers registered as their `stack.auto` slots' owner. */
+internal fun stackAutoModulesOf(box: Box): List<Any> =
+    synchronized(stackAutoModuleOwners) { stackAutoModuleOwners.entries.filter { it.value === box }.map { it.key } }
+
 /** The box whose `stack.auto` slots [module] runs, or the ambient box — as the generated `module.foo` resolves it. */
 internal fun stackAutoOwnerOf(module: Any): Box? = stackAutoShaderBoxFor(module)
 

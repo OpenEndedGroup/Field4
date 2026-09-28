@@ -1092,6 +1092,14 @@ what you see back into that string, and **Reset** puts the literals back. Keys
 capture every number of the slot at once and blend between them, as on the
 [StackSL study card](stacksl_conversation.md).
 
+**Show it in your shader** captures the end result: the picture wherever the
+slot's module is drawn, at its current numbers. Field finds that by walking what
+the renderer draws, so it is the window when the module was added with
+`renderer += module` (the whole window, with everything else it draws), or the
+render target the module is in when it was added with `target += … to module`,
+even one that is never shown on screen. A compute module writes buffers rather
+than a picture, and the card says so rather than show a stand-in.
+
 **Render this function alone** draws the slot's program by itself, at its current
 numbers, on your renderer. Its input is the study's, `vec4(uv, hash, 0, time)`
 on a unit square, not what your shader passes it, so it is a debugging view of

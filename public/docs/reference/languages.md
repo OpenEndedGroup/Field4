@@ -8449,19 +8449,19 @@ StackSL written inside a Kotlin box's `code`: where it is, and the editor's help
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L266) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installStackAutoCard</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L328) | The box's `stack.auto` numbers card redraws whenever one of its slots compiles new StackSL. |
 
 ### StackAutoCard { #stackautocard-kt-stackautocard }
 
-[<code class="highlight"><span class="k">object</span> <span class="nc">StackAutoCard</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L39)
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackAutoCard</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L44)
 
 The numbers of a box's `stack.auto` slots, as sliders under the box: turn one and the box's own shader — the whole of it, in its own window — redraws with it, because a slider writes the slot's uniform block ([`StackAutoNumbers`](graphics.md#stackautonumbers-kt-stackautonumbers)) and nothing is recompiled.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CHANNEL</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L41) | The output channel the card is drawn in. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">refreshLater</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L53) | Redraw `box`'s card soon, on the card's own thread; requests while one waits collapse into it. Boxes in no open document have none. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L93) | The card's HTML: a section per slot with numbers. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CHANNEL</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L46) | The output channel the card is drawn in. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">refreshLater</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L58) | Redraw `box`'s card soon, on the card's own thread; requests while one waits collapse into it. Boxes in no open document have none. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/study/StackAutoCard/#L101) | The card's HTML: a section per slot with numbers. |
 
 ## StackSLGpu.kt { #stackslgpu-kt }
 
