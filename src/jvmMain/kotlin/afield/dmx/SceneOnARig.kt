@@ -144,12 +144,13 @@ object SceneOnARig {
 
     /**
      * Send the scene at each of [times] as sACN to 127.0.0.1:[port] and receive it back on the same
-     * port with Field's [DmxInput]; compare. Blocks until each frame has arrived (or 2 s).
+     * port with Field's [DmxInput]; compare. Blocks until each frame has arrived (or 2 s). With
+     * `port = 0` (the default) the receiver binds a free port and the sender is pointed at it.
      */
-    fun roundTrip(port: Int, times: List<Double> = (0..8).map { it * 0.5 }, scene: RectSLImager = RectSLImager(SCENE)): RoundTrip {
+    fun roundTrip(port: Int = 0, times: List<Double> = (0..8).map { it * 0.5 }, scene: RectSLImager = RectSLImager(SCENE)): RoundTrip {
         val rig = Rig()
         val input = DmxInput(DmxProtocol.SACN, port = port, bindAddress = "127.0.0.1")
-        val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = port, sourceName = "scene on a rig", autoStart = false, discovery = false)
+        val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = input.localPort, sourceName = "scene on a rig", autoStart = false, discovery = false)
         var levelErrors = 0; var slots = 0
         var worstGrid = 0.0; var worstWash = 0.0
         val latencies = ArrayList<Double>()
@@ -278,7 +279,7 @@ object SceneOnARig {
      * Frame cost and delivery while the scene animates for [seconds] on a [DmxOutput]'s own 44 Hz
      * clock ([Patch.animate]), sent to and received from 127.0.0.1:[port]. [frameMillis] is the
      * sender-side cost of one look (draw, shrink, map); [arrivalMillis] the gaps between successive
-     * universe-1 frames at the receiver.
+     * universe-1 frames at the receiver. `port = 0` (the default) binds a free port, as [roundTrip] does.
      */
     class Timing(val seconds: Double, val ticks: Int, val frameMillis: DoubleArray, val arrivalMillis: DoubleArray, val lastError: Throwable?) {
         private fun pct(a: DoubleArray, p: Double) = if (a.isEmpty()) Double.NaN else a.sorted()[((a.size - 1) * p).roundToInt()]
@@ -290,13 +291,13 @@ object SceneOnARig {
         val receivedHz get() = arrivalMillis.size / seconds
     }
 
-    fun timing(port: Int, seconds: Double = 3.0, scene: RectSLImager = RectSLImager(SCENE)): Timing {
+    fun timing(port: Int = 0, seconds: Double = 3.0, scene: RectSLImager = RectSLImager(SCENE)): Timing {
         val rig = Rig()
         val input = DmxInput(DmxProtocol.SACN, port = port, bindAddress = "127.0.0.1")
         val arrivals = java.util.concurrent.ConcurrentLinkedQueue<Long>()
         input.onFrame { u, _ -> if (u == 1) arrivals += System.nanoTime() }
         val costs = java.util.concurrent.ConcurrentLinkedQueue<Double>()
-        val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = port, sourceName = "scene on a rig", discovery = false)
+        val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = input.localPort, sourceName = "scene on a rig", discovery = false)
         try {
             rig.patch.animate(out) { t ->
                 val t0 = System.nanoTime()

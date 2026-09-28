@@ -34,7 +34,8 @@ val scene = RectSLImager("""
 // 16 x 8 RGB pixels in universe 1 and four RGBWA washes in universe 2: one fixture per wall unit.
 val rig = SceneOnARig.Rig()
 
-// sACN, unicast to this machine, on a port of its own so no lighting software here hears it.
+// sACN, unicast to this machine. The port is fixed at 35690 on purpose, so that box 2 can listen on
+// the same number without the two boxes having to find each other; change both if it is taken.
 val out = sacnOut("127.0.0.1", port = 35690)
 
 // On the sender's own 44 Hz clock: draw the scene at t, shrink it to one pixel per fixture

@@ -30,6 +30,16 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
   exactly cols × rows lands each grid fixture on its own pixel. For non-grid rigs there is no such
   size; the page says so.
 
+## Ports
+
+Tests bind port 0: `DmxInput.localPort` (added for this) reports the port the system chose, and
+`SceneOnARig.roundTrip()` / `timing()` default to `port = 0` and point the sender at it, so
+concurrent nightly `jvmTest` runs cannot collide. The raw-socket test binds port 0 the same way.
+The demo's sender and receiver keep a fixed 35690 so the two boxes agree with no setup; their
+comments and the README say so. The demo's measure box uses the ephemeral default. The page's
+three fences still pass explicit ports (35692–35694) — they run in the docs Field, one capture at
+a time, and changing them would only churn committed captures.
+
 ## Measurements (2026-09-28, this machine; the test holds bounds, the page's captures hold the digits)
 
 - Round trip, 9 frames × 132 fixtures (128 RGB + 4 RGBWA), sACN unicast 127.0.0.1: **0 of 9216** slot
@@ -37,7 +47,7 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
   colours make white/amber small). Over 2000 random colours: RGB/GRB 0.4998, DRGB 0.86, RGBW 0.99,
   RGBWA 1.28, RGB16 0.0019 levels.
 - Aliasing, the 0.25-unit line over 121 frames of the middle 3 s: point sampling is dark in **91 of
-  121** frames and lights a whole column (8.0 fixtures' worth) at its peaks; its time-average is 1.98,
+  121** frames (pinned exactly by `SceneOnARigTest`) and lights a whole column (8.0 fixtures' worth) at its peaks; its time-average is 1.98,
   about the truth (2.0). Area averaging in linear light: exactly 2.000 in every frame.
 - Timing (docs capture run): one look (draw 256 × 128 on the CPU, shrink, map) 8.9 ms median /
   12.8 ms p95; universe-1 arrivals every 22.72 ms median, 43.7 Hz — the 44 Hz sender keeps up.

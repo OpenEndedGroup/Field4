@@ -1,8 +1,9 @@
 import afield.dmx.*
 
-// The page's measurements, on this machine: nine frames sent and received back on a port of their
-// own, and a thin line swept across the rig, sampled two ways.
-val trip = SceneOnARig.roundTrip(port = 35691)
+// The page's measurements, on this machine: nine frames sent and received back on a free port the
+// system picks (so this can run beside boxes 1 and 2), and a thin line swept across the rig,
+// sampled two ways.
+val trip = SceneOnARig.roundTrip()
 println(trip)
 
 val (point, area) = SceneOnARig.aliasing()

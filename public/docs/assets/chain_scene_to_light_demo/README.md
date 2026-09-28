@@ -2,7 +2,9 @@
 
 Open this directory as a Field document (copy it into your workspace, or
 `./field.sh -d <path-to>/chain_scene_to_light_demo`). No lighting hardware is needed: the rig's
-universes go over UDP to this machine, on port 35690, and come back.
+universes go over UDP to this machine, on port 35690, and come back. Boxes 1 and 2 use that fixed
+port so they agree without any setup (change it in both if something else holds it); box 3 lets
+the system pick a free port for its own round trip.
 
 | box | action | what it shows |
 | --- | --- | --- |

@@ -15,8 +15,9 @@ import kotlin.test.assertTrue
 /**
  * The chain `public/docs/chain_scene_to_light.md` publishes — a RectSL scene drawn on the CPU,
  * mapped onto a 16 × 8 RGB grid and four RGBWA washes, sent as sACN over loopback and received
- * back — with its measurements pinned. Ports are loopback and away from sACN's 5568, so a lighting
- * program on the same machine is neither disturbed nor heard.
+ * back — with its measurements pinned. Every receiver binds port 0 on 127.0.0.1 and the sender is
+ * pointed at the port the system chose, so concurrent test runs (and a lighting program on the same
+ * machine) never contend for a fixed number.
  */
 class SceneOnARigTest {
 
@@ -67,7 +68,7 @@ class SceneOnARigTest {
 
     @Test
     fun `the scene survives sACN over loopback byte for byte`() {
-        val trip = SceneOnARig.roundTrip(port = 35681)
+        val trip = SceneOnARig.roundTrip()
         assertEquals(9, trip.frames)
         assertEquals(132, trip.fixtures)
         assertEquals(0, trip.levelErrors, "$trip")
@@ -81,8 +82,8 @@ class SceneOnARigTest {
     fun `an independent decode of the datagrams agrees with the rig`() {
         // The packets taken off a bare socket and read at the offsets E1.31-2016 Table 4-1 gives,
         // not through Sacn.decodeData.
-        val port = 35682
-        val socket = DatagramSocket(null).apply { reuseAddress = true; bind(InetSocketAddress(InetAddress.getByName("127.0.0.1"), port)); soTimeout = 2000 }
+        val socket = DatagramSocket(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0)).apply { soTimeout = 2000 }
+        val port = socket.localPort
         val rig = SceneOnARig.Rig()
         rig.show(RectSLImager(SceneOnARig.SCENE).frame(1.0, SceneOnARig.FRAME_W, SceneOnARig.FRAME_H))
         val out = DmxOutput(DmxProtocol.SACN, host = "127.0.0.1", port = port, autoStart = false, discovery = false)
@@ -130,6 +131,10 @@ class SceneOnARigTest {
         assertEquals(0, area.darkFrames)
         // Point: most frames the line falls between the sample columns and the rig goes dark.
         assertTrue(point.darkFrames > point.total.size / 2, "point dark frames ${point.darkFrames} of ${point.total.size}")
+        // The exact count dev_docs/CHAIN_SCENE_TO_LIGHT.md records (the sweep is linear and the
+        // rasterizer deterministic, so this is a fact about the code, not a tolerance).
+        assertEquals(121, point.total.size)
+        assertEquals(91, point.darkFrames)
         assertTrue(point.max > 3 * SceneOnARig.LINE_TRUTH, "point peak total ${point.max}")
         assertTrue(point.flicker > 3, "point flicker ${point.flicker}")
         // Averaged over the sweep, the strobe carries about the right light; it is when that is wrong.
@@ -138,7 +143,7 @@ class SceneOnARigTest {
 
     @Test
     fun `the scene keeps up with the sender clock`() {
-        val timing = SceneOnARig.timing(port = 35683, seconds = 2.0)
+        val timing = SceneOnARig.timing(seconds = 2.0)
         assertEquals(null, timing.lastError)
         assertTrue(timing.ticks > 40, "ticks ${timing.ticks}")
         assertTrue(timing.arrivalMillis.size > 40, "arrivals ${timing.arrivalMillis.size}")
@@ -150,11 +155,10 @@ class SceneOnARigTest {
     fun `the same rig over Art-Net with ArtSync arrives whole`() {
         // Art-Net numbers universes from 0, and the rig uses 1 and 2 as given. With sync on, the
         // receiver holds each ArtDmx until the ArtSync after it, so both universes change together.
-        val port = 35684
         val scene = RectSLImager(SceneOnARig.SCENE)
         val rig = SceneOnARig.Rig()
-        val input = DmxInput(DmxProtocol.ARTNET, port = port, bindAddress = "127.0.0.1", answerPolls = false)
-        val out = DmxOutput(DmxProtocol.ARTNET, host = "127.0.0.1", port = port, sync = true, autoStart = false)
+        val input = DmxInput(DmxProtocol.ARTNET, port = 0, bindAddress = "127.0.0.1", answerPolls = false)
+        val out = DmxOutput(DmxProtocol.ARTNET, host = "127.0.0.1", port = input.localPort, sync = true, autoStart = false)
         try {
             for (t in listOf(0.25, 1.25, 2.25, 3.25)) {
                 rig.show(scene.frame(t, SceneOnARig.FRAME_W, SceneOnARig.FRAME_H))

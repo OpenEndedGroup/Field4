@@ -109,6 +109,13 @@ class DmxInput(
     var isClosed = false
         private set
 
+    /**
+     * The UDP port this input is actually bound to: [port], unless that was 0, in which case the
+     * system chose a free one — the way to run a sender and a receiver side by side without picking
+     * a number that something else on the machine may already hold.
+     */
+    val localPort: Int get() = socket.localPort
+
     /** The last receive failure, or null. */
     @Volatile
     var lastError: Throwable? = null
