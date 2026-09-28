@@ -230,7 +230,8 @@ export const lineNoteHtml = (note) => {
   if (!note) return "";
   const line = `line ${Number(note.line) || ""}`;
   const segments = Array.isArray(note.value) ? note.value : [];
-  if (segments.length === 0) {
+  // A note with a meta line but no value is one whose picture says it all (a Forth stack).
+  if (segments.length === 0 && !note.meta) {
     return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
       `<figcaption>${line} · ${escapeHtml(note.caption || "")}</figcaption></figure>`;
   }
@@ -238,7 +239,7 @@ export const lineNoteHtml = (note) => {
     .map((segment) => (segment && segment.strong ? `<strong>${escapeHtml(segment.text || "")}</strong>` : escapeHtml((segment && segment.text) || "")))
     .join("");
   return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
-    `<div class="afield-line-note-value">${value}</div>` +
+    (value ? `<div class="afield-line-note-value">${value}</div>` : "") +
     `<figcaption class="afield-line-note-meta">${line} · ${escapeHtml(note.meta || "")}</figcaption></figure>`;
 };
 

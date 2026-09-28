@@ -271,7 +271,9 @@ goes through FieldSuggest, not Monaco's built-in suggest widget.
 Rest the cursor on a line of a box's program, or open completion there, and Field shows a note about
 that line beside the cursor and at the top of the completion popup. A note is what the line came to —
 set in the face value visualizers use, with its results in bold — over a small, muted line saying where
-that came from and how old it is, and a picture when the language has one to draw. Pictures are drawn at
+that came from and how old it is, and a picture when the language has one to draw. What a picture shows
+is not written out again beside it; the AI tool below, which may not see the picture, still gets it as
+text. Pictures are drawn at
 twice their size and shown at their own, so they stay sharp on a Retina display. A language gives notes
 by registering a provider for the property its programs live in, so this is not a closed list; these
 are the ones Field's own languages give:
@@ -280,7 +282,7 @@ are the ones Field's own languages give:
 | --- | --- | --- |
 | StackSL | the stage the line ends, drawn, or the value it stores in a mark | the stage |
 | RectSL | the scene built up to the line's statement, the rectangles it makes outlined | the scene |
-| ForthField | the data stack after the line on the last run, or the words it defined | the stack, top uppermost |
+| ForthField | the data stack after the line on the last run, drawn rather than written, and the words it defined | the stack, top uppermost |
 | Clojure | what each top-level form evaluated to on the last run, and its type | — |
 | Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
 | FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |

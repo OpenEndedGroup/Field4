@@ -31,6 +31,12 @@ This extends it to ForthField, Clojure, Python and Datalog, and to the AI4 tool 
   value and show as before. Bold text rather than `.h` HTML of the value (the human's choice,
   2026-09-28): real `.h` would mean keeping the value object past the run — memory, and a mutable
   object would show today's state rather than the last run's.
+- **A picture is not also written out.** `Produced.besidePicture` is what a note shows next to its
+  picture: for Forth, the words a line defined and nothing of the stack (an empty stack's picture says
+  "empty stack"). The caption — and so `ReadLineNotes`, whose reader may not see the picture — keeps the
+  stack as text, and a note shown without its picture (its line changed since the run) falls back to
+  the full value. With `meta` set and `value` empty, the editor shows the picture and meta alone. A
+  Datalog rule's value line counts what it derives; the table lists them, and the caption names the first few.
 - **Forth's `ok` marker** says what the run left: `ok · <3> 3.0 100.0 "done"`, the top value bold
   (`forthOkHtml`). Bold needs HTML, and the editor renders HTML output as a block under the line; a
   plain-text marker would stay inline beside it but could not be bold. A bare `ok` for an empty stack.
@@ -108,6 +114,17 @@ re-preps the pane — and re-syncs the editor, which would also undo the stale f
 shorter Playwright viewport does not help: prep holds the pane at 840 px minimum whatever the window. Forth fences with `data-lang=forth` are wrapped as a Kotlin call
 (`renderForthDocsSnippet`), not run under a Forth root, so a plain `capture="editor"` Forth fence cannot
 show the Forth `ok` marker; that is why the marker is in the `ui` figure.
+
+**The caret in captures.** The main editor blinks its caret (Monaco's default `cursorBlinking: "blink"`),
+so a still caught it dark about half the time. Screenshot prep now holds it solid
+(`holdCaretSolidForCapture` in `Main.kt`) and every editor capture path gives the editor its own setting
+back once the image is written (`restoreCaretBlinkAfterCapture` in `docs/screenshot.kt`: window/editor
+captures, `ui.shot`, `ui.shotClip`). Only the capture page's editor is touched. The other editor-showing
+figures pick this up when they are next recaptured; they were not all recaptured on 2026-09-28 (42
+fences on 21 pages: clojure 5, diff-player 5, datalog 4, python 4, visualizers 4, keybindings 2,
+mobile_controllers 2, profiling_timeline 2, survivalGuide 2, and one each on aiFeatures,
+automating_field, completion_doc_browser, completion_ranking, dataframe, forth_examples, funFeatures,
+interactive_guides, language_extensions, simulation_clock, sonic_pi, spatial_navigation).
 
 ## Verification
 

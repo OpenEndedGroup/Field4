@@ -65,8 +65,8 @@ object DatalogLineNotes {
         val caption = "derives ${derived.size} of $relation's $total fact${if (total == 1) "" else "s"}" +
             (if (derived.isNotEmpty()) ": $first" + (if (derived.size > CAPTIONED) ", …" else "") else "") + " · $model"
         val columns = head.terms.mapIndexed { i, t -> (t as? DlVar)?.name ?: "#${i + 1}" }
-        val value = listOf(P("derives "), S("${derived.size}"), P(" of $relation's $total fact${if (total == 1) "" else "s"}" +
-            (if (derived.isNotEmpty()) ": $first" + (if (derived.size > CAPTIONED) ", …" else "") else "")))
+        // The table lists the derived facts, so the value line only counts them; the caption lists the first few too.
+        val value = listOf(P("derives "), S("${derived.size}"), P(" of $relation's $total fact${if (total == 1) "" else "s"}"))
         return LineNotes.Note(caption, LineNotePictures.table(columns, derived.take(LineNotePictures.SHOWN), derived.size), volatile = true,
             meta = model, value = value, imageScale = LineNotePictures.SCALE)
     }

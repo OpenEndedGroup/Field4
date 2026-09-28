@@ -38,7 +38,8 @@ object LineNotes {
          * The note split for the eye: [value], what the line came to, with its results marked [Segment.strong]
          * so the editor sets them in bold, and [meta], where the value came from ("last run, 12 s ago"). Empty
          * for a note that is only a [caption] (StackSL's, RectSL's), which the editor shows as before.
-         * [caption] stays the whole sentence, for anything that reads the note as text.
+         * [caption] stays the whole sentence, for anything that reads the note as text. With [meta] set,
+         * an empty [value] means the picture says it all: the editor shows the picture and [meta] alone.
          */
         val meta: String = "",
         val value: List<Segment> = emptyList(),

@@ -419,9 +419,14 @@ internal fun forthLineNote(first: Int, last: Int, top: List<String>, depth: Int,
         named.forEachIndexed { i, v -> if (i > 0) value += afield.stdlib.LineNotes.plain(" "); value += afield.stdlib.LineNotes.strong(afield.stdlib.LastRunNotes.oneLine(v, 40)) }
     }
     val caption = value.joinToString("") { it.text }
+    val drawn = defined.isEmpty() || depth > 0
+    // The picture draws the stack; beside it, only what it does not say — the words the line defined.
+    val besidePicture = if (defined.isEmpty()) emptyList()
+        else value.subList(0, value.indexOfFirst { it.text == " · " }.let { if (it < 0) value.size else it })
     return afield.stdlib.LastRunNotes.Produced(first, last, caption, value = value,
-        picture = if (defined.isEmpty() || depth > 0) ({ afield.stdlib.LineNotePictures.stack(top, depth) }) else null,
-        imageScale = afield.stdlib.LineNotePictures.SCALE)
+        picture = if (drawn) ({ afield.stdlib.LineNotePictures.stack(top, depth) }) else null,
+        imageScale = afield.stdlib.LineNotePictures.SCALE,
+        besidePicture = if (drawn) besidePicture else null)
 }
 
 /**

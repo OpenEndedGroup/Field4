@@ -37,18 +37,19 @@ s"hypot^2 = " 3 4 hypot2 str str+ println
 ### What each line left on the stack
 
 The editor keeps a record of what each line did the last time the box ran. Rest the cursor on a line
-and the note beside it draws the data stack as that line left it, top uppermost, with the values in
-bold, or names the words the line defined; a run that failed marks the line it stopped on and the lines
+and the note beside it draws the data stack as that line left it, top uppermost, and names the words the
+line defined; a run that failed marks the line it stopped on and the lines
 it never reached. The note reads that record — resting on a line never runs it. The stack outlives a
 run, so a box that wants a fresh one starts with `clear`. See
 [Line notes](language_extensions.md#line-notes).
 
 A run that finishes cleanly and prints nothing says what it left behind, rather than a bare `ok`: the
 depth of the stack and its top values, the topmost in bold. An empty stack gets a plain `ok`. Both are
-in this figure — the box has just been run, and the cursor rests on its last line:
+in this figure — the box has just been run, the strip under its last line is what the whole run left, and
+the note is what line 6, `sq`, left, with `sq` having squared the 10 above it:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".monaco-editor-container" screenshot="assets/forth_examples/line_note_stack.png" transcript="assets/transcripts/line_notes_forth_setup.yaml" capture-box="line_notes_forth" padding="10" wait="0" timeout="240" embed=true hidden=true name="forth-line-note" w="560" alt="A seven-line ForthField box in the editor. Under its last line, s-quote done, a strip reads ok · <3> 3.0 100.0 done, with done in bold: what the run left. The caret rests on line 7, and the note at the foot of the editor draws the stack as three cells, top uppermost and outlined: done, 100.0, 3.0. Under the picture: the stack after it: <3> 3.0 100.0 done, the three values in bold, and in small muted type line 7 · last run, just now."}
-// Run the box and rest on line 7 through the keyboard, as a person would. The pane is sized to
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".monaco-editor-container" screenshot="assets/forth_examples/line_note_stack.png" transcript="assets/transcripts/line_notes_forth_setup.yaml" capture-box="line_notes_forth" padding="10" wait="0" timeout="240" embed=true hidden=true name="forth-line-note" w="560" alt="A seven-line ForthField box in the editor. Under its last line, s-quote done, a strip reads ok · <3> 3.0 100.0 done, with done in bold: what the whole run left. The caret rests on line 6, sq, and the note below draws the stack that line left as two cells, top uppermost and outlined: 100.0 above 3.0. Under the picture, in small muted type: line 6 · last run, just now."}
+// Run the box and rest on line 6 through the keyboard, as a person would. The pane is sized to
 // the figure, so the note (which sits at the pane's foot) stays beside the code it describes.
 ui.openEditor("line_notes_forth")
 ui.pause(700)
@@ -60,7 +61,7 @@ ui.press("Alt+0")
 ui.waitForSelector(".afield-forth-ok", 20000.0)
 repeat(4) { ui.press("PageUp") }
 ui.press("Home")
-repeat(6) { ui.press("ArrowDown") }
+repeat(5) { ui.press("ArrowDown") }
 ui.waitForSelector(".hoverlay-left .afield-line-note img", 20000.0)
 ui.pause(800)
 ```

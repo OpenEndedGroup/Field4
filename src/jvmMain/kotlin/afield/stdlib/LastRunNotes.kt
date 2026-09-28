@@ -41,6 +41,13 @@ object LastRunNotes {
         val picture: (() -> ByteArray?)? = null,
         /** Device pixels per CSS pixel of the picture. */
         val imageScale: Int = 1,
+        /**
+         * What to show beside the picture, when it is shown: [value] less whatever the picture already
+         * says (a Forth stack is drawn, so it is not also written out). Null: [value]. The caption keeps
+         * the whole sentence, for a reader that cannot see the picture; a note without its picture (one
+         * whose line has changed since) shows [value].
+         */
+        val besidePicture: List<LineNotes.Segment>? = null,
     )
 
     private enum class Kind { PRODUCED, STOPPED, NOT_REACHED }
@@ -49,6 +56,7 @@ object LastRunNotes {
     private class Entry(
         val first: Int, val lines: List<String>, val kind: Kind, val caption: String, drawPng: () -> ByteArray?, val at: Long,
         val value: List<LineNotes.Segment> = emptyList(), val imageScale: Int = 1,
+        val besidePicture: List<LineNotes.Segment>? = null,
     ) {
         val last get() = first + lines.size - 1
         val png: ByteArray? by lazy(drawPng)
@@ -85,7 +93,7 @@ object LastRunNotes {
             .associateBy { it.firstLine to it.lastLine }.values
             .forEach { p ->
                 fresh += Entry(lineOffset + p.firstLine, linesOf(p.firstLine, p.lastLine), Kind.PRODUCED, p.caption,
-                    { p.png ?: p.picture?.invoke() }, at, p.value, p.imageScale)
+                    { p.png ?: p.picture?.invoke() }, at, p.value, p.imageScale, p.besidePicture)
             }
         if (stoppedAt != null && stoppedAt in 1..codeLines.size) {
             fresh.removeAll { stoppedAt + lineOffset in it.first..it.last }
@@ -132,8 +140,12 @@ object LastRunNotes {
             val ago = ago(now - e.at)
             val meta = "last run, $ago"
             return when (e.kind) {
-                Kind.PRODUCED -> LineNotes.Note("$meta · ${e.caption}", e.png, volatile = true, meta = meta,
-                    value = e.value.ifEmpty { listOf(LineNotes.plain(e.caption)) }, imageScale = if (e.png != null) e.imageScale else 1)
+                Kind.PRODUCED -> {
+                    val png = e.png
+                    val value = if (png != null && e.besidePicture != null) e.besidePicture else e.value.ifEmpty { listOf(LineNotes.plain(e.caption)) }
+                    LineNotes.Note("$meta · ${e.caption}", png, volatile = true, meta = meta, value = value,
+                        imageScale = if (png != null) e.imageScale else 1)
+                }
                 Kind.STOPPED -> LineNotes.Note("$meta · stopped here: ${e.caption}", volatile = true, meta = meta,
                     value = listOf(LineNotes.plain("stopped here: "), LineNotes.strong(e.caption)))
                 Kind.NOT_REACHED -> LineNotes.Note("$meta · not reached: the run stopped above this line", volatile = true, meta = meta,

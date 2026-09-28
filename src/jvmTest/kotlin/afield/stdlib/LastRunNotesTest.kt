@@ -151,8 +151,8 @@ class LastRunNotesTest {
         ForthInterpreter().evalRecordingLineNotes(box, code, 0)
         val note = assertNotNull(LastRunNotes.note(box, "code", code, 1, now = System.currentTimeMillis()))
         assertEquals("last run, just now", note.meta)
-        assertEquals(listOf("1.0", "2.0"), note.value.filter { it.strong }.map { it.text })
-        assertEquals(note.caption, note.meta + " · " + note.value.joinToString("") { it.text }, "the caption is still the whole sentence")
+        assertTrue(note.value.isEmpty(), "the picture draws the stack, so it is not also written out")
+        assertEquals("last run, just now · the stack after it: <2> 1.0 2.0", note.caption, "the caption keeps it, for a reader that cannot see the picture")
         assertEquals(LineNotePictures.SCALE, note.imageScale)
         assertEquals(168 * LineNotePictures.SCALE, ImageIO.read(note.png!!.inputStream()).width, "drawn at 2x")
     }
@@ -185,5 +185,20 @@ class LastRunNotesTest {
         assertEquals("ok", forthOkHtml(emptyList(), 0))
         assertEquals("<span class=\"afield-forth-ok\">ok · &lt;3&gt; 3.0 100.0 <b>&quot;done&quot;</b></span>", forthOkHtml(listOf("3.0", "100.0", "\"done\""), 3))
         assertEquals("<span class=\"afield-forth-ok\">ok · &lt;9&gt; … 4 5 6 7 8 <b>&lt;9&gt;</b></span>", forthOkHtml((4..8).map { "$it" } + "<9>", 9))
+    }
+
+    @Test
+    fun besideAPictureANoteSaysOnlyWhatThePictureDoesNot() {
+        val box = Box("last-run-beside")
+        val code = "3\n: sq dup * ;\nsq"
+        ForthInterpreter().evalRecordingLineNotes(box, code, 0)
+        val defines = assertNotNull(LastRunNotes.note(box, "code", code, 2))
+        assertEquals("defines sq", defines.value.joinToString("") { it.text })
+        assertEquals(listOf("sq"), defines.value.filter { it.strong }.map { it.text })
+        assertTrue("the stack after it: <1> 3.0" in defines.caption)
+        // Changed since the run: no picture, so the stack is written out again.
+        val stale = assertNotNull(LastRunNotes.note(box, "code", "3\n: sq dup * ;\nsq sq", 3))
+        assertNull(stale.png)
+        assertEquals(listOf("9.0"), stale.value.filter { it.strong }.map { it.text })
     }
 }
