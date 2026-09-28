@@ -289,4 +289,39 @@ class PdTest {
             assertEquals(listOf(PdInstance.Midi(PdInstance.Midi.NOTE_ON, 0, 60, 100)), out, "[noteout 1] is libpd channel 0")
         }
     }
+
+    @Test fun sendsFromManyThreadsWhileAnotherRendersAllArriveInPerThreadOrder() {
+        if (!available()) return
+        // The discipline under load: four senders, one rendering thread standing in for the audio
+        // thread, and receives polled on this one. Nothing may be lost, crash, or be reordered
+        // within one sender.
+        PdInstance().use { pd ->
+            pd.openPatchText("#X obj 20 20 r in;\n#X obj 20 60 s out;\n#X connect 0 0 1 0;\n" +
+                "#X obj 120 20 osc~ 220;\n#X obj 120 60 dac~;\n#X connect 2 0 3 0;")
+            val got = ArrayList<Float>()
+            pd.receive("out") { got += it.float!! }
+            val perThread = 2000
+            val senders = (0 until 4).map { t ->
+                Thread { for (k in 0 until perThread) pd.send("in", t * 100_000 + k) }
+            }
+            val rendering = java.util.concurrent.atomic.AtomicBoolean(true)
+            val renderer = Thread {
+                val l = FloatArray(512)
+                val r = FloatArray(512)
+                while (rendering.get()) pd.render(l, r, 512)
+                pd.render(l, r, 512)
+            }
+            renderer.start()
+            senders.forEach { it.start() }
+            senders.forEach { it.join() }
+            rendering.set(false)
+            renderer.join()
+            pd.poll()
+            assertEquals(4 * perThread, got.size)
+            for (t in 0 until 4) {
+                val mine = got.filter { it >= t * 100_000 && it < (t + 1) * 100_000 }.map { it.toInt() - t * 100_000 }
+                assertEquals((0 until perThread).toList(), mine, "sender $t")
+            }
+        }
+    }
 }
