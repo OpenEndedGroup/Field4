@@ -145,4 +145,29 @@ class SceneOnARigTest {
         // 44 Hz is 22.7 ms; a loaded CI machine gets slack, not a pass for a stalled sender.
         assertTrue(timing.arrivalMedian in 15.0..40.0, "median gap ${timing.arrivalMedian} ms")
     }
+
+    @Test
+    fun `the same rig over Art-Net with ArtSync arrives whole`() {
+        // Art-Net numbers universes from 0, and the rig uses 1 and 2 as given. With sync on, the
+        // receiver holds each ArtDmx until the ArtSync after it, so both universes change together.
+        val port = 35684
+        val scene = RectSLImager(SceneOnARig.SCENE)
+        val rig = SceneOnARig.Rig()
+        val input = DmxInput(DmxProtocol.ARTNET, port = port, bindAddress = "127.0.0.1", answerPolls = false)
+        val out = DmxOutput(DmxProtocol.ARTNET, host = "127.0.0.1", port = port, sync = true, autoStart = false)
+        try {
+            for (t in listOf(0.25, 1.25, 2.25, 3.25)) {
+                rig.show(scene.frame(t, SceneOnARig.FRAME_W, SceneOnARig.FRAME_H))
+                val expected = HashMap<Int, ByteArray>()
+                rig.patch.renderInto { u -> expected.getOrPut(u) { ByteArray(512) } }
+                rig.patch.render(out)
+                out.flush()
+                val until = System.nanoTime() + 2_000_000_000L
+                while (expected.any { (u, want) -> !input.universe(u).contentEquals(want) } && System.nanoTime() < until) Thread.sleep(2)
+                expected.forEach { (u, want) -> assertTrue(input.universe(u).contentEquals(want), "universe $u at t = $t") }
+            }
+        } finally {
+            out.close(); input.close()
+        }
+    }
 }
