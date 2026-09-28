@@ -591,6 +591,14 @@ private fun addOffscreenConnectionLabel(
     group.setAttribute("opacity", opacity.toString())
     group.setAttribute("pointer-events", "none")
     group.setAttribute("data-offscreen-label-key", key)
+    // The layer is in world units. Counter-scale about the marker so the dot, pill and text stay
+    // screen-sized at any canvas zoom; the offsets below are then screen pixels too.
+    if (mainZoom != 1.0) {
+        group.setAttribute(
+            "transform",
+            "translate(${point.x} ${point.y}) scale(${1.0 / mainZoom}) translate(${-point.x} ${-point.y})"
+        )
+    }
     layer.appendChild(group)
 
     val marker = document.createElementNS("http://www.w3.org/2000/svg", "circle") as SVGElement
@@ -741,7 +749,7 @@ private fun offscreenMarkerPointOnPolyline(points: PointBuffer, viewportRect: DO
             val crossing = segmentViewportCrossing(x0, y0, x1, y1, viewportRect) ?: return null
             val len = hypot(crossing.x - x0, crossing.y - y0)
             if (len < 1e-6) return crossing
-            val inset = min(OFFSCREEN_CONNECTION_INSET, len)
+            val inset = min(OFFSCREEN_CONNECTION_INSET / mainZoom, len)
             val f = (len - inset) / len
             return Point(
                 x0 + (crossing.x - x0) * f,
@@ -1377,7 +1385,7 @@ class CanvasGestures(
         val boxElements = boxes()
         val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
         val worldRects = screenRects.mapValues { (_, rect) ->
-            DOMRect(rect.x - ox, rect.y - oy, rect.width, rect.height)
+            DOMRect((rect.x - ox) / mainZoom, (rect.y - oy) / mainZoom, rect.width / mainZoom, rect.height / mainZoom)
         }
         val boxByUid = boxElements.mapNotNull { box ->
             uidOrNull(box)?.let { it to box }
@@ -1461,13 +1469,13 @@ class CanvasGestures(
         val vbw = cachedViewportWidth
         val vbh = cachedViewportHeight
 
-        parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
-        frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+        parent.setAttribute("viewBox", worldViewBox(vbw, vbh))
+        frontParent.setAttribute("viewBox", worldViewBox(vbw, vbh))
 
         // Connection splines live on the in-viewport layer so boxes blur them through
         // their backdrop-filter; keep its viewBox in lock-step with the overlay layers.
         val splineParent = document.getElementById("connectionsplinelayer") as? SVGSVGElement
-        splineParent?.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+        splineParent?.setAttribute("viewBox", worldViewBox(vbw, vbh))
 
         val svg = (splineParent ?: parent).getGroupOrMake("connections")
         svg.innerHTML = ""
@@ -1514,7 +1522,8 @@ class CanvasGestures(
             line.setAttribute("x2", x2.toString())
             line.setAttribute("y2", y2.toString())
             line.setAttribute("stroke", "rgba(255,255,255,0.35)")
-            line.setAttribute("stroke-width", "4")
+            // This layer is drawn in world units; keep the hint 4 screen pixels wide at any zoom.
+            line.setAttribute("stroke-width", (4.0 / mainZoom).toString())
             line.setAttribute("stroke-linecap", "round")
             hints.appendChild(line)
         }
@@ -1531,7 +1540,7 @@ class CanvasGestures(
             val offBottom = targetRect.y > viewportBottom
             if (!(offLeft || offRight || offTop || offBottom)) return
 
-            val margin = 4.0
+            val margin = 4.0 / mainZoom
             val edgeX = if (offLeft) viewportLeft + margin else viewportRight - margin
             val edgeY = if (offTop) viewportTop + margin else viewportBottom - margin
             when {
@@ -1551,7 +1560,8 @@ class CanvasGestures(
             }
 	        }
 
-	        val mainViewportRect = DOMRect(-ox, -oy, vbw, vbh)
+	        // The visible world rect: the window, through the camera (screen = world * zoom + t).
+	        val mainViewportRect = DOMRect(-ox / mainZoom, -oy / mainZoom, vbw / mainZoom, vbh / mainZoom)
 	        currentConnectionViewportRect = mainViewportRect
 
 	        val nestedDisclosureSnapshotCache = mutableMapOf<String, NestedDisclosureSnapshot>()
@@ -1575,7 +1585,7 @@ class CanvasGestures(
                 r.width > NESTED_VIEWPORT_VISIBILITY_EPSILON &&
                 r.height > NESTED_VIEWPORT_VISIBILITY_EPSILON
             ) {
-                DOMRect(r.x - ox, r.y - oy, r.width, r.height)
+                DOMRect((r.x - ox) / mainZoom, (r.y - oy) / mainZoom, r.width / mainZoom, r.height / mainZoom)
             } else {
                 null
             }

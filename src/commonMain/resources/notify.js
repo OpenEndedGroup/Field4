@@ -75,6 +75,12 @@ var notify = (text, cat = "") => {
                 if (startup) {
                         base += startup.getBoundingClientRect().height + 6;
                 }
+                // The document-guide launcher (documentGuide.js) is a fixed button in this same
+                // bottom-left corner; stack above it rather than hiding it.
+                const launcher = document.getElementById("document-guide-launcher");
+                if (launcher && launcher.getClientRects().length > 0) {
+                        base = Math.max(base, window.innerHeight - launcher.getBoundingClientRect().top + 6);
+                }
                 // Measure every bubble before moving any of them: the toasts are position:fixed, so
                 // their heights do not depend on `bottom`, and interleaving the read with the write
                 // forces one layout per bubble.

@@ -49,5 +49,5 @@
 .guide-resize-sw { bottom:0; left:0; cursor:nesw-resize; }
 .guide-resize-se { bottom:0; right:0; cursor:nwse-resize; }
 .guide-resize-se::after { content:""; position:absolute; width:8px; height:4px; border-block:1px solid #888; transform:rotate(-45deg); right:1px; bottom:4px; }
-#document-guide-launcher { position:fixed; left:16px; bottom:16px; z-index:900; font:13px var(--field-font,"Iosevka Web"),Iosevka,monospace; background:#232323; color:#aaa; }
+#document-guide-launcher { position:fixed; left:10px; bottom:10px; z-index:900; font:13px var(--field-font,"Iosevka Web"),Iosevka,monospace; background:#232323; color:#aaa; }
 @media (max-width:900px) { .document-guide { width:calc(100vw - 36px); } .guide-nav { width:140px; } .guide-reader { padding:16px 18px 60px; } }

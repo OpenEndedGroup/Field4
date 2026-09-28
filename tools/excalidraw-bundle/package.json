@@ -1,0 +1,16 @@
+{
+  "name": "field-excalidraw-bundle",
+  "private": true,
+  "description": "Builds the vendored Excalidraw drawing-layer bundle into src/jsMain/resources/excalidraw/. Run: npm ci && npm run build",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "@excalidraw/excalidraw": "0.18.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10"
+  }
+}
