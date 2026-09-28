@@ -337,15 +337,11 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
      * name exists up the graph, there is no [defaultValue], and the type is not nullable.
      */
     operator fun getValue(f: Box, property: KProperty<*>): T {
-        val candidateNames = contextCandidateNames(property.name)
+        val query = ContextResolution.Query.inheritedFromContext(property.name)
+        val candidateNames = query.names.orEmpty()
         val found = ContextResolution.walk(
             f,
-            ContextResolution.Query(
-                description = property.name,
-                names = candidateNames,
-                acceptProperty = { it != null },
-                acceptVariable = { true },
-            ),
+            query,
             ContextResolution.Policy.INHERITANCE_FROM_CONTEXT,
             ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
         )
@@ -362,12 +358,6 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
 
     /** Writes the value **locally** as a raw property, shadowing whatever an ancestor had. */
     operator fun setValue(f: HasHierarchy, property: KProperty<*>, v: T) = f.setPropertyRaw(property.name, v as Any)
-
-    private fun contextCandidateNames(propertyName: String): List<String> {
-        val names = linkedSetOf(propertyName)
-        if (propertyName.startsWith("_")) names.add(propertyName.substring(1))
-        return names.toList()
-    }
 }
 
 /**

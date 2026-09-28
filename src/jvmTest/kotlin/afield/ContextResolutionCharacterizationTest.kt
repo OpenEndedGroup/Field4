@@ -422,6 +422,39 @@ class ContextResolutionCharacterizationTest {
     // Preamble gathering
     // ---------------------------------------------------------------------------------------------
 
+    // ---------------------------------------------------------------------------------------------
+    // The Monaco hover
+    // ---------------------------------------------------------------------------------------------
+
+    /**
+     * 2026-09-28: the hover matched only `var Box.x by …` and resolved every delegate as `Inheritance`
+     * (raw properties only), so for an `@exported` `val` it said nothing, and for one supplied by a
+     * variable it named whichever box had a *property* instead. FIXED 2026-09-29: it matches `val`, and
+     * walks the way the declared delegate does.
+     */
+    @Test
+    fun theHoverWalksTheWayTheDelegateDoes() {
+        val s = session("hover")
+        val grand = boxIn(s, "grand")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        grand.connect(parent)
+        parent.connect(child)
+        grand.setPropertyRaw("_x", 1)
+        parent.variable("x", 2)
+
+        val preamble = "val Box._x by InheritanceFromContext<(kotlin.Int) -> kotlin.Int>() /*from:parent*/ /**/"
+        val hover = resolveInheritedDeclarationForHover(child, "_x", preamble)!!
+        assertEquals("val", hover.keyword)
+        assertEquals("(kotlin.Int) -> kotlin.Int", hover.declaredType)
+        assertEquals(parent, hover.resolution!!.supplier, "the variable-first walk InheritanceFromContext does")
+        assertEquals(listOf(child, parent), hover.resolution!!.path)
+        assertEquals(listOf(grand), hover.resolution!!.shadowed.map { it.supplier })
+
+        val asProp = resolveInheritedDeclarationForHover(child, "_x", "var Box._x by Inheritance<Int>() /**/")!!
+        assertEquals(grand, asProp.resolution!!.supplier, "Inheritance reads properties only")
+    }
+
     private val exportLine = "val Box._x by InheritanceFromContext<kotlin.Int>() /**/"
 
     private fun String.untagged() = lines().joinToString("\n") { stripPreambleSupplierTag(it) }

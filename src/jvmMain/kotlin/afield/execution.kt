@@ -943,14 +943,97 @@ private object KotlinSymbolContextCache {
     }
 }
 
-private fun resolveInheritedPropertyWithSource(box: Box, name: String): Pair<Any?, Box?> {
-    val found = ContextResolution.walk(
-        box,
-        ContextResolution.Query.propertyNamed(name),
-        ContextResolution.Policy.INHERITANCE,
-        ContextResolution.Mechanism.INHERITANCE,
-    ) ?: return null to null
-    return found.value to found.supplier
+/**
+ * What the Monaco hover says about an inherited `Box.<symbol>` declared in the gathered preamble: the
+ * declaration as written (`val` or `var`, delegate, type) and the walk that delegate performs, so the
+ * hover names the same supplier the delegate reads — not a props-only guess at it, which is what it did
+ * for `@exported` values before 2026-09-29.
+ */
+internal class InheritedDeclarationHover(
+    val keyword: String,
+    val delegate: String,
+    val declaredType: String,
+    /** Null when nothing up the graph supplies the value yet. */
+    val resolution: ContextResolution.Resolution?,
+)
+
+private val inheritedDeclarationRegexCache = java.util.concurrent.ConcurrentHashMap<String, Regex>()
+
+internal fun resolveInheritedDeclarationForHover(box: Box, symbol: String, preamble: String): InheritedDeclarationHover? {
+    val regex = inheritedDeclarationRegexCache.getOrPut(symbol) {
+        Regex("""\b(val|var)\s+Box\.${Regex.escape(symbol)}\s+by\s+(Inheritance|Delegation|InheritanceFromContext)\s*<\s*(.+?)\s*>\s*\(""")
+    }
+    val match = regex.find(preamble) ?: return null
+    val (keyword, delegate, type) = match.destructured
+    val resolution = when (delegate) {
+        "InheritanceFromContext" -> ContextResolution.walk(
+            box,
+            ContextResolution.Query.inheritedFromContext(symbol),
+            ContextResolution.Policy.INHERITANCE_FROM_CONTEXT,
+            ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
+            explain = true,
+        )
+        "Inheritance" -> ContextResolution.walk(
+            box,
+            ContextResolution.Query.propertyNamed(symbol),
+            ContextResolution.Policy.INHERITANCE,
+            ContextResolution.Mechanism.INHERITANCE,
+            explain = true,
+        )
+        // Delegation reads this box's own property and nothing else
+        else -> ContextResolution.walk(
+            box,
+            ContextResolution.Query.propertyNamed(symbol),
+            ContextResolution.Policy.INHERITANCE,
+            ContextResolution.Mechanism.INHERITANCE,
+        )?.takeIf { it.depth == 0 }
+    }
+    return InheritedDeclarationHover(keyword, delegate, type.trim(), resolution)
+}
+
+private fun renderInheritedDeclarationHover(box: Box, symbol: String, hover: InheritedDeclarationHover): String {
+    val found = hover.resolution
+    val declaration = "${hover.keyword} Box.$symbol: ${shortenType(hover.declaredType)}"
+    val locationBox = found?.supplier ?: box
+    val locationLabel = when {
+        found == null -> "not yet supplied; declared for"
+        found.supplier.id != box.id -> "inherited from"
+        found.matchKind == ContextResolution.MatchKind.VARIABLE -> "variable of"
+        else -> "property of"
+    }
+    val container = ContainerSummary(
+        text = boxContextLabel(box, locationBox),
+        html = "<i>${escapeNotifyHtml(boxContextLabel(box, locationBox))}</i>"
+    )
+    return buildString {
+        append("<div style='display:inline-block; max-width: 620px;'>")
+        append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
+        append(escapeNotifyHtml(declaration))
+        append("</code></div>")
+        append(renderVariableLocationSection(label = locationLabel, container = container, value = found?.value))
+        if (found != null) {
+            val slot = if (found.matchKind == ContextResolution.MatchKind.VARIABLE) "variable" else "property"
+            append("<div style='color:#777;'>")
+            append(escapeNotifyHtml("$slot '${found.matchedName ?: symbol}' via ${hover.delegate}"))
+            if (found.path.size > 2) {
+                append(escapeNotifyHtml(", path " + found.path.joinToString(" → ") { boxContextLabel(box, it) }))
+            }
+            append("</div>")
+            if (found.ambiguous) {
+                val others = found.competing.joinToString(", ") { boxContextLabel(box, it.supplier) }
+                append("<div style='color:#e0b050;'>")
+                append(escapeNotifyHtml("ambiguous: $others also supplies '$symbol' at the same distance, with a different value; this one is first in parents order"))
+                append("</div>")
+            }
+            val hidden = found.shadowed.filter { it.supplier.id != found.supplier.id }.distinctBy { it.supplier.id }
+            if (hidden.isNotEmpty()) {
+                append("<div style='color:#777;'>")
+                append(escapeNotifyHtml("shadows " + hidden.joinToString(", ") { boxContextLabel(box, it.supplier) }))
+                append("</div>")
+            }
+        }
+        append("</div>")
+    }
 }
 
 private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContextResponse {
@@ -983,30 +1066,10 @@ private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContex
         )
     }
 
-    // Check if symbol corresponds to a preamble-defined extension property (e.g. from prop<T>())
+    // Check if symbol corresponds to a preamble-defined extension property (prop<T>(), @exported)
     runCatching {
-        val preamble = gatherPreambleUpwards(box)
-        val propRegex =
-            Regex("""var\s+Box\.${Regex.escape(symbol)}\s+by\s+(?:Inheritance|Delegation|InheritanceFromContext)\s*<\s*([^>]+?)\s*>""")
-        propRegex.find(preamble)?.let { match ->
-            val declaredType = shortenType(match.groupValues[1].trim())
-            val (value, sourceBox) = resolveInheritedPropertyWithSource(box, symbol)
-            val declaration = "var Box.$symbol: $declaredType"
-            val locationLabel = if (sourceBox != null && sourceBox.id != box.id) "inherited from" else "property of"
-            val locationBox = sourceBox ?: box
-            val container = ContainerSummary(
-                text = boxContextLabel(box, locationBox),
-                html = "<i>${escapeNotifyHtml(boxContextLabel(box, locationBox))}</i>"
-            )
-            val html = buildString {
-                append("<div style='display:inline-block; max-width: 620px;'>")
-                append("<div style='color:#ddd; overflow-wrap:anywhere;'><code>")
-                append(escapeNotifyHtml(declaration))
-                append("</code></div>")
-                append(renderVariableLocationSection(label = locationLabel, container = container, value = value))
-                append("</div>")
-            }
-            return symbolContextResponse(symbol = symbol, html = html)
+        resolveInheritedDeclarationForHover(box, symbol, gatherPreambleUpwards(box))?.let { hover ->
+            return symbolContextResponse(symbol = symbol, html = renderInheritedDeclarationHover(box, symbol, hover))
         }
     }
 

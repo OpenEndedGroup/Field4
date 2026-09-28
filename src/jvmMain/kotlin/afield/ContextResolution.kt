@@ -349,6 +349,17 @@ object ContextResolution {
                 acceptProperty = { it != null },
                 acceptVariable = { false },
             )
+
+            /**
+             * The `InheritanceFromContext` query for the property called [propertyName]: a leading
+             * underscore is optional, so `_speed` also matches a slot called `speed`; a variable
+             * matches even when it holds null, a property only when it is non-null.
+             */
+            fun inheritedFromContext(propertyName: String): Query {
+                val names = linkedSetOf(propertyName)
+                if (propertyName.startsWith("_")) names.add(propertyName.substring(1))
+                return Query(propertyName, names.toList(), { it != null }, { true })
+            }
         }
     }
 
