@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -104,6 +105,33 @@ def fetch(source: Path) -> None:
             shutil.rmtree(temporary)
 
 
+OBJECT_CATALOG = "pd-objects.txt"
+
+# Classes Pd registers for its own machinery; nobody types them into an object box.
+INTERNAL_CLASSES = {
+    "backtracer", "bindlist", "canvasmaker", "clone-inlet", "clone-outlet", "exprproxy",
+    "gfxstub", "guiconnect", "libpd_receive",
+}
+
+
+def write_object_catalog(source: Path, target: Path) -> Path:
+    """Write the names this Pd can create, one per line, read from its C sources.
+
+    Every vanilla and `extra` object is a `class_new(gensym("name"), ...)` or a
+    `class_addcreator(..., gensym("alias"), ...)`, so the list comes from the checkout the library was
+    built from and cannot drift from it. Field reads it to suggest `[osc~]` for `[osc]`.
+    """
+    pattern = re.compile(r'(?:class_new|class_new64|class_addcreator)\([^;]*?gensym\("([^"]+)"\)')
+    names = set()
+    for root in (source / "pure-data" / "src", source / "pure-data" / "extra"):
+        for c in root.rglob("*.c"):
+            names.update(pattern.findall(c.read_text(errors="replace")))
+    names -= INTERNAL_CLASSES
+    header = f"# Objects Pd can create, from libpd {LIBPD_TAG} ({LIBPD_COMMIT[:10]}); written by build_libpd_native.py\n"
+    target.write_text(header + "".join(n + "\n" for n in sorted(names)))
+    return target
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
@@ -138,7 +166,9 @@ def main() -> int:
     if not candidates:
         raise SystemExit(f"[field-libpd] built, but no {library_name()} under {build}")
     library = candidates[0]
+    catalog = write_object_catalog(source, library.parent / OBJECT_CATALOG)
     print(f"[field-libpd] built {library}", flush=True)
+    print(f"[field-libpd] wrote {catalog}: the objects this Pd can create, for typo hints", flush=True)
     print(f"[field-libpd] point Field at it with -Dafield.pd.library={library}", flush=True)
     return 0
 

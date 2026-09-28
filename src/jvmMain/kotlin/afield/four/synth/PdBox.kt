@@ -6,6 +6,8 @@ import afield.ReturnValueRegistry
 import afield.RunsAt
 import afield.controlGroup
 import afield.inMain
+import afield.isTrue
+import afield.pd.PdExecution
 import afield.pd.PdInstance
 import afield.pd.PdLibrary
 import afield.pd.PdPatch
@@ -196,6 +198,59 @@ class PdLaunch internal constructor(
         "problems" to patch.problems.map { it.message },
         "gain" to gain,
     )
+}
+
+/**
+ * The Pd box named [name] in this box's document — a child of a Pd root, whose code is a patch — so
+ * Kotlin can [pdSend] to the patch it is playing.
+ *
+ * ```kotlin
+ * pdBox("drone").pdSend("freq", 330)
+ * ```
+ *
+ * @throws IllegalStateException when no box, or more than one, has that name, or the box is not Pd
+ */
+fun Box.pdBox(name: String): Box {
+    val seen = HashSet<Box>()
+    val fringe = ArrayDeque(listOf(root))
+    val found = ArrayList<Box>()
+    while (fringe.isNotEmpty()) {
+        val next = fringe.removeFirst()
+        if (!seen.add(next)) continue
+        if (next.name == name && !next.getPropertyRaw("_tombstone").isTrue()) found += next
+        fringe.addAll(next.children)
+    }
+    val box = when (found.size) {
+        1 -> found[0]
+        0 -> throw IllegalStateException("no box is named '$name'")
+        else -> throw IllegalStateException("${found.size} boxes are named '$name'; rename one, or hold the box itself")
+    }
+    check(box.ke is PdExecution) { "'$name' is not a Pd box: put it under a box whose Main Language is Pd" }
+    return box
+}
+
+/**
+ * Send [values] to `[r receiver]` in the patch this Pd box is playing, as running the line
+ * `receiver values…` in the box itself does. Numbers of any kind (an `Int` is fine) arrive as Pd
+ * floats; no values is a bang; values that start with a number are a list; a first value that is a
+ * `String` is the message's selector, as `pdSend("voice", "set", 3)` sends `set 3`.
+ *
+ * Like [PdLaunch.send], the message is queued and reaches Pd at the start of its next audio block, so
+ * this is safe from any thread and never waits for the audio thread.
+ *
+ * @throws IllegalStateException when this is not a Pd box, or its patch is not playing: launch it first
+ */
+fun Box.pdSend(receiver: String, vararg values: Any) {
+    val execution = ke as? PdExecution ?: throw IllegalStateException("'$name' is not a Pd box: put it under a box whose Main Language is Pd")
+    val pd = execution.running?.pd ?: throw IllegalStateException("'$name' is not playing: launch it, then send to it")
+    val args: List<Any> = values.map { if (it is Number) it.toFloat() else it.toString() }
+    when {
+        args.isEmpty() -> pd.bang(receiver)
+        args.size == 1 && args[0] is Float -> pd.send(receiver, args[0] as Float)
+        args[0] is Float -> pd.list(receiver, *args.toTypedArray())
+        args.size == 1 && args[0] == "bang" -> pd.bang(receiver)
+        else -> pd.message(receiver, args[0] as String, *args.drop(1).toTypedArray())
+    }
 }
 
 /**

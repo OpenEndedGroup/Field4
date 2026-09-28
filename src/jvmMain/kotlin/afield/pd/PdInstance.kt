@@ -633,9 +633,10 @@ class PdPatch internal constructor(
          * Place Pd's open-time console output on the patch's lines.
          *
          * Pd reports a failed object as two lines: the object's text, then `... couldn't create`.
-         * The object text is found on the `#X obj` line that carries it.
+         * The object text is found on the `#X obj` line that carries it, and the problem says which
+         * object of [known] ([PdObjects.catalog]) was probably meant.
          */
-        fun problemsIn(source: String, printed: List<String>): List<Problem> {
+        fun problemsIn(source: String, printed: List<String>, known: Set<String> = PdObjects.catalog()): List<Problem> {
             val lines = source.lines()
             val out = ArrayList<Problem>()
             // Pd 0.56 prefixes the lines of an error with "error: " and sometimes "verbose(0): ";
@@ -650,7 +651,8 @@ class PdPatch internal constructor(
                         val t = l.trim()
                         t.startsWith("#X obj") && t.removeSuffix(";").split(Regex("\\s+")).drop(4).joinToString(" ") == what
                     }
-                    out += Problem("Pd couldn't create [$what]", at)
+                    val hint = PdObjects.hint(what, known)
+                    out += Problem("Pd couldn't create [$what]" + if (hint.isEmpty()) "" else " — $hint", at)
                 } else if (printed[k].trim().startsWith("error:") || line.startsWith("warning:") ||
                     line.contains("can't connect")) {
                     out += Problem(line, -1)

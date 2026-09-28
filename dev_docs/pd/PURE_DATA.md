@@ -14,7 +14,8 @@ Added 2026-09-28. User-facing page: `public/docs/pure_data.md`. Loadable scene:
 | `src/jvmMain/kotlin/afield/pd/PdPatchGraph.kt` | the patch text as a graph (object indices as Pd counts them, subpatches as one object), line descriptions, FLine drawing, `statementsOnly`. |
 | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt` | `PdExecution`: Pd as a Main Language; message lines as fragments; LineNotes provider. |
 | `tools/build_zensical_docs.py` | `libpd_library_path` and the `libpd` entry in `NATIVE_PREREQUISITES`, so a docs fence can say `requires="libpd"`. |
-| `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler. |
+| `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler, and `pdBox(name)` / `Box.pdSend(receiver, values…)` for sending from Kotlin to a *Pd box's* running patch. |
+| `src/jvmMain/kotlin/afield/pd/PdObjects.kt` | typo hints: reads `pd-objects.txt`, which `build_libpd_native.py` writes beside the library from every `class_new` / `class_addcreator` name in the pinned `src` and `extra` (297 names at 0.16.1, internals removed), and suggests the signal/control twin, a case fix, or the nearest names within two edits (one for ≤3 letters). |
 
 ## Thread discipline
 
@@ -56,7 +57,9 @@ All run against the built library on 2026-09-28; they print `SKIPPED` and pass w
 - Four threads sending 2000 numbers each while a fifth renders: all 8000 arrive, in per-sender
   order (four runs).
 - Two instances with the same `[r in]`/`[s out]` names are isolated.
-- A patch with `[osc 440]` reports `Pd couldn't create [osc 440]` on line 1 of its source.
+- A patch with `[osc 440]` reports `Pd couldn't create [osc 440] — did you mean [osc~ 440]?` on line 1
+  of its source (0-based; the editor shows it on the object's own line). `PdObjectsTest` (6) pins the
+  suggestions against a fixed catalog and checks the built one names `osc~`, `r`, `t`, `hsl`, `expr~`.
 - A headless `hsl` still forwards what it receives (and does **not** clip it to its range — 5000 in,
   5000 out, for a 100–1000 slider).
 
@@ -65,7 +68,19 @@ Live, through the backdoor on port 9530 (a Kotlin box `pd(...)` with a `[metro 2
 thread `field-runloop-main` (so the audio engine was pulling blocks in real time), and none after
 `stop`. The demo scene's six boxes were each run: see the worklog of that night.
 
+Live, 2026-09-28 morning, on port 9610 (a fresh replay, `applied=13 skipped=0 errors=0`): the typo box
+sends Pd's two console lines, then the error on line 3 with the hint, drawn red. `pdBox("drone")
+.pdSend("freq", 277)` and then `123` from a scratch box were read back exactly from the drone's
+`[r freq]` line note; the launched arpeggio box stepped the same note through 165, 220, 330, 440, 330
+and held after `stop`.
+
 ## Traps hit
+
+- **The editor clears a box's errors whenever the box prints.** Pd's problem was first painted, then
+  Pd's own console echo (`verbose(0): osc 440`, `error: ... couldn't create`) arrived as normal output
+  and wiped it; and the problem's 0-based line was passed where the editor counts 1-based from
+  `Execute.line`, so it would have landed a line early. `PdExecution.open` now delivers the console
+  first and paints problems last, at `firstLine + line + 1`.
 
 - **`val (left, _) = …` at the top level of a box never completes** under the K2 REPL: no compile
   error, no output, and the backdoor reports "Execution did not complete". `val (left, right) = …`

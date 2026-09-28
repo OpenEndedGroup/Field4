@@ -207,6 +207,39 @@ lines(afield.pd.PdPatchGraph.parse(drone).toFLines(), channel = "patch", w = 460
 The editor's line notes say what the object on a line is wired to. On an `[s]` or `[r]` they also give
 the last value that went through that name.
 
+### Sending to a Pd box from Kotlin
+
+A Kotlin box can reach the patch a Pd box is playing. `pdBox` finds the box by name, and `pdSend`
+sends to an `[r]` in its patch, just as running the line `freq 330` in the Pd box does:
+
+```diffstatic {data-lang=kotlin}
+:::static
+pdBox("drone").pdSend("freq", 330)
+
+// Launched, this plays an arpeggio into [r freq] until the box stops.
+val drone = pdBox("drone")
+val notes = listOf(110, 165, 220, 330, 440, 330, 220, 165)
+var i = 0
+loop {
+    drone.pdSend("freq", notes[i++ % notes.size])
+    delay(250)
+}
+```
+
+Any number works, and an `Int` arrives as a Pd float. `pdSend("go")` with nothing after the name is
+a bang, several numbers are a list, and a string first is a selector, so `pdSend("voice", "set", 3)`
+sends `set 3`. The Pd box has to be playing. If it is not, `pdSend` throws and says so, and a launched
+loop stops on that line.
+
+### An object Pd cannot create
+
+Pd reports a misspelt object on its console and leaves it out of the patch. Field marks the line it
+is on and suggests what was probably meant: `[osc 440]` gets "did you mean [osc~ 440]?". The
+suggestions come from `pd-objects.txt`, which the libpd build writes from the same pinned sources it
+compiles. It lists every object and alias Pd registers, so a suggestion is always something this Pd
+can make. `PdObjects.suggest` tries the signal or control twin first (`osc` for
+`osc~`, `metro~` for `metro`), then a difference of case, then the nearest names within two edits.
+
 ## What is not here
 
 - **Pd's GUI.** libpd has none. A patch opened here cannot be edited by dragging; edit the text, or
