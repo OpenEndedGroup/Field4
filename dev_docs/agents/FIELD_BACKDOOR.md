@@ -37,6 +37,14 @@ uv run --project . --group backdoor python tools/field_backdoor.py \
   --json --port 9477 --command status
 ```
 
+With no `--port` at all the backdoor picks the first free automation port from 9477
+(`select_automation_port`, skipping 9092, the same rule as the smoke and docs runners),
+says so on stderr, and reports it as `port` / `portSource: "automation-default"` in
+`status`. Before 2026-09-28 the default was 9092, the user's own Field. Reaching that
+server now takes `--attach-existing` (whose default port is `$PORT` or 9092) or an
+explicit `--port 9092`. `tools/field_mcp.py` keeps 9092 as its default because it only
+ever attaches.
+
 `status` reports whether this invocation owns the server and gives the session
 and managed-server log paths. A backdoor-owned Field enables JDWP on port 5005
 unless `AFIELD_JDWP_PORT` overrides or disables it. A plain
@@ -49,8 +57,8 @@ given. Automated servers also decline to update the interactive
 preference can name a deleted sibling worktree, while scratch state belongs to
 the checkout that launched it.
 
-Do not use the default Field port for isolated verification: an already-running
-server is reused, and it may contain stale code or human work. Reuse one custom
+Do not point isolated verification at 9092: a *fresh* same-checkout server there is
+reused (a stale or foreign one is refused), and it holds human work. Reuse one custom
 port within a test session; choose a new one when a fresh JVM matters.
 
 ### Coordinated live coding in the user's visible Field
@@ -94,8 +102,9 @@ can disagree with you. `sessionKey` should read as `serverWorkspace` + `/` +
 unexpectedly report zero boxes. Do **not** read `requestedWorkspace` as verification: it
 is your own `--workspace` argument echoed back, it was the field called `workspace` until
 2026-09-12, and an agent following that older instruction wrote five documents into a
-different checkout while believing it had checked. `serverWorkspace: null` means the
-server predates the field and you have verified nothing.
+different checkout while believing it had checked. Since 2026-09-28 a server that reports
+`serverWorkspace: null` (it predates the field) is refused under `--attach-existing`;
+`--allow-unverified-workspace` is the explicit override when you have checked by other means.
 `reusedExistingServer: true` confirms attachment, but does **not** prove that the document
 namespace is correct. Full contract:
 [`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md).
@@ -192,14 +201,18 @@ one distinct live window must be bound in the current document. Multiple windows
 or ambiguous parents fail explicitly instead of selecting whichever opened last.
 Unknown target uids fail without falling back to a different renderer.
 
-**`open` says whether the document was already there.** Opening a name that is not in the
-server's workspace is how a document gets *created* in Field, so `open` answers `ok`
-either way — and used to look identical whether it had loaded `alife_walls` or invented
-it. Read `documentExisted` and `attachedToLiveDocument`, both answered by the server;
-`createdNewDocument: true` plus a stderr line appear when a named open invented one, and
-`documentExistedKnown: false` means the server predates those fields, so you have verified
-nothing. Say `open <name> --must-exist` whenever you mean an existing document: it is then
-a hard error, and it fails closed against a server too old to answer.
+**`open <name>` must exist unless you say `--create`.** Opening a name that is not in the
+server's workspace is how a document gets *created* in Field, so the server answers with a
+snapshot either way — and `open` used to look identical whether it had loaded `alife_walls`
+or invented it. Since 2026-09-28 the `open` command refuses a name the server did not have
+(and fails closed against a server too old to report `documentExisted`); pass
+`open <name> --create` when a new document is what you want. `--must-exist` is still
+accepted and now means the default. The results still carry `documentExisted` and
+`attachedToLiveDocument` (both answered by the server) and, for a `--create` that invented
+one, `createdNewDocument: true` plus a stderr line. The top-level `--document <name>` flag
+still creates, because automation that spans invocations relies on it; it prints the same
+stderr line when it does. The MCP bridge's `field_open_document` has the same default and a
+`create` argument.
 
 Both changes, with their populations and their traps:
 [`AGENT_SURFACE_TRUTHFULNESS.md`](./AGENT_SURFACE_TRUTHFULNESS.md).
@@ -336,7 +349,8 @@ What each family actually captures:
 - `native-screenshot`: the native renderer window rather than browser DOM. Needs a
   live native renderer, so `wait-native-renderer <uid> --frames 3` first.
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with
-  meaningful quoting; `--body` needs an explicit JavaScript `return`.
+  meaningful quoting; `--body` needs an explicit JavaScript `return` (without one the
+  result carries a `warnings` entry and a stderr line, since it will be null).
 
 `record-window`, `record-editor`, and `record-box` accept `--frame-synchronous`.
 In that mode the recorder captures one painted browser image per completed Field
@@ -352,8 +366,20 @@ selection by default so ordinary docs captures are clean. Use
 Both flags are available on `screenshot-window` and `screenshot-box`.
 
 Inspect the produced PNG or MP4. Clip coordinates are CSS pixels and may not
-equal output pixel dimensions on a high-DPI browser. For a blank iframe, inspect
-both the iframe and its parent disclosure, including its intrinsic-size data.
+equal output pixel dimensions on a high-DPI browser; screenshot results therefore carry
+`imagePixelWidth` / `imagePixelHeight` (read from the PNG) and, for browser captures,
+the page's `devicePixelRatio`. For a blank iframe, inspect both the iframe and its parent
+disclosure, including its intrinsic-size data.
+
+**Captures say when they cannot show a run.** The backdoor records, per box, whether
+Playwright was attached to the current document and whether `editor-open` had been done
+when that box last ran (`run`, `launch`, `continue`, `launch-batch`). A `screenshot-*` or
+`record-*` of a box that ran before Playwright attached — or, for editor captures, before
+`editor-open` — carries `captureWarnings` in its result and repeats them on stderr. It is a
+warning rather than an error (the server may still fail the capture on its own, as it does
+for an output area with no visible content), and a `record-*` with `--restart-target` is
+exempt because relaunching regenerates the output. Boxes executed by `macro run` are not
+tracked.
 
 ## Graphics topology
 
@@ -396,17 +422,16 @@ output evidence.
 uv run --project . --group backdoor python tools/run_field_tests.py \
   --refresh-catalog
 
-# Browser/Monaco regressions
-uv run --project . --group backdoor python tools/run_ui_regressions.py \
-  --port 9490 --timeout 45
+# Browser/Monaco regressions (port 9490 and a 30 s per-command timeout are the defaults)
+uv run --project . --group backdoor python tools/run_ui_regressions.py
 
-# Full docs recapture
-FIELD_DOCS_RUNNER_MODE=always FIELD_DOCS_RUNNER_PORT=9477 \
+# Full docs recapture (FIELD_DOCS_RUNNER_PORT defaults to the first free port from 9477)
+FIELD_DOCS_RUNNER_MODE=always \
   uv run --project . --group docs python tools/build_zensical_docs.py --clean
 ```
 
 `run_field_tests.py` reads per-test timeouts from `FIELD_TEST.timeoutSec`; it
-does not accept the backdoor's `--timeout` option. Use `--id` for a focused UI
+does not accept the backdoor's `--timeout` option, and says so if given one. Use `--id` for a focused UI
 regression. UI artifacts live under
 `build/ui-regressions/artifacts/<test-id>/`.
 

@@ -5,8 +5,9 @@ A one-page cheat-sheet for driving Field from an agent. For the full story see
 (build/edit/launch/save), and [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md) (the harness).
 
 All commands run from the repo root through `uv`. Use a custom high `--port` (e.g. 9477)
-for isolated verification. Port 9092 is appropriate only for explicitly coordinated
-live coding in the user's visible, identified Field session.
+for isolated verification; with no `--port` the backdoor picks the first free one from 9477.
+Port 9092 is appropriate only for explicitly coordinated live coding in the user's visible,
+identified Field session, and takes `--attach-existing` (or an explicit `--port 9092`).
 
 ## Run code, read output
 
@@ -162,6 +163,8 @@ Full contract + the "no JDWP" error in [`FIELD_MCP.md`](./FIELD_MCP.md#runtime-d
 - `--document <name>` is resolved **relative to the workspace root** — an absolute path loads an empty doc, because the server glues it onto the workspace anyway (`sessionKey` shows `/ws//abs/path`). The backdoor now warns and prints the `--workspace <dir> --document <name>` split.
 - Prefer `--file -`/`--file <path>` over `--value` for anything nontrivial (no shell escaping).
 - Fresh scratch session / fresh port per final asset so stale boxes don't ghost into captures.
+- `open <name>` refuses a name the server does not have; `open <name> --create` makes a new
+  document. (The top-level `--document` flag still creates.)
 - Every run writes `.field-backdoor/logs/<session>.jsonl`; `status` reports the paths. A
   fatal from `ensure_server`/`connect` also prints to stderr now — it used to exit 1 with
   nothing on either stream.
@@ -175,8 +178,8 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 Tells you whether Field was already running, whether this session started its own server,
 the log paths, and whether you're in scratch mode. For live work in a user's document, add
 `--attach-existing --document <name>`, then check the fields that **can disagree with
-you**: `serverWorkspace` (read back from the server; `null` means you have verified
-nothing), `sessionKey` (the absolute path it will write — should be `serverWorkspace` + `/`
+you**: `serverWorkspace` (read back from the server; a server that reports `null` is
+refused under `--attach-existing` unless you pass `--allow-unverified-workspace`), `sessionKey` (the absolute path it will write — should be `serverWorkspace` + `/`
 + your document name), `documentName`, and a plausible `boxCount`. `requestedWorkspace` is
 your own argument echoed back and is never verification — it was called `workspace` until
 2026-09-12, which is why an agent once wrote five documents into a different checkout while
