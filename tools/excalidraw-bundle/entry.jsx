@@ -63,7 +63,8 @@ function serializeScene(elements) {
  * opts.initialScene   `.excalidraw` JSON or null
  * opts.initialCamera        [scrollX, scrollY, zoom] in Excalidraw's terms
  * opts.onCamera(sx, sy, zoom) the user panned or zoomed inside Excalidraw
- * opts.onScene(json)  the elements changed locally (debounced)
+ * opts.onScene(json)  the elements changed locally (debounced, and held back mid-gesture)
+ * opts.onSelection(ids) the selection changed
  */
 export function mountDrawingLayer(host, opts) {
     const root = document.createElement("div");
@@ -83,15 +84,35 @@ export function mountDrawingLayer(host, opts) {
     // which is the one element in the layer with a tabIndex.
     const focusCanvas = () => host.querySelector(".excalidraw-container")?.focus();
 
-    const onChange = (elements) => {
+    // A scene is held back while a gesture is still going: a stroke being drawn, a shape being
+    // dragged or resized, text being typed. The server's reactions then see finished marks — an
+    // `onStroke` handler gets the whole stroke, not the first 250 ms of it.
+    const midGesture = (s) => !!(s.newElement || s.multiElement || s.resizingElement || s.editingTextElement ||
+        s.selectedElementsAreBeingDragged || s.isResizing || s.isRotating || s.editingLinearElement?.isDragging);
+    let sendPending = false;
+    let lastSelection = "";
+    let selectionTimer = null;
+
+    const onChange = (elements, appState) => {
         const v = sceneVersion(elements);
-        if (v === lastVersion) return;
-        lastVersion = v;
-        clearTimeout(sendTimer);
-        sendTimer = setTimeout(() => {
-            if (!api) return;
-            opts.onScene(serializeScene(api.getSceneElementsIncludingDeleted()));
-        }, SCENE_DEBOUNCE_MS);
+        if (v !== lastVersion) {
+            lastVersion = v;
+            sendPending = true;
+        }
+        if (sendPending && !midGesture(appState)) {
+            clearTimeout(sendTimer);
+            sendTimer = setTimeout(() => {
+                if (!api || midGesture(api.getAppState())) return;
+                sendPending = false;
+                opts.onScene(serializeScene(api.getSceneElementsIncludingDeleted()));
+            }, SCENE_DEBOUNCE_MS);
+        }
+        const selection = Object.keys(appState.selectedElementIds || {}).filter((id) => appState.selectedElementIds[id]).sort().join(",");
+        if (selection !== lastSelection && opts.onSelection) {
+            lastSelection = selection;
+            clearTimeout(selectionTimer);
+            selectionTimer = setTimeout(() => opts.onSelection(selection ? selection.split(",") : []), 120);
+        }
     };
 
     const onScrollChange = (x, y, zoom) => opts.onCamera(x, y, zoom.value);

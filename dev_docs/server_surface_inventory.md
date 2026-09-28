@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 110 | nothing |
+| `/ws` **command** names (`handlers`) | 113 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -255,7 +255,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-110 command names, in the `handlers` table. This is the real command API, it is roughly twice
+113 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -277,6 +277,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 5 |
 | `importing.kt` | 4 |
+| `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
 | `UserKeybindingsManager.kt` | 2 |
 | `chat.kt` | 2 |
@@ -296,6 +297,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
+| `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
@@ -388,6 +390,9 @@ no sandbox between a `/ws` frame and that.
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
 | `name-history-version` | `history.kt` |
+| `notation-anchor-selection` | `NotationServer.kt` |
+| `notation-scene` | `NotationServer.kt` |
+| `notation-selection` | `NotationServer.kt` |
 | `output-ack` | `Server.kt` |
 | `paste-boxes` | `Server.kt` |
 | `perform-action` | `Server.kt` |
@@ -467,7 +472,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 110 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 113 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

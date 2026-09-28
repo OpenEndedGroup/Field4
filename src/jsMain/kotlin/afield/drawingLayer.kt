@@ -90,6 +90,7 @@ private fun ensureLoaded(then: () -> Unit = {}) {
             panViewportForDrawingLayer(scrollX * zoom, scrollY * zoom, zoom)
         }
         opts.onScene = { json: String -> sendScene(json) }
+        opts.onSelection = { ids: Array<String> -> sendSelection(ids) }
         handle = module.mountDrawingLayer(el, opts)
         pendingRemoteScene = null
         loading = false
@@ -107,16 +108,25 @@ private fun currentRootDrawing(): String? = findRootBoxElement()?.asDynamic()?.d
 private fun findRootBoxElement(): HTMLElement? =
     document.body?.getElementsByClassName("box")?.asList()?.firstOrNull { it.asDynamic().uid == "root" } as? HTMLElement
 
+/**
+ * The scene goes to the server's `notation-scene` handler rather than as a raw `set-string`: the
+ * server *merges* it into the authoritative scene by element version (so a mark code wrote while
+ * this client was drawing survives), and that is also where a person's changes reach `onNotation`
+ * reactions and arrow auto-anchoring (`NotationServer.kt`). The merged scene comes back to every
+ * client as an ordinary `set-string` of `root.drawing`.
+ */
 private fun sendScene(json: String) {
     lastSentScene = json
     findRootBoxElement()?.asDynamic()?.drawing = json
-    // The exported `send(name, payload)` stamps clientId/clientSequence, so acceptSetStringSync can
-    // drop stale echoes of our own writes.
     val payload: dynamic = js("({})")
-    payload.uid = "root"
-    payload.property = DRAWING_PROPERTY
-    payload.value = json
-    send("set-string", payload)
+    payload.scene = json
+    send("notation-scene", payload)
+}
+
+private fun sendSelection(ids: Array<String>) {
+    val payload: dynamic = js("({})")
+    payload.ids = ids
+    send("notation-selection", payload)
 }
 
 /** Called from the frontend `set-string` handler for `root.drawing`. */
@@ -179,11 +189,23 @@ fun initializeDrawingLayer() {
     action.detail = "Draw and annotate over the canvas with Excalidraw"
     // No `keys`: the capture listener above owns the chord (see Keybindings.virtualCommands).
     action.run = { toggleDrawingLayer() }
+    val anchor: dynamic = js("({})")
+    anchor.id = "anchor-drawing-to-boxes"
+    anchor.label = "Anchor Drawing to Boxes"
+    anchor.detail = "Selected marks (or every unanchored one) follow the box under them; arrow ends anchor separately"
+    anchor.run = { send("notation-anchor-selection", js("({})")) }
+
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(action)
+    builtin.push(anchor)
     allActions.builtin = builtin
     updateActions()
 
     window.asDynamic().toggleDrawingLayer = ::toggleDrawingLayer
     window.asDynamic().drawingLayerState = ::drawingLayerState
+    // For tests and the backdoor: the live elements as plain objects.
+    window.asDynamic().drawingLayerScene = {
+        val api = handle?.api()
+        if (api == null) js("[]") else JSON.parse<dynamic>(JSON.stringify(api.getSceneElements()))
+    }
 }
