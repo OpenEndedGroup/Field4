@@ -17,9 +17,10 @@ expect:
  * helpers (`cell`, `range`, `sum`, `max`, …) as local functions, with `self` bound to the box. The
  * expectations were recorded on the K1 engine on 2026-09-28, before the spreadsheet moved to K2, so
  * this is the check that the move changed nothing a sheet can see: cell and range references, the
- * `self` binding, units, a Kotlin compile failure, and a runtime failure. One deliberate change: a
+ * `self` binding, units, a Kotlin compile failure, and a runtime failure. Two deliberate changes: a
  * formula that fails to compile now carries the compiler's first error (C1); under K1 it read only
- * "Formula compilation failed".
+ * "Formula compilation failed". And `min`/`max` return 0 for an empty range, as Excel and Sheets do,
+ * instead of `null` (B3, C3, C4), so they can be used in arithmetic without `!!`.
  */
 private val SPREADSHEET_FORMULAS_SNIPPET = """
 setPropertyRaw("sheetFactor", 7.0, doResync = false)
@@ -30,7 +31,7 @@ editSpreadsheet(broadcast = false) {
     cell("A3", 5)
     formula("B1", "A1 * 10")
     formula("B2", "sum(A1:A3)")
-    formula("B3", "max(A1:A3)!! + min(A1:A3)!!")
+    formula("B3", "max(A1:A3) + min(A1:A3)")
     formula("B4", "sqrt(16.0) + PI")
     formula("B5", "self[\"sheetFactor\"] * A2")
     formula("B6", "B1 + B2")
@@ -39,10 +40,12 @@ editSpreadsheet(broadcast = false) {
     formula("B9", "3 | m")
     formula("C1", "this is not ( kotlin")
     formula("C2", "cell(\"Z99\")")
+    formula("C3", "max(D1:D3) + min(D1:D3)")
+    formula("C4", "max(A1:A3) + 1")
 }
 val expected = listOf(
     "B1" to "20", "B2" to "10", "B3" to "7", "B4" to "7.1416", "B5" to "21", "B6" to "30",
-    "B7" to "TEXT", "B8" to "3", "B9" to "3 m", "C1" to "#ERR", "C2" to "#ERR",
+    "B7" to "TEXT", "B8" to "3", "B9" to "3 m", "C1" to "#ERR", "C2" to "#ERR", "C3" to "0", "C4" to "6",
 )
 val snap = getSpreadsheetSnapshot()
 val problems = mutableListOf<String>()

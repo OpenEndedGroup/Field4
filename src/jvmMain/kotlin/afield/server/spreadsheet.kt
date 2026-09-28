@@ -359,11 +359,13 @@ object SpreadsheetEvalHelpers {
     @JvmStatic
     fun mean(values: Any?): Double = avg(values)
 
+    // An empty range is 0, as in Excel and Sheets, so `max(A1:A3) + 1` is a formula rather than a
+    // compile error about adding to a `Double?`.
     @JvmStatic
-    fun min(values: Any?): Double? = flattenNumeric(values).minOrNull()
+    fun min(values: Any?): Double = flattenNumeric(values).minOrNull() ?: 0.0
 
     @JvmStatic
-    fun max(values: Any?): Double? = flattenNumeric(values).maxOrNull()
+    fun max(values: Any?): Double = flattenNumeric(values).maxOrNull() ?: 0.0
 
     @JvmStatic
     fun count(values: Any?): Int = flattenAny(values).size
@@ -1807,7 +1809,7 @@ private object SpreadsheetService {
             insertText = "min(range(\"A1:A4\"))",
             kind = "function",
             detail = "Minimum numeric value",
-            documentation = "Returns the smallest numeric value in a range or list.",
+            documentation = "Returns the smallest numeric value in a range or list, or 0 if it has none.",
             cursorOffset = 11
         ),
         GeneralCompletion(
@@ -1815,7 +1817,7 @@ private object SpreadsheetService {
             insertText = "max(range(\"A1:A4\"))",
             kind = "function",
             detail = "Maximum numeric value",
-            documentation = "Returns the largest numeric value in a range or list.",
+            documentation = "Returns the largest numeric value in a range or list, or 0 if it has none.",
             cursorOffset = 11
         ),
         GeneralCompletion(
