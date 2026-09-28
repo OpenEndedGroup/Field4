@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 161 transcripts on every build, at three
-depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 162 transcripts on every build, at three
+depths. 83 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -142,6 +142,19 @@ and compare bytes per frame. See [Simulation time](simulation_clock.md).
 ![Field's existing profiling panel displaying complete simulation frame intervals, allocation per frame, budget misses, and selectable slow intervals from a real capture](assets/simulation_clock/frames.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simulation_clock/metadata.edn)
+
+### drawing_notation
+
+Six boxes on the drawing layer (`alt-d`) and the `notation` API. `draw` circles itself and draws an
+arrow to `listen` that follows both boxes when you drag them; `read` prints every mark and what it
+sits on; `listen` prints each stroke you draw. The other three read the drawing by cutting it:
+`projection 1`, after Feldman, reads rectangles in a three-row grid as onsets, durations and
+registers; `fontana mix`, after Cage, measures where a straight line you draw crosses six curves;
+`crescendo` reads a hand-made hairpin's width at each beat as a dynamic. The replay runs all six
+headless, since the drawing is data on the server and needs no window. See
+[Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
 
 ### hello_display_capture
 

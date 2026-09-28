@@ -1,0 +1,152 @@
+name: drawing_notation
+description: >
+  A starting point for the drawing layer and the `notation` API: six boxes that draw on the
+  document's drawing, read it, listen to it, and read it the way two graphic scores of the 1950s
+  are read. Press Alt+D to draw; press it again to go back to the boxes.
+
+  Run `draw` first: it circles itself and draws an arrow to `listen` (drag either box and the
+  arrow follows). `read` prints every mark and what it is over. `listen` prints each stroke you
+  draw by hand. `projection 1`, after Morton Feldman, is a three-row grid: draw rectangles in it
+  and the box reads them as onsets, durations and registers. `fontana mix`, after John Cage,
+  draws six curves, a grid and a point: draw a straight line across the sheet (L) and the box
+  measures where it crosses each curve. `crescendo` draws a hand-made hairpin and reads its width
+  at each beat as a dynamic marking.
+
+  Companion to public/docs/drawing_and_notation.md. Pure CPU; no Window, no Renderer.
+operations:
+  - create:
+      box: dn_draw
+      name: draw
+      frame: { x: 200.0, y: 200.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Drawing from code. Everything this block makes belongs to this box: run it again and
+          // the marks are replaced, not duplicated. Marks drawn by hand are never touched.
+          val listener = inside.boxes.values.first { it.name == "listen" }
+          notation {
+              stroke = "#1971c2"
+              text("drawn by ${name}", frame.x, frame.y - 34)
+              ellipse(frame.x - 20, frame.y - 20, frame.w + 40, frame.h + 40)
+              arrow(from = thisBox, to = listener, label = "tells")   // drag either box: the arrow follows
+          }
+  - create:
+      box: dn_listen
+      name: listen
+      frame: { x: 620.0, y: 320.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Listening to the drawing: run this, then draw a stroke anywhere (Alt+D, then P).
+          // The handler runs when the stroke is finished; stop the box to remove it.
+          notation.onStroke { s ->
+              println("a stroke of ${s.points.size} points, ${s.length.toInt()} long, from ${s.start} to ${s.end}")
+          }
+  - create:
+      box: dn_read
+      name: read
+      frame: { x: 200.0, y: 460.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Reading the drawing: every mark, hand-drawn or not, with what it is over and what it joins.
+          for (m in notation.marks) {
+              val where = m.box?.let { " over '${it.name}'" } ?: ""
+              val joins = if (m.kind == MarkType.ARROW) " from '${m.fromBox?.name}' to '${m.toBox?.name}'" else ""
+              println("${m.kind.name.lowercase()} ${m.label ?: ""}$where$joins")
+          }
+  - create:
+      box: dn_projection
+      name: projection 1
+      frame: { x: 1120.0, y: 700.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // After Morton Feldman's Projection 1 (1950): time runs left to right; the grid's three rows
+          // are high, middle and low. Draw boxes (Alt+D, then R) in the grid, and this box reads them
+          // as events: when each starts, how long it lasts, which register it sits in.
+          notation("grid") {
+              stroke = "#868e96"
+              frame("projection", 100, 700, 960, 270)
+              for (row in 1..2) line(listOf(vec(100, 700 + row * 90), vec(1060, 700 + row * 90)))
+              rect(160, 715, 120, 60, fill = "#1971c2")                     // one to start with
+          }
+          val score = notation.space("projection", x = 0.0..16.0, y = 3.0..0.0)   // 16 beats; 3 rows
+          fun register(v: Double) = when { v >= 2 -> "high"; v >= 1 -> "middle"; else -> "low" }
+          fun read() = score.events.filter { it.mark.kind == MarkType.RECTANGLE }.forEach {
+              println("beat %.1f for %.1f, %s".format(it.start, it.duration, register(it.value)))
+          }
+          read()
+          notation.onChange("projection") { read() }
+  - create:
+      box: dn_fontana
+      name: fontana mix
+      frame: { x: 2160.0, y: 120.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // After John Cage's Fontana Mix (1958): six curves, a grid, a point, and a straight line.
+          // Cage's performer laid a line from a point inside the grid to one outside it and measured
+          // where it crossed the curves. Here the line is yours: draw one across the sheet (Alt+D, then L)
+          // and this box reads it. Run the box first; it draws the sheet.
+          val colors = listOf("#e03131", "#1971c2", "#2f9e44", "#f08c00", "#9c36b5", "#0c8599")
+          notation("sheet") {
+              frame("fontana mix", 1200, 100, 900, 520)
+              for (i in 0 until 6) {
+                  val curve = (0..48).map { k -> vec(1230 + k * 17.5, 170 + i * 75 + 55 * sin(k / 5.0 + i * 1.9)) }
+                  stroke(curve, name = "curve ${i + 1}", stroke = colors[i])
+              }
+              rect(1530, 250, 240, 200, name = "grid", stroke = "#868e96")
+              ellipse(1605, 320, 12, 12, name = "point", fill = "#868e96")
+          }
+
+          fun read(line: Mark) {
+              val crossings = notation.intersect(line.start!!, line.end!!).filter { it.mark.name?.startsWith("curve") == true }
+              println("${crossings.size} crossings along the line:")
+              crossings.forEach { println("  ${it.mark.name}  %.2f of the way along".format(it.value)) }
+          }
+
+          notation.lines.lastOrNull { it.handDrawn }?.let(::read)
+          notation.onChange("fontana") { edit -> (edit.added + edit.updated).lastOrNull { it.kind == MarkType.LINE }?.let(::read) }
+  - create:
+      box: dn_crescendo
+      name: crescendo
+      frame: { x: 960.0, y: 1060.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // A crescendo read by cutting it. A vertical line at a beat crosses the hairpin's two sides,
+          // and the gap between the crossings is how loud it is: nothing at the point, most at the mouth.
+          // Run this to draw one; then draw your own in the frame with the pen (Alt+D, then P) and this
+          // box reads everything in the frame again. Two hairpins, or a diminuendo, read the same way.
+          notation("hairpin") {
+              frame("dynamics", 100, 1060, 800, 200)
+              val hand = { i: Int -> 2.5 * sin(i * 2.3) + 1.5 * sin(i * 0.7) }     // a hand is not a ruler
+              val hairpin = (0..60).map { i ->
+                  val k = if (i <= 30) i else 60 - i                                // out along the top, back along the bottom
+                  val side = if (i <= 30) -1 else 1
+                  vec(860 - k * 23.0, 1160 + side * (75 - k * 2.5) + hand(i))
+              }
+              stroke(hairpin, name = "hairpin", stroke = "#e03131")
+          }
+          val dynamics = notation.space("dynamics", x = 0.0..8.0, y = 0.0..1.0)
+          val markings = listOf("niente", "pp", "p", "mp", "mf", "f", "ff")
+          fun read() = (0..7).forEach { beat ->
+              val ys = dynamics.vertical(beat.toDouble()).filter { !it.isSpan }.map { it.value }
+              val gap = if (ys.size >= 2) ys.max() - ys.min() else 0.0
+              println("beat $beat: %.2f %s".format(gap, markings[(gap / 0.75 * 6).roundToInt().coerceIn(0, 6)]))
+          }
+          read()
+          notation.onStroke("crescendo") { read() }
+  - execute:
+      box: dn_draw
+      property: code
+  - execute:
+      box: dn_listen
+      property: code
+  - execute:
+      box: dn_projection
+      property: code
+  - execute:
+      box: dn_fontana
+      property: code
+  - execute:
+      box: dn_read
+      property: code
+  - execute:
+      box: dn_crescendo
+      property: code
