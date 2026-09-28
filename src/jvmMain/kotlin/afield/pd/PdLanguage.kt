@@ -20,7 +20,6 @@ import afield.early
 import afield.four.synth.FieldAudioEngine
 import afield.four.synth.audio
 import afield.inMain
-import afield.graphics.lines
 import afield.payload
 import afield.plugins
 import afield.runtime.MainLanguageRuntime
@@ -130,7 +129,7 @@ class PdExecution(val inside: Box) : BoxExecution {
             for (name in graph.sendNames + graph.receiveNames) closeables += pd.receive(name) {}
             val handle = FieldAudioEngine.shared().register(audio(pd.node, gain = 1f))
             closeables += Closeable { handle.close() }
-            runCatching { box.lines(graph.toFLines(), channel = "patch") }
+            box.showPdPatch(graph)
             return PdLaunchState(pd, patch, graph, closeables)
         } catch (t: Throwable) {
             closeables.forEach { runCatching { it.close() } }

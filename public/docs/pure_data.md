@@ -24,8 +24,7 @@ an error that says how to build it.
 
 ## A patch in a Kotlin box
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/kotlin-box.png" execution="launch" capture="box" open-outputs="true" requires="libpd" wait="10" padding="18" timeout="120" embed=true w="1000" h="420" name="pure-data-kotlin-box" alt="A box's output after running the example: a patch output drawing four boxes, r freq above osc~ 220 above *~ 0.1 above dac~, with inlet and outlet tabs and two wires from *~ 0.1 into the dac~'s two inlets; below it a controls output with one slider, FREQ, at 220.00."}
 val patch = pd("""
 #X obj 20 20 r freq;
 #X obj 20 60 osc~ 220;
@@ -44,6 +43,11 @@ patch
 expression makes it sound; stopping the box stops the sound and frees the Pd. The `#N canvas`
 header is optional and the text may be indented.
 
+The box's output shows the patch as Pd would lay it out, in a `patch` output, above the slider the
+`controlGroup` made. The drawing reads the patch text alone, so it appears whether or not anything
+has been sent yet; `drawPatch = false` leaves it out. The returned `PdLaunch` itself draws nothing:
+it is what keeps the box lit and the Pd playing until the box stops.
+
 Each launch gets a Pd of its own, so two boxes that both use `[r freq]` do not hear each other. The
 patch's `$0` is `patch.dollarZero` if you need names that are local to one copy.
 
@@ -54,37 +58,64 @@ patch's `$0` is `patch.dollarZero` if you need names that are local to one copy.
 Pass `input` and the patch's `[adc~]` hears a Field signal, left and right, so the patch processes
 sound instead of making it:
 
-```diffstatic {data-lang=kotlin}
-:::static
-pd("""
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/effect.png" execution="launch" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="1000" h="480" name="pure-data-effect" alt="The effect box's output: a patch drawing of adc~ into lop~ 600 into *~ 0.5, which feeds both inlets of dac~ and env~ 8192, which feeds s level; below it a level output reading 'after the lowpass: 85.4 dB'."}
+val fx = pd("""
 #X obj 20 20 adc~;
 #X obj 20 60 lop~ 600;
-#X obj 20 100 dac~;
+#X obj 20 100 *~ 0.5;
+#X obj 20 140 dac~;
+#X obj 160 100 env~ 8192;
+#X obj 160 140 s level;
 #X connect 0 0 1 0;
 #X connect 1 0 2 0;
-#X connect 1 0 2 1;
+#X connect 2 0 3 0;
+#X connect 2 0 3 1;
+#X connect 2 0 4 0;
+#X connect 4 0 5 0;
 """, input = SawOsc(Param(110f)).pan())
+
+// [env~] reports the level of what leaves the lowpass, in dB with 100 at full scale.
+fx.receive("level") { m -> display("level", "<div style='padding:8px'>after the lowpass: ${"%.1f".format(m.float ?: 0f)} dB</div>") }
+fx
 ```
 
-What goes in on a block comes out on the same block; libpd adds no latency of its own.
+What goes in on a block comes out on the same block; libpd adds no latency of its own. The level is
+measured by Pd, inside the patch, and read back through `[s level]`: an unfiltered saw at this gain
+would read higher.
 
 ### Messages both ways
 
-`send`, `bang`, `symbol`, `list` and `message` reach `[r name]`:
+`send`, `bang`, `symbol`, `list` and `message` reach `[r name]`, and `receive` goes the other way: the
+patch sends to `[s out]`, and Field calls the lambda. This box does all of them, and lists what
+arrived back:
 
-```diffstatic {data-lang=kotlin}
-:::static
-patch.send("freq", 330)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/messages.png" execution="launch" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="1000" h="520" name="pure-data-messages" alt="The messages box's output: a patch drawing of three chains, r in to + 1 to s out, r words to s out, and r trigger to s out; below it an arrived output listing, one per line: float 42.0, bang, symbol hello, list 0.2 0.8, set 3.0."}
+val patch = pd("""
+#X obj 20 20 r in;
+#X obj 20 60 + 1;
+#X obj 20 100 s out;
+#X obj 160 20 r words;
+#X obj 160 60 s out;
+#X obj 300 20 r trigger;
+#X obj 300 60 s out;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 3 0 4 0;
+#X connect 5 0 6 0;
+""")
+
+val arrived = mutableListOf<String>()
+patch.receive("out") { m ->
+    arrived += "${m.selector} ${m.args.joinToString(" ")}".trim()
+    display("arrived", "<pre style='margin:8px'>" + arrived.joinToString("\n") + "</pre>")
+}
+
+patch.send("in", 41)                // [+ 1] makes it 42
 patch.bang("trigger")
-patch.list("xy", 0.2, 0.8)
-patch.message("voice", "set", 3)
-```
-
-`receive` goes the other way. The patch sends to `[s out]`, and Field calls the lambda:
-
-```diffstatic {data-lang=kotlin}
-:::static
-patch.receive("out") { m -> println("the patch said ${m.float}") }
+patch.symbol("words", "hello")
+patch.list("words", 0.2, 0.8)
+patch.message("words", "set", 3)
+patch
 ```
 
 The lambda runs on Field's main thread, so it can touch the box. It does not run on the audio thread.
@@ -104,15 +135,66 @@ turns each one that has a receive name into a Field control with the range and l
 and each control sends to that receive name. The Pd slider moves with it and its outlet fires as if it
 had been dragged. That is the same idea as `faustControls`.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/pd-controls.png" execution="launch" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="1000" h="460" name="pure-data-pd-controls" alt="The pdControls box's output: a patch drawing labelled hsl pitch and tgl gate, then r pitchOut into mtof, osc~, *~ 0.1 and *~, with r gateOut into the right inlet of *~ and two wires into dac~; below it a controls output with a PITCH slider at 40.0 and a GATE checkbox, unticked."}
+val patch = pd("""
+#X obj 20 20 hsl 128 15 40 80 0 0 pitchOut pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;
+#X obj 20 60 tgl 15 0 gateOut gate Gate 17 7 0 10 #fcfcfc #000000 #000000 0 1;
+#X obj 20 110 r pitchOut;
+#X obj 20 150 mtof;
+#X obj 20 190 osc~;
+#X obj 20 230 *~ 0.1;
+#X obj 160 110 r gateOut;
+#X obj 20 270 *~;
+#X obj 20 310 dac~;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 5 0 7 0;
+#X connect 6 0 7 1;
+#X connect 7 0 8 0;
+#X connect 7 0 8 1;
+""")
+println("${pdControls(patch)} controls from the patch's own GUI objects")
+patch
+```
+
+The slider's range, 40 to 80, and the labels "Pitch" and "Gate" are the patch's own.
+
 ### Arrays
 
-`writeArray`, `readArray` and `arraySize` work on any Pd array, `[table name]` or `#X array`:
+`writeArray`, `readArray` and `arraySize` work on any Pd array, `[table name]` or `#X array`, and
+`PdLaunch` and `PdInstance` both have them. Here Field writes a wavetable, `[tabosc4~]` plays it, and
+`[tabwrite~ scope]` records the result for Field to read back. It is rendered offline, with no audio
+device, so the recording is the same every time:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/arrays.png" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="1100" h="420" name="pure-data-arrays" alt="A line plot titled '480 samples of [tabosc4~ wave] at 200 Hz, recorded by Pd': two cycles of a wave built from three partials, peaking near ±0.72 with a flat shoulder near ±0.22 on each half-cycle."}
+val pd = afield.pd.PdInstance(sampleRate = 48000)
+pd.openPatchText("""
+#X obj 20 20 table wave 2051;
+#X obj 200 20 table scope 480;
+#X obj 20 60 loadbang;
+#X msg 20 90 200;
+#X obj 20 120 tabosc4~ wave;
+#X obj 20 160 tabwrite~ scope;
+#X connect 2 0 3 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 2 0 5 0;
+""")
+
 // A wavetable for [tabosc4~ wave]: 2048 points plus the three guard points it wants.
-patch.writeArray("wave", FloatArray(2051) { i -> sin(2 * PI * (i - 1) / 2048).toFloat() })
-val recorded = patch.readArray("scope")   // what a [tabwrite~ scope] captured
+// Three partials, so what comes back is plainly not a sine.
+val partials = listOf(1.0, 0.5, 0.33)
+pd.writeArray("wave", FloatArray(2051) { i ->
+    val phase = 2 * PI * (i - 1) / 2048
+    (partials.withIndex().sumOf { (k, a) -> a * sin((k + 1) * phase) } * 0.5).toFloat()
+})
+pd.renderOffline(0.02)
+val recorded = pd.readArray("scope")   // what [tabwrite~ scope] captured
+pd.close()
+
+showSignals("[table scope]" to recorded.toList(), channel = "scope",
+    title = "${recorded.size} samples of [tabosc4~ wave] at 200 Hz, recorded by Pd")
 ```
 
 ## Rendering without an audio device
@@ -120,16 +202,21 @@ val recorded = patch.readArray("scope")   // what a [tabwrite~ scope] captured
 `PdInstance` is the Pd underneath a launch, and it can be used directly. `renderOffline` pulls
 samples out of it without opening an audio device, which is how the tests measure it:
 
-```diffstatic {data-lang=kotlin}
-:::static
+```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/offline-measure.png" capture="box" open-outputs="true" requires="libpd" wait="4" padding="18" timeout="120" embed=true w="900" h="200" name="pure-data-offline-measure" alt="A measured output reading: 48000 samples, 440 upward zero crossings, peak 0.2500, left == right: true."}
 val pd = afield.pd.PdInstance(sampleRate = 48000)
-pd.openPatchText("#X obj 20 20 osc~ 440;\n#X obj 20 60 dac~;\n#X connect 0 0 1 0;\n#X connect 0 0 1 1;")
+pd.openPatchText("#X obj 20 20 osc~ 440;\n#X obj 20 60 *~ 0.25;\n#X obj 20 100 dac~;\n" +
+    "#X connect 0 0 1 0;\n#X connect 1 0 2 0;\n#X connect 1 0 2 1;")
 val (left, right) = pd.renderOffline(1.0)
 pd.close()
+
+val ups = (1 until left.size).count { left[it - 1] < 0f && left[it] >= 0f }
+val peak = left.maxOf { abs(it) }
+display("measured", "<pre style='margin:8px'>${left.size} samples, $ups upward zero crossings, " +
+    "peak ${"%.4f".format(peak)}, left == right: ${left.contentEquals(right)}</pre>")
 ```
 
-The sine above gives 440 upward zero crossings in that second, and a peak of the amplitude it was
-given, to within 0.002. `renderPdWav(file, patchText, seconds)` writes the same thing to a 16-bit
+The sine gives 440 upward zero crossings in that second, and a peak of the amplitude it was given;
+`PdTest` holds both to within one crossing and 0.002. `renderPdWav(file, patchText, seconds)` writes the same thing to a 16-bit
 stereo `.wav`, and `pdWaveform(patchText)` plots a few milliseconds in the box.
 
 Here is `pdWaveform` on a sawtooth, drawn with its patch. The patch runs in libpd, and no audio
@@ -317,6 +404,16 @@ always something this Pd can make. `PdObjects.suggest` tries the signal or contr
   channel 0). Nothing connects those to a hardware port yet; that is a few lines of Kotlin per box.
 - **One output per launch.** Every patch opened in one Pd sums into that Pd's `[dac~]`; the launch's
   `gain` applies to the sum.
+
+??? aside "The four fences left without a figure"
+
+    Every fence on this page that makes something visible has its output captured right after it.
+    Four do not. `./gradlew buildLibpdNative` is a shell command. The Pd-box drone text is a patch
+    for the box language, and its drawing is the figure directly under it: running such a box draws
+    exactly that, in the same `patch` output. The round-trip patch text is shown so the line-note
+    figure below it can be read against its lines. And the `pdSend` fence's first line is what the
+    send-from-Kotlin figure runs; its arpeggio loop changes only what is heard, a quarter second at a
+    time, and a still of it would show the same line note with a different number.
 
 ??? aside "What the figures need, and how the editor ones are made"
 

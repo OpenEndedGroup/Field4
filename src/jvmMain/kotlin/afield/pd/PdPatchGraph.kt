@@ -1,7 +1,11 @@
 @file:afield.CompletionCategory("Synthesis")
 package afield.pd
 
+import afield.Box
 import afield.graphics.FLine
+import afield.graphics.lines
+import afield.stdlib.Typefaces
+import kotlin.concurrent.thread
 import afield.stdlib.color
 import afield.stdlib.filled
 import afield.stdlib.layoutText
@@ -37,12 +41,23 @@ class PdPatchGraph private constructor(
         /** The class name for an `obj` — `osc~` for `[osc~ 440]` — else [kind]. */
         val className: String get() = if (kind == "obj") text.substringBefore(' ') else kind
 
-        /** How Pd would show it: `[osc~ 440]`, `[set 3(` for a message. */
-        val label: String get() = when (kind) {
+        /**
+         * How Pd would show it: `[osc~ 440]`, `[set 3(` for a message. A GUI object (`hsl`, `tgl`, …)
+         * is drawn in Pd as a slider or a box, not as its creation arguments, so it is labelled with
+         * its class and its receive name: `[hsl pitch]`.
+         */
+        val label: String get() = when {
+            kind == "obj" && className in GUI_CLASSES -> {
+                val receive = text.split(Regex("\\s+")).getOrNull(GUI_RECEIVE_FIELD[className] ?: -1)
+                    ?.takeIf { it != "empty" }
+                if (receive != null) "[$className $receive]" else "[$className]"
+            }
+            else -> when (kind) {
             "msg" -> "[$text("
             "floatatom", "symbolatom", "listbox" -> "[$kind]"
             "text" -> "\"$text\""
             else -> "[$text]"
+            }
         }
 
         /** The name a `[s name]`/`[send name]` sends to, or null. */
@@ -174,7 +189,11 @@ class PdPatchGraph private constructor(
             runCatching {
                 val face = typeface(Font.MONOSPACED, 11.0)
                 for (n in objects) {
-                    val text = if (n.kind == "text") n.text else n.text.ifEmpty { n.kind }
+                    val text = when {
+                        n.kind == "text" -> n.text
+                        n.kind == "obj" && n.className in GUI_CLASSES -> n.label.removePrefix("[").removeSuffix("]")
+                        else -> n.text.ifEmpty { n.kind }
+                    }
                     val layout = layoutText(text, face)
                     out += layout.toFLines(color = ink, thickness = 0.0, filled = true, stroked = false)
                         .map { line -> line.transform { p -> vec(p.x + n.x + 4.0, p.y + n.y + 13.5, p.z) } }
@@ -192,6 +211,13 @@ class PdPatchGraph private constructor(
         }
 
     companion object {
+        /** Pd's built-in GUI classes, which [Node.label] names by receive rather than by arguments. */
+        val GUI_CLASSES: Set<String> = setOf("hsl", "vsl", "tgl", "nbx", "bng", "hradio", "vradio", "vu", "cnv")
+
+        /** Where the receive name sits among a GUI object's words (class first), as Pd saves it. */
+        private val GUI_RECEIVE_FIELD = mapOf("hsl" to 8, "vsl" to 8, "tgl" to 4, "nbx" to 8, "bng" to 6,
+            "hradio" to 6, "vradio" to 6, "cnv" to 5)
+
         /**
          * Inlets and outlets of the vanilla classes a patch most often uses, as Pd creates them with
          * their usual arguments. Not exhaustive; [ports] also counts what the patch wires.
@@ -210,6 +236,8 @@ class PdPatchGraph private constructor(
             put("mtof", 1 to 1); put("ftom", 1 to 1); put("random", 2 to 1); put("moses", 2 to 2)
             put("spigot", 2 to 1); put("table", 0 to 0); put("notein", 0 to 3); put("noteout", 3 to 0)
             put("ctlin", 0 to 3); put("ctlout", 3 to 0); put("clip~", 3 to 1); put("wrap~", 1 to 1)
+            for (gui in listOf("hsl", "vsl", "tgl", "nbx", "bng", "hradio", "vradio")) put(gui, 1 to 1)
+            put("cnv", 0 to 0)
         }
 
         private val COUNTED = setOf("obj", "msg", "floatatom", "symbolatom", "listbox", "text")
@@ -280,5 +308,34 @@ class PdPatchGraph private constructor(
         }
 
         private fun List<String>.int(i: Int): Int = getOrNull(i)?.toDoubleOrNull()?.toInt() ?: 0
+    }
+}
+
+/**
+ * Draw [graph] in this box's [channel] output, labelled, without stalling the thread that asks.
+ *
+ * The first glyph a Field process lays out loads the platform font manager, and on macOS that is
+ * dispatched to the process's first thread and waited for. A box runs on the main run loop, which is
+ * that thread, so a first labelled drawing from a box would wait out [Typefaces]' four-second
+ * timeout and then come out with no labels at all. So when fonts are not loaded yet, the patch is
+ * drawn unlabelled at once and redrawn with labels from a helper thread as soon as they are.
+ */
+fun Box.showPdPatch(graph: PdPatchGraph, channel: String = "patch") {
+    if (graph.objects.isEmpty()) return
+    if (Typefaces.isWarm) {
+        runCatching { lines(graph.toFLines(), channel = channel) }
+        return
+    }
+    runCatching { lines(graph.toFLines(labels = false), channel = channel) }
+    thread(isDaemon = true, name = "pd-patch-labels") {
+        // A first attempt can time out while the font manager's dispatch is still queued behind the
+        // run loop; it completes a moment later, so try again for a while before giving up on labels.
+        repeat(8) {
+            if (runCatching { Typefaces.warm() }.isSuccess) {
+                runCatching { lines(graph.toFLines(), channel = channel) }
+                return@thread
+            }
+            Thread.sleep(500)
+        }
     }
 }

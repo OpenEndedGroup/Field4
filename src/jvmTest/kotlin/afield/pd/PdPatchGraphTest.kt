@@ -96,4 +96,13 @@ class PdPatchGraphTest {
         assertEquals(40.0, wire.nodes.last().to.y.toDouble(), 1e-6)
         assertEquals(3.5, wire.nodes.first().to.x.toDouble(), 1e-6, "[r cutoff]'s only outlet is at its left")
     }
+
+    @Test fun aGuiObjectIsLabelledByItsReceiveNameNotItsArguments() {
+        val g = PdPatchGraph.parse(
+            "#X obj 20 20 hsl 128 15 40 80 0 0 empty pitch Pitch -2 -8 0 10 #fcfcfc #000000 #000000 0 1;\n" +
+                "#X obj 20 60 tgl 15 0 empty gate Gate 17 7 0 10 #fcfcfc #000000 #000000 0 1;\n" +
+                "#X obj 20 100 bng 15 250 50 0 empty empty empty 17 7 0 10 #fcfcfc #000000 #000000;")
+        assertEquals(listOf("[hsl pitch]", "[tgl gate]", "[bng]"), g.objects.map { it.label })
+        assertEquals(1 to 1, g.ports(0))
+    }
 }

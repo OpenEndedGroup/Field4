@@ -11,6 +11,7 @@ import afield.pd.PdExecution
 import afield.pd.PdInstance
 import afield.pd.PdLibrary
 import afield.pd.PdPatch
+import afield.pd.showPdPatch
 import afield.registerLaunchJob
 import afield.returnValueRegistration
 import afield.showSignals
@@ -57,6 +58,8 @@ import java.io.File
  * @param lineOffset box line on which the patch text starts; inferred when negative
  * @param input feeds the patch's `[adc~]`, left and right, which makes the patch an effect on a
  *   Field signal rather than a source; without it `[adc~]` hears silence
+ * @param drawPatch draw the patch, as Pd lays it out, in the box's `patch` output — what a Pd box
+ *   does when it runs. The drawing reads the text alone ([afield.pd.PdPatchGraph])
  * @throws PdUnavailable when libpd has not been built
  */
 fun Box.pd(
@@ -65,6 +68,7 @@ fun Box.pd(
     printToBox: Boolean = true,
     lineOffset: Int = -1,
     input: StereoRenderable? = null,
+    drawPatch: Boolean = true,
 ): PdLaunch {
     requirePd()
     val engine = FieldAudioEngine.shared()
@@ -77,6 +81,7 @@ fun Box.pd(
     }
     val offset = if (lineOffset >= 0) lineOffset else inferFaustLineOffset(this, patch)
     val launch = PdLaunch(instance, opened, gain, if (printToBox) this else null, input)
+    if (drawPatch) drawPdPatch(patch)
     reportPdProblems(instance, opened, offset)
     return launch
 }
@@ -97,8 +102,16 @@ fun Box.pd(file: File, gain: Float = 1f, printToBox: Boolean = true): PdLaunch {
         instance.close()
         throw t
     }
+    val launch = PdLaunch(instance, opened, gain, if (printToBox) this else null)
+    drawPdPatch(opened.source)
+    instance.poll()
     for (p in opened.problems) runCatching { println("Pd: ${p.message}") }
-    return PdLaunch(instance, opened, gain, if (printToBox) this else null)
+    return launch
+}
+
+/** The patch in the box's `patch` output, sized to its own layout. A drawing that fails is skipped, not thrown. */
+private fun Box.drawPdPatch(patchText: String) {
+    runCatching { showPdPatch(afield.pd.PdPatchGraph.parse(patchText)) }
 }
 
 /** libpd is not built; the message says how to build it. */
