@@ -1,0 +1,48 @@
+name: pd_send_from_kotlin
+description: |
+  Setup for the `pure_data.md` "sending from Kotlin" capture. A Pd language root with one Pd box,
+  "drone", whose patch listens on `[r freq]`, and beside it an ordinary Kotlin box that runs
+  `pdBox("drone").pdSend("freq", 330)`. The drone is launched first, and then the Kotlin box is run.
+  The capture's drive script puts the cursor on the drone's `[r freq]` line, where the note reports
+  the last value that arrived on `freq`: the 330 the Kotlin box sent.
+operations:
+  - create:
+      box: pd_doc_root
+      name: "Pd"
+      frame: { x: 40.0, y: 40.0, w: 160.0, h: 80.0 }
+      properties:
+        mainLanguage: pd
+        isPdRoot: true
+        code: |
+          // Children of this box are Pure Data.
+  - create:
+      box: pd_doc_drone
+      name: "drone"
+      frame: { x: 40.0, y: 180.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Pd
+        code: |
+          #N canvas 0 0 500 320 12;
+          #X obj 20 20 r freq;
+          #X obj 20 60 phasor~ 110;
+          #X obj 20 100 lop~ 1200;
+          #X obj 20 140 *~ 0.05;
+          #X obj 20 180 dac~;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 2 0 3 0;
+          #X connect 3 0 4 0;
+          #X connect 3 0 4 1;
+  - create:
+      box: pd_doc_sender
+      name: "sender"
+      frame: { x: 400.0, y: 180.0, w: 300.0, h: 120.0 }
+      properties:
+        code: |
+          pdBox("drone").pdSend("freq", 330)
+  - connect: { parent: pd_doc_root, child: pd_doc_drone }
+  - launch: { box: pd_doc_drone, property: code }
+  - wait: { frames: 30 }
+  - execute: { box: pd_doc_sender, property: code }
+  - await: {}
+  - wait: { frames: 30 }

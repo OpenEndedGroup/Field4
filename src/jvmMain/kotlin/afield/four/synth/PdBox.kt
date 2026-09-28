@@ -76,8 +76,9 @@ fun Box.pd(
         throw t
     }
     val offset = if (lineOffset >= 0) lineOffset else inferFaustLineOffset(this, patch)
-    reportPdProblems(opened, offset)
-    return PdLaunch(instance, opened, gain, if (printToBox) this else null, input)
+    val launch = PdLaunch(instance, opened, gain, if (printToBox) this else null, input)
+    reportPdProblems(instance, opened, offset)
+    return launch
 }
 
 /**
@@ -107,11 +108,19 @@ private fun requirePd() {
     if (!PdLibrary.isAvailable) throw PdUnavailable(PdLibrary.describe())
 }
 
-private fun Box.reportPdProblems(patch: PdPatch, offset: Int) {
-    for (p in patch.problems) {
-        if (p.line >= 0) runCatching { error(p.message, "code", offset + p.line) }
-        runCatching { println("Pd: ${p.message}") }
-    }
+/**
+ * Put what Pd said about [patch] in front of the box: every problem as a `Pd:` line, and the ones
+ * that belong to a line of the patch marked on that line.
+ *
+ * Order matters twice over. The editor clears a box's errors whenever the box prints, so Pd's own
+ * console lines are delivered first ([PdInstance.poll]) and the marks are painted last. And a
+ * problem's line is 0-based within the patch text while the editor counts from 1, so the mark goes
+ * on [offset] (the 0-based box line the text starts on) plus the line, plus one.
+ */
+private fun Box.reportPdProblems(instance: PdInstance, patch: PdPatch, offset: Int) {
+    instance.poll()
+    for (p in patch.problems) runCatching { println("Pd: ${p.message}") }
+    for (p in patch.problems) if (p.line >= 0) runCatching { error(p.message, "code", offset + p.line + 1) }
 }
 
 /**
@@ -403,9 +412,8 @@ fun Box.pdWaveform(
     val (left, right) = PdInstance(sampleRate).use { instance ->
         instance.onPrint { line -> runCatching { println("Pd: $line") } }
         val opened = instance.openPatchText(patch)
-        reportPdProblems(opened, inferFaustLineOffset(this, patch))
         before(instance)
-        instance.renderOffline(seconds)
+        instance.renderOffline(seconds).also { reportPdProblems(instance, opened, inferFaustLineOffset(this, patch)) }
     }
     val stride = (left.size / maxPoints).coerceAtLeast(1)
     val indices = left.indices step stride

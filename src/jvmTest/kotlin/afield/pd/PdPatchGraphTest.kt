@@ -49,7 +49,11 @@ class PdPatchGraphTest {
     @Test fun theDrawingHasABoxPerObjectAndALinePerConnection() {
         val g = PdPatchGraph.parse(patch)
         val lines = g.toFLines(labels = false)
-        assertEquals(g.objects.size + g.connections.size, lines.size)
+        val tabs = g.objects.filter { it.kind != "text" }.sumOf { g.ports(it.index).let { (i, o) -> i + o } }
+        assertEquals(g.objects.size + g.connections.size + tabs, lines.size)
+        assertEquals(2 to 1, g.ports(g.objects.first { it.className == "osc~" }.index))
+        assertEquals(2 to 0, g.ports(g.objects.first { it.className == "dac~" }.index))
+        assertEquals(1 to 1, g.ports(g.objects.first { it.kind == "pd" }.index), "a subpatch shows what is wired")
     }
 
     @Test fun messageLinesReadAsAPdMessageBoxWouldSendThem() {
@@ -80,5 +84,16 @@ class PdPatchGraphTest {
     @Test fun messagesAndCommentsInABoxAreKeptAwayFromPd() {
         val box = "// a comment\n#X obj 20 20 r freq;\nfreq 440\n#X text 20 60 a comment that\nwraps onto a second line;\ngo"
         assertEquals("\n#X obj 20 20 r freq;\n\n#X text 20 60 a comment that\nwraps onto a second line;\n", PdPatchGraph.statementsOnly(box))
+    }
+
+    @Test fun aWireIntoARightInletEndsAtTheRightEdge() {
+        // [lop~ 1200]'s right inlet is its last port, so, as Pd draws it, the tab sits flush with the
+        // box's right edge and a wire into inlet 1 ends there rather than a few pixels from the left.
+        val g = PdPatchGraph.parse("#X obj 0 0 r cutoff;\n#X obj 0 40 lop~ 1200;\n#X connect 0 0 1 1;")
+        val wire = g.toFLines(labels = false).first()
+        val width = "[lop~ 1200]".length * 7.0 + 8.0
+        assertEquals(width - 3.5, wire.nodes.last().to.x.toDouble(), 1e-6)
+        assertEquals(40.0, wire.nodes.last().to.y.toDouble(), 1e-6)
+        assertEquals(3.5, wire.nodes.first().to.x.toDouble(), 1e-6, "[r cutoff]'s only outlet is at its left")
     }
 }
