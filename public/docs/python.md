@@ -202,9 +202,11 @@ source is keyed `input` rather than `source`.
 
 Rest the cursor on a statement and the note beside it says what that statement came to the last time
 the cell ran: an expression's value, the value a name was assigned, the function or class it defined,
-or that it ran. The values are recorded as the cell runs, with `repr`, so asking about a line never
-runs it again; a line changed since the run says so. See
-[Line notes](language_extensions.md#line-notes).
+or that it ran. The values are recorded as the cell runs, so asking about a line never runs it
+again, and a line changed since the run says so. Only builtin values are printed — numbers, strings,
+small lists and dicts of them; anything else is named by its type, so a note never calls a
+DataFrame's or a tensor's `__repr__`. To turn the recording off, start Field with
+`AFIELD_PYTHON_LINE_NOTES=0`. See [Line notes](language_extensions.md#line-notes).
 
 ## Setting Python up { #setting-python-up }
 

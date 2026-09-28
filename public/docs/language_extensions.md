@@ -295,9 +295,12 @@ rather than answered for. Directives such as `#reset` are never run for a note.
 
 Two details of the recording are worth knowing. A Clojure value is printed under a bounded
 `*print-length*`, and a lazy sequence nothing has realised is named, not printed — printing it would
-realise it, running code the program never ran. A Python value is described with `repr`, at the
-moment the statement ran; only a plain name is read back after an assignment, so recording evaluates
-nothing the statement did not.
+realise it, running code the program never ran. A Python note prints a value only when it is a
+builtin number, a string, or a small list, tuple, set or dict of those; anything else — a DataFrame,
+a tensor, an object of your own class — is named by its type, because printing it would run its
+`__repr__`. Only a plain name is read back after an assignment, so recording evaluates nothing the
+statement did not, and a cell's docstring and `from __future__` imports are left exactly where Python
+needs them. Setting `AFIELD_PYTHON_LINE_NOTES=0` in Field's environment turns Python's recording off.
 
 Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
 final value comes back, so a per-line value would need the box's source rewritten before
