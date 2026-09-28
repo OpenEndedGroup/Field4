@@ -19,6 +19,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import kotlin.script.experimental.api.ResultValue
+import kotlin.script.experimental.api.ScriptDiagnostic
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -1123,17 +1124,28 @@ private fun bindSpreadsheetBox(runtime: SpreadsheetRuntime, target: Box): Spread
 private class SpreadsheetEvaluator(private val cachePrefix: String) {
     private val lock = Any()
     private val compiled = ConcurrentHashMap<String, PreparedSnippet>()
-    private val compiler = KotlinInterface(filePrefix = cachePrefix)
+    // K2, like box code. Formulas moved off the legacy K1 engine on 2026-09-28, with no change a sheet
+    // can see (examples.spreadsheet.formulas pins that); K1's REPL compiler is an error-level
+    // deprecation from Kotlin 2.5.
+    private val compiler = KotlinInterface2(filePrefix = cachePrefix)
 
     fun evaluate(expression: String, runtime: SpreadsheetRuntime): EvalResult {
         val source = buildSource(expression)
+        var compileError: String? = null
         val snippet = synchronized(lock) {
             compiled[source] ?: runBlocking {
-                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = {})
+                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = { diagnostics ->
+                    compileError = diagnostics.firstOrNull {
+                        it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
+                    }?.message
+                })
             }?.also {
                 compiled[source] = it
             }
-        } ?: return EvalResult(value = null, errorDetail = "Formula compilation failed")
+        } ?: return EvalResult(
+            value = null,
+            errorDetail = compileError?.let { "Formula compilation failed: $it" } ?: "Formula compilation failed"
+        )
 
         return withSpreadsheetRuntime(runtime) {
             try {
