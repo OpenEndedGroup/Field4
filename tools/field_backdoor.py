@@ -38,6 +38,7 @@ from verification_runtime import (  # noqa: E402
     automation_workspace,
     field_instance_info,
     field_instance_problem,
+    select_automation_port,
 )
 
 try:
@@ -49,7 +50,12 @@ except ImportError:  # pragma: no cover - optional dependency guard
 TOOLS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TOOLS_ROOT.parent
 LOG_ROOT = REPO_ROOT / ".field-backdoor" / "logs"
-DEFAULT_PORT = 9092
+# The interactive developer Field (`./field.sh`, `./gradlew runJvm`). The backdoor never lands
+# here by default any more: an invocation without `--port` picks a free automation port the way
+# the smoke runner does, and reaching the user's dev server takes `--attach-existing` (which
+# still defaults to this port) or an explicit `--port 9092`.
+DEVELOPER_PORT = 9092
+DEFAULT_AUTOMATION_PORT = 9477
 DEFAULT_TIMEOUT = 20.0
 # JDWP is opt-in / off by default (see build.gradle.kts). The backdoor turns it on
 # for the Field instances IT launches, so `field_debug_probe` works out of the box
@@ -522,6 +528,9 @@ class FieldBackdoor:
         self.server_workspace: str | None = None
         self.default_timeout = default_timeout
         self.attach_existing = attach_existing
+        # How `port` was chosen: "explicit", "attach-existing-default" or "automation-default".
+        # Set by the CLI; a library caller constructing FieldBackdoor passes a port it chose.
+        self.port_source = "explicit"
         self.logger = logger
         self.session_id = logger.session_id
         self.ssl_context = make_unverified_ssl_context()
@@ -3455,6 +3464,8 @@ async def dispatch_command(
     if args.command == "status":
         running = [uid for uid, box in client.boxes.items() if box.get("runningStrands")]
         data = {
+            "port": client.port,
+            "portSource": client.port_source,
             "connected": client.websocket is not None,
             "managedServer": client.managed_process is not None,
             "reusedExistingServer": client.reused_existing_server,
@@ -4266,6 +4277,23 @@ async def repl(
         print_result(result, json_mode=json_mode, logger=client.logger)
 
 
+def resolve_cli_port(port: int | None, *, attach_existing: bool) -> tuple[int, str]:
+    """Choose the port for this invocation and say where the choice came from.
+
+    - an explicit ``--port`` is used exactly, including ``--port 9092``;
+    - ``--attach-existing`` without ``--port`` means the user's running Field, so it keeps the
+      developer port (``PORT`` from the environment, else 9092);
+    - otherwise this is automation: pick the first free port from 9477 up, skipping 9092, the
+      same rule `run_field_tests.py` and the docs runner use. Before 2026-09-28 the default was
+      9092, so a bare invocation attached to (or started) the developer's own server.
+    """
+    if port is not None:
+        return port, "explicit"
+    if attach_existing:
+        return int(os.environ.get("PORT", DEVELOPER_PORT)), "attach-existing-default"
+    return select_automation_port(DEFAULT_AUTOMATION_PORT, explicit=False), "automation-default"
+
+
 def collect_command_lines(args: argparse.Namespace) -> list[str]:
     commands = list(args.command or [])
     if args.single_command:
@@ -4295,10 +4323,27 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
             "after it started; never starts a server and never accepts a foreign checkout."
         ),
     )
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help=(
+            f"Exact Field port. Omitted: the first free automation port from "
+            f"{DEFAULT_AUTOMATION_PORT} (never {DEVELOPER_PORT}); with --attach-existing, "
+            f"$PORT or {DEVELOPER_PORT}."
+        ),
+    )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument("single_command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
+    args.port, port_source = resolve_cli_port(args.port, attach_existing=args.attach_existing)
+    if port_source == "automation-default":
+        print(
+            f"field_backdoor.py: no --port given; using automation port {args.port} "
+            f"(pass --port to pin one, or --attach-existing for the Field on {DEVELOPER_PORT})",
+            file=sys.stderr,
+            flush=True,
+        )
     logger.log(
         "args_parsed",
         json=args.json,
@@ -4310,6 +4355,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         workspace=args.workspace,
         attachExisting=args.attach_existing,
         port=args.port,
+        portSource=port_source,
         timeout=args.timeout,
         singleCommand=args.single_command,
     )
@@ -4321,6 +4367,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         logger=logger,
         attach_existing=args.attach_existing,
     )
+    client.port_source = port_source
     client.graphics_context_enabled = bool(args.graphics_context)
     try:
         await client.ensure_server()

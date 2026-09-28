@@ -1340,6 +1340,69 @@ class JvmMainArgEmissionTests(unittest.TestCase):
         self.assertNotIn("--arg", " ".join(cmd))
 
 
+class PortDefaultTests(unittest.TestCase):
+    """Since 2026-09-28 a bare invocation never lands on the developer's Field on 9092."""
+
+    def test_an_explicit_port_is_used_exactly_even_9092(self) -> None:
+        from tools.field_backdoor import resolve_cli_port
+
+        self.assertEqual(resolve_cli_port(9092, attach_existing=False), (9092, "explicit"))
+        self.assertEqual(resolve_cli_port(9555, attach_existing=True), (9555, "explicit"))
+
+    def test_attach_existing_without_a_port_means_the_developer_field(self) -> None:
+        from tools.field_backdoor import resolve_cli_port
+
+        with mock.patch.dict("os.environ", {}, clear=False):
+            import os
+
+            os.environ.pop("PORT", None)
+            self.assertEqual(
+                resolve_cli_port(None, attach_existing=True), (9092, "attach-existing-default")
+            )
+        with mock.patch.dict("os.environ", {"PORT": "9100"}):
+            self.assertEqual(
+                resolve_cli_port(None, attach_existing=True), (9100, "attach-existing-default")
+            )
+
+    def test_no_port_selects_a_free_automation_port_like_the_smoke_runner(self) -> None:
+        from tools.field_backdoor import resolve_cli_port
+
+        with mock.patch(
+            "tools.field_backdoor.select_automation_port", return_value=9481
+        ) as select:
+            self.assertEqual(
+                resolve_cli_port(None, attach_existing=False), (9481, "automation-default")
+            )
+        select.assert_called_once_with(9477, explicit=False)
+
+    def test_the_real_selector_never_hands_out_9092(self) -> None:
+        from tools.verification_runtime import select_automation_port
+
+        with mock.patch(
+            "tools.verification_runtime.automation_port_is_available", return_value=True
+        ):
+            self.assertNotEqual(select_automation_port(9092, explicit=False), 9092)
+
+    def test_status_reports_the_port_and_how_it_was_chosen(self) -> None:
+        from tools.field_backdoor import dispatch_command
+
+        client = FieldBackdoor(port=9481, workspace=None, default_timeout=0.01, logger=_Logger())
+        client.port_source = "automation-default"
+        result = asyncio.run(dispatch_command(client, parse_command("status"), "status"))
+        self.assertEqual(result["data"]["port"], 9481)
+        self.assertEqual(result["data"]["portSource"], "automation-default")
+
+    def test_the_mcp_bridge_keeps_attaching_to_the_developer_field(self) -> None:
+        """The bridge never launches a JVM, so a free automation port would have nothing on it."""
+        from tools.field_mcp import resolve_mcp_port
+
+        self.assertEqual(resolve_mcp_port(9600, {}), 9600)
+        self.assertEqual(resolve_mcp_port(None, {"PORT": "9700"}), 9700)
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(resolve_mcp_port(None, {}), 9092)
+        self.assertIn("9092", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
 

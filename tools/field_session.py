@@ -411,13 +411,15 @@ def main() -> int:
     sub = parser.add_subparsers(dest="mode", required=True)
 
     p_serve = sub.add_parser("serve", help="Start the warm-session daemon.")
-    p_serve.add_argument("--port", type=int, default=fb.DEFAULT_PORT)
+    # Serve and call must agree on a port (the socket path is keyed by it), so this is a fixed
+    # automation default rather than a free-port search -- and never the developer's 9092.
+    p_serve.add_argument("--port", type=int, default=fb.DEFAULT_AUTOMATION_PORT)
     p_serve.add_argument("--workspace")
     p_serve.add_argument("--timeout", type=float, default=fb.DEFAULT_TIMEOUT)
     p_serve.add_argument("--with-playwright", action="store_true")
 
     p_call = sub.add_parser("call", help="Send one command batch to a running daemon.")
-    p_call.add_argument("--port", type=int, default=fb.DEFAULT_PORT)
+    p_call.add_argument("--port", type=int, default=fb.DEFAULT_AUTOMATION_PORT)
     p_call.add_argument("--command", action="append", default=[])
     p_call.add_argument("--stdin-file", help="Read `--file -` payload from this path ('-' for stdin).")
     p_call.add_argument("--with-playwright", action="store_true")
@@ -425,7 +427,7 @@ def main() -> int:
     p_call.add_argument("--timeout", type=float, default=fb.DEFAULT_TIMEOUT)
 
     p_bench = sub.add_parser("bench", help="A/B benchmark process-per-call vs warm session.")
-    p_bench.add_argument("--port", type=int, default=9477)
+    p_bench.add_argument("--port", type=int, default=fb.DEFAULT_AUTOMATION_PORT)
     p_bench.add_argument("--iterations", type=int, default=8)
     p_bench.add_argument("--timeout", type=float, default=45.0)
 

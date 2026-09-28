@@ -36,6 +36,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import json
+import os
 import re
 import sys
 import traceback
@@ -55,7 +56,7 @@ except ImportError:  # Executed as tools/field_mcp.py rather than imported as a 
 ensure_repo_python()
 
 from field_backdoor import (  # noqa: E402
-    DEFAULT_PORT,
+    DEVELOPER_PORT,
     DEFAULT_TIMEOUT,
     BackdoorError,
     FieldBackdoor,
@@ -1093,13 +1094,36 @@ class FieldMcpServer:
         sys.stdout.buffer.flush()
 
 
+def resolve_mcp_port(port: int | None, environ: dict[str, str] | None = None) -> int:
+    """The port this bridge attaches to, announced on stderr when it was not explicit.
+
+    Unlike `field_backdoor.py`, whose default is now a free automation port, this bridge keeps
+    the developer port: it never launches a JVM (see the module docstring), so it is
+    `--attach-existing` by construction, and a free automation port would by definition have
+    nothing on it. `.mcp.json` pins `PORT=9092` explicitly; a bare launch says what it chose.
+    """
+    if port is not None:
+        return port
+    env = os.environ if environ is None else environ
+    if env.get("PORT"):
+        return int(env["PORT"])
+    log(f"no --port or PORT given; attaching to the developer Field on {DEVELOPER_PORT}")
+    return DEVELOPER_PORT
+
+
 def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Field4 MCP stdio bridge")
-    parser.add_argument("--port", type=int, default=int(__import__("os").environ.get("PORT", DEFAULT_PORT)))
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help=f"Port of the running Field to attach to (default: $PORT, else {DEVELOPER_PORT}).",
+    )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     args = parser.parse_args()
+    args.port = resolve_mcp_port(args.port)
 
     server = FieldMcpServer(port=args.port, timeout=args.timeout)
     try:
