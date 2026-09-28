@@ -13,6 +13,7 @@ Added 2026-09-28. User-facing page: `public/docs/pure_data.md`. Loadable scene:
 | `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | `PdInstance` (one `t_pdinstance`), `PdPatch`, `PdNode : StereoNode` — the seam entry. |
 | `src/jvmMain/kotlin/afield/pd/PdPatchGraph.kt` | the patch text as a graph (object indices as Pd counts them, subpatches as one object), line descriptions, FLine drawing, `statementsOnly`. |
 | `src/jvmMain/kotlin/afield/pd/PdLanguage.kt` | `PdExecution`: Pd as a Main Language; message lines as fragments; LineNotes provider. |
+| `tools/build_zensical_docs.py` | `libpd_library_path` and the `libpd` entry in `NATIVE_PREREQUISITES`, so a docs fence can say `requires="libpd"`. |
 | `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` | box API in the box import set: `pd(text|file)`, `PdLaunch`, `pdControls`, `pdGuiControls`, `pdWaveform`, `renderPdWav`, the return-value handler. |
 
 ## Thread discipline
@@ -52,6 +53,8 @@ All run against the built library on 2026-09-28; they print `SKIPPED` and pass w
 - MIDI: `noteOn(0, 64, 90)` reaches `[notein]` (pitch 64), `controlChange(0, 7, 100)` reaches
   `[ctlin 7]`, and a list `60 100` into `[noteout 1]` arrives in `onMidi` as channel **0** — libpd
   counts channels from 0 where Pd's objects count from 1.
+- Four threads sending 2000 numbers each while a fifth renders: all 8000 arrive, in per-sender
+  order (four runs).
 - Two instances with the same `[r in]`/`[s out]` names are isolated.
 - A patch with `[osc 440]` reports `Pd couldn't create [osc 440]` on line 1 of its source.
 - A headless `hsl` still forwards what it receives (and does **not** clip it to its range — 5000 in,
@@ -84,6 +87,6 @@ thread `field-runloop-main` (so the audio engine was pulling blocks in real time
 - MIDI is bound (note, controller, program, bend; not aftertouch, poly aftertouch or raw bytes) but
   not connected to Field's MIDI devices.
 - Compiled externals are not loaded (Pd's `extra` is compiled in).
-- The docs build does not build libpd (`buildDocsNativePrerequisites`), so `pure_data.md` has no
-  captured figures.
+- Only one figure on `pure_data.md` needs libpd (`requires="libpd"`); `buildDocsNativePrerequisites`
+  builds it. There is no audio clip on the page, so nothing was added to `DocsAudioProvenance`.
 - Windows/Linux: the build script and library naming are written for them and untested.
