@@ -2629,7 +2629,11 @@ class Server {
                         .getOrNull()
                     reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line,
                         note?.caption.orEmpty(),
-                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty())))
+                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty(),
+                        note?.volatile == true,
+                        note?.meta.orEmpty(),
+                        note?.value.orEmpty().map { LineNoteSegment(it.text, it.strong) },
+                        note?.imageScale ?: 1)))
                 }
                 Handled.yes
             })

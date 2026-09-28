@@ -266,6 +266,90 @@ highlighter and flow lens, so FieldSuggest completion, token colors, and the
 context badge all describe the same language. Field's user-facing completion
 goes through FieldSuggest, not Monaco's built-in suggest widget.
 
+## Line notes: what a line did { #line-notes }
+
+Rest the cursor on a line of a box's program, or open completion there, and Field shows a note about
+that line beside the cursor and at the top of the completion popup. A note is what the line came to —
+set in the face value visualizers use, with its results in bold — over a small, muted line saying where
+that came from and how old it is, and a picture when the language has one to draw. What a picture shows
+is not written out again beside it; the AI tool below, which may not see the picture, still gets it as
+text. Pictures are drawn at
+twice their size and shown at their own, so they stay sharp on a Retina display. A language gives notes
+by registering a provider for the property its programs live in, so this is not a closed list; these
+are the ones Field's own languages give:
+
+| language | the note for a line | picture |
+| --- | --- | --- |
+| StackSL | the stage the line ends, drawn, or the value it stores in a mark | the stage |
+| RectSL | the scene built up to the line's statement, the rectangles it makes outlined | the scene |
+| ForthField | the data stack after the line on the last run, drawn rather than written, and the words it defined | the stack, top uppermost |
+| Clojure | what each top-level form evaluated to on the last run, and its type | — |
+| Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
+| FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |
+| Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
+
+The [ForthField](forth_examples.md#what-each-line-left-on-the-stack) and
+[Python](python.md#what-each-line-came-to) pages show notes in the editor; the [Clojure](clojure.md) and
+[Datalog](datalog.md) pages say what theirs contain.
+
+**A note never runs your code.** StackSL and RectSL can say what part of a program does without
+running it, because a partial StackSL program is still a pure shader and a partial RectSL scene a
+pure description. Forth, Clojure, Python and FieldML programs print, draw, define things and change
+state that outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports
+what it came to, and the note reads that record back. It says so — "last run, 12 s ago" — and follows
+its line when you edit above it. Pressing run changes a note without changing the text it is about, so
+the editor asks again each time the cursor rests rather than keeping an old answer.
+
+When the line itself has changed since the box ran, the note says so before it tells you what the old
+text did. Here the cell below has run once, and `+ 1` has just been typed on the end of line 3:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".monaco-editor-container" screenshot="assets/language_extensions/line_note_changed.png" transcript="assets/transcripts/line_notes_python_setup.yaml" capture-box="line_notes_python" padding="10" wait="0" timeout="240" embed=true hidden=true name="line-note-changed" w="560" alt="A six-line Python cell in the editor with the caret at the end of line 3, which now reads total = sum(xs) + 1. The note at the foot of the editor reads total = 55 · int, with 55 in bold, over a muted line: line 3 · changed since the last run (a few seconds ago), so this is what the old text did."}
+// Rest on line 3 through the keyboard, as a person would: to the top, then down two lines. The pane is sized to
+// the figure, so the note (which sits at the pane's foot) stays beside the code it describes.
+ui.openEditor("line_notes_python")
+ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.editorHeight(300)
+ui.clickSelector(".monaco-editor .view-lines")
+ui.pause(200)
+repeat(4) { ui.press("PageUp") }
+ui.press("Home")
+repeat(2) { ui.press("ArrowDown") }
+ui.waitForSelector(".hoverlay-left .afield-line-note", 20000.0)
+// Now change the line without running it.
+ui.press("End")
+ui.type(" + 1")
+ui.waitForSelector(".hoverlay-left .afield-line-note-meta:has-text('changed since the last run')", 20000.0)
+ui.pause(600)
+```
+
+A Forth or Clojure run that failed marks the line it stopped on, and Forth marks the lines after it as
+not reached. Datalog needs no record: a Datalog box accumulates one model, and asking it is pure; a rule
+you have edited but not run is reported as not in the model rather than answered for. Directives such as
+`#reset` are never run for a note.
+
+Two details of the recording are worth knowing. A Clojure value is printed under a bounded
+`*print-length*`, and a lazy sequence nothing has realised is named, not printed — printing it would
+realise it, running code the program never ran. A Python note prints a value only when it is a
+builtin number, a short string, or a small list, tuple, set or dict of those; anything else — a
+DataFrame, a tensor, an object of your own class — is named by its type, because printing it would run
+its `__repr__`. Only a plain name is read back after an assignment, so recording evaluates nothing the
+statement did not, and a cell's docstring and `from __future__` imports are left exactly where Python
+needs them. Setting `AFIELD_PYTHON_LINE_NOTES=0` in Field's environment turns Python's recording off.
+
+Recording costs something for each top-level step — a Forth line, a Clojure form, a Python statement, a
+FieldML `let` — and nothing for each turn of a loop inside one, so a program's cost grows with its
+length, not with how long it runs. A picture is drawn only when its note is asked for.
+
+Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
+final value comes back, so a per-line value would need the box's source rewritten before
+compilation. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes.
+Morpho and Nano boxes have none.
+
+A box's AI chat can read the same notes: the `ReadLineNotes` tool is offered in a conversation on a
+program that has them — not on a plain Kotlin box — and returns each line's note as one sentence, with
+its picture as an image.
+
 ## When to promote
 
 Keep a language out of tree while its syntax and semantics are moving quickly.

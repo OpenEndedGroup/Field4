@@ -1,0 +1,27 @@
+name: line_notes_forth_setup
+description: >
+  Setup for the forth_examples.md line-note capture: a ForthField root and one child box holding the
+  program. A capture=ui fence creates no boxes of its own; its drive runs the box and rests the caret on
+  a line through the keyboard, as a person would — so the run's ok marker is in the editor too.
+operations:
+  - create:
+      box: line_notes_forth_root
+      name: forth
+      frame: { x: 80, y: 60, w: 120, h: 80 }
+      properties: { mainLanguage: forth }
+  - create:
+      box: line_notes_forth
+      name: line notes
+      frame: { x: 80, y: 200, w: 640, h: 220 }
+      properties:
+        code: |
+          \ Rest the cursor on a line: its note is the stack that line left.
+          clear
+          1 2
+          + 10
+          : sq ( n -- n*n ) dup * ;
+          sq
+          s" done"
+  - connect: { parent: line_notes_forth_root, child: line_notes_forth }
+  - wait:
+      millis: 750

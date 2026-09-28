@@ -319,7 +319,11 @@ data class LineNoteRequest(
     val line: Int,
 )
 
-/** What a line shows: a sentence, and a picture as a `data:` URL; both empty when there is nothing to say. */
+/**
+ * What a line shows: a sentence, and a picture as a `data:` URL; both empty when there is nothing to say.
+ * [volatile] when the note can change while the text does not (a last run's value), so the editor asks
+ * again next time rather than keeping it.
+ */
 @Serializable
 data class LineNoteReply(
     val uid: String,
@@ -327,7 +331,18 @@ data class LineNoteReply(
     val line: Int,
     val caption: String = "",
     val image: String = "",
+    val volatile: Boolean = false,
+    /** Where the value came from ("last run, 12 s ago"); with [value], the note split for the eye. Empty: show [caption]. */
+    val meta: String = "",
+    /** What the line came to, in runs; a `strong` run is a result the editor sets in bold. */
+    val value: List<LineNoteSegment> = emptyList(),
+    /** Device pixels per CSS pixel of [image]. */
+    val imageScale: Int = 1,
 )
+
+/** One run of a line note's value: see [LineNoteReply.value]. */
+@Serializable
+data class LineNoteSegment(val text: String, val strong: Boolean = false)
 
 /**
  * One completion exactly as Field's popup presented it. This is intentionally a client report,

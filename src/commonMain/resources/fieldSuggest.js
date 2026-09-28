@@ -210,16 +210,38 @@ export const requestLineNote = (uid, property, allCode, line) => {
     .then((note) => (note && (note.image || note.caption) ? note : null));
   lineNoteCache.set(key, pending);
   if (lineNoteCache.size > 128) lineNoteCache.delete(lineNoteCache.keys().next().value);
-  // A line with nothing to say, or an answer that timed out, is asked about again next time.
-  pending.then((note) => { if (!note) lineNoteCache.delete(key); });
+  // A line with nothing to say, an answer that timed out, or a note that can change while the text
+  // does not (what the line produced on the last run), is asked about again next time.
+  pending.then((note) => { if (!note || note.volatile) lineNoteCache.delete(key); });
   return pending;
 };
 
-export const lineNoteHtml = (note) =>
-  note
-    ? `<figure class="afield-line-note">${note.image ? `<img src="${note.image}" alt="">` : ""}` +
-      `<figcaption>line ${Number(note.line) || ""} · ${escapeHtml(note.caption || "")}</figcaption></figure>`
-    : "";
+// A note with a `value` is shown split: what the line came to, in the value face with its results in
+// bold, over a muted line saying where that came from. A note with only a caption (StackSL, RectSL)
+// is shown as its caption. A picture drawn at 2x says so in `imageScale`, and `srcset` shows it at
+// its CSS size so a Retina display does not upscale it.
+const lineNoteImageHtml = (note) => {
+  if (!note.image) return "";
+  const scale = Number(note.imageScale) || 1;
+  return scale > 1 ? `<img srcset="${note.image} ${scale}x" src="${note.image}" alt="">` : `<img src="${note.image}" alt="">`;
+};
+
+export const lineNoteHtml = (note) => {
+  if (!note) return "";
+  const line = `line ${Number(note.line) || ""}`;
+  const segments = Array.isArray(note.value) ? note.value : [];
+  // A note with a meta line but no value is one whose picture says it all (a Forth stack).
+  if (segments.length === 0 && !note.meta) {
+    return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
+      `<figcaption>${line} · ${escapeHtml(note.caption || "")}</figcaption></figure>`;
+  }
+  const value = segments
+    .map((segment) => (segment && segment.strong ? `<strong>${escapeHtml(segment.text || "")}</strong>` : escapeHtml((segment && segment.text) || "")))
+    .join("");
+  return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
+    (value ? `<div class="afield-line-note-value">${value}</div>` : "") +
+    `<figcaption class="afield-line-note-meta">${line} · ${escapeHtml(note.meta || "")}</figcaption></figure>`;
+};
 
 window.requestLineNote = requestLineNote;
 window.lineNoteHtml = lineNoteHtml;

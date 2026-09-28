@@ -88,6 +88,18 @@ data class DlQuery(val body: List<DlLiteral>, val source: String? = null)
 /** A `#directive` line — the box language's REPL commands (`#reset`, `#relations`, `#boxes`, `#why …`). */
 data class DlDirective(val name: String, val argument: String, val line: Int)
 
+/**
+ * One statement of a program and the lines it spans ([firstLine]..[lastLine], 1-based): exactly one of
+ * [rule] (a fact is a rule with no body), [query] or [directive]. See `DatalogParser.statements`.
+ */
+class DlStatement(
+    val firstLine: Int,
+    val lastLine: Int,
+    val rule: DlRule? = null,
+    val query: DlQuery? = null,
+    val directive: DlDirective? = null,
+)
+
 /** Everything one chunk of source contributed. */
 data class DlUnit(
     val rules: List<DlRule> = emptyList(),

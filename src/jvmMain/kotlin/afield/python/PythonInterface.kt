@@ -658,13 +658,15 @@ def _capture_last_value_inplace(mod: ast.Module, capture_name: str) -> bool:
     ast.fix_missing_locations(assign2)
     return True
 
+${PythonLineNotes.SOURCE}
+
 def _looks_like_top_level_await_syntax(err: SyntaxError) -> bool:
     msg = (getattr(err, "msg", "") or str(err)).lower()
     needles = ("'await' outside function", "async for outside async function", "async with outside async function")
     return any(n in msg for n in needles)
 
 # ---------- async core with TLA ----------
-async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, *, debug: bool = False, filename: str = "<repl>"):
+async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, *, debug: bool = False, filename: str = "<repl>", _line_notes=_field_line_notes):
     ""${'"'}
     Async path: always allows top-level await. Preserves original source in tracebacks.
     ""${'"'}
@@ -672,15 +674,17 @@ async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, 
     try:
         mod = ast.parse(code, mode="exec")
         captured = _capture_last_value_inplace(mod, capture_name)
+        note_name = _line_notes.instrument(mod, filename, capture_name, code)
         ast.fix_missing_locations(mod)
         _ensure_linecache(filename, code)
 
         flags = ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
         code_obj = compile(mod, filename, "exec", flags=flags)
-        maybe_coro = eval(code_obj, globals, locals)
-        if inspect.isawaitable(maybe_coro):
-            if debug: _dbg("awaiting module body (TLA)")
-            await maybe_coro
+        with _line_notes.bind(globals, note_name):
+            maybe_coro = eval(code_obj, globals, locals)
+            if inspect.isawaitable(maybe_coro):
+                if debug: _dbg("awaiting module body (TLA)")
+                await maybe_coro
         if not captured:
             return None
         out = locals.get(capture_name, None)
@@ -696,7 +700,7 @@ async def aexec_with_return(code: str, globals: dict, locals=isolatedNamespace, 
         raise
 
 # ---------- smart sync/async wrapper with tracking ----------
-def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, debug: bool = False, source_id: str | None = None):
+def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, debug: bool = False, source_id: str | None = None, _line_notes=_field_line_notes):
     ""${'"'}
     - No running loop: run to completion (supports TLA).
     - Running loop: try sync fast-path (no TLA) so pure sync code returns immediately.
@@ -725,6 +729,7 @@ def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, de
         try:
             mod = ast.parse(code, mode="exec")
             captured = _capture_last_value_inplace(mod, capture_name)
+            note_name = _line_notes.instrument(mod, filename, capture_name, code)
             ast.fix_missing_locations(mod)
             _ensure_linecache(filename, code)
             code_obj = compile(mod, filename, "exec")  # no TLA
@@ -742,7 +747,8 @@ def _exec_with_return2(code: str, globals: dict, locals=isolatedNamespace, *, de
 
         # Execute synchronously (CPU-only) even though a loop is running
         try:
-            eval(code_obj, globals, locals)
+            with _line_notes.bind(globals, note_name):
+                eval(code_obj, globals, locals)
         except Exception as e:
             if debug:
                 _dbg("Exception during sync fast-path exec; traceback follows:")
@@ -1240,6 +1246,7 @@ _orig_print(" python interpreter has finished starting up ")
                 i.set("_local_storage_", inside._pythonLocals)
                 thisBox = inside
                 thisLineOffset = execute.line
+                if (PythonLineNotes.enabled) runCatching { takePythonLineNotes(i, inside) }
 //                i.exec("_ret = _exec_with_return2(_code, globals(), locals=_local_storage_, source_id='${inside.id}')")
                 i.exec("_ret = _exec_with_return2(_code, globals(), locals=globals(), source_id='${inside.id}')")
                 val ret = i.getValue("_ret")
@@ -1293,7 +1300,9 @@ _orig_print(" python interpreter has finished starting up ")
                     inside.output.proxy("ok", false, resultLine)
                     hasHadOutput = true
                 }
+                recordPythonLineNotes(i, inside, execute)
             } catch (j: JepException) {
+                runCatching { recordPythonLineNotes(interpreter(inside), inside, execute) }
                 j.printStackTrace()
                 hasHadOutput = true
                 val n = j.message!!
@@ -1344,6 +1353,53 @@ _orig_print(" python interpreter has finished starting up ")
                 trace.finish(true)
             }
         }
+    }
+
+    /**
+     * What the recorder ([PythonLineNotes]) holds for [inside]'s runs, emptied. Reached through
+     * `_exec_with_return2`'s own default argument, so a cell that rebinds `_field_line_notes` does not
+     * cut it off.
+     */
+    private fun takePythonLineNotes(i: SharedInterpreter, inside: Box): String {
+        i.exec("_field_line_notes_json = _exec_with_return2.__kwdefaults__['_line_notes'].take('<repl:${inside.id}>')")
+        return i.getValue("_field_line_notes_json") as? String ?: "[]"
+    }
+
+    /**
+     * Hand what each top-level statement of [execute]'s code came to over to the box's line notes
+     * ([afield.stdlib.LastRunNotes]). Recorded as the statements ran — the AST is instrumented by
+     * `_field_line_notes.instrument` ([PythonLineNotes]) — so nothing here evaluates anything. A statement that raised records
+     * nothing, and neither do the ones after it.
+     */
+    private fun recordPythonLineNotes(i: SharedInterpreter, inside: Box, execute: Execute) {
+        if (!PythonLineNotes.enabled) return
+        runCatching {
+            // `trimIndent` drops a blank first line, so the interpreter's line 1 is the code's line 2.
+            val dropped = if (execute.code.lineSequence().firstOrNull()?.isBlank() == true) 1 else 0
+            val rows = kotlinx.serialization.json.Json.parseToJsonElement(takePythonLineNotes(i, inside)) as kotlinx.serialization.json.JsonArray
+            val produced = rows.map { row ->
+                val cells = (row as kotlinx.serialization.json.JsonArray).map { cell ->
+                    if (cell is kotlinx.serialization.json.JsonNull) null else (cell as kotlinx.serialization.json.JsonPrimitive).content
+                }
+                val (first, last, kind, type) = cells.map { it.orEmpty() }
+                // null: a value the recorder would not print, because printing it would run its type's __repr__.
+                val text = cells.getOrNull(4)
+                val P = afield.stdlib.LineNotes::plain
+                val S = afield.stdlib.LineNotes::strong
+                val shown = text?.let { listOf(S(afield.stdlib.LastRunNotes.oneLine(it)), P(" · $type")) }
+                    ?: listOf(P("a "), S(type), P(" (a note does not call its __repr__)"))
+                val value = when {
+                    kind == "ran" -> listOf(P("ran (a `$text` statement)"))
+                    kind.startsWith("defines ") -> listOf(P("defines "), S(kind.removePrefix("defines ")))
+                    kind.startsWith("assigned ") -> listOf(P(kind.removePrefix("assigned ") + " = ")) + shown
+                    type == "NoneType" -> listOf(P("evaluated to "), S("None"))
+                    else -> listOf(P("evaluated to ")) + shown
+                }
+                val caption = value.joinToString("") { it.text }
+                afield.stdlib.LastRunNotes.Produced(first.toInt() + dropped, last.toInt() + dropped, caption, value = value)
+            }
+            afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
+        }.onFailure { lprintln("warning,python", "could not record line notes: $it") }
     }
 
     private fun hackJepThreadContext() {
