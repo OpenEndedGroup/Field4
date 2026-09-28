@@ -121,6 +121,36 @@ def exception_message(exc: BaseException) -> str:
     return str(exc).strip() or type(exc).__name__
 
 
+def png_pixel_size(path: str | os.PathLike[str]) -> tuple[int, int] | None:
+    """Width and height from a PNG's IHDR chunk, or None when the file is not a readable PNG."""
+    try:
+        with open(path, "rb") as handle:
+            header = handle.read(24)
+    except OSError:
+        return None
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+        return None
+    return int.from_bytes(header[16:20], "big"), int.from_bytes(header[20:24], "big")
+
+
+async def annotate_screenshot_size(client: "FieldBackdoor", data: Any, *, browser: bool = True) -> Any:
+    """Add the image's real pixel size, and the page's devicePixelRatio, to a screenshot result.
+
+    `clip` and `viewport` are CSS pixels; on a high-DPI browser context the PNG is twice that,
+    and a caller comparing the two used to have to open the file to find out which it had.
+    """
+    if not isinstance(data, dict) or not data.get("ok") or not data.get("path"):
+        return data
+    size = png_pixel_size(data["path"])
+    if size is None:
+        return data
+    data = dict(data)
+    data["imagePixelWidth"], data["imagePixelHeight"] = size
+    if browser:
+        data["devicePixelRatio"] = await client.page_device_pixel_ratio()
+    return data
+
+
 def make_unverified_ssl_context() -> ssl.SSLContext:
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -212,6 +242,16 @@ def gradle_command(*tasks_and_args: str) -> list[str]:
     ]
 
 
+def page_eval_body_warning(script: str) -> str | None:
+    """`page-eval --body` runs the script as a function body, so without `return` it yields null."""
+    if re.search(r"\breturn\b", script):
+        return None
+    return (
+        "page-eval --body has no `return`, so its result is null. Add an explicit `return ...`, "
+        "or drop --body to evaluate a single expression."
+    )
+
+
 def command_result(command: str, ok: bool, data: Any = None, events: list[dict[str, Any]] | None = None, timed_out: bool = False) -> dict[str, Any]:
     return {
         "ok": ok,
@@ -220,6 +260,20 @@ def command_result(command: str, ok: bool, data: Any = None, events: list[dict[s
         "events": events or [],
         "timedOut": timed_out,
     }
+
+
+def attach_capture_warnings(
+    client: "FieldBackdoor", data: Any, uid: str | None, *, editor: bool
+) -> Any:
+    """Add `captureWarnings` to a capture result (and say it on stderr) when the page may be blind."""
+    warnings = client.capture_warnings(uid, editor=editor)
+    if not warnings or not isinstance(data, dict):
+        return data
+    data = dict(data)
+    data["captureWarnings"] = warnings
+    for warning in warnings:
+        print(f"field_backdoor.py: warning: {warning}", file=sys.stderr, flush=True)
+    return data
 
 
 def _is_error_output_event(event: dict[str, Any]) -> bool:
@@ -559,6 +613,14 @@ class FieldBackdoor:
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
         self.playwright_state: dict[str, Any] | None = None
+        # Per box: what the page could see when it last ran. A browser that attaches after a run
+        # cannot recreate the output DOM that run produced, and an inline editor visualizer only
+        # exists if the editor was open before the run -- so a capture of such a box shows
+        # nothing, and used to say nothing about why. See `capture_warnings`.
+        self.execution_context: dict[str, dict[str, Any]] = {}
+        self.editor_opened: set[str] = set()
+        self._page_dpr: float | None = None
+        self._page_dpr_asked = False
         self.managed_process: subprocess.Popen[Any] | None = None
         self.managed_log_path: Path | None = None
         self.managed_log_file: TextIO | None = None
@@ -1170,6 +1232,8 @@ class FieldBackdoor:
         if not isinstance(payload, dict):
             raise BackdoorError("agent-open-playwright returned an invalid payload")
         self.playwright_state = dict(payload)
+        self._page_dpr = None
+        self._page_dpr_asked = False
         if not payload.get("ok", False):
             message = payload.get("error") or "Playwright failed without an error message"
             raise BackdoorError(message)
@@ -1270,6 +1334,25 @@ class FieldBackdoor:
             raise BackdoorError("agent-playwright-input returned an invalid payload")
         self.logger.log("playwright_input_complete", payload=payload)
         return payload
+
+    async def page_device_pixel_ratio(self) -> float | None:
+        """`window.devicePixelRatio` of the Playwright page, asked once per attached page."""
+        if self._page_dpr is not None or self._page_dpr_asked:
+            return self._page_dpr
+        self._page_dpr_asked = True
+        try:
+            reply = await self.playwright_input(
+                action="pageEval",
+                script="window.devicePixelRatio",
+                timeout=min(5.0, max(1.0, self.default_timeout)),
+            )
+        except Exception as exc:  # noqa: BLE001 -- an annotation must never fail the capture
+            self.logger.log("device_pixel_ratio_unavailable", error=exception_message(exc))
+            return None
+        value = reply.get("result") if isinstance(reply, dict) and reply.get("ok") else None
+        if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+            self._page_dpr = float(value)
+        return self._page_dpr
 
     async def screenshot_window(
         self,
@@ -1779,6 +1862,8 @@ class FieldBackdoor:
             raise BackdoorError("agent-open-document returned an invalid payload")
         self._replace_snapshot(payload)
         self.clear_events()
+        self.execution_context.clear()
+        self.editor_opened.clear()
         self.logger.log(
             "open_document_complete",
             documentName=self.document_name,
@@ -1959,6 +2044,49 @@ class FieldBackdoor:
             raise BackdoorError("box alias must not be empty")
         self.box_aliases[cleaned] = uid
         self.logger.log("box_alias_assigned", alias=cleaned, uid=uid)
+
+    def playwright_attached_to_this_document(self) -> bool:
+        state = self.playwright_state
+        if not state or state.get("ok") is False:
+            return False
+        page_session = state.get("sessionKey")
+        return page_session is None or self.session_key is None or page_session == self.session_key
+
+    def note_execution(self, uids: list[str], command: str) -> None:
+        attached = self.playwright_attached_to_this_document()
+        for uid in uids:
+            self.execution_context[uid] = {
+                "command": command,
+                "playwrightAttached": attached,
+                "editorOpen": uid in self.editor_opened,
+            }
+
+    def capture_warnings(self, uid: str | None, *, editor: bool) -> list[str]:
+        """Why a capture of ``uid`` (or, with None, of the whole window) may be missing output."""
+        if uid is None:
+            targets = list(self.execution_context)
+        else:
+            try:
+                targets = [self.resolve_box_token(uid)]
+            except BackdoorError:
+                return []
+        warnings: list[str] = []
+        for target in targets:
+            context = self.execution_context.get(target)
+            if context is None:
+                continue
+            if not context["playwrightAttached"]:
+                warnings.append(
+                    f"box {target} was `{context['command']}` before Playwright attached to this "
+                    "document, so output DOM that run created never existed in the captured page. "
+                    "Pass --with-playwright (or run playwright-open) before the run."
+                )
+            if editor and not context["editorOpen"]:
+                warnings.append(
+                    f"box {target} was `{context['command']}` before `editor-open`, so inline "
+                    "editor visualizers from that run are absent. Run `editor-open <box>` first."
+                )
+        return warnings
 
     def resolve_uid(self, token: str) -> str:
         if token == "@last":
@@ -3605,6 +3733,8 @@ async def dispatch_command(
             timeout=timeout,
         )
         ok = bool(data.get("ok"))
+        if ok:
+            client.editor_opened.add(client.resolve_box_token(args.uid))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
@@ -3632,6 +3762,8 @@ async def dispatch_command(
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
         )
+        data = attach_capture_warnings(client, data, args.uid, editor=bool(args.with_editor and args.uid))
+        data = await annotate_screenshot_size(client, data)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3658,6 +3790,8 @@ async def dispatch_command(
             wait_ms=0.0,
             timeout=timeout,
         )
+        data = attach_capture_warnings(client, data, args.uid, editor=True)
+        data = await annotate_screenshot_size(client, data)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3682,6 +3816,8 @@ async def dispatch_command(
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
         )
+        data = attach_capture_warnings(client, data, args.uid, editor=False)
+        data = await annotate_screenshot_size(client, data)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3695,6 +3831,7 @@ async def dispatch_command(
             timeout=timeout,
             uid=args.uid,
         )
+        data = await annotate_screenshot_size(client, data, browser=False)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3738,6 +3875,8 @@ async def dispatch_command(
             restart_target=args.restart_target,
             timeout=effective_timeout,
         )
+        if not args.restart_target:  # a restarted target regenerates its output in the page
+            data = attach_capture_warnings(client, data, args.uid, editor=bool(args.with_editor and args.uid))
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3768,6 +3907,8 @@ async def dispatch_command(
             restart_target=args.restart_target,
             timeout=effective_timeout,
         )
+        if not args.restart_target:
+            data = attach_capture_warnings(client, data, args.uid, editor=True)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3794,6 +3935,8 @@ async def dispatch_command(
             restart_target=args.restart_target,
             timeout=effective_timeout,
         )
+        if not args.restart_target:
+            data = attach_capture_warnings(client, data, args.uid, editor=False)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
@@ -3923,6 +4066,7 @@ async def dispatch_command(
             timed_out=timed_out,
             fail_on_error=not getattr(args, "no_fail_on_error", False),
         )
+        client.note_execution([client.resolve_box_token(args.uid)], args.command)
         result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
         client.logger.log(
             "command_dispatch_complete",
@@ -3955,6 +4099,7 @@ async def dispatch_command(
             timed_out=timed_out,
             fail_on_error=not getattr(args, "no_fail_on_error", False),
         )
+        client.note_execution([client.resolve_box_token(uid) for uid in args.uids], "launch-batch")
         result = command_result(command_line, ok, data=data, events=events, timed_out=timed_out)
         client.logger.log(
             "command_dispatch_complete",
@@ -4165,6 +4310,11 @@ async def dispatch_command(
             timeout=timeout,
             wait_ms=args.wait_ms,
         )
+        warning = page_eval_body_warning(script) if args.body else None
+        if warning is not None:
+            data = dict(data)
+            data["warnings"] = [*data.get("warnings", []), warning]
+            print(f"field_backdoor.py: warning: {warning}", file=sys.stderr, flush=True)
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])

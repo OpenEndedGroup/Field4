@@ -603,6 +603,101 @@ class BoxReferenceTests(unittest.TestCase):
         )
 
 
+class CaptureTruthfulnessTests(unittest.TestCase):
+    """Captures that cannot show a run's output now say so (2026-09-28)."""
+
+    def setUp(self) -> None:
+        self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.01, logger=_Logger())
+        self.client.boxes = {"box-a": {"uid": "box-a"}, "box-b": {"uid": "box-b"}}
+        self.client.session_key = "/ws/doc"
+
+    def attach_playwright(self) -> None:
+        self.client.playwright_state = {"ok": True, "ready": True, "sessionKey": "/ws/doc"}
+
+    def test_a_box_run_before_playwright_attached_is_named(self) -> None:
+        self.client.note_execution(["box-a"], "run")
+        self.attach_playwright()
+        warnings = self.client.capture_warnings("box-a", editor=False)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("before Playwright attached", warnings[0])
+
+    def test_a_box_rerun_after_attach_is_clean(self) -> None:
+        self.client.note_execution(["box-a"], "run")
+        self.attach_playwright()
+        self.client.note_execution(["box-a"], "run")
+        self.assertEqual(self.client.capture_warnings("box-a", editor=False), [])
+
+    def test_a_page_attached_to_another_document_does_not_count(self) -> None:
+        self.client.playwright_state = {"ok": True, "sessionKey": "/ws/other"}
+        self.client.note_execution(["box-a"], "launch")
+        self.assertTrue(self.client.capture_warnings("box-a", editor=False))
+
+    def test_editor_captures_need_editor_open_before_the_run(self) -> None:
+        self.attach_playwright()
+        self.client.note_execution(["box-a"], "run")
+        self.client.editor_opened.add("box-b")
+        self.client.note_execution(["box-b"], "run")
+        self.assertEqual(self.client.capture_warnings("box-a", editor=False), [])
+        self.assertIn("before `editor-open`", self.client.capture_warnings("box-a", editor=True)[0])
+        self.assertEqual(self.client.capture_warnings("box-b", editor=True), [])
+
+    def test_a_window_capture_checks_every_box_that_ran(self) -> None:
+        self.client.note_execution(["box-a", "box-b"], "launch-batch")
+        self.assertEqual(len(self.client.capture_warnings(None, editor=False)), 2)
+
+    def test_warnings_reach_the_result_and_stderr(self) -> None:
+        from tools.field_backdoor import attach_capture_warnings
+
+        self.client.note_execution(["box-a"], "run")
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            data = attach_capture_warnings(self.client, {"ok": True}, "box-a", editor=False)
+        self.assertTrue(data["ok"])  # a warning, not a failure
+        self.assertEqual(len(data["captureWarnings"]), 1)
+        self.assertIn("warning:", err.getvalue())
+
+    def test_a_clean_capture_is_unchanged(self) -> None:
+        from tools.field_backdoor import attach_capture_warnings
+
+        self.assertEqual(attach_capture_warnings(self.client, {"ok": True}, "box-a", editor=True), {"ok": True})
+
+    def test_page_eval_body_without_return_warns(self) -> None:
+        from tools.field_backdoor import page_eval_body_warning
+
+        self.assertIn("no `return`", page_eval_body_warning("document.title"))
+        self.assertIsNone(page_eval_body_warning("const t = document.title; return t"))
+        self.assertIn("no `return`", page_eval_body_warning("const returned = 1"))
+
+    def test_screenshot_results_carry_pixel_size_and_dpr(self) -> None:
+        from tools.field_backdoor import annotate_screenshot_size, png_pixel_size
+
+        header = b"\x89PNG\r\n\x1a\n" + (13).to_bytes(4, "big") + b"IHDR"
+        header += (640).to_bytes(4, "big") + (360).to_bytes(4, "big") + b"\x08\x06\x00\x00\x00"
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / "shot.png"
+            path.write_bytes(header + b"\x00" * 16)
+            self.assertEqual(png_pixel_size(path), (640, 360))
+            calls: list[str] = []
+
+            async def fake_input(**kwargs):
+                calls.append(kwargs["script"])
+                return {"ok": True, "result": 2}
+
+            self.client.playwright_input = fake_input  # type: ignore[assignment]
+            data = asyncio.run(annotate_screenshot_size(self.client, {"ok": True, "path": str(path)}))
+            again = asyncio.run(annotate_screenshot_size(self.client, {"ok": True, "path": str(path)}))
+        self.assertEqual((data["imagePixelWidth"], data["imagePixelHeight"]), (640, 360))
+        self.assertEqual(data["devicePixelRatio"], 2.0)
+        self.assertEqual(again["devicePixelRatio"], 2.0)
+        self.assertEqual(calls, ["window.devicePixelRatio"])  # asked once per page
+
+    def test_a_failed_or_missing_capture_is_left_alone(self) -> None:
+        from tools.field_backdoor import annotate_screenshot_size
+
+        self.assertEqual(asyncio.run(annotate_screenshot_size(self.client, {"ok": False})), {"ok": False})
+        missing = {"ok": True, "path": "/nonexistent/shot.png"}
+        self.assertEqual(asyncio.run(annotate_screenshot_size(self.client, missing)), missing)
+
+
 class RunningStateOrderingTests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = FieldBackdoor(port=1, workspace=None, default_timeout=0.01, logger=_Logger())
