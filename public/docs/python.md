@@ -201,12 +201,36 @@ source is keyed `input` rather than `source`.
 ## What each line came to
 
 Rest the cursor on a statement and the note beside it says what that statement came to the last time
-the cell ran: an expression's value, the value a name was assigned, the function or class it defined,
-or that it ran. The values are recorded as the cell runs, so asking about a line never runs it
-again, and a line changed since the run says so. Only builtin values are printed — numbers, strings,
-small lists and dicts of them; anything else is named by its type, so a note never calls a
-DataFrame's or a tensor's `__repr__`. To turn the recording off, start Field with
-`AFIELD_PYTHON_LINE_NOTES=0`. See [Line notes](language_extensions.md#line-notes).
+the cell ran — an expression's value, the value a name was assigned, the function or class it defined,
+or that it ran — with the value in bold. Here the cell is
+
+    xs = [n * n for n in range(6)]
+    total = sum(xs)
+    def mean(v):
+        return sum(v) / len(v)
+    mean(xs)
+
+under a comment line, it has run once, and the cursor rests on `total = sum(xs)`:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".hoverlay-left" screenshot="assets/python/line_note.png" transcript="assets/transcripts/line_notes_python_setup.yaml" capture-box="line_notes_python" padding="10" wait="0" timeout="240" embed=true hidden=true name="python-line-note" alt="The note beside the cursor, resting on line 3 of the cell above: total = 55 · int, with 55 in bold, over a muted line reading line 3 · last run, and how many seconds ago."}
+// Rest on line 3 through the keyboard, as a person would: to the top, then down two lines.
+ui.openEditor("line_notes_python")
+ui.pause(700)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor .view-lines")
+ui.pause(200)
+repeat(4) { ui.press("PageUp") }
+ui.press("Home")
+repeat(2) { ui.press("ArrowDown") }
+ui.waitForSelector(".hoverlay-left .afield-line-note-value", 20000.0)
+ui.pause(800)
+```
+
+The values are recorded as the cell runs, so asking about a line never runs it again, and a line changed
+since the run says so. Only builtin values are printed — numbers, short strings, small lists and dicts
+of them; anything else is named by its type, so a note never calls a DataFrame's or a tensor's
+`__repr__`. To turn the recording off, start Field with `AFIELD_PYTHON_LINE_NOTES=0`. See
+[Line notes](language_extensions.md#line-notes).
 
 ## Setting Python up { #setting-python-up }
 

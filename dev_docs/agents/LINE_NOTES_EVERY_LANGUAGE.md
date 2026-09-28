@@ -52,8 +52,16 @@ register trace per instruction, which is a larger change than a note justifies t
 
 ## What it costs
 
-Measured 2026-09-28 on the branch's Field (M-series Mac), best of 15 (Forth, Clojure, FieldML: in a box;
-Python: the rewriter under plain `python3`), plain run vs recorded run:
+Measured 2026-09-28 on the branch's Field (M-series Mac). Method: each program run through the
+language's own evaluator with and without recording, best of 15 after 5 warm-up runs (Forth:
+`ForthInterpreter.eval` vs `evalRecordingLineNotes`; Clojure: `ClojureHost.evalPage` without and with
+`onFormValue`; FieldML: `Evaluator.evaluate` without and with `onTopLevelLet` rendering each value — all
+three inside a Kotlin box; Python: parse, rewrite, compile and exec of the cell under plain `python3`,
+best of 30, 5 for the loop). The "before" column is the branch before `1244e69cc`. Populations are the
+programs named in each row, nothing else; the scripts are
+`.nightly-tmp/forthbench.txt`, `bench2.txt` and `pybench.py` in the nightly worktree (not tracked).
+The public page states only the structural fact — per top-level step, never per loop iteration;
+pictures on request — because nothing guards a number in prose.
 
 | case | before | after |
 | --- | --- | --- |
@@ -82,6 +90,19 @@ in any language — only per top-level step.
 `ReadLineNotes(lines)` (`LineNoteTools.kt`), registered through `AgentToolExtensions`, offered when the
 focused box's property has a provider and is not a plain Kotlin box's `code`. It returns captions and
 the pictures as tool images.
+
+## Docs figures
+
+Pipeline captures, not the evidence PNGs: `public/docs/assets/forth_examples/line_note_stack.png` (the
+note with its 2× stack picture, and the run's `ok · <3> …` marker), `public/docs/assets/python/line_note.png`
+(`total = 55 · int`), `public/docs/assets/language_extensions/line_note_changed.png` (a stale note after
+typing into the line). Each is a `capture="ui"` fence whose setup transcript
+(`public/docs/assets/transcripts/line_notes_{forth,python}_setup.yaml`) builds the language root and box;
+the drive runs the box with its own key (`Alt+0`) where it must, and moves the caret with
+`PageUp`/`Home`/`ArrowDown` — the keys a person uses — then waits for the note's DOM. No new capture-system
+option was needed. Forth fences with `data-lang=forth` are wrapped as a Kotlin call
+(`renderForthDocsSnippet`), not run under a Forth root, so a plain `capture="editor"` Forth fence cannot
+show the Forth `ok` marker; that is why the marker is in the `ui` figure.
 
 ## Verification
 
