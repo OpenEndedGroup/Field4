@@ -17,7 +17,7 @@ libpd is a C library, and Field does not ship a binary of it. Build it once:
 ./gradlew buildLibpdNative
 ```
 
-That needs `cmake`, `git`, and the network the first time. It clones libpd 0.16.1 (Pd 0.55-2) and
+That needs `cmake`, `git`, and the network the first time. It clones libpd 0.16.1 (Pd 0.56-5) and
 checks it against a pinned commit, then builds into `build/field-libpd/`. The source is cached per
 user, so other checkouts and worktrees reuse it. Until it is built, the calls on this page fail with
 an error that says how to build it.

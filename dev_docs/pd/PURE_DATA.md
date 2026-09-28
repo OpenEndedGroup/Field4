@@ -70,7 +70,7 @@ thread `field-runloop-main` (so the audio engine was pulling blocks in real time
 - **`val (left, _) = …` at the top level of a box never completes** under the K2 REPL: no compile
   error, no output, and the backdoor reports "Execution did not complete". `val (left, right) = …`
   works. This is a REPL defect, not a Pd one; the demo avoids it and says so in a comment.
-- Pd 0.55 prefixes each line of a creation error with `error: ` and sometimes `verbose(0): `, then
+- Pd 0.56 prefixes each line of a creation error with `error: ` and sometimes `verbose(0): `, then
   prints `... couldn't create` on its own line. `PdPatch.problemsIn` strips both prefixes.
 - A `.pd` file is a sequence of messages: a bare `freq 440;` statement in one would be *sent* while it
   loads. The Pd box language keeps message lines and `//` comments in the box, so

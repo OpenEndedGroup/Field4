@@ -37,7 +37,7 @@ from native_download_cache import native_download_cache
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORK = REPO_ROOT / "build" / "field-libpd"
 
-# libpd 0.16.1 (Pd 0.55-2). BSD-3 licensed, like Pd itself.
+# libpd 0.16.1 (Pd 0.56-5, as its m_pd.h says). BSD-3 licensed, like Pd itself.
 LIBPD_URL = "https://github.com/libpd/libpd.git"
 LIBPD_TAG = "0.16.1"
 LIBPD_COMMIT = "ba0dc63262901d658af8bbda5e619a60fa975e78"

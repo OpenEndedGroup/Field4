@@ -638,7 +638,7 @@ class PdPatch internal constructor(
         fun problemsIn(source: String, printed: List<String>): List<Problem> {
             val lines = source.lines()
             val out = ArrayList<Problem>()
-            // Pd 0.55 prefixes the lines of an error with "error: " and sometimes "verbose(0): ";
+            // Pd 0.56 prefixes the lines of an error with "error: " and sometimes "verbose(0): ";
             // older ones did not.
             val prefix = Regex("""^(?:(?:error:|verbose\(\d+\):)\s*)+""")
             val bare = printed.map { it.trim().replace(prefix, "").trim() }
