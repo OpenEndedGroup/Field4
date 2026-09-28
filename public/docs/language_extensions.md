@@ -279,12 +279,13 @@ when the language has one to draw. Which languages give notes, and what each not
 | ForthField | the data stack after the line on the last run, or the words it defined | the stack, top uppermost |
 | Clojure | what each top-level form evaluated to on the last run, and its type | — |
 | Python | what each top-level statement came to on the last run: an expression's value, the name it assigned, what it defined, or just that it ran | — |
+| FieldML | the value each top-level `let` bound on the last run, and its type; the final expression's value | — |
 | Datalog | a rule: the facts its body derives in the box's model; a query: its answers; a fact: whether it is in the model and which rules read it | the derived rows, as a table |
 
 **A note never runs your code.** StackSL and RectSL can say what part of a program does without
 running it, because a partial StackSL program is still a pure shader and a partial RectSL scene a
-pure description. Forth, Clojure and Python programs print, draw, define things and change state that
-outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports what it
+pure description. Forth, Clojure, Python and FieldML programs print, draw, define things and change
+state that outlives the run, so their notes are *recorded*: as the box runs, each top-level step reports what it
 came to, and the note reads that record back. It says so — "last run, 12 s ago" — follows its line
 when you edit above it, and when the line itself has changed since, says "changed since the last run"
 before telling you what the old text did. A run that failed marks the line it stopped on, and Forth
@@ -301,7 +302,7 @@ nothing the statement did not.
 Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
 final value comes back, so a per-line value would need the box's source rewritten before
 compilation. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes.
-FieldML, Morpho and Nano boxes have none.
+Morpho and Nano boxes have none.
 
 A box's AI chat can read the same notes: the `ReadLineNotes` tool is offered in a conversation on any
 program that has them, and returns each line's caption with its picture as an image.

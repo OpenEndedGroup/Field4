@@ -129,4 +129,15 @@ class LastRunNotesTest {
         assertNull(result.notes[2].caption, "a line past the end has no note")
         assertEquals(2, result.toolImages.size)
     }
+
+    @Test
+    fun aFieldMLProgramReportsEachTopLevelBindingAsItIsMade() {
+        val result = afield.ml.FieldMLCompiler.compile("let x = 20\nlet double n = n * 2\ndouble x + 2")
+        val bound = mutableListOf<Pair<String, String>>()
+        val value = afield.ml.core.Evaluator().also { it.onTopLevelLet = { _, name, v -> bound += name to afield.ml.core.renderFieldMLValue(v) } }
+            .evaluate(assertNotNull(result.core, result.diagnostics.toString()))
+        assertEquals(listOf("x", "double"), bound.map { it.first })
+        assertEquals("20", bound[0].second)
+        assertEquals("42", afield.ml.core.renderFieldMLValue(value))
+    }
 }

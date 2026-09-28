@@ -52,4 +52,17 @@
                        :parents #{#afield/box "line-notes-datalog-root"}
                        :children #{}
                        :code "% Rest the cursor on a statement: rules show what they derive.\nedge(a, b).\nedge(b, c).\nedge(c, d).\npath(X, Y) :- edge(X, Y).\npath(X, Z) :-\n  path(X, Y), edge(Y, Z).\n?- path(a, W).\nlonely(q).\n"}}
-]}
+
+ {:id "line-notes-fieldml-root"
+          :properties {:name "FieldML root"
+                       :frame #afield/rect [1360.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-fieldml"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "fieldml"
+                       :isFieldMLRoot true}}
+         {:id "line-notes-fieldml"
+          :properties {:name "FieldML — run me, then rest the cursor on a line"
+                       :frame #afield/rect [1360.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-fieldml-root"}
+                       :children #{}
+                       :code "// Rest the cursor on a let: its note is the value it bound.\nlet x = 20\nlet double n = n * 2\nlet y = double x + 2\ny * y\n"}}]}

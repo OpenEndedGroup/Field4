@@ -30,11 +30,13 @@ This extends it to ForthField, Clojure, Python and Datalog, and to the AI4 tool 
 | Forth | `ForthInterpreter.onTopLevelStep`, `evalRecordingLineNotes` in `ForthInterface.kt` | top-level steps (a word, a literal, a whole `: … ;`, an `if … then`) report their line span; steps that share a line merge; the stack is snapshotted after each |
 | Clojure | `ClojureHost.evalPage(onFormValue = …)` | each top-level form's `pr-str` under `*print-length*` 12 / `*print-level*` 4; an unrealised `LazySeq` is named, not printed |
 | Python | `_instrument_line_notes` in the interpreter startup text | runs *after* `_capture_last_value_inplace`, so the captured last value is unchanged (verified: `x*2` → `6`, `a, b = 4, 5` → `4`, a trailing `def` → `ok`); JSON taken with `__field_line_notes_take__` after the run |
+| FieldML | `Evaluator.onTopLevelLet`, `recordFieldMLLineNotes` in `FieldMLInterface.kt` | the evaluator walks the spine of top-level lets itself and reports each binding; the typed tree's `TExprLet` chain (same order) supplies the lines; the final expression is recorded when the run finishes. Launch (`launchAll`) does not record |
 | Datalog | `DatalogLineNotes`, `DatalogParser.statements` | no record: queries the box's model on the main thread (2 s timeout); rules compared by text with anonymous variables renumbered |
 
 Kotlin box code: not done. The K2 REPL compiles a box as one snippet and hands back its final value;
-per-statement values would need the source rewritten before compilation. FieldML, Morpho and Nano:
-not done either — FieldML would be the next candidate (top-level `let` values).
+per-statement values would need the source rewritten before compilation. Morpho and Nano: not done —
+Morpho's program is a circuit description whose result is one netlist, and Nano's VM would want a
+register trace per instruction, which is a larger change than a note justifies tonight.
 
 ## AI4
 
@@ -44,7 +46,7 @@ the pictures as tool images.
 
 ## Verification
 
-- `LastRunNotesTest` (7 tests) and `LineNotesTest` (3), pure.
+- `LastRunNotesTest` (8 tests) and `LineNotesTest` (3), pure.
 - End to end on a running Field (port 9540) with the demo document
   `dev_docs/agents/line_notes_demo/metadata.edn`: each box run through the backdoor, then real
   `line-note` requests via `raw-send`, and the editor driven with Playwright (`page-eval` placing the
