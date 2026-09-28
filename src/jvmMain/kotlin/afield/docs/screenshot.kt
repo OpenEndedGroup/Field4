@@ -1319,6 +1319,7 @@ suspend fun captureWindowScreenshot(info: SessionInformation, request: AgentWind
             options.setClip(Clip(clip.x, clip.y, clip.w, clip.h))
         }
         page.screenshot(options)
+        restoreCaretBlinkAfterCapture(page)
         postProcessScreenshot(outputPath)
         AgentScreenshotResponse(
             ok = true,
@@ -2186,7 +2187,17 @@ internal fun captureClippedScreenshot(page: Page, outputPath: Path, clip: Rect) 
     outputPath.parent?.let { Files.createDirectories(it) }
     val opts = Page.ScreenshotOptions().setPath(outputPath).setClip(Clip(clip.x, clip.y, clip.w, clip.h))
     page.screenshot(opts)
+    restoreCaretBlinkAfterCapture(page)
     postProcessScreenshot(outputPath)
+}
+
+/**
+ * Screenshot prep holds the editor's caret solid so a still never catches it mid-blink
+ * (`holdCaretSolidForCapture` in the frontend); give the editor its own blinking back once the image is
+ * taken. A page without the hook, or without an editor, is left alone.
+ */
+internal fun restoreCaretBlinkAfterCapture(page: Page) {
+    runCatching { page.evaluate("() => window.afieldRestoreCaptureCursorBlinking && window.afieldRestoreCaptureCursorBlinking()") }
 }
 
 /**
@@ -2499,6 +2510,7 @@ class DocsUiDriver internal constructor(
             val p = java.nio.file.Path.of(path)
             p.parent?.let { Files.createDirectories(it) }
             pageProvider().screenshot(Page.ScreenshotOptions().setPath(p))
+            restoreCaretBlinkAfterCapture(pageProvider())
             postProcessScreenshot(p)
         }
     }
