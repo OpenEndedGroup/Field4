@@ -756,6 +756,24 @@ configurations.matching { it.name in setOf("jvmRuntimeClasspath", "jvmMainRuntim
     }
 }
 
+// No SNAPSHOT (changing) and no dynamic (`+`, `latest.*`, ranges) versions from a repository.
+// Gradle re-checks both daily, and offline that check fails or stalls: that is how `./field.sh`
+// hung without a network while LWJGL was `3.4.2-SNAPSHOT`. AGENTS.md used to ask for this in
+// prose. Local `files(...)` jars (the `2.4.255-SNAPSHOT` Kotlin fork under libs/) are not
+// resolved from a repository, so neither rule reaches them.
+//
+// One exemption, by exact name: `kotlinAbiValidationCompatClasspath` is the Kotlin Gradle
+// plugin's own, and it asks for `kotlin-build-tools-impl:[2.4.0-Beta2, 2.5.0)`, a range we
+// cannot pin from here. No task in this build resolves it (ABI validation is not enabled);
+// `./gradlew dependencies` is the only thing that does, and it reported it FAILED under the rule.
+val configurationsExemptFromVersionRules = setOf("kotlinAbiValidationCompatClasspath")
+configurations.matching { it.name !in configurationsExemptFromVersionRules }.configureEach {
+    resolutionStrategy {
+        failOnDynamicVersions()
+        failOnChangingVersions()
+    }
+}
+
 repositories {
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
