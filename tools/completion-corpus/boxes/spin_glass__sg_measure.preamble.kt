@@ -124,27 +124,27 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
 /*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
-var Box.sgL by Inheritance<Int>() /**/
-val Once.sgL by Onceing<Int>() /**/
-var Box.sgTemperature by Inheritance<Double>() /**/
-val Once.sgTemperature by Onceing<Double>() /**/
-var Box.sgField by Inheritance<Double>() /**/
-val Once.sgField by Onceing<Double>() /**/
-var Box.sgMode by Inheritance<Int>() /**/
-val Once.sgMode by Onceing<Int>() /**/
-var Box.sgModel by Inheritance<Int>() /**/
-val Once.sgModel by Onceing<Int>() /**/
-var Box.sgSweeps by Inheritance<Int>() /**/
-val Once.sgSweeps by Onceing<Int>() /**/
-var Box.sgAnneal by Inheritance<Boolean>() /**/
-val Once.sgAnneal by Onceing<Boolean>() /**/
-var Box.sgSpins by Inheritance<FrameBufferGroup>() /**/
-val Once.sgSpins by Onceing<FrameBufferGroup>() /**/
-var Box.sgJRight by Inheritance<FrameBufferGroup>() /**/
-val Once.sgJRight by Onceing<FrameBufferGroup>() /**/
-var Box.sgJDown by Inheritance<FrameBufferGroup>() /**/
-val Once.sgJDown by Onceing<FrameBufferGroup>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.sgL by Inheritance<Int>() /*from:sg_update*/ /**/
+val Once.sgL by Onceing<Int>() /*from:sg_update*/ /**/
+var Box.sgTemperature by Inheritance<Double>() /*from:sg_update*/ /**/
+val Once.sgTemperature by Onceing<Double>() /*from:sg_update*/ /**/
+var Box.sgField by Inheritance<Double>() /*from:sg_update*/ /**/
+val Once.sgField by Onceing<Double>() /*from:sg_update*/ /**/
+var Box.sgMode by Inheritance<Int>() /*from:sg_update*/ /**/
+val Once.sgMode by Onceing<Int>() /*from:sg_update*/ /**/
+var Box.sgModel by Inheritance<Int>() /*from:sg_update*/ /**/
+val Once.sgModel by Onceing<Int>() /*from:sg_update*/ /**/
+var Box.sgSweeps by Inheritance<Int>() /*from:sg_update*/ /**/
+val Once.sgSweeps by Onceing<Int>() /*from:sg_update*/ /**/
+var Box.sgAnneal by Inheritance<Boolean>() /*from:sg_update*/ /**/
+val Once.sgAnneal by Onceing<Boolean>() /*from:sg_update*/ /**/
+var Box.sgSpins by Inheritance<FrameBufferGroup>() /*from:sg_update*/ /**/
+val Once.sgSpins by Onceing<FrameBufferGroup>() /*from:sg_update*/ /**/
+var Box.sgJRight by Inheritance<FrameBufferGroup>() /*from:sg_update*/ /**/
+val Once.sgJRight by Onceing<FrameBufferGroup>() /*from:sg_update*/ /**/
+var Box.sgJDown by Inheritance<FrameBufferGroup>() /*from:sg_update*/ /**/
+val Once.sgJDown by Onceing<FrameBufferGroup>() /*from:sg_update*/ /**/
+var Box.window by Inheritance<Window>() /*from:sg_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:sg_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:sg_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:sg_renderer*/ /**/

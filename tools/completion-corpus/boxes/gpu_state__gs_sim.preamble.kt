@@ -170,7 +170,7 @@ var Box.gsStateB by Inheritance<FrameBufferGroup>() /**/
 val Once.gsStateB by Onceing<FrameBufferGroup>() /**/
 var Box.gsHeat by Inheritance<FrameBufferGroup>() /**/
 val Once.gsHeat by Onceing<FrameBufferGroup>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:gs_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:gs_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:gs_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:gs_renderer*/ /**/

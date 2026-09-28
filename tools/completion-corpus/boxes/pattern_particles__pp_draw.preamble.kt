@@ -35,13 +35,13 @@ fun BufferParameters.asPositions(): Positions =
 /*graphics-pc-structure:aspectRatio*/ var Structure.aspectRatio by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aspectRatio*/ var Mesh.aspectRatio by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
-var Box.outputPositions by Inheritance<FrameBufferGroup>() /**/
-val Once.outputPositions by Onceing<FrameBufferGroup>() /**/
-var Box.bandEnergy by Inheritance<DoubleArray>() /**/
-val Once.bandEnergy by Onceing<DoubleArray>() /**/
-var Box.patternSynth by Inheritance<PatSynthLaunch>() /**/
-val Once.patternSynth by Onceing<PatSynthLaunch>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.outputPositions by Inheritance<FrameBufferGroup>() /*from:pp_compute*/ /**/
+val Once.outputPositions by Onceing<FrameBufferGroup>() /*from:pp_compute*/ /**/
+var Box.bandEnergy by Inheritance<DoubleArray>() /*from:pp_audio*/ /**/
+val Once.bandEnergy by Onceing<DoubleArray>() /*from:pp_audio*/ /**/
+var Box.patternSynth by Inheritance<PatSynthLaunch>() /*from:pp_audio*/ /**/
+val Once.patternSynth by Onceing<PatSynthLaunch>() /*from:pp_audio*/ /**/
+var Box.window by Inheritance<Window>() /*from:pp_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:pp_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:pp_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:pp_renderer*/ /**/

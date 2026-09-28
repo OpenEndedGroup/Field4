@@ -2,7 +2,12 @@ package afield
 
 import afield.four.modules.fromContext
 import afield.four.modules.fromContextWithNameOrNull
+import afield.macros.PREAMBLE_SELF_SUPPLIER
+import afield.macros.dropStaleSuppliedLines
 import afield.macros.gatherPreambleUpwards
+import afield.macros.gatherPreambleUpwardsReport
+import afield.macros.stripPreambleSupplierTag
+import afield.macros.withPreambleSupplierTag
 import afield.stdlib.Inheritance
 import afield.stdlib.InheritanceFromContext
 import java.lang.reflect.Proxy
@@ -419,35 +424,84 @@ class ContextResolutionCharacterizationTest {
 
     private val exportLine = "val Box._x by InheritanceFromContext<kotlin.Int>() /**/"
 
+    private fun String.untagged() = lines().joinToString("\n") { stripPreambleSupplierTag(it) }
+
     /**
-     * 2026-09-28, CURRENT: an inherit-marked line persisted into a child's own preamble outlives the edge that
-     * brought it. After the parent is disconnected, the child still compiles it and hands it on to
-     * its own children, because it still ends in the inherit marker.
+     * 2026-09-28, CURRENT then; kept 2026-09-29 for **untagged** lines only: an inherit-marked line
+     * persisted into a child's own preamble before supplier tags existed outlives the edge that
+     * brought it — nothing records where it came from, so nothing can say it is stale. Old documents
+     * keep working exactly as they did.
      */
     @Test
-    fun aPersistedInheritedLineOutlivesTheDisconnect() {
-        val s = session("pre-stale")
+    fun anUntaggedPersistedLineStillOutlivesTheDisconnect() {
+        val s = session("pre-stale-legacy")
         val parent = boxIn(s, "parent")
         val child = boxIn(s, "child")
         val grandchild = boxIn(s, "grandchild")
         parent.connect(child)
         child.connect(grandchild)
         parent.setPropertyRaw("preamble", exportLine)
-        // what checkPreambleAndExecute leaves in the child after one run
+        // what checkPreambleAndExecute left in the child before 2026-09-29
         child.setPropertyRaw("preamble", exportLine)
 
         parent.disconnect(child)
         assertTrue(exportLine in gatherPreambleUpwards(child), gatherPreambleUpwards(child))
-        assertTrue(exportLine in gatherPreambleUpwards(grandchild), gatherPreambleUpwards(grandchild))
+        assertTrue(exportLine in gatherPreambleUpwards(grandchild).untagged(), gatherPreambleUpwards(grandchild))
     }
 
     /**
-     * 2026-09-28, CURRENT: two ancestors declaring `_x` with different types both land, nearer first —
-     * so in the REPL the *farther* declaration is executed last and shadows the nearer one, while the
-     * value comes from the nearer. That is the ClassCastException the review describes.
+     * 2026-09-29 (stdlib_behaviour_changes.md, "sourced preamble lines"): a line persisted with its
+     * supplier's tag is dropped once the supplier is no longer an ancestor — from what the child
+     * compiles, from what it would persist, and from what its children inherit.
      */
     @Test
-    fun conflictingInheritedDeclarationsBothLandFarthestLast() {
+    fun aTaggedPersistedLineIsDroppedAfterTheDisconnect() {
+        val s = session("pre-stale-tagged")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        val grandchild = boxIn(s, "grandchild")
+        parent.connect(child)
+        child.connect(grandchild)
+        parent.setPropertyRaw("preamble", exportLine)
+
+        val inherited = gatherPreambleUpwards(child)
+        val tagged = withPreambleSupplierTag(exportLine, "parent")
+        assertTrue(tagged in inherited, "an inherited line comes down tagged with its supplier: $inherited")
+        child.setPropertyRaw("preamble", tagged)
+        assertTrue(tagged in gatherPreambleUpwards(grandchild), "and keeps that tag further down")
+
+        parent.disconnect(child)
+        val report = gatherPreambleUpwardsReport(child)
+        assertTrue("Box._x" !in report.text, report.text)
+        assertEquals(listOf(tagged), report.stale)
+        assertTrue("Box._x" !in gatherPreambleUpwards(grandchild), gatherPreambleUpwards(grandchild))
+        assertEquals("", dropStaleSuppliedLines(tagged, child))
+    }
+
+    /** 2026-09-29: an exporter's own `from:self` line is its own, and names it on the way down. */
+    @Test
+    fun aSelfTaggedLineNamesItsBoxOnTheWayDown() {
+        val s = session("pre-self")
+        val exporter = boxIn(s, "exporter")
+        val child = boxIn(s, "child")
+        exporter.connect(child)
+        val own = withPreambleSupplierTag(exportLine, PREAMBLE_SELF_SUPPLIER)
+        exporter.setPropertyRaw("preamble", own)
+
+        assertTrue(own in gatherPreambleUpwards(exporter))
+        assertEquals(own, dropStaleSuppliedLines(own, exporter))
+        assertTrue(withPreambleSupplierTag(exportLine, "exporter") in gatherPreambleUpwards(child))
+    }
+
+    /**
+     * 2026-09-28: two ancestors declaring `_x` with different types both landed, nearer first — so
+     * in the REPL the *farther* declaration was executed last and shadowed the nearer one, while the
+     * value came from the nearer. That is the ClassCastException the review describes.
+     * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "sourced preamble lines"): only the nearer
+     * declaration lands, and the conflict is reported.
+     */
+    @Test
+    fun conflictingInheritedDeclarationsKeepTheNearest() {
         val s = session("pre-conflict")
         val grand = boxIn(s, "grand")
         val parent = boxIn(s, "parent")
@@ -459,11 +513,48 @@ class ContextResolutionCharacterizationTest {
         parent.setPropertyRaw("preamble", intLine)
         grand.setPropertyRaw("preamble", stringLine)
 
-        val gathered = gatherPreambleUpwards(child)
-        val intAt = gathered.indexOf(intLine)
-        val stringAt = gathered.indexOf(stringLine)
-        assertTrue(intAt >= 0 && stringAt >= 0, gathered)
-        assertTrue(intAt < stringAt, "nearer declaration first, farther last: $gathered")
+        val report = gatherPreambleUpwardsReport(child)
+        val text = report.text.untagged()
+        assertTrue(intLine in text, text)
+        assertTrue(stringLine !in text, text)
+        val conflict = report.conflicts.single()
+        assertEquals("Box._x", conflict.receiverAndName)
+        assertEquals("parent", conflict.keptSupplier)
+        assertEquals(listOf("grand"), conflict.discarded.map { it.second })
+    }
+
+    /** 2026-09-29: an identical declaration from two suppliers is not a conflict. */
+    @Test
+    fun identicalDeclarationsFromTwoSuppliersAreNotAConflict() {
+        val s = session("pre-identical")
+        val a = boxIn(s, "a")
+        val b = boxIn(s, "b")
+        val child = boxIn(s, "child")
+        a.connect(child)
+        b.connect(child)
+        a.setPropertyRaw("preamble", exportLine)
+        b.setPropertyRaw("preamble", exportLine)
+        assertTrue(gatherPreambleUpwardsReport(child).conflicts.isEmpty())
+    }
+
+    /**
+     * 2026-09-29: an untagged line of the box's own — usually a copy persisted from an ancestor before
+     * tags existed — loses a conflict to a live ancestor's declaration, so an exporter that changed a
+     * type is not overruled by a stale copy of its old one.
+     */
+    @Test
+    fun anUntaggedOwnCopyLosesToALiveAncestor() {
+        val s = session("pre-legacy-conflict")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        parent.connect(child)
+        val newLine = "val Box._x by InheritanceFromContext<kotlin.String>() /**/"
+        parent.setPropertyRaw("preamble", newLine)
+        child.setPropertyRaw("preamble", exportLine)
+
+        val report = gatherPreambleUpwardsReport(child)
+        assertTrue(newLine in report.text.untagged(), report.text)
+        assertTrue(exportLine !in report.text, report.text)
     }
 }
 

@@ -467,3 +467,27 @@ through `fromContextWithNameOrNull`, whose policy did not change) and `shared_ty
 `_particle` and declares no `particle`). Neither is in the changed shape. Driven afterwards:
 `examples.context.{resolution-ledger,search-order-ledger,local-variable-shadowing,cross-box-inheritance}`
 and `examples.exports.batch-launch`, all passing.
+
+## 2026-09-29 — sourced preamble lines (`arch/review-2026-09-28`)
+
+Inherited preamble declarations now say who supplied them. `gatherPreambleUpwards`
+(`macros/macros.kt`) tags every inherit-marked line that comes down from an ancestor with a
+`from:<uid>` block comment placed just before the trailing inherit marker, and `@exported` writes its
+own declarations tagged `from:self`. The tag sits at the *end* rather than the start of the line
+because a leading block comment is the dedupe key of both preamble mergers (`prefixFor`,
+`applyInsertToPreamble`); `prefixFor` now ignores the tag, so the same declaration from two suppliers
+is still one line.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `checkPreambleAndExecute` / `gatherPreambleUpwards` | a tagged line whose supplier is no longer this box or an ancestor is not compiled, not persisted into the box's `preamble`, and not inherited by its children | after a disconnect the consumer's preamble loses the declaration (`examples.context.resolution-ledger`: `stale-line=false`, `inherits=false`). A declaration already executed stays in that box's REPL until its engine is rebuilt, so code still reading it compiles and throws `MissingInheritedPropertyException`, as it did before | none. **Untagged lines — everything persisted before this change — are kept exactly as before**, since nothing records where they came from |
+| the same | two inheritable declarations of one `Receiver.name` with different text keep the nearest supplier's (own `from:self` lines, then by generation, then untagged own lines last) and drop the rest; the box prints `warning: preamble: '…' is declared differently …` once, also logged on `warning,macros` | before, both were executed and the *farther* one, executed last, won in the REPL while the value came from the nearer — the compile-then-`ClassCastException` of the architecture review | none |
+| `@exported` declaration text | `val Box._x by InheritanceFromContext<T>() /*from:self*/ /**/` instead of `… () /**/` | text only; a test or tool matching the old exact string needs the tag (`ExportedAnnotationTest` was updated) | n/a |
+
+What was swept: every exact-string match on an `@exported` declaration's `() /**/` ending in `src/`
+and `tools/`: only `ExportedAnnotationTest` matched a *generated* line; the rest are hand-written
+fixtures, which stay untagged and keep their old behaviour. Imports are not tagged — a tagged import
+would no longer start with `import` and would be gathered among declarations — so an ancestor's
+imports still persist after a disconnect, as before. Driven: the context ledgers, `@exported`
+annotation and batch-launch smokes, exported type names, shared types and REPL snippet
+declarations, all passing.

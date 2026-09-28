@@ -522,7 +522,7 @@ fun BufferParameters.asFrame(): Frame =
 /*compute-ubo-member:Frame:mediumHigh*/ var Structure.mediumHigh by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // bounds maximum when bounded, w unused
 /*compute-ubo-member:Frame:reconstruction*/ var Structure.reconstruction by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // projection jitter in input pixels, near, far
 /*compute-ubo-member:Frame:frameOutputEnabled*/ var Structure.frameOutputEnabled by Structure.FromStructure<afield.stdlib.linalg.Vector4f>() // enabled, reset (no previous camera), reserved
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:path_trace_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:path_trace_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:path_trace_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:path_trace_renderer*/ /**/

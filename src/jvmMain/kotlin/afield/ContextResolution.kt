@@ -150,10 +150,10 @@ object ContextResolution {
         val key = "${r.consumer.id}|${r.mechanism}|${r.query}|" + suppliers.joinToString(",") { it.id }
         if (!warnedAmbiguities.add(key)) return
         val names = suppliers.joinToString(", ") { "'${it.name.ifBlank { it.id }}'" }
-        afield.logger.lprintln(
-            "warning,context",
-            "ambiguous ${r.mechanism.name.lowercase()} lookup of '${r.query}' from '${r.consumer.name.ifBlank { r.consumer.id }}': equidistant ancestors $names hold different values; using '${r.supplier.name.ifBlank { r.supplier.id }}' (first in parents order)"
-        )
+        val consumer = r.consumer.name.ifBlank { r.consumer.id }
+        val picked = r.supplier.name.ifBlank { r.supplier.id }
+        val mechanism = r.mechanism.name.lowercase()
+        afield.logger.lprintln("warning,context", "ambiguous $mechanism lookup of '${r.query}' from '$consumer': equidistant ancestors $names hold different values; using '$picked' (first in parents order)")
     }
 
     /**

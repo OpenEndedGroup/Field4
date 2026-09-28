@@ -218,10 +218,10 @@ object ExportedAnnotationTest {
         require(!preamble.contains("val _answer: kotlin.Int /**/")) {
             "Old val declaration should be removed"
         }
-        require(preamble.contains("val Box._convert by InheritanceFromContext<(kotlin.String) -> kotlin.String>() /**/")) {
+        require(preamble.contains("val Box._convert by InheritanceFromContext<(kotlin.String) -> kotlin.String>() /*from:self*/ /**/")) {
             "Updated function declaration should be present"
         }
-        require(preamble.contains("val Box._answer by InheritanceFromContext<kotlin.String>() /**/")) {
+        require(preamble.contains("val Box._answer by InheritanceFromContext<kotlin.String>() /*from:self*/ /**/")) {
             "Updated val declaration should be present"
         }
     }

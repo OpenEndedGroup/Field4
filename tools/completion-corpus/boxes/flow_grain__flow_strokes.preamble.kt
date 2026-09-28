@@ -66,7 +66,7 @@ fun BufferParameters.asHistory(): History =
 /*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
 /*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
 /*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x seconds of stroke; y half-width pixels; z gain; w reserved.
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:flow_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:flow_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:flow_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:flow_renderer*/ /**/

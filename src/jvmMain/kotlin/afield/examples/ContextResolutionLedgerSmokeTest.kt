@@ -47,13 +47,17 @@ object ContextResolutionLedgerSmokeTest {
      *
      * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "one context walk"): `pass2 x=2` — the
      * consumer's own leftover `x` no longer answers for `_x`.
+     *
+     * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "sourced preamble lines"): the persisted
+     * declaration carries its supplier's uid, so after the disconnect it leaves the consumer's
+     * preamble and the grandchild does not inherit it.
      */
     private val LEDGER = listOf(
         "ledger: consumer pass1 x=1",
         "ledger: consumer pass2 x=2",
         "ledger: exporter own=2",
-        "ledger: consumer after-disconnect stale-line=true",
-        "ledger: grandchild after-disconnect inherits=true",
+        "ledger: consumer after-disconnect stale-line=false",
+        "ledger: grandchild after-disconnect inherits=false",
     )
 
     private const val EXPORTER_V1 = """@exported

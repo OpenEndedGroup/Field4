@@ -120,7 +120,7 @@ fun BufferParameters.asClusters(): Clusters =
 /*compute-pc-structure:invalidMode*/ var Structure.invalidMode by Structure.FromStructure<Any>()
 /*compute-pc-binding:invalidMode*/ var ComputeMesh.invalidMode by ComputeMesh.BoundFromStructure<Int>()
 /*compute-pc-binding-group:invalidMode*/ var ComputeMeshGroup.invalidMode by ComputeMeshGroup.BoundFromStructure<Int>()
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
+val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/

@@ -13,7 +13,7 @@ import afield.four.buffers.*
 /*graphics-pc-structure:m*/ var Structure.m by Structure.FromStructure<Any>()
 /*graphics-pc-binding:m*/ var Mesh.m by Mesh.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
 /*graphics-pc-binding-group:m*/ var MeshGroup.m by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Matrix4f>()
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:recstl_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:recstl_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:recstl_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:recstl_renderer*/ /**/

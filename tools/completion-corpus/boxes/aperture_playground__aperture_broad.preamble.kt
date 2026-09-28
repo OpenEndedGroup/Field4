@@ -12,15 +12,15 @@ val Once.paintBroad by Onceing<RenderToTexture>() /**/
 /*graphics-pc-structure:aperture*/ var Structure.aperture by Structure.FromStructure<Any>()
 /*graphics-pc-binding:aperture*/ var Mesh.aperture by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
 /*graphics-pc-binding-group:aperture*/ var MeshGroup.aperture by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
-var Box.paintQuarter by Inheritance<RenderToTexture>() /**/
-val Once.paintQuarter by Onceing<RenderToTexture>() /**/
-var Box.paintHalf by Inheritance<RenderToTexture>() /**/
-val Once.paintHalf by Onceing<RenderToTexture>() /**/
-var Box.paintSource by Inheritance<RenderToTexture>() /**/
-val Once.paintSource by Onceing<RenderToTexture>() /**/
-var Box.apertureControl by Inheritance<afield.stdlib.Vec4>() /**/
-val Once.apertureControl by Onceing<afield.stdlib.Vec4>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.paintQuarter by Inheritance<RenderToTexture>() /*from:aperture_quarter*/ /**/
+val Once.paintQuarter by Onceing<RenderToTexture>() /*from:aperture_quarter*/ /**/
+var Box.paintHalf by Inheritance<RenderToTexture>() /*from:aperture_half*/ /**/
+val Once.paintHalf by Onceing<RenderToTexture>() /*from:aperture_half*/ /**/
+var Box.paintSource by Inheritance<RenderToTexture>() /*from:aperture_source*/ /**/
+val Once.paintSource by Onceing<RenderToTexture>() /*from:aperture_source*/ /**/
+var Box.apertureControl by Inheritance<afield.stdlib.Vec4>() /*from:aperture_source*/ /**/
+val Once.apertureControl by Onceing<afield.stdlib.Vec4>() /*from:aperture_source*/ /**/
+var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
+val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/

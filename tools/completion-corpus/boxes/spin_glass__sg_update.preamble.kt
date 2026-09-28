@@ -94,7 +94,7 @@ fun BufferParameters.asBonds(): Bonds =
 /*compute-pc-structure:field*/ var Structure.field by Structure.FromStructure<Any>()
 /*compute-pc-binding:field*/ var ComputeMesh.field by ComputeMesh.BoundFromStructure<Float>()
 /*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:sg_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:sg_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:sg_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:sg_renderer*/ /**/

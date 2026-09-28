@@ -75,7 +75,7 @@ fun BufferParameters.asIndexBuffer(): IndexBuffer =
 /*graphics-pc-structure:indexBuffer*/ var Structure.indexBuffer by Structure.FromStructure<Any>()
 /*graphics-pc-binding:indexBuffer*/ var Mesh.indexBuffer by Mesh.BoundFromStructure<afield.four.buffers.HasBuffer>()
 /*graphics-pc-binding-group:indexBuffer*/ var MeshGroup.indexBuffer by MeshGroup.BoundFromStructure<afield.four.buffers.HasBuffer>()
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:skin_renderer*/ /**/
+val Once.window by Onceing<Window>() /*from:skin_renderer*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:skin_renderer*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:skin_renderer*/ /**/

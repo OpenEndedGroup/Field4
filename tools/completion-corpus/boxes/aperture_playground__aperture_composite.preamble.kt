@@ -10,19 +10,19 @@ import afield.four.targets.RenderToTexture
 /*graphics-pc-structure:displayControl*/ var Structure.displayControl by Structure.FromStructure<Any>()
 /*graphics-pc-binding:displayControl*/ var Mesh.displayControl by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
 /*graphics-pc-binding-group:displayControl*/ var MeshGroup.displayControl by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
-var Box.paintMedium by Inheritance<RenderToTexture>() /**/
-val Once.paintMedium by Onceing<RenderToTexture>() /**/
-var Box.paintBroad by Inheritance<RenderToTexture>() /**/
-val Once.paintBroad by Onceing<RenderToTexture>() /**/
-var Box.paintHalf by Inheritance<RenderToTexture>() /**/
-val Once.paintHalf by Onceing<RenderToTexture>() /**/
-var Box.paintQuarter by Inheritance<RenderToTexture>() /**/
-val Once.paintQuarter by Onceing<RenderToTexture>() /**/
-var Box.paintSource by Inheritance<RenderToTexture>() /**/
-val Once.paintSource by Onceing<RenderToTexture>() /**/
-var Box.apertureControl by Inheritance<afield.stdlib.Vec4>() /**/
-val Once.apertureControl by Onceing<afield.stdlib.Vec4>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.paintMedium by Inheritance<RenderToTexture>() /*from:aperture_medium*/ /**/
+val Once.paintMedium by Onceing<RenderToTexture>() /*from:aperture_medium*/ /**/
+var Box.paintBroad by Inheritance<RenderToTexture>() /*from:aperture_broad*/ /**/
+val Once.paintBroad by Onceing<RenderToTexture>() /*from:aperture_broad*/ /**/
+var Box.paintHalf by Inheritance<RenderToTexture>() /*from:aperture_half*/ /**/
+val Once.paintHalf by Onceing<RenderToTexture>() /*from:aperture_half*/ /**/
+var Box.paintQuarter by Inheritance<RenderToTexture>() /*from:aperture_quarter*/ /**/
+val Once.paintQuarter by Onceing<RenderToTexture>() /*from:aperture_quarter*/ /**/
+var Box.paintSource by Inheritance<RenderToTexture>() /*from:aperture_source*/ /**/
+val Once.paintSource by Onceing<RenderToTexture>() /*from:aperture_source*/ /**/
+var Box.apertureControl by Inheritance<afield.stdlib.Vec4>() /*from:aperture_source*/ /**/
+val Once.apertureControl by Onceing<afield.stdlib.Vec4>() /*from:aperture_source*/ /**/
+var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
+val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/

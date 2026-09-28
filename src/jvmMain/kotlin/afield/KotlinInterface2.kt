@@ -3181,7 +3181,7 @@ class KotlinInterface2(
                 "($paramTypes) -> $returnType"
             }
 
-            return "val Box.$exportedName by InheritanceFromContext<$functionType>() /**/"
+            return "val Box.$exportedName by InheritanceFromContext<$functionType>() /*from:self*/ /**/"
         }
 
         private fun processExportedProperty(
@@ -3215,7 +3215,7 @@ class KotlinInterface2(
         private fun generatePropertyDeclaration(property: KProperty<*>, exportedName: String): String {
             val keyword = if (property is KMutableProperty<*>) "var" else "val"
             val typeName = ExportedTypeNames.render(property.returnType, ki.classLoader)
-            return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /**/"
+            return "$keyword Box.$exportedName by InheritanceFromContext<$typeName>() /*from:self*/ /**/"
         }
 
         private fun exportedAlias(name: String): String {

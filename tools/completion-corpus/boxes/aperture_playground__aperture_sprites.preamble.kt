@@ -12,7 +12,7 @@ import afield.four.buffers.*
 /*graphics-pc-structure:look*/ var Structure.look by Structure.FromStructure<Any>()
 /*graphics-pc-binding:look*/ var Mesh.look by Mesh.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
 /*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
+val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/

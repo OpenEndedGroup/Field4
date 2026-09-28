@@ -27,7 +27,7 @@ var Box.motion by Inheritance<RenderToTexture>() /**/
 val Once.motion by Onceing<RenderToTexture>() /**/
 var Box.expectedMotion by Inheritance<Vector2f>() /**/
 val Once.expectedMotion by Onceing<Vector2f>() /**/
-var Box.window by Inheritance<Window>() /**/
-val Once.window by Onceing<Window>() /**/
-var Box.renderer by Inheritance<Renderer>() /**/
-val Once.renderer by Onceing<Renderer>() /**/
+var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
+val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
+val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/
