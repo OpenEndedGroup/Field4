@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9191 of 15519 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9200 of 15528 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **777 undocumented entry points** (types, top-level functions and values) and 5220 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -86,7 +86,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 0 | 12 | 58% |
 | [alife_walls.kt](../src/jvmMain/kotlin/afield/stdlib/alife_walls.kt) | ALife | alife_examples | 0 | 12 | 72% |
 | [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | sound_paths | 0 | 11 | 70% |
-| [PdBox.kt](../src/jvmMain/kotlin/afield/four/synth/PdBox.kt) | Synthesis | pure_data | 0 | 11 | 65% |
+| [PdBox.kt](../src/jvmMain/kotlin/afield/four/synth/PdBox.kt) | Synthesis | pure_data | 0 | 11 | 68% |
 | [alife.kt](../src/jvmMain/kotlin/afield/stdlib/alife.kt) | ALife | alife_examples | 0 | 11 | 76% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
 | [UnderfitOperations.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/UnderfitOperations.kt) | Audio AI | field_audio_ai | 0 | 11 | 50% |
@@ -205,7 +205,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [RectSLPattern.kt](../src/jvmMain/kotlin/afield/rectsl/RectSLPattern.kt) | Languages | — | 0 | 11 | 50% |
 | [RectSLStudy.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudy.kt) | Languages | — | 0 | 11 | 78% |
 | [TileResidency.kt](../src/jvmMain/kotlin/afield/stdlib/TileResidency.kt) | Simulation | — | 0 | 11 | 26% |
-| [PdInstance.kt](../src/jvmMain/kotlin/afield/pd/PdInstance.kt) | Synthesis | — | 0 | 9 | 72% |
+| [PdInstance.kt](../src/jvmMain/kotlin/afield/pd/PdInstance.kt) | Synthesis | — | 0 | 9 | 76% |
 | [RectSLStudyRender.kt](../src/jvmMain/kotlin/afield/rectsl/study/RectSLStudyRender.kt) | Languages | — | 0 | 9 | 68% |
 | [GlslValue.kt](../src/jvmMain/kotlin/afield/stacksl/cpu/GlslValue.kt) | Languages | — | 0 | 9 | 52% |
 | [SourceStudy.kt](../src/jvmMain/kotlin/afield/stdlib/SourceStudy.kt) | Workspace | — | 0 | 9 | 76% |

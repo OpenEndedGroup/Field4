@@ -259,4 +259,34 @@ class PdTest {
             }
         }
     }
+
+    @Test fun midiGoesInThroughNoteinAndOutThroughNoteout() {
+        if (!available()) return
+        PdInstance().use { pd ->
+            pd.openPatchText("""
+                #X obj 20 20 notein;
+                #X obj 20 60 s pitch;
+                #X obj 120 20 r n;
+                #X obj 120 60 noteout 1;
+                #X obj 220 20 ctlin 7;
+                #X obj 220 60 s volume;
+                #X connect 0 0 1 0;
+                #X connect 2 0 3 0;
+                #X connect 4 0 5 0;
+            """)
+            val pitches = ArrayList<Float>()
+            val volumes = ArrayList<Float>()
+            val out = ArrayList<PdInstance.Midi>()
+            pd.receive("pitch") { pitches += it.float!! }
+            pd.receive("volume") { volumes += it.float!! }
+            pd.onMidi { out += it }
+            pd.noteOn(0, 64, 90)
+            pd.controlChange(0, 7, 100)
+            pd.list("n", 60, 100)
+            pd.flush()
+            assertEquals(listOf(64f), pitches)
+            assertEquals(listOf(100f), volumes)
+            assertEquals(listOf(PdInstance.Midi(PdInstance.Midi.NOTE_ON, 0, 60, 100)), out, "[noteout 1] is libpd channel 0")
+        }
+    }
 }

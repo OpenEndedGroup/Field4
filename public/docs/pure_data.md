@@ -172,7 +172,9 @@ the last value that went through that name.
   draw it in Pd and open the file.
 - **Externals beyond Pd's `extra`.** `bonk~`, `fiddle~`, `sigmund~` and the other objects
   in Pd's own `extra` folder are built in. Compiled externals from Deken are not loaded.
-- **MIDI.** libpd has MIDI hooks, and they are not bound yet.
+- **A MIDI device.** `noteOn` and `controlChange` reach a patch's `[notein]` and `[ctlin]`, and
+  `onMidi` hears its `[noteout]` and `[ctlout]`, with channels counted from 0 (`[noteout 1]` is
+  channel 0). Nothing connects those to a hardware port yet; that is a few lines of Kotlin per box.
 - **One output per launch.** Every patch opened in one Pd sums into that Pd's `[dac~]`; the launch's
   `gain` applies to the sum.
 

@@ -35,7 +35,7 @@ so every call is made under the `PdInstance`'s own lock after `libpd_set_instanc
 Print output arrives in fragments; lines are reassembled on `\n` in Kotlin rather than with libpd's
 `z_print_util` concatenator.
 
-## Measurements (jvmTest `afield.pd.PdTest`, 12 tests, and `PdPatchGraphTest`, 6)
+## Measurements (jvmTest `afield.pd.PdTest`, 13 tests, and `PdPatchGraphTest`, 6)
 
 All run against the built library on 2026-09-28; they print `SKIPPED` and pass when it is absent.
 
@@ -49,6 +49,9 @@ All run against the built library on 2026-09-28; they print `SKIPPED` and pass w
   wrote, exact to 1e-6 per sample.
 - `[adc~] → [*~ 0.5]` / `[*~ -1] → [dac~]` with two inputs: output equals the scaled input on the
   same samples (1e-6), so there is no block of latency inside libpd.
+- MIDI: `noteOn(0, 64, 90)` reaches `[notein]` (pitch 64), `controlChange(0, 7, 100)` reaches
+  `[ctlin 7]`, and a list `60 100` into `[noteout 1]` arrives in `onMidi` as channel **0** — libpd
+  counts channels from 0 where Pd's objects count from 1.
 - Two instances with the same `[r in]`/`[s out]` names are isolated.
 - A patch with `[osc 440]` reports `Pd couldn't create [osc 440]` on line 1 of its source.
 - A headless `hsl` still forwards what it receives (and does **not** clip it to its range — 5000 in,
@@ -78,7 +81,8 @@ thread `field-runloop-main` (so the audio engine was pulling blocks in real time
 
 ## Not done
 
-- MIDI hooks (`libpd_set_noteonhook` …) are not bound.
+- MIDI is bound (note, controller, program, bend; not aftertouch, poly aftertouch or raw bytes) but
+  not connected to Field's MIDI devices.
 - Compiled externals are not loaded (Pd's `extra` is compiled in).
 - The docs build does not build libpd (`buildDocsNativePrerequisites`), so `pure_data.md` has no
   captured figures.

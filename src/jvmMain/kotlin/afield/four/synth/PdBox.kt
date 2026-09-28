@@ -162,6 +162,15 @@ class PdLaunch internal constructor(
     /** The last message seen on a [receive]d name. */
     fun lastValue(name: String): PdInstance.Message? = pd.lastValue(name)
 
+    /** A note to the patch's `[notein]`, 0-based channel; velocity 0 is a note-off. */
+    fun noteOn(channel: Int, pitch: Int, velocity: Int) = pd.noteOn(channel, pitch, velocity)
+
+    /** A controller to the patch's `[ctlin]`. */
+    fun controlChange(channel: Int, controller: Int, value: Int) = pd.controlChange(channel, controller, value)
+
+    /** Call [callback] with what the patch sends out of `[noteout]`/`[ctlout]`, on the main-thread loop. */
+    fun onMidi(callback: (PdInstance.Midi) -> Unit): Closeable = pd.onMidi(callback).also { receipts += it }
+
     /** Read Pd array `name`. */
     fun readArray(name: String, offset: Int = 0, count: Int = -1): FloatArray = pd.readArray(name, offset, count)
 

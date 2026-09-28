@@ -136,6 +136,15 @@ internal object PdNative {
     private val getSymbolH by lazy { handle("libpd_get_symbol", p(ADDRESS)) }
     private val nextAtomH by lazy { handle("libpd_next_atom", p(ADDRESS)) }
 
+    private val noteOnH by lazy { handle("libpd_noteon", i(JAVA_INT, JAVA_INT, JAVA_INT)) }
+    private val controlChangeH by lazy { handle("libpd_controlchange", i(JAVA_INT, JAVA_INT, JAVA_INT)) }
+    private val programChangeH by lazy { handle("libpd_programchange", i(JAVA_INT, JAVA_INT)) }
+    private val pitchBendH by lazy { handle("libpd_pitchbend", i(JAVA_INT, JAVA_INT)) }
+    private val setNoteOnHookH by lazy { handle("libpd_set_noteonhook", v(ADDRESS)) }
+    private val setControlChangeHookH by lazy { handle("libpd_set_controlchangehook", v(ADDRESS)) }
+    private val setProgramChangeHookH by lazy { handle("libpd_set_programchangehook", v(ADDRESS)) }
+    private val setPitchBendHookH by lazy { handle("libpd_set_pitchbendhook", v(ADDRESS)) }
+
     private val setPrintHookH by lazy { handle("libpd_set_printhook", v(ADDRESS)) }
     private val setBangHookH by lazy { handle("libpd_set_banghook", v(ADDRESS)) }
     private val setFloatHookH by lazy { handle("libpd_set_floathook", v(ADDRESS)) }
@@ -186,6 +195,12 @@ internal object PdNative {
     fun writeArray(name: MemorySegment, offset: Int, src: MemorySegment, n: Int): Int =
         writeArrayH.invokeExact(name, offset, src, n) as Int
 
+    fun noteOn(channel: Int, pitch: Int, velocity: Int): Int = noteOnH.invokeExact(channel, pitch, velocity) as Int
+    fun controlChange(channel: Int, controller: Int, value: Int): Int =
+        controlChangeH.invokeExact(channel, controller, value) as Int
+    fun programChange(channel: Int, value: Int): Int = programChangeH.invokeExact(channel, value) as Int
+    fun pitchBend(channel: Int, value: Int): Int = pitchBendH.invokeExact(channel, value) as Int
+
     fun setPrintHook(fn: MemorySegment) { setPrintHookH.invokeExact(fn) }
     fun setBangHook(fn: MemorySegment) { setBangHookH.invokeExact(fn) }
     fun setFloatHook(fn: MemorySegment) { setFloatHookH.invokeExact(fn) }
@@ -229,6 +244,10 @@ internal object PdNative {
         fun symbol(recv: MemorySegment, s: MemorySegment)
         fun list(recv: MemorySegment, argc: Int, argv: MemorySegment)
         fun message(recv: MemorySegment, msg: MemorySegment, argc: Int, argv: MemorySegment)
+        fun noteOn(channel: Int, pitch: Int, velocity: Int)
+        fun controlChange(channel: Int, controller: Int, value: Int)
+        fun programChange(channel: Int, value: Int)
+        fun pitchBend(channel: Int, value: Int)
     }
 
     private val lookupHooks = MethodHandles.lookup()
@@ -246,6 +265,10 @@ internal object PdNative {
     private val SYMBOL = target("symbol", MethodType.methodType(voidT, seg, seg))
     private val LIST = target("list", MethodType.methodType(voidT, seg, intT, seg))
     private val MESSAGE = target("message", MethodType.methodType(voidT, seg, seg, intT, seg))
+    private val NOTE_ON = target("noteOn", MethodType.methodType(voidT, intT, intT, intT))
+    private val CONTROL_CHANGE = target("controlChange", MethodType.methodType(voidT, intT, intT, intT))
+    private val PROGRAM_CHANGE = target("programChange", MethodType.methodType(voidT, intT, intT))
+    private val PITCH_BEND = target("pitchBend", MethodType.methodType(voidT, intT, intT))
 
     /** Install every hook for the *current* instance, as upcall stubs that live as long as [arena]. */
     fun installHooks(hooks: Hooks, arena: Arena) {
@@ -255,5 +278,9 @@ internal object PdNative {
         setSymbolHook(linker.upcallStub(SYMBOL.bindTo(hooks), v(ADDRESS, ADDRESS), arena))
         setListHook(linker.upcallStub(LIST.bindTo(hooks), v(ADDRESS, JAVA_INT, ADDRESS), arena))
         setMessageHook(linker.upcallStub(MESSAGE.bindTo(hooks), v(ADDRESS, ADDRESS, JAVA_INT, ADDRESS), arena))
+        setNoteOnHookH.invokeExact(linker.upcallStub(NOTE_ON.bindTo(hooks), v(JAVA_INT, JAVA_INT, JAVA_INT), arena))
+        setControlChangeHookH.invokeExact(linker.upcallStub(CONTROL_CHANGE.bindTo(hooks), v(JAVA_INT, JAVA_INT, JAVA_INT), arena))
+        setProgramChangeHookH.invokeExact(linker.upcallStub(PROGRAM_CHANGE.bindTo(hooks), v(JAVA_INT, JAVA_INT), arena))
+        setPitchBendHookH.invokeExact(linker.upcallStub(PITCH_BEND.bindTo(hooks), v(JAVA_INT, JAVA_INT), arena))
     }
 }

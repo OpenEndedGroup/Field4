@@ -149,9 +149,52 @@ class PdInstance(
         override fun message(recv: MemorySegment, msg: MemorySegment, argc: Int, argv: MemorySegment) = guard {
             arrive(Message(PdNative.cString(recv), PdNative.cString(msg), PdNative.atoms(argc, argv)))
         }
+
+        override fun noteOn(channel: Int, pitch: Int, velocity: Int) = guard { incoming += Midi(Midi.NOTE_ON, channel, pitch, velocity) }
+        override fun controlChange(channel: Int, controller: Int, value: Int) =
+            guard { incoming += Midi(Midi.CONTROL_CHANGE, channel, controller, value) }
+        override fun programChange(channel: Int, value: Int) = guard { incoming += Midi(Midi.PROGRAM_CHANGE, channel, value, 0) }
+        override fun pitchBend(channel: Int, value: Int) = guard { incoming += Midi(Midi.PITCH_BEND, channel, value, 0) }
     }
 
     private class PrintedLine(val text: String)
+
+    /**
+     * A MIDI event a patch sent with `[noteout]`, `[ctlout]`, `[pgmout]` or `[bendout]`.
+     *
+     * [channel] is 0-based, as libpd numbers them: Pd's `[noteout 1]` arrives as channel 0. For a
+     * note, [a] is the pitch and [b] the velocity (0 is a note-off); for a controller, [a] is the
+     * controller number and [b] its value; for a program change or a bend, [a] is the value.
+     */
+    data class Midi(val kind: String, val channel: Int, val a: Int, val b: Int) {
+        companion object {
+            const val NOTE_ON = "noteOn"
+            const val CONTROL_CHANGE = "controlChange"
+            const val PROGRAM_CHANGE = "programChange"
+            const val PITCH_BEND = "pitchBend"
+        }
+    }
+
+    private val midiListeners = CopyOnWriteArrayList<(Midi) -> Unit>()
+
+    /** Call [callback] with every MIDI event the patch sends. Delivered by [poll]. */
+    fun onMidi(callback: (Midi) -> Unit): Closeable {
+        midiListeners += callback
+        return Closeable { midiListeners -= callback }
+    }
+
+    /** A note to the patch's `[notein]`: 0-based [channel], velocity 0 for a note-off. Queued. */
+    fun noteOn(channel: Int, pitch: Int, velocity: Int) = enqueue { PdNative.noteOn(channel, pitch, velocity) }
+
+    /** A controller to the patch's `[ctlin]`. Queued. */
+    fun controlChange(channel: Int, controller: Int, value: Int) =
+        enqueue { PdNative.controlChange(channel, controller, value) }
+
+    /** A program change to `[pgmin]`. Queued. */
+    fun programChange(channel: Int, value: Int) = enqueue { PdNative.programChange(channel, value) }
+
+    /** A pitch bend, -8192 to 8191, to `[bendin]`. Queued. */
+    fun pitchBend(channel: Int, value: Int) = enqueue { PdNative.pitchBend(channel, value) }
 
     private fun arrive(message: Message) {
         lastSeen[message.receiver] = message
@@ -380,6 +423,7 @@ class PdInstance(
                     for (p in printers) runCatching { p(item.text) }
                 }
                 is Message -> receivers[item.receiver]?.forEach { cb -> runCatching { cb(item) } }
+                is Midi -> midiListeners.forEach { cb -> runCatching { cb(item) } }
             }
         }
         return n
