@@ -332,14 +332,13 @@ in 41
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/pure_data/line-note.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/pd_line_note_roundtrip.yaml" capture-box="pd_doc_roundtrip" requires="libpd" padding="10" wait="0" timeout="120" embed=true hidden=true name="pure-data-line-note" alt="A Pd box in Field's editor holding the round-trip patch: a comment, the message line in 41, then the #N and #X statements for r in, + 1, s out and print out. At the editor's foot the line note for line 6 reads: [s out] is object 2; fed by [+ 1] (outlet 0 → inlet 0). Last on 'out': 42.0."}
 // The setup transcript launched the box and ran its line `in 41`. Put the cursor on `[s out]`
 // (box line 6) and wait for the editor to show that line's note. The still is taken here, clipped to
-// the editor (clip-selector), because a capture after the script re-opens the editor and resets
-// the cursor, and the note goes with it.
+// the editor (clip-selector), because a capture after the script re-preps the editor, which resets
+// the cursor and the pane height, and the note goes with them.
 ui.openEditor("pd_doc_roundtrip")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
-// A shorter editor, so the note at its foot sits under the patch rather than a page below it.
-ui.eval("var e = window.globalEditor; var c = e._domElement; c.style.height = '600px'; e.layout(); return 'ok';")
-ui.pause(300)
+// Size the pane to the patch, so the note at its foot sits right under the code.
+ui.editorHeight(330)
 ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 6, column: 1}); e.revealLine(6); return 'ok';")
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
@@ -376,9 +375,8 @@ the line note shows what arrived:
 ui.openEditor("pd_doc_drone")
 ui.waitForSelector(".monaco-editor", 15000.0)
 ui.pause(1000)
-// A shorter editor, so the note at its foot sits under the patch rather than a page below it.
-ui.eval("var e = window.globalEditor; var c = e._domElement; c.style.height = '600px'; e.layout(); return 'ok';")
-ui.pause(300)
+// Size the pane to the patch, so the note at its foot sits right under the code.
+ui.editorHeight(350)
 ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 2, column: 1}); e.revealLine(2); return 'ok';")
 ui.waitForSelector(".afield-line-note", 10000.0)
 ui.pause(600)
@@ -441,8 +439,10 @@ always something this Pd can make. `PdObjects.suggest` tries the signal or contr
     `expect-error=true` makes the missing error a failure rather than the error itself. The two
     line-note figures need a patch that is already playing and a cursor on a particular line, so
     each has a setup transcript in `dev_docs/agents/transcripts/docs_capture/` (launch the Pd box,
-    run a message line or the Kotlin sender) and a short drive script that opens the editor, moves
-    the cursor and waits for the note to appear. The note's text is the server's answer for that
+    run a message line or the Kotlin sender) and a short drive script that opens the editor, sizes
+    its pane to the patch with `ui.editorHeight`, moves the cursor and waits for the note to appear.
+    Screenshot prep holds the caret solid while a still is taken, so the caret is on the line the
+    note describes. The note's text is the server's answer for that
     line, so a wrong value would be photographed as wrong.
 
     The numbers elsewhere on this page come from `PdTest` in `src/jvmTest`, which skips when libpd
