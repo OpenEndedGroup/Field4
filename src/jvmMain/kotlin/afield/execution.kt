@@ -50,6 +50,9 @@ fun installKEActions(root: Box) {
         "Reset Kotlin Environment for Box",
         detail = "This drops all variables and declarations live in the current box and starts again"
     ) {
+        // Stop first: what the box launched runs on the engine being dropped, and would otherwise keep
+        // running after the environment it came from is gone.
+        stopBoxes(it, "reset")
         it.forEach {
             it.ki = makeKI(it, reason = "reset action")
         }

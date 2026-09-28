@@ -730,10 +730,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         }
                         target.setPropertyRaw("_tombstone", true)
                         root.disconnect(target)
-                        // Release the box's K2 compilation state; a deleted box is never
-                        // re-run, and otherwise its FIR/metadata leaks for the session's life.
-                        target.disposeKi()
                     }
+                    // Stop what the deleted boxes were running, dispose any renderer they own, and
+                    // release their K2 compilation state; a deleted box is never re-run.
+                    retireBoxes(targets, "delete-box")
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
                     notify(countMessage)
@@ -1296,6 +1296,51 @@ internal fun Box.registerEndPhaseJob(job: Job): Boolean = registerLaunchJob(job,
 internal fun Box.registerStopHook(hook: Runnable): Runnable {
     stopHooks.add(hook)
     return Runnable { stopHooks.remove(hook) }
+}
+
+/** Whether a stop would find anything to cancel or drain: jobs, running strands or stop hooks. */
+internal fun Box.hasSomethingToStop(): Boolean =
+    jobs.isNotEmpty() || currentRunningStates.isNotEmpty() || stopHooks.isNotEmpty()
+
+/**
+ * Take [boxes] out of the running document: stop what they run, dispose any renderer they own, and
+ * release their engines — the teardown shared by `-delete-box`, history restore and external
+ * `metadata.edn` removal, all of which tombstone a box, and by a document's last client leaving.
+ *
+ * Each of those used to do a different part of it. Deleting a box released its engine but never
+ * stopped it, and the other two did neither, so a deleted `loop {}`, audio patch or process kept
+ * running on an engine that was gone.
+ *
+ * Three passes, in this order on purpose. Renderers first, because [disposeBoxRenderer] stops the
+ * renderer box's dependents itself and then waits for *their* jobs to unwind before freeing the device
+ * — stopping a dependent earlier would clear its job list, and the teardown would wait for nothing and
+ * free buffers a cancelled loop is still writing (see `dev_docs/renderer_teardown_order.md`). Then
+ * everything else that is still running, through the same [Server.stop] as the stop button; a box with
+ * nothing to stop is skipped, so an idle Python cell does not interrupt the interpreter it shares.
+ * Engines last.
+ */
+internal fun retireBoxes(boxes: Collection<Box>, entrypoint: String) {
+    stopBoxes(boxes, entrypoint)
+    boxes.forEach { it.disposeKi() }
+}
+
+/**
+ * The first two passes of [retireBoxes] — renderers, then everything else still running — without
+ * releasing the engines; for the `reset` action, which replaces each engine itself.
+ */
+internal fun stopBoxes(boxes: Collection<Box>, entrypoint: String) {
+    boxes.forEach { box ->
+        runCatching { disposeBoxRenderer(box) }.onFailure {
+            lprintln("warning,box", "disposing the renderer of box ${box.id} ($entrypoint) threw: $it")
+        }
+    }
+    boxes.forEach { box ->
+        if (box.hasSomethingToStop()) {
+            runCatching { Server.stop(box, entrypoint) }.onFailure {
+                lprintln("warning,box", "stopping box ${box.id} ($entrypoint) threw: $it")
+            }
+        }
+    }
 }
 
 /** Stop is a barrier: invalidate every strand before snapshotting jobs that are already registered. */

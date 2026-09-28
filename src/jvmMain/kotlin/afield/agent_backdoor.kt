@@ -1028,12 +1028,10 @@ internal fun beginRendererTeardown(
     }
     val pending = (listOf(owner) + dependents).flatMap { b -> b.jobs.toList().map { b to it } }
 
-    // The owner's own jobs (typically `start(renderer::run)`) are cancelled directly, as before.
-    val ownerJobs = owner.jobs.toList()
-    owner.jobs.clear()
-    owner.clearRunningStates()
-    owner.runGeneration["default"] = (owner.runGeneration["default"] ?: -1) + 1
-    ownerJobs.forEach { it.cancel() }
+    // The owner's own jobs (typically `start(renderer::run)`) are cancelled by the same barrier the
+    // stop button uses. This cancelled them by hand, which skipped the launch-epoch bump and never
+    // drained the owner's stop hooks, so a process or other resource registered there outlived it.
+    owner.stopTrackedJobs()
 
     dependents.forEach { dependent ->
         runCatching { stopBox(dependent) }.onFailure {

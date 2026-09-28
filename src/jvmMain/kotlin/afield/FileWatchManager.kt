@@ -572,13 +572,18 @@ class FileWatchManager(private val sessionInfo: SessionInformation) {
                 )
                 
                 // Mark as tombstones instead of deleting
+                val removed = mutableListOf<Box>()
                 for (boxId in removedBoxIds) {
                     val box = sessionInfo.boxes[boxId]
                     if (box != null) {
+                        if (!box.getPropertyRaw("_tombstone").isTrue()) removed += box
                         box.setPropertyRaw("_tombstone", true, doResync = true)
                         lprintln("info,file-watch", "Marked box as removed: ${box.name} (${box.id})")
                     }
                 }
+                // A box removed from metadata.edn stops running and releases its engine, as a deleted
+                // one does.
+                retireBoxes(removed, "file-watch-removal")
                 
                 notify("Marked ${removedBoxIds.size} box(es) as removed from external metadata changes", "file-watch")
             }

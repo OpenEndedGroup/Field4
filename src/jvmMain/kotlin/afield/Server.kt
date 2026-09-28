@@ -428,18 +428,25 @@ class SessionInformation(
         )
     }
 
+    /**
+     * Tear this document's runtime down: stop every running box, dispose any `afield.four`
+     * renderer/window its boxes own, and dispose each box's Kotlin engine.
+     *
+     * Renderers so closing a document (or detaching its last session) releases the native
+     * GLFW/Vulkan surface instead of leaking it into `Window.openWindows`; engines so re-opening
+     * scratch documents in a long-lived session does not leak FIR/metadata per box. Running boxes
+     * because disposing an engine does not stop what it launched: a `loop {}`, an audio patch or a
+     * process used to outlive its document's last client, still running on an engine that was gone.
+     *
+     * Whether to tear down at all is the caller's decision, not this function's: the detach path,
+     * `cleanupDetachedSession`, returns before calling this for a named document whose
+     * [keepRunningWhenDetached] is set, which is how that flag keeps "windows and running boxes"
+     * as its KDoc says. Called, this always tears down.
+     */
     fun cleanup() {
         _fileWatchManager?.stop()
         _fileWatchManager = null
-        // Dispose any afield.four renderer/window owned by this document's boxes so closing
-        // a document (or detaching its last session) releases the native GLFW/Vulkan surface
-        // instead of leaking it into Window.openWindows. Also dispose each box's Kotlin
-        // engine (K2 REPL compilation state) so re-opening scratch documents in a long-lived
-        // session does not leak FIR/metadata per box.
-        boxes.values.forEach {
-            disposeBoxRenderer(it)
-            it.disposeKi()
-        }
+        retireBoxes(boxes.values.toList(), "session-cleanup")
     }
 }
 

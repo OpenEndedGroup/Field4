@@ -428,6 +428,8 @@ object HistoryManager {
                 .map { it.id }
                 .toSet()
             val currentBoxIds = sessionInfo.boxes.keys.toSet()
+            // Live boxes this restore tombstones; stopped and released once the restore has landed.
+            val newlyTombstoned = mutableListOf<Box>()
 
             // Process boxes:
             // 1. Restore the persistent properties for every box represented by the target version.
@@ -449,6 +451,7 @@ object HistoryManager {
 
                 if (targetBox.id != "root") {
                     val tombstonedInTarget = isTombstoned(transfer, targetSnapshot.directory, savingContext)
+                    if (tombstonedInTarget && !targetBox.getPropertyRaw("_tombstone").isTrue()) newlyTombstoned += targetBox
                     targetBox.setPropertyRaw("_tombstone", tombstonedInTarget)
                     targetBox.setPropertyRaw("_restored_from_version", targetVersionIndex)
                 }
@@ -459,6 +462,7 @@ object HistoryManager {
                 if (boxId !in activeTargetBoxIds && boxId != "root") {
                     val box = sessionInfo.boxes[boxId]
                     if (box != null) {
+                        if (!box.getPropertyRaw("_tombstone").isTrue()) newlyTombstoned += box
                         box.setPropertyRaw("_tombstone", true)
                         lprintln("debug,history", "Tombstoned box $boxId (not in version $targetVersionIndex)")
                     }
@@ -492,6 +496,10 @@ object HistoryManager {
 
             // 5. Update topology and notify in main thread
             inMain {
+                // A box this version does not have is tombstoned, not deleted, but it must stop running
+                // all the same — the same teardown `-delete-box` does. On the main runloop, which is
+                // where the stop button stops boxes and where their engines evaluate.
+                if (newlyTombstoned.isNotEmpty()) retireBoxes(newlyTombstoned, "history-restore")
                 sessionInfo.topologyGeneration++
                 sendHistoryRestoreBoundary(sessionInfo, begin = true)
                 try {

@@ -214,4 +214,27 @@ class RendererTeardownOrderTest {
         offerRelaunchOfStoppedDependents(owner, emptyList())
         assertFalse(RELAUNCH_STOPPED_DEPENDENTS_ACTION in owner.actions, "nothing stopped, nothing offered")
     }
+
+    /**
+     * The renderer box itself goes through the stop barrier, not a hand-rolled cancel: its stop hooks
+     * drain and its launch epoch advances. The hand-rolled version cancelled the jobs and did neither,
+     * so a process the renderer box had started through `streamProcess` outlived the teardown.
+     */
+    @Test
+    fun theOwnerIsStoppedThroughTheStopBarrier() {
+        val owner = Box("renderer-owner-hooks")
+        val renderLoop = launchWriter(owner, FakeDevice())
+        var hookRan = 0
+        owner.registerStopHook(Runnable { hookRan++ })
+        val epoch = owner.captureLaunchEpoch()
+        val disposed = CountDownLatch(1)
+
+        beginRendererTeardown(owner, onRenderThread = { block -> scope.launch { block() } }) { disposed.countDown() }
+
+        assertEquals(1, hookRan, "the owner's stop hooks drain before teardown returns")
+        assertTrue(owner.captureLaunchEpoch() > epoch, "a launch still in flight for the owner is fenced off")
+        assertTrue(owner.jobs.isEmpty())
+        assertTrue(disposed.await(5, TimeUnit.SECONDS))
+        assertTrue(renderLoop.isCancelled)
+    }
 }
