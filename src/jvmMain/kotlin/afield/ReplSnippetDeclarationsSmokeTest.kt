@@ -56,7 +56,7 @@ expect:
  *     snippet-class property `<unused var>` and the class failed to load with
  *     `ClassFormatError: Illegal method name "get<unused var>"`. The `.kts` path never had this:
  *     fir2ir skips a script's `_` entries. The fork now builds a snippet's `_` entry as a local of
- *     `$$eval`. Cases V–Y.
+ *     `$$eval`. Cases V–Y; Z1–Z4 cover the name-based forms that reach the same path.
  *
  * Each case drives the real engine: a fresh [KotlinInterface2] with an implicit `Box` receiver, the
  * stdlib `intro`, then [standardExecutionPractice] — the same preamble-then-body snippet sequence a
@@ -419,6 +419,33 @@ object ReplSnippetDeclarationsSmokeTest {
             listOf(
                 "val (a, _) = 6 to 0\na" to "= 6",
                 "a * 7" to "= 42",
+            )
+        )
+
+        println("-- name-based destructuring (-Xname-based-destructuring=only-syntax) at snippet top level --")
+        // Field enables the full form and square-bracket positional form, not the short form, so a
+        // plain `(a, b)` stays positional (case V). These go through the same snippet path as the
+        // `_` fix above; Z2's `val _ = second` is a renamed underscore, which must stay a local.
+        case(
+            "Z1 (val age, val name) = data class, by name and out of order", null,
+            "data class P(val name: String, val age: Int)\n(val age, val name) = P(\"Ada\", 36)\n\"\$name \$age\"",
+            expected = "= Ada 36"
+        )
+        case(
+            "Z2 (val n = first, val _ = second) renamed with an underscore", null,
+            "(val n = first, val _ = second) = \"left\" to \"right\"\nn",
+            expected = "= left"
+        )
+        case(
+            "Z3 [_, z] square-bracket positional", null,
+            "val [x, y] = listOf(10, 20)\nval [_, z] = Triple(1, 2, 3)\nx + y + z",
+            expected = "= 32"
+        )
+        sequence(
+            "Z4 a name-based entry stays visible to the next snippet", null,
+            listOf(
+                "(val first, val _ = second) = 6 to 0\nfirst" to "= 6",
+                "first * 7" to "= 42",
             )
         )
 
