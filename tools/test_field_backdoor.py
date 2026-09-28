@@ -41,6 +41,40 @@ class _Logger:
         pass
 
 
+class McpOpenDocumentTests(unittest.IsolatedAsyncioTestCase):
+    async def open(self, existed: bool | None, **args) -> dict:
+        from tools.field_mcp import FieldMcpServer
+
+        server = FieldMcpServer.__new__(FieldMcpServer)
+        server.attached_document = "typo"
+        client = mock.Mock(document_name="typo", scratch=False, boxes={}, document_existed=existed,
+                           attached_to_live_document=False)
+        server._ensure_attached = mock.AsyncMock(return_value=client)  # type: ignore[method-assign]
+        self.server = server
+        return await server.tool_open_document({"document": "typo", **args})
+
+    async def test_an_unknown_name_is_an_error_not_a_new_document(self) -> None:
+        from tools.field_mcp import McpToolError
+
+        with self.assertRaisesRegex(McpToolError, "create=true"):
+            await self.open(False)
+        self.assertIsNone(self.server.attached_document)
+
+    async def test_an_unanswerable_existence_fails_closed(self) -> None:
+        from tools.field_mcp import McpToolError
+
+        with self.assertRaisesRegex(McpToolError, "predates"):
+            await self.open(None)
+
+    async def test_create_opts_back_in(self) -> None:
+        result = await self.open(False, create=True)
+        self.assertIs(result["documentExisted"], False)
+
+    async def test_an_existing_document_opens(self) -> None:
+        result = await self.open(True)
+        self.assertIs(result["documentExisted"], True)
+
+
 class SessionLoggerTests(unittest.TestCase):
     def test_message_less_timeout_keeps_its_exception_type(self) -> None:
         self.assertEqual(exception_message(asyncio.TimeoutError()), "TimeoutError")
@@ -210,7 +244,13 @@ class BoxReferenceTests(unittest.TestCase):
         self.assertEqual(self.open_capturing_stderr("/tmp/anything", scratch=True), "")
 
     def open_document_reporting(
-        self, document: str, *, existed: bool | None, scratch: bool = False, must_exist: bool = False
+        self,
+        document: str,
+        *,
+        existed: bool | None,
+        scratch: bool = False,
+        must_exist: bool = False,
+        create: bool = False,
     ) -> tuple[dict, str]:
         """Dispatch `open`, with the server's `documentExisted` under the test's control."""
         from tools.field_backdoor import dispatch_command
@@ -231,6 +271,8 @@ class BoxReferenceTests(unittest.TestCase):
             line += " --scratch"
         if must_exist:
             line += " --must-exist"
+        if create:
+            line += " --create"
         captured = io.StringIO()
         with contextlib.redirect_stderr(captured):
             result = asyncio.run(dispatch_command(self.client, parse_command(line), line))
@@ -244,7 +286,7 @@ class BoxReferenceTests(unittest.TestCase):
         was not missing -- the server logged `file '...' not found; will be created on
         first save` -- it just never reached the reply. Measured on a live Field on 8802.
         """
-        result, warning = self.open_document_reporting("alife_walls", existed=False)
+        result, warning = self.open_document_reporting("alife_walls", existed=False, create=True)
 
         self.assertTrue(result["ok"])  # creating a document is legitimate; saying nothing was not
         self.assertTrue(result["data"]["createdNewDocument"])
@@ -258,7 +300,7 @@ class BoxReferenceTests(unittest.TestCase):
 
     def test_a_server_too_old_to_answer_abstains_rather_than_guessing(self) -> None:
         """Fail open, like `serverWorkspace: null` -- but labelled, so it reads as unverified."""
-        result, warning = self.open_document_reporting("alife_walls", existed=None)
+        result, warning = self.open_document_reporting("alife_walls", existed=None, create=True)
 
         self.assertEqual(warning, "")
         self.assertFalse(result["data"]["documentExistedKnown"])
@@ -296,18 +338,50 @@ class BoxReferenceTests(unittest.TestCase):
             self.open_document_reporting("anything", existed=None, scratch=True, must_exist=True)
         self.assertIn("meaningless with --scratch", str(raised.exception))
 
+    def test_open_refuses_an_invented_document_by_default(self) -> None:
+        """Since 2026-09-28 `open <name>` is must-exist unless the caller says `--create`.
+
+        The advisory stderr line above was the only defence for a year of typos; an agent that
+        trusted the exit status still received an empty new document. Now the default is the
+        refusal, and the refusal names the flag that opts back in.
+        """
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls_typo", existed=False)
+        self.assertIn("no document named 'alife_walls_typo'", str(raised.exception))
+        self.assertIn("--create", str(raised.exception))
+
+    def test_open_refuses_by_default_when_the_server_cannot_say(self) -> None:
+        with self.assertRaises(BackdoorError) as raised:
+            self.open_document_reporting("alife_walls", existed=None)
+        self.assertIn("predates", str(raised.exception))
+        self.assertIn("--create", str(raised.exception))
+
+    def test_must_exist_is_still_accepted_as_a_no_op_spelling(self) -> None:
+        result, _ = self.open_document_reporting("alife_walls", existed=True, must_exist=True)
+        self.assertTrue(result["ok"])
+        result, _ = self.open_document_reporting("alife_walls", existed=True)
+        self.assertTrue(result["ok"])
+
+    def test_create_and_must_exist_together_is_a_contradiction(self) -> None:
+        with self.assertRaisesRegex(BackdoorError, "contradict"):
+            self.open_document_reporting("x", existed=True, must_exist=True, create=True)
+
+    def test_a_plain_scratch_open_needs_no_create(self) -> None:
+        result, _ = self.open_document_reporting("anything", existed=False, scratch=True)
+        self.assertTrue(result["ok"])
+
     def test_status_carries_the_document_existence_answer_too(self) -> None:
         """`status` is where AGENTS.md sends an agent before editing a real document, and
         `boxCount: 0` is the symptom it tells them to sanity-check. Now the same result
         says which of the four causes it was."""
-        self.open_document_reporting("alife_walls", existed=False)
+        self.open_document_reporting("alife_walls", existed=False, create=True)
         data = self.status()
 
         self.assertIs(data["documentExisted"], False)
         self.assertIs(data["attachedToLiveDocument"], False)
 
     def test_status_reports_an_unanswerable_existence_as_null_not_false(self) -> None:
-        self.open_document_reporting("alife_walls", existed=None)
+        self.open_document_reporting("alife_walls", existed=None, create=True)
         self.assertIsNone(self.status()["documentExisted"])
 
     def test_status_says_whether_the_request_reached_a_server_at_all(self) -> None:

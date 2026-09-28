@@ -360,7 +360,23 @@ class FieldMcpServer:
     async def tool_open_document(self, args: dict[str, Any]) -> dict[str, Any]:
         document = args.get("document")
         scratch = bool(args.get("scratch", False))
+        create = bool(args.get("create", False))
         client = await self._ensure_attached(document=document, scratch=scratch)
+        # Same default as the backdoor's `open <name>` since 2026-09-28: a name that is not in
+        # the workspace is a refusal unless the caller asked for a new document. The server has
+        # already made the (unsaved) empty session by the time it answers, so forget the
+        # attachment rather than leave the conversation pointed at it.
+        if document and not scratch and not create and client.document_existed is not True:
+            self.attached_document = None
+            if client.document_existed is None:
+                raise McpToolError(
+                    f"Cannot tell whether {document!r} exists: this Field predates `documentExisted`. "
+                    "Restart Field from this checkout, or pass create=true and check boxCount."
+                )
+            raise McpToolError(
+                f"No document named {document!r} in the server's workspace; Field would have created "
+                "a new empty one. Check the spelling (field_list_open_documents), or pass create=true."
+            )
         return {
             "documentName": client.document_name,
             "scratch": client.scratch,
@@ -705,6 +721,7 @@ class FieldMcpServer:
                 "properties": {
                     "document": {"type": "string", "description": "Document name as shown in Field4. Omit to auto-pick the open document."},
                     "scratch": {"type": "boolean", "description": "Open a fresh ephemeral scratch document instead."},
+                    "create": {"type": "boolean", "description": "Allow creating a new empty document when the name does not exist (default false: an unknown name is an error, not a new document)."},
                 },
             },
         },

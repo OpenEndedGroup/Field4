@@ -1784,8 +1784,8 @@ class FieldBackdoor:
                     f"field_backdoor.py: --document {self.document_name} did not exist in the "
                     f"server's workspace; Field created a new EMPTY document at "
                     f"{self.session_key}. If you meant to open an existing one, check "
-                    "`serverWorkspace` in `status` and the spelling of the name; pass "
-                    "`open --must-exist` to make this a hard error.",
+                    "`serverWorkspace` in `status` and the spelling of the name. (The `open` "
+                    "command refuses this unless given --create; `--document` still creates.)",
                     file=sys.stderr,
                     flush=True,
                 )
@@ -3059,12 +3059,17 @@ def build_command_parser() -> argparse.ArgumentParser:
         help="open the named document without writing back to it (not the same as --scratch)",
     )
     open_parser.add_argument(
-        "--must-exist",
+        "--create",
         action="store_true",
         help=(
-            "fail instead of creating a new empty document when the name is not in the "
-            "server's workspace. Say this whenever you mean an existing document."
+            "allow Field to create a new empty document when the name is not in the server's "
+            "workspace. Without it, `open <name>` fails instead (the default since 2026-09-28)."
         ),
+    )
+    open_parser.add_argument(
+        "--must-exist",
+        action="store_true",
+        help="accepted for compatibility; must-exist is now the default for `open <name>`",
     )
     open_parser.add_argument(
         "--keep-running",
@@ -3424,29 +3429,41 @@ async def dispatch_command(
         return command_result(command_line, True, data={"help": text})
 
     if args.command == "open":
+        create = getattr(args, "create", False)
+        explicit_must_exist = getattr(args, "must_exist", False)
+        if create and explicit_must_exist:
+            raise BackdoorError("open --create and --must-exist contradict each other; pass one")
+        is_scratch = args.scratch or not args.document
+        if explicit_must_exist and is_scratch:
+            raise BackdoorError("open --must-exist is meaningless with --scratch: a scratch document is new by construction")
+        # `open <name>` used to create the document when the name was not there, so a typo
+        # returned an empty new document that looked exactly like a successful load. Since
+        # 2026-09-28 it must exist unless the caller says `--create`; `--must-exist` survives as
+        # a no-op spelling of the default.
+        must_exist = not create and not is_scratch
         data = await client.open_document(
             args.document,
-            scratch=args.scratch or not args.document,
+            scratch=is_scratch,
             timeout=client.default_timeout,
             read_only=getattr(args, "read_only", False),
-            must_exist=getattr(args, "must_exist", False),
+            must_exist=must_exist,
             keep_running=getattr(args, "keep_running", False),
         )
-        if getattr(args, "must_exist", False):
-            if args.scratch or not args.document:
-                raise BackdoorError("open --must-exist is meaningless with --scratch: a scratch document is new by construction")
+        if must_exist:
             if data.get("documentExisted") is None:
                 raise BackdoorError(
-                    f"open --must-exist cannot be honoured: the Field on port {client.port} predates "
-                    "`documentExisted` and cannot say whether the document was there. Restart it from "
-                    "this checkout, or drop --must-exist and check boxCount by hand."
+                    f"open {args.document}: the Field on port {client.port} predates "
+                    "`documentExisted` and cannot say whether the document was there, so it cannot "
+                    "be opened as an existing document. Restart it from this checkout, or pass "
+                    "`open <name> --create` and check boxCount by hand."
                 )
             if not data.get("documentExisted"):
                 raise BackdoorError(
-                    f"open --must-exist: no document named {args.document!r} in the server's workspace "
+                    f"open: no document named {args.document!r} in the server's workspace "
                     f"{client.server_workspace!r}. Field would have created a new empty one at "
                     f"{data.get('sessionKey')!r}. Check `serverWorkspace` in `status` -- it is the "
-                    "server's, not your --workspace -- and the spelling of the name."
+                    "server's, not your --workspace -- and the spelling of the name; pass "
+                    "`open <name> --create` if a new document is what you want."
                 )
         if client.graphics_context_enabled:
             data = dict(data)
