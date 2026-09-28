@@ -426,6 +426,20 @@ example or capture path rather than hand-editing generated assets.
 Each capture and shared-server start gets one attempt. A failed invocation is evidence, not a vote:
 diagnose it and change the code, environment, or command before running again.
 
+**Warm-session capture** (moved from `AGENTS.md`, 2026-09-28). Opt-in, default OFF: set
+`FIELD_DOCS_RUNNER_SESSION=1` to route eligible non-graphics captures through one persistent
+`tools/field_session.py` daemon (JVM + WebSocket + Playwright page attached once) instead of a
+fresh `field_backdoor.py` process per capture. It is safe: each attempt fast-fails and falls back
+to the authoritative per-process path, and a circuit breaker (`SESSION_MAX_FAILURES=1`) stops the
+daemon on the first miss so the warm daemon and a per-process fallback never share one Field.
+Each capture creates its box at the origin and deletes it after the screenshot (the `delete-box`
+backdoor command), so boxes never accumulate and one never-re-reset scratch doc serves an
+unbounded run. Measured ~2.0–2.4x on a forth+fline build (56 captures: 321–376 s → 153–159 s,
+pixel-identical). Still default OFF pending a full 236-capture clean-build validation; the
+residual risk is a slow graphics/SVG capture false-missing and handing off to the per-process
+path, which can hang on a Field already degraded by heavy cumulative graphics captures.
+Graphics-context and video captures always use the per-process path.
+
 ### 6. Graphics and Native Rendering Checks
 
 Graphics checks often need more than "the snippet printed something." Use the

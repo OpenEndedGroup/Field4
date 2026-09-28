@@ -471,6 +471,96 @@ uv run --project . --group backdoor --frozen python tools/run_field_tests.py \
   --port 8802 --id docs.clojure.error        # the allowExecutionErrors path, end to end
 ```
 
+## 2026-09-28: the guide's corrective paragraphs, retired into code
+
+The architecture review of 2026-09-28 (`dev_docs/ARCHITECTURE_REVIEW_2026-09-28.md`, section 4)
+treated every corrective paragraph in `AGENTS.md` as a bug report against a tool. The rewrite
+that followed moved the dated histories out of the guide and into this page, where the rest of
+the story already lives. What `AGENTS.md` said, as it stood before the rewrite, and what now
+enforces it:
+
+**Execution verdicts.** "Since 2026-09-14, `ok` for `run`, `launch`, `continue`, and
+`launch-batch` carries the **box's own** verdict: a box that failed to compile or threw gives
+`ok: false`, process exit 1, and its diagnostics in `data.errors` / `data.error`. Before that it
+gave `ok: true`, `running: false`, exit 0, with the diagnostic present and unread in that same
+result's `events` — and an agent that trusted the exit status shipped a demo that did not run.
+When the failure is the point, pass `--no-fail-on-error`: the verdict is waived, the diagnostics
+are not, and `data.executionErrorsIgnored` records the waiver." Enforced since 2026-09-14
+(`grade_execution`); the guide now carries one line.
+
+**`open` inventing documents.** "`open <name>` creates the document when the name is not there,
+so a typo returns a new empty document that looks exactly like a successful load. Since
+2026-09-14 the result says which happened: `documentExisted` and `attachedToLiveDocument` (both
+answered by the server), `createdNewDocument: true` plus a stderr line when a named open
+invented one, and `documentExistedKnown: false` when the server is too old to say — in which
+case you have verified nothing. Pass `open <name> --must-exist` whenever you mean an existing
+document; it is then a hard error, and it fails closed against an old server." Since 2026-09-28
+must-exist is the **default** for the `open` command; `open <name> --create` opts in to
+creation, and `--must-exist` survives as a no-op spelling. The paragraph above that says `ok`
+"deliberately stays true" for an invented document is superseded for the `open` command. The
+top-level `--document <name>` flag still creates (the docs runner and cross-invocation
+automation depend on it) and still prints the stderr line when it does. `field_open_document`
+in the MCP bridge got the same default and a `create` argument.
+
+**The four fields.** "When attaching to a real saved document in the user's already-running
+Field, begin with `--attach-existing --document <name> --command status` and check the four
+fields that can disagree with you: `serverWorkspace` (read back from the server, `null` if the
+server is too old to report it — then you have not verified anything), `documentName` (also read
+back from the server, not your argument), `sessionKey` (the absolute path the server will
+actually write, so `serverWorkspace` + `/` + the document name), and a plausible `boxCount`. Do
+**not** treat `requestedWorkspace` as verification: it is your own `--workspace` argument echoed
+back, it is `null` when you passed none, and until 2026-09-12 it was the field called `workspace`
+that this list told you to verify — which is why an agent could write five documents into a
+different checkout while believing it had checked. `--attach-existing` bypasses only source
+freshness: it still requires the same checkout and refuses to start a missing server." Since
+2026-09-28 the `null` case is no longer left to the reader: `--attach-existing` against a server
+that reports no workspace is a hard error, and `--allow-unverified-workspace` is the explicit
+override. The table at the top of this page is otherwise unchanged; the guide keeps the check as
+one line pointing here.
+
+**The developer port.** "For agent automation, do not rely on the default port. Pass a custom
+high port such as `--port 9477` so the backdoor starts or reuses an isolated agent-owned Field
+instead of silently attaching to a stale dev server on `9092`." That was already half stale —
+the backdoor refused stale and foreign servers, and the remaining risk was a *fresh*
+same-checkout 9092. Since 2026-09-28 a backdoor invocation without `--port` picks the first free
+automation port from 9477, as the smoke and docs runners do, and reports `port` and
+`portSource` in `status`; 9092 takes `--attach-existing` or an explicit `--port 9092`.
+`field_mcp.py` keeps 9092 as its default because it never launches a JVM.
+
+**Captures that could not have worked.** "Attach Playwright with `--with-playwright` before the
+`run` or `launch` that creates output DOM. Attaching after a run cannot recreate output DOM that
+never existed in that browser page", "use `editor-open` before `run`/`launch` when you need
+inline Monaco visualizers", "`--body` only with an explicit `return`; otherwise the result is
+`null`", and "JSON `clip` values are CSS pixels and can be half the generated image dimensions
+on high-DPI browser contexts". Since 2026-09-28: a capture of a box that ran before Playwright
+attached (or, for editor captures, before `editor-open`) carries `captureWarnings`; `page-eval
+--body` without `return` warns; screenshot results carry `imagePixelWidth`,
+`imagePixelHeight` and `devicePixelRatio`. Measured on a live Field on port 9677: a
+`screenshot-box` of a box run before `playwright-open` was refused by the server ("output has no
+visible content") and the result now also named the cause; a correctly ordered capture reported
+`clip.w = 292` beside `imagePixelWidth = 584` and `devicePixelRatio = 2.0`.
+
+**Self-heal.** "As a safety net, the agent-facing entrypoints (`tools/field_backdoor.py`,
+`tools/field_session.py`, `tools/run_field_tests.py`, and `tools/field_mcp.py`) explicitly
+self-heal the interpreter before importing their optional dependencies." The list read as if the
+UI and docs runners were covered; they were not, and a bare `python3 tools/run_ui_regressions.py`
+died on `import PIL`. Both now call `ensure_repo_python` too (the docs runner with
+`group="docs"`).
+
+**Raw Gradle beside a wrapper.** "Do not run raw `./gradlew` compile/test tasks concurrently
+with them: raw Gradle does not take that Python lock." Since 2026-09-28 it does:
+`settings.gradle.kts` waits on (or, with `AFIELD_VERIFICATION_LOCK=fail`, refuses) a
+verification lock held by another live process, and lets through builds carrying the owner's
+`AFIELD_VERIFICATION_LOCK_OWNER`. See `dev_docs/testing/TESTING_STRATEGY.md`.
+
+**Others, one line each.** SNAPSHOT/dynamic dependency versions: `failOnDynamicVersions()` and
+`failOnChangingVersions()` in `build.gradle.kts` (the LWJGL `3.4.2-SNAPSHOT` offline hang is why).
+Hand-built `AgentJvmMainLauncher` lines: the launcher checks its opens/native access/vector
+module/stack size/headless/first-thread at startup and exits 4 naming what is missing.
+`run_field_tests.py --timeout`: refused with a pointer to `timeoutSec`. Bare `send(` in module JS:
+`tools/check_module_imports.py`. A `SomeFile.kt:1234` reference in `AGENTS.md`:
+`tools/test_agents_md.py`.
+
 ## Related
 
 - [`AGENT_QUICK_REF.md`](./AGENT_QUICK_REF.md) — the one-page cheat sheet, including the

@@ -462,3 +462,169 @@ revision. They fetch current live source instead of trusting an earlier snapshot
 successful setup still requires a rendered frame or later telemetry to verify animation.
 For revision-safe editing, shared AI4 tools, reset, export and capture workflows, see
 [Live graphics workflow](light_infrastructure/AGENT_WORKFLOW.md).
+
+## Recommended workflow
+
+Moved here from `AGENTS.md` on 2026-09-28, with the steps the tools now enforce folded in.
+
+1. Start with `status` on a custom high port (`--port 9477`, or no `--port` for the first
+   free one) and read `managedServer`, `port`, and the log paths.
+2. If a port is owned by an unexpected, foreign, or source-stale server, the backdoor refuses
+   it; choose a dedicated free port rather than taking the other process over.
+3. For quick execution checks, stay in scratch mode and put the dependent `new-box`,
+   `connect`, `disconnect`, `set`, `run`, `launch`, `stop`, and `output` commands in one
+   invocation.
+4. For larger snippets, prefer `--file -` with a heredoc or pipe; use `--file <path>` when the
+   code already lives in a file.
+5. Use `--with-playwright` when a session will need DOM inspection, screenshots, or
+   output-area capture. It opens or reuses Field's server-owned Playwright browser right after
+   the backdoor attaches to its session, and again after any later `open ...`.
+6. Use `playwright-open` when you want to defer browser startup until later in the session.
+7. Use `editor-open <box> --property code` before `run` or `launch` when inline Monaco
+   visualizers (`histogram`, `history`, `stats`, `pianoRoll`) must exist for a later
+   `screenshot-editor`.
+8. Use `run-jvm-main <entrypoint> --arg ...` for annotated/standalone JVM smoke checks that do
+   not need a scratch box. Prefer it (or `tools/run_field_tests.py` for `FIELD_TEST`
+   entrypoints) over ad hoc `gradlew` `JavaExec`, init scripts, or hand-built classpath
+   launchers: both apply `requiredAgentJvmArgs()` — module opens, native-access/Unsafe
+   declarations, first-thread handling, the vector module, and the LWJGL stack size. Since
+   2026-09-28 `AgentJvmMainLauncher` refuses (exit 4) when started without them, naming the
+   missing args, instead of failing later with e.g. `module java.base does not "opens java.net"`.
+9. Read the `events` array in JSON output for stdout, `display(...)` output, runtime errors, and
+   running-state transitions.
+
+## Browser, screenshot, and video recipes
+
+The Playwright browser is headless by default, so screenshot and DOM tests do not steal
+desktop focus. Set `AFIELD_PLAYWRIGHT_VISIBLE=true` or the JVM property
+`-Dafield.playwright.visible=true` only when you want to watch it. The first attach on a
+machine can take longer because Playwright may download browser binaries.
+
+Screenshot commands wait for the Playwright page to be connected and for the target box/output
+DOM to appear, but that only helps with ordinary render races: output areas that never existed
+in the attached page cannot be captured retroactively.
+
+```bash
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
+  --with-playwright \
+  --command 'new-box --name Visual' \
+  --command 'run @last --file -' \
+  --command 'screenshot-window /tmp/visual-with-editor.png --uid @last --with-editor --open-outputs' \
+  --command 'screenshot-window /tmp/visual-without-editor.png --uid @last --open-outputs' \
+  --command 'screenshot-editor @last /tmp/visual-editor.png --padding 10' \
+  --command 'screenshot-box @last /tmp/visual-box.png --padding 16'
+display("main", "<div style=\"padding:24px;background:#ffe08a\">hello screenshot</div>")
+EOF
+```
+
+- `screenshot-window <path> --uid <box> --with-editor --open-outputs`: whole window, that box
+  selected, Monaco visible.
+- `screenshot-window <path> --uid <box> --open-outputs`: the same state without Monaco.
+- `editor-open <box> --property code` before `run`/`launch`, then
+  `screenshot-editor <box> <path> --padding 10`, for inline histogram / history / piano-roll
+  visualizers.
+- `screenshot-box <box> <path> --padding 16`: a clipped image of just that box, with nested and
+  output disclosures opened and some padding, for documentation or visual diffing.
+  `--open-outputs` is accepted for symmetry; box screenshots already open outputs.
+
+```bash
+cat <<'EOF' | uv run --project . --group backdoor python tools/field_backdoor.py --json \
+  --with-playwright \
+  --command 'new-box --name AnimBox' \
+  --command 'launch @last --file -' \
+  --command 'sleep 1' \
+  --command 'record-window /tmp/anim-window.mp4 --uid @last --open-outputs --duration 5 --fps 30 --frame-synchronous --restart-target' \
+  --command 'record-box @last /tmp/anim-box.mp4 --duration 3 --fps 30 --frame-synchronous --restart-target' \
+  --command 'stop @last'
+var t = 0.0
+loop {
+    t += 0.016
+    display("main", "<div style=\"padding:24px;background:hsl(${(t*60)%360},70%,60%)\">frame $t</div>")
+}
+EOF
+```
+
+- `record-window <path.mp4> --uid <box> --open-outputs --duration 5`: a 5-second video of the
+  whole window; add `--with-editor` to keep Monaco visible.
+- `record-editor <box> <path.mp4> --duration 5 --padding 10`: editor-only clips.
+- `record-box <box> <path.mp4> --duration 3 --padding 16`: just that box and its outputs.
+- Every record command takes `--duration <seconds>` (default 5) and `--fps <rate>` (default 30),
+  and writes H.264 MP4 with `faststart` for web playback.
+- `--frame-synchronous` captures exactly `duration x fps` consecutive Field frames: the recorder
+  waits for each browser paint and screenshot before Field advances, so capture speed cannot
+  change the movie's state sequence. With it, `--restart-target` relaunches the selected box
+  after the recorder is installed, so seeded animations start at frame zero (docs video fences
+  pass both). Without `--frame-synchronous`, recording is real-time, for ambient or interactive UI.
+
+Troubleshooting, in the order it usually bites:
+
+- Attach Playwright before the `run`/`launch` that creates output DOM (`captureWarnings` now
+  says when you did not).
+- Use one fresh scratch session or fresh port per final screenshot/video asset unless the
+  example needs several boxes visible: overlapping default-position boxes can ghost into later
+  captures or distort crop calculations.
+- Keep inline `page-eval` expressions tiny. Put anything with spaces, quotes, braces, selectors,
+  or several statements in a file and use `page-eval --file <path>`.
+- Look at the actual PNG/MP4 before deciding a capture is good.
+- If an iframe output is blank or tiny, probe the parent page as well as the iframe document:
+  the iframe rect, `.disclosure-content` rect/style, and `data-afield-intrinsic-width` /
+  `data-afield-intrinsic-height`. A stale intrinsic size can render a full iframe document into
+  a tiny disclosure.
+
+## External browsers: the loopback HTTP mirror
+
+For an external browser or Playwright connector, prefer Field's loopback HTTP mirror to the
+self-signed HTTPS URL. A Field on `--port 9477` serves
+`http://localhost:19477/index.html?file=<document>` (`AFIELD_HTTP_PORT` overrides the
+`PORT + 10000` default; `off` disables it). The backdoor's own client and the server-owned
+Playwright already handle the self-signed certificate.
+
+## Runtime values: `field_debug_probe`
+
+To inspect a live variable's value at runtime, use the MCP tool `field_debug_probe`
+([`FIELD_MCP.md#runtime-debug-probe`](FIELD_MCP.md#runtime-debug-probe)). It installs a JDWP
+event-thread breakpoint and samples a symbol at a `src/` file and line (source mode) or in a
+running box (box mode), e.g. `{"file":"<File>.kt","line":<line>,"symbol":"<name>"}` — take the
+line from the source the running JVM was built from. Only the hitting thread is paused while JDI
+reads the value, and it is resumed immediately; a high-hit probe can still perturb that thread.
+Backdoor-launched Field enables JDWP (5005, or the first free port above it) automatically; a
+bare `./gradlew runJvm` does not, and the probe says so.
+
+## Suite runner details
+
+Moved here from `AGENTS.md` on 2026-09-28.
+
+**Smoke catalog** (`tools/run_field_tests.py --refresh-catalog`) regenerates
+`build/field-tests/catalog.json`, then runs each discovered `FIELD_TEST` entry through the
+backdoor. It defaults to the first free port from 9477 (never 9092), prints per-test
+heartbeats, applies an outer process watchdog, and kills the whole child process group if a
+completed backdoor command refuses to exit. It **prewarms one persistent Field** for the whole
+run and tears it down at the end, so tests do not cold-boot the JVM each; it never reuses a
+prior run's server (a same-checkout one is recycled for a clean boot, a foreign or
+unidentifiable one fails the run with an instruction to pick another port). `--no-prewarm` is
+diagnostic only and gives up that clean-run guarantee. Prewarm launches the full build,
+including the JS bundle, so a `:compileDevelopmentExecutableKotlinJs` internal compiler error is
+a build failure to keep the log of, not a transient; if the owning Kotlin/Gradle daemon is
+proven stale, `./gradlew --stop` is the repair and the next run is a new verification.
+
+Unfiltered runs persist completed verdicts in `build/field-tests/coverage-state.json` and
+schedule unseen, then least-recently-completed tests first, so successive partial runs move
+through the catalog instead of re-covering one prefix. Targeted `--id` (repeatable; the `id:`
+of a `FIELD_TEST` block, e.g. `rectsl.language.workout`), `--tag`, and `--runner` runs keep
+catalog order; `--catalog-order` opts an unfiltered diagnostic run out of coverage ordering.
+`--id` is the right way to verify a single `jvm-main` smoke.
+
+**Browser UI regressions** (`tools/run_ui_regressions.py`, default port 9490) print `RUN`,
+heartbeat, `PASS`, and `FAIL` lines; `--heartbeat-interval <seconds>` tunes the telemetry and
+`--json` gives machine-readable stdout. Screenshots are kept under
+`build/ui-regressions/artifacts/<test-id>/`: `latest-pass.png`, `latest-failure.png`, and the
+five most recent passes in `passes/`. A passing screenshot must show evidence of the tested
+state; transient palettes, menus, toasts, and panels must be visible in the final or a
+supplemental capture. `--id <regression-id>` targets one (e.g. `macro-transcript-panel`).
+Coverage is tracked in `dev_docs/testing/UI_REGRESSION_ROADMAP.md`.
+
+**Accepted reds** live only in `dev_docs/testing/expected_test_failures.json` (JVM) and
+`dev_docs/testing/expected_smoke_failures.json` (smoke). Both are enforced in both directions:
+an unregistered failure is an ordinary failure, and a registered test that passes or disappears
+fails its gate. Never call a red "expected" in prose only, and never use wildcard selectors or
+ids in either register.
