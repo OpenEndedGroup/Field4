@@ -272,6 +272,8 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
 data class ThreeGeometryPayload(
     val type: String = "three/geometry",
     val uid: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val revision: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceBox: String? = null,
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
     val points: ThreeGeometryData? = null,
@@ -387,6 +389,11 @@ private val threeJson = Json {
  * to all connected viewers.
  */
 class ThreeGeometryViewState(val uid: String) {
+    internal val reviewInbox = ThreeReviewInbox(uid)
+    internal fun bindSource(box: Box) { reviewInbox.owner = box }
+    /** Most recent human selection and unresolved notes. Set [includeResolved] for completed notes and their history. */
+    fun reviews(includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject = reviewInbox.snapshot(includeResolved)
+
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
     @Volatile private var lastPayload: String? = null
 
@@ -404,7 +411,9 @@ class ThreeGeometryViewState(val uid: String) {
      * Push a new payload to all attached viewers.
      */
     fun update(payload: ThreeGeometryPayload) {
-        val encoded = threeJson.encodeToString(payload)
+        val revision = threeReviewRevision(payload)
+        reviewInbox.update(revision)
+        val encoded = threeJson.encodeToString(payload.copy(revision = revision, sourceBox = reviewInbox.owner?.id))
         lastPayload = encoded
         sessions.forEach { sendTo(it, encoded) }
         // Global listeners (native "subscribe-all" viewers) see every view's updates, including
@@ -432,6 +441,14 @@ class ThreeGeometryViewState(val uid: String) {
 }
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
+
+/** Read the live review inbox without opening a second browser or replacing the human selection. */
+fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject? = knownThreeViews[uid]?.reviews(includeResolved)
+
+internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
+    knownThreeViews[uid]?.reviewInbox?.updateNote(request)
+
+internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = knownThreeViews[uid]?.reviewInbox?.image(hash)
 
 /**
  * The view for a uid, created on first use.
@@ -468,6 +485,22 @@ fun installThreeJsHandler() {
         val uid = payload["debug_uid"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
 
         when (payload["type"]?.jsonPrimitive?.contentOrNull) {
+            "three-selection", "three-observation" -> {
+                val view = knownThreeViews[uid] ?: return@add Handled.no
+                val record = payload["record"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
+                val note = payload["type"]?.jsonPrimitive?.contentOrNull == "three-observation"
+                inMain {
+                    val result = runCatching { view.reviewInbox.receive(record, note) }
+                    if (note || result.isFailure) {
+                        val answer = kotlinx.serialization.json.buildJsonObject {
+                            put("type", kotlinx.serialization.json.JsonPrimitive("three-review-ack"))
+                            put("ok", kotlinx.serialization.json.JsonPrimitive(result.isSuccess))
+                            put("message", result.getOrNull()?.get("message") ?: kotlinx.serialization.json.JsonPrimitive(result.exceptionOrNull()?.message ?: "Selected in Field"))
+                        }
+                        runCatching { session.send(answer.toString()) }
+                    }
+                }
+            }
             "fline-click" -> {
                 // Same wire type and same mapping as the SVG output's handler in `Server.kt`, so the
                 // two clickable outputs cannot disagree about what a click returns. `threeJson`
@@ -589,6 +622,7 @@ fun Box.threeLines(
 """
     )
     val view = threeViewFor(uid)
+    view.bindSource(this)
     val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable)
     view.update(payload)
     return view

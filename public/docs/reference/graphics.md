@@ -26,7 +26,7 @@ than a point sprite), `seg`, and `fitInto`, which scales and centres a list of l
 
 `src/jvmMain/kotlin/afield/stdlib/StandardDrawing.kt` — [read the source](source/jvmMain/afield/stdlib/StandardDrawing/)
 
-**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [FLine examples (Field graphics)](../fline_examples.md), [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #standarddrawing-kt-functions }
 
@@ -1413,7 +1413,7 @@ showMesh(solid, caption = "${solid.triangleCount} triangles from 24 sites")
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_field.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_field/)
 
-**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Field's 3D output](../three_output.md)
+**Used in:** [Geometry from disk](../geometry_from_disk.md), [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #mesh-field-kt-functions }
 
@@ -1514,7 +1514,7 @@ facing `+y`: a plane is a wall and a heightfield is a landscape.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_generate/)
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [A photograph, closed and mounted](../chain_photo_to_solid.md), [Geometry from disk](../geometry_from_disk.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [A photograph, closed and mounted](../chain_photo_to_solid.md)
 
 ### Top-level functions { #mesh-generate-kt-functions }
 
@@ -2038,7 +2038,7 @@ corrupt the march.
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_sdf/)
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Field's 3D output](../three_output.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [Three.js scenes with `three { … }`](../three_output.md), [Typography as geometry — a string becomes contours](../typography_examples.md)
 
 ### Top-level functions { #mesh-sdf-kt-functions }
 

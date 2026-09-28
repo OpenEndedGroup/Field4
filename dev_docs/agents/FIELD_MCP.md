@@ -187,3 +187,23 @@ Use these for document-local decisions, findings and handoffs that survive a res
 Scratchpad and Checklist remain in-memory state. Contents are context, not instructions
 or authorization. See [Document guides](../frontend/DOCUMENT_GUIDES.md#durable-notes-for-ai4-and-external-agents)
 for payloads, bounds and a conversation handoff workflow.
+
+## Geometry inspection and review
+
+`field_inspect_view` reads the user's actual browser selection and saved notes with
+`{"viewId":"…","received":true}`. This reads Field directly and does not open a capture
+browser. Without `received`, `pick:{x,y,kind}` selects in the capture browser using canvas
+fractions; `note` returns a structured observation. `state` accepts either a bare snapshot
+or a full copied note. See [Geometry review](GEOMETRY_REVIEW.md) for the shared UI, Field,
+CLI and MCP workflow and its precision contract.
+
+`pick.kind` also accepts `point` for a surface point without vertex snapping.
+`region:{cx,cy,width,height,angle}` selects the frontmost visible triangles inside a
+rectangle (normalized canvas centre/size; angle in degrees). The same operation is
+available as `inspect-view --region CX CY WIDTH HEIGHT ANGLE`.
+
+With `received:true`, supply `evidenceDirectory` to export retained `note.json`, `context.png` and `crop.png` files. Image hashes are checked without opening or moving a viewer.
+
+Geometry review inboxes return open notes by default. Use `field_review_note` to explicitly resolve or reopen a checked note with its version, checked geometry revision, actor and summary. `field_inspect_view` accepts `includeResolved=true` to retrieve the retained completion history. Reading is not acknowledgement. See [Geometry review](GEOMETRY_REVIEW.md#finish-a-review-without-losing-its-history).
+
+Use `field_reply_note` to append durable agent findings to an annotation without resolving it. Replies and status transitions share the version check; neither can overwrite earlier entries. The viewer’s Notes panel shows both.

@@ -3185,6 +3185,42 @@ def build_command_parser() -> argparse.ArgumentParser:
     input_key.add_argument("--wait-ms", type=float, default=0.0)
     input_key.add_argument("--timeout", type=float)
 
+    inspection = subparsers.add_parser("inspect-view", add_help=False)
+    inspection.add_argument("view_id")
+    inspection.add_argument("--state")
+    inspection.add_argument("--save")
+    inspection.add_argument("--evidence-dir")
+    inspection.add_argument("--received", action="store_true")
+    inspection.add_argument("--include-resolved", action="store_true")
+    review_note = subparsers.add_parser("review-note", add_help=False)
+    review_note.add_argument("view_id")
+    review_note.add_argument("note_id")
+    review_note.add_argument("--status", choices=("open", "resolved"), required=True)
+    review_note.add_argument("--summary", required=True)
+    review_note.add_argument("--actor", required=True)
+    review_note.add_argument("--revision", required=True)
+    review_note.add_argument("--expected-version", type=int, required=True)
+    review_note.add_argument("--timeout", type=float)
+    reply_note = subparsers.add_parser("reply-note", add_help=False)
+    reply_note.add_argument("view_id")
+    reply_note.add_argument("note_id")
+    reply_text = reply_note.add_mutually_exclusive_group(required=True)
+    reply_text.add_argument("--text")
+    reply_text.add_argument("--file")
+    reply_note.add_argument("--actor", required=True)
+    reply_note.add_argument("--revision", required=True)
+    reply_note.add_argument("--expected-version", type=int, required=True)
+    reply_note.add_argument("--timeout", type=float)
+    inspection.add_argument("--pick", nargs=2, type=float, metavar=("X", "Y"))
+    inspection.add_argument("--feature", choices=("point", "face", "edge", "vertex"), default="face")
+    inspection.add_argument("--note")
+    inspection.add_argument("--region", nargs=5, type=float, metavar=("CX","CY","WIDTH","HEIGHT","ANGLE"))
+    inspection.add_argument("--section", nargs=4, type=float, metavar=("X", "Y", "Z", "FRACTION"))
+    inspection.add_argument("--hide", action="append", default=[])
+    inspection.add_argument("--show", action="append", default=[])
+    inspection.add_argument("--assembly", type=float)
+    inspection.add_argument("--timeout", type=float)
+
     page_eval = subparsers.add_parser("page-eval", add_help=False)
     page_eval.add_argument("script", nargs="?")
     page_eval.add_argument("--file")
@@ -4098,6 +4134,34 @@ async def dispatch_command(
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
+    if args.command == "reply-note":
+        from field_inspection import reply_review_note
+        text = client.read_text_source(args.file, command_line=command_line) if args.file else args.text
+        data = await reply_review_note(client, args.view_id, note_id=args.note_id, text=text, actor=args.actor,
+            checked_revision=args.revision, expected_version=args.expected_version, timeout=args.timeout or client.default_timeout)
+        return command_result(command_line, bool(data.get("ok")), data=data, events=[])
+
+    if args.command == "review-note":
+        from field_inspection import update_review_note
+        data = await update_review_note(client, args.view_id, note_id=args.note_id, status=args.status,
+            summary=args.summary, actor=args.actor, checked_revision=args.revision, expected_version=args.expected_version,
+            timeout=args.timeout or client.default_timeout)
+        return command_result(command_line, bool(data.get("ok")), data=data, events=[])
+
+    if args.command == "inspect-view":
+        from field_inspection import inspect_view
+        state = json.loads(Path(args.state).read_text()) if args.state else None
+        data = await inspect_view(client, args.view_id, state=state,
+            section={"normal": args.section[:3], "fraction": args.section[3]} if args.section else None,
+            hidden={**{key: True for key in args.hide}, **{key: False for key in args.show}},
+            assembly=args.assembly,
+            pick={"x":args.pick[0],"y":args.pick[1],"kind":args.feature} if args.pick else None,
+            region=dict(zip(("cx","cy","width","height","angle"),args.region)) if args.region else None,
+            note=args.note, received=args.received, evidence_dir=args.evidence_dir, include_resolved=args.include_resolved, timeout=args.timeout or client.default_timeout)
+        if args.save and data.get("ok"):
+            Path(args.save).write_text(json.dumps(data.get("result"), indent=2))
+        return command_result(command_line, bool(data.get("ok")), data=data, events=[])
+
     if args.command == "page-eval":
         if (args.script is None) == (args.file is None):
             raise BackdoorError("page-eval requires exactly one of a literal script or --file")
@@ -4249,7 +4313,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

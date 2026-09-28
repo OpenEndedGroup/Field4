@@ -73,6 +73,7 @@ nav:
   - Seeing Values:
     - Visualizers & Controls: visualizers.md
     - Field's 3D Output: three_output.md
+    - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
     - Interactive Guides: interactive_guides.md

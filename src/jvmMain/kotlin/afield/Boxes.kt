@@ -446,6 +446,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "introduction",
             "attic",
             "notes",
+            "geometryReviews",
             "fragment",
             "stackSL",
             "rectSL",

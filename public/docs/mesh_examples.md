@@ -829,3 +829,5 @@ including the measurements behind the Voronoi fix: `dev_docs/MESH_GEOMETRY.md`.
 
 Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_disk.md), over
 `afield/four/modules/MeshFromDisk.kt`.
+
+Build a scene with meshes, lines and points using [`three { … }`](three_output.md#your-first-three-scene). Use [geometry review](geometry_review.md) to select a visible feature and return its coordinates, note and images to Field.

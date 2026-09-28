@@ -21,7 +21,7 @@ out:
 
 - **state-changing HTTP routes** — 53 of them, 40 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 53**). This
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 54**). This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -30,7 +30,7 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 46 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 113 | nothing |
@@ -62,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-39 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+46 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -120,6 +120,8 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
+| `GET /three-review` | `Server.kt` | loopback + same-site |
+| `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
 ### The five that serve files off disk, which deserve reading twice
 
@@ -593,3 +595,11 @@ Demonstrated rather than asserted:
 | `route("/nightly-probe-verbless") { handle { … } }` in `Server.kt`, 2026-08-22 | **green on `d7d8dccc2`** — that is the blind spot; after this change it fails naming `ANY /nightly-probe-verbless -> none` |
 | `rawHandlers["__nightly_probe__"]` in `logstream.kt`, 2026-08-22 | failed naming the channel and its file |
 | one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |
+
+### Geometry review
+
+`GET /three-review?uid=<view>` reads the source box’s selection and saved geometry notes under the same-site docs access policy. `three-selection` and `three-observation` WebSocket messages validate the view and artifact before mutating the review inbox. See [Geometry review](agents/GEOMETRY_REVIEW.md).
+
+`GET /three-review-image?uid=<view>&sha256=<hash>` serves bounded PNG sidecars only when the view’s retained notes reference that hash, under the same access policy.
+
+`POST /three-review-note?uid=<view>` explicitly resolves/reopens one note or appends an attributed reply. It requires the same loopback/same-site guard, JSON content, a matching note version and the current geometry revision. Updates run on Field’s main thread and retain an audit history.
