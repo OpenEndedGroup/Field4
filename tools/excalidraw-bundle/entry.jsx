@@ -7,8 +7,10 @@
 // adapts Excalidraw to the small surface that Kotlin drives.
 //
 // Coordinates: Excalidraw draws scene point p at (p + scroll) * zoom inside its container. The
-// container covers the window from (0, 0), and Field draws world point p at p + mainTranslation,
-// so with zoom pinned to 1 the scene *is* Field's world space and scroll *is* mainTranslation.
+// container covers the window from (0, 0), and Field draws world point p at
+// p * mainZoom + mainTranslation, so the scene *is* Field's world space, Excalidraw's zoom is
+// mainZoom, and its scroll is mainTranslation / mainZoom. Kotlin does that conversion; this file
+// only speaks Excalidraw's (scrollX, scrollY, zoom).
 
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -59,8 +61,8 @@ function serializeScene(elements) {
  * Mounts the layer into [host] and returns the handle Kotlin drives.
  *
  * opts.initialScene   `.excalidraw` JSON or null
- * opts.initialScroll  [x, y], Field's current mainTranslation
- * opts.onScroll(x, y) the user panned inside Excalidraw
+ * opts.initialCamera        [scrollX, scrollY, zoom] in Excalidraw's terms
+ * opts.onCamera(sx, sy, zoom) the user panned or zoomed inside Excalidraw
  * opts.onScene(json)  the elements changed locally (debounced)
  */
 export function mountDrawingLayer(host, opts) {
@@ -73,21 +75,13 @@ export function mountDrawingLayer(host, opts) {
     let lastVersion = -1;
     let sendTimer = null;
     let pendingActive = false;
-    const [initialX, initialY] = opts.initialScroll ?? [0, 0];
+    const [initialX, initialY, initialZoom] = opts.initialCamera ?? [0, 0, 1];
     const initialElements = parseScene(opts.initialScene);
     lastVersion = sceneVersion(initialElements);
 
     // Excalidraw's keyboard handling (handleKeyboardGlobally=false) listens on this container,
     // which is the one element in the layer with a tabIndex.
     const focusCanvas = () => host.querySelector(".excalidraw-container")?.focus();
-
-    const pinZoom = (zoom) => {
-        if (api && zoom && zoom.value !== 1) {
-            api.updateScene({ appState: { zoom: { value: 1 } }, captureUpdate: CaptureUpdateAction.NEVER });
-            return true;
-        }
-        return false;
-    };
 
     const onChange = (elements) => {
         const v = sceneVersion(elements);
@@ -100,10 +94,7 @@ export function mountDrawingLayer(host, opts) {
         }, SCENE_DEBOUNCE_MS);
     };
 
-    const onScrollChange = (x, y, zoom) => {
-        if (pinZoom(zoom)) return;
-        opts.onScroll(x, y);
-    };
+    const onScrollChange = (x, y, zoom) => opts.onCamera(x, y, zoom.value);
 
     function DrawingLayer() {
         const [active, setActive] = useState(pendingActive);
@@ -123,7 +114,7 @@ export function mountDrawingLayer(host, opts) {
                         viewBackgroundColor: "transparent",
                         scrollX: initialX,
                         scrollY: initialY,
-                        zoom: { value: 1 },
+                        zoom: { value: initialZoom },
                     },
                     scrollToContent: false,
                 }}
@@ -150,34 +141,19 @@ export function mountDrawingLayer(host, opts) {
         );
     }
 
-    // Zoom is pinned to 1: Field's canvas has no zoom, so a zoomed drawing would drift off its
-    // boxes. Stop the gestures before Excalidraw sees them; pinZoom catches anything that slips by
-    // (keyboard zoom, zoom-to-fit).
-    const blockZoomWheel = (e) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    };
-    host.addEventListener("wheel", blockZoomWheel, { capture: true, passive: false });
-    const blockGesture = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    };
-    for (const type of ["gesturestart", "gesturechange", "gestureend"]) {
-        host.addEventListener(type, blockGesture, { capture: true, passive: false });
-    }
-
     const reactRoot = createRoot(root);
     reactRoot.render(<DrawingLayer />);
 
     return {
-        /** Field panned: follow it. A no-op when Excalidraw is already there. */
-        setScroll(x, y) {
+        /** Field panned or zoomed: follow it. A no-op when Excalidraw is already there. */
+        setCamera(x, y, zoom) {
             if (!api) return;
             const s = api.getAppState();
-            if (Math.abs(s.scrollX - x) < 0.01 && Math.abs(s.scrollY - y) < 0.01) return;
-            api.updateScene({ appState: { scrollX: x, scrollY: y }, captureUpdate: CaptureUpdateAction.NEVER });
+            if (Math.abs(s.scrollX - x) < 0.01 && Math.abs(s.scrollY - y) < 0.01 && Math.abs(s.zoom.value - zoom) < 1e-6) return;
+            api.updateScene({
+                appState: { scrollX: x, scrollY: y, zoom: { value: zoom } },
+                captureUpdate: CaptureUpdateAction.NEVER,
+            });
         },
 
         setActive(active) {

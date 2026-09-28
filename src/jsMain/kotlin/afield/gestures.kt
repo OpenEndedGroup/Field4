@@ -1377,7 +1377,7 @@ class CanvasGestures(
         val boxElements = boxes()
         val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
         val worldRects = screenRects.mapValues { (_, rect) ->
-            DOMRect(rect.x - ox, rect.y - oy, rect.width, rect.height)
+            DOMRect((rect.x - ox) / mainZoom, (rect.y - oy) / mainZoom, rect.width / mainZoom, rect.height / mainZoom)
         }
         val boxByUid = boxElements.mapNotNull { box ->
             uidOrNull(box)?.let { it to box }
@@ -1461,13 +1461,13 @@ class CanvasGestures(
         val vbw = cachedViewportWidth
         val vbh = cachedViewportHeight
 
-        parent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
-        frontParent.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+        parent.setAttribute("viewBox", worldViewBox(vbw, vbh))
+        frontParent.setAttribute("viewBox", worldViewBox(vbw, vbh))
 
         // Connection splines live on the in-viewport layer so boxes blur them through
         // their backdrop-filter; keep its viewBox in lock-step with the overlay layers.
         val splineParent = document.getElementById("connectionsplinelayer") as? SVGSVGElement
-        splineParent?.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+        splineParent?.setAttribute("viewBox", worldViewBox(vbw, vbh))
 
         val svg = (splineParent ?: parent).getGroupOrMake("connections")
         svg.innerHTML = ""

@@ -1,6 +1,7 @@
 # Drawing layer (Excalidraw) — handoff
 
-Status as of 2026-09-28: MVP on branch `excalidraw-layer` (commit `fc1655d96`), not merged.
+Status as of 2026-09-28: MVP on branch `excalidraw-layer` (commit `fc1655d96`), plus canvas zoom
+(see "Zoom" below), not merged.
 
 ## What it is
 
@@ -14,7 +15,8 @@ palette) switches mouse and keyboard between Field and the drawing.
   Key events Excalidraw handles stop at the layer's host element, so Field's `n`, delete, etc. do
   not fire underneath.
 
-Decisions made with Marc: **zoom pinned to 1**, **one root-level scene** (not per box).
+Decisions made with Marc: **one root-level scene** (not per box). Zoom was pinned to 1 in the
+MVP and then unlocked by giving Field's canvas a zoom of its own.
 
 ## Where things are
 
@@ -37,15 +39,15 @@ Rebuild the bundle: `cd tools/excalidraw-bundle && npm ci && npm run build`. Out
 ## How it works
 
 **Camera.** Excalidraw draws scene point `p` at `(p + scroll) * zoom`; Field draws world point `p`
-at `p + mainTranslation`, and the layer's container starts at window (0, 0). With zoom = 1, scene
-coordinates *are* Field world coordinates and `scroll` *is* `mainTranslation`. Field → drawing:
-every writer of `mainTranslation` calls `drawingLayerViewportChanged`. Drawing → Field:
-Excalidraw's `onScrollChange` → `panViewportForDrawingLayer` → `applyViewportTranslation`. Both
-sides no-op when already equal, which is what stops the echo.
-
-**Zoom pinning.** Ctrl/Meta-wheel and Safari gesture events are swallowed at the host in the capture
-phase; `pinZoom` in `onScrollChange` resets anything that slips through (keyboard zoom,
-zoom-to-fit). The zoom buttons are hidden by CSS.
+at `p * mainZoom + mainTranslation`, and the layer's container starts at window (0, 0). So scene
+coordinates *are* Field world coordinates, Excalidraw's zoom is `mainZoom`, and its scroll is
+`mainTranslation / mainZoom` (the conversion lives in `drawingLayer.kt`; `entry.jsx` only speaks
+Excalidraw's terms). Field → drawing: every writer of `mainTranslation` calls
+`drawingLayerViewportChanged`. Drawing → Field: Excalidraw's `onScrollChange` →
+`panViewportForDrawingLayer` → `applyViewportTranslation`. Both sides no-op when already equal,
+which is what stops the echo. Excalidraw's zoom range (0.1–30) is wider than Field's (0.1–4); an
+out-of-range zoom is clamped about the window centre so the translation computed for the unclamped
+zoom does not make the view jump.
 
 **Keyboard.** `handleKeyboardGlobally={false}`, so Excalidraw only hears keys when its
 `.excalidraw-container` (the one element with a tabIndex) has focus; `setActive(true)` focuses it.
@@ -73,6 +75,35 @@ the exported `send("set-string", …)`, which stamps clientId/clientSequence so
 
 **Lazy loading.** The bundle is dynamically imported on the first toggle, or as soon as a document
 arrives with a non-empty `drawing`, so saved notation shows without a toggle.
+
+## Zoom
+
+Field's canvas camera is `screen = world * mainZoom + mainTranslation`: `mainCanvasTransform()` is
+`translate(t) scale(mainZoom)` with `transform-origin: 0 0`. Translation stays in screen pixels, so
+every existing pan delta, centring calculation and the `set-viewport` payload is unchanged, and at
+zoom 1 behaviour is identical to before. Input: ctrl/meta-wheel on the viewport (which is also what
+a trackpad pinch sends) calls `setCanvasZoom(z, anchorX, anchorY)`, which keeps the world point
+under the cursor fixed. **Reset Canvas Zoom** is a palette command; `window.setCanvasZoom`,
+`window.resetCanvasZoom`, `window.canvasZoom()` are exposed for tests.
+
+What had to learn about zoom (divide screen measurements by `mainZoom`): box drag (client delta) and
+resize (interact.js `deltaRect`/`rect`) in `Main.kt`, `boxWorldRect`, the connection layout snapshot
+in `gestures.kt`, `lastMouse` (new-box placement) in `commands.kt`. Window-sized world-space SVG
+layers (connection splines, overlay and front connection layers, actor arcs) use
+`worldViewBox(w, h)`. The WebGL grid shader takes `u_zoom`, keeps its dot radii in screen pixels,
+and fades the small dots out below ~0.5× and the large ones below ~0.15×.
+
+Verified at zoom ≠ 1: box screen rect is exactly half its frame at 0.5; ctrl-wheel about (700, 400)
+keeps world (1400, 800) under the cursor; a 60 px drag at 0.6 moves a box 100 world units; a
+zoom-0.6 render of boxes + splines + drawing is identical to a zoom-1 render scaled by 0.6; zooming
+inside Excalidraw (ctrl-wheel, and 40 clicks on its zoom-in button) moves Field's canvas so a box's
+screen rect equals Excalidraw's own projection of it, including after clamping at 4×.
+
+Not zoom-aware yet: slideshow annotation geometry (`slideshowSupport.kt` still builds a translation-only
+viewBox and offsets), the CSS-gradient grid fallback used when WebGL is unavailable, bookmarks (they
+save and restore translation only), the server's per-box `viewport` rect, and marquee/snapping were
+not exercised at zoom. The Monaco editor and docs/history iframes are outside the scaled canvas, so
+they do not scale, which is intended.
 
 ## Verified (backdoor + server-owned Playwright, 2026-09-28)
 
@@ -116,5 +147,5 @@ elementCount}`; `window.toggleDrawingLayer()`. The backdoor's `set` cannot addre
    `customData.boxUid` that move with their box.
 4. A Kotlin `drawing()` stdlib accessor that returns elements, with freedraw/line/arrow → `FLine`.
 5. Code → drawing: boxes emitting annotations into the layer.
-6. Field zoom, if it is ever wanted. That is its own project: boxes are DOM, and scaling
-   `mainCanvas` breaks Monaco and output-area hit testing.
+6. Finish zoom: make slideshow annotations, bookmarks (save zoom too) and the server `viewport`
+   rect zoom-aware, and exercise marquee selection, snapping and output areas at zoom ≠ 1.

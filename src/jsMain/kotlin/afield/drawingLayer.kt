@@ -15,10 +15,11 @@ import org.w3c.dom.events.Event
  *   `drawing` entries in `Box.uiResyncProperties` and `ioPersistentProperties`). The root box never
  *   writes sidecars (`SavingContext.toTransfer`), so the scene is inline in `metadata.edn`; the
  *   string is a complete `.excalidraw` file, which Excalidraw itself can open.
- * - **The camera is Field's.** Scene coordinates are Field world coordinates and Excalidraw's
- *   scroll is [mainTranslation]; zoom is pinned to 1 because Field's canvas has none. Panning
- *   either side pans the other (`applyViewportTranslation` → [drawingLayerViewportChanged];
- *   Excalidraw's `onScrollChange` → [panViewportForDrawingLayer]).
+ * - **The camera is Field's.** Scene coordinates are Field world coordinates. Excalidraw draws
+ *   `(p + scroll) * zoom` and Field draws `p * mainZoom + mainTranslation`, so Excalidraw's zoom
+ *   is [mainZoom] and its scroll is `mainTranslation / mainZoom`. Panning or zooming either side
+ *   moves the other (`applyViewportTranslation` → [drawingLayerViewportChanged]; Excalidraw's
+ *   `onScrollChange` → [panViewportForDrawingLayer]).
  * - **Modal input.** Inactive, the layer is visible but `pointer-events: none` and Excalidraw is in
  *   view mode, so Field behaves exactly as before. Active (`toggle-drawing-layer`, Alt+D), the
  *   layer takes the pointer and keyboard focus, and key events are kept from bubbling out to
@@ -84,8 +85,10 @@ private fun ensureLoaded(then: () -> Unit = {}) {
     load(BUNDLE_URL).then({ module: dynamic ->
         val opts: dynamic = js("({})")
         opts.initialScene = pendingRemoteScene ?: currentRootDrawing()
-        opts.initialScroll = arrayOf(mainTranslation[0], mainTranslation[1])
-        opts.onScroll = { x: Double, y: Double -> panViewportForDrawingLayer(x, y) }
+        opts.initialCamera = arrayOf(mainTranslation[0] / mainZoom, mainTranslation[1] / mainZoom, mainZoom)
+        opts.onCamera = { scrollX: Double, scrollY: Double, zoom: Double ->
+            panViewportForDrawingLayer(scrollX * zoom, scrollY * zoom, zoom)
+        }
         opts.onScene = { json: String -> sendScene(json) }
         handle = module.mountDrawingLayer(el, opts)
         pendingRemoteScene = null
@@ -130,9 +133,9 @@ fun onRemoteDrawingScene(json: String) {
     }
 }
 
-/** Called from `applyViewportTranslation`: Field panned, so the drawing follows. */
+/** Called by every writer of [mainTranslation]: Field panned or zoomed, so the drawing follows. */
 fun drawingLayerViewportChanged(x: Double, y: Double) {
-    handle?.setScroll(x, y)
+    handle?.setCamera(x / mainZoom, y / mainZoom, mainZoom)
 }
 
 fun setDrawingLayerActive(active: Boolean) {

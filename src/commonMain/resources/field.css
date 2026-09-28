@@ -1380,6 +1380,8 @@ body {
 .field-main-canvas {
     position: relative;
     z-index: 1;
+    /* mainCanvasTransform() is translate(t) scale(mainZoom): screen = world * zoom + t. */
+    transform-origin: 0 0;
 }
 
 .monaco-editor .margin-view-overlays .codicon-folding-collapsed,
@@ -4991,9 +4993,4 @@ body.mode-editor-only .field-toast {
 
 .field-drawing-active {
     z-index: 21;
-}
-
-/* Zoom is pinned to 1 (Field's canvas has no zoom), so the zoom buttons would only lie. */
-.field-drawing-layer .zoom-actions {
-    display: none;
 }
