@@ -1097,8 +1097,13 @@ slot's module is drawn, at its current numbers. Field finds that by walking what
 the renderer draws, so it is the window when the module was added with
 `renderer += module` (the whole window, with everything else it draws), or the
 render target the module is in when it was added with `target += … to module`,
-even one that is never shown on screen. A compute module writes buffers rather
-than a picture, and the card says so rather than show a stand-in.
+even one that is never shown on screen. Where that can't be read back directly —
+a ping-pong target, which swaps its images every frame, a stereo target, or a
+module drawn nowhere the renderer's lists reach — the card draws the module
+once more, by itself, into a target of its own matched to its pipeline, and
+says so: the same module and state (a ping-pong still samples its real last
+frame), without whatever else draws beside it. A compute module writes buffers
+rather than a picture, and the card says so rather than show a stand-in.
 
 **Render this function alone** draws the slot's program by itself, at its current
 numbers, on your renderer. Its input is the study's, `vec4(uv, hash, 0, time)`

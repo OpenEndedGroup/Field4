@@ -354,5 +354,11 @@ targets are made readable by default), as displayed. The numbers card's **Show i
 uses it; window captures are scaled to 1024 on the long side (a Retina window is 4112 × 2524). Checked
 live with one box in the window and one in an off-screen 512 × 512 render target: both captured,
 with the host shader's own vignette, and a `uv y` gradient comes out the same way up in both.
-Not done: compute modules (they write buffers; the GPU-probe harness is the way in), a render
-target made without `colorTransferSrc` (a sampling tap pass would reach it), and the headset.
+Render targets are readable by default (`colorTransferSrc = true`) and nothing in the codebase
+turns that off, so "an unreadable target" does not arise. What the walk cannot read — a ping-pong
+(it swaps its images each frame, so attachment 0 is not reliably this frame), a stereo or multi
+ping-pong target, one drawn by some other path, a module drawn nowhere yet — is covered by
+`ModuleDestinations.renderDisposable`: the module drawn once more into a pooled readable target
+matched to its pipeline, for one frame. Checked on a ping-pong feedback module: the capture shows the
+trail, so it sampled the real previous frame. Not done: compute modules (they write buffers; the
+GPU-probe harness is the way in) and the headset.
