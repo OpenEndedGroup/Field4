@@ -64,8 +64,10 @@ def _field_line_notes_factory():
                 return cut(repr(value))
         return None
 
-    def record(key, first, last, value, kind):
+    # Called by the rewritten cell: [where] is the constant (key, first line, last line, kind).
+    def record(where, value):
         try:
+            key, first, last, kind = where
             text = str(value) if kind == "ran" else describe(value)
             notes.setdefault(key, []).append([first, last, kind, type(value).__name__, text])
         except Exception:
@@ -89,31 +91,29 @@ def _field_line_notes_factory():
         while start < len(body) and isinstance(body[start], _ast.ImportFrom) and body[start].module == "__future__":
             start += 1
         out = list(body[:start])
+        load = _ast.Load()
+        # Every node made here carries its statement's location, so ast.fix_missing_locations finds
+        # nothing to do in them, and each recorder call is four nodes: the rewrite is cheap per statement.
         for st in body[start:]:
             first = st.lineno
-            last = getattr(st, "end_lineno", None) or st.lineno
-            def note(value, kind):
-                call = _ast.Expr(value=_ast.Call(
-                    func=_ast.Name(id=name, ctx=_ast.Load()),
-                    args=[_ast.Constant(key), _ast.Constant(first), _ast.Constant(last), value, _ast.Constant(kind)],
-                    keywords=[]))
-                _ast.copy_location(call, st)
-                _ast.copy_location(call.value, st)
-                return call
-            out.append(st)
+            last = getattr(st, "end_lineno", None) or first
+            loc = {"lineno": first, "col_offset": st.col_offset, "end_lineno": last,
+                   "end_col_offset": getattr(st, "end_col_offset", None) or st.col_offset}
             if isinstance(st, _ast.Expr):
                 # the value itself, evaluated once: the expression becomes the recorder's argument
-                out.pop()
-                out.append(note(st.value, "value"))
-            elif isinstance(st, _ast.Assign) and isinstance(st.targets[0], _ast.Name):
-                kind = "value" if st.targets[0].id == capture_name else "assigned " + st.targets[0].id
-                out.append(note(_ast.Name(id=st.targets[0].id, ctx=_ast.Load()), kind))
-            elif isinstance(st, (_ast.AnnAssign, _ast.AugAssign)) and isinstance(st.target, _ast.Name) and getattr(st, "value", None) is not None:
-                out.append(note(_ast.Name(id=st.target.id, ctx=_ast.Load()), "assigned " + st.target.id))
-            elif isinstance(st, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)):
-                out.append(note(_ast.Name(id=st.name, ctx=_ast.Load()), "defines " + st.name))
+                value, kind = st.value, "value"
             else:
-                out.append(note(_ast.Constant(type(st).__name__.lower()), "ran"))
+                out.append(st)
+                if isinstance(st, _ast.Assign) and isinstance(st.targets[0], _ast.Name):
+                    target = st.targets[0].id
+                    value, kind = _ast.Name(target, load, **loc), ("value" if target == capture_name else "assigned " + target)
+                elif isinstance(st, (_ast.AnnAssign, _ast.AugAssign)) and isinstance(st.target, _ast.Name) and getattr(st, "value", None) is not None:
+                    value, kind = _ast.Name(st.target.id, load, **loc), "assigned " + st.target.id
+                elif isinstance(st, (_ast.FunctionDef, _ast.AsyncFunctionDef, _ast.ClassDef)):
+                    value, kind = _ast.Name(st.name, load, **loc), "defines " + st.name
+                else:
+                    value, kind = _ast.Constant(type(st).__name__.lower(), **loc), "ran"
+            out.append(_ast.Expr(_ast.Call(_ast.Name(name, load, **loc), [_ast.Constant((key, first, last, kind), **loc), value], [], **loc), **loc))
         mod.body = out
         return name
 

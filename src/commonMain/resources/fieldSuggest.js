@@ -216,11 +216,31 @@ export const requestLineNote = (uid, property, allCode, line) => {
   return pending;
 };
 
-export const lineNoteHtml = (note) =>
-  note
-    ? `<figure class="afield-line-note">${note.image ? `<img src="${note.image}" alt="">` : ""}` +
-      `<figcaption>line ${Number(note.line) || ""} · ${escapeHtml(note.caption || "")}</figcaption></figure>`
-    : "";
+// A note with a `value` is shown split: what the line came to, in the value face with its results in
+// bold, over a muted line saying where that came from. A note with only a caption (StackSL, RectSL)
+// is shown as its caption. A picture drawn at 2x says so in `imageScale`, and `srcset` shows it at
+// its CSS size so a Retina display does not upscale it.
+const lineNoteImageHtml = (note) => {
+  if (!note.image) return "";
+  const scale = Number(note.imageScale) || 1;
+  return scale > 1 ? `<img srcset="${note.image} ${scale}x" src="${note.image}" alt="">` : `<img src="${note.image}" alt="">`;
+};
+
+export const lineNoteHtml = (note) => {
+  if (!note) return "";
+  const line = `line ${Number(note.line) || ""}`;
+  const segments = Array.isArray(note.value) ? note.value : [];
+  if (segments.length === 0) {
+    return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
+      `<figcaption>${line} · ${escapeHtml(note.caption || "")}</figcaption></figure>`;
+  }
+  const value = segments
+    .map((segment) => (segment && segment.strong ? `<strong>${escapeHtml(segment.text || "")}</strong>` : escapeHtml((segment && segment.text) || "")))
+    .join("");
+  return `<figure class="afield-line-note">${lineNoteImageHtml(note)}` +
+    `<div class="afield-line-note-value">${value}</div>` +
+    `<figcaption class="afield-line-note-meta">${line} · ${escapeHtml(note.meta || "")}</figcaption></figure>`;
+};
 
 window.requestLineNote = requestLineNote;
 window.lineNoteHtml = lineNoteHtml;

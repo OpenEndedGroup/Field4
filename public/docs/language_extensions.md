@@ -302,6 +302,10 @@ a tensor, an object of your own class — is named by its type, because printing
 statement did not, and a cell's docstring and `from __future__` imports are left exactly where Python
 needs them. Setting `AFIELD_PYTHON_LINE_NOTES=0` in Field's environment turns Python's recording off.
 
+Recording costs a little per top-level step, never per loop iteration: a few microseconds a line in
+Forth, Clojure and FieldML, and about ten in Python, so a cell of five thousand top-level statements
+runs some fifty milliseconds slower; a picture is drawn only when its note is asked for.
+
 Kotlin box code has no notes of its own yet. A Kotlin box is compiled as one snippet and only its
 final value comes back, so a per-line value would need the box's source rewritten before
 compilation. Inside a Kotlin box, a `#stacksl` or `#rectsl` string still gets its language's notes.

@@ -726,6 +726,24 @@
   line-height: 1.35;
   color: #9a9aa0;
 }
+/* What the line came to, in the face value visualizers use; its results in bold and brighter. */
+.afield-line-note-value {
+  margin-top: 4px;
+  font-family: "Iosevka Web", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #b8b8be;
+  font-feature-settings: "calt" 1, "dlig" 1;
+}
+.afield-line-note-value strong {
+  font-weight: 700;
+  color: #f2f2f5;
+}
+.afield-line-note figcaption.afield-line-note-meta {
+  margin-top: 2px;
+  font-size: 10px;
+  color: #7c7c84;
+}
 /* Beside the cursor, smaller, under the word's note. */
 .hoverlay-left .afield-line-note {
   margin: 6px 0 0;

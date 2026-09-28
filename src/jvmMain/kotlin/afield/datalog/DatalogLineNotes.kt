@@ -22,6 +22,8 @@ import java.util.concurrent.TimeUnit
  * Directives are never run for a note: `#reset` and `#boxes` change the model.
  */
 object DatalogLineNotes {
+    private val P = LineNotes::plain
+    private val S = LineNotes::strong
 
     /** Show at most this many derived facts or answers in a caption. */
     private const val CAPTIONED = 3
@@ -34,7 +36,8 @@ object DatalogLineNotes {
         val statement = statementAt(source, line) ?: return parseProblem(source, line)
         val model = if (ranAt == null) "the box has not run" else "the box's model, as its last run left it ${LastRunNotes.ago(now - ranAt)}"
         statement.directive?.let { d ->
-            return LineNotes.Note("#${d.name} is a directive: it runs when you run the line, never for a note", volatile = true)
+            val text = "#${d.name} is a directive: it runs when you run the line, never for a note"
+            return LineNotes.Note(text, volatile = true, meta = model, value = listOf(P(text)))
         }
         statement.query?.let { q -> return answers(datalog, q.body, model) }
         val rule = statement.rule ?: return null
@@ -50,16 +53,22 @@ object DatalogLineNotes {
                 .map { "${it.head.pred}/${it.head.arity}" }.distinct()
             val read = if (readers.isEmpty()) "no rule reads $relation" else "read by the rules for " + readers.joinToString(", ")
             val where = if (present) "in the model" else "not in the model — run the line to add it"
-            return LineNotes.Note("$head is $where · $read · $model", volatile = true)
+            return LineNotes.Note("$head is $where · $read · $model", volatile = true, meta = model,
+                value = listOf(P("$head is "), S(if (present) "in the model" else "not in the model"),
+                    P((if (present) "" else " — run the line to add it") + " · $read")))
         }
-        if (!known) return LineNotes.Note("this rule is not in the model as written — run the line to add it · $model", volatile = true)
+        if (!known) return LineNotes.Note("this rule is not in the model as written — run the line to add it · $model", volatile = true,
+            meta = model, value = listOf(P("this rule is "), S("not in the model"), P(" as written — run the line to add it")))
         val derived = derivedBy(datalog, rule)
         val total = datalog.rowsOf(head.pred).size
         val first = derived.take(CAPTIONED).joinToString(", ") { row -> head.pred + row.joinToString(", ", "(", ")") }
         val caption = "derives ${derived.size} of $relation's $total fact${if (total == 1) "" else "s"}" +
             (if (derived.isNotEmpty()) ": $first" + (if (derived.size > CAPTIONED) ", …" else "") else "") + " · $model"
         val columns = head.terms.mapIndexed { i, t -> (t as? DlVar)?.name ?: "#${i + 1}" }
-        return LineNotes.Note(caption, LineNotePictures.table(columns, derived.take(LineNotePictures.SHOWN), derived.size), volatile = true)
+        val value = listOf(P("derives "), S("${derived.size}"), P(" of $relation's $total fact${if (total == 1) "" else "s"}" +
+            (if (derived.isNotEmpty()) ": $first" + (if (derived.size > CAPTIONED) ", …" else "") else "")))
+        return LineNotes.Note(caption, LineNotePictures.table(columns, derived.take(LineNotePictures.SHOWN), derived.size), volatile = true,
+            meta = model, value = value, imageScale = LineNotePictures.SCALE)
     }
 
     private fun answers(datalog: Datalog, body: List<DlLiteral>, model: String): LineNotes.Note {
@@ -70,7 +79,10 @@ object DatalogLineNotes {
             rows.columns.isEmpty() -> "?- $goal: ${if (rows.isEmpty) "no" else "yes"} · $model"
             else -> "?- $goal: ${rows.size} answer${if (rows.size == 1) "" else "s"} · $model"
         }
-        return LineNotes.Note(caption, LineNotePictures.table(rows.columns, shown.take(LineNotePictures.SHOWN), shown.size), volatile = true)
+        val value = if (rows.columns.isEmpty()) listOf(P("?- $goal: "), S(if (rows.isEmpty) "no" else "yes"))
+            else listOf(P("?- $goal: "), S("${rows.size} answer${if (rows.size == 1) "" else "s"}"))
+        return LineNotes.Note(caption, LineNotePictures.table(rows.columns, shown.take(LineNotePictures.SHOWN), shown.size), volatile = true,
+            meta = model, value = value, imageScale = LineNotePictures.SCALE)
     }
 
     /** The head rows [rule]'s body yields over the model: the facts this rule, and no other, accounts for. */

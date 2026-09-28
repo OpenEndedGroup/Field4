@@ -965,7 +965,8 @@ class ClojureExecution(val inside: Box) : BoxExecution {
                 onForm = { line -> ClojureInterface.thisLine = boxLine(line) },
                 onFormValue = { first, last, value, printed ->
                     val type = value?.javaClass?.simpleName?.let { " · $it" }.orEmpty()
-                    produced += afield.stdlib.LastRunNotes.Produced(first, last, "evaluated to $printed$type")
+                    produced += afield.stdlib.LastRunNotes.Produced(first, last, "evaluated to $printed$type",
+                        value = listOf(afield.stdlib.LineNotes.plain("evaluated to "), afield.stdlib.LineNotes.strong(printed), afield.stdlib.LineNotes.plain(type)))
                 }
             ).also { result ->
                 val error = (result as? EvalResult.Err)?.error

@@ -21,7 +21,19 @@ This extends it to ForthField, Clojure, Python and Datalog, and to the AI4 tool 
 - **`Note.volatile`** (and `LineNoteReply.volatile` on the wire): the editor's `lineNoteCache` keys on
   the text hash, and pressing run does not change the text, so a volatile note is re-asked for rather
   than cached. Every last-run and Datalog note is volatile.
-- **`LineNotePictures`**: Java2D stack and table pictures, PNG-encoded with `PngEncoder`.
+- **`LineNotePictures`**: Java2D stack and table pictures, PNG-encoded with `PngEncoder`, drawn at 2×
+  (`SCALE`) and sent with `imageScale = 2`; the editor shows them through `srcset="… 2x"`, at their CSS
+  size, so a Retina display does not upscale them (before/after: `line_notes_demo/evidence/forth-stack-1x-vs-2x.png`).
+- **The note is split for the eye.** `Note.meta` (where it came from: "last run, 12 s ago") and
+  `Note.value` (runs of text, results `strong`) travel as `LineNoteReply.meta`/`value`; the editor sets
+  the value in the value-visualizer face (Iosevka 12 px) with the results bold, over a muted meta line.
+  `caption` is still the whole sentence, which `ReadLineNotes` returns. StackSL/RectSL notes carry no
+  value and show as before. Bold text rather than `.h` HTML of the value (the human's choice,
+  2026-09-28): real `.h` would mean keeping the value object past the run — memory, and a mutable
+  object would show today's state rather than the last run's.
+- **Forth's `ok` marker** says what the run left: `ok · <3> 3.0 100.0 "done"`, the top value bold
+  (`forthOkHtml`). Bold needs HTML, and the editor renders HTML output as a block under the line; a
+  plain-text marker would stay inline beside it but could not be bold. A bare `ok` for an empty stack.
 
 ## Per language
 
@@ -37,6 +49,33 @@ Kotlin box code: not done. The K2 REPL compiles a box as one snippet and hands b
 per-statement values would need the source rewritten before compilation. Morpho and Nano: not done —
 Morpho's program is a circuit description whose result is one netlist, and Nano's VM would want a
 register trace per instruction, which is a larger change than a note justifies tonight.
+
+## What it costs
+
+Measured 2026-09-28 on the branch's Field (M-series Mac), best of 15 (Forth, Clojure, FieldML: in a box;
+Python: the rewriter under plain `python3`), plain run vs recorded run:
+
+| case | before | after |
+| --- | --- | --- |
+| Forth demo (7 lines) | +2.05 ms | +0.05 ms |
+| Forth, 200 lines of `1 2 + drop` | +33.8 ms | ≈0 (noise) |
+| Forth, one loop of 100k iterations | +0.6 ms | +0.08 ms |
+| Forth, 2000 literals on one line | +87.8 ms | ≈0 (noise) |
+| Forth, 200 lines leaving a 200-deep stack | +181.5 ms | +0.97 ms |
+| Python demo (7 lines) | +0.064 ms | +0.043 ms |
+| Python, 200 top-level assignments | +2.67 ms | +1.68 ms |
+| Python, 5000 top-level statements | +70.9 ms | +51.6 ms |
+| Python, a 1e6-iteration loop in one statement | ≈0 | ≈0 |
+| Clojure demo (5 forms) / 200 defs / a 1e6 loop | — | +0.04 ms / ≈0 / ≈0 |
+| FieldML demo (4 lets) / 200 lets | — | +0.001 ms / +0.03 ms |
+
+Forth was paying for a PNG per line at record time (0.7 ms each at 1×, 3 ms at 2×) and for copying the
+whole stack after every top-level step (quadratic in depth). Now a line keeps only its top 8 values and
+its depth, snapshotted once per line (`endsLine`), and the picture is drawn only when that line's note is
+asked for, then kept. Python's cost is the rewrite, about 10 µs per top-level statement (it was ~14):
+recorder calls are four nodes built with their locations, so `ast.fix_missing_locations` has nothing to
+fill in them; the walk over the larger tree is most of what is left. Nothing is added per loop iteration
+in any language — only per top-level step.
 
 ## AI4
 

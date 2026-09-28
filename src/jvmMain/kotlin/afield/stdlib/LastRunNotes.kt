@@ -27,13 +27,31 @@ object LastRunNotes {
      * What one step of a run produced: its lines [firstLine]..[lastLine] (1-based, counted in the
      * text that ran), a sentence about it, and a picture when the language draws one.
      */
-    class Produced(val firstLine: Int, val lastLine: Int, val caption: String, val png: ByteArray? = null)
+    class Produced(
+        val firstLine: Int,
+        val lastLine: Int,
+        val caption: String,
+        val png: ByteArray? = null,
+        /** [caption]'s value part for the eye, results marked strong ([LineNotes.Note.value]); empty: the caption. */
+        val value: List<LineNotes.Segment> = emptyList(),
+        /**
+         * The picture, drawn only if a note for these lines is asked for, and then once. A run records a
+         * step per line, and drawing each one as it ran cost far more than the run (0.7 ms a picture).
+         */
+        val picture: (() -> ByteArray?)? = null,
+        /** Device pixels per CSS pixel of the picture. */
+        val imageScale: Int = 1,
+    )
 
     private enum class Kind { PRODUCED, STOPPED, NOT_REACHED }
 
     /** One recorded span, in box lines, with the text those lines held when it ran. */
-    private class Entry(val first: Int, val lines: List<String>, val kind: Kind, val caption: String, val png: ByteArray?, val at: Long) {
+    private class Entry(
+        val first: Int, val lines: List<String>, val kind: Kind, val caption: String, drawPng: () -> ByteArray?, val at: Long,
+        val value: List<LineNotes.Segment> = emptyList(), val imageScale: Int = 1,
+    ) {
         val last get() = first + lines.size - 1
+        val png: ByteArray? by lazy(drawPng)
     }
 
     private val records = ConcurrentHashMap<String, List<Entry>>()
@@ -65,14 +83,17 @@ object LastRunNotes {
         produced.filter { it.firstLine >= 1 && it.lastLine >= it.firstLine && it.lastLine <= codeLines.size }
             // A later step over the same lines replaces an earlier one.
             .associateBy { it.firstLine to it.lastLine }.values
-            .forEach { fresh += Entry(lineOffset + it.firstLine, linesOf(it.firstLine, it.lastLine), Kind.PRODUCED, it.caption, it.png, at) }
+            .forEach { p ->
+                fresh += Entry(lineOffset + p.firstLine, linesOf(p.firstLine, p.lastLine), Kind.PRODUCED, p.caption,
+                    { p.png ?: p.picture?.invoke() }, at, p.value, p.imageScale)
+            }
         if (stoppedAt != null && stoppedAt in 1..codeLines.size) {
             fresh.removeAll { stoppedAt + lineOffset in it.first..it.last }
-            fresh += Entry(lineOffset + stoppedAt, linesOf(stoppedAt, stoppedAt), Kind.STOPPED, stopReason?.let { oneLine(it, 160) } ?: "an error", null, at)
+            fresh += Entry(lineOffset + stoppedAt, linesOf(stoppedAt, stoppedAt), Kind.STOPPED, stopReason?.let { oneLine(it, 160) } ?: "an error", { null }, at)
         }
         notReached.filter { it in 1..codeLines.size && codeLines[it - 1].isNotBlank() }
             .filter { line -> fresh.none { line + lineOffset in it.first..it.last } }
-            .forEach { fresh += Entry(lineOffset + it, linesOf(it, it), Kind.NOT_REACHED, "", null, at) }
+            .forEach { fresh += Entry(lineOffset + it, linesOf(it, it), Kind.NOT_REACHED, "", { null }, at) }
         val covered = (lineOffset + 1)..(lineOffset + codeLines.size)
         records.compute(key(box, property)) { _, old ->
             (old.orEmpty().filter { it.last < covered.first || it.first > covered.last } + fresh).sortedBy { it.first }
@@ -109,10 +130,14 @@ object LastRunNotes {
         if (found != null) {
             val (e, _) = found
             val ago = ago(now - e.at)
+            val meta = "last run, $ago"
             return when (e.kind) {
-                Kind.PRODUCED -> LineNotes.Note("last run, $ago · ${e.caption}", e.png, volatile = true)
-                Kind.STOPPED -> LineNotes.Note("last run, $ago · stopped here: ${e.caption}", volatile = true)
-                Kind.NOT_REACHED -> LineNotes.Note("last run, $ago · not reached: the run stopped above this line", volatile = true)
+                Kind.PRODUCED -> LineNotes.Note("$meta · ${e.caption}", e.png, volatile = true, meta = meta,
+                    value = e.value.ifEmpty { listOf(LineNotes.plain(e.caption)) }, imageScale = if (e.png != null) e.imageScale else 1)
+                Kind.STOPPED -> LineNotes.Note("$meta · stopped here: ${e.caption}", volatile = true, meta = meta,
+                    value = listOf(LineNotes.plain("stopped here: "), LineNotes.strong(e.caption)))
+                Kind.NOT_REACHED -> LineNotes.Note("$meta · not reached: the run stopped above this line", volatile = true, meta = meta,
+                    value = listOf(LineNotes.plain("not reached: the run stopped above this line")))
             }
         }
         // Nothing recorded matches the text: say so if a recorded step sat on this line, since what it
@@ -122,7 +147,10 @@ object LastRunNotes {
             Kind.STOPPED -> "it stopped here: ${stale.caption}"
             else -> stale.caption
         }
-        return LineNotes.Note("changed since the last run (${ago(now - stale.at)}), so this is what the old text did · $then", volatile = true)
+        val meta = "changed since the last run (${ago(now - stale.at)}), so this is what the old text did"
+        val value = if (stale.kind == Kind.STOPPED) listOf(LineNotes.plain("it stopped here: "), LineNotes.strong(stale.caption))
+            else stale.value.ifEmpty { listOf(LineNotes.plain(stale.caption)) }
+        return LineNotes.Note("$meta · $then", volatile = true, meta = meta, value = value)
     }
 
     /** "just now", "12 s ago", "4 min ago", "3 h ago", "2 days ago". */

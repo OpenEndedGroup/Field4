@@ -6,6 +6,7 @@ import afield.datalog.DatalogExecution
 import afield.datalog.DatalogLineNotes
 import afield.forth.ForthInterpreter
 import afield.forth.evalRecordingLineNotes
+import afield.forth.forthOkHtml
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -102,6 +103,8 @@ class LastRunNotesTest {
         assertTrue(rule.caption.startsWith("derives 1 of path/2's 3 facts: path(a, c)"), rule.caption)
         assertTrue("3 s ago" in rule.caption)
         assertNotNull(rule.png)
+        assertEquals(listOf("1"), rule.value.filter { it.strong }.map { it.text }, "the derived count is the result")
+        assertTrue(rule.meta.startsWith("the box's model"))
         assertTrue(DatalogLineNotes.note(execution.datalog, program, 3, ran)!!.caption.startsWith("derives 2 of path/2's 3 facts"))
         assertTrue(DatalogLineNotes.note(execution.datalog, program, 6, ran)!!.caption.startsWith("?- path(a, W): 2 answers"))
         val fact = DatalogLineNotes.note(execution.datalog, program, 1, ran)!!.caption
@@ -139,5 +142,48 @@ class LastRunNotesTest {
         assertEquals(listOf("x", "double"), bound.map { it.first })
         assertEquals("20", bound[0].second)
         assertEquals("42", afield.ml.core.renderFieldMLValue(value))
+    }
+
+    @Test
+    fun aNoteSplitsItsResultsFromWhereTheyCameFrom() {
+        val box = Box("last-run-split")
+        val code = "1 2\n"
+        ForthInterpreter().evalRecordingLineNotes(box, code, 0)
+        val note = assertNotNull(LastRunNotes.note(box, "code", code, 1, now = System.currentTimeMillis()))
+        assertEquals("last run, just now", note.meta)
+        assertEquals(listOf("1.0", "2.0"), note.value.filter { it.strong }.map { it.text })
+        assertEquals(note.caption, note.meta + " · " + note.value.joinToString("") { it.text }, "the caption is still the whole sentence")
+        assertEquals(LineNotePictures.SCALE, note.imageScale)
+        assertEquals(168 * LineNotePictures.SCALE, ImageIO.read(note.png!!.inputStream()).width, "drawn at 2x")
+    }
+
+    @Test
+    fun aPictureIsDrawnOnlyWhenItsNoteIsAskedForAndThenOnce() {
+        val box = Box("last-run-lazy")
+        var drawn = 0
+        LastRunNotes.record(box, "code", "a\nb", 0, listOf(1, 2).map { line ->
+            LastRunNotes.Produced(line, line, "line $line", picture = { drawn++; LineNotePictures.stack(listOf("$line")) })
+        })
+        assertEquals(0, drawn, "recording draws nothing")
+        assertNotNull(LastRunNotes.note(box, "code", "a\nb", 2)?.png)
+        assertNotNull(LastRunNotes.note(box, "code", "a\nb", 2)?.png)
+        assertEquals(1, drawn, "one note asked for twice: one picture")
+    }
+
+    @Test
+    fun aDeepStackIsRecordedByItsTopAndDepth() {
+        val box = Box("last-run-deep")
+        val code = "clear\n" + (1..200).joinToString("\n") { "$it" }
+        ForthInterpreter().evalRecordingLineNotes(box, code, 0)
+        val last = assertNotNull(LastRunNotes.note(box, "code", code, 201))
+        assertTrue("<200> … 195.0 196.0 197.0 198.0 199.0 200.0" in last.caption, last.caption)
+        assertNotNull(last.png)
+    }
+
+    @Test
+    fun aCleanForthRunMarksWhatItLeftOnTheStack() {
+        assertEquals("ok", forthOkHtml(emptyList(), 0))
+        assertEquals("<span class=\"afield-forth-ok\">ok · &lt;3&gt; 3.0 100.0 <b>&quot;done&quot;</b></span>", forthOkHtml(listOf("3.0", "100.0", "\"done\""), 3))
+        assertEquals("<span class=\"afield-forth-ok\">ok · &lt;9&gt; … 4 5 6 7 8 <b>&lt;9&gt;</b></span>", forthOkHtml((4..8).map { "$it" } + "<9>", 9))
     }
 }

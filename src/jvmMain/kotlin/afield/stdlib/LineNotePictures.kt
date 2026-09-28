@@ -26,10 +26,18 @@ object LineNotePictures {
     /** How many cells of a stack, or rows of a table, a picture shows before it says how many more there are. */
     const val SHOWN = 8
 
+    /**
+     * Device pixels per CSS pixel: the pictures are drawn at twice their size, so a Retina display shows
+     * them sharp rather than upscaled. A note carrying one says so ([LineNotes.Note.imageScale]).
+     */
+    const val SCALE = 2
+
+    /** Draw [paint] on a [width] × [height] (CSS pixels) picture, at [SCALE]. */
     private fun draw(width: Int, height: Int, paint: (Graphics2D) -> Unit): ByteArray {
-        val image = BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        val image = BufferedImage(width * SCALE, height * SCALE, BufferedImage.TYPE_INT_ARGB)
         val g = image.createGraphics()
         try {
+            g.scale(SCALE.toDouble(), SCALE.toDouble())
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON)
             g.color = background
@@ -39,7 +47,7 @@ object LineNotePictures {
         } finally {
             g.dispose()
         }
-        return afield.util.PngEncoder.encode(image.getRGB(0, 0, width, height, null, 0, width), width, height)
+        return afield.util.PngEncoder.encode(image.getRGB(0, 0, image.width, image.height, null, 0, image.width), image.width, image.height)
     }
 
     private fun fit(g: Graphics2D, text: String, width: Int): String {
@@ -52,11 +60,12 @@ object LineNotePictures {
 
     /**
      * A stack of [values], bottom first as a stack is usually listed; the top is drawn uppermost and
-     * outlined. An empty stack is drawn as an empty tray.
+     * outlined. An empty stack is drawn as an empty tray. [values] may be only the top of a stack
+     * [depth] deep, and the picture says how many more are below.
      */
-    fun stack(values: List<String>): ByteArray {
+    fun stack(values: List<String>, depth: Int = values.size): ByteArray {
         val shown = values.takeLast(SHOWN).asReversed()
-        val hidden = values.size - shown.size
+        val hidden = depth - shown.size
         val rowHeight = 18
         val width = 168
         val rows = maxOf(1, shown.size) + (if (hidden > 0) 1 else 0)
@@ -75,7 +84,7 @@ object LineNotePictures {
                 g.stroke = BasicStroke(1f)
                 g.drawRect(8, y, width - 17, rowHeight - 3)
                 g.color = muted
-                g.drawString(if (i == 0) "top" else "${values.size - i}", 12, y + baseline)
+                g.drawString(if (i == 0) "top" else "${depth - i}", 12, y + baseline)
                 g.color = ink
                 g.drawString(fit(g, value, width - 58), 44, y + baseline)
             }

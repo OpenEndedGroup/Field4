@@ -372,10 +372,12 @@ class ForthInterpreter {
     /**
      * Called after each top-level step of [eval] — a word, a literal, a whole `: … ;` definition or
      * `if … then` — with the first and last source lines the step's tokens sat on (1-based, in the
-     * evaluated text) and the name it defined, if it was a definition. Steps inside a word's body do
-     * not count. The box records the stack here for its line notes; null costs nothing.
+     * evaluated text), the name it defined, if it was a definition, and whether it is the last step to
+     * end on its line (the next step starts on a later line, or there is none) — the moment a line's
+     * note is about. Steps inside a word's body do not count. The box records the stack here for its
+     * line notes; null costs nothing.
      */
-    var onTopLevelStep: ((firstLine: Int, lastLine: Int, defined: String?) -> Unit)? = null
+    var onTopLevelStep: ((firstLine: Int, lastLine: Int, defined: String?, endsLine: Boolean) -> Unit)? = null
 
     init {
         installBuiltins()
@@ -431,6 +433,12 @@ class ForthInterpreter {
 
     /** The data stack, bottom first, each value as a diagnostic shows it. */
     fun stackSnapshot(): List<String> = stack.map { shortValue(it) }
+
+    /** The top [n] values of the data stack, bottom first, as [stackSnapshot] shows them: cheap however deep the stack is. */
+    fun stackTop(n: Int): List<String> {
+        val from = maxOf(0, stack.size - n)
+        return (from until stack.size).map { shortValue(stack[it]) }
+    }
 
     private fun shortValue(v: Any?): String = when (v) {
         null -> "null"
@@ -712,7 +720,8 @@ class ForthInterpreter {
                 val defined = if (lw == ":" && stepStart + 1 < tokens.size) tokens[stepStart + 1].text.lowercase()
                     else if ((lw == "variable" || lw == "constant") && stepStart + 1 < tokens.size) tokens[stepStart + 1].text.lowercase()
                     else null
-                step(line, tokens[minOf(i, tokens.size) - 1].line, defined)
+                val lastLine = tokens[minOf(i, tokens.size) - 1].line
+                step(line, lastLine, defined, i >= end || tokens[i].line > lastLine)
             }
         }
         return i

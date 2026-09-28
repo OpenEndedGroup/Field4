@@ -21,7 +21,8 @@ import io.ktor.websocket.WebSocketSession
  *
  * [ForthExecution] answers the execution contract a box's editor talks to. Running a fragment,
  * or the whole box, evaluates the source once and reports each diagnostic on the line that produced
- * it, printing `ok` when a run finished cleanly and produced no visible output of its own.
+ * it, printing `ok` — with what the run left on the stack, the top value in bold — when a run
+ * finished cleanly and produced no visible output of its own.
  * Completion offers the dictionary's words, each with the kind and the documentation the
  * interpreter holds for it. Executing a symbol runs one named word as a single-line fragment.
  *
@@ -144,7 +145,7 @@ class ForthExecution(val inside: Box) : BoxExecution {
                             uid = inside.id,
                             line = execute.line + execute.code.split("\n").size,
                             kind = "ok",
-                            html = "ok",
+                            html = forthOkHtml(forth.stackTop(FORTH_NOTE_VALUES), forth.stack.size),
                             frame = Runloop.runLoop.frame.toInt()
                         ),
                         originSession = originSession
@@ -363,39 +364,78 @@ class ForthExecution(val inside: Box) : BoxExecution {
  * print, display and reach into the JVM.
  */
 fun ForthInterpreter.evalRecordingLineNotes(box: Box, code: String, lineOffset: Int): List<ForthDiagnostic> {
-    class Span(val first: Int, val last: Int, val stack: List<String>, val defined: List<String>)
+    // Only the top of the stack is kept, and only once per line: copying the whole stack after every
+    // step made a deep stack quadratic (200 lines, 200 deep: 180 ms), and a line's note is about the
+    // stack as the line leaves it.
+    class Span(val first: Int, val last: Int, val top: List<String>, val depth: Int, val defined: List<String>)
     val spans = ArrayList<Span>()
-    onTopLevelStep = { first, last, defined ->
+    val pendingNames = ArrayList<String>()
+    var pendingFirst = -1
+    onTopLevelStep = { first, last, defined, endsLine ->
         // A step that starts on a line an earlier step ended on joins it: a line's note is about all of it.
-        var from = first
-        val names = ArrayList<String>()
+        if (pendingFirst < 0) pendingFirst = first
         while (spans.isNotEmpty() && spans.last().last >= first) {
             val earlier = spans.removeAt(spans.size - 1)
-            from = minOf(from, earlier.first)
-            names.addAll(0, earlier.defined)
+            pendingFirst = minOf(pendingFirst, earlier.first)
+            pendingNames.addAll(0, earlier.defined)
         }
-        defined?.let { names += it }
-        spans += Span(from, last, stackSnapshot(), names)
+        defined?.let { pendingNames += it }
+        if (endsLine) {
+            spans += Span(pendingFirst, last, stackTop(afield.stdlib.LineNotePictures.SHOWN), stack.size, pendingNames.toList())
+            pendingNames.clear()
+            pendingFirst = -1
+        }
     }
     val diagnostics = try { eval(code) } finally { onTopLevelStep = null }
     val stopped = diagnostics.firstOrNull()?.line?.takeIf { it >= 1 }
     runCatching {
         afield.stdlib.LastRunNotes.record(
             box, "code", code, lineOffset,
-            produced = spans.filter { stopped == null || it.last < stopped }.map { span ->
-                val depth = "<${span.stack.size}>"
-                val stack = if (span.stack.isEmpty()) "the stack is empty" else "the stack after it: $depth " +
-                    afield.stdlib.LastRunNotes.oneLine(span.stack.takeLast(6).joinToString(" "), 90).let { if (span.stack.size > 6) "… $it" else it }
-                val caption = if (span.defined.isNotEmpty()) "defines " + span.defined.joinToString(", ") + " · " + stack else stack
-                afield.stdlib.LastRunNotes.Produced(span.first, span.last, caption,
-                    if (span.defined.isEmpty() || span.stack.isNotEmpty()) afield.stdlib.LineNotePictures.stack(span.stack) else null)
-            },
+            produced = spans.filter { stopped == null || it.last < stopped }.map { span -> forthLineNote(span.first, span.last, span.top, span.depth, span.defined) },
             stoppedAt = stopped,
             stopReason = diagnostics.firstOrNull()?.message?.lineSequence()?.firstOrNull(),
             notReached = if (stopped == null) emptyList() else tokenize(code).map { it.line }.filter { it > stopped }.distinct(),
         )
     }.onFailure { lprintln("warning,forth", "could not record line notes: $it") }
     return diagnostics
+}
+
+/** How many of the top stack values a note's sentence names. */
+private const val FORTH_NOTE_VALUES = 6
+
+/** The note for lines [first]..[last]: the stack they left, [top] of it [depth] deep, and the words they [defined]. */
+internal fun forthLineNote(first: Int, last: Int, top: List<String>, depth: Int, defined: List<String>): afield.stdlib.LastRunNotes.Produced {
+    val named = top.takeLast(FORTH_NOTE_VALUES)
+    val more = depth > named.size
+    val value = ArrayList<afield.stdlib.LineNotes.Segment>()
+    if (defined.isNotEmpty()) {
+        value += afield.stdlib.LineNotes.plain("defines ")
+        defined.forEachIndexed { i, name -> if (i > 0) value += afield.stdlib.LineNotes.plain(", "); value += afield.stdlib.LineNotes.strong(name) }
+        value += afield.stdlib.LineNotes.plain(" · ")
+    }
+    if (depth == 0) value += afield.stdlib.LineNotes.plain("the stack is empty")
+    else {
+        value += afield.stdlib.LineNotes.plain("the stack after it: <$depth> " + if (more) "… " else "")
+        named.forEachIndexed { i, v -> if (i > 0) value += afield.stdlib.LineNotes.plain(" "); value += afield.stdlib.LineNotes.strong(afield.stdlib.LastRunNotes.oneLine(v, 40)) }
+    }
+    val caption = value.joinToString("") { it.text }
+    return afield.stdlib.LastRunNotes.Produced(first, last, caption, value = value,
+        picture = if (defined.isEmpty() || depth > 0) ({ afield.stdlib.LineNotePictures.stack(top, depth) }) else null,
+        imageScale = afield.stdlib.LineNotePictures.SCALE)
+}
+
+/**
+ * The marker a clean ForthField run that printed nothing leaves after its last line: `ok`, and what the
+ * run left on the stack — the depth and the top values, the topmost in bold — so a run shows its result
+ * rather than suggesting nothing is left. A bare `ok` when the stack is empty. HTML, escaped.
+ */
+internal fun forthOkHtml(top: List<String>, depth: Int): String {
+    if (depth == 0) return "ok"
+    fun esc(t: String) = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;")
+    val named = top.takeLast(FORTH_NOTE_VALUES).map { esc(afield.stdlib.LastRunNotes.oneLine(it, 40)) }
+    val values = named.mapIndexed { i, v -> if (i == named.lastIndex) "<b>$v</b>" else v }.joinToString(" ")
+    // Starting with a tag is what makes the editor render it as HTML (an inline marker is plain text).
+    return "<span class=\"afield-forth-ok\">ok · &lt;$depth&gt; " + (if (depth > named.size) "… " else "") + values + "</span>"
 }
 
 /**

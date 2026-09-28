@@ -1384,15 +1384,19 @@ _orig_print(" python interpreter has finished starting up ")
                 val (first, last, kind, type) = cells.map { it.orEmpty() }
                 // null: a value the recorder would not print, because printing it would run its type's __repr__.
                 val text = cells.getOrNull(4)
-                val shown = text?.let { afield.stdlib.LastRunNotes.oneLine(it) + " · " + type } ?: "a $type (a note does not call its __repr__)"
-                val caption = when {
-                    kind == "ran" -> "ran (a `$text` statement)"
-                    kind.startsWith("defines ") -> kind
-                    kind.startsWith("assigned ") -> kind.removePrefix("assigned ") + " = " + shown
-                    type == "NoneType" -> "evaluated to None"
-                    else -> "evaluated to $shown"
+                val P = afield.stdlib.LineNotes::plain
+                val S = afield.stdlib.LineNotes::strong
+                val shown = text?.let { listOf(S(afield.stdlib.LastRunNotes.oneLine(it)), P(" · $type")) }
+                    ?: listOf(P("a "), S(type), P(" (a note does not call its __repr__)"))
+                val value = when {
+                    kind == "ran" -> listOf(P("ran (a `$text` statement)"))
+                    kind.startsWith("defines ") -> listOf(P("defines "), S(kind.removePrefix("defines ")))
+                    kind.startsWith("assigned ") -> listOf(P(kind.removePrefix("assigned ") + " = ")) + shown
+                    type == "NoneType" -> listOf(P("evaluated to "), S("None"))
+                    else -> listOf(P("evaluated to ")) + shown
                 }
-                afield.stdlib.LastRunNotes.Produced(first.toInt() + dropped, last.toInt() + dropped, caption)
+                val caption = value.joinToString("") { it.text }
+                afield.stdlib.LastRunNotes.Produced(first.toInt() + dropped, last.toInt() + dropped, caption, value = value)
             }
             afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
         }.onFailure { lprintln("warning,python", "could not record line notes: $it") }

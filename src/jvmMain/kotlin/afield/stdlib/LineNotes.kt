@@ -30,7 +30,32 @@ object LineNotes {
      * [volatile] says the note can change while the text does not — a last run's value, which the next
      * run replaces, or its age — so the editor asks again rather than keeping it against the text.
      */
-    class Note(val caption: String, val png: ByteArray? = null, val volatile: Boolean = false)
+    class Note(
+        val caption: String,
+        val png: ByteArray? = null,
+        val volatile: Boolean = false,
+        /**
+         * The note split for the eye: [value], what the line came to, with its results marked [Segment.strong]
+         * so the editor sets them in bold, and [meta], where the value came from ("last run, 12 s ago"). Empty
+         * for a note that is only a [caption] (StackSL's, RectSL's), which the editor shows as before.
+         * [caption] stays the whole sentence, for anything that reads the note as text.
+         */
+        val meta: String = "",
+        val value: List<Segment> = emptyList(),
+        /** Device pixels per CSS pixel of [png]: 2 for a picture drawn for a Retina display. */
+        val imageScale: Int = 1,
+    )
+
+    /** A run of a note's [Note.value]: [strong] for a result — a number, a stack value, an answer count. */
+    class Segment(val text: String, val strong: Boolean = false) {
+        override fun toString() = text
+    }
+
+    /** A plain run of a note's value. */
+    fun plain(text: String) = Segment(text, false)
+
+    /** A result in a note's value, which the editor sets in bold. */
+    fun strong(text: String) = Segment(text, true)
 
     /** Describes [line] (1-based) of [source], the text of [box]'s property as the editor holds it; null when it has nothing to say. */
     fun interface Provider {

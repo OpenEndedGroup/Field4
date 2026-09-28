@@ -299,13 +299,17 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
             val printer = afield.ml.type.TypePrinter()
             val produced = bound.mapNotNull { (index, v) ->
                 val let = lets.getOrNull(index) ?: return@mapNotNull null
-                afield.stdlib.LastRunNotes.Produced(let.range.start.line, let.value.range.end.line,
-                    "${let.name} = " + afield.stdlib.LastRunNotes.oneLine(renderFieldMLValue(v)) + " : " + printer.print(let.value.type))
+                val shown = afield.stdlib.LastRunNotes.oneLine(renderFieldMLValue(v))
+                val type = " : " + printer.print(let.value.type)
+                afield.stdlib.LastRunNotes.Produced(let.range.start.line, let.value.range.end.line, "${let.name} = $shown$type",
+                    value = listOf(afield.stdlib.LineNotes.plain("${let.name} = "), afield.stdlib.LineNotes.strong(shown), afield.stdlib.LineNotes.plain(type)))
             }.toMutableList()
             val tail = lets.lastOrNull()?.body ?: typed
             if (result != null && tail !is afield.ml.type.TExprLet) {
+                val shown = afield.stdlib.LastRunNotes.oneLine(result.first)
                 produced += afield.stdlib.LastRunNotes.Produced(tail.range.start.line, tail.range.end.line,
-                    "evaluated to " + afield.stdlib.LastRunNotes.oneLine(result.first) + " : " + result.second)
+                    "evaluated to $shown : ${result.second}",
+                    value = listOf(afield.stdlib.LineNotes.plain("evaluated to "), afield.stdlib.LineNotes.strong(shown), afield.stdlib.LineNotes.plain(" : ${result.second}")))
             }
             afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
         }.onFailure { afield.logger.lprintln("warning,study", "could not record FieldML line notes: $it") }

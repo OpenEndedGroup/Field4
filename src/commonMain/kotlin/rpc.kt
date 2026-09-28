@@ -332,7 +332,17 @@ data class LineNoteReply(
     val caption: String = "",
     val image: String = "",
     val volatile: Boolean = false,
+    /** Where the value came from ("last run, 12 s ago"); with [value], the note split for the eye. Empty: show [caption]. */
+    val meta: String = "",
+    /** What the line came to, in runs; a `strong` run is a result the editor sets in bold. */
+    val value: List<LineNoteSegment> = emptyList(),
+    /** Device pixels per CSS pixel of [image]. */
+    val imageScale: Int = 1,
 )
+
+/** One run of a line note's value: see [LineNoteReply.value]. */
+@Serializable
+data class LineNoteSegment(val text: String, val strong: Boolean = false)
 
 /**
  * One completion exactly as Field's popup presented it. This is intentionally a client report,
