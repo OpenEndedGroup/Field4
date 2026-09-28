@@ -351,9 +351,12 @@ object SpreadsheetEvalHelpers {
     fun sum(values: Any?): Double = flattenNumeric(values).sum()
 
     @JvmStatic
+    // Unlike min/max, an empty average has no sensible value (Excel's `#DIV/0!`), so the cell errors
+    // rather than showing a 0 that looks like data.
     fun avg(values: Any?): Double {
         val flattened = flattenNumeric(values)
-        return if (flattened.isEmpty()) 0.0 else flattened.sum() / flattened.size
+        if (flattened.isEmpty()) error("average of a range with no numbers")
+        return flattened.sum() / flattened.size
     }
 
     @JvmStatic
@@ -1801,7 +1804,7 @@ private object SpreadsheetService {
             insertText = "avg(range(\"A1:A4\"))",
             kind = "function",
             detail = "Average numeric values",
-            documentation = "Returns the arithmetic mean of numeric values.",
+            documentation = "Returns the arithmetic mean of numeric values; an error if there are none.",
             cursorOffset = 11
         ),
         GeneralCompletion(

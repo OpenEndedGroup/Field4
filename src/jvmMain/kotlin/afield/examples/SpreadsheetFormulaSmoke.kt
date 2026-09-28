@@ -20,7 +20,8 @@ expect:
  * `self` binding, units, a Kotlin compile failure, and a runtime failure. Two deliberate changes: a
  * formula that fails to compile now carries the compiler's first error (C1); under K1 it read only
  * "Formula compilation failed". And `min`/`max` return 0 for an empty range, as Excel and Sheets do,
- * instead of `null` (B3, C3, C4), so they can be used in arithmetic without `!!`.
+ * instead of `null` (B3, C3, C4), so they can be used in arithmetic without `!!`. `avg` of an empty range is an error (C6), as
+ * Excel's `#DIV/0!` is, rather than the 0 it used to show.
  */
 private val SPREADSHEET_FORMULAS_SNIPPET = """
 setPropertyRaw("sheetFactor", 7.0, doResync = false)
@@ -42,10 +43,12 @@ editSpreadsheet(broadcast = false) {
     formula("C2", "cell(\"Z99\")")
     formula("C3", "max(D1:D3) + min(D1:D3)")
     formula("C4", "max(A1:A3) + 1")
+    formula("C5", "avg(A1:A3)")
+    formula("C6", "avg(D1:D3)")
 }
 val expected = listOf(
     "B1" to "20", "B2" to "10", "B3" to "7", "B4" to "7.1416", "B5" to "21", "B6" to "30",
-    "B7" to "TEXT", "B8" to "3", "B9" to "3 m", "C1" to "#ERR", "C2" to "#ERR", "C3" to "0", "C4" to "6",
+    "B7" to "TEXT", "B8" to "3", "B9" to "3 m", "C1" to "#ERR", "C2" to "#ERR", "C3" to "0", "C4" to "6", "C5" to "3.3333", "C6" to "#ERR",
 )
 val snap = getSpreadsheetSnapshot()
 val problems = mutableListOf<String>()
@@ -57,6 +60,7 @@ for ((ref, want) in expected) {
 val c1 = snap.cell("C1")?.errorDetail.orEmpty()
 if (!c1.startsWith("Formula compilation failed: ")) problems += "C1: a formula that does not compile must say why, got " + c1
 if (snap.cell("C2")?.errorDetail?.contains("outside the sheet") != true) problems += "C2: expected the out-of-range error, got " + snap.cell("C2")?.errorDetail
+if (snap.cell("C6")?.errorDetail?.contains("no numbers") != true) problems += "C6: an empty average must be an error, got " + snap.cell("C6")?.errorDetail
 if (problems.isNotEmpty()) error("spreadsheet formulas disagree: " + problems.joinToString("; "))
 println("SPREADSHEET_FORMULAS_OK")
 """.trimIndent()
