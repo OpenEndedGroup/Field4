@@ -55,14 +55,14 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 160 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 161 transcripts on every build, at three
 depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-71 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
-audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
+72 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
 Kotlin **compiled to JavaScript** for a browser or visionOS head, through the real head profile that
@@ -1679,6 +1679,23 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### pure_data_demo
+
+**Pure Data inside Field.** Eight boxes: a Kotlin root whose `mainLanguage` makes three Pd boxes
+under it, and four Kotlin boxes that drive a patch from Kotlin. **drone**'s text is its patch: launch
+it, then run the line `freq 330` on its own and the filtered sawtooth moves. **round trip** is
+`[r in] → [+ 1] → [s out]`; running `in 41` prints `out: 42`, and the line note on `[s out]` then
+reads "Last on 'out': 42.0". **typo** has `[osc 440]` on line 3, and launching it marks that line
+"Pd couldn't create [osc 440] — did you mean [osc~ 440]?". The Kotlin boxes write a wavetable into
+`[table wave]` (2051 points), send a `SawOsc` through a Pd `[lop~]` and read its level back from
+`[s level]`, send numbers to the drone with `pdBox("drone").pdSend(...)`, and render a patch offline:
+**offline** prints 440 upward zero crossings in one second at a peak of 0.2500. Needs libpd, built
+once with `./gradlew buildLibpdNative`. The build does not own that, so CI compiles the four Kotlin
+boxes and skips the three Pd ones, as it skips Python cells; every box was run by hand against a
+built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
 
 ### marf_demo
 

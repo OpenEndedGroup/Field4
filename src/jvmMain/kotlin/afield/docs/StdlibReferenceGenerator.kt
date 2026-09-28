@@ -196,6 +196,7 @@ object StdlibReferenceGenerator {
         "src/jvmMain/kotlin/afield/four/fabricated",
         "src/jvmMain/kotlin/afield/kratos",
         "src/jvmMain/kotlin/afield/tetgen",
+        "src/jvmMain/kotlin/afield/pd",
         "src/jvmMain/kotlin/afield/clojure",
         "src/jvmMain/kotlin/afield/datalog",
         "src/jvmMain/kotlin/afield/forth",

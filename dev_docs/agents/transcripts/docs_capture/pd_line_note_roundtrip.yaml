@@ -1,0 +1,39 @@
+name: pd_line_note_roundtrip
+description: |
+  Setup for the `pure_data.md` line-note capture. A Pd language root and one Pd box holding the
+  round-trip patch `[r in] → [+ 1] → [s out]`. The box is launched, and then its message line
+  `in 41` is run as a fragment, just as selecting the line and running it in the editor would. The
+  capture's drive script then puts the cursor on the `[s out]` line and photographs the note the
+  editor shows, which reports the last value through `out`: 42.
+operations:
+  - create:
+      box: pd_doc_root
+      name: "Pd"
+      frame: { x: 40.0, y: 40.0, w: 160.0, h: 80.0 }
+      properties:
+        mainLanguage: pd
+        isPdRoot: true
+        code: |
+          // Children of this box are Pure Data.
+  - create:
+      box: pd_doc_roundtrip
+      name: "round trip"
+      frame: { x: 40.0, y: 180.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Pd
+        code: |
+          // Launch, then run the line below: [+ 1] sends 42 to [s out].
+          in 41
+          #N canvas 0 0 400 250 12;
+          #X obj 20 20 r in;
+          #X obj 20 60 + 1;
+          #X obj 20 100 s out;
+          #X obj 120 100 print out;
+          #X connect 0 0 1 0;
+          #X connect 1 0 2 0;
+          #X connect 1 0 3 0;
+  - connect: { parent: pd_doc_root, child: pd_doc_roundtrip }
+  - launch: { box: pd_doc_roundtrip, property: code }
+  - wait: { frames: 30 }
+  - execute: { box: pd_doc_roundtrip, property: code, code: "in 41", line: 1, singleLine: true, type: fragment }
+  - wait: { frames: 30 }

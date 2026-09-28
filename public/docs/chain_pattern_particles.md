@@ -197,7 +197,7 @@ float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
 ## Where each piece is documented
 
 * [Patterns & Rhythm](pattern_language.md) for the event model, the mini-notation and the operators.
-* [Making a Sound, Every Path There Is](sound_paths.md) for the seam itself, the other sixteen
+* [Making a Sound, Every Path There Is](sound_paths.md) for the seam itself, the other seventeen
   paths, and which of them meet it.
 * [DoughDSP Sound Examples](dough_dsp_sound.md) for the filters, envelopes and oscillators a voice
   is built from, and [Synthesis](reference/synthesis.md) plus [Patterns](reference/patterns.md) for
