@@ -213,6 +213,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         measurements: List<ThreeMeasurement> = emptyList(),
         pickToMeasure: Boolean = true,
         groups: List<String> = emptyList(),
+        artifactDigest: String? = null,
+        renderOrigin: DoubleArray = doubleArrayOf(0.0, 0.0, 0.0),
+        renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
+        assembly: List<ThreeAssemblyMotion> = emptyList(),
+        review: ThreeReviewState? = null,
     ) {
         inspector = ThreeInspector(
             enabled = true,
@@ -223,6 +228,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             units = units,
             decimals = decimals,
             pickToMeasure = pickToMeasure,
+            artifactDigest = artifactDigest, renderOrigin = renderOrigin, renderUpAxis = renderUpAxis, assembly = assembly, review = review,
         )
     }
 
@@ -392,6 +398,7 @@ fun Box.three(
             "style='border:none;padding:0;margin:0;$sizing;height:${height}px'>"
     )
     val view = threeViewFor(uid)
+    view.bindSource(this)
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }

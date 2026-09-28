@@ -33,6 +33,7 @@ import afield.server.installFieldAudioProxyRoutes
 import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
 import afield.server.SEC_FETCH_SITE_HEADER
+import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
 import afield.server.installDocumentGuideRoutes
@@ -5032,6 +5033,47 @@ class Server {
                                 call.respondText(modifiedContent, ContentType.Text.Html)
                             }
                         }
+                        route("/three-review-image") {
+                            get {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@get
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val hash = call.request.queryParameters["sha256"] ?: ""
+                                val bytes = afield.graphics.threeGeometryReviewImage(uid, hash)
+                                if (bytes == null) call.respond(HttpStatusCode.NotFound)
+                                else call.respondBytes(bytes, ContentType.Image.PNG)
+                            }
+                        }
+                        route("/three-review") {
+                            get {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@get
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val review = afield.graphics.threeGeometryReviews(uid, call.request.queryParameters["includeResolved"] == "true")
+                                if (review == null) call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                else call.respondText(review.toString(), ContentType.Application.Json)
+                            }
+                        }
+                        route("/three-review-note") {
+                            post {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (call.request.contentType().withoutParameters() != ContentType.Application.Json) {
+                                    call.respond(HttpStatusCode.UnsupportedMediaType); return@post
+                                }
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val text = call.receiveText()
+                                if (text.length > 32_000) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val result = runCatching {
+                                    val request = Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
+                                        ?: throw IllegalArgumentException("Review update must be an object")
+                                    withContext(Runloop.runLoop.main) { afield.graphics.updateThreeGeometryReview(uid, request) }
+                                }
+                                when {
+                                    result.isFailure -> call.respondText(result.exceptionOrNull()?.message ?: "Invalid review update",
+                                        status = if (result.exceptionOrNull() is IllegalStateException) HttpStatusCode.Conflict else HttpStatusCode.BadRequest)
+                                    result.getOrNull() == null -> call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                    else -> call.respondText(result.getOrThrow().toString(), ContentType.Application.Json)
+                                }
+                            }
+                        }
                         route("/threejs") {
                             handle {
                                 val originalContent =
@@ -5628,7 +5670,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 53
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 54
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5654,7 +5696,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 53 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 49 of its 54 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
