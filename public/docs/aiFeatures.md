@@ -42,7 +42,9 @@ For a complete conversation that changes code and inspects its result, try
 blank three-channel signal document, a developed example with saved conversations,
 and editable tools for plotting, checking and exporting the function.
 [Talking a shader into existence](stacksl_conversation.md) does the same for a
-StackSL program drawn live in a window, with three recorded sessions.
+StackSL program drawn live in a window, with three recorded sessions, and
+[Talking to the StackSL in your shader](stackauto_conversation.md) for the
+`stack.auto` slots inside your own vertex and fragment shaders.
 
 ## Chat at an editor location
 

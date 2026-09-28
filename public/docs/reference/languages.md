@@ -8604,7 +8604,7 @@ A box's slot studies, one per slot, made on first use.
 
 `src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt` — [read the source](source/jvmMain/afield/stacksl/study/StackAutoStudyTools/)
 
-**Used in:** [StackSL examples](../stacksl_examples.md)
+**Used in:** [Talking to the StackSL in your shader](../stackauto_conversation.md), [StackSL examples](../stacksl_examples.md)
 
 ### Top-level functions { #stackautostudytools-kt-functions }
 

@@ -6,6 +6,10 @@ Field aims to be full of unexpectedly fun features that help you interact with c
 
 This is such a big and important topic, it gets its [own page](aiFeatures.md).
 
+But here's the part that's hard to believe until you see it: you can *talk* things into existence, and the model looks at what it made before it answers. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
+
+![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
+
 ## Running things
 
 You can run code in Field the following ways (from the commonplace to the rare)

@@ -1156,9 +1156,10 @@ is a numbered sheet of real frames across that long instead. An edit returns onc
 pipeline is drawing, which MoltenVK can take seconds to build, and says so with
 `boundLive`; there is then nothing to reload.
 
-`dev_docs/agents/demos/stackauto_conversation_polytope` is a recorded conversation of this
-kind: a snub dodecahedron whose vertex shader's slot sends its faces flying in a wave, and
-whose fragment shader's slot heats them and burns them out to ragged frames at the peak.
+[Talking to the StackSL in your shader](stackauto_conversation.md) follows a recorded
+conversation of this kind step by step: a snub dodecahedron whose vertex shader's slot sends
+its faces flying in a wave, and whose fragment shader's slot heats them and burns them out to
+ragged frames at the peak.
 
 ### In the editor
 

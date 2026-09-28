@@ -45,6 +45,26 @@ class StackAutoConversationExampleTest {
     }
 
     @Test
+    fun theStarterIsWhereTheRecordingBegan() {
+        // The download on public/docs/stackauto_conversation.md: each slot's program is its first revision,
+        // and each host shader has, at the line numbers the first Inspect of that slot reported, the lines it read.
+        val starter = File(folder.parentFile, "stackauto_conversation")
+        val code = File(starter, "polytope_source_code_.kt").readText()
+        val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
+        mapOf("explode" to "explode-01-burst", "face_decay" to "decay-01-embers").forEach { (slot, turn) ->
+            val first = revisions(slot).listFiles().orEmpty().single { it.name.startsWith("r1-") && it.extension == "stacksl" }.readText()
+            assertTrue("module.$slot = \"\"\"$first\"\"\"" in code, "the starter should hold stack.auto.$slot's r1")
+            val host = mapper.readTree(File(folder, "conversations/$turn.json"))["before"]["facts"]["host"].map { it.asText() }
+            assertTrue(host.size >= 2, "$turn should record the host lines it read")
+            host.forEach { line ->
+                val (property, number, text) = Regex("""^(\w+):(\d+): (.*)$""").find(line)!!.destructured
+                val shader = File(starter, "polytope_source_${property}_.glsl").readLines()
+                assertEquals(text, shader[number.toInt() - 1].trim(), "starter $property line $number")
+            }
+        }
+    }
+
+    @Test
     fun theBoxsCodeHoldsEachSlotsHead() {
         val code = File(folder, "polytope_source_code_.kt").readText()
         slots.keys.forEach { slot -> assertTrue(head(slot) in code, "the code should hold stack.auto.$slot's HEAD verbatim") }
