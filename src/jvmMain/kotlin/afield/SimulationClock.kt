@@ -2,6 +2,8 @@ package afield
 
 import kotlinx.coroutines.*
 import java.util.PriorityQueue
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 import kotlin.math.ceil
 import kotlin.math.floor
@@ -18,7 +20,9 @@ data class SimulationAdvance(val steps: Int, val resumed: Int, val deferred: Int
  *
  * A resume budget bounds cooperative work, not an uninterruptible loop inside user code. Close runs
  * cancellation/finally continuations on the owner thread; finally blocks must not suspend for future
- * simulation time. No pending timer survives close.
+ * simulation time. No pending timer survives close. Cancellation requested from another thread (a box
+ * stop) can still be reaching the children when the owner arrives in close; their resumes are awaited
+ * for up to [closeGraceMillis] of wall time before an unfinished cleanup is reported.
  */
 @OptIn(InternalCoroutinesApi::class)
 class SimulationClock(
@@ -47,6 +51,9 @@ class SimulationClock(
     private var advancing = false
     private var closing = false
     private var closed = false
+    internal var closeGraceMillis = 5_000L
+    /** Released by enqueues during close and by root completion, so close can wait for cleanup arriving from another thread. */
+    private val cleanupSignal = Semaphore(0)
     var tick: Long = 0L
         private set
     val time: Double get() = tick * stepSeconds
@@ -61,6 +68,7 @@ class SimulationClock(
     @Synchronized private fun enqueue(context: CoroutineContext, block: Runnable) {
         check(!closed) { "Simulation clock is closed" }
         ready.addLast(Task(context, block))
+        if (closing) cleanupSignal.release()
     }
 
     @Synchronized private fun timer(seconds: Double, task: Task): DisposableHandle {
@@ -152,12 +160,22 @@ class SimulationClock(
         ownerThread()
         if (closed) return
         check(!pumping && !advancing) { "Close the clock outside a child continuation or step callback" }
-        closing = true
+        synchronized(this) { closing = true }
+        root.invokeOnCompletion { cleanupSignal.release() }
         root.cancel()
         try {
             // A generous finite drain allows ordinary cancellation/finally cleanup, including children.
-            pump(maxOf(maxResumesPerStep, 65_536))
-            check(root.isCompleted && pendingResumes == 0) { "Simulation cleanup did not finish; finally blocks must not suspend" }
+            // If root was already cancelled on another thread, that thread may not yet have dispatched
+            // the children's cancellation resumes, so an empty queue waits for them rather than failing.
+            var budget = maxOf(maxResumesPerStep, 65_536)
+            val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(closeGraceMillis)
+            while (true) {
+                budget -= pump(budget)
+                if (root.isCompleted && pendingResumes == 0) break
+                val waitNanos = deadline - System.nanoTime()
+                check(budget > 0 && waitNanos > 0) { "Simulation cleanup did not finish; finally blocks must not suspend" }
+                if (pendingResumes == 0) cleanupSignal.tryAcquire(waitNanos, TimeUnit.NANOSECONDS)
+            }
         } finally {
             synchronized(this) { ready.clear(); timers.clear(); closed = true }
         }
