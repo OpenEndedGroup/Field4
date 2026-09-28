@@ -99,8 +99,13 @@ note with its 2× stack picture, and the run's `ok · <3> …` marker), `public/
 typing into the line). Each is a `capture="ui"` fence whose setup transcript
 (`public/docs/assets/transcripts/line_notes_{forth,python}_setup.yaml`) builds the language root and box;
 the drive runs the box with its own key (`Alt+0`) where it must, and moves the caret with
-`PageUp`/`Home`/`ArrowDown` — the keys a person uses — then waits for the note's DOM. No new capture-system
-option was needed. Forth fences with `data-lang=forth` are wrapped as a Kotlin call
+`PageUp`/`Home`/`ArrowDown` — the keys a person uses — then waits for the note's DOM. Screenshot prep
+sizes the editor pane for a window capture (840–1200 px) and the note sits at the pane's foot, so a
+short program's figure was ~80% empty pane between the code and its note. `ui.editorHeight(px)`
+(`DocsUiDriver`, new) sizes the pane to the figure, as dragging its edge would, and those two fences take
+their still inside the script (`clip-selector=".monaco-editor-container"`), because the op's own capture
+re-preps the pane — and re-syncs the editor, which would also undo the stale figure's typed edit. A
+shorter Playwright viewport does not help: prep holds the pane at 840 px minimum whatever the window. Forth fences with `data-lang=forth` are wrapped as a Kotlin call
 (`renderForthDocsSnippet`), not run under a Forth root, so a plain `capture="editor"` Forth fence cannot
 show the Forth `ok` marker; that is why the marker is in the `ui` figure.
 

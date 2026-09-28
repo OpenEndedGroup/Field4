@@ -2465,6 +2465,24 @@ class DocsUiDriver internal constructor(
     fun eval(script: String): JsonElement? =
         run(AgentPlaywrightInputRequest(action = "pageEval", script = script, scriptMode = "body"))
 
+    /**
+     * Make the editor pane [px] CSS pixels tall, as dragging its edge would, and lay the editor out
+     * again. Screenshot prep sizes the pane for a window capture (840–1200 px), and the note beside the
+     * cursor sits at the pane's foot, so a short program's figure is mostly empty pane between the code
+     * and its note; a pane sized to the figure keeps them together. It lasts until the next screenshot
+     * prep re-sizes the pane, so take the still inside the script — a `clip-selector` fence's
+     * `ui.shotClip` does — rather than with the op's own capture, which re-preps.
+     */
+    fun editorHeight(px: Int) {
+        eval(
+            "var c = document.querySelector('.monaco-editor-container');" +
+                "if (!c) return false; c.style.height = '${px}px';" +
+                "if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout();" +
+                "return true;"
+        )
+        idle(400L)
+    }
+
     /** Open (and pan to) a box's code editor, reusing the screenshot editor-prep path. */
     fun openEditor(uid: String, property: String = "code") {
         runBlocking(playwrightDispatcher) {

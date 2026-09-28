@@ -47,11 +47,13 @@ A run that finishes cleanly and prints nothing says what it left behind, rather 
 depth of the stack and its top values, the topmost in bold. An empty stack gets a plain `ok`. Both are
 in this figure — the box has just been run, and the cursor rests on its last line:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/forth_examples/line_note_stack.png" transcript="assets/transcripts/line_notes_forth_setup.yaml" capture-box="line_notes_forth" padding="10" wait="0" timeout="240" embed=true hidden=true name="forth-line-note" w="560" alt="A seven-line ForthField box in the editor. Under its last line, s-quote done, a strip reads ok · <3> 3.0 100.0 done, with done in bold: what the run left. The caret rests on line 7, and the note at the foot of the editor draws the stack as three cells, top uppermost and outlined: done, 100.0, 3.0. Under the picture: the stack after it: <3> 3.0 100.0 done, the three values in bold, and in small muted type line 7 · last run, just now."}
-// Run the box and rest on line 7 through the keyboard, as a person would.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".monaco-editor-container" screenshot="assets/forth_examples/line_note_stack.png" transcript="assets/transcripts/line_notes_forth_setup.yaml" capture-box="line_notes_forth" padding="10" wait="0" timeout="240" embed=true hidden=true name="forth-line-note" w="560" alt="A seven-line ForthField box in the editor. Under its last line, s-quote done, a strip reads ok · <3> 3.0 100.0 done, with done in bold: what the run left. The caret rests on line 7, and the note at the foot of the editor draws the stack as three cells, top uppermost and outlined: done, 100.0, 3.0. Under the picture: the stack after it: <3> 3.0 100.0 done, the three values in bold, and in small muted type line 7 · last run, just now."}
+// Run the box and rest on line 7 through the keyboard, as a person would. The pane is sized to
+// the figure, so the note (which sits at the pane's foot) stays beside the code it describes.
 ui.openEditor("line_notes_forth")
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
+ui.editorHeight(470)
 ui.clickSelector(".monaco-editor .view-lines")
 ui.pause(200)
 ui.press("Alt+0")

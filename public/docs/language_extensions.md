@@ -301,11 +301,13 @@ the editor asks again each time the cursor rests rather than keeping an old answ
 When the line itself has changed since the box ran, the note says so before it tells you what the old
 text did. Here the cell below has run once, and `+ 1` has just been typed on the end of line 3:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" screenshot="assets/language_extensions/line_note_changed.png" transcript="assets/transcripts/line_notes_python_setup.yaml" capture-box="line_notes_python" padding="10" wait="0" timeout="240" embed=true hidden=true name="line-note-changed" w="560" alt="A six-line Python cell in the editor with the caret at the end of line 3, which now reads total = sum(xs) + 1. The note at the foot of the editor reads total = 55 · int, with 55 in bold, over a muted line: line 3 · changed since the last run (a few seconds ago), so this is what the old text did."}
-// Rest on line 3 through the keyboard, as a person would: to the top, then down two lines.
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".monaco-editor-container" screenshot="assets/language_extensions/line_note_changed.png" transcript="assets/transcripts/line_notes_python_setup.yaml" capture-box="line_notes_python" padding="10" wait="0" timeout="240" embed=true hidden=true name="line-note-changed" w="560" alt="A six-line Python cell in the editor with the caret at the end of line 3, which now reads total = sum(xs) + 1. The note at the foot of the editor reads total = 55 · int, with 55 in bold, over a muted line: line 3 · changed since the last run (a few seconds ago), so this is what the old text did."}
+// Rest on line 3 through the keyboard, as a person would: to the top, then down two lines. The pane is sized to
+// the figure, so the note (which sits at the pane's foot) stays beside the code it describes.
 ui.openEditor("line_notes_python")
 ui.pause(700)
 ui.waitForSelector(".monaco-editor", 15000.0)
+ui.editorHeight(300)
 ui.clickSelector(".monaco-editor .view-lines")
 ui.pause(200)
 repeat(4) { ui.press("PageUp") }
