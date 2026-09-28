@@ -105,3 +105,21 @@ and held after `stop`.
 - Only one figure on `pure_data.md` needs libpd (`requires="libpd"`); `buildDocsNativePrerequisites`
   builds it. There is no audio clip on the page, so nothing was added to `DocsAudioProvenance`.
 - Windows/Linux: the build script and library naming are written for them and untested.
+
+## Docs captures (added 2026-09-28, second pass)
+
+`public/docs/pure_data.md` has five pipeline captures under `public/docs/assets/pure_data/`:
+`offline-saw.png`, `drone-patch.png`, `typo.png`, `line-note.png` and `send-from-kotlin.png`.
+
+- `typo.png` is an ordinary `capture="editor"` fence with `data-lang=pd`. The runner puts it under a
+  `mainLanguage` root because `tools/field_languages.py` lists `pd`, and it carries
+  `expect-error=true`.
+- The two line-note figures are `capture="ui"` drives. Their setup transcripts are in
+  `dev_docs/agents/transcripts/docs_capture/pd_*.yaml`: they launch the Pd box and run a message line
+  or the Kotlin sender. **Trap:** the runner's end-of-drive capture re-opens the editor, which resets
+  the cursor, and the note goes with it. So the still has to be taken inside the script, via
+  `clip-selector=".monaco-editor-container"`. The editor is shortened to 600px first, so the note (at
+  its foot) is not a page below the patch.
+- `PdPatchGraph.toFLines` spaces ports as Pd does: the first flush left, the last flush right. The
+  count for each box is the larger of `KNOWN_PORTS` and what the patch wires. Before this, every port
+  was drawn a few pixels from the left edge.
