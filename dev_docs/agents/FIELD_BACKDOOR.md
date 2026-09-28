@@ -379,7 +379,7 @@ when that box last ran (`run`, `launch`, `continue`, `launch-batch`). A `screens
 warning rather than an error (the server may still fail the capture on its own, as it does
 for an output area with no visible content), and a `record-*` with `--restart-target` is
 exempt because relaunching regenerates the output. Boxes executed by `macro run` are not
-tracked.
+tracked. (`field_backdoor.py:2064#def capture_warnings`)
 
 ## Graphics topology
 
