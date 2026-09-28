@@ -1,8 +1,8 @@
 # Pure Data (libpd) in Field — design notes and measurements
 
 Added 2026-09-28. User-facing page: `public/docs/pure_data.md`. Loadable scene:
-`dev_docs/pd/pure_data_demo.yaml` (replay with the backdoor:
-`macro write pure_data_demo --file dev_docs/pd/pure_data_demo.yaml` then `macro run pure_data_demo`).
+`dev_docs/agents/transcripts/pure_data_demo.yaml` (replay with the backdoor:
+`macro write pure_data_demo --file dev_docs/agents/transcripts/pure_data_demo.yaml` then `macro run pure_data_demo`).
 
 ## Pieces
 

@@ -22,7 +22,7 @@ operations:
   - create:
       box: pd_root
       name: "status — children of this box are Pure Data"
-      frame: { x: 40.0, y: 40.0, w: 360.0, h: 90.0 }
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 80.0 }
       properties:
         mainLanguage: pd
         isPdRoot: true
@@ -32,7 +32,7 @@ operations:
   - create:
       box: pd_drone
       name: "drone"
-      frame: { x: 40.0, y: 240.0, w: 300.0, h: 120.0 }
+      frame: { x: 40.0, y: 180.0, w: 160.0, h: 80.0 }
       properties:
         code_language: Pd
         code: |
@@ -67,7 +67,7 @@ operations:
   - create:
       box: pd_roundtrip
       name: "round trip"
-      frame: { x: 700.0, y: 240.0, w: 300.0, h: 120.0 }
+      frame: { x: 230.0, y: 180.0, w: 160.0, h: 80.0 }
       properties:
         code_language: Pd
         code: |
@@ -85,7 +85,7 @@ operations:
   - create:
       box: pd_typo
       name: "typo"
-      frame: { x: 1360.0, y: 240.0, w: 300.0, h: 120.0 }
+      frame: { x: 420.0, y: 180.0, w: 160.0, h: 80.0 }
       properties:
         code_language: Pd
         code: |
@@ -97,7 +97,7 @@ operations:
   - create:
       box: pd_kotlin
       name: "from Kotlin"
-      frame: { x: 40.0, y: 1000.0, w: 360.0, h: 120.0 }
+      frame: { x: 40.0, y: 320.0, w: 160.0, h: 80.0 }
       properties:
         code: |
           // A Pd patch as a Kotlin value. Launch it; move the Pitch slider.
@@ -143,7 +143,7 @@ operations:
   - create:
       box: pd_offline
       name: "offline"
-      frame: { x: 1000.0, y: 1000.0, w: 360.0, h: 120.0 }
+      frame: { x: 610.0, y: 320.0, w: 160.0, h: 80.0 }
       properties:
         code: |
           // No audio device: render one second, measure it, read back what Pd recorded.
@@ -176,7 +176,7 @@ operations:
   - create:
       box: pd_effect
       name: "as an effect"
-      frame: { x: 1960.0, y: 1000.0, w: 360.0, h: 120.0 }
+      frame: { x: 230.0, y: 320.0, w: 160.0, h: 80.0 }
       properties:
         code: |
           // A Field sawtooth through a Pd lowpass: `input` feeds the patch's [adc~]. Launch it.
@@ -202,7 +202,7 @@ operations:
   - create:
       box: pd_send
       name: "to drone, from Kotlin"
-      frame: { x: 2920.0, y: 1000.0, w: 360.0, h: 120.0 }
+      frame: { x: 420.0, y: 320.0, w: 160.0, h: 80.0 }
       properties:
         code: |
           // Send numbers to a [r] in another Pd box, found by its name. Launch "drone" first.

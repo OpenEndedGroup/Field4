@@ -86,7 +86,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [BooleanNetworkSequencing.kt](../src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSequencing.kt) | Patterns | boolean_network_music_examples | 0 | 12 | 58% |
 | [alife_walls.kt](../src/jvmMain/kotlin/afield/stdlib/alife_walls.kt) | ALife | alife_examples | 0 | 12 | 72% |
 | [FaustPoly.kt](../src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt) | Synthesis | sound_paths | 0 | 11 | 70% |
-| [PdBox.kt](../src/jvmMain/kotlin/afield/four/synth/PdBox.kt) | Synthesis | pure_data | 0 | 11 | 70% |
+| [PdBox.kt](../src/jvmMain/kotlin/afield/four/synth/PdBox.kt) | Synthesis | pure_data, agent_transcripts | 0 | 11 | 70% |
 | [alife.kt](../src/jvmMain/kotlin/afield/stdlib/alife.kt) | ALife | alife_examples | 0 | 11 | 76% |
 | [imaging_geometry.kt](../src/jvmMain/kotlin/afield/stdlib/imaging_geometry.kt) | Imaging | imaging_examples | 0 | 11 | 73% |
 | [UnderfitOperations.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/UnderfitOperations.kt) | Audio AI | field_audio_ai | 0 | 11 | 50% |

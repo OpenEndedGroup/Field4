@@ -22,6 +22,21 @@ checks it against a pinned commit, then builds into `build/field-libpd/`. The so
 user, so other checkouts and worktrees reuse it. Until it is built, the calls on this page fail with
 an error that says how to build it.
 
+## The demo document, to follow along
+
+Everything on this page is also in one Field document: a Kotlin root with three Pd boxes under it,
+and four Kotlin boxes that drive patches from Kotlin. Browse it here, read-only, box by box. To run
+it, open **pure_data_demo** from the welcome screen's starting points, or replay
+`dev_docs/agents/transcripts/pure_data_demo.yaml`.
+
+<iframe
+  src="offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn"
+  title="Pure Data demo, offline viewer"
+  style="width:100%; height:640px; border:1px solid #444; border-radius:8px; background:#111;"
+  loading="lazy"></iframe>
+
+[Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
 ## A patch in a Kotlin box
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/pure_data/kotlin-box.png" execution="launch" capture="box" open-outputs="true" requires="libpd" wait="10" padding="18" timeout="120" embed=true w="1000" h="420" name="pure-data-kotlin-box" alt="A box's output after running the example: a patch output drawing four boxes, r freq above osc~ 220 above *~ 0.1 above dac~, with inlet and outlet tabs and two wires from *~ 0.1 into the dac~'s two inlets; below it a controls output with one slider, FREQ, at 220.00."}
@@ -431,7 +446,7 @@ always something this Pd can make. `PdObjects.suggest` tries the signal or contr
     line, so a wrong value would be photographed as wrong.
 
     The numbers elsewhere on this page come from `PdTest` in `src/jvmTest`, which skips when libpd
-    is not built, and the loadable scene is `dev_docs/pd/pure_data_demo.yaml`.
+    is not built, and the loadable scene is `dev_docs/agents/transcripts/pure_data_demo.yaml`.
 
 For where Pd sits among Field's other ways of making a sound, see
 [Making a Sound, Every Path There Is](sound_paths.md).

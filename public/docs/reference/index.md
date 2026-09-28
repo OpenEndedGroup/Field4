@@ -321,7 +321,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [PatTranscription.kt](patterns.md#pattranscription-kt) | Patterns | 74 | 25 | Recovered audio, written back out as notation Field can re-render. |  |
 | [PatTranscriptionCorpus.kt](patterns.md#pattranscriptioncorpus-kt) | Patterns | 78 | 28 | A corpus that scores a transcription against the notation that generated the audio. |  |
 | [PatTranscriptionGallery.kt](patterns.md#pattranscriptiongallery-kt) | Patterns | 12 | 8 | The figure that makes the round trip something you look at rather than read about. |  |
-| [PdBox.kt](synthesis.md#pdbox-kt) | Synthesis | 40 | 28 | The box-facing side of Pure Data: a patch as a sound source, with messages both ways. | [Pure Data](../pure_data.md) |
+| [PdBox.kt](synthesis.md#pdbox-kt) | Synthesis | 40 | 28 | The box-facing side of Pure Data: a patch as a sound source, with messages both ways. | [Pure Data](../pure_data.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [PdInstance.kt](synthesis.md#pdinstance-kt) | Synthesis | 50 | 38 |  |  |
 | [PdLanguage.kt](synthesis.md#pdlanguage-kt) | Synthesis | 16 | 5 |  |  |
 | [PdNative.kt](synthesis.md#pdnative-kt) | Synthesis | 7 | 7 |  |  |

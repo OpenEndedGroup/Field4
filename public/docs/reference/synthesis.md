@@ -2095,7 +2095,7 @@ libpd is an optional native library; see [`PdLibrary`](synthesis.md#pdnative-kt-
 
 `src/jvmMain/kotlin/afield/four/synth/PdBox.kt` — [read the source](source/jvmMain/afield/four/synth/PdBox/)
 
-**Used in:** [Pure Data](../pure_data.md)
+**Used in:** [Pure Data](../pure_data.md), [Agent transcript gallery](../agent_transcripts.md)
 
 ### Top-level functions { #pdbox-kt-functions }
 
