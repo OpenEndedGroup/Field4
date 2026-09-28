@@ -250,7 +250,8 @@ private fun missingContextualInheritedPropertyMessage(box: Box, propertyName: St
  * Extracted so a *second* reader of the same slot cannot drift from the first. FieldML is that second
  * reader — an interpreter has no generated `var Box.<name> by Inheritance<T>()` to read through, so
  * `prop` in a FieldML box calls this, and the two agree by construction rather than by comment. Any
- * third reader (a UI inspector, an agent tool) should do the same.
+ * third reader (a UI inspector, an agent tool) should do the same — or call `afield.ContextResolution`
+ * directly, which is the walk this is, and which can also say *where* the value came from.
  *
  * Note this has **no** `defaultValue` and throws nothing: the delegate's failure
  * behaviour depends on the declared property's nullability, which only the delegate can see.
@@ -280,8 +281,9 @@ internal fun inheritedPropertyWalk(from: Box, name: String): Pair<Any?, Int> {
  * `prop`. Writing always writes **locally**, shadowing the ancestor's value for this box and everything
  * below it rather than changing theirs.
  *
- * Breadth-first, so with two ancestors defining the same name the nearer one wins and equally distant ones
- * resolve arbitrarily. When nothing has it: [defaultValue] if you gave one, else null for a nullable
+ * Breadth-first, so with two ancestors defining the same name the nearer one wins; equally distant ones
+ * resolve in `parents` order (edge insertion order), and a tie between two different values is reported
+ * once on the `warning,context` log channel. When nothing has it: [defaultValue] if you gave one, else null for a nullable
  * property, else [MissingInheritedPropertyException].
  *
  * The walk itself is [inheritedPropertyWalk], shared with FieldML's `prop`.
@@ -315,6 +317,13 @@ class Inheritance<T>(val defaultValue: T? = null) {
  * The lookup order per box is: live Kotlin variables first, then raw properties. A leading underscore is
  * optional, so `_speed` also matches a variable called `speed`, which is how the generated names stay out
  * of the way of the names a person types.
+ *
+ * The reading box's **own** variables count only if they are `@exported` values (its own export, or
+ * one exported into it by `@rootExported`). Since 2026-09-29 an ordinary local cannot answer: before,
+ * `val speed = _speed` resolved from the parent once and then found its own leftover `speed` on every
+ * later run — the self-pinning `fromContext` was cured of in 2026-08. Its own properties still count,
+ * so `_speed = 4.0` (which writes one) still shadows locally. Ties between equidistant ancestors are
+ * as [Inheritance]'s. The walk is `afield.ContextResolution`.
  *
  * Reading the parent's live variable means you get whatever it holds *now*, including the value from a
  * half-finished edit-and-rerun. Failure behaviour is as [Inheritance], and the exception message lists

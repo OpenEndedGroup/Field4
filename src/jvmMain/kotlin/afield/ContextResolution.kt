@@ -20,7 +20,14 @@ package afield
  *
  * Within one generation, ancestors are visited in the order of each box's `parents` set, which is
  * edge insertion order (a `CopyOnWriteArraySet`, restored in saved order on load) — stable, not
- * arbitrary.
+ * arbitrary. Within one box, a by-type query meets variables in declaration order
+ * (`KotlinContext.vars` is a `LinkedHashMap` since 2026-09-29; it was a `HashMap`, so a tie between
+ * two same-typed variables used to resolve in hash order).
+ *
+ * When the winner is an ancestor and another ancestor of the *same* generation also matches with a
+ * different value, the pick is still the first in `parents` order, but the [Resolution] records the
+ * others as [Resolution.competing] and the walk says so once on the `warning,context` log channel.
+ * An identical value (the same `Renderer` reached two ways) is not an ambiguity.
  *
  * Variables are read from an engine only if the box already has one ([Box.liveKi]): an ancestor
  * that never ran has no variables, and building it an engine just to find that out was a side
@@ -64,7 +71,7 @@ object ContextResolution {
         val found = if (explain) mutableListOf<Found>() else null
 
         fun finish(first: Found, examined: Int): Search =
-            Search(Resolution(mechanism, query.description, box, first, predecessor, emptyList()), examined)
+            Search(Resolution(mechanism, query.description, box, first, predecessor, emptyList(), emptyList()), examined)
 
         // depth 0: the asking box
         if (policy.selfCandidate && query.acceptSelf?.invoke(box) == true) {
@@ -88,17 +95,65 @@ object ContextResolution {
                     }
                 }
             }
-            for (ancestor in next) {
-                examined++
-                collect(ancestor, depth, query, policy, isOwn = false, into = found) { return finish(it, examined) }
+            if (found != null) {
+                for (ancestor in next) {
+                    examined++
+                    collect(ancestor, depth, query, policy, isOwn = false, into = found) { error("unreachable") }
+                }
+            } else {
+                val generation = next.toList()
+                for ((i, ancestor) in generation.withIndex()) {
+                    examined++
+                    val hit = firstIn(ancestor, depth, query, policy) ?: continue
+                    // Finish this generation: an equidistant supplier holding a different value is
+                    // an ambiguity. The pick stays deterministic (parents order); it is reported.
+                    val competing = ArrayList<Candidate>(0)
+                    for (j in i + 1 until generation.size) {
+                        val other = firstIn(generation[j], depth, query, policy) ?: continue
+                        if (other.value !== hit.value && other.value != hit.value) {
+                            competing += other.toCandidate(box, predecessor)
+                        }
+                    }
+                    val resolution = Resolution(mechanism, query.description, box, hit, predecessor, emptyList(), competing)
+                    if (competing.isNotEmpty()) warnAmbiguity(resolution)
+                    return Search(resolution, examined)
+                }
             }
             fringe = next
         }
 
         if (found.isNullOrEmpty()) return Search(null, examined)
         val first = found.first()
-        val shadowed = found.drop(1).map { it.toCandidate(box, predecessor) }
-        return Search(Resolution(mechanism, query.description, box, first, predecessor, shadowed), examined)
+        val rest = found.drop(1)
+        val shadowed = rest.map { it.toCandidate(box, predecessor) }
+        val competing = rest
+            .filter { it.depth == first.depth && it.depth > 0 && it.supplier !== first.supplier }
+            .filter { it.value !== first.value && it.value != first.value }
+            .distinctBy { it.supplier }
+            .map { it.toCandidate(box, predecessor) }
+        return Search(Resolution(mechanism, query.description, box, first, predecessor, shadowed, competing), examined)
+    }
+
+    private fun firstIn(b: Box, depth: Int, query: Query, policy: Policy): Found? {
+        collect(b, depth, query, policy, isOwn = false, into = null) { return it }
+        return null
+    }
+
+    private val warnedAmbiguities = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * Say once — per asking box, mechanism, query and set of suppliers — that two equidistant
+     * ancestors both answered with different values, and which one was picked.
+     */
+    private fun warnAmbiguity(r: Resolution) {
+        val suppliers = listOf(r.supplier) + r.competing.map { it.supplier }
+        val key = "${r.consumer.id}|${r.mechanism}|${r.query}|" + suppliers.joinToString(",") { it.id }
+        if (!warnedAmbiguities.add(key)) return
+        val names = suppliers.joinToString(", ") { "'${it.name.ifBlank { it.id }}'" }
+        afield.logger.lprintln(
+            "warning,context",
+            "ambiguous ${r.mechanism.name.lowercase()} lookup of '${r.query}' from '${r.consumer.name.ifBlank { r.consumer.id }}': equidistant ancestors $names hold different values; using '${r.supplier.name.ifBlank { r.supplier.id }}' (first in parents order)"
+        )
     }
 
     /**
@@ -115,6 +170,7 @@ object ContextResolution {
         onFirst: (Found) -> Nothing,
     ): Boolean {
         val readVariables = if (isOwn) policy.ownVariables != OwnVariables.NONE else true
+        val onlyExported = isOwn && policy.ownVariables == OwnVariables.EXPORTED
         val sources = when (policy.order) {
             SearchOrder.PROPERTIES_ONLY -> PROPS
             SearchOrder.PROPERTIES_THEN_VARIABLES -> if (readVariables) PROPS_VARS else PROPS
@@ -140,10 +196,12 @@ object ContextResolution {
                     }
                 }
             } else {
-                val vars = b.liveKi?.context?.vars ?: continue
+                val context = b.liveKi?.context ?: continue
+                val vars = context.vars
                 val names = query.names
                 if (names == null) {
                     for ((key, info) in vars.entries) {
+                        if (onlyExported && key !in context.exportedVariables) continue
                         if (query.acceptVariable(info)) {
                             val hit = Found(b, info.value, MatchKind.VARIABLE, key, depth)
                             if (into == null) onFirst(hit) else into += hit
@@ -151,6 +209,7 @@ object ContextResolution {
                     }
                 } else {
                     for (name in names) {
+                        if (onlyExported && name !in context.exportedVariables) continue
                         val info = vars[name] ?: continue
                         if (query.acceptVariable(info)) {
                             val hit = Found(b, info.value, MatchKind.VARIABLE, name, depth)
@@ -219,6 +278,13 @@ object ContextResolution {
 
         /** All of them. */
         ALL,
+
+        /**
+         * Only the ones this box itself `@exported` (or had exported into it, for `@rootExported` /
+         * `@metarootExported`): [KotlinContext.exportedVariables]. The exporter can read its own
+         * export; an ordinary leftover `val x = _x` cannot answer for `_x`.
+         */
+        EXPORTED,
     }
 
     /** The order the two slot kinds are searched in, within every box on the walk. */
@@ -249,7 +315,7 @@ object ContextResolution {
             val INHERITANCE = Policy(false, OwnVariables.NONE, SearchOrder.PROPERTIES_ONLY)
 
             /** `InheritanceFromContext` (`@exported`): variables, then properties, in every box. */
-            val INHERITANCE_FROM_CONTEXT = Policy(false, OwnVariables.ALL, SearchOrder.VARIABLES_THEN_PROPERTIES)
+            val INHERITANCE_FROM_CONTEXT = Policy(false, OwnVariables.EXPORTED, SearchOrder.VARIABLES_THEN_PROPERTIES)
         }
     }
 
@@ -312,7 +378,16 @@ object ContextResolution {
         private val predecessor: Map<Box, Box?>,
         /** Every other match, in the order the walk met them. Filled only by an `explain` walk. */
         val shadowed: List<Candidate>,
+        /**
+         * Equidistant ancestors other than [supplier] that also matched, with a different value — an
+         * ambiguity. The winner is still the first in `parents` order; a non-explain walk also
+         * reports this once on the `warning,context` log channel. Empty when there is no tie.
+         */
+        val competing: List<Candidate>,
     ) {
+        /** True when an equidistant, different supplier also answered with a different value. */
+        val ambiguous: Boolean get() = competing.isNotEmpty()
+
         val value: Any? = winner.value
         val supplier: Box = winner.supplier
         val matchKind: MatchKind = winner.kind

@@ -341,13 +341,21 @@ data class CompletionTokenBounds(val start: Int, val end: Int)
  * Mutable bookkeeping for one Kotlin scripting context.
  *
  * [vars] and [functions] are lookup tables populated from declarations introduced or exported during
- * script execution; [generation] changes when the visible context is updated.
+ * script execution; [generation] changes when the visible context is updated. [vars] is a
+ * `LinkedHashMap` (declaration order), so a context walk that meets two same-typed variables in one
+ * box picks the same one every time — see `afield.ContextResolution`.
+ *
+ * [exportedVariables] names the entries of [vars] that are `@exported` values — this box's own, or
+ * one exported *into* it by `@rootExported` / `@metarootExported`. `InheritanceFromContext` reads
+ * only those from the asking box's own table, so an ordinary leftover variable cannot shadow an
+ * inherited value.
  */
 class KotlinContext(
-    val vars: HashMap<String, KotlinVariableInfo> = HashMap(),
+    val vars: HashMap<String, KotlinVariableInfo> = LinkedHashMap(),
     val functions: HashMap<String, KotlinFunctionInfo> = HashMap(),
     var generation: Int = 0,
-    val debugScripts: KotlinDebugScriptTracker = KotlinDebugScriptTracker()
+    val debugScripts: KotlinDebugScriptTracker = KotlinDebugScriptTracker(),
+    val exportedVariables: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet(),
 )
 
 data class KotlinDebugScriptSnapshot(

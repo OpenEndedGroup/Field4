@@ -44,10 +44,13 @@ object ContextResolutionLedgerSmokeTest {
      * 2026-09-28, before `ContextResolution`: the consumer pinned itself to its first answer
      * (`pass2 x=1`), the stale declaration survived the disconnect in the consumer, and the
      * consumer's child inherited it.
+     *
+     * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "one context walk"): `pass2 x=2` — the
+     * consumer's own leftover `x` no longer answers for `_x`.
      */
     private val LEDGER = listOf(
         "ledger: consumer pass1 x=1",
-        "ledger: consumer pass2 x=1",
+        "ledger: consumer pass2 x=2",
         "ledger: exporter own=2",
         "ledger: consumer after-disconnect stale-line=true",
         "ledger: grandchild after-disconnect inherits=true",

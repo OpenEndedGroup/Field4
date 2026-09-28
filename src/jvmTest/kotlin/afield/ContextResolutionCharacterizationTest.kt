@@ -163,13 +163,13 @@ class ContextResolutionCharacterizationTest {
     }
 
     /**
-     * 2026-09-28, CURRENT: two same-typed variables in one ancestor resolve in `HashMap` iteration
-     * order, which is neither declaration order nor anything a person can see. `early` is declared
-     * first and lands in a later hash bucket than `late`, so the two orders disagree — asserted, so
-     * this fence cannot silently become a tautology.
+     * 2026-09-28: two same-typed variables in one ancestor resolved in `HashMap` iteration order.
+     * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "one context walk"): `KotlinContext.vars` is a
+     * `LinkedHashMap`, so the first-declared wins. `early` lands in a later hash bucket than `late`,
+     * so the two orders disagree — asserted, so this fence cannot become a tautology.
      */
     @Test
-    fun fromContextVariableTieWithinOneBoxFollowsHashOrder() {
+    fun fromContextVariableTieWithinOneBoxFollowsDeclarationOrder() {
         val s = session("fc-var-tie")
         val parent = boxIn(s, "parent")
         val child = boxIn(s, "child")
@@ -179,7 +179,54 @@ class ContextResolutionCharacterizationTest {
 
         val hashOrderFirst = HashMap(parent.ki.context.vars).values.first().value as Token
         assertNotEquals("early", hashOrderFirst.label, "fixture premise: hash order must differ from declaration order")
-        assertEquals(hashOrderFirst.label, child.reading { fromContext<Token>() }.label)
+        assertEquals("early", child.reading { fromContext<Token>() }.label)
+    }
+
+    /** 2026-09-29: equidistant ancestors with different values are an ambiguity, recorded, not hidden. */
+    @Test
+    fun anEquidistantTieIsRecordedAsAmbiguity() {
+        val s = session("fc-ambiguity")
+        val a = boxIn(s, "a")
+        val b = boxIn(s, "b")
+        val child = boxIn(s, "child")
+        a.setPropertyRaw("p", Token("a"))
+        b.setPropertyRaw("p", Token("b"))
+        a.connect(child)
+        b.connect(child)
+        val query = ContextResolution.Query.byType(Token::class.java) { it is Token }
+        val found = ContextResolution.walk(
+            child, query, ContextResolution.Policy.fromContext(false), ContextResolution.Mechanism.FROM_CONTEXT,
+        )!!
+        assertEquals(a, found.supplier)
+        assertTrue(found.ambiguous)
+        assertEquals(listOf(b), found.competing.map { it.supplier })
+
+        val explained = ContextResolution.walk(
+            child, query, ContextResolution.Policy.fromContext(false), ContextResolution.Mechanism.FROM_CONTEXT,
+            explain = true,
+        )!!
+        assertEquals(listOf(b), explained.competing.map { it.supplier })
+    }
+
+    /** 2026-09-29: the same value reached through two equidistant ancestors is not an ambiguity. */
+    @Test
+    fun theSameValueTwiceIsNotAnAmbiguity() {
+        val s = session("fc-same-value")
+        val a = boxIn(s, "a")
+        val b = boxIn(s, "b")
+        val child = boxIn(s, "child")
+        val shared = Token("shared")
+        a.variable("renderer", shared)
+        b.variable("renderer", shared)
+        a.connect(child)
+        b.connect(child)
+        val found = ContextResolution.walk(
+            child,
+            ContextResolution.Query.byType(Token::class.java) { it is Token },
+            ContextResolution.Policy.fromContext(false),
+            ContextResolution.Mechanism.FROM_CONTEXT,
+        )!!
+        assertTrue(!found.ambiguous, "competing: ${found.competing.map { it.supplier }}")
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -235,12 +282,14 @@ class ContextResolutionCharacterizationTest {
     }
 
     /**
-     * 2026-09-28, CURRENT: the consumer's **own** variable called `ifcY` shadows the parent's export.
-     * This is the self-pinning shape `fromContext` was fixed for in bafa9ee5f, never fixed here:
-     * `val ifcY = _ifcY` resolves from the parent once, then finds itself on every later run.
+     * 2026-09-28: the consumer's **own** variable called `ifcY` shadowed the parent's export — the
+     * self-pinning shape `fromContext` was fixed for in bafa9ee5f: `val ifcY = _ifcY` resolved from
+     * the parent once, then found itself on every later run.
+     * FLIPPED 2026-09-29 (stdlib_behaviour_changes.md, "one context walk"): own variables count only
+     * if they are exports, so the parent's value wins.
      */
     @Test
-    fun inheritanceFromContextOwnVariableShadowsTheExport() {
+    fun inheritanceFromContextOwnVariableNoLongerShadowsTheExport() {
         val s = session("ifc-own-shadow")
         val parent = boxIn(s, "parent")
         val child = boxIn(s, "child")
@@ -249,16 +298,32 @@ class ContextResolutionCharacterizationTest {
         parent.setPropertyRaw("_ifcY", "parent")
         child.variable("ifcY", "child-leftover")
 
-        assertEquals("child-leftover", child._ifcY)
+        assertEquals("parent", child._ifcY)
     }
 
-    /** 2026-09-28, kept: the exporting box reads its own export. */
+    /** 2026-09-29: an own *property* still shadows — that is what writing `_ifcY = …` does. */
+    @Test
+    fun inheritanceFromContextOwnPropertyStillShadows() {
+        val s = session("ifc-own-prop")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        parent.connect(child)
+        parent.variable("ifcY", "parent")
+        child.setPropertyRaw("_ifcY", "local")
+
+        assertEquals("local", child._ifcY)
+    }
+
+    /**
+     * 2026-09-28, kept: the exporting box reads its own export — through its own variable, which is
+     * allowed because `@exported` recorded it in `exportedVariables` (no property needed).
+     */
     @Test
     fun inheritanceFromContextExporterReadsItsOwnExport() {
         val s = session("ifc-exporter")
         val exporter = boxIn(s, "exporter")
         exporter.variable("ifcY", "mine")
-        exporter.setPropertyRaw("_ifcY", "mine")
+        exporter.ki.context.exportedVariables += "ifcY"
 
         assertEquals("mine", exporter._ifcY)
     }

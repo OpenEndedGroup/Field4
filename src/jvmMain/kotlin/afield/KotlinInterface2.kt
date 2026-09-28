@@ -3198,6 +3198,7 @@ class KotlinInterface2(
                 boxesForExportTargets(targets).forEach { box ->
                     try {
                         box.ki.context.vars[name] = KotlinVariableInfo(value, descriptor, line)
+                        box.ki.context.exportedVariables += name
                         if (value != null) {
                             box.setPropertyRaw(exportedName, value, doResync = true)
                         }
@@ -3349,6 +3350,9 @@ class KotlinInterface2(
                     val exportTargets = exportTargetsForProperty(field, descriptor)
                     if (exportTargets.isNotEmpty()) {
                         processExportedProperty(descriptor.name, descriptor, value, o, exportTargets)
+                    } else {
+                        // redeclared without the annotation: no longer this box's export
+                        context.exportedVariables -= descriptor.name
                     }
                 }
             }
@@ -3371,6 +3375,8 @@ class KotlinInterface2(
                 val exportTargets = exportTargetsForProperty(null, descriptor)
                 if (exportTargets.isNotEmpty()) {
                     processExportedProperty(name, descriptor, value, o, exportTargets)
+                } else {
+                    context.exportedVariables -= name
                 }
             }
         }

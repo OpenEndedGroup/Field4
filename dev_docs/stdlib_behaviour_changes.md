@@ -444,3 +444,26 @@ What was swept: `public/docs/marf.md` and the `marf_demo` document under `dev_do
 `MarfDocsGuardTest` now requires the page to name every constant including `AUTO`, and requires at
 least one published listing to omit `fields` — because a page where every example states a clock
 never demonstrates the default at all.
+
+## 2026-09-29 — one context walk: `@exported` stops self-pinning, ties become deterministic (`arch/review-2026-09-28`)
+
+`fromContext`, `fromContextWithNameOrNull`, `Inheritance` (`prop`, `rootProp`, FieldML's `prop`),
+`InheritanceFromContext` (what `@exported` reads through) and the Monaco hover each walked the graph
+themselves. They now share `afield.ContextResolution` (`src/jvmMain/kotlin/afield/ContextResolution.kt`).
+The port itself was behaviour-preserving and was fenced first (`ContextResolutionCharacterizationTest`,
+`examples.context.resolution-ledger`, both dated 2026-09-28); the rows below are the deliberate
+changes made after it, each of which flipped a named fence.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `InheritanceFromContext` (every `@exported` read) | the reading box's **own** variables answer only if they are exports — its own `@exported`, or one exported into it by `@rootExported` / `@metarootExported` (`KotlinContext.exportedVariables`). Own *properties* still answer, so writing `_x = …` still shadows locally. | a consumer that writes `val x = _x` used to resolve from the exporter once and then find its own leftover `x` on every later run (`consumer pass2 x=1` in the ledger smoke); it now tracks the exporter (`pass2 x=2`). A box that relied on a plain local called `x` to answer `_x` with no ancestor exporting it now falls through to the ancestors, and then to the default / null / `MissingInheritedPropertyException` | none built in; read the local by its own name |
+| `KotlinContext.vars` | a `LinkedHashMap` (declaration order) instead of a `HashMap` | only when one box holds **two variables that both match** a by-type query (`fromContext<T>()` with two `T`-typed vals): the first declared now wins; it used to be hash-bucket order | none |
+| every walker | a tie between **equidistant ancestors holding different values** is recorded in `Resolution.competing` and logged once on `warning,context`. The pick is unchanged: first in the asking box's `parents` order (edge insertion order), which the old `Inheritance` KDoc called "arbitrary" and was not. The same object reached twice (one `Renderer` via two parents) is not a tie. | no value changes; one log line per (box, mechanism, name, supplier set) | n/a |
+| walkers reading an ancestor's variables | read `Box.liveKi` instead of `Box.ki`, so an ancestor that never ran is no longer given a Kotlin engine as a side effect of being searched | none — such an engine's variable table was empty at that moment | n/a |
+
+What was swept: every `@exported` / `@rootExported` user in `dev_docs/agents/transcripts/`,
+`public/docs/assets/agent_transcripts/` and `metadata_store/` — `flow_grain` (its consumers read
+through `fromContextWithNameOrNull`, whose policy did not change) and `shared_types_demo` (reads
+`_particle` and declares no `particle`). Neither is in the changed shape. Driven afterwards:
+`examples.context.{resolution-ledger,search-order-ledger,local-variable-shadowing,cross-box-inheritance}`
+and `examples.exports.batch-launch`, all passing.

@@ -794,6 +794,7 @@ class KotlinInterface(
                 boxesForExportTargets(targets).forEach { box ->
                     try {
                         box.ki.context.vars[name] = KotlinVariableInfo(value, descriptor, line)
+                        box.ki.context.exportedVariables += name
                         if (value != null) {
                             box.setPropertyRaw(exportedName, value, doResync = true)
                         }
