@@ -343,3 +343,16 @@ lock. And the `field-slider-input` event added with the card's Field sliders fir
 whenever controls were laid out, so the RectSL card sent a preview of the unchanged scene that then
 held the window (pins and editor edits alike were ignored) and the StackSL card counted every slider
 as turned. Only a drag, or a page's own `window.updateFieldSlider`, announces a move now.
+
+### Step 5, the end result: where a module is drawn — 2026-09-28
+
+`afield.four.ModuleDestinations` finds every place a renderer draws a module, by walking what it draws
+— each window's main pass, every target its `others` and `preTargets` reach, and the headset — and
+compares by identity; nothing had to be told where the module went. `capture` reads the window's
+swapchain (the whole window) or the render-to-texture's first attachment (`readPixelsAsync`; render
+targets are made readable by default), as displayed. The numbers card's **Show it in your shader**
+uses it; window captures are scaled to 1024 on the long side (a Retina window is 4112 × 2524). Checked
+live with one box in the window and one in an off-screen 512 × 512 render target: both captured,
+with the host shader's own vignette, and a `uv y` gradient comes out the same way up in both.
+Not done: compute modules (they write buffers; the GPU-probe harness is the way in), a render
+target made without `colorTransferSrc` (a sampling tap pass would reach it), and the headset.

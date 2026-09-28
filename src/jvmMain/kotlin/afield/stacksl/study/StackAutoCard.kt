@@ -30,6 +30,11 @@ import java.util.concurrent.Executors
  * these numbers** writes them into the StackSL where it sits in the box's `code`, when it sits there
  * verbatim; **Reset** puts the literals back.
  *
+ * **Show it in your shader** is the end result: the picture of wherever the slot's module is drawn,
+ * found by walking what the renderer draws ([afield.four.ModuleDestinations]) — the window, with
+ * everything else it draws, or the render-to-texture the module is in — at the slot's current numbers.
+ * A compute module draws nowhere, and the card says so rather than show a stand-in.
+ *
  * **Render this function alone** is the debugging view: the slot's program by itself, at its current
  * numbers, in the StackSL study's frame — `input` is `vec4(uv, hash, 0, time)` on a unit square — drawn
  * on the box's renderer (the CPU reference without one). That is not what the slot sees in the host
@@ -71,9 +76,12 @@ object StackAutoCard {
         return knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) }
     }
 
+    /** [box]'s `code`, or null when it has none (a box whose slots are bound from elsewhere). */
+    private fun codeOf(box: Box): String? = box.getPropertyRaw("code", null) as? String
+
     /** Where [source] sits in [box]'s `code`, when it sits there exactly once: its offset. */
     private fun offsetInCode(box: Box, source: String): Int? {
-        val code = box.code
+        val code = codeOf(box) ?: return null
         val at = code.indexOf(source)
         return at.takeIf { it >= 0 && code.indexOf(source, at + 1) < 0 }
     }
@@ -81,7 +89,7 @@ object StackAutoCard {
     /** Line [line], column [column] (1-based) of [source], as a line and column of [box]'s `code`. */
     private fun inCode(box: Box, source: String, line: Int, column: Int): Pair<Int, Int>? {
         val at = offsetInCode(box, source) ?: return null
-        val before = box.code.substring(0, at)
+        val before = codeOf(box)!!.substring(0, at)
         val startLine = before.count { it == '\n' } + 1
         val startColumn = at - before.lastIndexOf('\n')
         return (startLine + line - 1) to (if (line == 1) startColumn + column - 1 else column)
@@ -95,8 +103,9 @@ object StackAutoCard {
         val action = actions.getOrPut(box) { "stack-auto-card-${UUID.randomUUID()}".also { a -> registerStringCallback(a) { handle(box, it) } } }
         sliders.remove(box)?.forEach(::unregisterSliderCallback)
         val registered = mutableListOf<String>()
-        val slots = StackAutoNumbers.slots(box).values.sortedBy { it.name }.map { it to knobs(it) }.filter { it.second.isNotEmpty() }
-        if (slots.isEmpty()) return "<div style='font:13px Iosevka,monospace;color:#8a8a90;padding:8px'>No stack.auto slot of this box has numbers.</div>"
+        // Every bound slot has a section — its picture in the shader is worth having without a number to turn.
+        val slots = StackAutoNumbers.slots(box).values.filter { it.source.isNotBlank() }.sortedBy { it.name }.map { it to knobs(it) }
+        if (slots.isEmpty()) return "<div style='font:13px Iosevka,monospace;color:#8a8a90;padding:8px'>No stack.auto slot of this box has a program yet.</div>"
         val keysConfig = mutableMapOf<String, Any?>()
         val body = buildString {
             slots.forEach { (slot, knobs) ->
@@ -106,7 +115,7 @@ object StackAutoCard {
                     KnobNames.shouldAsk(box)) { refreshLater(box) }.orEmpty()
                 val inCode = offsetInCode(box, slot.source) != null
                 append("<div class='slot' data-slot='${slot.name}'>")
-                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${knobs.size} numbers · ${if (slot.live) "live" else "as compiled"} · the window shows your whole shader</span></div>")
+                append("<div><b>stack.auto.${esc(slot.name)}</b> <span class='muted'>· ${if (knobs.isEmpty()) "no numbers to turn" else "${knobs.size} numbers · ${if (slot.live) "live" else "as compiled"}"} · the window shows your whole shader</span></div>")
                 if (!inCode) append("<div class='warn'>This program is not written out in the box's code, so Keep cannot put numbers back into it.</div>")
                 knobs.groupBy { it.line }.forEach { (line, onLine) ->
                     val heading = lines.getOrNull(line - 2)?.trim()?.takeIf { it.startsWith("#") }?.removePrefix("#")?.trim()
@@ -129,12 +138,17 @@ object StackAutoCard {
                     }
                 }
                 append("<div style='margin-top:6px'>")
-                if (inCode) append("<button data-act='keep' data-slot='${slot.name}'>Keep these numbers</button> ")
-                append("<button data-act='reset' data-slot='${slot.name}'>Reset</button> <button data-act='alone' data-slot='${slot.name}'>Render this function alone</button></div>")
-                alone["${box.id}|${slot.name}"]?.let { (image, note) ->
-                    append("<div class='alone'>${image?.let { "<img src='$it'>" } ?: ""}<div class='muted'>${esc(note)}</div></div>")
+                if (inCode && knobs.isNotEmpty()) append("<button data-act='keep' data-slot='${slot.name}'>Keep these numbers</button> ")
+                if (knobs.isNotEmpty()) append("<button data-act='reset' data-slot='${slot.name}'>Reset</button> ")
+                append("<button data-act='in-shader' data-slot='${slot.name}'>Show it in your shader</button> " +
+                    "<button data-act='alone' data-slot='${slot.name}'>Render this function alone</button></div>")
+                val views = listOfNotNull(inShader["${box.id}|${slot.name}"], alone["${box.id}|${slot.name}"])
+                if (views.isNotEmpty()) {
+                    append("<div class='views'>")
+                    views.forEach { (image, note) -> append("<div class='alone'>${image?.let { "<img src='$it'>" } ?: ""}<div class='muted'>${esc(note)}</div></div>") }
+                    append("</div>")
                 }
-                dir?.let { d ->
+                dir?.takeIf { knobs.isNotEmpty() }?.let { d ->
                     val shape = KnobNames.shape("StackSL", slot.source, namingKnobs(slot.source, knobs))
                     keysConfig[slot.name] = StudyKeys.config(d, shape)
                     append("<div class='slotkeys' data-slot='${slot.name}'>")
@@ -166,14 +180,15 @@ object StackAutoCard {
                 #$id button:hover{background:#333}
                 #$id select{font:inherit;background:#222;color:#ddd;border:1px solid #444;padding:2px 6px;border-radius:4px}
                 #$id .blendslider .field-label{width:auto}
-                #$id .alone{margin-top:8px} #$id .alone img{width:256px;height:256px;border:1px solid #333;display:block;margin-bottom:4px}
+                #$id .views{display:flex;gap:12px;align-items:flex-start;margin-top:8px}
+                #$id .alone{flex:1;min-width:0} #$id .alone img{max-width:100%;max-height:256px;border:1px solid #333;display:block;margin-bottom:4px}
             </style>""")
             append(body)
             append("<script>(function(){const CARD=$config;").append(SCRIPT).append("})();</script></div>")
         }
     }
 
-    /** One browser action — `keep`, `reset`, `alone`, `locate` or `capture-key` — on [box]'s slot; returns what the card says. */
+    /** One browser action — `keep`, `reset`, `in-shader`, `alone`, `locate` or `capture-key` — on [box]'s slot; returns what the card says. */
     internal fun handle(box: Box, json: String): String {
         val message = runCatching { mapper.readTree(json) }.getOrNull() ?: return "unreadable action"
         val slotName = message["slot"]?.asText() ?: return "no slot"
@@ -194,7 +209,7 @@ object StackAutoCard {
                     val values = knobs.mapNotNull { k -> StackAutoNumbers.value(box, slotName, k.wire)?.takeIf { kotlin.math.abs(it - k.value) > 1e-12 }?.let { k.knob to it } }.toMap()
                     if (values.isEmpty()) return "nothing to keep: every number is as written"
                     val rewritten = StackSLStudyShader.setKnobs(slot.source, values, slot.entrypoint)
-                    val code = box.code
+                    val code = codeOf(box) ?: return "this box has no code to keep the numbers in"
                     val at = offsetInCode(box, slot.source) ?: return "this program is not written out in the box's code"
                     val next = code.substring(0, at) + rewritten + code.substring(at + slot.source.length)
                     if (!BoxStudies.replacer(box, "code")(code, next)) return "the box's code changed; Keep again"
@@ -203,6 +218,10 @@ object StackAutoCard {
                 "alone" -> {
                     worker.execute { renderAlone(box, slot, knobs); refreshLater(box) }
                     return "rendering stack.auto.$slotName alone"
+                }
+                "in-shader" -> {
+                    worker.execute { captureInShader(box, slot); refreshLater(box) }
+                    return "capturing stack.auto.$slotName in your shader"
                 }
                 "capture-key" -> {
                     val dir = directory(box, slotName) ?: return "the box is in no open document"
@@ -219,6 +238,49 @@ object StackAutoCard {
         status[box] = result
         refreshLater(box)
         return result
+    }
+
+    private val inShader = ConcurrentHashMap<String, Pair<String?, String>>()
+
+    /**
+     * Capture where [slot]'s module draws — the end result, with the host shader and whatever else draws
+     * there — for the card. Several destinations are named and the first is shown; none, or a compute
+     * module, is said plainly.
+     */
+    private fun captureInShader(box: Box, slot: StackAutoNumbers.Slot) {
+        val key = "${box.id}|${slot.name}"
+        inShader[key] = try {
+            val renderer = BoxStudies.rendererAbove(box) ?: throw IllegalStateException("the box has no running renderer above it")
+            val modules = afield.stdlib.stackAutoModulesOf(box)
+            require(modules.isNotEmpty()) { "no module of this box has been built yet" }
+            if (modules.all { it is afield.four.modules.ComputeModulePointer })
+                throw IllegalStateException("stack.auto.${slot.name} is in a compute module, which writes buffers rather than a picture; reading those back is not done yet")
+            val destinations = modules.flatMap { afield.four.ModuleDestinations.of(renderer, it) }.distinct()
+            val shown = destinations.firstOrNull { it !is afield.four.ModuleDestinations.Destination.Headset }
+                ?: throw IllegalStateException(if (destinations.isEmpty()) "the module is not drawn anywhere the renderer reaches: add it to the renderer, or to a render target the renderer draws" else "it draws only in the headset, which is not captured here")
+            val png = fitWithin(afield.four.ModuleDestinations.capture(shown), 1024)
+            val others = destinations.filter { it != shown }
+            "data:image/png;base64," + Base64.getEncoder().encodeToString(png) to
+                "stack.auto.${slot.name} in your shader: $shown, as it is drawing now, at the slot's current numbers" +
+                (if (shown is afield.four.ModuleDestinations.Destination.Window) " — everything the window draws, not only this module" else "") +
+                (if (others.isNotEmpty()) " · also drawn to ${others.joinToString()}" else "")
+        } catch (e: Exception) {
+            null to "Cannot capture stack.auto.${slot.name} in your shader: ${e.message}"
+        }
+    }
+
+    /** [png] scaled so its longer side is at most [long] pixels: a window capture is the display's full resolution. */
+    private fun fitWithin(png: ByteArray, long: Int): ByteArray {
+        val image = javax.imageio.ImageIO.read(png.inputStream()) ?: return png
+        val scale = long.toDouble() / maxOf(image.width, image.height)
+        if (scale >= 1.0) return png
+        val w = (image.width * scale).toInt().coerceAtLeast(1); val h = (image.height * scale).toInt().coerceAtLeast(1)
+        val out = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        out.createGraphics().apply {
+            setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+            drawImage(image, 0, 0, w, h, null); dispose()
+        }
+        return java.io.ByteArrayOutputStream().also { javax.imageio.ImageIO.write(out, "png", it) }.toByteArray()
     }
 
     /** Draw [slot]'s program by itself at its current numbers, for the card; what it could not do, it says. */
