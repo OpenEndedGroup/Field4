@@ -3019,21 +3019,26 @@ private fun bumpBackgroundVisibility() {
 fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Boolean = false) {
     if (!::mainViewport.isInitialized) return
 
-    val posSmall = "${normalizeOffset(translationX, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px ${
+    // The dots are the visual unit for box frames, so their spacing is in world units and scales
+    // with the canvas zoom. This CSS-gradient grid is the fallback for when WebGL is unavailable.
+    val small = dotSpacingSmall * mainZoom
+    val large = dotSpacingLarge * mainZoom
+    val posSmall = "${normalizeOffset(translationX, small) - (small / 2) + 0.5}px ${
         normalizeOffset(
             translationY,
-            dotSpacingSmall
-        ) - (dotSpacingSmall / 2) + 0.5
+            small
+        ) - (small / 2) + 0.5
     }px"
-    val posLarge = "${normalizeOffset(translationX, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px ${
+    val posLarge = "${normalizeOffset(translationX, large) - (large / 2) + 0.5}px ${
         normalizeOffset(
             translationY,
-            dotSpacingLarge
-        ) - (dotSpacingLarge / 2) + 0.5
+            large
+        ) - (large / 2) + 0.5
     }px"
     val posAxisX = "${translationX}px 0px"
     val posAxisY = "0px ${translationY}px"
 
+    mainViewport.style.backgroundSize = "1px 100%, 100% 1px, ${small}px ${small}px, ${large}px ${large}px, 100% 100%"
     mainViewport.style.backgroundPosition = "$posAxisX, $posAxisY, $posSmall, $posLarge, center center"
     renderWebGLBackground()
 

@@ -94,8 +94,12 @@ layers (connection splines, overlay and front connection layers, actor arcs) use
 the window, and the name labels of offscreen parents/children of a selected box) test against the
 visible *world* rect, `(-t / zoom, window / zoom)`; their line width and margin are divided by the
 zoom and the labels are counter-scaled about their marker, so they stay screen-sized at the window
-edge. The WebGL grid shader takes `u_zoom`, keeps its dot radii in screen pixels,
-and fades the small dots out below ~0.5× and the large ones below ~0.15×.
+edge. The background dots are the visual unit for `frame` (25 and 100 world units), so their
+spacing scales with the zoom. **The live grid is `src/commonMain/resources/fieldWebglBackground.js`**,
+loaded by `index.html`; the inline copy in `Main.kt` (`installWebGLBackground`) returns early when
+that script has already installed, so it is only a fallback — edit both. Both take a `u_zoom`
+uniform, keep dot radii in screen pixels, and fade the small dots out below ~0.5× and the large
+ones below ~0.15×. The CSS-gradient fallback in `updateBackgroundGrid` scales its tile size too.
 
 Verified at zoom ≠ 1: box screen rect is exactly half its frame at 0.5; ctrl-wheel about (700, 400)
 keeps world (1400, 800) under the cursor; a 60 px drag at 0.6 moves a box 100 world units; a
@@ -104,7 +108,7 @@ inside Excalidraw (ctrl-wheel, and 40 clicks on its zoom-in button) moves Field'
 screen rect equals Excalidraw's own projection of it, including after clamping at 4×.
 
 Not zoom-aware yet: slideshow annotation geometry (`slideshowSupport.kt` still builds a translation-only
-viewBox and offsets), the CSS-gradient grid fallback used when WebGL is unavailable, bookmarks (they
+viewBox and offsets), bookmarks (they
 save and restore translation only), the server's per-box `viewport` rect, and marquee/snapping were
 not exercised at zoom. The Monaco editor and docs/history iframes are outside the scaled canvas, so
 they do not scale, which is intended.

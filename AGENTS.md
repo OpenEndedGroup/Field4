@@ -555,8 +555,8 @@ Debugging checklist:
 ### Canvas zoom
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
-- Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The WebGL grid has a `u_zoom` uniform.
-- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), the CSS grid fallback, bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
+- Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
+- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
 - The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
 
