@@ -944,18 +944,13 @@ private object KotlinSymbolContextCache {
 }
 
 private fun resolveInheritedPropertyWithSource(box: Box, name: String): Pair<Any?, Box?> {
-    box.getPropertyRaw(name)?.let { return it to box }
-    val seen = mutableSetOf(box)
-    var fringe = setOf(box)
-    while (fringe.isNotEmpty()) {
-        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-        seen.addAll(nextFringe)
-        for (parent in nextFringe) {
-            parent.getPropertyRaw(name)?.let { return it to parent }
-        }
-        fringe = nextFringe
-    }
-    return null to null
+    val found = ContextResolution.walk(
+        box,
+        ContextResolution.Query.propertyNamed(name),
+        ContextResolution.Policy.INHERITANCE,
+        ContextResolution.Mechanism.INHERITANCE,
+    ) ?: return null to null
+    return found.value to found.supplier
 }
 
 private fun fallbackRuntimeSymbolContext(box: Box, symbol: String): SymbolContextResponse {

@@ -296,6 +296,59 @@ class ContextResolutionCharacterizationTest {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // The walker itself: what a Resolution says, beyond the value
+    // ---------------------------------------------------------------------------------------------
+
+    @Test
+    fun aResolutionNamesItsSupplierPathAndSlot() {
+        val s = session("walk-path")
+        val grand = boxIn(s, "grand")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        grand.connect(parent)
+        parent.connect(child)
+        grand.setPropertyRaw("inhK", "grand")
+
+        val found = ContextResolution.walk(
+            child,
+            ContextResolution.Query.propertyNamed("inhK"),
+            ContextResolution.Policy.INHERITANCE,
+            ContextResolution.Mechanism.INHERITANCE,
+        )!!
+        assertEquals("grand", found.value)
+        assertEquals(grand, found.supplier)
+        assertEquals(listOf(child, parent, grand), found.path)
+        assertEquals(ContextResolution.MatchKind.PROPERTY, found.matchKind)
+        assertEquals("inhK", found.matchedName)
+        assertEquals(2, found.depth)
+        assertTrue(found.shadowed.isEmpty(), "an ordinary walk stops at the first match")
+    }
+
+    @Test
+    fun anExplainWalkRecordsWhatLost() {
+        val s = session("walk-explain")
+        val grand = boxIn(s, "grand")
+        val parent = boxIn(s, "parent")
+        val child = boxIn(s, "child")
+        grand.connect(parent)
+        parent.connect(child)
+        grand.setPropertyRaw("_ifcY", "grand")
+        parent.variable("ifcY", "parent")
+
+        val found = ContextResolution.walk(
+            child,
+            ContextResolution.Query("_ifcY", listOf("_ifcY", "ifcY"), { it != null }, { true }),
+            ContextResolution.Policy.INHERITANCE_FROM_CONTEXT,
+            ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
+            explain = true,
+        )!!
+        assertEquals(parent, found.supplier)
+        assertEquals(ContextResolution.MatchKind.VARIABLE, found.matchKind)
+        assertEquals(listOf(grand), found.shadowed.map { it.supplier })
+        assertEquals(listOf(child, parent, grand), found.shadowed.single().path)
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Preamble gathering
     // ---------------------------------------------------------------------------------------------
 

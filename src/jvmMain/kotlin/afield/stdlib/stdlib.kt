@@ -263,23 +263,13 @@ fun inheritedPropertyRaw(from: Box, name: String): Any? = inheritedPropertyWalk(
  * the timing problem it usually is.
  */
 internal fun inheritedPropertyWalk(from: Box, name: String): Pair<Any?, Int> {
-    from.getPropertyRaw(name)?.let { return it to 0 }
-    val seen = mutableSetOf<Box>()
-    seen.add(from)
-    var fringe = setOf(from)
-    var num = 0
-    while (fringe.isNotEmpty()) {
-        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-        seen.addAll(nextFringe)
-
-        nextFringe.forEach {
-            val a = it.getPropertyRaw(name)
-            num++
-            if (a != null) return a to num
-        }
-        fringe = nextFringe
-    }
-    return null to num
+    val search = ContextResolution.search(
+        from,
+        ContextResolution.Query.propertyNamed(name),
+        ContextResolution.Policy.INHERITANCE,
+        ContextResolution.Mechanism.INHERITANCE,
+    )
+    return search.resolution?.value to search.ancestorsExamined
 }
 
 /**
@@ -339,22 +329,18 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
      */
     operator fun getValue(f: Box, property: KProperty<*>): T {
         val candidateNames = contextCandidateNames(property.name)
-        val local = findInBox(f, property.name, candidateNames)
-        if (local.first) return local.second as T
-
-        val seen = mutableSetOf<Box>()
-        seen.add(f)
-        var fringe = setOf(f)
-        while (fringe.isNotEmpty()) {
-            val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-            seen.addAll(nextFringe)
-
-            nextFringe.forEach { parent ->
-                val found = findInBox(parent, property.name, candidateNames)
-                if (found.first) return found.second as T
-            }
-            fringe = nextFringe
-        }
+        val found = ContextResolution.walk(
+            f,
+            ContextResolution.Query(
+                description = property.name,
+                names = candidateNames,
+                acceptProperty = { it != null },
+                acceptVariable = { true },
+            ),
+            ContextResolution.Policy.INHERITANCE_FROM_CONTEXT,
+            ContextResolution.Mechanism.INHERITANCE_FROM_CONTEXT,
+        )
+        if (found != null) return found.value as T
 
         if (defaultValue != null) return defaultValue as T
         if (!property.returnType.isMarkedNullable) {
@@ -372,24 +358,6 @@ class InheritanceFromContext<T>(val defaultValue: T? = null) {
         val names = linkedSetOf(propertyName)
         if (propertyName.startsWith("_")) names.add(propertyName.substring(1))
         return names.toList()
-    }
-
-    private fun findInBox(box: Box, propertyName: String, names: List<String>): Pair<Boolean, Any?> {
-        // First prefer live KotlinContext values from this box.
-        names.forEach { name ->
-            val info = box.ki.context.vars[name]
-            if (info != null) return true to info.value
-        }
-
-        // Fallback to raw properties for compatibility and function exports.
-        val direct = box.getPropertyRaw(propertyName)
-        if (direct != null) return true to direct
-        names.forEach { name ->
-            val value = box.getPropertyRaw(name)
-            if (value != null) return true to value
-        }
-
-        return false to null
     }
 }
 

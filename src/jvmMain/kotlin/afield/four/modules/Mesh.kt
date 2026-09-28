@@ -1,6 +1,7 @@
 package afield.four.modules
 
 import afield.Box
+import afield.ContextResolution
 import afield.four.Renderer
 import afield.four.buffers.MissingRefException
 import afield.four.buffers.Structure
@@ -49,37 +50,13 @@ class FromInput {
  */
 inline fun <reified A> fromContext(defaultValue: A? = null, includeLocalVariables: Boolean = false): A {
     val f = Box.context.get()
-    if (f is A) return f
-
-    for (value in f.properties.values) {
-        if (value is A) return value
-    }
-
-    if (includeLocalVariables) {
-        for (variable in f.ki.context.vars.values) {
-            val value = variable.value
-            if (value is A) return value
-        }
-    }
-
-    val seen = mutableSetOf<Box>()
-    seen.add(f)
-    var fringe = setOf(f)
-    while (fringe.isNotEmpty()) {
-        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-        seen.addAll(nextFringe)
-
-        nextFringe.forEach { box ->
-            for (value in box.properties.values) {
-                if (value is A) return value
-            }
-            for (variable in box.ki.context.vars.values) {
-                val value = variable.value
-                if (value is A) return value
-            }
-        }
-        fringe = nextFringe
-    }
+    val found = ContextResolution.walk(
+        f,
+        ContextResolution.Query.byType(A::class.java) { it is A },
+        ContextResolution.Policy.fromContext(includeLocalVariables),
+        ContextResolution.Mechanism.FROM_CONTEXT,
+    )
+    if (found != null) return found.value as A
     if (defaultValue != null) return defaultValue as A
     throw IllegalArgumentException("must pass in a value for context parameter ${A::class.java.name}")
 }
@@ -102,40 +79,14 @@ inline fun <reified A> fromContextWithNameOrNull(
     val f = Box.context.get()
     if (f == null) return defaultValue
 
-    val a =
-        f.properties.entries.firstOrNull { it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class) }
-    if (a != null) return a.value as A
-
-    if (includeLocalVariables) {
-        f.ki.context.vars.entries.firstOrNull {
-            if (it.value.value == null) return@firstOrNull false
-            it.key == name && it.value.value!!::class.isSubclassOf(A::class)
-        }?.let {
-            return it.value.value as A
-        }
-    }
-
-    val seen = mutableSetOf<Box>()
-    seen.add(f)
-    var fringe = setOf(f)
-    while (fringe.isNotEmpty()) {
-        val nextFringe = fringe.flatMap { it.parents }.toSet() - seen
-        seen.addAll(nextFringe)
-
-        nextFringe.forEach {
-            val a = it.properties.entries.firstOrNull {
-                it.value != null && it.key == name && it.value!!::class.isSubclassOf(A::class)
-            }
-            if (a != null) return a.value as A
-            it.ki.context.vars.entries.firstOrNull {
-                if (it.value.value == null) return@firstOrNull false
-                it.key == name && it.value.value!!::class.isSubclassOf(A::class)
-            }?.let {
-                return it.value.value as A
-            }
-        }
-        fringe = nextFringe
-    }
+    val accept: (Any?) -> Boolean = { it != null && it::class.isSubclassOf(A::class) }
+    val found = ContextResolution.walk(
+        f,
+        ContextResolution.Query(name, listOf(name), accept, { accept(it.value) }),
+        ContextResolution.Policy.fromContext(includeLocalVariables, selfCandidate = false),
+        ContextResolution.Mechanism.FROM_CONTEXT_NAMED,
+    )
+    if (found != null) return found.value as A
     if (defaultValue != null) return defaultValue as A
     return null
 }
