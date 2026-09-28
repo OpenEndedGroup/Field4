@@ -15,9 +15,19 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    from .field_python_env import ensure_repo_python
+except ImportError:  # Executed as tools/build_zensical_docs.py rather than imported as a package.
+    from field_python_env import ensure_repo_python
 
-from verification_runtime import verification_lock
+if __name__ == "__main__":
+    # `zensical` runs as `sys.executable -m zensical`, and `public/docs_hooks.py` runs the backdoor
+    # with this same interpreter, so all three must be importable here.
+    ensure_repo_python(("yaml", "zensical", "websockets"), group="docs")
+
+import yaml  # noqa: E402
+
+from verification_runtime import verification_lock  # noqa: E402
 
 # Where `generate_source_pages` tells `public/docs_hooks.py` to find the basename -> page/anchor map
 # that turns a citation into a link. Named here and read there; an absent variable is the signal that

@@ -24,9 +24,19 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
+try:
+    from .field_python_env import ensure_repo_python
+except ImportError:  # Executed as tools/run_ui_regressions.py rather than imported as a package.
+    from field_python_env import ensure_repo_python
 
-from verification_runtime import automation_port_is_available, run_with_watchdog, verification_lock
+if __name__ == "__main__":
+    # PIL is imported below; websockets is what the backdoor children it spawns with
+    # sys.executable need. Only the entrypoint re-execs -- importing this module never does.
+    ensure_repo_python(("PIL", "websockets"))
+
+from PIL import Image  # noqa: E402
+
+from verification_runtime import automation_port_is_available, run_with_watchdog, verification_lock  # noqa: E402
 
 
 TOOLS_ROOT = Path(__file__).resolve().parent

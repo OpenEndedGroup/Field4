@@ -22,15 +22,21 @@ def _is_running_interpreter(candidate: Path) -> bool:
         return False
 
 
-def ensure_repo_python(required_modules: Iterable[str] = ("websockets",)) -> None:
-    """Re-exec this entrypoint in the repo environment when dependencies are absent."""
+def ensure_repo_python(
+    required_modules: Iterable[str] = ("websockets",), *, group: str = "backdoor"
+) -> None:
+    """Re-exec this entrypoint in the repo environment when dependencies are absent.
+
+    ``group`` is the `pyproject.toml` dependency group the entrypoint needs, used for the `uv run`
+    fallback and in the error message (`build_zensical_docs.py` needs ``docs``).
+    """
     missing = [name for name in required_modules if importlib.util.find_spec(name) is None]
     if not missing:
         return
     if os.environ.get("FIELD_BACKDOOR_REEXEC") == "1":
         raise SystemExit(
             f"Field Python environment still lacks {', '.join(missing)} after re-exec.\n"
-            "Run: uv sync --group backdoor"
+            f"Run: uv sync --group {group}"
         )
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -44,10 +50,10 @@ def ensure_repo_python(required_modules: Iterable[str] = ("websockets",)) -> Non
     if uv:
         os.execvpe(
             uv,
-            [uv, "run", "--project", str(repo_root), "--group", "backdoor", "python", entry, *sys.argv[1:]],
+            [uv, "run", "--project", str(repo_root), "--group", group, "python", entry, *sys.argv[1:]],
             env,
         )
     raise SystemExit(
         f"Field Python entrypoint requires {', '.join(missing)}, but no usable repo .venv or uv was found.\n"
-        "Run via: uv run --project . --group backdoor python <entrypoint> ..."
+        f"Run via: uv run --project . --group {group} python <entrypoint> ..."
     )
