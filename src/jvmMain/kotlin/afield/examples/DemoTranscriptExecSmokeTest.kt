@@ -475,6 +475,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_emitters",
         "path_tracing_medium",
         "python_cells",
+        // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
+        // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
+        "pure_data_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen

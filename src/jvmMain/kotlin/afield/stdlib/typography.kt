@@ -211,6 +211,12 @@ object Typefaces {
     @Volatile
     private var warmed = false
 
+    /**
+     * True once [warm] has succeeded, so every later layout is pure computation. A caller on the main
+     * run loop can check this to avoid the stall [warm] describes, and warm from another thread instead.
+     */
+    val isWarm: Boolean get() = warmed
+
     @Volatile
     private var environmentWarmed = false
 

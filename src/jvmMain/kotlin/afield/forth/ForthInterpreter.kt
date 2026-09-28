@@ -369,6 +369,16 @@ class ForthInterpreter {
     // Per-box run-loop strands: strandName -> word name to execute each frame
     val strands = HashMap<String, String>()
 
+    /**
+     * Called after each top-level step of [eval] — a word, a literal, a whole `: … ;` definition or
+     * `if … then` — with the first and last source lines the step's tokens sat on (1-based, in the
+     * evaluated text), the name it defined, if it was a definition, and whether it is the last step to
+     * end on its line (the next step starts on a later line, or there is none) — the moment a line's
+     * note is about. Steps inside a word's body do not count. The box records the stack here for its
+     * line notes; null costs nothing.
+     */
+    var onTopLevelStep: ((firstLine: Int, lastLine: Int, defined: String?, endsLine: Boolean) -> Unit)? = null
+
     init {
         installBuiltins()
     }
@@ -421,6 +431,15 @@ class ForthInterpreter {
         })
     }
 
+    /** The data stack, bottom first, each value as a diagnostic shows it. */
+    fun stackSnapshot(): List<String> = stack.map { shortValue(it) }
+
+    /** The top [n] values of the data stack, bottom first, as [stackSnapshot] shows them: cheap however deep the stack is. */
+    fun stackTop(n: Int): List<String> {
+        val from = maxOf(0, stack.size - n)
+        return (from until stack.size).map { shortValue(stack[it]) }
+    }
+
     private fun shortValue(v: Any?): String = when (v) {
         null -> "null"
         is String -> "\"" + v.take(48) + (if (v.length > 48) "..." else "") + "\""
@@ -451,7 +470,7 @@ class ForthInterpreter {
         lastErrorCallStack = emptyList()
         try {
             val tokens = tokenize(source)
-            execTokens(tokens, 0, tokens.size)
+            execTokens(tokens, 0, tokens.size, topLevel = true)
         } catch (_: ForthFrameYield) {
             // Cooperative yield from `frame` inside launch/strand execution.
         } catch (e: ForthError) {
@@ -555,7 +574,7 @@ class ForthInterpreter {
      * Execute tokens[start..end) — the core interpreter loop.
      * Returns the index one past the last token consumed (= end, normally).
      */
-    fun execTokens(tokens: List<Token>, start: Int, end: Int): Int {
+    fun execTokens(tokens: List<Token>, start: Int, end: Int, topLevel: Boolean = false): Int {
         var i = start
         while (i < end) {
             val tok = tokens[i]
@@ -565,6 +584,7 @@ class ForthInterpreter {
             currentLine = line
             currentToken = word
 
+            val stepStart = i
             i = when {
                 // -------- word definition --------
                 lw == ":" -> {
@@ -695,6 +715,13 @@ class ForthInterpreter {
                     execWord(fw)
                     i + 1
                 }
+            }
+            if (topLevel) onTopLevelStep?.let { step ->
+                val defined = if (lw == ":" && stepStart + 1 < tokens.size) tokens[stepStart + 1].text.lowercase()
+                    else if ((lw == "variable" || lw == "constant") && stepStart + 1 < tokens.size) tokens[stepStart + 1].text.lowercase()
+                    else null
+                val lastLine = tokens[minOf(i, tokens.size) - 1].line
+                step(line, lastLine, defined, i >= end || tokens[i].line > lastLine)
             }
         }
         return i

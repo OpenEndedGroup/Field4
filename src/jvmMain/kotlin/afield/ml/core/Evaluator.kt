@@ -186,8 +186,28 @@ class Evaluator(private val prelude: Map<String, FieldMLValue> = emptyMap()) {
     fun evaluate(expr: CoreExpr): FieldMLValue {
         val env = RuntimeEnv()
         prelude.forEach { (name, value) -> env.define(name, value) }
-        return evalFieldML(expr, env)
+        val observe = onTopLevelLet ?: return evalFieldML(expr, env)
+        // The program's spine of top-level lets, walked here rather than by recursion so each binding's
+        // value can be reported as it is made — exactly as the CLet case below evaluates one.
+        var scope = env
+        var rest = expr
+        var index = 0
+        while (rest is CLet) {
+            val local = scope.child()
+            val value = evalFieldML(rest.value, if (rest.recursive) local else scope)
+            local.define(rest.name, value)
+            observe(index++, rest.name, value)
+            scope = local
+            rest = rest.body
+        }
+        return evalFieldML(rest, scope)
     }
+
+    /**
+     * Called with each top-level `let` binding's position in the program's spine of lets (0 first), its
+     * name and the value it bound, as [evaluate] makes it; the box records these for its line notes.
+     */
+    var onTopLevelLet: ((index: Int, name: String, value: FieldMLValue) -> Unit)? = null
 }
 
 private fun evalFieldML(expr: CoreExpr, env: RuntimeEnv): FieldMLValue =

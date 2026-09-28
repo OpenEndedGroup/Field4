@@ -28,6 +28,7 @@ import afield.logger.lprintln
 import afield.python.PythonInterface
 import afield.python.PythonSettingsRequest
 import afield.server.refreshFileProxyBoxes
+import afield.server.refuseUnlessSameSiteDocsClient
 import afield.server.installFieldAudioProxyRoutes
 import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
@@ -2628,7 +2629,11 @@ class Server {
                         .getOrNull()
                     reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line,
                         note?.caption.orEmpty(),
-                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty())))
+                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty(),
+                        note?.volatile == true,
+                        note?.meta.orEmpty(),
+                        note?.value.orEmpty().map { LineNoteSegment(it.text, it.strong) },
+                        note?.imageScale ?: 1)))
                 }
                 Handled.yes
             })
@@ -4257,6 +4262,16 @@ class Server {
 
                         get("/api/python-settings") {
                             call.respond(PythonInterface.currentPythonSettingsStatus())
+                        }
+
+                        // The welcome page's Vulkan panel. Probing starts a JVM (~0.5 s), so the result
+                        // is kept for the life of the server; `?refresh=1` re-probes after an install.
+                        // Loopback + same-site: the answer carries home-directory paths, and an
+                        // unguarded refresh would let any open website start JVMs here.
+                        get("/api/vulkan-status") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@get
+                            val refresh = call.request.queryParameters["refresh"] == "1"
+                            call.respond(withContext(Dispatchers.IO) { afield.four.util.VulkanProbe.status(refresh) })
                         }
 
                         post("/api/python-settings") {

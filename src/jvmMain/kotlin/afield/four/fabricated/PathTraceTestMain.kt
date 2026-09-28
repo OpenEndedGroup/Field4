@@ -185,18 +185,25 @@ object PathTraceTestMain {
             check(shader.valid) { "Shader hardware=$hardware: ${errors.joinToString("\n")}" }
             check(shader.pushConstants.isEmpty()) { "Unexpected push allocation: ${shader.pushConstants}" }
             val sceneBuffers = shader.ubos.single { it.name == "SceneBuffers" }
-            check(sceneBuffers.members.map { it.offset } == listOf(0,8,16,24,32,40,48,56,64,72,80)) {
+            // Twelve 8-byte device addresses since 0c108313c (2026-09-27) appended `frameOutput`
+            // after `emitterLookup`, which was the tail when this was pinned at eleven.
+            check(sceneBuffers.members.map { it.offset } == listOf(0,8,16,24,32,40,48,56,64,72,80,88)) {
                 "SceneBuffers pointer layout: ${sceneBuffers.members.map { it.name to it.offset }}"
             }
-            check(sceneBuffers.members.map { it.name }.takeLast(2) == listOf("emitterTable","emitterLookup"))
+            check(sceneBuffers.members.map { it.name }.takeLast(3) == listOf("emitterTable","emitterLookup","frameOutput"))
             check(shader.ubos.map { it.name }.toSet() == setOf("Frame", "SceneBuffers"))
             val frameUbo = shader.ubos.single { it.name == "Frame" }
             // 352 since 6327c9c08 (2026-09-12) appended the participating medium's four vec4s
             // -- medium, mediumOptions, mediumLow, mediumHigh -- after `emitters`, which was the
             // tail when this was pinned at 288. 288 + 4*16 = 352, so the growth is exactly the
             // declared block and nothing silently repacked around it.
-            check(frameUbo.size == 352) { "Frame size ${frameUbo.size}" }
-            check(frameUbo.members.last().name == "mediumHigh")
+            // 384 since 0c108313c (2026-09-27) appended the frame-output pair -- `reconstruction`
+            // (vec4) and `frameOutputEnabled` (ivec4) -- after `mediumHigh`: 352 + 2*16 = 384.
+            check(frameUbo.size == 384) { "Frame size ${frameUbo.size}" }
+            check(frameUbo.members.takeLast(3).map { it.name } == listOf("mediumHigh","reconstruction","frameOutputEnabled")) {
+                "Frame tail: ${frameUbo.members.takeLast(3).map { it.name to it.offset }}"
+            }
+            check(frameUbo.members.takeLast(2).map { it.offset } == listOf(352,368))
             check(shader.accelerationStructures.size == if (hardware) 1 else 0)
             println("PASS path-tracing shader hardware=$hardware, SceneBuffers=${sceneBuffers.size}, Frame=${frameUbo.size}")
         }

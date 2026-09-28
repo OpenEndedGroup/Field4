@@ -500,6 +500,12 @@ Diagnostics inside a region are lexical only: unbalanced brackets, an unterminat
 with no `.`. Whether a rule is safe or stratified is a property of the whole program, which the
 engine decides when it runs; underlining a half-typed buffer for it would flag correct code.
 
+Rest the cursor on a statement and the note beside it answers from the box's model: a rule says how
+many facts its body derives there and draws them as a table, a query shows its answers, and a fact says
+whether it is in the model and which rules read its relation. A rule edited since it last ran is
+reported as not in the model, and no directive is ever run for a note — see
+[Line notes](language_extensions.md#line-notes).
+
 ## Reference
 
 **Syntax.** `%` and `//` start a line comment, `/* */` a block. A clause ends with `.`. A variable

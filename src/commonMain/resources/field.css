@@ -2066,6 +2066,16 @@ body {
     padding-top:3px;
 }
 
+/* A clean ForthField run's marker: `ok` and what the run left on the stack, the top value in bold. */
+.afield-forth-ok {
+    font-family: "Iosevka Web", monospace;
+    color: #9a9aa0;
+}
+.afield-forth-ok b {
+    font-weight: 700;
+    color: #f2f2f5;
+}
+
 /* Multi-line printed output (numpy arrays, DataFrames, dicts): faithful monospace, whitespace
    preserved so columns line up and brackets balance. Scrolls horizontally rather than wrapping. */
 .afield-python-output {
