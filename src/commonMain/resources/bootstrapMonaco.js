@@ -7,7 +7,8 @@ import {
 	monacoHandleOutput,
 	monacoLaunchAll,
 	monacoContinueAll,
-	monacoGetEnclosingScope
+	monacoGetEnclosingScope,
+	clearAllDecorations
 } from "./afield.mjs"
 import { renderFieldMarkdown } from "./markdownView.js"
 import { installFieldSuggest, requestLineNote, lineNoteHtml } from "./fieldSuggest.js"
