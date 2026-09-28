@@ -12,8 +12,9 @@ internal const val SKIP_ARG_CHECK_ENV = "AFIELD_AGENT_LAUNCHER_SKIP_ARG_CHECK"
 /**
  * What the running JVM actually has in effect, for each thing `requiredAgentJvmArgs()` in
  * agent_backdoor.kt passes. Measured by effect where the platform can report one (a module being
- * open, native access being enabled, a module being resolved) and by the command line only where it
- * cannot (`-XstartOnFirstThread`). `startOnFirstThread` is null off macOS, where it is not required.
+ * open, native access being enabled, a module being resolved) and by what the launcher leaves behind
+ * where it cannot (`-XstartOnFirstThread`). `startOnFirstThread` is null off macOS, where it is not
+ * required.
  */
 internal data class AgentJvmRequirementProbe(
     val javaNetOpen: Boolean,
@@ -29,16 +30,20 @@ internal data class AgentJvmRequirementProbe(
             val onMac = (System.getProperty("os.name") ?: "").lowercase().let {
                 !it.contains("windows") && !it.contains("linux")
             }
-            val inputArguments = runCatching {
-                java.lang.management.ManagementFactory.getRuntimeMXBean().inputArguments
-            }.getOrDefault(emptyList())
+            // -XstartOnFirstThread is consumed by the macOS `java` launcher, so it is NOT among the
+            // RuntimeMXBean input arguments (measured: absent even when passed). The launcher
+            // records it as JAVA_STARTED_ON_FIRST_THREAD_<pid>=1 in the environment, which is what
+            // LWJGL and SWT check too; the process's own argument list is the fallback.
+            val pid = ProcessHandle.current().pid()
+            val startedOnFirstThread = System.getenv("JAVA_STARTED_ON_FIRST_THREAD_$pid") == "1" ||
+                ProcessHandle.current().info().arguments().map { "-XstartOnFirstThread" in it }.orElse(false)
             return AgentJvmRequirementProbe(
                 javaNetOpen = Any::class.java.module.isOpen("java.net", self),
                 nativeAccessEnabled = self.isNativeAccessEnabled,
                 vectorModuleResolved = ModuleLayer.boot().findModule("jdk.incubator.vector").isPresent,
                 lwjglStackSizeSet = System.getProperty("org.lwjgl.system.stackSize") != null,
                 headlessAwt = System.getProperty("java.awt.headless") == "true",
-                startOnFirstThread = if (onMac) "-XstartOnFirstThread" in inputArguments else null,
+                startOnFirstThread = if (onMac) startedOnFirstThread else null,
             )
         }
     }
