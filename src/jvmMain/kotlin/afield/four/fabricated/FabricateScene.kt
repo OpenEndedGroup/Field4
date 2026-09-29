@@ -701,10 +701,21 @@ fun StandardRenderer.Bundle.registerGltf(
     return FabricateRegisteredGltf(nodes, opaque, transparent, bindings)
 }
 
+/**
+ * The textured G-buffer shader's `mapFlags`: which of the material's maps are bound, one bit each.
+ * Bits rather than a float per map so its push constants fit KosmicKrisp's 256 bytes; the untextured
+ * shader, which fits anyway, keeps its named `has…Map` floats.
+ */
+private fun FabricateMaterial.mapFlags(): Float =
+    ((if (normalTexture != null) 1 else 0) or (if (metallicRoughnessTexture != null) 2 else 0) or
+        (if (occlusionTexture != null) 4 else 0) or (if (emissiveTexture != null) 8 else 0) or
+        (if (clearcoatTexture != null) 16 else 0)).toFloat()
+
 fun StandardRenderer.Bundle.PullingMeshPair.applyFabricateMaterial(
     material: FabricateMaterial
 ): StandardRenderer.Bundle.PullingMeshPair {
     val push = gBuffer.mesh.push
+    if (push.offsets.containsKey("mapFlags")) push["mapFlags"] = material.mapFlags()
     if (push.offsets.containsKey("baseColor")) push["baseColor"] = Vector4f(material.baseColor)
     if (push.offsets.containsKey("metallic")) push["metallic"] = material.metallic
     if (push.offsets.containsKey("roughness")) push["roughness"] = material.roughness
@@ -725,6 +736,7 @@ fun StandardRenderer.PullingMesh.applyFabricateMaterial(
     material: FabricateMaterial
 ): StandardRenderer.PullingMesh {
     val push = mesh.push
+    if (push.offsets.containsKey("mapFlags")) push["mapFlags"] = material.mapFlags()
     if (push.offsets.containsKey("baseColor")) push["baseColor"] = Vector4f(material.baseColor)
     if (push.offsets.containsKey("metallic")) push["metallic"] = material.metallic
     if (push.offsets.containsKey("roughness")) push["roughness"] = material.roughness

@@ -1727,8 +1727,12 @@ class Renderer(
             arrayOf(graphQueue)
         )
         val numImages = swapChain.imageViews.size
-        val commandBuffers = Array(numImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
-        val computeCommandBuffers = Array(numImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = false) }
+        // One-time submit: each frame resets and re-records these, then submits them once
+        // (recordGraphicsPass / recordComputePass). KosmicKrisp encodes a one-time buffer's Metal
+        // commands as it is recorded rather than at vkQueueSubmit, which LunarG recommend for
+        // performance (XDC 2026). Resubmitting one without re-recording is a validation error.
+        val commandBuffers = Array(numImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = Options.oneTimeSubmitFrames) }
+        val computeCommandBuffers = Array(numImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = Options.oneTimeSubmitFrames) }
         val fences = Array(numImages) { Fence(device, signaled = true) }
         val computeFences = Array(numImages) { Fence(device, signaled = true) }
         val computeFinishedSemaphores = Array(numImages) { Semaphore(device) }
@@ -1803,8 +1807,8 @@ class Renderer(
         cleanupSecondaryMap(context.graphicsSecondary)
 
         val newImages = context.swapChain.imageViews.size
-        context.commandBuffers = Array(newImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = false) }
-        context.computeCommandBuffers = Array(newImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = false) }
+        context.commandBuffers = Array(newImages) { CommandBuffer(commandPool, primary = true, oneTimeSubmit = Options.oneTimeSubmitFrames) }
+        context.computeCommandBuffers = Array(newImages) { CommandBuffer(computeCommandPool, primary = true, oneTimeSubmit = Options.oneTimeSubmitFrames) }
         context.fences = Array(newImages) { Fence(device, signaled = true) }
         context.computeFences = Array(newImages) { Fence(device, signaled = true) }
         context.computeFinishedSemaphores = Array(newImages) { Semaphore(device) }

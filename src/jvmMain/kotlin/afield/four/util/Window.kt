@@ -145,6 +145,8 @@ class Window(val title : String, val fullscreen : Boolean = false, initialDimens
         }
 
     init {
+        // Before GLFW's Vulkan support loads the loader; see Options.doVulkanSDK.
+        Options.doVulkanSDK()
 
         check(GLFW.glfwInit()) { "Unable to initialize GLFW" }
 

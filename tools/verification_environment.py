@@ -120,7 +120,10 @@ def probe_environment() -> dict:
         return {"supported": False, "platform": sys.platform}
     return {"supported": True, "platform": sys.platform,
             **parse_power(_read(["pmset", "-g", "batt"])),
-            "displayAvailable": parse_display(_read(["system_profiler", "-json", "SPDisplaysDataType"]))}
+            # 20 s, not the 5 s default: on a loaded machine system_profiler overran 5 s often enough
+            # (2026-09-29) that "display state unknown" skipped 21 of 55 GPU smoke tests with the
+            # display on the whole time. Unknown still fails closed; it just happens less falsely.
+            "displayAvailable": parse_display(_read(["system_profiler", "-json", "SPDisplaysDataType"], timeout=20))}
 
 
 def sleep_evidence(start: float, end: float) -> list[str]:

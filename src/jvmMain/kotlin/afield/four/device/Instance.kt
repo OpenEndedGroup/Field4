@@ -38,6 +38,7 @@ class Instance(private val validate: Boolean) {
     internal val validationActive: Boolean get() = validate && vkDebugHandle != VK10.VK_NULL_HANDLE
 
     init {
+        Options.doVulkanSDK()
         if (Options.enableVR) {
             prepareOpenXRBootstrap()
         }
@@ -824,8 +825,13 @@ class Instance(private val validate: Boolean) {
                     // A Metal compile failure (macOS, through MoltenVK) says what happened in the translated
                     // source's terms; a name collision with Metal's standard library is said plainly, first.
                     val said = afield.four.MetalShaderErrors.note(msg)?.let { "$it\n$msg" } ?: msg
+                    // The loader reports, as a warning, each system layer it drops in favour of the
+                    // SDK copy that Options.addMacSdkLayers put first. That is the intended outcome,
+                    // seven times per instance; logged, at info, and never sent to a box.
+                    val isLoaderDuplicateLayer = msg.contains("Removing layer") && msg.contains("because it is a duplicate of")
                     when {
                         isPrintf -> lprintln("debug,vulkan", "PRINTF$where: $said")
+                        isLoaderDuplicateLayer -> lprintln("info,vulkan", "INFO$where: $said")
                         (severity and EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0 ->
                             lprintln("error,vulkan", "ERROR$where: $said")
 
@@ -840,7 +846,7 @@ class Instance(private val validate: Boolean) {
                     // module last, as errors, so every relaunch of a window reported a failed run.
                     val forBox = isPrintf || (severity and (EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT or
                             EXTDebugUtils.VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)) != 0
-                    if (!forBox || msg.contains(
+                    if (!forBox || isLoaderDuplicateLayer || msg.contains(
                             "VK_ERROR_FEATURE_NOT_PRESENT: Metal does not support disabling primitive restart",
                             ignoreCase = true
                         )
