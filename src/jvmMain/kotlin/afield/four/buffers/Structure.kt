@@ -140,7 +140,73 @@ open class Structure(
     val values: MutableMap<String, Any> = root?.values ?: mutableMapOf()
     var allBinding : (() -> WritesToBuffer)? = null
 
-    var dirty = false
+    /**
+     * Bumped by every change a write has to carry ([set], [bind], [bindAll], a carry-over). A per-frame
+     * uniform is a [FrameBufferGroup] with one buffer per swapchain image, and a change has to reach
+     * each of them: [writtenGeneration] records, per buffer slot, the generation that slot last got, so
+     * [needsWrite] is per slot. A single `dirty` flag cleared after writing the current image's buffer
+     * left the others holding the old value, and frames alternated between the two.
+     */
+    @Volatile
+    private var generation = 0L
+    private val writtenGeneration = java.util.concurrent.ConcurrentHashMap<Int, Long>()
+
+    // How many slots the buffer this structure is written into has — the swapchain image count for a
+    // per-frame block; 1 until a write says otherwise.
+    @Volatile
+    private var slotCount = 1
+
+    /**
+     * Whether some buffer slot may still hold older values than this structure — setting it true is
+     * [markDirty]; setting it false records every slot as current.
+     */
+    var dirty: Boolean
+        get() {
+            val r = rootStructure()
+            return (0 until r.slotCount).any { r.writtenGeneration.getOrDefault(it, 0L) != r.generation }
+        }
+        set(value) {
+            val r = rootStructure()
+            if (value) markDirty() else (0 until r.slotCount).forEach { r.writtenGeneration[it] = r.generation }
+        }
+
+    /**
+     * Whether buffer [slot] needs this structure written into it: it has live bindings (evaluated per
+     * write), a whole-block binding, or a change newer than the last write to that slot.
+     */
+    fun needsWrite(slot: Int): Boolean {
+        val r = rootStructure()
+        return r.bindings.isNotEmpty() || r.allBinding != null ||
+            r.writtenGeneration.getOrDefault(slot, 0L) != r.generation
+    }
+
+    /**
+     * Write this structure into [target]'s buffer for the current swapchain image, if that buffer is
+     * stale ([needsWrite]). The one path a module's per-frame uniform blocks are written by.
+     */
+    fun writeIfStale(target: FrameBufferGroup, cmd: CommandBuffer?, autowireReferences: (String) -> () -> HasBuffer) {
+        val slots = maxOf(1, target.buffers.size)
+        writeSlotIfStale(target.renderer.currentImage % slots, slots, cmd, autowireReferences) { body -> target.mapAndWrite_bytes(body) }
+    }
+
+    /** [writeIfStale] for an explicit [slot] of [slots] and writer — what [writeIfStale] and a test share. */
+    internal fun writeSlotIfStale(
+        slot: Int,
+        slots: Int,
+        cmd: CommandBuffer?,
+        autowireReferences: (String) -> () -> HasBuffer,
+        mapAndWrite: (ByteBuffer.() -> Unit) -> Unit,
+    ): Boolean {
+        val r = rootStructure()
+        r.slotCount = slots
+        if (!needsWrite(slot)) return false
+        // Record the generation this write carries, read before writing: a set() that lands while the
+        // write runs bumps it again and the slot stays stale.
+        val carried = r.generation
+        mapAndWrite { r.writeToBuffer(this, cmd, autowireReferences) }
+        r.writtenGeneration.merge(slot, carried) { a, b -> maxOf(a, b) }
+        return true
+    }
 
     var proxying: FrameBufferGroup? = null
     private var proxyBuffer: HasBuffer? = null
@@ -151,7 +217,7 @@ open class Structure(
         if (pathPrefix.isBlank()) property else "$pathPrefix.$property"
 
     private fun markDirty() {
-        dirty = true
+        generation++
         root?.markDirty()
     }
 
@@ -420,7 +486,8 @@ open class Structure(
                 writeToBuffer(offsets[name]!!, buffer, f, cmd, name = name)
             }
         }
-        dirty = keepDirty
+        // A progressing uniform still animating: every slot has to be written again.
+        if (keepDirty) markDirty()
     }
 
     private fun writeMembersToBuffer(
@@ -556,11 +623,11 @@ open class Structure(
     private fun flushIfNeeded(cmd: CommandBuffer?) {
         val r = rootStructure()
         if (cmd == null) return
-        if (!r.dirty && r.bindings.isEmpty() && r.allBinding == null) return
-        r.mapAndWrite_bytes {
-            r.writeToBuffer(this, cmd) { name ->
-                throw MissingRefException("No autowire resolver is available for '$name' while writing a Structure-backed buffer")
-            }
-        }
+        val target = r.proxyBuffer
+        val slots = if (target is FrameBufferGroup) maxOf(1, target.buffers.size) else 1
+        val slot = if (target is FrameBufferGroup) target.renderer.currentImage % slots else 0
+        r.writeSlotIfStale(slot, slots, cmd, { name ->
+            throw MissingRefException("No autowire resolver is available for '$name' while writing a Structure-backed buffer")
+        }) { body -> r.mapAndWrite_bytes(body) }
     }
 }

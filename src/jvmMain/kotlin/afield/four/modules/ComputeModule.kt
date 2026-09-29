@@ -512,12 +512,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 liveUniformStructures.forEach { (name, structure) ->
                     val target = (uniforms[name] as Uniform).buffer
                     structure.proxying = target
-                    if (structure.dirty || structure.bindings.size>0) {
-                        target.mapAndWrite_bytes {
-                            structure.writeToBuffer(this, command) {
-                                throw MissingRefException("risk of GPU null ref `$it`")
-                            }
-                        }
+                    structure.writeIfStale(target, command) {
+                        throw MissingRefException("risk of GPU null ref `$it`")
                     }
                     target.clean(false, command)
                 }
