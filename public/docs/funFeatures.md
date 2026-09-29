@@ -2,14 +2,6 @@
 
 Field aims to be full of unexpectedly fun features that help you interact with code. This page is going to be a long list of things that delight, things that you didn't think you'd need, and things that help when you are puzzled.
 
-## AI support
-
-This is such a big and important topic, it gets its [own page](aiFeatures.md).
-
-But here's the part that's hard to believe until you see it: you can *talk* things into existence, and the model looks at what it made before it answers. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
-
-![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
-
 ## Running things
 
 You can run code in Field the following ways (from the commonplace to the rare)
@@ -262,6 +254,14 @@ p.finish()
 These are polite by default: nothing is sent to the front end unless the work runs longer than ~2s, a finished bar lingers for a beat and then removes itself, and the whole thing is a complete no-op when the code isn't running inside a box. Because they hang off the box context, long-running library routines can offer a bar without you asking — `evolveVariety`, sorting-network `anneal`, wave-function-collapse `run`, interaction-net `reduce`, and friends already do.
 
 Turn them all off with `ProgressBars.enabled = false`, or tune `ProgressBars.showDelayMillis` (the grace period) and `ProgressBars.lingerMillis` (how long a completed bar sticks around).
+
+## AI support
+
+This is such a big and important topic, it gets its [own page](aiFeatures.md).
+
+But here's the part that's hard to believe until you see it: you can *talk* things into existence, and the model looks at what it made before it answers. Below, a polytope's vertex and fragment shaders each have a small StackSL program in them; six turns of chat made the faces burst outward in a wave and burn out to ragged glowing frames, and in its last reply the model is checking nine real frames of the window before saying yes. That whole conversation, step by step, is [Talking to the StackSL in your shader](stackauto_conversation.md). The same thing works for [a function](function_conversation.md), [a shader in a window of its own](stacksl_conversation.md) and [an animated RectSL scene](rectsl_conversation.md).
+
+![The polytope box with its AI4 chat restored: the last request, a sheet of nine frames of the polytope bursting and healing, and the model's reply that the live cycle now matches what was asked for](assets/stackauto_conversation/saved-chat.png)
 
 # Multi-language, multi-paradigm
 
