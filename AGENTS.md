@@ -52,6 +52,11 @@ This repository builds **Field·4**, a Kotlin-based live-coding environment for 
   - Set `AFIELD_HTTP_PORT=off` to disable the HTTP mirror, or set `AFIELD_HTTP_PORT=<port>` to choose an explicit loopback HTTP port.
   - Keystore env vars: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`
   - Generate dev keystore: `./gradlew generateLocalKeystore` (writes `config/field4-local.p12`)
+- Stopping a Field you started: `kill -INT` the PID listening on its port
+  (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`). That PID is the Field JVM. It exits in about 2 s and
+  first saves any document edit the 5 s autosave had not reached. Before 2026-09-29 a
+  `./field.sh &` launch ignored SIGINT, because a backgrounded non-interactive shell hands its job
+  SIGINT as ignored, and it needed SIGTERM. See `dev_docs/SIGINT_SHUTDOWN.md`.
 
 ### Python / uv recipes for agents
 
