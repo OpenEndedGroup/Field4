@@ -235,7 +235,7 @@ internal object NotationAnchors {
                     val moved = existing != null && box != null && existing.string("box") == box.id &&
                         existing.bool("edge") != true && fixedEnd(info, existing)?.let { !near(it, p, 1.5) } == true
                     val finalValue = if (moved) buildJsonObject {
-                        val f = box!!.frame
+                        val f = box.frame
                         put("box", JsonPrimitive(box.id))
                         put("u", JsonPrimitive((p.x - f.x) / f.w.coerceAtLeast(1.0)))
                         put("v", JsonPrimitive((p.y - f.y) / f.h.coerceAtLeast(1.0)))
