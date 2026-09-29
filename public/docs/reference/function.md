@@ -1367,10 +1367,10 @@ Experimental observation/transaction layer over Fn. No model transport and no al
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L237) | Register the function study tools once, for every conversation opened on a function study's `code`. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyWatcher</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L276) | Show each function study's viewer when its document opens (or a box is marked), without waiting for a tool call. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyMark</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L294) | Keep the `aiStudy` mark with the document. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyAction</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L300) | "Make a Function Study": mark the selected boxes as function studies, seeding an empty one with `FunctionStudies.STARTER`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L242) | Register the function study tools once, for every conversation opened on a function study's `code`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyWatcher</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L282) | Show each function study's viewer when its document opens (or a box is marked), without waiting for a tool call. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyMark</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L300) | Keep the `aiStudy` mark with the document. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installFunctionStudyAction</span><span class="p">(</span><span class="n">root</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L306) | "Make a Function Study": mark the selected boxes as function studies, seeding an empty one with `FunctionStudies.STARTER`. |
 
 ### FunctionStudyGuide { #functionstudytools-kt-functionstudyguide }
 
@@ -1378,7 +1378,7 @@ Experimental observation/transaction layer over Fn. No model transport and no al
 
 ### InspectFunctionStudy { #functionstudytools-kt-inspectfunctionstudy }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InspectFunctionStudy</span><span class="p">(</span><span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L30)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InspectFunctionStudy</span><span class="p">(</span><span class="k">override</span> <span class="k">val</span> <span class="n">revision</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;current&quot;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">StudyRequest</span><span class="p">.</span><span class="nc">Inspect</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L30)
 
 ### EditFunctionStudy { #functionstudytools-kt-editfunctionstudy }
 
@@ -1457,13 +1457,13 @@ Function studies, one per box: a box whose `aiStudy` property is `"function"` an
 
 ### FunctionStudyGuideText { #functionstudytools-kt-functionstudyguidetext }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FunctionStudyGuideText</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">core</span><span class="p">.</span><span class="nc">SummarisesForToolLog</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L266)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FunctionStudyGuideText</span><span class="p">(</span><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="n">ai</span><span class="p">.</span><span class="n">core</span><span class="p">.</span><span class="nc">SummarisesForToolLog</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L272)
 
 The [`FunctionStudyGuide`](function.md#functionstudytools-kt-functionstudyguide) tool's answer.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L267) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/FunctionStudyTools/#L273) |  |
 
 ## autodiff_fn.kt { #autodiff-fn-kt }
 
