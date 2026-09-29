@@ -112,8 +112,8 @@ object DocsAudioProvenance {
         // rather than out of a cellular automaton: the same family as CaSoundDocs with a different
         // thing upstream of it. See chain_lambda_sound.md.
         "afield.four.synth.LambdaSoundDocs" to Origin.STAND_IN_SYNTH,
-        // patRenderStereo once more, on a pattern read out of the document's drawing by
-        // notation.space and toPattern. See chain_drawn_score.md.
+        // patRenderStereo once more, on notes read out of the document's drawing by
+        // notation.space and the loop chain_drawn_score.md shows (patTimed makes the pattern).
         "afield.four.synth.DrawnScoreDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
         // A SineOsc whose amplitude or frequency is a Functions.Fn, through FnSignal: the same

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
 ```
 
 ## 1. score
@@ -38,66 +38,120 @@ println("${notation.mine.size} marks drawn")
 
 From `code`
 
-Eight beats across, MIDI 84 at the top down to 48 at the bottom.
+Eight beats across, MIDI 84 at the top down to 48 at the bottom: every mark as an event.
 
 ```edn [field-box id="ds_read" role="properties"]
-{"id" "ds_read" "index" 1 "name" "read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "read" "_tombstone" false "frame" #afield/rect [20.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_read_code_.kt" "lines" 5 "characters" 315 "sha256" "8384025746b4338de13a3d4c0a14c7ffd1d15e18d4f14b1715bbe51516035e6c"}]}
+{"id" "ds_read" "index" 1 "name" "read" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "read" "_tombstone" false "frame" #afield/rect [20.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_read_code_.kt" "lines" 5 "characters" 345 "sha256" "63a8133de41b432953f949870e134bac21d57bceac56852b865b9b48639408d9"}]}
 ```
 
 ```kotlin [field-property box="ds_read" name="code" path="ds_read_code_.kt"]
-// Eight beats across, MIDI 84 at the top down to 48 at the bottom.
+// Eight beats across, MIDI 84 at the top down to 48 at the bottom: every mark as an event.
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
-println(score.notes().joinToString("\n") { n ->
-    "beat %.3f to %.3f: MIDI %.2f (%s)".format(n.start, n.end, n.pitch, n.event.mark.label ?: n.event.mark.kind.name.lowercase())
+println(score.events.joinToString("\n") { e ->
+    "%s: beat %.3f to %.3f, MIDI %.2f to %.2f".format(e.mark.label ?: e.mark.kind.name.lowercase(), e.start, e.end, e.value, e.endValue)
 })
 ```
 
-## 3. listen back
+## 3. pentatonic
 
-<!-- field-box id="ds_listen" index="2" -->
+<!-- field-box id="ds_pentatonic" index="2" -->
 
 ### Narrative
 
 From `code`
 
-Render the reading again, then take the sound apart: an onset per strike, a pitch per note.
+The same drawing read another way: every note snapped to C minor pentatonic.
+
+```edn [field-box id="ds_pentatonic" role="properties"]
+{"id" "ds_pentatonic" "index" 2 "name" "pentatonic" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "pentatonic" "_tombstone" false "frame" #afield/rect [580.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_pentatonic_code_.kt" "lines" 16 "characters" 1097 "sha256" "8035b241813e604ceeb806db45f48a2a43387543b39b90dad57802ad52208ad6"}]}
+```
+
+```kotlin [field-property box="ds_pentatonic" name="code" path="ds_pentatonic_code_.kt"]
+// The same drawing read another way: every note snapped to C minor pentatonic.
+val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))   // the loop in `play`
+
+val minorPentatonic = setOf(0, 3, 5, 7, 10)                                // C Eb F G Bb
+val inScale = (24..108).filter { it % 12 in minorPentatonic }
+val snap = { midi: Double -> inScale.minBy { kotlin.math.abs(it - midi) }.toDouble() }
+val tuned = mutableListOf<TimedNote>()
+for (n in notes.map { it.copy(note = snap(it.note)) }) {
+    val last = tuned.lastOrNull()
+    if (last != null && last.note == n.note && last.end == n.start) tuned[tuned.size - 1] = last.copy(end = n.end)   // same pitch: hold it
+    else tuned += n
+}
+
+val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to patTimed(tuned, beats = 8.0), title = "one drawing, two readings", cycles = 1, pitched = true, channel = "roll")
+showPatAudio(patTimed(tuned, beats = 8.0), cycles = 2, cps = 0.25, voice = voice, channel = "audio")
+```
+
+## 4. listen back
+
+<!-- field-box id="ds_listen" index="3" -->
+
+### Narrative
+
+From `code`
+
+Play both readings again, then take the sound apart: an onset per strike, a pitch per note.
 
 ```edn [field-box id="ds_listen" role="properties"]
-{"id" "ds_listen" "index" 2 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [580.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 12 "characters" 731 "sha256" "58aa15b90fcf61403f42230cbe6420ff63af9b160aa44835309749ad36d87545"}]}
+{"id" "ds_listen" "index" 3 "name" "listen back" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "listen back" "_tombstone" false "frame" #afield/rect [860.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_listen_code_.kt" "lines" 11 "characters" 732 "sha256" "9efc2f7100d392b732675d4b553c3306d1fce95356f1c72d5390a08225db52c1"}]}
 ```
 
 ```kotlin [field-property box="ds_listen" name="code" path="ds_listen_code_.kt"]
-// Render the reading again, then take the sound apart: an onset per strike, a pitch per note.
-val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
-val notes = score.notes()
-val audio = patRenderStereo(score.toPattern(), cycles = 2, cps = 0.25, voice = DrawnScoreDocs.VOICE)
-val heard = DrawnScoreDocs.listen(audio, notes)
-val trace = heard.trace()
+// Play both readings again, then take the sound apart: an onset per strike, a pitch per note.
+val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))
+val tuned = DrawnScoreDocs.pentatonic(notes)
+val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+val heard = listOf(notes, tuned).map { DrawnScoreDocs.listen(patRenderStereo(patTimed(it, beats = 8.0), cycles = 2, cps = 0.25, voice = voice), it) }
+val trace = heard[0].trace()
 showSignals(
     "drawn" to trace.map { it.third }, "heard" to trace.map { it.second },
     x = trace.map { it.first }, title = "pitch: drawn and heard", xTitle = "seconds", yTitle = "MIDI",
 )
-println("${heard.onsetsDetected} onsets for ${heard.scheduled} notes, worst %.1f ms; worst pitch error %.3f semitones"
-    .format(heard.maxOnsetErrorMs, heard.maxPitchError))
+println(heard.joinToString("\n") { it.describe() })
 ```
 
-## 4. play
+## 5. play
 
-<!-- field-box id="ds_play" index="3" -->
+<!-- field-box id="ds_play" index="4" -->
 
 ### Narrative
 
 From `code`
 
-The whole score is one cycle, so 0.25 cycles a second is 120 beats a minute.
+What each mark means as music is decided here, and you can change it.
 
 ```edn [field-box id="ds_play" role="properties"]
-{"id" "ds_play" "index" 3 "name" "play" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "play" "_tombstone" false "frame" #afield/rect [300.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_play_code_.kt" "lines" 3 "characters" 251 "sha256" "aca6dd3ccb4adccfb838eaa383c0a3c9d93d476652d22d226b91fb47a7a36389"}]}
+{"id" "ds_play" "index" 4 "name" "play" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "play" "_tombstone" false "frame" #afield/rect [300.0 500.0 190.0 60.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ds_play_code_.kt" "lines" 25 "characters" 1612 "sha256" "0a52cce149e500c96d92a4ffdb787c19762b80510daa4b11739ce43ecd85c037"}]}
 ```
 
 ```kotlin [field-property box="ds_play" name="code" path="ds_play_code_.kt"]
-// The whole score is one cycle, so 0.25 cycles a second is 120 beats a minute.
-val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
-showPatAudio(score.toPattern(), cycles = 2, cps = 0.25, voice = DrawnScoreDocs.VOICE, channel = "audio")
+// What each mark means as music is decided here, and you can change it.
+val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
+val glideStep = 0.125                                                 // how finely a moving stroke is read
+
+val notes = mutableListOf<TimedNote>()
+for (e in score.events) {
+    val kind = e.mark.kind
+    if (kind == MarkType.TEXT || kind == MarkType.FRAME || kind == MarkType.ARROW) continue   // labels, not notes
+    if (e.end <= e.start) continue                                                           // no width, no time
+    val moving = (kind == MarkType.STROKE || kind == MarkType.LINE) && kotlin.math.abs(e.endValue - e.value) > 0.5
+    if (!moving) {                                                  // a rectangle, or a level line: one note
+        notes += TimedNote(e.start, e.end, e.value)
+        continue
+    }
+    var t = e.start                                                 // a glissando: cut it every glideStep
+    while (t < e.end - 1e-9) {
+        val hit = score.vertical(t).firstOrNull { it.mark.id == e.mark.id && !it.isSpan }
+        if (hit != null) notes += TimedNote(t, minOf(t + glideStep, e.end), hit.value, hit.pressure ?: 1.0)
+        t += glideStep
+    }
+}
+
+val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
+showPatRollOf("read" to patTimed(notes, beats = 8.0), title = "the score, read", subtitle = "${notes.size} notes", cycles = 1, pitched = true, channel = "roll")
+showPatAudio(patTimed(notes, beats = 8.0), cycles = 2, cps = 0.25, voice = voice, channel = "audio")
 ```
 

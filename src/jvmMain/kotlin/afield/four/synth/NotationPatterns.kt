@@ -4,6 +4,7 @@ package afield.four.synth
 import afield.MarkType
 import afield.NotationEvent
 import afield.NotationSpace
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.max
@@ -36,27 +37,49 @@ import kotlin.math.min
  * Pitches are not rounded: a note drawn a third of the way between two lines plays a third of a
  * semitone sharp. Round them yourself with `withValue` if the score should be tempered.
  */
-fun NotationSpace.toPattern(glideStep: Double = 0.125, levelTolerance: Double = 0.5): PatPattern<String> {
-    val notes = notes(glideStep, levelTolerance)
-    val beats = abs(x.endInclusive - x.start)
-    val x0 = min(x.start, x.endInclusive)
-    val scale = 960L  // ticks per beat: any drawn position lands on a rational time
+fun NotationSpace.toPattern(glideStep: Double = 0.125, levelTolerance: Double = 0.5): PatPattern<String> =
+    patTimed(
+        notes(glideStep, levelTolerance).map { TimedNote(it.start - min(x.start, x.endInclusive), it.end - min(x.start, x.endInclusive), it.pitch, it.gain ?: 1.0) },
+        beats = abs(x.endInclusive - x.start),
+    )
+
+/**
+ * One note of a [patTimed] pattern: it sounds from [start] to [end], in beats from the start of
+ * the cycle, at MIDI [note] (fractional notes are microtones), with [gain] 0..1.
+ */
+data class TimedNote(val start: Double, val end: Double, val note: Double, val gain: Double = 1.0)
+
+/**
+ * A pattern from notes with explicit times: one cycle is [beats] long and repeats, so a note at
+ * beat 2 of an eight-beat cycle plays at a quarter of every cycle.
+ *
+ * ```
+ * val tune = patTimed(listOf(TimedNote(0.0, 1.0, 60.0), TimedNote(1.0, 1.5, 64.0, gain = 0.5)), beats = 4.0)
+ * showPatAudio(tune, cycles = 2, cps = 0.5)
+ * ```
+ *
+ * This is the constructor to reach for when the times come from somewhere other than
+ * mini-notation — a drawing, a MIDI file, a simulation. Times are snapped to a 960-per-beat grid
+ * so every note lands on an exact rational time; the atom is the MIDI note and `gain` is an
+ * annotation, which is what [patRenderStereo]'s voice reads.
+ */
+fun patTimed(notes: List<TimedNote>, beats: Double): PatPattern<String> {
+    require(beats > 0) { "beats must be > 0" }
+    val ticks = Math.round(beats * 960)
     val placed = notes.map { n ->
-        val a = PatQ.of(Math.round((n.start - x0) * scale), Math.round(beats * scale))
-        val b = PatQ.of(Math.round((n.end - x0) * scale), Math.round(beats * scale))
-        Triple(a, if (b > a) b else a + PatQ.of(1, Math.round(beats * scale)), n)
+        val a = PatQ.of(Math.round(n.start * 960), ticks)
+        val b = PatQ.of(Math.round(n.end * 960), ticks)
+        Triple(a, if (b > a) b else a + PatQ.of(1, ticks), n)
     }
     return PatPattern { arc ->
         val out = ArrayList<PatEvent<String>>()
-        val first = floor(arc.start.toDouble()).toLong()
-        val last = floor(arc.end.toDouble()).toLong()
-        for (cycle in first..last) {
+        for (cycle in floor(arc.start.toDouble()).toLong()..floor(arc.end.toDouble()).toLong()) {
             val c = PatQ.of(cycle)
             for ((a, b, n) in placed) {
                 val whole = PatArc(a + c, b + c)
                 val part = whole.intersect(arc) ?: continue
-                out += PatEvent(part, "%.3f".format(java.util.Locale.ROOT, n.pitch), whole = whole,
-                    annotations = n.gain?.let { mapOf("gain" to "%.3f".format(java.util.Locale.ROOT, it)) } ?: emptyMap())
+                out += PatEvent(part, "%.3f".format(Locale.ROOT, n.note), whole = whole,
+                    annotations = mapOf("gain" to "%.3f".format(Locale.ROOT, n.gain)))
             }
         }
         out

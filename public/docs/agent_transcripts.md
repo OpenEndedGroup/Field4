@@ -158,13 +158,14 @@ headless, since the drawing is data on the server and needs no window. See
 
 ### drawn_score
 
-A drawn score, heard, as four boxes. `score` draws a frame named "score" with a piano roll of
+A drawn score, heard, as five boxes. `score` draws a frame named "score" with a piano roll of
 rectangles, a glissando and a held note; `read` reads it with `notation.space` as eight beats of MIDI
-pitch and prints the notes; `play` turns the reading into a pattern with `toPattern` and renders two
-cycles offline into an audio player; `listen back` finds the onsets and pitches in that audio and
-plots what was heard against what was drawn. Draw your own notes in the frame and run the last three
-again. The replay runs all four headless: the drawing is data on the server and the audio an offline
-buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
+pitch and prints its events; `play` decides in a dozen editable lines what each event means as notes,
+builds a pattern with `patTimed` and renders two cycles offline into an audio player; `pentatonic`
+reads the same drawing snapped to a scale; `listen back` finds the onsets and pitches in both renders
+and plots what was heard against what was drawn. Draw your own notes in the frame and run the boxes
+after `score` again. The replay runs all five headless: the drawing is data on the server and the
+audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
