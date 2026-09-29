@@ -58,7 +58,8 @@ class CompletionInteractionLoggerTest {
         assertTrue("notes" !in properties, "prose-only notes should not be predictive completion context")
         val inherited = record.getValue("inheritedPreamble").jsonPrimitive.content
         assertTrue("val local = inherited + 1" in inherited)
-        assertTrue("val inherited = 41 /**/" in inherited)
+        // since 2026-09-29 an inherited line carries its supplier's uid before the inherit marker
+        assertTrue("val inherited = 41 /*from:parent*/ /**/" in inherited, inherited)
         val interaction = record.getValue("interaction").jsonObject
         assertEquals("interaction-1", interaction.getValue("interactionId").jsonPrimitive.content)
         assertEquals(28, interaction.getValue("position").jsonPrimitive.content.toInt())
