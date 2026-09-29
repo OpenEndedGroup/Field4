@@ -237,6 +237,8 @@ The three cellular-automaton scenes, their oracles, and the renderer that writes
 
 `src/jvmMain/kotlin/afield/four/synth/DrawnScoreDocs.kt` — [read the source](source/jvmMain/afield/four/synth/DrawnScoreDocs/)
 
+**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md)
+
 ### Top-level functions { #drawnscoredocs-kt-functions }
 
 | Declaration | Summary |
@@ -2252,7 +2254,7 @@ Add a sound by appending one `Scene` to `SCENES`.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` — [read the source](source/jvmMain/afield/four/synth/PatSoundDocs/)
 
-**Used in:** [Sound: from a pattern to something you can hear](../sound.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
+**Used in:** [Sound: from a pattern to something you can hear](../sound.md), [A Drawn Score, Heard](../chain_drawn_score.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #patsounddocs-kt-functions }
 

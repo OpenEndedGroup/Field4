@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 162 transcripts on every build, at three
-depths. 83 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 163 transcripts on every build, at three
+depths. 84 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -155,6 +155,18 @@ headless, since the drawing is data on the server and needs no window. See
 [Drawing and Notation](drawing_and_notation.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
+
+### drawn_score
+
+A drawn score, heard, as four boxes. `score` draws a frame named "score" with a piano roll of
+rectangles, a glissando and a held note; `read` reads it with `notation.space` as eight beats of MIDI
+pitch and prints the notes; `play` turns the reading into a pattern with `toPattern` and renders two
+cycles offline into an audio player; `listen back` finds the onsets and pitches in that audio and
+plots what was heard against what was drawn. Draw your own notes in the frame and run the last three
+again. The replay runs all four headless: the drawing is data on the server and the audio an offline
+buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
 ### hello_display_capture
 

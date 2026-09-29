@@ -66,16 +66,18 @@ The corpus audit prints its whole table: `run_field_tests.py --id synth.docs.aud
 
 | family | pinned count |
 |---|---|
-| `STAND_IN_SYNTH` | 40 |
+| `STAND_IN_SYNTH` | 41 |
 | `DIRT_SAMPLES` | 1 |
 | `MIXED_SAMPLES_AND_STAND_IN` | 1 |
-| `DOUGH_DSP` | 7 |
+| `DOUGH_DSP` | 9 |
 | `FAUST` | 3 |
 | `DOUGH_WASM` | 2 |
-| **total (`EXPECTED_FENCE_COUNT`)** | **54** |
+| **total (`EXPECTED_FENCE_COUNT`)** | **57** |
 
 This table is a transcription of the assertion and has itself been stale: it read 37 and 51 from
-2026-09-16 until 2026-09-21, while the guard asserted 40 and 54. Read the test, not this table,
+2026-09-16 until 2026-09-21, while the guard asserted 40 and 54, and read 7 and 54 again after
+`chain_fn_sound_roundtrip.md` moved the guard to 9 and 56 (corrected 2026-09-29, with
+`chain_drawn_score.md`'s clip). Read the test, not this table,
 when the two disagree.
 
 `sound.md` no longer restates any of it. It states the one thing a reader listening to the site

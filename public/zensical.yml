@@ -261,6 +261,7 @@ nav:
     - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
+    - A Drawn Score, Heard: chain_drawn_score.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - Talking a Function into Existence: function_conversation.md

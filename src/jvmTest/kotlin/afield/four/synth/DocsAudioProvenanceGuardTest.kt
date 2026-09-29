@@ -59,7 +59,7 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 40,
+            Origin.STAND_IN_SYNTH to 41,
             Origin.DIRT_SAMPLES to 1,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 9,
@@ -225,7 +225,12 @@ class DocsAudioProvenanceGuardTest {
          * [FnSoundDocs] plays one `Functions.Fn` as the amplitude and then as the frequency of a
          * `SineOsc`, through `FnSignal`, unnormalised so the analysed file and the published one are
          * the same bytes — which its FIELD_TEST checks.
+         *
+         * The newest is `chain_drawn_score.md`'s, and it is [Origin.STAND_IN_SYNTH]: [DrawnScoreDocs]
+         * reads a score out of the document's drawing with `notation.space`, turns it into a pattern
+         * with `toPattern`, and plays that through [patRenderStereo]. Its FIELD_TEST finds every
+         * strike and every pitch in the render and holds them against the drawing.
          */
-        const val EXPECTED_FENCE_COUNT = 56
+        const val EXPECTED_FENCE_COUNT = 57
     }
 }

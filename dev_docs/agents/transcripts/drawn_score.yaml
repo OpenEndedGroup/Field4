@@ -1,0 +1,76 @@
+name: drawn_score
+description: >
+  A drawn score, heard: four boxes that draw a score on the document's drawing, read it as notes,
+  play it, and listen back to what was played. Press Alt+D to draw on it yourself.
+
+  Run `score` first: it draws a frame named "score", a piano roll of blue rectangles, a red
+  glissando and a green held note. `read` reads the frame as eight beats of MIDI pitch
+  (notation.space) and prints the notes it finds. `play` turns the reading into a pattern
+  (toPattern) and renders two cycles of it offline into an audio player. `listen back` finds the
+  onsets and pitches in that audio and plots what was heard against what was drawn. Draw more
+  rectangles or strokes inside the frame (Alt+D, then R or P), and run `read`, `play` and
+  `listen back` again.
+
+  Companion to public/docs/chain_drawn_score.md. Pure CPU; no Window, no Renderer, no audio device.
+operations:
+  - create:
+      box: ds_score
+      name: score
+      frame: { x: 20.0, y: 40.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // The score, drawn from code into the document's drawing: a frame named "score", a piano
+          // roll, a glissando and a held note. Running it again replaces these marks; anything you
+          // draw by hand in the frame is left alone and is read with them.
+          notation { drawnScore() }
+          println("${notation.mine.size} marks drawn")
+  - create:
+      box: ds_read
+      name: read
+      frame: { x: 20.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Eight beats across, MIDI 84 at the top down to 48 at the bottom.
+          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
+          println(score.notes().joinToString("\n") { n ->
+              "beat %.3f to %.3f: MIDI %.2f (%s)".format(n.start, n.end, n.pitch, n.event.mark.label ?: n.event.mark.kind.name.lowercase())
+          })
+  - create:
+      box: ds_play
+      name: play
+      frame: { x: 300.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // The whole score is one cycle, so 0.25 cycles a second is 120 beats a minute.
+          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
+          showPatAudio(score.toPattern(), cycles = 2, cps = 0.25, voice = DrawnScoreDocs.VOICE, channel = "audio")
+  - create:
+      box: ds_listen
+      name: listen back
+      frame: { x: 580.0, y: 500.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Render the reading again, then take the sound apart: an onset per strike, a pitch per note.
+          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
+          val notes = score.notes()
+          val audio = patRenderStereo(score.toPattern(), cycles = 2, cps = 0.25, voice = DrawnScoreDocs.VOICE)
+          val heard = DrawnScoreDocs.listen(audio, notes)
+          val trace = heard.trace()
+          showSignals(
+              "drawn" to trace.map { it.third }, "heard" to trace.map { it.second },
+              x = trace.map { it.first }, title = "pitch: drawn and heard", xTitle = "seconds", yTitle = "MIDI",
+          )
+          println("${heard.onsetsDetected} onsets for ${heard.scheduled} notes, worst %.1f ms; worst pitch error %.3f semitones"
+              .format(heard.maxOnsetErrorMs, heard.maxPitchError))
+  - execute:
+      box: ds_score
+      property: code
+  - execute:
+      box: ds_read
+      property: code
+  - execute:
+      box: ds_play
+      property: code
+  - execute:
+      box: ds_listen
+      property: code
