@@ -53,7 +53,7 @@ in the box, where you can change it. This reading makes three decisions:
 `patTimed` turns the notes into a pattern. The whole x range is one cycle, so `cps` is the tempo:
 eight beats at a quarter of a cycle a second is 120 beats a minute.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/read.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-read" embed=true alt="A piano roll of the score as read, one cycle of eight beats: the rectangles as long notes, the glissando as a rising run of short steps, and the held note"}
 notation { drawnScore() }
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
 val glideStep = 0.125                                                 // how finely a moving stroke is read
@@ -105,7 +105,7 @@ Nothing in the drawing says the y axis is continuous MIDI. Snap every note to C 
 and the glissando stops being a chromatic smear and becomes a run through the scale. A step that
 lands on the pitch the last one did is held rather than struck again:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_drawn_score/pentatonic.png" wait="3" capture="box" open-outputs="true" w="1180" h="460" padding="18" timeout="90" name="chain-drawn-score-pentatonic" embed=true alt="Two piano rolls of the same drawing, one above the other: the reading as drawn, and the same notes snapped to C minor pentatonic, where the glissando becomes fewer, longer steps through the scale"}
 notation { drawnScore() }
 val notes = DrawnScoreDocs.interpret(notation.space("score", x = 0.0..8.0, y = 84.0..48.0))   // the loop above
 
@@ -125,17 +125,6 @@ showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to pa
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score-pentatonic").
 ```
-
-??? aside "Two figures owed"
-
-    The reading loop and the pentatonic loop were first published as figures, a piano roll of each.
-    Those captures are owed: the machine was on battery at 50% when this revision was made, and
-    the docs runner refuses to capture below 80% off AC. They are code only for now. Neither loop
-    goes unrun: `DrawnScorePageTest` holds both equal, line for line, to `DrawnScoreDocs.interpret`
-    and `pentatonic`, which render both published clips and which `synth.drawn.score` measures.
-    The `play` and `pentatonic` boxes in the starting point run the same loops. Restore
-    `screenshot="assets/chain_drawn_score/read.png"` and `pentatonic.png` on the two fences to
-    capture them.
 
 Other readings are as short. Rectangle height could be loudness, or the size of a chord; the slope
 at a cut could be articulation, a steep line struck hard; a mark's `stroke` colour could pick the
