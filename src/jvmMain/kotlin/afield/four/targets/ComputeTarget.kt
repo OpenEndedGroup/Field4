@@ -20,32 +20,32 @@ class ComputeTarget(val renderer: Renderer) : Target {
 
     @JvmName("plusAssign")
     operator fun plusAssign(m: Pair<String, ComputeModulePointer>) {
-        modules.putOwned(m.first, m.second)
+        modules.putOwned(m.first, m.second, renderer)
     }
 
     @JvmName("plusAssign_n")
     operator fun plusAssign(m: Named<ComputeModulePointer>) {
-        modules.putOwned(m.name, m.value)
+        modules.putOwned(m.name, m.value, renderer)
     }
 
     @JvmName("plusAssign_module")
     operator fun plusAssign(m: Pair<String, ComputeModule>) {
-        modules.putOwned(m.first, m.second.pointer())
+        modules.putOwned(m.first, m.second.pointer(), renderer)
     }
 
     @JvmName("plusAssign_rayTracing")
     operator fun plusAssign(m: Pair<String, RayTracingModulePointer>) {
-        rayTracingModules.putOwned(m.first, m.second)
+        rayTracingModules.putOwned(m.first, m.second, renderer)
     }
 
     @JvmName("plusAssign_rayTracingModule")
     operator fun plusAssign(m: Pair<String, RayTracingModule>) {
-        rayTracingModules.putOwned(m.first, m.second.pointer())
+        rayTracingModules.putOwned(m.first, m.second.pointer(), renderer)
     }
 
     @JvmName("plusAssign_target")
     operator fun plusAssign(m: Pair<String, Target>) {
-        others.putOwned(m.first, m.second)
+        others.putOwned(m.first, m.second, renderer)
     }
 
     @JvmName("plusAssign_function")
@@ -54,7 +54,7 @@ class ComputeTarget(val renderer: Renderer) : Target {
             override fun render(command: CommandBuffer, index: Int) {
                 m.second.invoke(command, index)
             }
-        })
+        }, renderer)
     }
 
     override fun render(command: CommandBuffer, index: Int) {

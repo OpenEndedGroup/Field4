@@ -1,5 +1,8 @@
 package afield
 
+import afield.four.targets.ownedModuleCount
+import afield.four.targets.putOwned
+import afield.four.targets.releaseOwnedModulesOf
 import afield.four.util.MapOfSequences
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -94,5 +97,41 @@ class LifecycleLedgerTest {
         ownership.close()
         val after = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
         assertTrue("\"liveTotal\":0" in after, after)
+    }
+
+    /**
+     * A renderer's disposal ends the render-module ownerships its targets' maps hold. The module dies
+     * with the device; the ownership used to stay live — keeping the module and the snippet
+     * classloader that built it — until the box that put it there retired.
+     */
+    @Test
+    fun disposingARendererReleasesTheModulesItsDependentsPutOnIt() {
+        val box = Box("ledger-renderer-dispose")
+        val renderer = Any()
+        val otherRenderer = Any()
+        val modules = mutableMapOf<String, Any>()
+        val otherModules = mutableMapOf<String, Any>()
+        val run = box.runScopes.begin("default", "launch")
+        Box.withBoxContextNow(box) {
+            RunScope.withCurrent(run) {
+                modules.putOwned("a", Any(), renderer)
+                modules.putOwned("b", Any(), renderer)
+                otherModules.putOwned("c", Any(), otherRenderer)
+            }
+        }
+        assertEquals(3, ownedBy(box, LifecycleKinds.RENDER_MODULE).size)
+        assertEquals(2, ownedModuleCount(renderer))
+        assertEquals(3, run.liveCount(ReleasePolicy.KEYED))
+
+        assertEquals(2, releaseOwnedModulesOf(renderer))
+
+        val left = ownedBy(box, LifecycleKinds.RENDER_MODULE)
+        assertEquals(listOf("c"), left.map { it.key }, "only the other renderer's module is still owned")
+        assertEquals(1, run.liveCount(ReleasePolicy.KEYED), "the box's run scope no longer counts them")
+        assertEquals(0, ownedModuleCount(renderer))
+        assertEquals(0, releaseOwnedModulesOf(renderer), "a second dispose finds nothing")
+
+        box.runScopes.closeAll()
+        assertTrue(ownedBy(box, LifecycleKinds.RENDER_MODULE).isEmpty())
     }
 }

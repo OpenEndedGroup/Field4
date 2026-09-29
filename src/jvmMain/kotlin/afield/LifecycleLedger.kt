@@ -29,11 +29,18 @@ class Ownership internal constructor(
     val ownerId: String?,
     val strand: String?,
     val policy: ReleasePolicy,
-    private val slot: Any?,
-    private val live: (() -> Boolean)?,
-    private val release: (() -> Unit)?,
+    slot: Any?,
+    live: (() -> Boolean)?,
+    release: (() -> Unit)?,
 ) : AutoCloseable {
     private val closed = AtomicBoolean(false)
+
+    // Dropped once closed or superseded. A closed ownership can still be referenced — by the run
+    // scope that owned it until that scope prunes, by a registry — and these closures capture the
+    // thing itself (a render module, a callback) and so the snippet classloader that built it.
+    @Volatile private var slot: Any? = slot
+    @Volatile private var live: (() -> Boolean)? = live
+    @Volatile private var release: (() -> Unit)? = release
 
     /** False once closed, superseded, or once the subsystem itself reports the thing gone. */
     val isLive: Boolean
@@ -43,13 +50,28 @@ class Ownership internal constructor(
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
         LifecycleLedger.forget(this)
+        val slot = slot
+        val release = release
+        drop()
         val stillOurs = slot == null || LifecycleLedger.releaseSlot(slot, this)
         if (stillOurs) release?.invoke()
     }
 
     /** A newer registration took the slot: forget this one without releasing anything. */
     internal fun supersede() {
-        if (closed.compareAndSet(false, true)) LifecycleLedger.forget(this)
+        if (closed.compareAndSet(false, true)) {
+            LifecycleLedger.forget(this)
+            // Only removes the slot's entry if it is still this one — true when this is pruned as
+            // dead rather than displaced by a newer claim.
+            slot?.let { LifecycleLedger.releaseSlot(it, this) }
+            drop()
+        }
+    }
+
+    private fun drop() {
+        slot = null
+        live = null
+        release = null
     }
 
     override fun toString(): String = "Ownership($kind/$policy '$key' owner=$ownerId strand=$strand live=$isLive)"

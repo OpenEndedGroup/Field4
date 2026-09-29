@@ -17,6 +17,7 @@ import afield.four.modules.ModulePointer
 import afield.four.modules.RayTracingModulePointer
 import afield.four.targets.ComputeTarget
 import afield.four.targets.RenderTarget
+import afield.four.targets.releaseOwnedModulesOf
 import afield.four.util.AutoDisposer
 import afield.four.util.MapOfSequences
 import afield.four.util.Options
@@ -766,6 +767,10 @@ class Renderer(
         if (cleanedUp) return
         cleanedUp = true
         running = false
+        // The modules boxes put on this renderer's targets die with its device; end their ledger
+        // ownerships now, rather than when each box retires, so the modules and the snippet
+        // classloaders that built them are not kept by the box's run scope.
+        releaseOwnedModulesOf(this)
         // Before the waitIdle below: a Queue.submit from another thread either finished before this
         // (and the waits cover it) or is refused. Renderer's own frame submits use vkQueueSubmit2
         // on this thread and render() already refuses once cleanedUp is set.

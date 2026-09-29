@@ -34,37 +34,37 @@ class RenderTarget(
     @JvmName("plusAssign")
     operator fun plusAssign(m : Pair<String, ModulePointer>) {
         if (m.first in modules) modules.remove(m.first) // allow reordering
-        modules.putOwned(m.first, m.second)
+        modules.putOwned(m.first, m.second, renderer)
     }
 
     @JvmName("plusAssign_mp")
     operator fun plusAssign(m : ModulePointer) {
-        modules.putOwned(m.current.parameters.name, m)
+        modules.putOwned(m.current.parameters.name, m, renderer)
     }
 
     @JvmName("plusAssign_module")
     operator fun plusAssign(m : Pair<String, Module>) {
-        modules.putOwned(m.first, m.second.pointer())
+        modules.putOwned(m.first, m.second.pointer(), renderer)
     }
 
     @JvmName("plusAssign_mesh")
     operator fun plusAssign(m : Pair<String, MeshModulePointer>) {
-        meshModules.putOwned(m.first, m.second)
+        meshModules.putOwned(m.first, m.second, renderer)
     }
 
     @JvmName("plusAssign_mmp")
     operator fun plusAssign(m : MeshModulePointer) {
-        meshModules.putOwned(m.current.parameters.name, m)
+        meshModules.putOwned(m.current.parameters.name, m, renderer)
     }
 
     @JvmName("plusAssign_mmodule")
     operator fun plusAssign(m : Pair<String, MeshModule>) {
-        meshModules.putOwned(m.first, m.second.pointer())
+        meshModules.putOwned(m.first, m.second.pointer(), renderer)
     }
 
     @JvmName("plusAssign_target")
     operator fun plusAssign(m : Pair<String, Target>) {
-        others.putOwned(m.first, m.second)
+        others.putOwned(m.first, m.second, renderer)
     }
 
     var seenBefore = mutableSetOf<Int>()
