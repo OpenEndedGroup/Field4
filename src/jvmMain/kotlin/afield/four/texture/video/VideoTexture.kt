@@ -1,5 +1,6 @@
 package afield.four.texture.video
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
@@ -851,7 +852,7 @@ private class VideoPlaneTexture(
             cmd.vkCommandBuffer,
             stagingBuffer.buffer,
             image.vkImage,
-            VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
             region
         )
     }
@@ -864,8 +865,8 @@ private class VideoPlaneTexture(
     ) {
         val barrier = VkImageMemoryBarrier.calloc(1, stack)
             .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-            .oldLayout(oldLayout)
-            .newLayout(newLayout)
+            .oldLayout(vkLayout(oldLayout))
+            .newLayout(vkLayout(newLayout))
             .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .image(image.vkImage)
