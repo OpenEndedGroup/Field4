@@ -1,5 +1,6 @@
 package afield.four.modules
 
+import afield.four.device.vkLayout
 import afield.Named
 import afield.Rect
 import afield.four.Renderer
@@ -457,7 +458,7 @@ class Module(val parameters: Parameters) : Renderable {
                 require(views.isNotEmpty()) { "TexturePointer ${name} has no image views" }
 
                 val imageInfo = VkDescriptorImageInfo.calloc(1, stack)
-                    .imageLayout(sampledImageLayout(views.first()))
+                    .imageLayout(vkLayout(sampledImageLayout(views.first())))
                     .imageView(views.first().imageView.vkImageView)
                     .sampler(sampler.vkSampler)
 
@@ -491,7 +492,7 @@ class Module(val parameters: Parameters) : Renderable {
 
                 val infos = VkDescriptorImageInfo.calloc(views.size, stack)
                 for (i in views.indices) {
-                    infos[i].imageLayout(sampledImageLayout(views[i]))
+                    infos[i].imageLayout(vkLayout(sampledImageLayout(views[i])))
                         .imageView(views[i].imageView.vkImageView).sampler(sampler.vkSampler)
                 }
 
@@ -517,7 +518,7 @@ class Module(val parameters: Parameters) : Renderable {
             command: CommandBuffer, pipelineLayout: Long, bindPoint: Int
         ) {
             MemoryStack.stackPush().use { stack ->
-                val imageInfo = VkDescriptorImageInfo.calloc(1, stack).imageLayout(VK_IMAGE_LAYOUT_GENERAL)
+                val imageInfo = VkDescriptorImageInfo.calloc(1, stack).imageLayout(vkLayout(VK_IMAGE_LAYOUT_GENERAL))
                     .imageView(texture.imageView.vkImageView)
 
                 val write = VkWriteDescriptorSet.calloc(1, stack).sType(VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET)

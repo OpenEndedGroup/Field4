@@ -1,6 +1,7 @@
 @file:afield.CompletionCategory("Internal")
 package afield.four.reconstruction
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.CommandBuffer
@@ -35,7 +36,7 @@ internal object ReconstructionCapture {
                 val region=VkBufferImageCopy.calloc(1,s)
                 region.imageSubresource().aspectMask(view.aspectMask).layerCount(1)
                 region.imageExtent().set(width,height,1)
-                vkCmdCopyImageToBuffer(cmd.vkCommandBuffer,image.vkImage,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,staging.buffer,region)
+                vkCmdCopyImageToBuffer(cmd.vkCommandBuffer,image.vkImage,vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),staging.buffer,region)
                 image_layout_transition(cmd.vkCommandBuffer,image,VK_PIPELINE_STAGE_2_TRANSFER_BIT,VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
                     VK_ACCESS_2_TRANSFER_READ_BIT,VK_ACCESS_2_MEMORY_READ_BIT or VK_ACCESS_2_MEMORY_WRITE_BIT,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,old,range)
                 val barrier=VkMemoryBarrier2.calloc(1,s).`sType$Default`().srcStageMask(VK_PIPELINE_STAGE_2_TRANSFER_BIT).srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)

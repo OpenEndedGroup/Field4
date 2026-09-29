@@ -1,5 +1,6 @@
 package afield.four.browser
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.texture.image_layout_transition
@@ -189,7 +190,7 @@ class BitmapBrowserSurface(
                 command.vkCommandBuffer,
                 slot.buffer,
                 slot.image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 region
             )
         }

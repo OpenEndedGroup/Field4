@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.Rect
 import afield.Runloop
 import afield.four.GpuImageCapture
@@ -377,7 +378,7 @@ open class RenderToTexture(
                     vkCmdCopyImageToBuffer(
                         command.vkCommandBuffer,
                         colorImageHandles[request.attachment],
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                         staging.buffer,
                         copyRegion
                     )
@@ -1378,7 +1379,7 @@ open class RenderToTexture(
                 colorAttachmentInfo[i]
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                     .imageView(attachmentImageViews[i].vkImageView)
-                    .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .imageLayout(vkLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(if (parameters.clearFirst) VK_ATTACHMENT_LOAD_OP_CLEAR else VK_ATTACHMENT_LOAD_OP_LOAD)
                     .storeOp(parameters.colorStoreOp)
@@ -1400,7 +1401,7 @@ open class RenderToTexture(
 
             if (parameters.useDepth && depthImageView != null) {
                 depthAttachmentInfo.imageView(depthImageView!!.vkImageView)
-                depthAttachmentInfo.imageLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                depthAttachmentInfo.imageLayout(vkLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL))
                 depthAttachmentInfo.resolveMode(VK_RESOLVE_MODE_NONE)
                 depthAttachmentInfo.loadOp(parameters.depthLoadOp)
                 depthAttachmentInfo.storeOp(parameters.depthStoreOp)
@@ -1740,8 +1741,8 @@ open class RenderToTexture(
 
                     vkCmdBlitImage(
                         commandBuffer,
-                        image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        image, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                        image, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                         blit,
                         filter
                     )

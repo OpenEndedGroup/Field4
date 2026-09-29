@@ -1,5 +1,6 @@
 package afield.four
 
+import afield.four.device.vkLayout
 import afield.Named
 import afield.Rect
 import afield.Runloop
@@ -1005,7 +1006,7 @@ class Renderer(
                 VK10.vkCmdCopyImageToBuffer(
                     cmd.vkCommandBuffer,
                     ctx.swapChain.imageViews[imageIndex].image,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                     capture.stagingBuffer.buffer,
                     copyRegion
                 )

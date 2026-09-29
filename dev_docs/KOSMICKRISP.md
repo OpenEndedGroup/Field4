@@ -109,6 +109,25 @@ What the sweep found and fixed, in order:
 4. `Device` requested EDS3 `polygonMode` without probing for it (fatal on KosmicKrisp), and
    unconditionally requested core features that KosmicKrisp before SDK 1.4.357 lacked.
 
+## Unified image layouts (2026-09-29)
+
+Where the device offers `unifiedImageLayouts` (KosmicKrisp does, MoltenVK does not), Field enables
+`VK_KHR_unified_image_layouts` and hands Vulkan `GENERAL` for every layout except `UNDEFINED`,
+`PREINITIALIZED` and `PRESENT_SRC_KHR` (`afield.four.device.ImageLayouts`, `vkLayout()`). Off with
+OpenXR, whose runtimes expect specific layouts on swapchain release, and with
+`AFIELD_FOUR_UNIFIED_LAYOUTS=false`.
+
+Field's logical layouts are untouched: `Image`'s per-command-buffer tracking, the comparisons that
+decide whether a barrier is needed, and every barrier, which still carries the synchronisation.
+Only the value crossing into Vulkan is mapped, at the 78 calls that take one — barriers
+(`image_layout_transition` and the direct `VkImageMemoryBarrier`s), descriptor and attachment infos,
+and copy/blit/clear commands. A mapping that is a pure function of the logical layout keeps both
+ends of every transition in agreement, which a partial hand conversion would not.
+
+Sweep, same 55 GPU smoke tests, complete output counted: **55/55 on the default (KosmicKrisp) path
+with unified layouts on in all 37 Vulkan devices created, 0 validation errors, 0 VUIDs, 0 warnings.**
+MoltenVK: 55/55, 0 errors, 0 VUIDs, mapping inactive. Performance effect not measured.
+
 ## Still to do
 
 1. **IOSurface interop.** `Image.exportMetalIOSurfaceRef`, the IOSurface-backed RTT
@@ -117,9 +136,9 @@ What the sweep found and fixed, in order:
    MoltenVK-only. None of them is in the smoke catalog, so the sweep does not cover them.
 2. **Wireframe.** No `fillModeNonSolid`: `fillMode = LINE` needs a fallback, or at least an error
    that names the missing feature.
-3. **Unified image layouts.** Enable `VK_KHR_unified_image_layouts` where offered and map every
-   layout except `UNDEFINED`/`PREINITIALIZED`/`PRESENT_SRC` to `GENERAL` at the Vulkan call
-   boundary, keeping Field's logical layout bookkeeping and every barrier as it is.
+3. **Unified layouts on NVIDIA.** Recent NVIDIA drivers offer the extension too, but it is on by
+   default only on macOS. Linux/Windows opt in with `AFIELD_FOUR_UNIFIED_LAYOUTS=true` until a sweep
+   there covers the NVENC/CUDA, dma-buf and D3D11 import paths.
 4. **Mac-only gates to re-key on the driver.** Debug labels are off on every Mac (`VulkanNames`),
    but KosmicKrisp's `VK_EXT_debug_utils` now reaches Metal objects. Multiview stereo is disabled
    on every Mac (`SideBySideStereoTarget`).

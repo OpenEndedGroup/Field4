@@ -1,5 +1,6 @@
 package afield.four
 
+import afield.four.device.vkLayout
 import afield.RunsAt
 import afield.H2ValueSnapshot
 import afield.newRoot
@@ -387,8 +388,8 @@ object TexturePreviewCache {
 
                     VK10.vkCmdBlitImage(
                         cmd.vkCommandBuffer,
-                        vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        blitImage.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        vkImage, vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                        blitImage.vkImage, vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                         blit, VK10.VK_FILTER_LINEAR
                     )
 
@@ -417,7 +418,7 @@ object TexturePreviewCache {
 
                 VK10.vkCmdCopyImageToBuffer(
                     cmd.vkCommandBuffer,
-                    copySourceImage, copySourceLayout,
+                    copySourceImage, vkLayout(copySourceLayout),
                     staging.buffer, region
                 )
 

@@ -146,6 +146,15 @@ object Options {
         "afield.four.computeOncePerFrame",
         System.getenv("AFIELD_FOUR_COMPUTE_ONCE_PER_FRAME") ?: "true"
     ).toBoolean()
+    // Use VK_KHR_unified_image_layouts where the device offers it (afield.four.device.ImageLayouts):
+    // every layout but UNDEFINED/PREINITIALIZED/PRESENT_SRC goes to Vulkan as GENERAL. Never with
+    // OpenXR. On by default only on macOS, where the GPU sweep verified it (KosmicKrisp, 2026-09-29);
+    // recent NVIDIA drivers offer it too, but the Linux/Windows import paths (NVENC/CUDA, dma-buf,
+    // D3D11 handles) have not run with it, so there it is opt-in: AFIELD_FOUR_UNIFIED_LAYOUTS=true.
+    var unifiedImageLayouts = System.getProperty(
+        "afield.four.unifiedLayouts",
+        System.getenv("AFIELD_FOUR_UNIFIED_LAYOUTS") ?: isMac.toString()
+    ).toBoolean()
     // Record the renderer's per-frame command buffers with ONE_TIME_SUBMIT (see Renderer's
     // createWindowContext). A switch so the gain can be measured per driver without a rebuild.
     var oneTimeSubmitFrames = System.getProperty(
