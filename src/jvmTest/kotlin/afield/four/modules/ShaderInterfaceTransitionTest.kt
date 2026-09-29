@@ -214,6 +214,27 @@ class ShaderInterfaceTransitionTest {
     }
 
     @Test
+    fun theSummaryIsALineNoteOnTheShaderAndTheStaleCodeLinesAreMarked() {
+        val box = afield.Box("shader-transition-notes")
+        box.setPropertyRaw("code", "val m = computeModuleHere()\nm.Light.color = vec(1,0,0)\n")
+        val marks = mutableListOf<Pair<String, Int>>()
+        box.output.errorProxy = { message, property, line -> if (message != null) marks += property to line }
+        val shader = "layout(std140, set = 0, binding = 0) uniform Light { float color; float gain; };\nvoid main() {}\n"
+        val t = transition(base, retyped)
+
+        val summary = afield.stdlib.ShaderTransitionNotes.record(box, listOf("compute"), t)
+
+        assertEquals(t.summary(), summary)
+        val first = afield.stdlib.LineNotes.note(box, "compute", shader, 1)
+        assertTrue(first != null && "Last shader reload" in first.caption && "vec3→float" in first.caption, first?.caption)
+        assertNull(afield.stdlib.LineNotes.note(box, "compute", shader, 2), "a line that declares nothing changed has no note")
+        assertTrue("code" to 2 in marks, "the code line using `color` is marked: $marks")
+
+        afield.stdlib.ShaderTransitionNotes.record(box, listOf("compute"), transition(base, base))
+        assertNull(afield.stdlib.LineNotes.note(box, "compute", shader, 1), "a quiet reload clears the note")
+    }
+
+    @Test
     fun kotlinLinesThatUseANameAreFound() {
         val code = "val m = moduleHere()\nm.Light.color = vec(1,0,0)\n// m.Light.gain in a comment\nmesh.push[\"tint\"] = 1f\nval colorful = 3\n"
         assertEquals(listOf(2), kotlinLinesReferencing(code, "color"))

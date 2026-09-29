@@ -131,6 +131,27 @@ instead of informing the reload path.
 This also closes the one place where shader reload writes compiler state (the preamble) as a side
 effect; it becomes an explicit step of a committed transition, which matters for plan 5.
 
+**Status, 2026-09-29.** Steps 1–4 are on `arch/review-2026-09-28`. Full reload is a transaction
+(`commitModuleReload`, step 1). Every successful reload of the four pointer kinds computes a
+`ShaderInterfaceTransition` and carries by it (`ReloadCarryOver`): kept or renamed blocks keep buffer
+and values; resized or retyped ones are reallocated, zeroed, and get back the values that still fit
+the reflected types; added ones are zeroed; module-allocated buffers the new module does not use are
+retired through the deferred queue. Only buffers the module allocated itself are carried by layout,
+zeroed or freed. `Structure.writeToBuffer` type-checks against the reflected member and refuses
+instead of overwriting the next member; `Structure.set` of an unknown or mistyped member stores
+nothing and warns on the `code` lines naming it. The summary goes to a line note on the shader
+property and a notification; `code` lines using removed, renamed or retyped names get an error
+marker suggesting a re-run; an *Update Shader* ABI refusal also lands on the shader property's line.
+The empty-push-constant case had already been fixed in `Mesh.setMergedPushMembers`. Also fixed on the
+way: reload resolver wrappers no longer nest one level per reload, and renderer disposal ends its
+dependents' render-module ownerships. Tests: `ShaderInterfaceTransitionTest` (matrix on reflection,
+including stage add/remove, which a graphics module cannot exercise), smokes
+`four.shader-reload.transitions` and `four.shader-reload.transaction` (compile error, build/link
+failure). Not done: SSBO *values* are carried by name but an SSBO's buffer still follows the old
+`checkCompatibility` rule rather than the layout diff; texture/image bindings are reported but not
+re-resolved differently; a `ModuleRebuild` hook (`stack.auto` numbers) still runs after the generic
+carry and can overwrite it.
+
 ---
 
 ## 3. Studies and document-authored tools

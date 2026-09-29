@@ -581,6 +581,9 @@ class VulkanBuffer(
     @Volatile
     private var released = false
 
+    /** True once [cleanup] has released this buffer (its handles may not be destroyed yet). */
+    val isReleased: Boolean get() = released
+
     /** Set once the handles are actually destroyed; everything that would touch them refuses. */
     @Volatile
     private var destroyed = false

@@ -3504,7 +3504,15 @@ private suspend fun updateShader(box: Box, key: ShaderReloadKey, generation: Lon
         fi
     )
     if (!abiCheck.compatible) {
-        reportShaderStageError(box, "code", "shader update", abiCheck.message)
+        val transition = runCatching {
+            graphicsShaderInterfaceTransition(
+                current.parameters.vertexIntrospection ?: current.vi,
+                current.parameters.fragmentIntrospection ?: current.fi,
+                vi,
+                fi
+            )
+        }.getOrNull()
+        reportAbiRefusalOnShader(box, "shader update", abiCheck.message, transition, "vertex", "fragment")
         return false
     }
 
@@ -3625,6 +3633,45 @@ private fun commitModuleReload(
 }
 
 /**
+ * Say what a full reload that just committed did to the interface: the summary as a line note on the
+ * shader properties the person edits (the properties of [baseProperties], in whichever spelling — GLSL,
+ * Slang, the shared `vertex_fragment` — the box uses), the values that could not be carried, and an
+ * error marker on each line of `code` that uses a binding or member the reload removed, renamed or
+ * retyped. See [ShaderTransitionNotes].
+ */
+private fun reportShaderReloadTransition(box: Box, report: ModuleReloadReport?, vararg baseProperties: String) {
+    val properties = baseProperties.flatMap(::shaderPropertyVariants).distinct()
+    runCatching { ShaderTransitionNotes.record(box, properties, report?.transition, report?.notes.orEmpty()) }
+        .onSuccess { summary -> if (summary.isNotBlank()) notify("${box.name}: $summary", "shader") }
+        .onFailure { lprintln("warning,graphics", "could not report the shader reload transition: ${it.message}") }
+}
+
+/**
+ * Put an *Update Shader* refusal where the interface changed: on the shader property, at the first line
+ * that declares a binding the change touches (the first line when none is found), as well as on `code`.
+ * [transition] says what changed; the message leads with its summary, then the signature diff.
+ */
+private fun reportAbiRefusalOnShader(
+    box: Box,
+    logLabel: String,
+    message: String,
+    transition: ShaderInterfaceTransition?,
+    vararg baseProperties: String
+) {
+    val summary = transition?.summary().orEmpty()
+    val text = if (summary.isBlank()) message
+    else "Update Shader keeps the interface, and this edit changes it: $summary. Use Reload Shader (alt-r).\n$message"
+    reportShaderStageError(box, "code", logLabel, text)
+    val names = transition?.changes.orEmpty().flatMap { listOf(it.name, it.oldName) + it.members.map { m -> m.name } }.distinct()
+    baseProperties.map { sourcePropertyForStage(box, it) }.distinct().forEach { property ->
+        val source = runCatching { shaderPropertyValue(box, property) }.getOrNull() ?: return@forEach
+        if (source.isBlank()) return@forEach
+        val line = source.lines().indexOfFirst { l -> names.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(l) } }
+        reportShaderStageError(box, property, logLabel, text, lineOverride = if (line >= 0) line + 1 else 1)
+    }
+}
+
+/**
  * Recompile this box's vertex and fragment stages from its shader properties and swap the live
  * graphics module — the *Reload Shader* action (`alt-r`), as a function.
  *
@@ -3632,10 +3679,22 @@ private fun commitModuleReload(
  * re-preprocesses both stages, re-introspects them, rewrites the box's preamble with the resulting
  * typed bindings, and reloads the module with `forceReresolve`. That flag reaches only the *texture*
  * resolver — textures are re-resolved by name, falling back to the previous module's binding when the
- * resolver comes up empty. Uniform buffers and SSBOs are *carried over* instead: a UBO
- * whose name still matches keeps its existing source, and an SSBO keeps its previous source whenever
- * `checkCompatibility` still passes. Use this when the shader's interface changed; use the update path
- * when only the arithmetic did.
+ * resolver comes up empty. Use this when the shader's interface changed; use the update path when only
+ * the arithmetic did.
+ *
+ * The reload compares the old interface with the new ([ShaderInterfaceTransition]) and carries by it. A
+ * uniform block that is kept, or renamed at the same set, binding and layout, keeps its buffer and the
+ * values set on it; one that grew, shrank or changed a member's type gets a new, zeroed buffer, with the
+ * old values re-applied where they still fit the new reflected types; an added block starts zeroed; a
+ * block the module allocated and no longer uses is retired through the renderer's deferred queue. An SSBO
+ * keeps its previous buffer while `checkCompatibility` passes. Buffers somebody supplied (found by name in
+ * the context, or returned by a custom resolver) are resolved again as before and never freed here.
+ *
+ * What changed is said where the person is looking: a one-line summary ("uniform block `Light` grew
+ * 16→32 bytes, buffer reallocated; push constant `tint` removed") as a line note on the shader property
+ * and a notification, and an error marker on each line of `code` that uses a binding or member the
+ * reload removed, renamed or retyped — that code was compiled against the old preamble, and re-running
+ * the box compiles it against the new one. See [ShaderTransitionNotes].
  *
  * Must be called on the main runloop — it touches the Vulkan module directly. Errors are not thrown:
  * they are reported onto the offending shader property's line and the function returns `false` with the
@@ -3695,6 +3754,7 @@ fun reloadShader(box: Box): Boolean {
     }
     applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "vertex", "fragment")
+    reportShaderReloadTransition(box, pointer.lastReloadReport, "vertex", "fragment")
     return true
 }
 
@@ -3837,7 +3897,9 @@ internal fun buildComputeInsert(ci: Introspection, box: Box? = null): Insert {
  * Same contract as [reloadShader]: main runloop only, errors reported onto the `compute` property rather
  * than thrown, `false` means the previous module is still the one running (with the previous preamble),
  * and on success the box's preamble is rewritten with the freshly introspected `ComputeMesh` bindings
- * and the replaced module retired. Likewise throws a
+ * and the replaced module retired. Uniform blocks and their values are carried across by the interface
+ * diff, and the change is reported, exactly as there — before 2026-09-29 a compute reload carried no
+ * uniform block at all, so every reload reset them. Likewise throws a
  * `NullPointerException` if the box has no compute module to reload.
  */
 fun reloadComputeShader(box: Box): Boolean {
@@ -3868,6 +3930,7 @@ fun reloadComputeShader(box: Box): Boolean {
     }
     applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "compute")
+    reportShaderReloadTransition(box, pointer.lastReloadReport, "compute")
     return true
 }
 
@@ -3899,7 +3962,10 @@ private suspend fun updateComputeShader(box: Box, key: ShaderReloadKey, generati
         ci
     )
     if (!abiCheck.compatible) {
-        reportShaderStageError(box, "code", "compute shader update", abiCheck.message)
+        val transition = runCatching {
+            shaderInterfaceTransition(listOf("compute" to (current.parameters.computeIntrospection ?: current.ci)), listOf("compute" to ci))
+        }.getOrNull()
+        reportAbiRefusalOnShader(box, "compute shader update", abiCheck.message, transition, "compute")
         return false
     }
 
@@ -4039,7 +4105,8 @@ private fun buildMeshInsert(ti: Introspection, mi: Introspection, fi: Introspect
  * is an error, not an omission.
  *
  * Main runloop only, errors reported onto the stage properties rather than thrown, `false` leaves the
- * previous module and preamble in place — the same transaction as [reloadShader]. There is no ABI-preserving *Update* action for mesh pipelines — only this
+ * previous module and preamble in place — the same transaction as [reloadShader], with the same
+ * interface diff, carry-over and report. There is no ABI-preserving *Update* action for mesh pipelines — only this
  * full reload — which is also why binding a `stack.auto` slot on a mesh module is heavier than on a
  * graphics one. Throws `NullPointerException` if the box has no mesh module.
  */
@@ -4096,6 +4163,7 @@ fun reloadMeshShader(box: Box): Boolean {
     }
     applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "task", "mesh", "fragment")
+    reportShaderReloadTransition(box, pointer.lastReloadReport, "task", "mesh", "fragment")
     return true
 }
 
@@ -4232,7 +4300,8 @@ private fun buildRayTracingInsert(introspections: List<Introspection>): Insert {
  * binding table is rebuilt from the new stage set.
  *
  * Main runloop only; errors are reported onto the stage properties and `false` leaves the previous
- * module and preamble in place — the same transaction as [reloadShader]. Like the mesh path there is no ABI-preserving update action. Throws
+ * module and preamble in place — the same transaction as [reloadShader], with the same interface diff,
+ * carry-over and report. Like the mesh path there is no ABI-preserving update action. Throws
  * `NullPointerException` if the box has no ray-tracing module.
  */
 fun reloadRayTracingShader(box: Box): Boolean {
@@ -4274,6 +4343,7 @@ fun reloadRayTracingShader(box: Box): Boolean {
     }
     applyInsertToPreamble(box, insert)
     clearShaderErrorsForBaseProperties(box, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
+    reportShaderReloadTransition(box, pointer.lastReloadReport, "raygen", "miss", "closesthit", "anyhit", "intersection", "callable")
     return true
 }
 

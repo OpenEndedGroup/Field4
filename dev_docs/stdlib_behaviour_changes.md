@@ -522,3 +522,25 @@ registration across runs keeps its unowned paths (`setUnowned`, `register(owned 
 parent scope, `box.runScopes.parent.withCurrent { … }`, is now the owned alternative. Tests:
 `RunScopeTest`, `LifecycleLedgerTest`, `BoxRetireAndReplaceKiTest`, `StreamProcessStopLeakTest`;
 smokes `lifecycle.census.stop-releases` and `lifecycle.census.relaunch-replaces-once-survives`.
+
+## 2026-09-29 — full shader reload diffs the interface and carries by it (`arch/review-2026-09-28`)
+
+Section 2 of the architecture review. A full reload (`reloadShader`, `reloadComputeShader`,
+`reloadMeshShader`, `reloadRayTracingShader`, the *Reload Shader* action) now compares the old
+interface with the new (`ShaderInterfaceTransition`, `four/modules/ShaderInterfaceTransition.kt`)
+and decides per binding what to carry (`ReloadCarryOver`).
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| uniform block, graphics reload | carried only when kept or renamed at the same set, binding and layout; a resized or retyped block gets a new zeroed buffer | a grown block used to keep its old, smaller buffer (carried by name alone) and the shader read past its end; a retyped one kept stale bytes | none |
+| uniform block, compute / mesh / ray-tracing reload | carried by the same rule | every reload used to allocate fresh blocks, so values set on them read as whatever memory was given until set again | none |
+| values set on a block (`module.Light.gain = …`) | carried to the new module where the member still exists and the value fits its reflected type; bindings where the member's type is unchanged; the rest dropped and listed in the reload summary | values used to be lost on every reload (the old bytes survived by accident on the graphics path) | none |
+| buffers the module allocated and the new module does not use | retired through the renderer's deferred queue | used to wait for GC and `AutoDisposer` | none |
+| `Structure.set` | an unknown member, or a value whose shape does not fit the reflected type, is not stored; the executing box is warned on the `code` lines naming it | used to print to stdout and store the value anyway | none |
+| `Structure.writeToBuffer` | refuses a value that does not fit its member's reflected type, reported once through the module's error handler | used to write by the Kotlin type, so a `Vector3f` held for a member now declared `float` overwrote the next member | none |
+| reporting | a summary line ("uniform block `Light` grew 16→32 bytes, buffer reallocated; push constant `tint` removed") as a line note on the shader property and a notification; error markers on `code` lines using removed, renamed or retyped names; an *Update Shader* ABI refusal also lands on the shader property's first changed line | nothing was said | none |
+
+Buffers found by name in the context, or handed back by a custom resolver, are resolved again as they
+were the first time and never zeroed or freed (`BufferParameters.allocatedByModule`). Tests:
+`ShaderInterfaceTransitionTest` (the matrix on real reflection, no GPU), `ReloadResolversTest`; smokes
+`four.shader-reload.transitions` (eight rows on a device) and `four.shader-reload.transaction`.
