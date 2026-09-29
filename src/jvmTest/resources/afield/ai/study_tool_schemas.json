@@ -1,0 +1,2322 @@
+{
+  "AdoptRectSLVariant" : {
+    "description" : "Publish a held variant by label as a new revision (guards as for an edit).",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "label" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Publish a held variant by label as a new revision (guards as for an edit).",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "label" ],
+      "type" : "object"
+    }
+  },
+  "AdoptStackSLVariant" : {
+    "description" : "Publish a held variant by label as a new revision (guards as for an edit).",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "label" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Publish a held variant by label as a new revision (guards as for an edit).",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "label" ],
+      "type" : "object"
+    }
+  },
+  "CompareFunctionStudy" : {
+    "description" : "Test preservation across two revisions. Declare the only allowed changed time interval and channel names. Samples the whole composition at <=20ms plus exact event joins. Returns max/RMS errors outside the allowed scope, timestamps, and changed event metadata. Empty allowedChannels means no channel may change. Does not prove absence of hidden narrow features.",
+    "mcp" : {
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedChannels" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "changedEndSeconds" : {
+          "type" : "number"
+        },
+        "changedStartSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "beforeRevision", "afterRevision", "changedStartSeconds", "changedEndSeconds", "allowedChannels" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Test preservation across two revisions. Declare the only allowed changed time interval and channel names. Samples the whole composition at <=20ms plus exact event joins. Returns max/RMS errors outside the allowed scope, timestamps, and changed event metadata. Empty allowedChannels means no channel may change. Does not prove absence of hidden narrow features.",
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedChannels" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "changedEndSeconds" : {
+          "type" : "number"
+        },
+        "changedStartSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "afterRevision", "allowedChannels", "beforeRevision", "changedEndSeconds", "changedStartSeconds" ],
+      "type" : "object"
+    }
+  },
+  "CompareRectSLStudy" : {
+    "description" : "Check what an edit preserved: pixels (mode rgb, or luma for brightness only) held to one level outside allowedRegion [x0,y0,x1,y1] in wall units, and — by id — which rectangles changed (position, size, rotation, opacity, fill, material, order), appeared or went, grouped by the line that made them. Name rectangles so their ids survive edits.",
+    "mcp" : {
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "beforeRevision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Check what an edit preserved: pixels (mode rgb, or luma for brightness only) held to one level outside allowedRegion [x0,y0,x1,y1] in wall units, and — by id — which rectangles changed (position, size, rotation, opacity, fill, material, order), appeared or went, grouped by the line that made them. Name rectangles so their ids survive edits.",
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "afterRevision", "allowedRegion", "beforeRevision", "mode", "seconds" ],
+      "type" : "object"
+    }
+  },
+  "CompareStackSLStudy" : {
+    "description" : "Check what an edit preserved. mode rgb compares displayed colour, luma brightness only, stage what each program leaves on the stack after beforeStage/afterStage (e.g. to prove a recolour left the field before the palette untouched; for a line ending in a store >name it compares the stored value). allowedRegion [u0,v0,u1,v1] is where change may happen; outside it everything must stay within one level (1e-6 for stage).",
+    "mcp" : {
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "afterStage" : {
+          "type" : "integer"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "beforeStage" : {
+          "type" : "integer"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "beforeRevision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Check what an edit preserved. mode rgb compares displayed colour, luma brightness only, stage what each program leaves on the stack after beforeStage/afterStage (e.g. to prove a recolour left the field before the palette untouched; for a line ending in a store >name it compares the stored value). allowedRegion [u0,v0,u1,v1] is where change may happen; outside it everything must stay within one level (1e-6 for stage).",
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "afterStage" : {
+          "type" : "integer"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "beforeStage" : {
+          "type" : "integer"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "afterRevision", "afterStage", "allowedRegion", "beforeRevision", "beforeStage", "mode", "seconds" ],
+      "type" : "object"
+    }
+  },
+  "EditFunctionStudy" : {
+    "description" : "Compile, check and activate a COMPLETE Kotlin candidate in this box. Must return StudyComposition of pure Functions.Fn channels. Expected revision AND live source hash from Inspect are required. Failed compile/check keeps the working revision. This is trusted local Kotlin in Field, not a sandbox. Preserve unrelated source and stable event IDs. Returns compilation/check evidence and an actual image preview; this satisfies Kotlin verification for this standalone study. No extra CompileKotlin or Observe call is needed unless a different interval or additional evidence is required. Prefer PatchFunctionStudy for small edits.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewEndSeconds" : {
+          "type" : "number"
+        },
+        "previewStartSeconds" : {
+          "type" : "number"
+        },
+        "source" : {
+          "description" : "Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "source", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Compile, check and activate a COMPLETE Kotlin candidate in this box. Must return StudyComposition of pure Functions.Fn channels. Expected revision AND live source hash from Inspect are required. Failed compile/check keeps the working revision. This is trusted local Kotlin in Field, not a sandbox. Preserve unrelated source and stable event IDs. Returns compilation/check evidence and an actual image preview; this satisfies Kotlin verification for this standalone study. No extra CompileKotlin or Observe call is needed unless a different interval or additional evidence is required. Prefer PatchFunctionStudy for small edits.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewEndSeconds" : {
+          "type" : "number"
+        },
+        "previewStartSeconds" : {
+          "type" : "number"
+        },
+        "source" : {
+          "description" : "Complete Kotlin source with imports. Last expression returns afield.stdlib.StudyComposition. No filesystem/network/process effects; no mutable or stateful evaluators.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "previewEndSeconds", "previewStartSeconds", "source" ],
+      "type" : "object"
+    }
+  },
+  "EditRectSLStudy" : {
+    "description" : "Replace the whole RectSL program. Compiles it (materials included), samples and draws it at probe times, then activates it as a new revision and returns warnings plus an image preview against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or failed check changes nothing. Prefer PatchRectSLStudy or SetRectSLNumbers for small edits.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "description" : "Times in seconds for the preview frames; empty chooses four evenly across the clip.",
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "source" : {
+          "description" : "Complete RectSL source. Keep it human-editable: scene words first, one object per paragraph with a # comment saying what it is, named rectangles (\"sun\" rect), : name ... ; definitions for repeated motifs.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "source", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Replace the whole RectSL program. Compiles it (materials included), samples and draws it at probe times, then activates it as a new revision and returns warnings plus an image preview against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or failed check changes nothing. Prefer PatchRectSLStudy or SetRectSLNumbers for small edits.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "description" : "Times in seconds for the preview frames; empty chooses four evenly across the clip.",
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "source" : {
+          "description" : "Complete RectSL source. Keep it human-editable: scene words first, one object per paragraph with a # comment saying what it is, named rectangles (\"sun\" rect), : name ... ; definitions for repeated motifs.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "previewSeconds", "source" ],
+      "type" : "object"
+    }
+  },
+  "EditStackAutoSlot" : {
+    "description" : "Replace a slot's whole StackSL program. It must compile into this slot (the host shader's own samplers and push constants are fine); it is then bound live, the slot recompiles in place, and it is written back into the box's Kotlin where it sits verbatim. Returns a picture of the result in the host shader — the real end result, or with over a sheet of moments across that many seconds. Needs expectedRevision and expectedSourceHash from Inspect. Prefer PatchStackAutoSlot or SetStackAutoNumbers for small changes.",
+    "mcp" : {
+      "properties" : {
+        "alone" : {
+          "description" : "Also draw the program alone on StackSL's own frame, a debugging view whose input is not the host's",
+          "type" : "boolean"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "source" : {
+          "description" : "Complete StackSL source: one transform per line, # comments naming what each stage does",
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "source", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Replace a slot's whole StackSL program. It must compile into this slot (the host shader's own samplers and push constants are fine); it is then bound live, the slot recompiles in place, and it is written back into the box's Kotlin where it sits verbatim. Returns a picture of the result in the host shader — the real end result, or with over a sheet of moments across that many seconds. Needs expectedRevision and expectedSourceHash from Inspect. Prefer PatchStackAutoSlot or SetStackAutoNumbers for small changes.",
+      "properties" : {
+        "alone" : {
+          "description" : "Also draw the program alone on StackSL's own frame, a debugging view whose input is not the host's",
+          "type" : "boolean"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "source" : {
+          "description" : "Complete StackSL source: one transform per line, # comments naming what each stage does",
+          "type" : "string"
+        }
+      },
+      "required" : [ "alone", "description", "expectedRevision", "expectedSourceHash", "moments", "over", "slot", "source" ],
+      "type" : "object"
+    }
+  },
+  "EditStackSLStudy" : {
+    "description" : "Replace the whole StackSL program. Compiles it under stack.auto rules, refuses unbalanced definitions and texture sampling, renders probe frames to catch NaN and blank output, then activates it as a new revision and returns warnings plus an image preview against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or failed check changes nothing. Prefer PatchStackSLStudy or SetStackSLNumbers for small edits.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "description" : "Times in seconds for the preview frames; empty chooses 0, 1.75, 3.5, 7 for animated programs.",
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "source" : {
+          "description" : "Complete StackSL source. Keep it human-editable: one transform per line, # comments naming what each stage does, : name ... ; definitions for motifs.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "source", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Replace the whole StackSL program. Compiles it under stack.auto rules, refuses unbalanced definitions and texture sampling, renders probe frames to catch NaN and blank output, then activates it as a new revision and returns warnings plus an image preview against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or failed check changes nothing. Prefer PatchStackSLStudy or SetStackSLNumbers for small edits.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "description" : "Times in seconds for the preview frames; empty chooses 0, 1.75, 3.5, 7 for animated programs.",
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "source" : {
+          "description" : "Complete StackSL source. Keep it human-editable: one transform per line, # comments naming what each stage does, : name ... ; definitions for motifs.",
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "previewSeconds", "source" ],
+      "type" : "object"
+    }
+  },
+  "ExportFunctionStudy" : {
+    "description" : "Export the checked function revision to CSV files in this document's files directory, using Field's file resolver. One filename per channel, exactly as requested (no automatic .csv suffix). Each row is time in seconds, signal*scale. Includes the exact endpoint; no header by default. Files are staged and verified before publication. Requires the revision source hash; refuses dirty current source. Set overwrite=true only when the user asks to replace/re-export. Returns paths, revision, rows, duration, sample rate and checksums. No generic Kotlin evaluation or further verification is needed.",
+    "mcp" : {
+      "properties" : {
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filenames" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "header" : {
+          "type" : "boolean"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "sampleRateHz" : {
+          "type" : "number"
+        },
+        "scale" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "revision", "expectedSourceHash", "filenames" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Export the checked function revision to CSV files in this document's files directory, using Field's file resolver. One filename per channel, exactly as requested (no automatic .csv suffix). Each row is time in seconds, signal*scale. Includes the exact endpoint; no header by default. Files are staged and verified before publication. Requires the revision source hash; refuses dirty current source. Set overwrite=true only when the user asks to replace/re-export. Returns paths, revision, rows, duration, sample rate and checksums. No generic Kotlin evaluation or further verification is needed.",
+      "properties" : {
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filenames" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "header" : {
+          "type" : "boolean"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "sampleRateHz" : {
+          "type" : "number"
+        },
+        "scale" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "expectedSourceHash", "filenames", "header", "overwrite", "revision", "sampleRateHz", "scale" ],
+      "type" : "object"
+    }
+  },
+  "ExportRectSLStudy" : {
+    "description" : "Export a checked revision into this document's files directory: kind png (one frame at seconds) or mp4 (the whole clip at the scene's fps, repeated loops times; needs ffmpeg). Runs in the background and returns at once with an estimate, timed from one real frame, and refuses one over maxMinutes with a size that fits; tell the person where the file will appear and how long it should take. Progress is in InspectRectSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.",
+    "mcp" : {
+      "properties" : {
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filename" : {
+          "type" : "string"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "loops" : {
+          "type" : "integer"
+        },
+        "maxMinutes" : {
+          "description" : "Refuse an export estimated to take longer than this many minutes; the refusal names a size that fits. Raise it only if the person agrees to wait",
+          "type" : "number"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "description" : "The still's time in seconds",
+          "type" : "number"
+        },
+        "size" : {
+          "description" : "Pixels along the wall's longer side; 0 means 1920 for png and 1280 for mp4",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "revision", "expectedSourceHash", "filename" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Export a checked revision into this document's files directory: kind png (one frame at seconds) or mp4 (the whole clip at the scene's fps, repeated loops times; needs ffmpeg). Runs in the background and returns at once with an estimate, timed from one real frame, and refuses one over maxMinutes with a size that fits; tell the person where the file will appear and how long it should take. Progress is in InspectRectSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.",
+      "properties" : {
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filename" : {
+          "type" : "string"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "loops" : {
+          "type" : "integer"
+        },
+        "maxMinutes" : {
+          "description" : "Refuse an export estimated to take longer than this many minutes; the refusal names a size that fits. Raise it only if the person agrees to wait",
+          "type" : "number"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "description" : "The still's time in seconds",
+          "type" : "number"
+        },
+        "size" : {
+          "description" : "Pixels along the wall's longer side; 0 means 1920 for png and 1280 for mp4",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "expectedSourceHash", "filename", "kind", "loops", "maxMinutes", "overwrite", "revision", "seconds", "size" ],
+      "type" : "object"
+    }
+  },
+  "ExportStackSLStudy" : {
+    "description" : "Export a checked revision into this document's files directory: kind png (one frame at seconds, up to 2048 px) or mp4 (durationSeconds at fps, up to 512 px, needs ffmpeg). Runs in the background and returns at once with an estimate (seconds on the window's GPU, minutes on the CPU reference); tell the person where the file will appear. Progress is in InspectStackSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.",
+    "mcp" : {
+      "properties" : {
+        "durationSeconds" : {
+          "type" : "number"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filename" : {
+          "type" : "string"
+        },
+        "fps" : {
+          "type" : "integer"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "maxMinutes" : {
+          "description" : "Refuse, with a size that fits, if the estimate exceeds this; raise it only when the person agrees to wait",
+          "type" : "number"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "description" : "The still's time, or the clip's first frame, in seconds",
+          "type" : "number"
+        },
+        "size" : {
+          "description" : "Pixels square; 0 means 1024 for png and 256 for mp4",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "revision", "expectedSourceHash", "filename" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Export a checked revision into this document's files directory: kind png (one frame at seconds, up to 2048 px) or mp4 (durationSeconds at fps, up to 512 px, needs ffmpeg). Runs in the background and returns at once with an estimate (seconds on the window's GPU, minutes on the CPU reference); tell the person where the file will appear. Progress is in InspectStackSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.",
+      "properties" : {
+        "durationSeconds" : {
+          "type" : "number"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "filename" : {
+          "type" : "string"
+        },
+        "fps" : {
+          "type" : "integer"
+        },
+        "kind" : {
+          "type" : "string"
+        },
+        "maxMinutes" : {
+          "description" : "Refuse, with a size that fits, if the estimate exceeds this; raise it only when the person agrees to wait",
+          "type" : "number"
+        },
+        "overwrite" : {
+          "type" : "boolean"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "description" : "The still's time, or the clip's first frame, in seconds",
+          "type" : "number"
+        },
+        "size" : {
+          "description" : "Pixels square; 0 means 1024 for png and 256 for mp4",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "durationSeconds", "expectedSourceHash", "filename", "fps", "kind", "maxMinutes", "overwrite", "revision", "seconds", "size" ],
+      "type" : "object"
+    }
+  },
+  "FunctionStudyGuide" : {
+    "description" : "Read how to work on a function study: the Kotlin contract, the fast edit and export loop, time and observation policies, and the limits of the evidence. Call it once, before your first edit in a conversation.",
+    "mcp" : {
+      "properties" : { },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read how to work on a function study: the Kotlin contract, the fast edit and export loop, time and observation policies, and the limits of the evidence. Call it once, before your first edit in a conversation.",
+      "properties" : {
+        "unused" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "unused" ],
+      "type" : "object"
+    }
+  },
+  "InspectFunctionStudy" : {
+    "description" : "Inspect this function study: authoritative Kotlin, stable event IDs, assumptions, selection, revision history and live source hash. Inspect once before editing; when dirty, liveSource is the editable source and source is the checked revision. Reuse the returned hash for the edit. Historical revisions are immutable. Prefer PatchFunctionStudy for local changes.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Inspect this function study: authoritative Kotlin, stable event IDs, assumptions, selection, revision history and live source hash. Inspect once before editing; when dirty, liveSource is the editable source and source is the checked revision. Reuse the returned hash for the edit. Historical revisions are immutable. Prefer PatchFunctionStudy for local changes.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "revision" ],
+      "type" : "object"
+    }
+  },
+  "InspectRectSLStudy" : {
+    "description" : "Read this RectSL study: the checked scene, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, the scene's shape (wall, duration, rectangles, what is visible when), the analysis's warnings, the lines that make rectangles, knobs (typed numbers and colours, one line each: index, line:column, as typed, what reads it), and personAt — the line the person's editor cursor is on, which a click on a rectangle in the window moves to the line that made it, so 'this one' usually means it. Inspect once before editing and reuse liveSourceHash. The window above the box plays the scene live; prefer ObserveRectSLStudy or TimelineRectSLStudy, which draw exact times.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read this RectSL study: the checked scene, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, the scene's shape (wall, duration, rectangles, what is visible when), the analysis's warnings, the lines that make rectangles, knobs (typed numbers and colours, one line each: index, line:column, as typed, what reads it), and personAt — the line the person's editor cursor is on, which a click on a rectangle in the window moves to the line that made it, so 'this one' usually means it. Inspect once before editing and reuse liveSourceHash. The window above the box plays the scene live; prefer ObserveRectSLStudy or TimelineRectSLStudy, which draw exact times.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "revision" ],
+      "type" : "object"
+    }
+  },
+  "InspectStackAutoSlot" : {
+    "description" : "Read a stack.auto slot's study: its program, the host shader's lines that declare and call it (what its input and output mean — the host decides, not StackSL's own frame), where the module is drawn (the window, a render target), the compiler's problems and warnings, its numbers (knobs: index, line:column, as typed, the operand the compiler took it as, the card's name in brackets, and whether it is turned live but not kept), keys, and history. slot may be empty when the box has only one. Inspect once before editing and reuse sourceHash.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read a stack.auto slot's study: its program, the host shader's lines that declare and call it (what its input and output mean — the host decides, not StackSL's own frame), where the module is drawn (the window, a render target), the compiler's problems and warnings, its numbers (knobs: index, line:column, as typed, the operand the compiler took it as, the card's name in brackets, and whether it is turned live but not kept), keys, and history. slot may be empty when the box has only one. Inspect once before editing and reuse sourceHash.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "revision", "slot" ],
+      "type" : "object"
+    }
+  },
+  "InspectStackSLStudy" : {
+    "description" : "Read this StackSL study: the checked program, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, compiler warnings, stages (one per line), knobs (the numbers a person typed, one line each: index, line:column, as typed, the operand the compiler took it as — 'mix amount', 'multiply b'), and personAt — the line the person's editor cursor is on, so 'this line' usually means it. Inspect once before editing and reuse liveSourceHash. Historical revisions are immutable. Renders come from the GPU of the window above the program (the CPU reference, slowly, when there is none). The window also shows the program live at whatever time it has reached; prefer ObserveStackSLStudy, which renders exact times. ReloadShaders does not apply: an accepted edit reaches the window by itself.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read this StackSL study: the checked program, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, compiler warnings, stages (one per line), knobs (the numbers a person typed, one line each: index, line:column, as typed, the operand the compiler took it as — 'mix amount', 'multiply b'), and personAt — the line the person's editor cursor is on, so 'this line' usually means it. Inspect once before editing and reuse liveSourceHash. Historical revisions are immutable. Renders come from the GPU of the window above the program (the CPU reference, slowly, when there is none). The window also shows the program live at whatever time it has reached; prefer ObserveStackSLStudy, which renders exact times. ReloadShaders does not apply: an accepted edit reaches the window by itself.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "revision" ],
+      "type" : "object"
+    }
+  },
+  "KnobsRectSLStudy" : {
+    "description" : "List the knobs (typed numbers and colours) with what reads each and, unless sensitivity is false, how strongly a 10% nudge to each changes the frames — which numbers matter and which do nothing at these times.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "sensitivity" : {
+          "type" : "boolean"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "List the knobs (typed numbers and colours) with what reads each and, unless sensitivity is false, how strongly a 10% nudge to each changes the frames — which numbers matter and which do nothing at these times.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "sensitivity" : {
+          "type" : "boolean"
+        }
+      },
+      "required" : [ "revision", "seconds", "sensitivity" ],
+      "type" : "object"
+    }
+  },
+  "KnobsStackSLStudy" : {
+    "description" : "List the knobs (typed numbers) with their role and context and, unless sensitivity is false, how strongly a 10% nudge to each changes the frame — which numbers matter and which do nothing here.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "sensitivity" : {
+          "type" : "boolean"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "List the knobs (typed numbers) with their role and context and, unless sensitivity is false, how strongly a 10% nudge to each changes the frame — which numbers matter and which do nothing here.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "sensitivity" : {
+          "type" : "boolean"
+        }
+      },
+      "required" : [ "revision", "seconds", "sensitivity" ],
+      "type" : "object"
+    }
+  },
+  "ObserveFunctionStudy" : {
+    "description" : "See actual function pixels plus sampled extrema, exact declared join probes, hold errors and optional before/after differences. Overview uses min/max per pixel; request <=25 seconds for resolved waveform. All output describes one immutable revision. Images are sent to the model as image inputs. For preservation, compare intervals outside the union of old/new event supports.",
+    "mcp" : {
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "endSeconds" : {
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "startSeconds" : {
+          "type" : "number"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "See actual function pixels plus sampled extrema, exact declared join probes, hold errors and optional before/after differences. Overview uses min/max per pixel; request <=25 seconds for resolved waveform. All output describes one immutable revision. Images are sent to the model as image inputs. For preservation, compare intervals outside the union of old/new event supports.",
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "endSeconds" : {
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "startSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "compareTo", "endSeconds", "revision", "startSeconds" ],
+      "type" : "object"
+    }
+  },
+  "ObserveRectSLStudy" : {
+    "description" : "See a revision: exact frames at the given times (a still scene draws once) sent as an image, with how many rectangles are visible, luma, detail, colourfulness, palette and motion between frames. compareTo adds that revision's frames and a difference map. renderSeconds says what drew them: the window's GPU, or the CPU reference when there is no window.",
+    "mcp" : {
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "size" : {
+          "description" : "Pixels along the wall's longer side, 48..1024; 0 chooses 512 for one frame and 320 for several",
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "See a revision: exact frames at the given times (a still scene draws once) sent as an image, with how many rectangles are visible, luma, detail, colourfulness, palette and motion between frames. compareTo adds that revision's frames and a difference map. renderSeconds says what drew them: the window's GPU, or the CPU reference when there is no window.",
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "size" : {
+          "description" : "Pixels along the wall's longer side, 48..1024; 0 chooses 512 for one frame and 320 for several",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "compareTo", "revision", "seconds", "size" ],
+      "type" : "object"
+    }
+  },
+  "ObserveStackAutoSlot" : {
+    "description" : "See a slot as it is drawing now, in the host shader — wherever its module is drawn — or, with over, at several moments across that many seconds; with alone, its program by itself on StackSL's own frame too (a debugging view; its input is not the host's).",
+    "mcp" : {
+      "properties" : {
+        "alone" : {
+          "type" : "boolean"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "See a slot as it is drawing now, in the host shader — wherever its module is drawn — or, with over, at several moments across that many seconds; with alone, its program by itself on StackSL's own frame too (a debugging view; its input is not the host's).",
+      "properties" : {
+        "alone" : {
+          "type" : "boolean"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "alone", "moments", "over", "slot" ],
+      "type" : "object"
+    }
+  },
+  "ObserveStackSLStudy" : {
+    "description" : "See a revision: exact frames at the given times (a still program renders once) sent as an image, with measurements a thumbnail hides — clipping above/below 0..1, NaN pixels, detail, feature size, colourfulness, palette, motion between frames. compareTo adds that revision's frames and a difference map. renderSeconds says what drew the frames: the window's GPU, or the CPU reference when there is no window.",
+    "mcp" : {
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "size" : {
+          "description" : "Pixels square, at most 256; 0 chooses 256 for a still program and 160 for an animated one",
+          "type" : "integer"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "See a revision: exact frames at the given times (a still program renders once) sent as an image, with measurements a thumbnail hides — clipping above/below 0..1, NaN pixels, detail, feature size, colourfulness, palette, motion between frames. compareTo adds that revision's frames and a difference map. renderSeconds says what drew the frames: the window's GPU, or the CPU reference when there is no window.",
+      "properties" : {
+        "compareTo" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "size" : {
+          "description" : "Pixels square, at most 256; 0 chooses 256 for a still program and 160 for an animated one",
+          "type" : "integer"
+        }
+      },
+      "required" : [ "compareTo", "revision", "seconds", "size" ],
+      "type" : "object"
+    }
+  },
+  "PatchFunctionStudy" : {
+    "description" : "Preferred for local edits: atomically apply exact unique text replacements to the inspected live source. Both revision and live-source hash are required. Match snippets against the same original source; matches must not overlap. Compiles and validates before activation, updates the human viewer, and returns checks plus a before/after image preview. Do not call CompileKotlin again. Choose a preview interval around the changed signal; default is the first 25 seconds.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewEndSeconds" : {
+          "type" : "number"
+        },
+        "previewStartSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "edits", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Preferred for local edits: atomically apply exact unique text replacements to the inspected live source. Both revision and live-source hash are required. Match snippets against the same original source; matches must not overlap. Compiles and validates before activation, updates the human viewer, and returns checks plus a before/after image preview. Do not call CompileKotlin again. Choose a preview interval around the changed signal; default is the first 25 seconds.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "after" : {
+                "type" : "string"
+              },
+              "before" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "after", "before" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewEndSeconds" : {
+          "type" : "number"
+        },
+        "previewStartSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "description", "edits", "expectedRevision", "expectedSourceHash", "previewEndSeconds", "previewStartSeconds" ],
+      "type" : "object"
+    }
+  },
+  "PatchRectSLStudy" : {
+    "description" : "Preferred for local edits: apply exact, unique, non-overlapping text replacements to the live source, then check and activate like EditRectSLStudy. Returns warnings and a before/after preview.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "edits", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Preferred for local edits: apply exact, unique, non-overlapping text replacements to the live source, then check and activate like EditRectSLStudy. Returns warnings and a before/after preview.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "after" : {
+                "type" : "string"
+              },
+              "before" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "after", "before" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "description", "edits", "expectedRevision", "expectedSourceHash", "previewSeconds" ],
+      "type" : "object"
+    }
+  },
+  "PatchStackAutoSlot" : {
+    "description" : "Preferred for local edits: exact, unique, non-overlapping text replacements in a slot's program, checked and bound like EditStackAutoSlot, with a picture (or, with over, a sheet of moments) in the host shader.",
+    "mcp" : {
+      "properties" : {
+        "alone" : {
+          "type" : "boolean"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "edits", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Preferred for local edits: exact, unique, non-overlapping text replacements in a slot's program, checked and bound like EditStackAutoSlot, with a picture (or, with over, a sheet of moments) in the host shader.",
+      "properties" : {
+        "alone" : {
+          "type" : "boolean"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "after" : {
+                "type" : "string"
+              },
+              "before" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "after", "before" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "moments" : {
+          "description" : "How many moments the sheet holds, 2..9, evenly spaced across over",
+          "type" : "integer"
+        },
+        "over" : {
+          "description" : "Seconds to watch the shader for; above 0 the picture is a numbered sheet of real frames across that long — use it when the host animates the slot (by time it pushes), as one frame shows one moment",
+          "type" : "number"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "alone", "description", "edits", "expectedRevision", "expectedSourceHash", "moments", "over", "slot" ],
+      "type" : "object"
+    }
+  },
+  "PatchStackSLStudy" : {
+    "description" : "Preferred for local edits: apply exact, unique, non-overlapping text replacements to the live source, then check and activate like EditStackSLStudy. Returns warnings and a before/after preview.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "edits", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Preferred for local edits: apply exact, unique, non-overlapping text replacements to the live source, then check and activate like EditStackSLStudy. Returns warnings and a before/after preview.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "edits" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "after" : {
+                "type" : "string"
+              },
+              "before" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "after", "before" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "description", "edits", "expectedRevision", "expectedSourceHash", "previewSeconds" ],
+      "type" : "object"
+    }
+  },
+  "RectSLStudyGuide" : {
+    "description" : "Read how to work on a RectSL study: the wall and its coordinates, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.",
+    "mcp" : {
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the RectSL words guide; empty returns the working guide",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read how to work on a RectSL study: the wall and its coordinates, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.",
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the RectSL words guide; empty returns the working guide",
+          "type" : "string"
+        }
+      },
+      "required" : [ "search" ],
+      "type" : "object"
+    }
+  },
+  "RestoreRectSLRevision" : {
+    "description" : "Make an earlier revision current again, as a new revision; history is only appended to.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "revision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Make an earlier revision current again, as a new revision; history is only appended to.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "revision" ],
+      "type" : "object"
+    }
+  },
+  "RestoreStackAutoRevision" : {
+    "description" : "Make an earlier revision a slot's program again, as a new revision, bound live and written back into the code like an edit.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "revision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Make an earlier revision a slot's program again, as a new revision, bound live and written back into the code like an edit.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "revision", "slot" ],
+      "type" : "object"
+    }
+  },
+  "RestoreStackSLRevision" : {
+    "description" : "Make an earlier revision current again, as a new revision; history is only appended to.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "revision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Make an earlier revision current again, as a new revision; history is only appended to.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "revision" ],
+      "type" : "object"
+    }
+  },
+  "SampleFunctionStudy" : {
+    "description" : "Evaluate at 1..256 explicit times in seconds. Returns actual Fn values for a named revision; arrays stay in the host for larger observations.",
+    "mcp" : {
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "timesSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "revision", "timesSeconds" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Evaluate at 1..256 explicit times in seconds. Returns actual Fn values for a named revision; arrays stay in the host for larger observations.",
+      "properties" : {
+        "revision" : {
+          "type" : "string"
+        },
+        "timesSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "revision", "timesSeconds" ],
+      "type" : "object"
+    }
+  },
+  "SelectFunctionStudy" : {
+    "description" : "Resolve conversational references to stable event IDs and a selected interval, before changing them. Selection survives chronological reordering. IDs must exist in the active revision.",
+    "mcp" : {
+      "properties" : {
+        "endSeconds" : {
+          "type" : "number"
+        },
+        "eventIds" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "startSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "eventIds", "startSeconds", "endSeconds" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Resolve conversational references to stable event IDs and a selected interval, before changing them. Selection survives chronological reordering. IDs must exist in the active revision.",
+      "properties" : {
+        "endSeconds" : {
+          "type" : "number"
+        },
+        "eventIds" : {
+          "items" : {
+            "type" : "string"
+          },
+          "type" : "array"
+        },
+        "startSeconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "endSeconds", "eventIds", "startSeconds" ],
+      "type" : "object"
+    }
+  },
+  "SetRectSLNumbers" : {
+    "description" : "Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "numbers" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "numbers", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "numbers" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "knob" : {
+                "type" : "integer"
+              },
+              "value" : {
+                "description" : "The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)",
+                "type" : "number"
+              }
+            },
+            "required" : [ "knob", "value" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "numbers", "previewSeconds" ],
+      "type" : "object"
+    }
+  },
+  "SetStackAutoNumbers" : {
+    "description" : "Turn a slot's numbers live, through its uniform block — no recompile — and see the host shader with them. They stay turned but unkept unless keep is true, which writes them into the program as a new revision (then expectedRevision and expectedSourceHash are needed). Use it to try values; keep what the person likes.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "keep" : {
+          "type" : "boolean"
+        },
+        "numbers" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "numbers" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Turn a slot's numbers live, through its uniform block — no recompile — and see the host shader with them. They stay turned but unkept unless keep is true, which writes them into the program as a new revision (then expectedRevision and expectedSourceHash are needed). Use it to try values; keep what the person likes.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "keep" : {
+          "type" : "boolean"
+        },
+        "numbers" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "knob" : {
+                "type" : "integer"
+              },
+              "value" : {
+                "type" : "number"
+              }
+            },
+            "required" : [ "knob", "value" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "keep", "numbers", "slot" ],
+      "type" : "object"
+    }
+  },
+  "SetStackSLNumbers" : {
+    "description" : "Set typed numbers (knobs, by index from Inspect) to new values, rewritten in place so 0.2t stays a time rate and ]wr14 stays a wave frequency. Refuses a value a word cannot hold. Checks and activates like an edit.",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "numbers" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "numbers", "description" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Set typed numbers (knobs, by index from Inspect) to new values, rewritten in place so 0.2t stays a time rate and ]wr14 stays a wave frequency. Refuses a value a word cannot hold. Checks and activates like an edit.",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "numbers" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "knob" : {
+                "type" : "integer"
+              },
+              "value" : {
+                "type" : "number"
+              }
+            },
+            "required" : [ "knob", "value" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        },
+        "previewSeconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "numbers", "previewSeconds" ],
+      "type" : "object"
+    }
+  },
+  "StackAutoSlotGuide" : {
+    "description" : "Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.",
+    "mcp" : {
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read how to work on a stack.auto slot: StackSL inside someone's own shader. Call it once, before your first edit in a conversation; with search, look a word up in the StackSL words guide instead.",
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the StackSL words guide; empty returns how to work on a slot",
+          "type" : "string"
+        }
+      },
+      "required" : [ "search" ],
+      "type" : "object"
+    }
+  },
+  "StackSLStudyGuide" : {
+    "description" : "Read how to work on a StackSL study: the frame, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.",
+    "mcp" : {
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the StackSL words guide; empty returns the working guide",
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read how to work on a StackSL study: the frame, idioms that hold, traps, the tools and the style a person expects. Call it once, before your first edit in a conversation. With search, return the words guide's entries matching a word or phrase instead.",
+      "properties" : {
+        "search" : {
+          "description" : "A word or phrase to look up in the StackSL words guide; empty returns the working guide",
+          "type" : "string"
+        }
+      },
+      "required" : [ "search" ],
+      "type" : "object"
+    }
+  },
+  "SweepRectSLNumber" : {
+    "description" : "Draw one knob at 2..9 values side by side at one time, without publishing anything. Use it to choose a value before SetRectSLNumbers.",
+    "mcp" : {
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "values" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Draw one knob at 2..9 values side by side at one time, without publishing anything. Use it to choose a value before SetRectSLNumbers.",
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "revision", "seconds", "values" ],
+      "type" : "object"
+    }
+  },
+  "SweepStackAutoNumber" : {
+    "description" : "Draw one of a slot's numbers at 2..9 values, each in the real host shader with only that number changed, then put it back. Nothing is kept. Use it to choose a value before SetStackAutoNumbers.",
+    "mcp" : {
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "values" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Draw one of a slot's numbers at 2..9 values, each in the real host shader with only that number changed, then put it back. Nothing is kept. Use it to choose a value before SetStackAutoNumbers.",
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "slot", "values" ],
+      "type" : "object"
+    }
+  },
+  "SweepStackSLNumber" : {
+    "description" : "Render one knob at 2..9 values side by side, without publishing anything. Use it to choose a value before SetStackSLNumbers.",
+    "mcp" : {
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "values" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Render one knob at 2..9 values side by side, without publishing anything. Use it to choose a value before SetStackSLNumbers.",
+      "properties" : {
+        "knob" : {
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        },
+        "values" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "knob", "revision", "seconds", "values" ],
+      "type" : "object"
+    }
+  },
+  "TimelineRectSLStudy" : {
+    "description" : "See the whole clip at once: frames evenly across the duration, and a chart of how many rectangles are visible, how much of the wall they cover and how fast they move, with the events a viewer would notice (a rectangle entering or leaving the wall, stopping, starting, turning, fading, touching another), each named with the line that made it. Use it to judge pacing and to find the moment something goes wrong.",
+    "mcp" : {
+      "properties" : {
+        "frames" : {
+          "description" : "How many frames, 2..16",
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "See the whole clip at once: frames evenly across the duration, and a chart of how many rectangles are visible, how much of the wall they cover and how fast they move, with the events a viewer would notice (a rectangle entering or leaving the wall, stopping, starting, turning, fading, touching another), each named with the line that made it. Use it to judge pacing and to find the moment something goes wrong.",
+      "properties" : {
+        "frames" : {
+          "description" : "How many frames, 2..16",
+          "type" : "integer"
+        },
+        "revision" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "frames", "revision" ],
+      "type" : "object"
+    }
+  },
+  "TraceRectSLStudy" : {
+    "description" : "Find which line made what. mode identify draws the frame at seconds with every visible rectangle outlined in its line's colour and labelled L<line>, and lists the lines with example rectangles (centre, size, fill); use it to answer 'which of these is the one on line 12?' or 'what is that shape?'. mode build shows the scene after each line that makes something. Give probeX and probeY (a wall point) to also get everything covering that point at seconds, topmost first, with the line that made each — the way to answer 'what is this, and why is it here?'.",
+    "mcp" : {
+      "properties" : {
+        "mode" : {
+          "type" : "string"
+        },
+        "probeX" : {
+          "description" : "x of a wall point to probe, in wall units (the frame's convention); omit for none",
+          "type" : "number"
+        },
+        "probeY" : {
+          "description" : "y of a wall point to probe, in wall units; omit for none",
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Find which line made what. mode identify draws the frame at seconds with every visible rectangle outlined in its line's colour and labelled L<line>, and lists the lines with example rectangles (centre, size, fill); use it to answer 'which of these is the one on line 12?' or 'what is that shape?'. mode build shows the scene after each line that makes something. Give probeX and probeY (a wall point) to also get everything covering that point at seconds, topmost first, with the line that made each — the way to answer 'what is this, and why is it here?'.",
+      "properties" : {
+        "mode" : {
+          "type" : "string"
+        },
+        "probeX" : {
+          "description" : "x of a wall point to probe, in wall units (the frame's convention); omit for none",
+          "type" : "number"
+        },
+        "probeY" : {
+          "description" : "y of a wall point to probe, in wall units; omit for none",
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "mode", "probeX", "probeY", "revision", "seconds" ],
+      "type" : "object"
+    }
+  },
+  "TraceStackSLStudy" : {
+    "description" : "Read the program as pictures: what each stage (line, or word for a one-line program) leaves on top of the stack — for a line ending in a store (>name), the value it stored — with value ranges and stack depth. Set probeU and probeV (0..1) to also get the top four stack values at that point after every root word — the way to answer 'why is this pixel black?'.",
+    "mcp" : {
+      "properties" : {
+        "probeU" : {
+          "description" : "uv x of a point to probe, 0..1; negative for none",
+          "type" : "number"
+        },
+        "probeV" : {
+          "description" : "uv y of a point to probe, 0..1 with y up; negative for none",
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        }
+      },
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Read the program as pictures: what each stage (line, or word for a one-line program) leaves on top of the stack — for a line ending in a store (>name), the value it stored — with value ranges and stack depth. Set probeU and probeV (0..1) to also get the top four stack values at that point after every root word — the way to answer 'why is this pixel black?'.",
+      "properties" : {
+        "probeU" : {
+          "description" : "uv x of a point to probe, 0..1; negative for none",
+          "type" : "number"
+        },
+        "probeV" : {
+          "description" : "uv y of a point to probe, 0..1 with y up; negative for none",
+          "type" : "number"
+        },
+        "revision" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "type" : "number"
+        }
+      },
+      "required" : [ "probeU", "probeV", "revision", "seconds" ],
+      "type" : "object"
+    }
+  },
+  "TryRectSLVariants" : {
+    "description" : "Speculate: check and draw 1..8 candidate scenes beside the current one without publishing. Each variant is a complete source or exact edits to the live source, with a short label and note. They are held so the person can Adopt one in the study card, or you can with AdoptRectSLVariant. Labels are short (A, B or 'drift').",
+    "mcp" : {
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "variants" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "variants" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Speculate: check and draw 1..8 candidate scenes beside the current one without publishing. Each variant is a complete source or exact edits to the live source, with a short label and note. They are held so the person can Adopt one in the study card, or you can with AdoptRectSLVariant. Labels are short (A, B or 'drift').",
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "variants" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "edits" : {
+                "items" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "after" : {
+                      "type" : "string"
+                    },
+                    "before" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "after", "before" ],
+                  "type" : "object"
+                },
+                "type" : "array"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "note" : {
+                "type" : "string"
+              },
+              "source" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "edits", "label", "note", "source" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "seconds", "variants" ],
+      "type" : "object"
+    }
+  },
+  "TryStackSLVariants" : {
+    "description" : "Speculate: check and render 1..8 candidate programs beside the current one without publishing. Each variant is a complete source or exact edits to the live source, with a short label and note. They are held so the person can Adopt one in the study card, or you can with AdoptStackSLVariant. Labels are short (A, B or 'veils').",
+    "mcp" : {
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "variants" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "variants" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Speculate: check and render 1..8 candidate programs beside the current one without publishing. Each variant is a complete source or exact edits to the live source, with a short label and note. They are held so the person can Adopt one in the study card, or you can with AdoptStackSLVariant. Labels are short (A, B or 'veils').",
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "variants" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "edits" : {
+                "items" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "after" : {
+                      "type" : "string"
+                    },
+                    "before" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "after", "before" ],
+                  "type" : "object"
+                },
+                "type" : "array"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "note" : {
+                "type" : "string"
+              },
+              "source" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "edits", "label", "note", "source" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "seconds", "variants" ],
+      "type" : "object"
+    }
+  }
+}
