@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.buffers.VulkanBuffer
@@ -137,8 +138,8 @@ class RollingCapture(
 
                 vkCmdCopyImage(
                     command.vkCommandBuffer,
-                    source.vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    snapshotImage.vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    source.vkImage, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                    snapshotImage.vkImage, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                     copy
                 )
             } else {
@@ -155,8 +156,8 @@ class RollingCapture(
 
                 vkCmdBlitImage(
                     command.vkCommandBuffer,
-                    source.vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                    snapshotImage.vkImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    source.vkImage, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                    snapshotImage.vkImage, vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                     blit,
                     VK_FILTER_LINEAR
                 )
@@ -224,7 +225,7 @@ class RollingCapture(
             vkCmdCopyImageToBuffer(
                 command.vkCommandBuffer,
                 snapshotImage.vkImage,
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                 stagingBuffer.buffer,
                 copy
             )

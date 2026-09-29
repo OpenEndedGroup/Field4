@@ -1,5 +1,6 @@
 package afield.four.browser
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
 import afield.four.texture.HasImageView
@@ -198,9 +199,9 @@ sealed class CopiedExternalBrowserSurface(
             vkCmdCopyImage(
                 command.vkCommandBuffer,
                 source.image,
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                 residentImage.vkImage,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 region
             )
 
@@ -260,7 +261,7 @@ sealed class CopiedExternalBrowserSurface(
             vkCmdClearColorImage(
                 command.vkCommandBuffer,
                 residentImage.vkImage,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 black,
                 range
             )

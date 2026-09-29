@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.Rect
 import afield.four.Renderer
 import afield.four.device.CommandBuffer
@@ -456,7 +457,7 @@ open class PingPongRenderToTexture(
                 vkCmdClearColorImage(
                     command.vkCommandBuffer,
                     image.vkImage,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                     clearColor,
                     rangeBuffer
                 )

@@ -1,5 +1,6 @@
 package afield.four.texture.mega
 
+import afield.four.device.vkLayout
 import afield.Table
 import afield.ToHTML
 import afield.four.Renderer
@@ -1050,7 +1051,7 @@ class MegaTexture(
                 command.vkCommandBuffer,
                 stage.buffer,
                 atlasImage.vkImage,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 regions
             )
 

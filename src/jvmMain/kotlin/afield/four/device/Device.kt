@@ -41,6 +41,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsMaintenance7: Boolean
     val supportsMaintenance11: Boolean
     val supportsDynamicRenderingUnusedAttachments: Boolean
+    /** The device offers `unifiedImageLayouts`; [usesUnifiedImageLayouts] says whether Field turned it on. */
+    val supportsUnifiedImageLayouts: Boolean
+    /** `VK_KHR_unified_image_layouts` is enabled and [ImageLayouts] sends `GENERAL`. */
+    val usesUnifiedImageLayouts: Boolean
     val supportsMultiview: Boolean
     val raySupport: RayDeviceSupport
     val enabledExtensions: Set<String>
@@ -184,6 +188,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, unusedAttachmentFeatureProbe)
                 unusedAttachmentFeatures.dynamicRenderingUnusedAttachments()
             } else false
+            val unifiedLayoutFeatures = VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.calloc(stack).`sType$Default`()
+            if (hasExt(KHRUnifiedImageLayouts.VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME)) probeFeatures(stack, unifiedLayoutFeatures.address())
+            supportsUnifiedImageLayouts = unifiedLayoutFeatures.unifiedImageLayouts()
+            usesUnifiedImageLayouts = supportsUnifiedImageLayouts && Options.unifiedImageLayouts && !Options.enableVR
             // Field sets only the depth-clamp dynamic state, so that is the EDS3 feature that decides
             // support. polygonMode is requested only where offered: KosmicKrisp has EDS3 without it
             // (and without fillModeNonSolid), and asking for it anyway fails vkCreateDevice.
@@ -241,6 +249,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 if (supportsDynamicRenderingUnusedAttachments) {
                     add(EXTDynamicRenderingUnusedAttachments.VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)
                 }
+                if (usesUnifiedImageLayouts) add(KHRUnifiedImageLayouts.VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME)
 
                 addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
 
@@ -497,6 +506,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, unusedAttachments.address()); tail = unusedAttachments.address()
             }
 
+            if (usesUnifiedImageLayouts) {
+                val unified = VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.calloc(stack).`sType$Default`()
+                    .unifiedImageLayouts(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, unified.address()); tail = unified.address()
+            }
+
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
@@ -621,6 +636,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             lprintln(
                 "info,device",
                 "Device present timing: usesPresentTiming=$usesPresentTiming"
+            )
+            // Only now: an image created before the device existed could not have used it anyway.
+            ImageLayouts.unified = usesUnifiedImageLayouts
+            lprintln(
+                "info,device",
+                "Device unified image layouts: supported=$supportsUnifiedImageLayouts, used=$usesUnifiedImageLayouts"
             )
         }
     }

@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.stdlib.linalg.Vector2f
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
@@ -2320,9 +2321,9 @@ class OpenXRHmdTarget(
                     vkCmdCopyImage(
                         cmd.vkCommandBuffer,
                         srcImage,
-                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                         dstImage,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                         region
                     )
 
@@ -2458,7 +2459,7 @@ class OpenXRHmdTarget(
                     val colorAttachment = VkRenderingAttachmentInfoKHR.calloc(1, stack)
                         .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                         .imageView(sc.imageViews[imageIndex])
-                        .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                        .imageLayout(vkLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
                         .resolveMode(VK_RESOLVE_MODE_NONE)
                         .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                         .storeOp(VK_ATTACHMENT_STORE_OP_STORE)
@@ -2475,7 +2476,7 @@ class OpenXRHmdTarget(
                     val depthAttachment = VkRenderingAttachmentInfoKHR.calloc(1, stack)
                         .sType(KHRDynamicRendering.VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                         .imageView(depthAtt.imageView.vkImageView)
-                        .imageLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL)
+                        .imageLayout(vkLayout(VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL))
                         .resolveMode(VK_RESOLVE_MODE_NONE)
                         .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                         .storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)
