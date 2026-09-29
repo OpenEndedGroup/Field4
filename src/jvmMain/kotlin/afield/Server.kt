@@ -33,6 +33,7 @@ import afield.server.installFieldAudioProxyRoutes
 import afield.server.installSignalViewerRoutes
 import afield.server.installDocsAnnotationRoutes
 import afield.server.SEC_FETCH_SITE_HEADER
+import afield.server.DocsAccessPolicy
 import afield.server.docsFlagEnabled
 import afield.server.isSameSiteRequest
 import afield.server.installDocumentGuideRoutes
@@ -1804,7 +1805,8 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
             add("--disable-background-timer-throttling")
             add("--disable-backgrounding-occluded-windows")
             add("--disable-renderer-backgrounding")
-            add("--disable-frame-rate-limit")
+            // Keep Chromium's normal frame pacing. Uncapping RAF also disables GPU
+            // vsync and makes idle animated capture pages saturate a CPU/GPU core.
             add("--enable-gpu")
             add("--ignore-gpu-blocklist")
             if (System.getProperty("os.name").orEmpty().lowercase(Locale.US).contains("mac")) {
@@ -2143,6 +2145,9 @@ class Server {
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
 
+            // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
+            DocumentShutdownFlush.install()
+
             inMain {
                 while (true) {
                     try {
@@ -2194,6 +2199,24 @@ class Server {
                     t = System.currentTimeMillis()
                 }
             }
+
+            // The new browser asks only after its document DOM is ready. Replay panels to
+            // that session, without re-running code or disturbing existing viewers.
+            handlers["replay-output-areas"] = mutableSetOf({ _, _ ->
+                val info = thisSessionInfo.get()
+                val session = thisSession.get()
+                val boxes = (info.boxes.values + info.root).distinctBy { it.id }
+                    .filterNot { it.getPropertyRaw("_tombstone").isTrue() }
+                val messages = boxes.flatMap { box ->
+                    box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
+                        Message("control-value-update").payload(it)
+                    }
+                }
+                if (session != null) GlobalScope.launch {
+                    for (item in messages) session.send(Json.encodeToString(item))
+                }
+                Handled.yes
+            })
 
             handlers["initialize"] = mutableSetOf({ message, reply ->
                 sendProvisionalSet(thisSessionInfo.get().filename)
@@ -2629,7 +2652,11 @@ class Server {
                         .getOrNull()
                     reply(Message("line-note").payload(LineNoteReply(request.uid, request.property, request.line,
                         note?.caption.orEmpty(),
-                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty())))
+                        note?.png?.let { "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(it) }.orEmpty(),
+                        note?.volatile == true,
+                        note?.meta.orEmpty(),
+                        note?.value.orEmpty().map { LineNoteSegment(it.text, it.strong) },
+                        note?.imageScale ?: 1)))
                 }
                 Handled.yes
             })
@@ -5028,6 +5055,47 @@ class Server {
                                 call.respondText(modifiedContent, ContentType.Text.Html)
                             }
                         }
+                        route("/three-review-image") {
+                            get {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@get
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val hash = call.request.queryParameters["sha256"] ?: ""
+                                val bytes = afield.graphics.threeGeometryReviewImage(uid, hash)
+                                if (bytes == null) call.respond(HttpStatusCode.NotFound)
+                                else call.respondBytes(bytes, ContentType.Image.PNG)
+                            }
+                        }
+                        route("/three-review") {
+                            get {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@get
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val review = afield.graphics.threeGeometryReviews(uid, call.request.queryParameters["includeResolved"] == "true")
+                                if (review == null) call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                else call.respondText(review.toString(), ContentType.Application.Json)
+                            }
+                        }
+                        route("/three-review-note") {
+                            post {
+                                if (call.refuseUnlessSameSiteDocsClient(DocsAccessPolicy())) return@post
+                                if (call.request.contentType().withoutParameters() != ContentType.Application.Json) {
+                                    call.respond(HttpStatusCode.UnsupportedMediaType); return@post
+                                }
+                                val uid = call.request.queryParameters["uid"] ?: ""
+                                val text = call.receiveText()
+                                if (text.length > 32_000) { call.respond(HttpStatusCode.PayloadTooLarge); return@post }
+                                val result = runCatching {
+                                    val request = Json.parseToJsonElement(text) as? kotlinx.serialization.json.JsonObject
+                                        ?: throw IllegalArgumentException("Review update must be an object")
+                                    withContext(Runloop.runLoop.main) { afield.graphics.updateThreeGeometryReview(uid, request) }
+                                }
+                                when {
+                                    result.isFailure -> call.respondText(result.exceptionOrNull()?.message ?: "Invalid review update",
+                                        status = if (result.exceptionOrNull() is IllegalStateException) HttpStatusCode.Conflict else HttpStatusCode.BadRequest)
+                                    result.getOrNull() == null -> call.respond(HttpStatusCode.NotFound, "Unknown geometry view")
+                                    else -> call.respondText(result.getOrThrow().toString(), ContentType.Application.Json)
+                                }
+                            }
+                        }
                         route("/threejs") {
                             handle {
                                 val originalContent =
@@ -5394,8 +5462,16 @@ class Server {
             // Pin a "startup" channel (plus any AFIELD_PIN_CHANNELS) to a non-scrolling region at the
             // top of the terminal so the boot stages annotate in place; degrades to plain stdout on
             // non-TTYs. The startup row collapses a few seconds after the first frame renders.
+            // First, before anything can start a thread: `field.sh` backgrounds this JVM from a
+            // non-interactive shell, which hands it SIGINT as *ignored*, and HotSpot then never
+            // installs its own handler — so `kill -INT` did nothing. See [InterruptSignal].
+            val interruptSignal = InterruptSignal.install()
+
             afield.logger.PinnedConsole.installWithStartup()
             lprintln("info,startup", "booting Field…")
+            if (interruptSignal != InterruptSignal.Outcome.ALREADY_HANDLED) {
+                lprintln("info,startup", "SIGINT: $interruptSignal")
+            }
 
             // Kotlin DataFrame is a third-party type, so it reaches `.h`/`.h2`/`display` through the
             // value registries rather than by implementing ToHTML. Idempotent; see
@@ -5624,7 +5700,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 53
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 54
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5650,7 +5726,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 53 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 49 of its 54 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +

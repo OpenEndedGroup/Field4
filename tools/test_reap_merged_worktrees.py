@@ -1,6 +1,7 @@
 import contextlib
 import io
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -17,6 +18,7 @@ from tools.reap_merged_worktrees import (
     classify_worktree,
     disk_rows,
     family_for,
+    finish_interrupted_removal,
     parse_lsof_cwds,
     parse_worktrees,
     pids_inside,
@@ -675,6 +677,98 @@ class UnchangedBehaviourTests(unittest.TestCase):
         self.assertEqual(pids_inside(Path("/trees/one"), cwds), {12})
         self.assertEqual(pids_inside(Path("/trees/two"), cwds), {34})
         self.assertEqual(pids_inside(Path("/trees/elsewhere"), cwds), set())
+
+
+class FinishInterruptedRemovalTests(unittest.TestCase):
+    """[finish_interrupted_removal]: winning the Finder race git loses, and refusing everything else.
+
+    Measured 2026-09-28: Finder recreated ``.DS_Store`` while ``git worktree remove`` emptied the
+    tree, so git stopped part-way after unregistering six of seven checkouts. The fake remover here
+    plays Finder: it deletes the tree, then writes a ``.DS_Store`` back for its first few calls.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        tmp = Path(self._tmp.name).resolve()
+        self.repo = tmp / "repo"
+        self.root = tmp / "repo-worktrees"
+        self.repo.mkdir()
+        self.root.mkdir()
+        self.tree = self.root / "2026-09-28-1-left-half-behind"
+        (self.tree / "build" / "classes").mkdir(parents=True)
+        (self.tree / ".git").write_text("gitdir: /repo/.git/worktrees/2026-09-28-1-left-half-behind\n")
+        (self.tree / "build" / "classes" / "A.class").write_bytes(b"x" * 64)
+        (self.tree / "build" / ".DS_Store").write_bytes(b"finder")
+
+    def finder_that_writes_back(self, times: int):
+        calls = []
+
+        def remove(path, ignore_errors=False):
+            calls.append(path)
+            shutil.rmtree(path, ignore_errors=ignore_errors)
+            if len(calls) <= times:
+                (path / "build").mkdir(parents=True, exist_ok=True)
+                (path / "build" / ".DS_Store").write_bytes(b"finder again")
+        return remove, calls
+
+    def finish(self, **kwargs):
+        options = dict(roots=[self.root], repo=self.repo, cwds={}, sleep=lambda _: None)
+        options.update(kwargs)
+        return finish_interrupted_removal(self.tree, **options)
+
+    def test_it_keeps_going_while_finder_writes_back_and_then_the_tree_is_gone(self) -> None:
+        remove, calls = self.finder_that_writes_back(2)
+        done, how = self.finish(remove=remove)
+        self.assertTrue(done, how)
+        self.assertFalse(self.tree.exists())
+        self.assertEqual(3, len(calls))
+        self.assertIn("3 attempt(s)", how)
+
+    def test_it_gives_up_and_leaves_the_orphan_to_be_reported_when_finder_never_stops(self) -> None:
+        remove, calls = self.finder_that_writes_back(100)
+        done, how = self.finish(remove=remove, attempts=3)
+        self.assertFalse(done)
+        self.assertTrue(self.tree.exists(), "what is left is for the ORPHAN report, not silently kept going")
+        self.assertEqual(3, len(calls))
+        self.assertIn("still not empty after 3 attempts", how)
+
+    def test_a_tree_whose_git_is_a_directory_is_a_repository_and_is_never_touched(self) -> None:
+        (self.tree / ".git").unlink()
+        (self.tree / ".git").mkdir()
+        remove, calls = self.finder_that_writes_back(0)
+        done, how = self.finish(remove=remove)
+        self.assertFalse(done)
+        self.assertEqual([], calls)
+        self.assertTrue((self.tree / "build" / "classes" / "A.class").exists())
+        self.assertIn("repository of its own", how)
+
+    def test_a_tree_whose_gitfile_git_already_deleted_is_still_finished(self) -> None:
+        (self.tree / ".git").unlink()
+        done, how = self.finish()
+        self.assertTrue(done, how)
+
+    def test_a_path_not_directly_under_a_root_is_refused(self) -> None:
+        remove, calls = self.finder_that_writes_back(0)
+        done, how = self.finish(roots=[self.repo], remove=remove)
+        self.assertFalse(done)
+        self.assertEqual([], calls)
+        self.assertIn("not directly under a worktree root", how)
+
+    def test_the_repository_itself_is_refused_even_if_it_sits_under_a_root(self) -> None:
+        remove, calls = self.finder_that_writes_back(0)
+        done, how = finish_interrupted_removal(
+            self.tree, roots=[self.root], repo=self.tree, cwds={}, remove=remove, sleep=lambda _: None,
+        )
+        self.assertFalse(done)
+        self.assertEqual([], calls)
+
+    def test_a_live_cwd_inside_the_tree_is_refused(self) -> None:
+        remove, calls = self.finder_that_writes_back(0)
+        done, how = self.finish(cwds={self.tree / "build": {4242}}, remove=remove)
+        self.assertFalse(done)
+        self.assertEqual([], calls)
+        self.assertIn("4242", how)
 
 
 if __name__ == "__main__":

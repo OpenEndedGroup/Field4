@@ -404,6 +404,11 @@ private fun validateStackAutoShaderName(name: String) {
     require(stackAutoShaderNameRegex.matches(name)) {
         "stack.auto name '$name' must be a GLSL identifier."
     }
+    // The name is the slot's GLSL function's; on macOS a name Metal already has breaks the shader's build.
+    require(name !in afield.four.MetalShaderErrors.reservedNames) {
+        "stack.auto name '$name' is also metal::$name in Metal's standard library. On macOS the shader runs through MoltenVK, " +
+            "which puts both in scope, and the shader will not build. Choose another name."
+    }
 }
 
 private fun validateStackAutoEntrypointName(name: String) {
@@ -834,6 +839,10 @@ private fun registerStackAutoShaderOwner(box: Box, module: Any) {
 
 private fun stackAutoShaderBoxFor(module: Any): Box? =
     stackAutoShaderOwner(module) ?: Box.context.get()
+
+/** The modules [box] owns — graphics, compute and mesh pointers registered as their `stack.auto` slots' owner. */
+internal fun stackAutoModulesOf(box: Box): List<Any> =
+    synchronized(stackAutoModuleOwners) { stackAutoModuleOwners.entries.filter { it.value === box }.map { it.key } }
 
 /** The box whose `stack.auto` slots [module] runs, or the ambient box — as the generated `module.foo` resolves it. */
 internal fun stackAutoOwnerOf(module: Any): Box? = stackAutoShaderBoxFor(module)
@@ -2518,6 +2527,14 @@ private fun stackAutoShaderTypeLabel(type: ShaderReloadType): String =
         ShaderReloadType.RAY_TRACING -> "ray tracing shader"
     }
 
+/**
+ * Called on Field's main thread when a box's queued `stack.auto` pipeline update has finished and nothing
+ * newer is queued behind it: true when the new pipeline is in place (the next frame draws it), false when
+ * the update failed and the old one still draws. A slot change is only *queued* when its setter returns; a
+ * caller that must see the result waits for this.
+ */
+val stackAutoShaderUpdated = java.util.concurrent.CopyOnWriteArrayList<(box: Box, success: Boolean) -> Unit>()
+
 private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
     val updateKey = ShaderReloadKey(System.identityHashCode(box), type)
     val state = stackAutoShaderUpdateStates.computeIfAbsent(updateKey) {
@@ -2558,6 +2575,7 @@ private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
                             else "Stack.auto $label update failed in '${box.name}'",
                             "shader"
                         )
+                        if (!state.pending.get()) stackAutoShaderUpdated.forEach { runCatching { it(box, success) } }
                     }
                 }
             } while (state.pending.get())

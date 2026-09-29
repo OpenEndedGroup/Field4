@@ -272,6 +272,8 @@ internal fun getThreeSurfaceClickCallback(callbackId: String): ((ThreeSurfaceHit
 data class ThreeGeometryPayload(
     val type: String = "three/geometry",
     val uid: String,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val revision: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceBox: String? = null,
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
     val points: ThreeGeometryData? = null,
@@ -299,6 +301,9 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val drawables: List<ThreeDrawable> = emptyList(),
+    /** Explicit same-origin ES modules installed as optional viewer tools; notes cannot load modules. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val toolModules: List<String> = emptyList(),
     /**
      * The viewports, when this is a contact sheet. Empty or one-element means a single full-bleed view.
      *
@@ -387,8 +392,14 @@ private val threeJson = Json {
  * to all connected viewers.
  */
 class ThreeGeometryViewState(val uid: String) {
+    internal val reviewInbox = ThreeReviewInbox(uid)
+    internal fun bindSource(box: Box) { reviewInbox.owner = box }
+    /** Most recent human selection and unresolved notes. Set [includeResolved] for completed notes and their history. */
+    fun reviews(includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject = reviewInbox.snapshot(includeResolved)
+
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
     @Volatile private var lastPayload: String? = null
+    private var editSessionId: String? = null
 
     /**
      * Attach a websocket session to this viewer and replay the latest payload.
@@ -403,8 +414,15 @@ class ThreeGeometryViewState(val uid: String) {
     /**
      * Push a new payload to all attached viewers.
      */
+    @Synchronized
     fun update(payload: ThreeGeometryPayload) {
-        val encoded = threeJson.encodeToString(payload)
+        val revision = threeReviewRevision(payload)
+        reviewInbox.update(revision)
+        val encoded = threeJson.encodeToString(payload.copy(revision = revision, sourceBox = reviewInbox.owner?.id))
+        val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
+        if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
+        editSessionId = nextSession
+
         lastPayload = encoded
         sessions.forEach { sendTo(it, encoded) }
         // Global listeners (native "subscribe-all" viewers) see every view's updates, including
@@ -432,6 +450,14 @@ class ThreeGeometryViewState(val uid: String) {
 }
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
+
+/** Read the live review inbox without opening a second browser or replacing the human selection. */
+fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject? = knownThreeViews[uid]?.reviews(includeResolved)
+
+internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
+    knownThreeViews[uid]?.reviewInbox?.updateNote(request)
+
+internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = knownThreeViews[uid]?.reviewInbox?.image(hash)
 
 /**
  * The view for a uid, created on first use.
@@ -468,6 +494,22 @@ fun installThreeJsHandler() {
         val uid = payload["debug_uid"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
 
         when (payload["type"]?.jsonPrimitive?.contentOrNull) {
+            "three-selection", "three-observation" -> {
+                val view = knownThreeViews[uid] ?: return@add Handled.no
+                val record = payload["record"] as? kotlinx.serialization.json.JsonObject ?: return@add Handled.no
+                val note = payload["type"]?.jsonPrimitive?.contentOrNull == "three-observation"
+                inMain {
+                    val result = runCatching { view.reviewInbox.receive(record, note) }
+                    if (note || result.isFailure) {
+                        val answer = kotlinx.serialization.json.buildJsonObject {
+                            put("type", kotlinx.serialization.json.JsonPrimitive("three-review-ack"))
+                            put("ok", kotlinx.serialization.json.JsonPrimitive(result.isSuccess))
+                            put("message", result.getOrNull()?.get("message") ?: kotlinx.serialization.json.JsonPrimitive(result.exceptionOrNull()?.message ?: "Selected in Field"))
+                        }
+                        runCatching { session.send(answer.toString()) }
+                    }
+                }
+            }
             "fline-click" -> {
                 // Same wire type and same mapping as the SVG output's handler in `Server.kt`, so the
                 // two clickable outputs cannot disagree about what a click returns. `threeJson`
@@ -500,9 +542,13 @@ fun installThreeJsHandler() {
                 val update = runCatching { threeJson.decodeFromJsonElement<FLineTranslatePoints>(payload) }.getOrNull()
                     ?: return@add Handled.no
                 val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
-                GlobalScope.launch {
-                    runCatching { editSession.translate(update) }
-                }
+                // Deltas and the following commit must retain websocket order.
+                runCatching { editSession.translate(update) }
+            }
+            "fline-edit-commit" -> {
+                val id = payload["sessionId"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
+                val editSession = getFLineEditSession(id) ?: return@add Handled.no
+                runCatching { editSession.commit() }
             }
             "fline-edit-add-line" -> {
                 val update = runCatching { threeJson.decodeFromJsonElement<FLineAddLine>(payload) }.getOrNull()
@@ -570,7 +616,10 @@ fun installThreeJsHandler() {
  * @param name Viewer name used to build a stable id within this [Box].
  * @param height Iframe height in pixels.
  * @param samplesPerCubic Sampling density for cubic curves.
+ * @param onEditCommitted Receives detached FLines after a drag finishes. Keep the callback short;
+ * enqueue expensive validation or remeshing on your own worker. No callback on camera movement.
  * @param autoFrame If true, the viewer auto-frames the bounds on update.
+ * @param width Explicit iframe width in pixels, or null to fill the output area.
  */
 fun Box.threeLines(
     lines: Collection<FLine>,
@@ -579,17 +628,23 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState {
+    require(width == null || width > 0) { "Viewer width must be positive" }
     val uid = "${this.id}_$name"
     val ln = threeViewerIframeSource(uid)
     display(
         channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;width:100%;height:${height}px'>
+<iframe src='${ln}' style='border:none;padding:0;margin:0;width:${width?.let { "${it}px" } ?: "100%"};height:${height}px'>
 """
     )
     val view = threeViewFor(uid)
-    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable)
+    view.bindSource(this)
+    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable, onEditCommitted = onEditCommitted)
+        .copy(frameWidth = width, frameHeight = height)
+
     view.update(payload)
     return view
 }
@@ -623,7 +678,9 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState = threeLines(
     lines = lines.toList(),
     channel = channel,
@@ -631,7 +688,9 @@ fun Box.threeLines(
     height = height,
     samplesPerCubic = samplesPerCubic,
     autoFrame = autoFrame,
-    editable = editable
+    editable = editable,
+    onEditCommitted = onEditCommitted,
+    width = width
 )
 
 /**
@@ -644,7 +703,9 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState = threeLines(
     lines = linesByChannel.values.flatten(),
     channel = channel,
@@ -652,7 +713,9 @@ fun Box.threeLines(
     height = height,
     samplesPerCubic = samplesPerCubic,
     autoFrame = autoFrame,
-    editable = editable
+    editable = editable,
+    onEditCommitted = onEditCommitted,
+    width = width
 )
 
 internal class BoundsTracker {
@@ -719,7 +782,8 @@ internal fun buildThreeGeometryPayload(
     autoFrame: Boolean,
     editable: Boolean,
     groupKeys: List<String>? = null,
-    inspector: ThreeInspector? = null
+    inspector: ThreeInspector? = null,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null
 ): ThreeGeometryPayload {
     val sourceLines = lines.toList()
     require(groupKeys == null || groupKeys.size == sourceLines.size) {
@@ -730,7 +794,7 @@ internal fun buildThreeGeometryPayload(
     val lineGroups = if (groupOfLine != null) ArrayList<Float>() else null
     val meshGroups = if (groupOfLine != null) ArrayList<Float>() else null
     val pointGroups = if (groupOfLine != null) ArrayList<Float>() else null
-    val editSession = if (editable) registerFLineEditSession(sourceLines, null) else null
+    val editSession = if (editable) registerFLineEditSession(sourceLines, null, onEditCommitted) else null
     val samples = samplesPerCubic.coerceAtLeast(2)
     val callbackIds = sourceLines.map { line ->
         line.onClick?.let { cb ->

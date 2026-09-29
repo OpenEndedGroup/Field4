@@ -421,6 +421,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // resync (doResync); the matching ioPersistentProperties entry below gives it
             // disk persistence. No bookmark-specific sync/storage code is needed.
             "bookmarks",
+            // Drawing layer: the root box's "drawing" property is the document's Excalidraw scene
+            // (src/jsMain/kotlin/afield/drawingLayer.kt). Same generic path as "bookmarks".
+            "drawing",
             "autorun",
             "layers",
             "layerFrames",
@@ -443,6 +446,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "introduction",
             "attic",
             "notes",
+            "geometryReviews",
             "fragment",
             "stackSL",
             "rectSL",
@@ -488,6 +492,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // Bookmark feature: persists the root box's "bookmarks" property to metadata.edn
             // (see the uiResyncProperties entry above and src/jsMain/kotlin/afield/bookmarks.kt).
             "bookmarks",
+            "drawing",
             "slideShow",
             "autorun",
             "layers",
@@ -733,6 +738,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         // Release the box's K2 compilation state; a deleted box is never
                         // re-run, and otherwise its FIR/metadata leaks for the session's life.
                         target.disposeKi()
+                        // Likewise its last-run line notes (Forth, Clojure, Python), never evicted before.
+                        afield.stdlib.LastRunNotes.forgetBox(target)
                     }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
@@ -993,7 +1000,12 @@ fun doResync() {
                     is Rect -> Message("set-rect").payload(Set_rect(box.id, name, value))
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")
-                        if (Box.ioSeparateProperties.containsKey(name) && box.isInsideInitialized() && box.inside.writesToDisk) {
+                        // The autosave loop only saves when something is pending here. Root
+                        // properties never become sidecars, so the drawing layer's scene marks
+                        // itself, or a document whose only change is a drawing would never save.
+                        val triggersSave = Box.ioSeparateProperties.containsKey(name) ||
+                            (box.id == "root" && name == "drawing")
+                        if (triggersSave && box.isInsideInitialized() && box.inside.writesToDisk) {
                             box.inside.markSidecarPending(box.id, name)
                         }
                         Message("set-string").payload(box.inside.nextSetStringSync(box.id, name, value))

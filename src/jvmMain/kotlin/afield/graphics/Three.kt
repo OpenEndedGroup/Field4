@@ -55,6 +55,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal val drawables = ArrayList<ThreeDrawable>()
     internal val flines = ArrayList<FLine>()
     internal val panels = ArrayList<ThreePanel>()
+    internal val toolModules = ArrayList<String>()
     internal var columns: Int = 1
     internal var camera: ThreeCameraSpec? = null
     internal var background: String? = null
@@ -111,6 +112,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         hoverColor: Vec4? = null,
         pickable: Boolean = false,
         group: Int = -1,
+        unlit: Boolean = false,
     ) {
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
@@ -118,6 +120,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 cullBackFaces = cullBackFaces,
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
+                unlit = unlit,
             ),
             label = label,
             panel = panel,
@@ -127,6 +130,18 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
         )
+    }
+
+    /**
+     * Install optional viewer tools from same-origin ES-module paths. Each module exports a
+     * default factory returning a tool descriptor. Modules run with the viewer's privileges;
+     * supply only trusted application code. A saved review never imports a module on its own.
+     */
+    fun tools(vararg modules: String) {
+        require(modules.all { it.startsWith("/") && !it.startsWith("//") && '\\' !in it }) {
+            "Viewer tools need absolute same-origin paths"
+        }
+        toolModules += modules.filterNot { it in toolModules }
     }
 
     /** Add FLines. They keep every behaviour they have in [Box.threeLines] — picking, hover, fills. */
@@ -213,6 +228,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         measurements: List<ThreeMeasurement> = emptyList(),
         pickToMeasure: Boolean = true,
         groups: List<String> = emptyList(),
+        artifactDigest: String? = null,
+        renderOrigin: DoubleArray = doubleArrayOf(0.0, 0.0, 0.0),
+        renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
+        assembly: List<ThreeAssemblyMotion> = emptyList(),
+        review: ThreeReviewState? = null,
     ) {
         inspector = ThreeInspector(
             enabled = true,
@@ -223,6 +243,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             units = units,
             decimals = decimals,
             pickToMeasure = pickToMeasure,
+            artifactDigest = artifactDigest, renderOrigin = renderOrigin, renderUpAxis = renderUpAxis, assembly = assembly, review = review,
         )
     }
 
@@ -257,6 +278,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             ),
             autoFrame = autoFrame,
             drawables = drawables.toList(),
+            toolModules = toolModules.toList(),
             panels = panels.toList(),
             columns = columns,
             background = background,
@@ -392,6 +414,7 @@ fun Box.three(
             "style='border:none;padding:0;margin:0;$sizing;height:${height}px'>"
     )
     val view = threeViewFor(uid)
+    view.bindSource(this)
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }

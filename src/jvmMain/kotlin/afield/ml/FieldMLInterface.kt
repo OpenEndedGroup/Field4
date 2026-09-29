@@ -247,9 +247,17 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 val result = FieldMLCompiler.compile(execute.code)
                 if (!reportDiagnostics(inside, execute, result, originSession, trace.reply)) {
                     val output = TrackingOutput(inside.output)
-                    val value = Evaluator(FieldMLRuntimePrelude.values(output, inside)).evaluate(result.core!!)
+                    val bound = ArrayList<Pair<Int, afield.ml.core.FieldMLValue>>()
+                    val value = try {
+                        Evaluator(FieldMLRuntimePrelude.values(output, inside))
+                            .also { it.onTopLevelLet = { index, _, v -> bound += index to v } }
+                            .evaluate(result.core!!)
+                    } finally {
+                        recordFieldMLLineNotes(inside, execute, result.typed!!, bound)
+                    }
                     val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
                     val valueText = renderFieldMLValue(value)
+                    recordFieldMLLineNotes(inside, execute, result.typed!!, bound, valueText to typeText)
                     if (!output.printed) {
                         dispatchExecutionOutput(
                             inside,
@@ -274,6 +282,37 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                 send(Message("is-running").payload(IsRunning(execute.uid, false, watermark, "__fragment__")))
             }
         }
+    }
+
+    /**
+     * Hand the box's line notes ([afield.stdlib.LastRunNotes]) what each top-level `let` bound on this
+     * run — [bound], by position in the program's spine of lets — and, when the run finished, what the
+     * final expression came to ([result], its value and type as text). The typed tree has the lines;
+     * the lowered one the evaluator ran has the same spine in the same order.
+     */
+    private fun recordFieldMLLineNotes(
+        inside: Box, execute: Execute, typed: afield.ml.type.TExpr,
+        bound: List<Pair<Int, afield.ml.core.FieldMLValue>>, result: Pair<String, String>? = null,
+    ) {
+        runCatching {
+            val lets = generateSequence(typed as? afield.ml.type.TExprLet) { it.body as? afield.ml.type.TExprLet }.toList()
+            val printer = afield.ml.type.TypePrinter()
+            val produced = bound.mapNotNull { (index, v) ->
+                val let = lets.getOrNull(index) ?: return@mapNotNull null
+                val shown = afield.stdlib.LastRunNotes.oneLine(renderFieldMLValue(v))
+                val type = " : " + printer.print(let.value.type)
+                afield.stdlib.LastRunNotes.Produced(let.range.start.line, let.value.range.end.line, "${let.name} = $shown$type",
+                    value = listOf(afield.stdlib.LineNotes.plain("${let.name} = "), afield.stdlib.LineNotes.strong(shown), afield.stdlib.LineNotes.plain(type)))
+            }.toMutableList()
+            val tail = lets.lastOrNull()?.body ?: typed
+            if (result != null && tail !is afield.ml.type.TExprLet) {
+                val shown = afield.stdlib.LastRunNotes.oneLine(result.first)
+                produced += afield.stdlib.LastRunNotes.Produced(tail.range.start.line, tail.range.end.line,
+                    "evaluated to $shown : ${result.second}",
+                    value = listOf(afield.stdlib.LineNotes.plain("evaluated to "), afield.stdlib.LineNotes.strong(shown), afield.stdlib.LineNotes.plain(" : ${result.second}")))
+            }
+            afield.stdlib.LastRunNotes.record(inside, "code", execute.code, execute.line, produced)
+        }.onFailure { afield.logger.lprintln("warning,study", "could not record FieldML line notes: $it") }
     }
 
     private fun fieldMLResultLine(executeLine: Int, result: CompilationResult): Int {

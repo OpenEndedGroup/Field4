@@ -1,0 +1,1 @@
+Now the face_decay slot (the fragment shader). The faces are plain grey. I'd like them to look like hot metal cooling: a dull dark iron at rest, glowing orange where a face has flown far out.

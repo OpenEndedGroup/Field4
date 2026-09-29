@@ -1092,6 +1092,19 @@ what you see back into that string, and **Reset** puts the literals back. Keys
 capture every number of the slot at once and blend between them, as on the
 [StackSL study card](stacksl_conversation.md).
 
+**Show it in your shader** captures the end result: the picture wherever the
+slot's module is drawn, at its current numbers. Field finds that by walking what
+the renderer draws, so it is the window when the module was added with
+`renderer += module` (the whole window, with everything else it draws), or the
+render target the module is in when it was added with `target += … to module`,
+even one that is never shown on screen. Where that can't be read back directly —
+a ping-pong target, which swaps its images every frame, a stereo target, or a
+module drawn nowhere the renderer's lists reach — the card draws the module
+once more, by itself, into a target of its own matched to its pipeline, and
+says so: the same module and state (a ping-pong still samples its real last
+frame), without whatever else draws beside it. A compute module writes buffers
+rather than a picture, and the card says so rather than show a stand-in.
+
 **Render this function alone** draws the slot's program by itself, at its current
 numbers, on your renderer. Its input is the study's, `vec4(uv, hash, 0, time)`
 on a unit square, not what your shader passes it, so it is a debugging view of
@@ -1121,6 +1134,32 @@ and its report says so. Assigning new StackSL re-seeds the numbers from its
 literals; assigning the same text again leaves them alone, so a box can re-run
 without losing what was turned. A full shader reload carries the values over.
 Set `AFIELD_STACK_AUTO_LIVE_NUMBERS=0` to compile every slot as before.
+
+### Talking to a slot
+
+An AI4 conversation opened on the box's `code` gets tools for its slots, the StackSL
+study's loop pointed at StackSL that lives in your shader. `InspectStackAutoSlot` reads
+the slot's program, the lines of your GLSL that declare and call it (what its input and
+output mean), where the module is drawn, and each number with what it does.
+`EditStackAutoSlot` and `PatchStackAutoSlot` check that a program compiles into the slot,
+bind it live and write it back into the Kotlin string it sits in; `SetStackAutoNumbers`
+turns numbers through the live block, with no recompile, and keeps them only when asked;
+`SweepStackAutoNumber` shows one number at several values, each in the real shader;
+`ObserveStackAutoSlot` shows it now; `RestoreStackAutoRevision` goes back. Every picture
+these return is the end result in your shader, as **Show it in your shader** captures it,
+and the program drawn alone is offered only as a debugging view. Revisions are kept in
+the box's `studies/`, beside the slot's knob names and keys.
+
+A slot your shader animates, by a time it pushes, is one moment per picture, and the tools
+cannot move your time for you. Give Edit, Patch or Observe `over` (seconds) and the picture
+is a numbered sheet of real frames across that long instead. An edit returns once the new
+pipeline is drawing, which MoltenVK can take seconds to build, and says so with
+`boundLive`; there is then nothing to reload.
+
+[Talking to the StackSL in your shader](stackauto_conversation.md) follows a recorded
+conversation of this kind step by step: a snub dodecahedron whose vertex shader's slot sends
+its faces flying in a wave, and whose fragment shader's slot heats them and burns them out to
+ragged frames at the peak.
 
 ### In the editor
 

@@ -1,0 +1,12 @@
+{
+  "id" : "r2-5b2a3ce81d87",
+  "parent" : "r1-0abc07d929b0",
+  "description" : "A 4.8-second burst cycle with upper faces leading a descending wave; whole faces ease out and return, then rest.",
+  "created" : "2026-09-28T18:40:58.251926Z",
+  "sourceHash" : "5b2a3ce81d87eb48f658b0f9bdabdf439b3fb1e31f0064c02fc9088e1f556ed4",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 8
+  }
+}

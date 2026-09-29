@@ -15,6 +15,75 @@ import kotlin.test.assertTrue
  */
 class AutoDiffOptimizeTest {
 
+    @Test
+    fun omittingParameterSnapshotsPreservesEveryOptimizationStep() {
+        for (method in OptimizeMethod.entries) {
+            val options = OptimizeOptions(method = method, iterations = 120, showProgress = false)
+            fun run(record: Boolean) = minimizeWithGradient(
+                doubleArrayOf(-4.0, 5.0), options.copy(recordTrajectory = record)
+            ) { x -> ADGradient((x[0]-3)*(x[0]-3)+2*(x[1]+1)*(x[1]+1),
+                doubleArrayOf(2*(x[0]-3), 4*(x[1]+1))) }
+            val recorded = run(true)
+            val compact = run(false)
+            assertTrue(compact.trajectory.isEmpty())
+            assertEquals(recorded.losses.size, recorded.trajectory.size)
+            assertTrue(recorded.x.contentEquals(compact.x))
+            assertTrue(recorded.gradient.contentEquals(compact.gradient))
+            assertEquals(recorded.steps, compact.steps)
+            assertEquals(recorded.losses, compact.losses)
+            assertEquals(recorded.evaluations, compact.evaluations)
+            assertEquals(recorded.reason, compact.reason)
+        }
+        val zero = minimizeWithGradient(doubleArrayOf(2.0),
+            OptimizeOptions(iterations = 0, showProgress = false, recordTrajectory = false)) {
+            ADGradient(it[0]*it[0], doubleArrayOf(2*it[0]))
+        }
+        assertTrue(zero.trajectory.isEmpty())
+        assertEquals(listOf(4.0), zero.losses)
+        assertTrue(zero.initialX.contentEquals(zero.x))
+    }
+
+    @Test
+    fun observerSeesOnlyAcceptedStatesAndCanStopOnPhysicalCriterion() {
+        val seen=mutableListOf<OptimizeProgress>()
+        val run=minimizeWithGradient(doubleArrayOf(9.0, -3.0),
+            OptimizeOptions(method=OptimizeMethod.LBFGS,iterations=100,showProgress=false),
+            observer={ p ->
+                assertEquals(p.x[0]*p.x[0]+100*p.x[1]*p.x[1],p.value)
+                if(seen.isNotEmpty()) assertTrue(p.value<=seen.last().value)
+                seen.add(p.copy(x=p.x.copyOf(),gradient=p.gradient.copyOf()))
+                p.iteration==3
+            }) { x -> ADGradient(x[0]*x[0]+100*x[1]*x[1],doubleArrayOf(2*x[0],200*x[1])) }
+        assertEquals("observer",run.reason)
+        assertEquals(3,run.iterations)
+        assertEquals(listOf(0,1,2,3),seen.map {it.iteration})
+        assertTrue(run.x.contentEquals(seen.last().x))
+        assertEquals(run.evaluations,seen.last().evaluations)
+    }
+
+    @Test
+    fun observerCanAcceptTheInitialStateWithoutTakingAStep() {
+        var hits=0
+        val run=minimizeWithGradient(doubleArrayOf(0.1),OptimizeOptions(showProgress=false),
+            observer={ hits++;true }) {x->ADGradient(x[0]*x[0],doubleArrayOf(2*x[0]))}
+        assertEquals(1,hits);assertEquals(1,run.evaluations)
+        assertEquals(0,run.iterations);assertEquals("observer",run.reason)
+    }
+
+    @Test
+    fun lbfgsRetainsCurvatureForVerySmallObjectiveUnits() {
+        fun solve(scale:Double)=minimizeWithGradient(doubleArrayOf(-4.0,5.0),
+            OptimizeOptions(method=OptimizeMethod.LBFGS,iterations=100,gradientTolerance=1e-22,
+                stepTolerance=0.0,showProgress=false)) { x ->
+            ADGradient(scale*((x[0]-3)*(x[0]-3)+2*(x[1]+1)*(x[1]+1)),
+                doubleArrayOf(scale*2*(x[0]-3),scale*4*(x[1]+1)))
+        }
+        for(scale in listOf(1.0,1e-12)) {
+            val r=solve(scale)
+            assertTrue((r.x[0]-3).absoluteValue<1e-6 && (r.x[1]+1).absoluteValue<1e-6)
+        }
+    }
+
     private val quietAdam = OptimizeOptions(method = OptimizeMethod.ADAM, showProgress = false)
     private val quietSgd = OptimizeOptions(method = OptimizeMethod.SGD, showProgress = false)
     private val quietLbfgs = OptimizeOptions(method = OptimizeMethod.LBFGS, showProgress = false)

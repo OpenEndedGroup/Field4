@@ -1,0 +1,12 @@
+{
+  "id" : "r1-d5de05fe435a",
+  "parent" : null,
+  "description" : "the slot's program as the box bound it",
+  "created" : "2026-09-28T18:49:04.873545Z",
+  "sourceHash" : "d5de05fe435a561d5232e5250ae92af0e19f643619b05c99ca2cd51570c35206",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 4
+  }
+}

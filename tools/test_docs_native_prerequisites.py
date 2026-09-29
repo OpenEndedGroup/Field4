@@ -15,6 +15,7 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    libpd_library_path,
     jep_python_candidates,
     resolve_jep_python,
 )
@@ -152,6 +153,26 @@ class TetgenLibraryPathTests(unittest.TestCase):
         resolve, how_to_build = NATIVE_PREREQUISITES["tetgen"]
         self.assertIs(resolve, tetgen_library_path)
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
+
+
+class LibpdLibraryPathTests(unittest.TestCase):
+    """TetGen's two properties for libpd, kept in step with `afield.pd.PdLibrary.searchedPaths`."""
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_PD_LIBRARY"] = "/somewhere/libpd-multi.dylib"
+        self.addCleanup(os.environ.pop, "AFIELD_PD_LIBRARY", None)
+        self.assertEqual(libpd_library_path(Path("/repo")), Path("/somewhere/libpd-multi.dylib"))
+
+    def test_the_default_is_where_build_libpd_native_writes(self):
+        os.environ.pop("AFIELD_PD_LIBRARY", None)
+        resolved = libpd_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-libpd/build/libs"))
+        self.assertIn("libpd-multi", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["libpd"]
+        self.assertIs(resolve, libpd_library_path)
+        self.assertEqual("./gradlew buildLibpdNative", how_to_build)
 
 
 class NativePrerequisiteTests(unittest.TestCase):

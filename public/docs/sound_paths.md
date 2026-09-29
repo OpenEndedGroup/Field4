@@ -2,7 +2,7 @@
 
 You want to hear something. There is more than one way, and this page maps all of them.
 
-**Eight things in Field make samples. Five things carry samples out of the process. Four bring them
+**Nine things in Field make samples. Five things carry samples out of the process. Four bring them
 in.**
 
 ---
@@ -21,6 +21,8 @@ in.**
   [Faust](faust.md).
 * **"I want the rhythm to come from *somewhere* — a direction, a distance."** → `pat-spatial`,
   through headphones. [A pattern in space](pat_spatial.md).
+* **"I want to patch it in Pure Data."** → `pure-data`. A patch inline in the box or a `.pd` file,
+  once libpd is built. [Pure Data](pure_data.md).
 * **"I want to write music, not DSP."** → `sonic-pi`. [Sonic Pi](sonic_pi.md).
 * **"I want it in a file, or in a docs page."** → the `wav-file` sink. Offline, deterministic.
 * **"I want a player in the box's output."** → the `box-output-player` sink.
@@ -29,7 +31,7 @@ in.**
 
 ---
 
-## The eight that make samples
+## The nine that make samples
 
 | path | what it is | needs | offline? | on the seam? | page |
 | --- | --- | --- | --- | --- | --- |
@@ -38,11 +40,12 @@ in.**
 | `signal-graph` | Field's own DSP graph — `abstract class Signal` in `src/jvmMain/kotlin/afield/four/synth/Signal.kt`, plus the oscillators, filters and the DoughDSP ports | nothing | both | **yes** | [DoughDSP](dough_dsp_sound.md) |
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
 | `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
+| `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
 | `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the seam by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
 | `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | realtime only | **yes** | [A pattern in space](pat_spatial.md) |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
-Four of those eight are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
+Four of those nine are pattern voices: `pat-stand-in`, `dirt-samples`, `faust-poly` and
 `pat-spatial`. The first two are what [Sound](sound.md) covers, with the fallback behaviour and the
 provenance audit; `faust-poly` is on [Faust](faust.md), because what it needs explaining is the voice
 allocator rather than the pattern; and `pat-spatial` has [a page of its
@@ -50,14 +53,14 @@ own](pat_spatial.md), because what it needs explaining is why a tag in a pattern
 why the synthesis is a thread away from the audio. Read whichever you have picked; this page only
 helps you pick.
 
-Two of the eight are **realtime only**, and for unrelated reasons. `pat-spatial` cannot render into a
+Two of the nine are **realtime only**, and for unrelated reasons. `pat-spatial` cannot render into a
 buffer because its synthesis runs on its own clock, ahead of whoever consumes it — its own page gives
 [the three reasons](pat_spatial.md#why-there-is-no-clip-of-the-output), and it is the
 only path in this table whose published clips are of its *input* rather than of what it sounds like.
 
 `sonic-pi` is the other, and it is the more extreme case: it is the only path where **no sample ever
 enters this process**. Field sends text and receives log lines; the audio exists entirely inside
-another program's synthesiser. Everything you can do to samples in the other seven — filter them,
+another program's synthesiser. Everything you can do to samples in the other eight — filter them,
 plot them, write them to a file — you cannot do to those. The way back in is `link-audio-in`, below.
 
 ## The five that carry samples out
@@ -145,7 +148,7 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 
 `AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
 does every node in the graph, `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink`,
-`PatSynthBank` and `PatSpatialBank`. Eleven of the seventeen paths above sit on it. **A path on the
+`PatSynthBank`, `PatSpatialBank` and `PdNode`. Twelve of the eighteen paths above sit on it. **A path on the
 seam composes with every other path on the seam; a path off it composes with nothing.**
 
 Faust is the clearest case of what that buys, twice over. `class FaustNode` is 23 lines that fill an
@@ -154,7 +157,7 @@ scheduler, a voice allocator and N WebAssembly instances in one GraalVM context 
 seam has to know about. Being on it is what gets both of them the speakers, the engine's visualisers,
 the Link output and the box lifecycle, with no adapter written for any of them.
 
-Of the eight paths that make samples, `sonic-pi` is the only one off the seam, and no wrapper
+Of the nine paths that make samples, `sonic-pi` is the only one off the seam, and no wrapper
 reaches it: it is a different process, and no sample ever enters this one.
 
 `dough-engine` reaches the seam through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
@@ -175,7 +178,7 @@ fill a block when asked and cannot do it faster than wall clock — the seam ask
 a buffer, and a render thread feeding a ring satisfies that with an `arraycopy`. Like `faust-poly`,
 it opens no device and encodes no WAV.
 
-`AudioPatchSpec` is what every box that makes a noise returns. Five of the seventeen paths above have
+`AudioPatchSpec` is what every box that makes a noise returns. Five of the eighteen paths above have
 no page of their own — `audio-patch-seam`, `dough-engine`, `spatial-openal`, `device-input`,
 `wav-file-in` — and the em-dash in those table cells means absent, not merely unlisted. For those
 five, this map and [`afield.four.synth` in the generated reference](reference/synthesis.md) are what

@@ -55,14 +55,14 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 160 transcripts on every build, at three
-depths. 82 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 163 transcripts on every build, at three
+depths. 84 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-71 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
-audio service, or a camera), so those are **built and compiled**: the graph is assembled through the
+72 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
 Kotlin **compiled to JavaScript** for a browser or visionOS head, through the real head profile that
@@ -142,6 +142,32 @@ and compare bytes per frame. See [Simulation time](simulation_clock.md).
 ![Field's existing profiling panel displaying complete simulation frame intervals, allocation per frame, budget misses, and selectable slow intervals from a real capture](assets/simulation_clock/frames.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/simulation_clock/metadata.edn)
+
+### drawing_notation
+
+Six boxes on the drawing layer (`alt-d`) and the `notation` API. `draw` circles itself and draws an
+arrow to `listen` that follows both boxes when you drag them; `read` prints every mark and what it
+sits on; `listen` prints each stroke you draw. The other three read the drawing by cutting it:
+`projection 1`, after Feldman, reads rectangles in a three-row grid as onsets, durations and
+registers; `fontana mix`, after Cage, measures where a straight line you draw crosses six curves;
+`crescendo` reads a hand-made hairpin's width at each beat as a dynamic. The replay runs all six
+headless, since the drawing is data on the server and needs no window. See
+[Drawing and Notation](drawing_and_notation.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn)
+
+### drawn_score
+
+A drawn score, heard, as five boxes. `score` draws a frame named "score" with a piano roll of
+rectangles, a glissando and a held note; `read` reads it with `notation.space` as eight beats of MIDI
+pitch and prints its events; `play` decides in a dozen editable lines what each event means as notes,
+builds a pattern with `patTimed` and renders two cycles offline into an audio player; `pentatonic`
+reads the same drawing snapped to a scale; `listen back` finds the onsets and pitches in both renders
+and plots what was heard against what was drawn. Draw your own notes in the frame and run the boxes
+after `score` again. The replay runs all five headless: the drawing is data on the server and the
+audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
 ### hello_display_capture
 
@@ -1679,6 +1705,23 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### pure_data_demo
+
+**Pure Data inside Field.** Eight boxes: a Kotlin root whose `mainLanguage` makes three Pd boxes
+under it, and four Kotlin boxes that drive a patch from Kotlin. **drone**'s text is its patch: launch
+it, then run the line `freq 330` on its own and the filtered sawtooth moves. **round trip** is
+`[r in] → [+ 1] → [s out]`; running `in 41` prints `out: 42`, and the line note on `[s out]` then
+reads `'out' = 42.0`, live from the playing patch. **typo** has `[osc 440]` on line 3, and launching it marks that line
+"Pd couldn't create [osc 440] — did you mean [osc~ 440]?". The Kotlin boxes write a wavetable into
+`[table wave]` (2051 points), send a `SawOsc` through a Pd `[lop~]` and read its level back from
+`[s level]`, send numbers to the drone with `pdBox("drone").pdSend(...)`, and render a patch offline:
+**offline** prints 440 upward zero crossings in one second at a peak of 0.2500. Needs libpd, built
+once with `./gradlew buildLibpdNative`. The build does not own that, so CI compiles the four Kotlin
+boxes and skips the three Pd ones, as it skips Python cells; every box was run by hand against a
+built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
 
 ### marf_demo
 

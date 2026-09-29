@@ -243,6 +243,20 @@ object SoundPathMap {
         ),
 
         SoundPath(
+            id = "pure-data",
+            role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
+            needs = "libpd, not committed — ./gradlew buildLibpdNative",
+            channels = "whatever the patch's dac~ has; mono is heard in both",
+            what = "a Pure Data patch, written inline in a box or opened from a .pd file, running " +
+                "in a libpd instance of its own and pulled a block at a time by PdNode — with " +
+                "messages to its [r] objects queued onto the rendering thread and its [s] objects " +
+                "delivered back to Kotlin on the main thread",
+            file = "src/jvmMain/kotlin/afield/pd/PdInstance.kt",
+            entryPoint = "class PdNode",
+            page = "public/docs/pure_data.md",
+        ),
+
+        SoundPath(
             id = "dough-engine",
             // onSeam was `false` here, and `sound_paths.md` said this path "could be wrapped, and has
             // not been". It is wrapped: `DoughAudioSink : StereoNode()` is in this same file and
@@ -416,11 +430,11 @@ object SoundPathMap {
     // ── the ratchets: counts, pinned near the measurement ──────────────────────────────────
 
     /**
-     * How many distinct ways there are to make samples. **Eight**, replacing a bolded "two".
+     * How many distinct ways there are to make samples. **Nine**, replacing a bolded "two".
      *
-     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other six are the
-     * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, the dough wasm engine,
-     * [patSpatial] and Sonic Pi. Four of the eight are pattern voices, which is the number
+     * The two the page used to name are `pat-stand-in` and `dirt-samples`; the other seven are the
+     * `Signal` graph, Faust as an effect, Faust as a polyphonic instrument, a Pure Data patch, the
+     * dough wasm engine, [patSpatial] and Sonic Pi. Four of the nine are pattern voices, which is the number
      * `sound.md` counts; this one counts routes, so it is always the larger.
      *
      * It went from seven to eight on 2026-09-16, and that arrival is the failure this file's
@@ -428,8 +442,12 @@ object SoundPathMap {
      * device and encodes no WAV, exactly like `FaustPoly.kt` before it, and the `seam-stereo-node`
      * marker reported it — along with `PatSpatialEngineSmoke.kt`'s control node — rather than the
      * count sitting at seven while a whole spatialised pattern voice shipped undeclared.
+     *
+     * Nine on 2026-09-28: `pure-data`, a libpd instance per launch, reached through `PdNode`. It was
+     * declared in the change that added it, because the `seam-stereo-node` marker would not let the
+     * change pass without it.
      */
-    const val SOURCE_COUNT = 8
+    const val SOURCE_COUNT = 9
 
     /** How many ways samples leave this process. Five, of which three are separate OpenAL contexts. */
     const val SINK_COUNT = 5
@@ -438,7 +456,7 @@ object SoundPathMap {
     const val INPUT_COUNT = 4
 
     /**
-     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Eleven of seventeen.
+     * How many declared paths meet `AudioPatchSpec.Renderer.render`. Twelve of eighteen.
      *
      * A floor here is the assertion that matters most: the seam is the reason Faust cost no new
      * plumbing, and if a later change adds a path *beside* it rather than *on* it, this number
@@ -454,8 +472,10 @@ object SoundPathMap {
      * the seam without being able to render into a buffer at all. Being on the seam and being
      * offline-capable are independent, and this is the entry that proves it — what the seam asks of
      * a path is that it can fill a block when asked, not that it can do so faster than wall clock.
+     *
+     * Twelve since 2026-09-28, for the most ordinary reason of all: `pure-data` arrived on it.
      */
-    const val SEAM_COUNT = 11
+    const val SEAM_COUNT = 12
 
     // ── derivation from the code ───────────────────────────────────────────────────────────
 
@@ -522,6 +542,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/CaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/LambdaSoundDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynthDocs.kt" to "pat-stand-in",
+                "src/jvmMain/kotlin/afield/four/synth/DrawnScoreDocs.kt" to "pat-stand-in",
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/FnSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
@@ -569,6 +590,8 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt" to "faust",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt" to "faust-poly",
                 "src/jvmMain/kotlin/afield/four/synth/PatSynth.kt" to "pat-stand-in",
+                // PdNode, the audio thread's end of a libpd instance.
+                "src/jvmMain/kotlin/afield/pd/PdInstance.kt" to "pure-data",
                 // PatSpatialBank and PatSpatialLaunch, the audio thread's end of the spatial ring.
                 "src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt" to "pat-spatial",
                 // Not a node of the path: the control patch that smoke registers *beside* the
@@ -1035,7 +1058,7 @@ object SoundPathMap {
  *
  * Three players and a brightness plot, so the difference between the paths can be heard *and*
  * seen without leaving the box. Routed through `displayAudioSamples`, which is the
- * `box-output-player` path from the map — so running this exercises four of the sixteen declared
+ * `box-output-player` path from the map — so running this exercises four of the eighteen declared
  * paths at once (`pat-stand-in`, `signal-graph`, `faust`, `box-output-player`).
  *
  * The Faust compile costs 13–22s the first time in a process and is nearly free afterwards, so

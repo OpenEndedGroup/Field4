@@ -19,8 +19,8 @@ space with Steam Audio's HRTF, in realtime only. Where it puts a note is written
 `az`/`dist` tag, which is the thing about it worth reading — see
 [A pattern in space](pat_spatial.md).
 
-Eight things in Field make samples by one route or another, and
-[Making a sound in Field: every path there is](sound_paths.md) maps all eight and helps you pick.
+Nine things in Field make samples by one route or another, and
+[Making a sound in Field: every path there is](sound_paths.md) maps all nine and helps you pick.
 
 **Three quarters** of the audio published elsewhere in these docs is the first voice below, and the
 rest is not. [Most of the audio in these docs is the

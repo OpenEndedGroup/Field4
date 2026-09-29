@@ -3640,6 +3640,49 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
     timeout_text = str(timeout)
     return [
         UiRegression(
+            id="three-tools",
+            description="Optional viewer tools load from Field, restore state and dispose without an idle loop.",
+            commands=[
+                "new-box --name GlbRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-tools.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-tools.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-glb",
+            description="Export portable GLB with current visibility, transforms, sections and X-ray materials.",
+            commands=[
+                "new-box --name GlbRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-xray.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-glb.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-xray",
+            description="X-ray renders hidden geometry while preserving nearest-surface picks, saved evidence and idle rendering.",
+            commands=[
+                "new-box --name XrayRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-xray.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-xray.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-feature-review",
+            description="Pick ordinary mesh faces, FLine strokes and points without construction-specific metadata.",
+            commands=[
+                "new-box --name FeatureReviewRegression --alias feature_fixture",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-feature-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-feature-review.js"), "--timeout", pw_timeout]),
+                "new-box --name FeatureReviewGesture --x 1200 --y 1200",
+                shell_join(["run", "@last", "--value", "afield.examples.ThreeFeatureReviewWorkout.checkGestures()", "--timeout", pw_timeout]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-feature-delivery.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@feature_fixture", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="command-palette-action-this-binding",
             description="Field command palette calls Monaco editor actions with their original this binding.",
             commands=[

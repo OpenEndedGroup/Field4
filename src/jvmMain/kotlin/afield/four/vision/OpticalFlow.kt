@@ -53,7 +53,7 @@ class OpticalFlow(override val renderer: Renderer,override val first: HasImageVi
     private val unpackTimer=afield.four.lighting.LightingGpuTimer(renderer)
     override val gpuTimings get()=mapOf("conversion" to conversionTimer.samples.toList(),"opticalFlow" to opticalTimer.samples.toList(),"unpack" to unpackTimer.samples.toList())
     private val pool=CommandPool(device,family)
-    private val commands=listOf(CommandBuffer(renderer.commandPool,true,false),CommandBuffer(pool,true,false),CommandBuffer(renderer.commandPool,true,false))
+    private val commands=listOf(CommandBuffer(renderer.commandPool,true,true),CommandBuffer(pool,true,true),CommandBuffer(renderer.commandPool,true,true))
     private val ready=Semaphore(device,false)
     private val done=Semaphore(device,false)
     private val fence=Fence(device,false)

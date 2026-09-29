@@ -14,7 +14,7 @@ Where the neighbours are. [Solvers](solvers.md) is Ceres, which finds the shape 
 
 The prose, with pictures: [Physics: particles, constraints and cloth](../physics.md) for the real-time stack — read it before touching `stiffness`, because it and `iterations` are not two knobs — and [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) for the meshing and the route into Kratos. Four loadable Kratos documents (thermal, flow, structural and the parameter study) and the cloth starting point are in the [Agent Transcript Gallery](../agent_transcripts.md); [Frames and the Animation Loop](../animation_time_model.md) explains why an integrator wants a fixed `dt`. `dev_docs/TETGEN.md` carries the mesher comparison that chose this route.
 
-29 source file(s), 873 public symbol(s), 505 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+36 source file(s), 964 public symbol(s), 520 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1615,6 +1615,316 @@ The handle for one rope: node indices, the bending projection, and the ties to o
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">frames</span><span class="p">(</span><span class="n">dt</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span> <span class="p">/</span> <span class="mi">60f</span><span class="p">,</span> <span class="n">damping</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.99f</span><span class="p">,</span> <span class="n">gravity</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">)</span><span class="p">:</span> <span class="nc">Sequence</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">FLine</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/Strand/#L332) | `step` then `lines`, forever — the shape a Field box's animation loop consumes. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">meanKinkDegrees</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/four/physics/Strand/#L348) | Mean angle in degrees between successive segments — the "how limp is this rope" readout, and what `bendStiffness`'s documented scale is measured in. `0` for a rope in a straight line. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">remove</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/Strand/#L377) | Detaches this strand from `sim`: drops the bending pass and clears its constraint slots. The particles stay, as with `Cloth.remove`. Anything tied to it with `attachTo` keeps its own half of the join, so untie first if that matters. |
+
+## FastMechanics.kt { #fastmechanics-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/FastMechanics.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/FastMechanics/)
+
+### FastMechanics { #fastmechanics-kt-fastmechanics }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FastMechanics</span><span class="p">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="k">private</span> <span class="k">val</span> <span class="n">load</span><span class="p">:</span><span class="nc">LoadCase</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/FastMechanics/#L6)
+
+Per-solve prepacked element data; numeric force path avoids per-element vectors and lists.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span><span class="p">:</span><span class="nc">Evaluation</span></code>](source/jvmMain/afield/four/physics/pressure/FastMechanics/#L31) |  |
+
+## Mechanics.kt { #mechanics-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/Mechanics.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/Mechanics/)
+
+**Used in:** [Pressure membranes](../pressure_membranes.md)
+
+### GasMode { #mechanics-kt-gasmode }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">GasMode</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L5)
+
+Constants: `REGULATED`, `SEALED_ISOTHERMAL`.
+
+### LoadCase { #mechanics-kt-loadcase }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">LoadCase</span><span class="p">(</span><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">gasMode</span><span class="p">:</span> <span class="nc">GasMode</span> <span class="o">=</span> <span class="nc">GasMode</span><span class="p">.</span><span class="nc">REGULATED</span><span class="p">,</span> <span class="k">val</span> <span class="n">gravity</span><span class="p">:</span> <span class="nc">P3</span> <span class="o">=</span> <span class="nc">P3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">,</span><span class="mf">0.0</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">groundY</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">groundPenalty</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e8</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L7)
+
+Pressure difference in Pa, gravity in m/s², optional horizontal penalty-contact plane in m. Sealed gas uses the mesh initial volume as its reference.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">gravity</span><span class="p">:</span> <span class="nc">P3</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">groundPenalty</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+
+### FilmState { #mechanics-kt-filmstate }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FilmState</span><span class="p">(</span><span class="k">val</span> <span class="n">major</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">minor</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">strain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">P3</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L14)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">direction</span><span class="p">:</span> <span class="nc">P3</span><span class="p">,</span> <span class="k">val</span> <span class="n">state</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### TapeState { #mechanics-kt-tapestate }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">TapeState</span><span class="p">(</span><span class="k">val</span> <span class="n">tension</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">strain</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L16)
+
+### Evaluation { #mechanics-kt-evaluation }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Evaluation</span><span class="p">(</span><span class="k">val</span> <span class="n">energy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">gradient</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">volume</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">films</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FilmState</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TapeState</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">contact</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pressureForces</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">filmEnergy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapeEnergy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L17)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">volume</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">films</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FilmState</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TapeState</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">contact</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">pressureForces</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">filmEnergy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapeEnergy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code> |  |
+
+### Mechanics { #mechanics-kt-mechanics }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Mechanics</span><span class="p">(</span><span class="k">val</span> <span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">,</span> <span class="k">val</span> <span class="n">load</span><span class="p">:</span> <span class="nc">LoadCase</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L29)
+
+Total-Lagrangian constant-strain triangles; large rotations, elastic Green strain. Isotropic plane-stress St Venant--Kirchhoff energy relaxed in compressive principal directions (taut / uniaxially wrinkled / slack). No bending or wrinkle wavelength. Film force resultants are pushed into the current surface, in N per current metre. This elastic law does not model bending, self-contact, plasticity or material failure.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">details</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span><span class="p">:</span> <span class="nc">Evaluation</span></code>](source/jvmMain/afield/four/physics/pressure/Mechanics/#L34) |  |
+
+## MinimumSearch.kt { #minimumsearch-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/MinimumSearch.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/MinimumSearch/)
+
+### MinimumAudit { #minimumsearch-kt-minimumaudit }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">MinimumAudit</span><span class="p">(</span><span class="k">val</span> <span class="n">energy</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">curvature</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">curvatureAtDoubleStep</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">ritzResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">directions</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">testedDisplacements</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bestEnergyDrop</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">escape</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">ShapeAudit</span><span class="p">,</span> <span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L8)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ritzResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">directions</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">testedDisplacements</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">bestEnergyDrop</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">escape</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span><span class="p">,</span><span class="k">val</span> <span class="n">shape</span><span class="p">:</span> <span class="nc">ShapeAudit</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">rows</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code> |  |
+
+### MinimumSearch { #minimumsearch-kt-minimumsearch }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">MinimumSearch</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L22)
+
+Finite-difference Hessian/Lanczos audit. A positive Ritz value is NOT a stability certificate.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Ritz</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">vector</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span><span class="k">val</span> <span class="n">residual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L23) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">lowest</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span><span class="n">apply</span><span class="p">:</span> <span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">96</span><span class="p">,</span><span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span><span class="o">=</span><span class="mi">47</span><span class="p">)</span><span class="p">:</span> <span class="nc">Ritz</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L24) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">audit</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">Solution</span><span class="p">,</span><span class="n">cancelled</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Boolean</span><span class="o">=</span><span class="p">{</span><span class="kc">false</span><span class="p">}</span><span class="p">,</span><span class="n">steps</span><span class="p">:</span> <span class="nc">Int</span><span class="o">=</span><span class="mi">96</span><span class="p">)</span><span class="p">:</span> <span class="nc">MinimumAudit</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L50) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">improve</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">Solution</span><span class="p">,</span><span class="n">cancelled</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Boolean</span><span class="o">=</span><span class="p">{</span><span class="kc">false</span><span class="p">}</span><span class="p">,</span><span class="n">progress</span><span class="p">:</span> <span class="p">(</span><span class="nc">String</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Unit</span><span class="o">=</span><span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solution</span></code>](source/jvmMain/afield/four/physics/pressure/MinimumSearch/#L85) |  |
+
+## Model.kt { #model-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/Model.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/Model/)
+
+**Used in:** [Pressure membranes](../pressure_membranes.md)
+
+### Top-level functions { #model-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Tape</span><span class="p">.</span><span class="nf">startPoint</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L42) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Tape</span><span class="p">.</span><span class="nf">endPoint</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L43) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">point</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span><span class="n">n</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L114) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">volume</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fs</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PanelTriangle</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L117) |  |
+
+### P3 { #model-kt-p3 }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">P3</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L6)
+
+Double precision mechanical coordinates; metres throughout.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L7) |  |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">minus</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L8) |  |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">times</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L9) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">dot</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L10) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">cross</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L11) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">norm</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L12) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">unit</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L13) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">array</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L14) |  |
+
+### Film { #model-kt-film }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Film</span><span class="p">(</span><span class="k">val</span> <span class="n">young</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">poisson</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">provenance</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;User-supplied isotropic membrane material&quot;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L18)
+
+Isotropic membrane material: modulus in Pa, thickness in m and density in kg/m³. Supply measured values for the intended material.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">thickness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">density</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">provenance</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+
+### Tape { #model-kt-tape }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Tape</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">rest</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">ea</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">linearDensity</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span> <span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SurfacePoint</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">SurfacePoint</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L28)
+
+Tension-only axial element. `ea` is rigidity in newtons, `rest` and `width` are metres, `linearDensity` is kg/m.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">ea</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">SurfacePoint</span><span class="o">?</span></code> |  |
+
+### SurfacePoint { #model-kt-surfacepoint }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SurfacePoint</span><span class="p">(</span><span class="k">val</span> <span class="n">nodes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">weights</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L36)
+
+Material attachment: fixed barycentric weights, independent of the deformed embedding.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">at</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">P3</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L39) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">distribute</span><span class="p">(</span><span class="n">g</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span><span class="n">f</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L40) |  |
+
+### Tether { #model-kt-tether }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Tether</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span><span class="k">val</span> <span class="n">attachment</span><span class="p">:</span> <span class="nc">SurfacePoint</span><span class="p">,</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">P3</span><span class="p">,</span><span class="k">val</span> <span class="n">rest</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">ea</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L44)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">force</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">P3</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L46) |  |
+
+### PanelTriangle { #model-kt-paneltriangle }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">PanelTriangle</span><span class="p">(</span><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">c</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">panel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">uv</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">film</span><span class="p">:</span> <span class="nc">Film</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L53)
+
+Each triangle retains material coordinates independently of its starting spatial shape.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">uv</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">film</span><span class="p">:</span> <span class="nc">Film</span><span class="p">)</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">area</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L55) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">du</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L56) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">dv</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L57) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">nodes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L68) |  |
+
+### Anchor { #model-kt-anchor }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Anchor</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">node</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">P3</span><span class="p">,</span> <span class="k">val</span> <span class="n">stiffness</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L72)
+
+stiffness=null is an ideal fixed point; otherwise a 3D spring in N/m.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">capacity</span><span class="p">:</span> <span class="nc">Double</span><span class="o">?</span></code> |  |
+
+### Pattern { #model-kt-pattern }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Pattern</span><span class="p">(</span><span class="k">val</span> <span class="n">id</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">outline</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">,</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L79)
+
+### Envelope { #model-kt-envelope }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Envelope</span><span class="p">(</span><span class="k">val</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">triangles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">PanelTriangle</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Tape</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">anchors</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Anchor</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tapeProvenance</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;Uncalibrated EA study parameter&quot;</span><span class="p">,</span> <span class="k">val</span> <span class="n">tethers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Tether</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L82)
+
+Closed oriented pressure mesh with independent material coordinates and optional bonded tapes, tethers and anchors. No carrier or cutting algorithm is assumed. Arrays are solve inputs: do not mutate them during evaluation.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">tapes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Tape</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">patterns</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pattern</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tethers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Tether</span><span class="p">&gt;</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">mass</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/four/physics/pressure/Model/#L88) |  |
+
+## NewtonPolish.kt { #newtonpolish-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/NewtonPolish.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/NewtonPolish/)
+
+### NewtonPolish { #newtonpolish-kt-newtonpolish }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">NewtonPolish</span></code>](source/jvmMain/afield/four/physics/pressure/NewtonPolish/#L7)
+
+Truncated preconditioned CG in a trust region. A final force correction, not a stability certificate.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">improve</span><span class="p">(</span><span class="n">model</span><span class="p">:</span><span class="nc">Envelope</span><span class="p">,</span><span class="n">initial</span><span class="p">:</span><span class="nc">DoubleArray</span><span class="p">,</span><span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="n">options</span><span class="p">:</span><span class="nc">SolveOptions</span><span class="p">,</span> <span class="n">evaluate</span><span class="p">:</span><span class="p">(</span><span class="nc">DoubleArray</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Evaluation</span><span class="p">,</span><span class="n">cancelled</span><span class="p">:</span><span class="p">(</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Boolean</span><span class="p">,</span><span class="n">trace</span><span class="p">:</span><span class="nc">SolveTrace</span><span class="p">,</span> <span class="n">progress</span><span class="p">:</span><span class="p">(</span><span class="nc">SolveProgress</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Unit</span><span class="p">)</span><span class="p">:</span><span class="nc">DoubleArray</span></code>](source/jvmMain/afield/four/physics/pressure/NewtonPolish/#L8) |  |
+
+## ShapeAudit.kt { #shapeaudit-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/ShapeAudit.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/ShapeAudit/)
+
+### ShapeAudit { #shapeaudit-kt-shapeaudit }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">ShapeAudit</span><span class="p">(</span><span class="k">val</span> <span class="n">intersections</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span><span class="k">val</span> <span class="n">foldedEdges</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">maximumFoldDegrees</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/ShapeAudit/#L5)
+
+### ShapeAudits { #shapeaudit-kt-shapeaudits }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ShapeAudits</span></code>](source/jvmMain/afield/four/physics/pressure/ShapeAudit/#L8)
+
+Diagnostics on computed triangles, independent of shading and viewer explosion.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">junctionAngles</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span><span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/pressure/ShapeAudit/#L9) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">seams</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/physics/pressure/ShapeAudit/#L21) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">inspect</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">,</span><span class="n">x</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">ShapeAudit</span></code>](source/jvmMain/afield/four/physics/pressure/ShapeAudit/#L40) |  |
+
+## Solver.kt { #solver-kt }
+
+`src/jvmMain/kotlin/afield/four/physics/pressure/Solver.kt` — [read the source](source/jvmMain/afield/four/physics/pressure/Solver/)
+
+**Used in:** [Pressure membranes](../pressure_membranes.md)
+
+### SolveOptions { #solver-kt-solveoptions }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveOptions</span><span class="p">(</span><span class="k">val</span> <span class="n">pressureSteps</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="k">val</span> <span class="n">iterationsPerStep</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6000</span><span class="p">,</span> <span class="k">val</span> <span class="n">relativeTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">2e</span><span class="p">-</span><span class="mi">5</span><span class="p">,</span> <span class="k">val</span> <span class="n">absoluteTolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="p">.</span><span class="mi">02</span><span class="p">,</span> <span class="k">val</span> <span class="n">minimumStep</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">/</span><span class="mi">128</span><span class="p">,</span> <span class="k">val</span> <span class="n">precondition</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">,</span> <span class="k">val</span> <span class="n">physicalStopping</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">newtonPolish</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">fastKernel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L10)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">relativeTolerance</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minimumStep</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">physicalStopping</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+
+### InflationStep { #solver-kt-inflationstep }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">InflationStep</span><span class="p">(</span><span class="k">val</span> <span class="n">fraction</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">pressure</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">volume</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">relativeResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">accepted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span><span class="k">val</span> <span class="n">positions</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L16)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">residualN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">relativeResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">iterations</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">accepted</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span><span class="k">val</span> <span class="n">positions</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code> |  |
+
+### AnchorReaction { #solver-kt-anchorreaction }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">AnchorReaction</span><span class="p">(</span><span class="k">val</span> <span class="n">anchor</span><span class="p">:</span> <span class="nc">Anchor</span><span class="p">,</span><span class="k">val</span> <span class="n">force</span><span class="p">:</span> <span class="nc">P3</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L19)
+
+### Solution { #solver-kt-solution }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Solution</span><span class="p">(</span><span class="k">val</span> <span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">,</span><span class="k">val</span> <span class="n">load</span><span class="p">:</span> <span class="nc">LoadCase</span><span class="p">,</span><span class="k">val</span> <span class="n">positions</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">evaluation</span><span class="p">:</span> <span class="nc">Evaluation</span><span class="p">,</span><span class="k">val</span> <span class="n">history</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InflationStep</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span><span class="k">val</span> <span class="n">elapsedMs</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">reactions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AnchorReaction</span><span class="p">&gt;</span><span class="p">,</span><span class="k">val</span> <span class="n">balanceN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">momentNm</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">residualN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">relativeResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">MinimumAudit</span><span class="o">?</span><span class="o">=</span><span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">trace</span><span class="p">:</span> <span class="nc">SolveTrace</span> <span class="o">=</span> <span class="nc">SolveTrace</span><span class="p">(</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L20)
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">evaluation</span><span class="p">:</span> <span class="nc">Evaluation</span><span class="p">,</span><span class="k">val</span> <span class="n">history</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">InflationStep</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">converged</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span><span class="k">val</span> <span class="n">reason</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span><span class="k">val</span> <span class="n">elapsedMs</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">reactions</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">AnchorReaction</span><span class="p">&gt;</span><span class="p">,</span><span class="k">val</span> <span class="n">balanceN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">momentNm</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">residualN</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">relativeResidual</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">minimum</span><span class="p">:</span> <span class="nc">MinimumAudit</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">trace</span><span class="p">:</span> <span class="nc">SolveTrace</span></code> |  |
+
+### SolveProgress { #solver-kt-solveprogress }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">SolveProgress</span><span class="p">(</span><span class="k">val</span> <span class="n">iteration</span><span class="p">:</span><span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">fraction</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">residualN</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">relativeResidual</span><span class="p">:</span><span class="nc">Double</span><span class="p">,</span><span class="k">val</span> <span class="n">evaluations</span><span class="p">:</span><span class="nc">Int</span><span class="p">,</span><span class="k">val</span> <span class="n">method</span><span class="p">:</span><span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L32)
+
+Uses Field's existing L-BFGS; only physical residuals can declare an equilibrium accepted.
+
+### SolveTrace { #solver-kt-solvetrace }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">SolveTrace</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L33)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">var</span> <span class="n">evaluations</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L34) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">rows</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L35) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L36) |  |
+
+### InflationSolver { #solver-kt-inflationsolver }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">InflationSolver</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L38)
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">solve</span><span class="p">(</span><span class="n">model</span><span class="p">:</span> <span class="nc">Envelope</span><span class="p">,</span> <span class="n">load</span><span class="p">:</span> <span class="nc">LoadCase</span> <span class="o">=</span> <span class="nc">LoadCase</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">SolveOptions</span> <span class="o">=</span> <span class="nc">SolveOptions</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">cancelled</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="p">{</span> <span class="kc">false</span> <span class="p">}</span><span class="p">,</span> <span class="n">initialPositions</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">onProgress</span><span class="p">:</span><span class="p">(</span><span class="nc">SolveProgress</span><span class="p">)</span><span class="o">-&gt;</span><span class="nc">Unit</span><span class="o">=</span><span class="p">{</span><span class="p">}</span><span class="p">,</span> <span class="n">onStep</span><span class="p">:</span> <span class="p">(</span><span class="nc">InflationStep</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span> <span class="o">=</span> <span class="p">{</span><span class="p">}</span><span class="p">)</span><span class="p">:</span> <span class="nc">Solution</span></code>](source/jvmMain/afield/four/physics/pressure/Solver/#L44) | Relax a supplied closed membrane by pressure continuation. `initialPositions` enables a full-load warm start. Acceptance uses free-force residuals in N, not optimizer step size. Failed continuation returns an unconverged result with its actual load fraction in `Solution.history`. Cancellation propagates. A converged force balance is not proof of a minimum; [`MinimumSearch`](simulation.md#minimumsearch-kt-minimumsearch) offers a sampled diagnostic. |
 
 ## KratosDemo.kt { #kratosdemo-kt }
 

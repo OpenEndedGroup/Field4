@@ -60,6 +60,7 @@
             uniform float u_dotLargeAlpha;
             uniform float u_axisAlpha;
             uniform float u_dpr;
+            uniform float u_zoom;
 
             float hash(vec2 p) {
                 p = fract(p * vec2(0.1031, 0.11369));
@@ -67,10 +68,12 @@
                 return fract((p.x + p.y) * p.x);
             }
 
+            // world is in world units * dpr, so the spacing is in frame units and scales with the
+            // canvas zoom (the dots are the visual unit for box frames). The radii stay in screen pixels.
             float dotMask(vec2 world, float spacing, float r0, float r1) {
-                vec2 q = mod(world - vec2(0.5 * u_dpr), spacing);
+                vec2 q = mod(world - vec2(0.5 * u_dpr / u_zoom), spacing);
                 q = min(q, spacing - q);
-                float d = length(q);
+                float d = length(q) * u_zoom;
                 return 1.0 - smoothstep(r0, r1, d);
             }
 
@@ -88,9 +91,13 @@
                 float dither = (hash(frag) - 0.5) * (2.4 / 255.0);
                 color += vec3(dither);
 
-                vec2 world = frag - u_translation;
-                float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr);
-                float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr);
+                vec2 world = (frag - u_translation) / u_zoom;
+                // Zoomed far out the 25-unit dots would crowd into a haze (under ~9 screen px apart);
+                // fade them, then the 100-unit dots, rather than draw noise.
+                float smallFade = smoothstep(0.35, 0.7, u_zoom);
+                float largeFade = smoothstep(0.1, 0.2, u_zoom);
+                float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr) * smallFade;
+                float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr) * largeFade;
                 float dotAlpha = clamp(smallDots * u_dotSmallAlpha + largeDots * u_dotLargeAlpha, 0.0, 0.32);
                 color = mix(color, vec3(1.0), dotAlpha);
 
@@ -139,7 +146,8 @@
                 dotSmallAlpha: gl.getUniformLocation(program, "u_dotSmallAlpha"),
                 dotLargeAlpha: gl.getUniformLocation(program, "u_dotLargeAlpha"),
                 axisAlpha: gl.getUniformLocation(program, "u_axisAlpha"),
-                dpr: gl.getUniformLocation(program, "u_dpr")
+                dpr: gl.getUniformLocation(program, "u_dpr"),
+                zoom: gl.getUniformLocation(program, "u_zoom")
             };
 
             const state = {
@@ -153,9 +161,10 @@
                 dotSmall: numberOr(config.dotSmall, DEFAULTS.dotSmall),
                 dotLarge: numberOr(config.dotLarge, DEFAULTS.dotLarge),
                 axis: numberOr(config.axis, DEFAULTS.axis),
+                zoom: numberOr(config.zoom, 1),
                 renderCount: 0,
                 skippedCount: 0,
-                render(tx, ty, dotSmall, dotLarge, axis) {
+                render(tx, ty, dotSmall, dotLarge, axis, zoom) {
                     const dpr = Math.max(1, window.devicePixelRatio || 1);
                     const cssWidth = config.fixed ? window.innerWidth : host.clientWidth;
                     const cssHeight = config.fixed ? window.innerHeight : host.clientHeight;
@@ -166,6 +175,8 @@
                     const nextDotSmall = numberOr(dotSmall, 0);
                     const nextDotLarge = numberOr(dotLarge, 0);
                     const nextAxis = numberOr(axis, 0);
+                    // Optional: callers that predate canvas zoom pass five arguments.
+                    const nextZoom = numberOr(zoom, state.zoom);
 
                     if (
                         state.hasFrame &&
@@ -176,7 +187,8 @@
                         state.ty === nextTy &&
                         state.dotSmall === nextDotSmall &&
                         state.dotLarge === nextDotLarge &&
-                        state.axis === nextAxis
+                        state.axis === nextAxis &&
+                        state.zoom === nextZoom
                     ) {
                         state.skippedCount += 1;
                         return false;
@@ -187,6 +199,7 @@
                     state.dotSmall = nextDotSmall;
                     state.dotLarge = nextDotLarge;
                     state.axis = nextAxis;
+                    state.zoom = nextZoom;
                     state.width = width;
                     state.height = height;
                     state.dpr = dpr;
@@ -207,6 +220,7 @@
                     gl.uniform1f(locations.dotLargeAlpha, state.dotLarge);
                     gl.uniform1f(locations.axisAlpha, state.axis);
                     gl.uniform1f(locations.dpr, dpr);
+                    gl.uniform1f(locations.zoom, state.zoom);
                     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                     state.hasFrame = true;
                     state.renderCount += 1;
@@ -215,9 +229,9 @@
             };
 
             host.__fieldWebglBackground = state;
-            window.__fieldRenderWebglBackground = function (tx, ty, dotSmall, dotLarge, axis) {
+            window.__fieldRenderWebglBackground = function (tx, ty, dotSmall, dotLarge, axis, zoom) {
                 if (host.__fieldWebglBackground && host.__fieldWebglBackground.ok) {
-                    return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis);
+                    return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis, zoom);
                 }
                 return false;
             };

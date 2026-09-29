@@ -72,6 +72,9 @@ CARRIER_PAGES = {
     "public/docs/agent_transcripts.md",
     "public/docs/aperture_playground.md",
     "public/docs/direct_lighting.md",
+    # Added 2026-09-29: the drawing page links its starting point. Shape checked:
+    # `offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn`, no leading slash.
+    "public/docs/drawing_and_notation.md",
     "public/docs/faust.md",
     "public/docs/fieldml_host_bridge.md",
     "public/docs/fline_examples.md",
@@ -84,6 +87,9 @@ CARRIER_PAGES = {
     "public/docs/nano_examples.md",
     "public/docs/openxr_eye_intersection.md",
     "public/docs/profiling_timeline.md",
+    # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
+    # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
+    "public/docs/pure_data.md",
     "public/docs/rectsl_examples.md",
     "public/docs/simulation_clock.md",
     "public/docs/solid_notation.md",

@@ -21,7 +21,7 @@ out:
 
 - **state-changing HTTP routes** — 53 of them, 40 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 53**). This
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 54**). This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -30,10 +30,10 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 37 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 46 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 110 | nothing |
+| `/ws` **command** names (`handlers`) | 114 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -62,7 +62,7 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-39 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+46 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
 body by the same three-name vocabulary the mutating census uses
 (`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
 `docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
@@ -120,6 +120,8 @@ mutation; it is a different one.
 | `GET /min/{...}` | `Server.kt` | none |
 | `GET /signal-viewer/{id}` | `signalViewer.kt` | none |
 | `GET /project/{...}` | `Server.kt` | none |
+| `GET /three-review` | `Server.kt` | loopback + same-site |
+| `GET /three-review-image` | `Server.kt` | loopback + same-site |
 
 ### The five that serve files off disk, which deserve reading twice
 
@@ -255,7 +257,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-110 command names, in the `handlers` table. This is the real command API, it is roughly twice
+114 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -271,12 +273,13 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 48 |
+| `Server.kt` | 49 |
 | `agent_backdoor.kt` | 19 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 5 |
 | `importing.kt` | 4 |
+| `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
 | `UserKeybindingsManager.kt` | 2 |
 | `chat.kt` | 2 |
@@ -296,6 +299,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
 | `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
+| `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `templating.kt` | template read and write, under the templates directory |
 | `chat.kt` | proxies to the configured chat server |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
@@ -378,6 +382,7 @@ no sandbox between a `/ws` frame and that.
 | `import-ipynb` | `importing.kt` |
 | `import-metadata-edn` | `importing.kt` |
 | `import-metadata-edn-nested` | `importing.kt` |
+| `replay-output-areas` | `Server.kt` |
 | `initialize` | `Server.kt` |
 | `insert-template` | `templating.kt` |
 | `launch-all` | `executing.kt` |
@@ -388,6 +393,9 @@ no sandbox between a `/ws` frame and that.
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
 | `name-history-version` | `history.kt` |
+| `notation-anchor-selection` | `NotationServer.kt` |
+| `notation-scene` | `NotationServer.kt` |
+| `notation-selection` | `NotationServer.kt` |
 | `output-ack` | `Server.kt` |
 | `paste-boxes` | `Server.kt` |
 | `perform-action` | `Server.kt` |
@@ -467,7 +475,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 110 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 114 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
@@ -588,3 +596,17 @@ Demonstrated rather than asserted:
 | `route("/nightly-probe-verbless") { handle { … } }` in `Server.kt`, 2026-08-22 | **green on `d7d8dccc2`** — that is the blind spot; after this change it fails naming `ANY /nightly-probe-verbless -> none` |
 | `rawHandlers["__nightly_probe__"]` in `logstream.kt`, 2026-08-22 | failed naming the channel and its file |
 | one ledger row's path edited by hand, 2026-08-22 | failed naming the row as both `missing` and `stale` |
+
+### Geometry review
+
+`GET /three-review?uid=<view>` reads the source box’s selection and saved geometry notes under the same-site docs access policy. `three-selection` and `three-observation` WebSocket messages validate the view and artifact before mutating the review inbox. See [Geometry review](agents/GEOMETRY_REVIEW.md).
+
+`GET /three-review-image?uid=<view>&sha256=<hash>` serves bounded PNG sidecars only when the view’s retained notes reference that hash, under the same access policy.
+
+`POST /three-review-note?uid=<view>` explicitly resolves/reopens one note or appends an attributed reply. It requires the same loopback/same-site guard, JSON content, a matching note version and the current geometry revision. Updates run on Field’s main thread and retain an audit history.
+
+`replay-output-areas` returns the current document's retained output panels and
+control values to the requesting WebSocket session after its DOM is ready. It
+uses the existing document WebSocket access boundary, accepts no file path or
+code, does not execute boxes, and does not broadcast replay to other viewers.
+It adds no stronger authentication than the other document read commands.

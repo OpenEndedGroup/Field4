@@ -44,7 +44,7 @@ class SmallLanguageAnatomyTest {
          * Every citation row on the page. Ratcheted so that deleting the ledger — the cheapest way to
          * make this whole test class pass — fails instead.
          */
-        const val EXPECTED_CITATIONS = 137
+        const val EXPECTED_CITATIONS = 139
 
         /**
          * Floor on ledger anchors that are **unique in their file** and so cannot be confused no

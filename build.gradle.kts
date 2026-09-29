@@ -472,9 +472,14 @@ val personalLayerProperty = "afield.personal.classpath"
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
     val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+    val maxHeap = providers.gradleProperty("fieldMaxHeap").orNull
+        ?: providers.environmentVariable("AFIELD_MAX_HEAP").orNull ?: "8g"
+    require(maxHeap.matches(Regex("[1-9][0-9]*[kKmMgG]"))) {
+        "fieldMaxHeap / AFIELD_MAX_HEAP must be a positive JVM heap size, for example 24g"
+    }
 
     return buildList {
-        add("-Xmx8g")
+        add("-Xmx$maxHeap")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         // Offline MIDI rendering. `MidiSystem.getSynthesizer()` actually returns
         // `com.sun.media.sound.AudioSynthesizer`, and its `openStream` is the only way to pull
@@ -3391,6 +3396,42 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build libpd — Pure Data as a C library — into build/field-libpd, for afield.pd.
+//
+// There is no wrapper: afield.pd binds z_libpd.h directly through FFM. The script shallow-clones
+// one pinned libpd tag (and its pure-data submodule) into the per-user native download cache,
+// checks both commit hashes, and builds the multi-instance variant (PD_MULTI=ON) that PdInstance
+// requires. Optional like TetGen and not wired into `check`; the libpd tests skip without it.
+//
+//     ./gradlew buildLibpdNative
+//     ./gradlew jvmTest --tests 'afield.pd.PdTest'
+val buildLibpdNative = tasks.register("buildLibpdNative") {
+    group = "build"
+    description = "Builds libpd (multi-instance) into build/field-libpd (needs cmake, git and, once, the network)."
+
+    val script = layout.projectDirectory.file("tools/build_libpd_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
 // one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
 // carries /opt/homebrew in its load commands, so it is not the one to ship (see
@@ -3477,7 +3518,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, the native browser bridge and the Electron runtime are built here; Manifold and
+// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
 // cache owned by tools/native_download_cache.py.
@@ -3493,7 +3534,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildFieldBrowserBridge, electronInstall)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

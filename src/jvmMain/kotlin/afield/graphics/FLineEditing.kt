@@ -32,11 +32,18 @@ internal class FLineEditSession(
     val sessionId: String,
     private val lines: MutableList<FLine>,
     private val fitTransform: FitTransform?,
-    private val drawStyle: FLineDrawStyle
+    private val drawStyle: FLineDrawStyle,
+    private val onCommit: ((List<FLine>) -> Unit)? = null
 ) {
     private val draftLines = LinkedHashMap<String, FLine>()
 
     fun currentLines(): List<FLine> = synchronized(this) { lines.toList() }
+
+    /** A completed gesture publishes a detached snapshot, so clients may validate or undo it. */
+    fun commit() {
+        val snapshot = synchronized(this) { lines.map { it.copy() } }
+        onCommit?.invoke(snapshot)
+    }
 
     fun drawStyle(): FLineDrawStyle = drawStyle.copy(color = drawStyle.color.copyOf())
 
@@ -169,19 +176,22 @@ internal class FLineEditSession(
 
 private val fLineEditSessions = ConcurrentHashMap<String, FLineEditSession>()
 
-internal fun registerFLineEditSession(lines: List<FLine>, fitTransform: FitTransform?): FLineEditSession {
+internal fun registerFLineEditSession(lines: List<FLine>, fitTransform: FitTransform?, onCommit: ((List<FLine>) -> Unit)? = null): FLineEditSession {
     val mutableLines = lines.toMutableList()
     val session = FLineEditSession(
         sessionId = "fline-edit-${UUID.randomUUID()}",
         lines = mutableLines,
         fitTransform = fitTransform,
-        drawStyle = defaultDrawStyleFor(mutableLines)
+        drawStyle = defaultDrawStyleFor(mutableLines),
+        onCommit = onCommit
     )
     fLineEditSessions[session.sessionId] = session
     return session
 }
 
 internal fun getFLineEditSession(sessionId: String): FLineEditSession? = fLineEditSessions[sessionId]
+
+internal fun removeFLineEditSession(sessionId: String) { fLineEditSessions.remove(sessionId) }
 
 private fun defaultDrawStyleFor(lines: List<FLine>): FLineDrawStyle {
     val template = lines.lastOrNull() ?: return FLineDrawStyle()

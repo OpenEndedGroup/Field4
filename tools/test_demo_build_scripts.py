@@ -146,6 +146,9 @@ CORPUS = {
     "rectsl_conversation_lanterns",
     "rectsl_conversation_score",
     "rectsl_conversation_tide",
+    # Landed 2026-09-28: a recorded stack.auto conversation. Field wrote its metadata; no build.yaml.
+    "stackauto_conversation_polytope",
+    "stackauto_conversation",
 }
 
 # demo -> {box: why this one is allowed to differ}. Measured 2026-09-19 on the tree at

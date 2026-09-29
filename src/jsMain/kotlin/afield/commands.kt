@@ -1477,8 +1477,8 @@ private fun downloadTextFile(filename: String, text: String, type: String) {
 fun registerMouseBug() {
     document.addEventListener("mousemove", { event ->
         val mouseEvent = event as MouseEvent
-        val x = mouseEvent.pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)
-        val y = mouseEvent.pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)
+        val x = (mouseEvent.pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)) / mainZoom
+        val y = (mouseEvent.pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)) / mainZoom
         lastMouse = x to y
     })
 }

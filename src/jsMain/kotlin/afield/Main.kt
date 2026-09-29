@@ -44,6 +44,7 @@ import kotlin.js.Date
 import kotlin.js.json
 import kotlin.js.jsTypeOf
 import kotlin.math.abs
+import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -325,6 +326,7 @@ object LoadingTracker {
         }
         notify("finished loading \u2014 press <b>?</b> for help", "setup")
         updateEmptyDocumentWelcome()
+        send(Message("replay-output-areas"))
     }
 
     fun isFinished(): Boolean = finished
@@ -344,6 +346,24 @@ lateinit var moveHandler: (dynamic) -> Set_rect?
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
 var mainTranslation = listOf(0.0, 0.0)
+
+/**
+ * The canvas zoom. The camera is `screen = world * mainZoom + mainTranslation`: translation stays
+ * in screen pixels (so every pan delta, centring calculation and `set-viewport` is unchanged at
+ * zoom 1) and the scale is applied about the canvas origin (`transform-origin: 0 0`).
+ * Anything that turns a screen measurement into a world one has to divide by it.
+ */
+var mainZoom = 1.0
+    private set
+
+const val MIN_CANVAS_ZOOM = 0.1
+const val MAX_CANVAS_ZOOM = 4.0
+
+fun mainCanvasTransform(x: Double, y: Double): String = "translate(${x}px, ${y}px) scale($mainZoom)"
+
+/** The viewBox for a window-sized SVG layer drawn in world coordinates. */
+fun worldViewBox(width: Double, height: Double): String =
+    "${-mainTranslation[0] / mainZoom} ${-mainTranslation[1] / mainZoom} ${width / mainZoom} ${height / mainZoom}"
 
 private const val dotSpacingSmall = 25.0
 private const val dotSpacingLarge = 100.0
@@ -867,7 +887,12 @@ private fun ensureActorArcLayer(): SVGSVGElement {
 private fun boxWorldRect(uid: String): DOMRect? {
     val el = findBoxElementByUid(uid) ?: return null
     val r = el.getBoundingClientRect()
-    return DOMRect(r.x - mainTranslation[0], r.y - mainTranslation[1], r.width, r.height)
+    return DOMRect(
+        (r.x - mainTranslation[0]) / mainZoom,
+        (r.y - mainTranslation[1]) / mainZoom,
+        r.width / mainZoom,
+        r.height / mainZoom
+    )
 }
 
 private fun drawActorArc(arc: ActorArc) {
@@ -878,7 +903,7 @@ private fun drawActorArc(arc: ActorArc) {
 
     val vbw = window.innerWidth.toDouble()
     val vbh = window.innerHeight.toDouble()
-    layer.setAttribute("viewBox", "${-mainTranslation[0]} ${-mainTranslation[1]} $vbw $vbh")
+    layer.setAttribute("viewBox", worldViewBox(vbw, vbh))
 
     val key = arcKey(arc)
     val existing = activeArcs[key]
@@ -1439,6 +1464,14 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
         if (!isOverlayVisible(element)) return@mapNotNull null
         element.getBoundingClientRect().bottom - containerRect.top
     }.maxOrNull() ?: 0.0
+    // A line note beside the cursor (fieldSuggest.js#lineNoteHtml, drawn into the left overlay at the
+    // foot of the pane) is part of what the editor shows about its text, so an editor capture that
+    // trimmed to the text alone would cut off exactly the note being captured. Only a note: the
+    // overlay's other contents (the word under the cursor) keep the clip they always had.
+    val noteBottom = (container.querySelector(".hoverlay-left") as? HTMLElement)
+        ?.takeIf { it.querySelector(".afield-line-note") != null && isOverlayVisible(it) }
+        ?.let { it.getBoundingClientRect().bottom - containerRect.top }
+        ?: 0.0
     val layoutInfo = runCatching { editor.getLayoutInfo?.invoke() }.getOrNull()
     val contentLeft = (layoutInfo?.contentLeft as? Number)?.toDouble() ?: 0.0
     val scrollWidth = runCatching {
@@ -1461,7 +1494,7 @@ private fun clipForRenderedEditorContent(padding: Double): Rect? {
     }.maxOrNull() ?: 0.0
     val trimmedHeight = max(
         160.0,
-        max(domBottom, headerHeight + contentHeight) + 20.0
+        max(max(domBottom, noteBottom), headerHeight + contentHeight) + 20.0
     ).coerceAtMost(containerRect.height)
     val trimmedWidth = max(
         360.0,
@@ -1803,7 +1836,43 @@ private fun layoutGlobalEditor() {
     }
 }
 
+/**
+ * A still of the editor must not land in the dark half of the caret's blink (Monaco's default
+ * `cursorBlinking: "blink"`), which it did about half the time: hold the caret solid while a capture is
+ * prepared and taken, and put the editor's own setting back afterwards ([restoreCaptureCursorBlinking],
+ * which the JVM calls once the screenshot is written). Only the capture page's editor is touched.
+ */
+private fun holdCaretSolidForCapture() {
+    val w = window.asDynamic()
+    val editor = w.globalEditor ?: return
+    if (w.__afieldCaptureCursorBlinking == undefined) {
+        val current = runCatching { editor.getRawOptions().cursorBlinking as? String }.getOrNull()
+        w.__afieldCaptureCursorBlinking = current ?: "blink"
+    }
+    runCatching { editor.updateOptions(js("({ cursorBlinking: 'solid' })")) }
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun restoreCaptureCursorBlinking() {
+    val w = window.asDynamic()
+    val previous = w.__afieldCaptureCursorBlinking as? String ?: return
+    val editor = w.globalEditor
+    if (editor != null) {
+        val options = js("({})")
+        options.cursorBlinking = previous
+        runCatching { editor.updateOptions(options) }
+    }
+    w.__afieldCaptureCursorBlinking = undefined
+}
+
+@Suppress("unused")
+private val installRestoreCaptureCursorBlinking = run {
+    window.asDynamic().afieldRestoreCaptureCursorBlinking = ::restoreCaptureCursorBlinking
+}
+
 private fun prepareMonacoForScreenshotLayout() {
+    holdCaretSolidForCapture()
     val container = document.querySelector(".monaco-editor-container") as? HTMLElement ?: return
     val targetWidth = min(860.0, max(760.0, window.innerWidth.toDouble() * 0.38))
     val targetHeight = min(1200.0, max(840.0, window.innerHeight.toDouble() * 0.72))
@@ -2020,10 +2089,13 @@ private fun applyViewportTranslation(
     nextY: Double,
     panning: Boolean = false,
     refreshSpatial: Boolean = true,
-    syncServer: Boolean = true
+    syncServer: Boolean = true,
+    zoom: Double = mainZoom
 ) {
+    val zoomChanged = zoom != mainZoom
+    mainZoom = zoom
     val mc = mainCanvas.unsafeCast<dynamic>()
-    (mc as HTMLElement).style.transform = "translate(${nextX}px, ${nextY}px)"
+    (mc as HTMLElement).style.transform = mainCanvasTransform(nextX, nextY)
     mainTranslation = listOf(nextX, nextY)
     mc.data_x = nextX
     mc.data_y = nextY
@@ -2042,11 +2114,63 @@ private fun applyViewportTranslation(
         )
     }
 
-    canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
+    drawingLayerViewportChanged(nextX, nextY)
+    canvasGestures.requestConnectionGroupRebuild(translationOnly = !zoomChanged)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
+}
+
+/** The drawing layer was panned or zoomed from inside Excalidraw; move Field's canvas to match. */
+fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double) {
+    if (nextX == mainTranslation[0] && nextY == mainTranslation[1] && zoom == mainZoom) return
+    cancelNavigationPanAnimation()
+    val clamped = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
+    if (clamped == zoom) {
+        applyViewportTranslation(nextX, nextY, zoom = zoom)
+    } else {
+        // Excalidraw's range is wider than Field's. Keep the world point at the window centre
+        // fixed while clamping, or the translation (computed for the unclamped zoom) would jump.
+        val cx = window.innerWidth / 2.0
+        val cy = window.innerHeight / 2.0
+        val worldX = (cx - nextX) / zoom
+        val worldY = (cy - nextY) / zoom
+        applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped)
+    }
+}
+
+/**
+ * Zooms the canvas to [zoom], keeping the world point under screen point ([anchorX], [anchorY])
+ * where it is.
+ */
+fun setCanvasZoom(zoom: Double, anchorX: Double, anchorY: Double) {
+    val next = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
+    if (next == mainZoom) return
+    val worldX = (anchorX - mainTranslation[0]) / mainZoom
+    val worldY = (anchorY - mainTranslation[1]) / mainZoom
+    cancelNavigationPanAnimation()
+    applyViewportTranslation(anchorX - worldX * next, anchorY - worldY * next, zoom = next)
+    bumpBackgroundVisibility()
+}
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun resetCanvasZoom() = setCanvasZoom(1.0, window.innerWidth / 2.0, window.innerHeight / 2.0)
+
+private fun registerCanvasZoomActions() {
+    val reset: dynamic = js("({})")
+    reset.id = "reset-canvas-zoom"
+    reset.label = "Reset Canvas Zoom"
+    reset.detail = "Return the canvas to 100%, keeping the centre of the window where it is"
+    reset.run = { resetCanvasZoom() }
+    val builtin = allActions.builtin ?: js("[]")
+    builtin.push(reset)
+    allActions.builtin = builtin
+    updateActions()
+    window.asDynamic().setCanvasZoom = ::setCanvasZoom
+    window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
+    window.asDynamic().canvasZoom = { mainZoom }
 }
 
 private fun cancelNavigationPanAnimation() {
@@ -2645,6 +2769,7 @@ private fun installWebGLBackground(host: HTMLElement) {
                 uniform float u_dotLargeAlpha;
                 uniform float u_axisAlpha;
                 uniform float u_dpr;
+                uniform float u_zoom;
 
                 float hash(vec2 p) {
                     p = fract(p * vec2(0.1031, 0.11369));
@@ -2652,10 +2777,11 @@ private fun installWebGLBackground(host: HTMLElement) {
                     return fract((p.x + p.y) * p.x);
                 }
 
+                // world is in world units * dpr; the dot radii stay in screen pixels at any zoom.
                 float dotMask(vec2 world, float spacing, float r0, float r1) {
-                    vec2 q = mod(world - vec2(0.5 * u_dpr), spacing);
+                    vec2 q = mod(world - vec2(0.5 * u_dpr / u_zoom), spacing);
                     q = min(q, spacing - q);
-                    float d = length(q);
+                    float d = length(q) * u_zoom;
                     return 1.0 - smoothstep(r0, r1, d);
                 }
 
@@ -2679,9 +2805,12 @@ private fun installWebGLBackground(host: HTMLElement) {
                     float dither = (hash(frag) - 0.5) * (2.4 / 255.0);
                     color += vec3(dither);
 
-                    vec2 world = frag - u_translation;
-                    float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr);
-                    float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr);
+                    vec2 world = (frag - u_translation) / u_zoom;
+                    // Zoomed out, the 25px dots would crowd into a haze; fade them first.
+                    float smallFade = smoothstep(0.35, 0.7, u_zoom);
+                    float largeFade = smoothstep(0.1, 0.2, u_zoom);
+                    float smallDots = dotMask(world, 25.0 * u_dpr, 0.75 * u_dpr, 1.25 * u_dpr) * smallFade;
+                    float largeDots = dotMask(world, 100.0 * u_dpr, 1.25 * u_dpr, 2.05 * u_dpr) * largeFade;
                     float dotAlpha = clamp(smallDots * u_dotSmallAlpha + largeDots * u_dotLargeAlpha, 0.0, 0.32);
                     color = mix(color, vec3(1.0), dotAlpha);
 
@@ -2730,7 +2859,8 @@ private fun installWebGLBackground(host: HTMLElement) {
                     dotSmallAlpha: gl.getUniformLocation(program, "u_dotSmallAlpha"),
                     dotLargeAlpha: gl.getUniformLocation(program, "u_dotLargeAlpha"),
                     axisAlpha: gl.getUniformLocation(program, "u_axisAlpha"),
-                    dpr: gl.getUniformLocation(program, "u_dpr")
+                    dpr: gl.getUniformLocation(program, "u_dpr"),
+                    zoom: gl.getUniformLocation(program, "u_zoom")
                 };
 
                 const state = {
@@ -2744,9 +2874,10 @@ private fun installWebGLBackground(host: HTMLElement) {
                     dotSmall: 0.02,
                     dotLarge: 0.04,
                     axis: 0.0,
+                    zoom: 1.0,
                     renderCount: 0,
                     skippedCount: 0,
-                    render(tx, ty, dotSmall, dotLarge, axis) {
+                    render(tx, ty, dotSmall, dotLarge, axis, zoom) {
                         const dpr = Math.max(1, window.devicePixelRatio || 1);
                         const width = Math.max(1, Math.round(host.clientWidth * dpr));
                         const height = Math.max(1, Math.round(host.clientHeight * dpr));
@@ -2755,6 +2886,7 @@ private fun installWebGLBackground(host: HTMLElement) {
                         const nextDotSmall = Number(dotSmall) || 0;
                         const nextDotLarge = Number(dotLarge) || 0;
                         const nextAxis = Number(axis) || 0;
+                        const nextZoom = Number(zoom) || state.zoom;
 
                         if (
                             state.hasFrame &&
@@ -2765,7 +2897,8 @@ private fun installWebGLBackground(host: HTMLElement) {
                             state.ty === nextTy &&
                             state.dotSmall === nextDotSmall &&
                             state.dotLarge === nextDotLarge &&
-                            state.axis === nextAxis
+                            state.axis === nextAxis &&
+                            state.zoom === nextZoom
                         ) {
                             state.skippedCount += 1;
                             return false;
@@ -2776,6 +2909,7 @@ private fun installWebGLBackground(host: HTMLElement) {
                         state.dotSmall = nextDotSmall;
                         state.dotLarge = nextDotLarge;
                         state.axis = nextAxis;
+                        state.zoom = nextZoom;
                         state.width = width;
                         state.height = height;
                         state.dpr = dpr;
@@ -2795,6 +2929,7 @@ private fun installWebGLBackground(host: HTMLElement) {
                         gl.uniform1f(locations.dotLargeAlpha, state.dotLarge);
                         gl.uniform1f(locations.axisAlpha, state.axis);
                         gl.uniform1f(locations.dpr, dpr);
+                        gl.uniform1f(locations.zoom, state.zoom);
                         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                         state.hasFrame = true;
                         state.renderCount += 1;
@@ -2803,9 +2938,9 @@ private fun installWebGLBackground(host: HTMLElement) {
                 };
 
                 host.__fieldWebglBackground = state;
-                window.__fieldRenderWebglBackground = function(tx, ty, dotSmall, dotLarge, axis) {
+                window.__fieldRenderWebglBackground = function(tx, ty, dotSmall, dotLarge, axis, zoom) {
                     if (host.__fieldWebglBackground && host.__fieldWebglBackground.ok) {
-                        return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis);
+                        return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis, zoom);
                     }
                     return false;
                 };
@@ -2833,7 +2968,7 @@ private fun renderWebGLBackground() {
     if (!::mainViewport.isInitialized) return
     val renderer = window.asDynamic().__fieldRenderWebglBackground
     if (renderer == null || renderer == js("undefined")) return
-    renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha)
+    renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha, mainZoom)
 }
 
 private fun stepBackgroundLerp(): Boolean {
@@ -2885,21 +3020,26 @@ private fun bumpBackgroundVisibility() {
 fun updateBackgroundGrid(translationX: Double, translationY: Double, panning: Boolean = false) {
     if (!::mainViewport.isInitialized) return
 
-    val posSmall = "${normalizeOffset(translationX, dotSpacingSmall) - (dotSpacingSmall / 2) + 0.5}px ${
+    // The dots are the visual unit for box frames, so their spacing is in world units and scales
+    // with the canvas zoom. This CSS-gradient grid is the fallback for when WebGL is unavailable.
+    val small = dotSpacingSmall * mainZoom
+    val large = dotSpacingLarge * mainZoom
+    val posSmall = "${normalizeOffset(translationX, small) - (small / 2) + 0.5}px ${
         normalizeOffset(
             translationY,
-            dotSpacingSmall
-        ) - (dotSpacingSmall / 2) + 0.5
+            small
+        ) - (small / 2) + 0.5
     }px"
-    val posLarge = "${normalizeOffset(translationX, dotSpacingLarge) - (dotSpacingLarge / 2) + 0.5}px ${
+    val posLarge = "${normalizeOffset(translationX, large) - (large / 2) + 0.5}px ${
         normalizeOffset(
             translationY,
-            dotSpacingLarge
-        ) - (dotSpacingLarge / 2) + 0.5
+            large
+        ) - (large / 2) + 0.5
     }px"
     val posAxisX = "${translationX}px 0px"
     val posAxisY = "0px ${translationY}px"
 
+    mainViewport.style.backgroundSize = "1px 100%, 100% 1px, ${small}px ${small}px, ${large}px ${large}px, 100% 100%"
     mainViewport.style.backgroundPosition = "$posAxisX, $posAxisY, $posSmall, $posLarge, center center"
     renderWebGLBackground()
 
@@ -5909,6 +6049,11 @@ suspend fun main() {
                     }
                 }
 
+                "drawing" -> {
+                    found.unsafeCast<dynamic>().drawing = set.value
+                    if (u == "root") onRemoteDrawingScene(set.value)
+                }
+
                 else -> {
                     found.unsafeCast<dynamic>()[set.property] = set.value
                 }
@@ -6204,8 +6349,9 @@ suspend fun main() {
             val x: Number = (mc.data_x ?: 0.0) + event.unsafeCast<dynamic>().movementX
             val y: Number = (mc.data_y ?: 0.0) + event.unsafeCast<dynamic>().movementY
 
-            (mc as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
+            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
             mainTranslation = listOf(x.toDouble(), y.toDouble())
+            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
 
             println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
 
@@ -6243,7 +6389,12 @@ suspend fun main() {
             return@onwheel null
         }
 
-        if (event.target is SVGElement) {
+        if (event.ctrlKey || event.metaKey) {
+            // A trackpad pinch arrives as a ctrl+wheel; so does ctrl+scroll on a mouse.
+            event.preventDefault()
+            event.stopPropagation()
+            setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+        } else if (event.target is SVGElement) {
         } else {
 
             cancelNavigationPanAnimation()
@@ -6254,8 +6405,9 @@ suspend fun main() {
             val x: Number = (mc.data_x ?: 0.0) - event.deltaX
             val y: Number = (mc.data_y ?: 0.0) - event.deltaY
 
-            (mc as HTMLElement).style.transform = "translate(${x}px, ${y}px)"
+            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
             mainTranslation = listOf(x.toDouble(), y.toDouble())
+            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
 
             println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
 
@@ -6643,8 +6795,9 @@ suspend fun main() {
         val target: dynamic = event.target
         val uid = target.uid as? String ?: return@move null
 
-        val tdx = (event.clientX - originatingMouseDown.clientX) as Number
-        val tdy = (event.clientY - originatingMouseDown.clientY) as Number
+        // Client deltas are screen pixels; frames are world units.
+        val tdx = ((event.clientX - originatingMouseDown.clientX) as Number).toDouble() / mainZoom
+        val tdy = ((event.clientY - originatingMouseDown.clientY) as Number).toDouble() / mainZoom
         val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx.toDouble()
         val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy.toDouble()
 
@@ -6863,11 +7016,12 @@ suspend fun main() {
 
         val target: dynamic = event.target
 
-        var x: Double = (target.data_x ?: 0.0) + event.deltaRect.left
-        var y: Double = (target.data_y ?: 0.0) + event.deltaRect.top
+        // interact.js measures the scaled element in screen pixels; frames are world units.
+        var x: Double = (target.data_x ?: 0.0) + (event.deltaRect.left as Double) / mainZoom
+        var y: Double = (target.data_y ?: 0.0) + (event.deltaRect.top as Double) / mainZoom
 
-        var w = event.rect.width
-        var h = event.rect.height
+        var w = (event.rect.width as Double) / mainZoom
+        var h = (event.rect.height as Double) / mainZoom
 
         if (target.lock_w) w = target.data_w ?: 100.0
         if (target.lock_h) h = target.data_h ?: 100.0
@@ -6876,10 +7030,10 @@ suspend fun main() {
         if (target.lock_y) y = target.data_y ?: 0.0
 
         if (target.lock_w && !target.lock_x) {
-            x += event.deltaRect.right as Double
+            x += (event.deltaRect.right as Double) / mainZoom
         }
         if (target.lock_h && !target.lock_y) {
-            y += event.deltaRect.bottom as Double
+            y += (event.deltaRect.bottom as Double) / mainZoom
             // why was this here?
 //            if (!target.lock_x)
 //                x += event.delta.x as Double
@@ -7004,6 +7158,8 @@ suspend fun main() {
         initMenuSupport()
         registerBuiltinCommands()
         initializeBookmarkSystem()
+        initializeDrawingLayer()
+        registerCanvasZoomActions()
         initializeDocumentSearch()
         hideMonaco()
 

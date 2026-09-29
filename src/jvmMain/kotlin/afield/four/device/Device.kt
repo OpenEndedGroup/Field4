@@ -67,6 +67,16 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsMetalObjects: Boolean
         get() = supportedExtensions.contains(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
 
+    /**
+     * Refuse, naming the way out, when [supportsMetalObjects] is false. That is KosmicKrisp — the
+     * default Mac driver since 2026-09-29 — until the IOSurface paths move to
+     * VK_EXT_external_memory_metal (`dev_docs/KOSMICKRISP.md`).
+     */
+    fun requireMetalObjects(what: String) = check(supportsMetalObjects) {
+        "$what needs VK_EXT_metal_objects, which the ${physicalDevice.driverName.ifEmpty { "current" }} Vulkan driver " +
+            "does not have. Run Field on MoltenVK for it: AFIELD_VULKAN_DRIVER=moltenvk ./field.sh"
+    }
+
     /** VK_KHR_external_memory_fd (Linux) — required to export an RTT color image's backing memory
      *  as an opaque fd for CUDA/NVENC import (see VulkanExternalMemory.kt / field-encode-linux). */
     val supportsExternalMemoryFd: Boolean

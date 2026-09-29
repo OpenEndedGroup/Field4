@@ -52,6 +52,8 @@ DEFAULT_EXPECTED_FAILURES_PATH = REPO_ROOT / "dev_docs" / "testing" / "expected_
 GENERATED_SNIPPETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated"
 CAPTURES_ROOT = REPO_ROOT / "build" / "field-tests" / "captures"
 GENERATED_DOC_ASSETS_ROOT = REPO_ROOT / "build" / "field-tests" / "generated-doc-assets"
+# Every prewarm Field log this run wrote, in boot order; the last is the one serving now.
+SERVER_LOGS: list[str] = []
 BACKDOOR_PATH = TOOLS_ROOT / "field_backdoor.py"
 
 PLAYWRIGHT_TIMEOUT_FLOOR = 180.0
@@ -833,8 +835,14 @@ def ensure_persistent_field(
             file=sys.stderr, flush=True,
         )
         recycle_field(port, ctx)
-    log_path = REPO_ROOT / ".field-backdoor" / "logs" / f"smoke-prewarm-field-{port}.log"
+    # One file per boot, never reopened: this is the only record of what box-runner tests printed
+    # (their code runs in this JVM), and a run recycles Field after every graphics test. Reopening
+    # one per-port file with "w" erased each boot's output with the next, and a later run's erased
+    # the whole previous run's.
+    boot_stamp = time.strftime("%Y%m%d-%H%M%S") + f"-{os.getpid()}-{len(SERVER_LOGS)}"
+    log_path = REPO_ROOT / ".field-backdoor" / "logs" / f"smoke-prewarm-field-{port}-{boot_stamp}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    SERVER_LOGS.append(str(log_path))
     GENERATED_DOC_ASSETS_ROOT.mkdir(parents=True, exist_ok=True)
     log_file = log_path.open("w", encoding="utf-8")
     resolved_workspace = workspace or str(automation_workspace(REPO_ROOT))
@@ -2020,6 +2028,9 @@ def run_one_test(
         "processExitCode": process.returncode,
         "stdout": process.stdout,
         "stderr": process.stderr,
+        # A box test's own output (and its Vulkan validation messages) is in this server log,
+        # not in stdout above.
+        "serverLog": SERVER_LOGS[-1] if SERVER_LOGS else None,
         "outerTimeoutSec": outer_timeout,
         "runnerTimedOut": timed_out,
     }
@@ -2391,6 +2402,7 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 coverage_at_start["oldestCompletedAgeSec"] if coverage_at_start else None
             ),
         },
+        "serverLogs": SERVER_LOGS,
         "results": results,
     }
     results_path.parent.mkdir(parents=True, exist_ok=True)

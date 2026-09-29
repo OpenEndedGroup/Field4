@@ -627,7 +627,8 @@ class MeshModule(val parameters: Parameters) : Renderable {
 
             valid = true
         } catch (e: Exception) {
-            parameters.errorHandler("Module error: ${e.message}", e)
+            // A Metal compile failure just before this is the real reason; say it here, where the box reads it.
+            parameters.errorHandler("Module error: ${e.message}" + (afield.four.MetalShaderErrors.recent()?.let { "\n$it" } ?: ""), e)
         }
     }
 

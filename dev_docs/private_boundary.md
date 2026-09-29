@@ -64,8 +64,13 @@ Measured over the corpus on this branch, replicating the guard's own regex and r
 |---|---|
 | single-segment import matches | **15 012** |
 | distinct roots they use | **28** |
-| entries in `PUBLIC_IMPORT_ROOTS` | **28**<!--count:publicImportRoots--> |
+| entries in `PUBLIC_IMPORT_ROOTS` | **29**<!--count:publicImportRoots--> |
 | entries never used | **0** |
+
+The measured rows are from 2026-09-05, when the set held 28. The twenty-ninth is `sun`, added
+2026-09-29 for `sun.misc.Signal` in `InterruptSignal.kt`: that JDK-supported (`jdk.unsupported`)
+class is the only public way to install a signal handler, and Field needs one to exit on SIGINT when
+it was started with the signal ignored (`dev_docs/SIGINT_SHUTDOWN.md`).
 
 Every permitted root earns its place, and thirteen of the twenty-eight are used fewer than ten times,
 so the allowlist is mostly tail. That thin tail is what makes the inverted form practical: the
@@ -75,7 +80,7 @@ One correction to what is written down about that set. The class KDoc says "22 l
 accounting for 15 000+ import statements". The import count is exact. The root count is 28, and 22 is
 not reproducible from any subset of the literal.
 
-The 28 in the table above is derived rather than typed: `ProseNumeralContractTest` scrapes the set
+The 29 in the table above is derived rather than typed: `ProseNumeralContractTest` scrapes the set
 out of `PersonalBoundaryTest.kt` on every `citationGates` run and fails if the page and the code
 disagree. Pinned because this number has already been wrong once in the place a reader would look for
 it, and nothing was checking either statement of it. Adding a genuine new public dependency will now

@@ -1,0 +1,68 @@
+{:version 2
+ :boxes [
+ {:id "line-notes-forth-root"
+          :properties {:name "ForthField root"
+                       :frame #afield/rect [40.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-forth"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "forth"
+                       :isForthRoot true}}
+         {:id "line-notes-forth"
+          :properties {:name "ForthField — run me, then rest the cursor on a line"
+                       :frame #afield/rect [40.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-forth-root"}
+                       :children #{}
+                       :code "\\ Rest the cursor on a line: its note is the stack that line left.\nclear\n1 2\n+ 10\n: sq ( n -- n*n ) dup * ;\nsq\ns\" done\"\n"}}
+ {:id "line-notes-clojure-root"
+          :properties {:name "Clojure root"
+                       :frame #afield/rect [370.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-clojure"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "clojure"
+                       :isClojureRoot true}}
+         {:id "line-notes-clojure"
+          :properties {:name "Clojure — run me, then rest the cursor on a line"
+                       :frame #afield/rect [370.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-clojure-root"}
+                       :children #{}
+                       :code ";; Rest the cursor on a form: its note is what it evaluated to.\n(def xs (range 1 6))\n(map #(* % %) xs)\n(reduce + (map #(* % %) xs))\n(defn greet [who] (str \"hello, \" who))\n(greet \"line notes\")\n"}}
+ {:id "line-notes-python-root"
+          :properties {:name "Python root"
+                       :frame #afield/rect [700.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-python"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "python"
+                       :isPythonRoot true}}
+         {:id "line-notes-python"
+          :properties {:name "Python — run me, then rest the cursor on a line"
+                       :frame #afield/rect [700.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-python-root"}
+                       :children #{}
+                       :code "# Rest the cursor on a statement: its note is what it came to.\nxs = [n * n for n in range(6)]\ntotal = sum(xs)\ndef mean(v):\n    return sum(v) / len(v)\nmean(xs)\nprint(\"the cell ran\")\n"}}
+ {:id "line-notes-datalog-root"
+          :properties {:name "Datalog root"
+                       :frame #afield/rect [1030.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-datalog"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "datalog"
+                       :isDatalogRoot true}}
+         {:id "line-notes-datalog"
+          :properties {:name "Datalog — run me, then rest the cursor on a line"
+                       :frame #afield/rect [1030.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-datalog-root"}
+                       :children #{}
+                       :code "% Rest the cursor on a statement: rules show what they derive.\nedge(a, b).\nedge(b, c).\nedge(c, d).\npath(X, Y) :- edge(X, Y).\npath(X, Z) :-\n  path(X, Y), edge(Y, Z).\n?- path(a, W).\nlonely(q).\n"}}
+
+ {:id "line-notes-fieldml-root"
+          :properties {:name "FieldML root"
+                       :frame #afield/rect [1360.0 40.0 280.0 60.0]
+                       :children #{#afield/box "line-notes-fieldml"}
+                       :parents #{#afield/box "root"}
+                       :mainLanguage "fieldml"
+                       :isFieldMLRoot true}}
+         {:id "line-notes-fieldml"
+          :properties {:name "FieldML — run me, then rest the cursor on a line"
+                       :frame #afield/rect [1360.0 140.0 280.0 120.0]
+                       :parents #{#afield/box "line-notes-fieldml-root"}
+                       :children #{}
+                       :code "// Rest the cursor on a let: its note is the value it bound.\nlet x = 20\nlet double n = n * 2\nlet y = double x + 2\ny * y\n"}}]}

@@ -91,8 +91,17 @@ patch.mapImage(imgFromFile("sky.png"))               // the rig's bounding box s
 ```
 
 `map` hands the function each fixture's position, so the same function drives a strip, a grid or a
-scattered rig. `mapImage` samples an `Img` bilinearly (it uses the imaging library's own
-`sampleBilinear`), which turns a matrix of fixtures into a very low resolution screen.
+scattered rig. `mapImage` samples an `Img` bilinearly at each fixture's position (it uses the
+imaging library's own `sampleBilinear`), which turns a matrix of fixtures into a very low
+resolution screen.
+
+!!! note "`mapImage` takes point samples"
+
+    Each fixture reads the image at one point, not the area around it. On an image much larger
+    than the rig, anything thinner than the gap between sample points is missed most of the time
+    and strobes when it crosses one. For a grid, shrink the image to one pixel per fixture first,
+    `patch.mapImage(img.resize(cols, rows))`, which area-averages and lands each fixture on its
+    own pixel. [A RectSL scene on a light rig](chain_scene_to_light.md) measures the difference.
 
 For a white of a given warmth, `colorTemperature(3200.0)` returns the colour of a black body at that
 temperature (a curve fit, fine for looks; not a fixture calibration):

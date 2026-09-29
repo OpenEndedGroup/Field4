@@ -63,6 +63,10 @@ class DatalogExecution(val inside: Box) : BoxExecution {
 
     val datalog = Datalog()
 
+    /** When the box last ran (milliseconds since the epoch), or null: what its line notes say the model's age is ([DatalogLineNotes]). */
+    @Volatile
+    var lastRunAt: Long? = null
+
     override val languageName: String get() = "datalog"
 
     override fun executeFragment(inside: Box, execute: Execute, reply: (Message) -> Unit) {
@@ -85,7 +89,7 @@ class DatalogExecution(val inside: Box) : BoxExecution {
             configureOutputProxies(inside, trace.reply, originSession)
             var ok = false
             try {
-                val text = runProgram(execute.code)
+                val text = try { runProgram(execute.code) } finally { lastRunAt = System.currentTimeMillis() }
                 clearErrorStatus(inside, trace.reply, originSession)
                 dispatchExecutionOutput(
                     inside,

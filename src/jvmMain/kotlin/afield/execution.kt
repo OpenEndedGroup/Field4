@@ -463,6 +463,9 @@ private fun renderDisplayContent(content: Any?): String {
     }
 }
 
+private fun retainedDisplayContent(box: Box, channel: String, content: Any?): String =
+    renderDisplayContent(content).also { box.output.retainedAreas.put(channel, it) }
+
 private val renderedValueVisualizerHtmlRegex = Regex(
     pattern = """^\s*<div\b[^>]*\bclass\s*=\s*(['"])[^'"]*\bvalue-viz(?:-h2)?\b""",
     options = setOf(RegexOption.IGNORE_CASE)
@@ -1128,7 +1131,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     }
 
     box.output.displayProxy = { channel, content ->
-        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
+        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
     }
 }
 
@@ -1395,7 +1398,7 @@ class KotlinExecution : BoxExecution {
                     box.output.displayProxy = { channel, content ->
                         send(
                             Message("set-output").payload(
-                                Set_output(box.id, "outputarea", channel, renderDisplayContent(content))
+                                Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))
                             )
                         )
                     }
@@ -2421,7 +2424,7 @@ class KotlinExecution : BoxExecution {
                                 box.id,
                                 "outputarea",
                                 channel,
-                                renderDisplayContent(content)
+                                retainedDisplayContent(box, channel, content)
                             )
                         )
                     )
