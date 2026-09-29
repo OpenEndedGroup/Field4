@@ -115,7 +115,7 @@ class PyramidOpticalFlow(override val renderer: Renderer,override val first: Has
     val consistencyMap: RenderToTexture?=reverse?.let { back ->
         target(flowWidth,flowHeight,"flow forward-backward error").also { pass("optical consistency",it,CONSISTENCY,mapOf("forward" to output,"backward" to back.output)).push["grid"]=grid.toFloat() }
     }
-    private val command=CommandBuffer(renderer.commandPool,true,false)
+    private val command=CommandBuffer(renderer.commandPool,true,true)
     private val fence=Fence(renderer.device,false)
     private val pyramidTimer=afield.four.lighting.LightingGpuTimer(renderer)
     private val levelTimers=List(levels){ afield.four.lighting.LightingGpuTimer(renderer) }

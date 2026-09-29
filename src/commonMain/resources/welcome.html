@@ -2092,16 +2092,16 @@
                         </div>
                         <div class="vulkan-guide" data-vulkan-guide="macos">
                             <p><b>Nothing is required.</b> LWJGL carries MoltenVK inside its jar, so graphics runs on a fresh Mac.</p>
-                            <p><b>Recommended:</b> the LunarG Vulkan SDK. It adds the validation layers (Field turns them on to report shader and API mistakes), <code>vulkaninfo</code>, <code>slangc</code>, and on Apple silicon with macOS 26 the <b>KosmicKrisp</b> driver.</p>
+                            <p><b>Recommended:</b> the LunarG Vulkan SDK. On Apple silicon with macOS 26 it brings <b>KosmicKrisp</b>, the conformant Vulkan driver Field uses by default wherever it can run. It also adds the validation layers (Field turns them on to report shader and API mistakes), <code>vulkaninfo</code> and <code>slangc</code>.</p>
                             <ol>
                                 <li>Download the macOS SDK from <a href="https://vulkan.lunarg.com/sdk/home#mac" target="_blank" rel="noopener">vulkan.lunarg.com</a> and run its installer.</li>
-                                <li>Keep the default location, <code>~/VulkanSDK/&lt;version&gt;</code>. Field uses the newest one there. Tick <i>KosmicKrisp (Vulkan on Metal)</i>. <i>System Global Installation</i> is not needed.</li>
+                                <li>Keep the default location, <code>~/VulkanSDK/&lt;version&gt;</code>. Field uses the newest one there. <i>System Global Installation</i> is not needed. From SDK 1.4.363 KosmicKrisp is part of the core install; older SDKs list it as <i>KosmicKrisp (Vulkan on Metal)</i>, to tick.</li>
                                 <li>Restart Field. It chooses its loader at startup.</li>
                             </ol>
                             <p>From a terminal, with the SDK zip unpacked:</p>
-                            <pre class="vulkan-cmd">vulkansdk-macOS-&lt;v&gt;.app/Contents/MacOS/vulkansdk-macOS-&lt;v&gt; --root ~/VulkanSDK/&lt;v&gt; --accept-licenses --default-answer --confirm-command install com.lunarg.vulkan.core com.lunarg.vulkan.kosmic</pre>
-                            <p>To try KosmicKrisp instead of MoltenVK:</p>
-                            <pre class="vulkan-cmd">AFIELD_VULKAN_DRIVER=kosmickrisp ./field.sh</pre>
+                            <pre class="vulkan-cmd">vulkansdk-macOS-&lt;v&gt;.app/Contents/MacOS/vulkansdk-macOS-&lt;v&gt; --root ~/VulkanSDK/&lt;v&gt; --accept-licenses --default-answer --confirm-command install com.lunarg.vulkan.core</pre>
+                            <p>To use MoltenVK instead, as the IOSurface video streaming and browser-surface features still need:</p>
+                            <pre class="vulkan-cmd">AFIELD_VULKAN_DRIVER=moltenvk ./field.sh</pre>
                         </div>
                         <div class="vulkan-guide" data-vulkan-guide="windows" hidden>
                             <p><b>Required:</b> a current GPU driver from <a href="https://www.nvidia.com/drivers" target="_blank" rel="noopener">NVIDIA</a>, <a href="https://www.amd.com/support" target="_blank" rel="noopener">AMD</a> or <a href="https://www.intel.com/content/www/us/en/download-center/home.html" target="_blank" rel="noopener">Intel</a>. It installs the Vulkan runtime (<code>vulkan-1.dll</code>). Drivers from Windows Update sometimes leave it out, so get the vendor's.</p>

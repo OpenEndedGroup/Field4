@@ -50,7 +50,7 @@ object ShaderTraining {
             File(directory,"source-$i.vert").writeText(p.current.vi.source)
             File(directory,"source-$i.frag").writeText(p.current.fi.source)
         }
-        val command=CommandBuffer(renderer.commandPool,true,false);val fence=Fence(renderer.device,false)
+        val command=CommandBuffer(renderer.commandPool,true,true);val fence=Fence(renderer.device,false)
         val random=Random(seed);val width=source.width;val height=source.height
         val files=JSONObject()
         try {

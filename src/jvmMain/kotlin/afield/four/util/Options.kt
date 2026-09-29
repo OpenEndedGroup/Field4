@@ -35,10 +35,12 @@ object Options {
      *   and before macOS 26. Has `VK_EXT_metal_objects`, which the IOSurface export/import paths use.
      * - [MacVulkanDriver.KOSMICKRISP]: LunarG's Mesa driver layered on Metal 4 — Apple silicon and
      *   macOS 26 or later only, conformant rather than a portability subset.
-     * - [MacVulkanDriver.AUTO]: currently MoltenVK. Flipping AUTO to KosmicKrisp is a one-line change in
-     *   [resolvedMacVulkanDriver], to be made once the sweep in that doc comes back clean.
+     * - [MacVulkanDriver.AUTO], the default: KosmicKrisp wherever it can run — Apple silicon, macOS 26
+     *   or later, and an SDK that ships it — else MoltenVK. The default since 2026-09-29, when the
+     *   GPU smoke catalog passed on it with no validation errors (`dev_docs/KOSMICKRISP.md`).
      *
-     * `-Dafield.four.vulkanDriver=kosmickrisp` or `AFIELD_VULKAN_DRIVER=kosmickrisp`.
+     * `-Dafield.four.vulkanDriver=moltenvk` or `AFIELD_VULKAN_DRIVER=moltenvk` for MoltenVK, which the
+     * IOSurface export/import paths still need.
      */
     enum class MacVulkanDriver(val icdManifest: String, val driverId: Int) {
         AUTO("", 0),
@@ -56,7 +58,27 @@ object Options {
 
     /** [macVulkanDriver] with AUTO decided. */
     val resolvedMacVulkanDriver: MacVulkanDriver
-        get() = if (macVulkanDriver == MacVulkanDriver.AUTO) MacVulkanDriver.MOLTENVK else macVulkanDriver
+        get() = if (macVulkanDriver != MacVulkanDriver.AUTO) macVulkanDriver
+        else if (kosmicKrispCanRun) MacVulkanDriver.KOSMICKRISP else MacVulkanDriver.MOLTENVK
+
+    /**
+     * Apple silicon, macOS 26+ (KosmicKrisp is built on Metal 4), and an SDK of at least
+     * [KOSMICKRISP_MIN_SDK] that ships the driver. Earlier SDKs ship a KosmicKrisp that is not ready
+     * for Field: 1.4.335's lacked vertex-pipeline stores, so `vkCreateDevice` refused Field's
+     * features. An SDK whose directory names no version (a hand-set `VULKAN_SDK`) is taken at its word.
+     */
+    val kosmicKrispCanRun: Boolean by lazy {
+        val macMajor = System.getProperty("os.version")?.substringBefore('.')?.toIntOrNull() ?: 0
+        val sdk = macVulkanSdk ?: return@lazy false
+        val version = listOfNotNull(sdk.name, sdk.parentFile?.name).firstOrNull { it.matches(Regex("""\d+(\.\d+)+""")) }
+            ?.split('.')?.map { it.toInt() }
+        isMac && System.getProperty("os.arch") == "aarch64" && macMajor >= 26 &&
+            File(sdk, "share/vulkan/icd.d/${MacVulkanDriver.KOSMICKRISP.icdManifest}").exists() &&
+            (version == null || VersionComparator.compare(version, KOSMICKRISP_MIN_SDK) >= 0)
+    }
+
+    /** The first SDK whose KosmicKrisp Field's GPU smoke catalog passed on (1.4-conformant). */
+    val KOSMICKRISP_MIN_SDK = listOf(1, 4, 363)
 
     /**
      * The macOS SDK root (`…/VulkanSDK/<version>/macOS`) whose loader Field uses: `VULKAN_SDK` when set,
@@ -124,6 +146,12 @@ object Options {
         "afield.four.computeOncePerFrame",
         System.getenv("AFIELD_FOUR_COMPUTE_ONCE_PER_FRAME") ?: "true"
     ).toBoolean()
+    // Record the renderer's per-frame command buffers with ONE_TIME_SUBMIT (see Renderer's
+    // createWindowContext). A switch so the gain can be measured per driver without a rebuild.
+    var oneTimeSubmitFrames = System.getProperty(
+        "afield.four.oneTimeSubmit",
+        System.getenv("AFIELD_FOUR_ONE_TIME_SUBMIT") ?: "true"
+    ).toBoolean()
     // Requested by default; actual use is gated by Device.supportsMaintenance7.
     var secondaryGraphicsCommandBuffers = System.getProperty(
         "afield.four.secondaryGraphicsCommandBuffers",
@@ -149,11 +177,23 @@ object Options {
     ).toBoolean()
     var enableVR = false
 
+    private var vulkanConfigured = false
+
+    /**
+     * Choose the Vulkan loader and driver. Must run before LWJGL first loads Vulkan, after which
+     * `VULKAN_LIBRARY_NAME` is ignored. `Window` and `Instance` call it themselves, because an
+     * entrypoint that forgot to — seven GPU smoke tests on 2026-09-29 — silently got LWJGL's
+     * bundled MoltenVK: no loader, no validation layers, no KosmicKrisp. Repeat calls do nothing.
+     */
+    @Synchronized
     fun doVulkanSDK() {
+        if (vulkanConfigured) return
+        vulkanConfigured = true
         val loader = vulkan_library_name?.takeIf { File(it).exists() }
         if (useVulkanSDK && isMac && loader != null) {
             Configuration.VULKAN_LIBRARY_NAME.set(loader)
             pinMacVulkanDriver()
+            addMacSdkLayers()
         } else if (isMac) {
             lprintln("warning,vulkan", "No Vulkan SDK loader found (VULKAN_SDK, ~/VulkanSDK); LWJGL's bundled MoltenVK will be used" +
                 if (macVulkanDriver == MacVulkanDriver.KOSMICKRISP) ", so the requested KosmicKrisp driver is unavailable" else "")
@@ -200,7 +240,23 @@ object Options {
             .onFailure { lprintln("warning,vulkan", "Could not pin the Vulkan driver ($it); leaving discovery to the loader") }
     }
 
+    /**
+     * Put the SDK's own layers ahead of the system ones, so validation is the loader's version.
+     * As with drivers, the SDK loader otherwise takes `VK_LAYER_KHRONOS_validation` from
+     * `/usr/local/share/vulkan/explicit_layer.d` — on 2026-09-29 a 1.4.335 layer validating a
+     * 1.4.363 KosmicKrisp. A `VK_LAYER_PATH` or `VK_ADD_LAYER_PATH` the user set is left alone.
+     */
+    private fun addMacSdkLayers() {
+        if (System.getenv("VK_LAYER_PATH") != null) return
+        val layers = macVulkanSdk?.let { File(it, "share/vulkan/explicit_layer.d") }?.takeIf { it.isDirectory } ?: return
+        val existing = System.getenv("VK_ADD_LAYER_PATH")
+        if (existing != null && System.getenv(LAYERS_ADDED_BY_FIELD) != existing) return
+        runCatching { nativeSetenv("VK_ADD_LAYER_PATH", layers.path); nativeSetenv(LAYERS_ADDED_BY_FIELD, layers.path) }
+            .onFailure { lprintln("warning,vulkan", "Could not point the loader at the SDK's layers ($it)") }
+    }
+
     private const val PINNED_BY_FIELD = "AFIELD_VK_DRIVER_FILES_PINNED"
+    private const val LAYERS_ADDED_BY_FIELD = "AFIELD_VK_ADD_LAYER_PATH_PINNED"
 
     private fun nativeSetenv(name: String, value: String) {
         val linker = java.lang.foreign.Linker.nativeLinker()

@@ -182,7 +182,7 @@ class GpuShaderTraining(val renderer: Renderer,val width: Int,val height: Int,va
         directory.mkdirs()
         val packed=VulkanBuffer(renderer,3456,VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT or VK_BUFFER_USAGE_TRANSFER_DST_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT or VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,needsDeviceAddress=true)
-        val command=CommandBuffer(renderer.commandPool,true,false);val fence=Fence(renderer.device,false)
+        val command=CommandBuffer(renderer.commandPool,true,true);val fence=Fence(renderer.device,false)
         val bytes=ByteArray(3456)
         try {
             command.beginRecording();barrier(command);vkCmdFillBuffer(command.vkCommandBuffer,packed.buffer,0,3456,0);barrier(command)

@@ -600,7 +600,7 @@ Deeper structure is documented in:
 - `src/VULKAN_GRAPHICS_SYSTEM.md` (file-by-file map of `afield.four`)
 
 Practical notes:
-- On macOS, `Options.doVulkanSDK()` uses the loader from `VULKAN_SDK` or the newest `~/VulkanSDK/<version>`, and pins `VK_DRIVER_FILES` to that SDK's MoltenVK or KosmicKrisp manifest (`AFIELD_VULKAN_DRIVER=moltenvk|kosmickrisp`; see `dev_docs/KOSMICKRISP.md`). With no SDK, LWJGL's bundled MoltenVK is used directly.
+- On macOS, `Options.doVulkanSDK()` uses the loader from `VULKAN_SDK` or the newest `~/VulkanSDK/<version>`, and pins `VK_DRIVER_FILES` to that SDK's KosmicKrisp manifest by default on Apple silicon with macOS 26+ (MoltenVK elsewhere, or with `AFIELD_VULKAN_DRIVER=moltenvk`, which the IOSurface features still need; see `dev_docs/KOSMICKRISP.md`). `Window` and `Instance` call it themselves, so no entrypoint can skip it. With no SDK, LWJGL's bundled MoltenVK is used directly.
 - What a machine has — loader, driver, validation layers, SDK — is probed in a child JVM by `afield.four.util.VulkanProbe` and shown in the Vulkan panel on `/welcome` (`/welcome#vulkan` opens it; `GET /api/vulkan-status[?refresh=1]` returns it), along with per-OS install steps.
 - Shader introspection uses the LWJGL SPIRV-Cross (`spvc`) bindings; the old checked-in `bin/spirv-cross-*` binaries are no longer required.
 
