@@ -6,6 +6,7 @@ id: examples.spreadsheet.formulas
 runner: backdoor-box
 tags: [examples, spreadsheet, kotlin, smoke, regression]
 timeoutSec: 180
+waitSec: 1.0
 expect:
   outputContains:
     - "SPREADSHEET_FORMULAS_OK"
@@ -22,6 +23,11 @@ expect:
  * "Formula compilation failed". And `min`/`max` return 0 for an empty range, as Excel and Sheets do,
  * instead of `null` (B3, C3, C4), so they can be used in arithmetic without `!!`. `avg` of an empty range is an error (C6), as
  * Excel's `#DIV/0!` is, rather than the 0 it used to show.
+ *
+ * It prints two lines, not one per cell: per-session output back-pressure (`OutputBackPressure`,
+ * 8 in flight plus a 4-slot rolling buffer) drops the middle of a println burst by design, and the
+ * run's verdict can overtake the buffered tail, so a line per cell made the marker's arrival a race
+ * (8, 12 and 15 of 16 lines arrived on three runs, 2026-09-30). A failure still names every cell.
  */
 private val SPREADSHEET_FORMULAS_SNIPPET = """
 setPropertyRaw("sheetFactor", 7.0, doResync = false)
@@ -52,11 +58,12 @@ val expected = listOf(
 )
 val snap = getSpreadsheetSnapshot()
 val problems = mutableListOf<String>()
-for ((ref, want) in expected) {
+val seen = expected.joinToString(" | ") { (ref, want) ->
     val c = snap.cell(ref)
-    println(ref + " = " + c?.display + (c?.errorDetail?.let { " (" + it + ")" } ?: ""))
     if (c?.display != want) problems += ref + ": expected " + want + ", got " + c?.display + " " + c?.errorDetail
+    ref + "=" + c?.display + (c?.errorDetail?.let { " (" + it + ")" } ?: "")
 }
+println(seen)
 val c1 = snap.cell("C1")?.errorDetail.orEmpty()
 if (!c1.startsWith("Formula compilation failed: ")) problems += "C1: a formula that does not compile must say why, got " + c1
 if (snap.cell("C2")?.errorDetail?.contains("outside the sheet") != true) problems += "C2: expected the out-of-range error, got " + snap.cell("C2")?.errorDetail
