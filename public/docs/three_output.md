@@ -1,4 +1,4 @@
-# Field's 3D output
+# Three.js scenes with `three { … }`
 
 *Everything below carries its own KDoc — start from `Box.three`, `ThreeSceneBuilder` and
 `toThreeDrawable` in `afield.graphics` (`Three.kt`, `ThreeScene.kt`). The FLine half of the same
@@ -12,17 +12,45 @@ Field's other way of drawing a `TriMesh` is a CPU z-buffer rasterizer that hands
 picture at a fixed camera**. [Which renderer draws this](#which-renderer-draws-this) covers when you
 want each.
 
-```diffstatic {data-lang=kotlin}
-three(channel = "car", height = 460) {
-    mesh(car, wireframe = false)
-    lines(measurements)                       // annotations in the same space as the solid
-    camera(yaw = 34.0, pitch = 26.0, distance = 2.4)
-    title("ToyCar.glb — 108,936 triangles")
+## Your first `three` scene
+
+Run this complete example in a Field box. Drag to orbit, scroll to zoom, or choose **Pick** to
+select a surface feature and leave a note. The ruler measures the geometry in millimetres because
+that is the unit used for this block's dimensions.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/first-scene.png" wait="4" capture="box" open-outputs="true" padding="20"}
+:::static
+val block = boxMesh(120, 80, 60)
+
+val view = three(name = "foo", width = 760, height = 440) {
+    mesh(block, id = "block", wireframe = false, pickable = true, group = 0)
+    camera(yaw = 34.0, pitch = 24.0)
+    background("#080b0c")
+    caption("Drag to orbit · Pick to annotate · ruler to measure")
+    inspect(units = "mm", groups = listOf("Block"))
 }
 ```
 
-This page is for someone who has a mesh and wants to look at it, and for the question that follows:
-**Field has several renderers, so which one is drawing this, and when do you want the other?**
+![A shaded rectangular block in the Three.js viewer, with selection and measurement controls.](assets/three_output/first-scene.png)
+
+`three` is a function on the current Field box. The block has a `ThreeSceneBuilder` receiver:
+`mesh`, `lines`, `camera` and the other operations below describe the scene. The graphics and
+mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
+and `afield.stdlib.*` and call `three` on a `Box`.
+
+### `name` identifies the viewer; `channel` places its output
+
+| Argument to `three` | Meaning |
+| --- | --- |
+| `name = "foo"` | A stable viewer name within this box. The view ID is the box ID followed by `_foo`. Defaults to `"three"`. |
+| `channel = "main"` | The output disclosure in Field. Use distinct channels to keep two outputs visible at once. |
+| `width = 760`, `height = 440` | Frame size in pixels. Width is optional; height defaults to 430. |
+| `samplesPerCubic = 48` | How finely to sample FLine cubic curves. Does not change mesh triangles. |
+
+Running the same box with the same `name` updates the same viewer. To keep two independent
+scenes, give them different **names and channels**. `channel` alone does not give a scene a new
+identity. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid` is the
+ID used by the standalone viewer and agent inspection tools.
 
 ## A scene, not a picture
 
@@ -30,27 +58,87 @@ The block is a scene description, not a sequence of draw calls, and `three` retu
 `ThreeGeometryViewState`, so the scene stays drivable after it is on screen, exactly as
 `threeLines(...)` does.
 
-<div class="field-reference" data-code-lang="kotlin" markdown>
-
 | in the block | what it does |
-| --- | --- |
-| `mesh(m, label, wireframe, cullBackFaces, flatShading, opacity, panel)` | Adds a solid to the scene. The options control its label, surface drawing, visibility and panel placement. |
-| `lines(…)` — a `Collection<FLine>` or a vararg | Adds line geometry with the picking, hover, fill and click behavior supported by `threeLines`. |
-| `camera(yaw, pitch, distance, fieldOfView)` | Sets the initial view and disables automatic framing. |
-| `camera(view: MeshView)` | Uses an existing `MeshView` as the initial camera. |
-| `panel(title, caption, facts, camera, bounds)` | Adds a titled viewport with its own annotations and framing; panels appear in call order. |
-| `columns(n)` | Sets the number of panels in each row. |
-| `title(text)` / `caption(text)` | Labels a one-panel scene without constructing a separate panel description. |
-| `background(css)` | Sets the scene background using a CSS colour. |
-| `helpers(on)` | Shows or hides the reference grid and axis tripod. |
-
-</div>
+|---|---|
+| `mesh(m, …)` | add a `TriMesh`; open surfaces are supported too. Appearance and interaction options are listed below |
+| `lines(…)` — a `Collection<FLine>` or a vararg | add FLines, with every behaviour they have in `threeLines`: picking, hover, fills, click callbacks |
+| `camera(yaw, pitch, distance, fieldOfView)` | where the camera starts. Setting it turns auto-framing off — you picked an angle, keep it |
+| `camera(view: MeshView)` | the same, from a `MeshView` you already have. The migration path for an existing figure |
+| `panel(title, caption, facts, camera, bounds)` | one titled viewport. Call it once per panel, in order |
+| `columns(n)` | panels per row |
+| `title(text)` / `caption(text)` | shorthand for a one-panel scene |
+| `background(css)` | scene background as a CSS colour |
+| `helpers(on)` | the reference grid and the axis tripod |
+| `inspect(units, decimals, …)` | enable measurement, section and explode controls; optionally supply groups, dimensions and assembly motions |
 
 `helpers` is the one default that depends on what is in the scene: the grid and the tripod are **on
 for an FLine-only scene** and **off as soon as there is a mesh**. Both are a fixed world size, a
 10-unit grid and a 0.9-unit tripod, and a mesh is whatever size its file says it is. The toy car in
 [Geometry from disk](geometry_from_disk.md) is 7 cm across, so the grid would be 140 times its width
 and the tripod would swallow it whole.
+
+### Mesh appearance and interaction
+
+Each call to `mesh` adds one mesh to the scene. Position it by transforming the `TriMesh` before
+adding it, for example `mesh(boxMesh().translated(2.0, 0.0, 0.0))`.
+
+| `mesh` argument | Default | What it controls |
+| --- | --- | --- |
+| `label` | none | A readable label for the mesh. |
+| `wireframe` | `true` | Draw every triangle edge over the shaded surface. Use `false` for an uncluttered surface. |
+| `cullBackFaces` | `true` | Hide the back of each triangle. Set `false` to see both sides of an open surface. |
+| `flatShading` | `false` | Use individual face normals for faceted shading. |
+| `opacity` | `1.0` | Surface opacity, from transparent to opaque. |
+| `panel` | `0` | Zero-based viewport index, or `-1` to draw in every viewport. |
+| `id` | empty | A stable name returned with mesh hits and geometry review references. Give distinct meshes distinct IDs. |
+| `pickable` | `false` | Allow the ruler to measure the mesh. Also enabled by a click callback or hover colour. |
+| `onClick` | none | A Kotlin callback receiving a `ThreeSurfaceHit` with mesh ID and hit coordinates/indices. |
+| `hoverColor` | none | A `Vec4` highlight colour while the pointer is over the mesh. |
+| `group` | `-1` | Index into the inspector's `groups`; `-1` leaves it outside assembly groups. |
+
+The **Pick** annotation tool works without `pickable = true`. That flag controls the ruler and
+ordinary mesh interaction; annotation selection is a separate, visible-surface operation.
+
+### Lines and points
+
+`lines` accepts FLines in the same coordinates as the meshes. An FLine can carry strokes, fills
+and points; there is no separate `points(...)` operation inside this builder. For a point cloud,
+set `pointed = true` and turn strokes off:
+
+```diffstatic {data-lang=kotlin}
+val samples = fline {
+    moveTo(-1, 0, 0)
+    moveTo(0, 1, 0)
+    moveTo(1, 0, 0)
+    pointed = true
+    stroked = false
+    pointSize = 7.0
+    color = vec(1.0, 1.0, 1.0, 1.0)
+}
+three(name = "samples", channel = "samples") {
+    lines(samples)
+    helpers(false)
+}
+```
+
+See [FLine styling](fline_examples.md) for stroke, fill, point and callback properties.
+
+### Measurements, parts and notes
+
+`inspect(units = "mm", decimals = 1)` adds the measurement, section and explode controls. Units
+label the coordinates you supplied; they do not rescale geometry. Set `pickable = true` on meshes
+you want to measure. `measurements` supplies initial `ThreeMeasurement` dimensions, `section`
+supplies a `ThreeSection`, and `explode` supplies a `ThreeExplode`.
+
+For a grouped assembly, pass `groups = listOf("base", "lid")` to `inspect` and assign `group = 0`
+or `group = 1` to each mesh. The [FLine inspector examples](fline_examples.md#the-3d-output-area-as-an-instrument-threeinspect)
+show the measurement and section types.
+
+Every single-view scene also has **Pick** and **Save note**, including scenes without `inspect`.
+After a manual selection or saved note arrives, `view.reviews()` reads it from Field. From another
+box or an agent, `threeGeometryReviews(viewId)` reads the same inbox by ID. Notes retain the
+geometry revision and camera; [selecting and annotating geometry](geometry_review.md) explains
+points, faces, edges, vertices and visible-only rectangles.
 
 ### One scene, two kinds of thing
 
@@ -133,6 +221,24 @@ other.
     look at.
 
 ## Contact sheets
+
+For a custom contact sheet, `panel(...)` declares viewports in order and `mesh(..., panel = n)`
+assigns geometry to them. Calling `panel` does not change which viewport the next mesh goes into:
+the default stays `0`. FLine content is shared between viewports.
+
+```diffstatic {data-lang=kotlin}
+val cube = boxMesh()
+three(name = "comparison", channel = "comparison", width = 760, height = 320) {
+    columns(2)
+    mesh(cube, panel = 0, wireframe = true)
+    mesh(cube, panel = 1, wireframe = false)
+    panel(title = "Triangles", bounds = cube.toThreeBounds())
+    panel(title = "Surface", bounds = cube.toThreeBounds())
+}
+```
+
+`threeGrid` and `threeTurntable` below build common layouts for you. Feature annotation currently
+requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
 
 ### One WebGL context, several panels
 
@@ -430,7 +536,7 @@ viewer works offline and a docs capture does not depend on a CDN.
 
 ## Play with it
 
-`public/docs/assets/three_output_gallery/metadata.edn` is a loadable Field document with the four
+[Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), a loadable Field document with the five
 boxes on this page, laid out top to bottom. Open it in a fresh Field 4 and run the boxes; then orbit
 the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4` and watch one WebGL
 context re-tile itself.
@@ -442,17 +548,3 @@ context re-tile itself.
     loading="lazy"
     allowfullscreen>
 </iframe>
-
-## Where the pictures come from
-
-All five figures on this page are `diffstatic_runner` fences: the docs build runs that exact Kotlin
-in a real Field box, and the image underneath is that box's own output, captured from the browser.
-
-A WebGL capture is deterministic on one machine, one GPU and one driver, but not *across* machines,
-which is why the renderer-comparison figure above has a CPU half.
-
-??? aside "If you write a fence like these"
-    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
-    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
-    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
-    hatch, and the first figure on this page carries it.

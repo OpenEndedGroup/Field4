@@ -334,6 +334,23 @@ class FieldMcpServer:
 
     # ---- Tool implementations --------------------------------------------
 
+    async def tool_inspect_view(self, args: dict[str, Any]) -> dict[str, Any]:
+        from field_inspection import inspect_view
+        return await inspect_view(await self._ensure_attached(), args["viewId"], state=args.get("state"),
+            section=args.get("section"), hidden=args.get("hidden"), assembly=args.get("assembly"), pick=args.get("pick"), note=args.get("note"), region=args.get("region"), received=bool(args.get("received", False)), evidence_dir=args.get("evidenceDirectory"), include_resolved=bool(args.get("includeResolved", False)), timeout=self.timeout)
+
+    async def tool_reply_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from field_inspection import reply_review_note
+        return await reply_review_note(await self._ensure_attached(), args["viewId"], note_id=args["noteId"],
+            text=args["text"], actor=args["actor"], checked_revision=args["checkedRevision"],
+            expected_version=args["expectedVersion"], timeout=self.timeout)
+
+    async def tool_review_note(self, args: dict[str, Any]) -> dict[str, Any]:
+        from field_inspection import update_review_note
+        return await update_review_note(await self._ensure_attached(), args["viewId"], note_id=args["noteId"],
+            status=args["status"], summary=args["summary"], actor=args["actor"], checked_revision=args["checkedRevision"],
+            expected_version=args["expectedVersion"], timeout=self.timeout)
+
     async def tool_status(self, _args: dict[str, Any]) -> dict[str, Any]:
         healthy = health_check(self.port, self.ssl_context)
         result: dict[str, Any] = {"port": self.port, "fieldRunning": healthy}
@@ -686,6 +703,17 @@ class FieldMcpServer:
     # ---- MCP protocol -----------------------------------------------------
 
     TOOLS: list[dict[str, Any]] = [
+        {"name": "field_reply_note", "description": "Append a persistent reply to a geometry annotation for findings, decisions, verification or handoff context. Replies do not resolve or reopen notes. Requires the current note version and geometry revision. Original note, previous replies and images remain intact.", "inputSchema": {"type":"object", "required":["viewId","noteId","text","actor","checkedRevision","expectedVersion"], "properties": {
+            "viewId":{"type":"string"}, "noteId":{"type":"string"}, "text":{"type":"string","description":"Durable findings and evidence, up to 16000 characters."},
+            "actor":{"type":"string","description":"Person or agent/task name."}, "checkedRevision":{"type":"string"}, "expectedVersion":{"type":"integer"}
+        }}},
+        {"name": "field_review_note", "description": "Resolve a verified geometry annotation, or reopen it. Requires its current version and the geometry revision actually checked; preserves the original note, images and resolution history. Never resolve merely because a note was read or its geometry rebuilt.", "inputSchema": {"type":"object", "required":["viewId","noteId","status","summary","actor","checkedRevision","expectedVersion"], "properties": {
+            "viewId":{"type":"string"}, "noteId":{"type":"string"}, "status":{"type":"string","enum":["open","resolved"]},
+            "summary":{"type":"string","description":"What changed and how it was verified, or why the note is reopened."}, "actor":{"type":"string","description":"Person or agent/task name."}, "checkedRevision":{"type":"string"}, "expectedVersion":{"type":"integer"}
+        }}},
+        {"name": "field_inspect_view", "description": "Read unresolved geometry notes with received=true, without opening a browser. Completed notes require includeResolved=true. Reading does not acknowledge a note; use field_review_note after verification. Otherwise inspect, restore a note/view or pick a feature in the capture browser using normalized canvas coordinates.", "inputSchema": {"type":"object", "required":["viewId"], "properties": {
+            "viewId":{"type":"string"}, "state":{"type":"object"}, "section":{"type":"object"}, "hidden":{"type":"object"}, "assembly":{"type":"number"}, "received":{"type":"boolean"}, "includeResolved":{"type":"boolean","description":"Include completed notes and their resolution history."}, "evidenceDirectory":{"type":"string","description":"With received=true, export saved notes and their context/crop PNGs here."}, "note":{"type":"string"}, "region":{"type":"object","required":["cx","cy","width","height"],"properties":{"cx":{"type":"number"},"cy":{"type":"number"},"width":{"type":"number"},"height":{"type":"number"},"angle":{"type":"number"}}},
+            "pick":{"type":"object","required":["x","y"],"properties":{"x":{"type":"number","minimum":0,"maximum":1},"y":{"type":"number","minimum":0,"maximum":1},"kind":{"type":"string","enum":["point","face","edge","vertex"]}}}}}},
         {
             "name": "field_status",
             "description": "Check whether Field4 is running, which documents are open, which one this bridge is attached to, and the server's own workspace directory (serverWorkspace) that document names resolve against. Safe to call anytime; does not attach.",
@@ -916,6 +944,9 @@ class FieldMcpServer:
     def _dispatch_table(self):
         return {
             "field_status": self.tool_status,
+            "field_inspect_view": self.tool_inspect_view,
+            "field_review_note": self.tool_review_note,
+            "field_reply_note": self.tool_reply_note,
             "field_list_open_documents": self.tool_list_open_documents,
             "field_open_document": self.tool_open_document,
             "field_snapshot": self.tool_snapshot,

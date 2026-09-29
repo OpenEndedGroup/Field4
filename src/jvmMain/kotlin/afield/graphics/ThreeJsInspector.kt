@@ -3,6 +3,8 @@ package afield.graphics
 import afield.Box
 import afield.stdlib.label
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 
 /**
  * The three.js output area as an **instrument** rather than a picture of one.
@@ -153,6 +155,78 @@ data class ThreeMeasurement(
     val label: String = "",
 )
 
+/** A supplied, independently checked insertion motion, from displaced pose to assembled pose. */
+@Serializable
+data class ThreeAssemblyMotion(val part: String, val displacement: DoubleArray)
+
+/** Canonical up axis; Z-up parts are rotated into the viewer's Y-up display frame. */
+@Serializable
+enum class ThreeUpAxis { Y, Z }
+
+/** Canonical double coordinates and real boundary edges for artifact-local feature references.
+ * Triangle order agrees with the display mesh even when shading duplicates its vertices.
+ * [faces] groups connected coplanar triangles; Boolean provenance edges are not selectable seams.
+ */
+@Serializable
+data class ThreePartTopology(
+    val positions: DoubleArray,
+    val indices: IntArray,
+    val edges: List<List<Int>>,
+    val faces: IntArray,
+)
+
+/** A selection on one exact artifact. Interpolated points locate a pick, not a machining tolerance. */
+@Serializable
+data class ThreeFeatureSelection(
+    val artifactDigest: String,
+    val partId: String,
+    val kind: String,
+    val point: DoubleArray,
+    val triangle: Int? = null,
+    val face: Int? = null,
+    val barycentric: DoubleArray? = null,
+    val vertex: Int? = null,
+    val edge: List<Int>? = null,
+    val edgeT: Double? = null,
+    val region: ThreeRegionSelection? = null,
+)
+
+/** A view-space rectangle and the frontmost surface triangles it actually covered. */
+@Serializable
+data class ThreeRegionSelection(
+    val cx: Double, val cy: Double, val width: Double, val height: Double, val angle: Double,
+    val viewport: List<Int>, val pixelCount: Int, val surfaces: List<ThreeRegionSurface>,
+    val view: ThreeReviewState? = null,
+)
+
+/** Artifact-local visible triangles belonging to one part in a rectangular review region. */
+@Serializable
+data class ThreeRegionSurface(val partId: String, val triangles: List<Int>)
+
+/** Saved observations are valid only for the exact artifact digest. Face ordinals are artifact-local. */
+@Serializable
+data class ThreeReviewState(
+    val artifactDigest: String,
+    val partIds: List<String>,
+    val renderOrigin: DoubleArray = doubleArrayOf(0.0, 0.0, 0.0),
+    val renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
+    val hidden: List<String> = emptyList(),
+    val camera: DoubleArray = doubleArrayOf(),
+    val cameraFov: Double? = null,
+    val cameraZoom: Double? = null,
+    val target: DoubleArray = doubleArrayOf(),
+    val explode: Double = 0.0,
+    val assemblyStep: Double? = null,
+    val light: DoubleArray = doubleArrayOf(5.0,8.0,6.0),
+    val sectionEnabled: Boolean = false,
+    val sectionFlip: Boolean = false,
+    val sectionFraction: Double = 0.5,
+    val sectionNormal: DoubleArray = doubleArrayOf(1.0,0.0,0.0),
+    val selectedPart: String? = null,
+    val selectedTriangle: Int? = null,
+    val selection: ThreeFeatureSelection? = null,
+)
+
 /**
  * The inspector block of a geometry payload: what the viewer should be doing beyond drawing.
  *
@@ -161,6 +235,7 @@ data class ThreeMeasurement(
  * *name* what it is pulling apart.
  */
 @Serializable
+@OptIn(ExperimentalSerializationApi::class)
 data class ThreeInspector(
     val enabled: Boolean = true,
     val groups: List<String> = emptyList(),
@@ -172,6 +247,12 @@ data class ThreeInspector(
     val decimals: Int = 2,
     /** Let the user pick two elements in the viewer and measure between them. */
     val pickToMeasure: Boolean = true,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val artifactDigest: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val renderOrigin: DoubleArray = doubleArrayOf(0.0, 0.0, 0.0),
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val assembly: List<ThreeAssemblyMotion> = emptyList(),
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val review: ThreeReviewState? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER) val parts: Map<String, ThreePartTopology> = emptyMap(),
 )
 
 /**
