@@ -3243,38 +3243,65 @@ private fun helperSource(prefix: String, helpers: Set<String>): String {
         val needsHash21 = "noise" in helpers || "fbm" in helpers ||
             "randomCrossSample" in helpers || "randomCrossSampleChannel" in helpers
         if (needsHash21) {
-            appendLine("float ${prefix}_hash21(vec2 p) {")
-            appendLine("    p = fract(p * vec2(123.34, 456.21));")
-            appendLine("    p += dot(p, p + 45.32);")
-            appendLine("    return fract(p.x * p.y);")
-            appendLine("}")
+            appendLine(
+                """
+                float ${prefix}_hash21(vec2 p) {
+                    precise vec2 scaled = p * vec2(123.34, 456.21);
+                    precise vec2 f = fract(scaled);
+                    precise vec2 offset = f + vec2(45.32);
+                    precise float d = dot(f, offset);
+                    precise vec2 mixed = f + d;
+                    precise float product = mixed.x * mixed.y;
+                    return fract(product);
+                }
+                """.trimIndent()
+            )
             appendLine()
         }
         if ("noise" in helpers || "fbm" in helpers) {
-            appendLine("float ${prefix}_noise(vec2 p) {")
-            appendLine("    vec2 i = floor(p);")
-            appendLine("    vec2 f = fract(p);")
-            appendLine("    vec2 u = f * f * (3.0 - 2.0 * f);")
-            appendLine("    float a = ${prefix}_hash21(i + vec2(0.0, 0.0));")
-            appendLine("    float b = ${prefix}_hash21(i + vec2(1.0, 0.0));")
-            appendLine("    float c = ${prefix}_hash21(i + vec2(0.0, 1.0));")
-            appendLine("    float d = ${prefix}_hash21(i + vec2(1.0, 1.0));")
-            appendLine("    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);")
-            appendLine("}")
+            appendLine(
+                """
+                float ${prefix}_noise(vec2 p) {
+                    precise vec2 i = floor(p);
+                    precise vec2 f = fract(p);
+                    precise vec2 f2 = f * f;
+                    precise vec2 twiceF = 2.0 * f;
+                    precise vec2 threeMinusTwiceF = vec2(3.0) - twiceF;
+                    precise vec2 u = f2 * threeMinusTwiceF;
+                    precise float a = ${prefix}_hash21(i + vec2(0.0, 0.0));
+                    precise float b = ${prefix}_hash21(i + vec2(1.0, 0.0));
+                    precise float c = ${prefix}_hash21(i + vec2(0.0, 1.0));
+                    precise float d = ${prefix}_hash21(i + vec2(1.0, 1.0));
+                    precise float ab = mix(a, b, u.x);
+                    precise float cd = mix(c, d, u.x);
+                    precise float value = mix(ab, cd, u.y);
+                    return value;
+                }
+                """.trimIndent()
+            )
             appendLine()
         }
         if ("fbm" in helpers) {
-            appendLine("float ${prefix}_fbm(vec2 p) {")
-            appendLine("    float value = 0.0;")
-            appendLine("    float amplitude = 0.5;")
-            appendLine("    mat2 warp = mat2(1.6, 1.2, -1.2, 1.6);")
-            appendLine("    for (int i = 0; i < 5; i++) {")
-            appendLine("        value += amplitude * ${prefix}_noise(p);")
-            appendLine("        p = warp * p + 17.17;")
-            appendLine("        amplitude *= 0.5;")
-            appendLine("    }")
-            appendLine("    return value;")
-            appendLine("}")
+            appendLine(
+                """
+                float ${prefix}_fbm(vec2 p) {
+                    precise float value = 0.0;
+                    precise float amplitude = 0.5;
+                    mat2 warp = mat2(1.6, 1.2, -1.2, 1.6);
+                    for (int i = 0; i < 5; i++) {
+                        precise float octave = ${prefix}_noise(p);
+                        precise float weighted = amplitude * octave;
+                        value = value + weighted;
+                        precise vec2 warped = warp * p;
+                        precise vec2 translated = warped + vec2(17.17);
+                        p = translated;
+                        precise float nextAmplitude = amplitude * 0.5;
+                        amplitude = nextAmplitude;
+                    }
+                    return value;
+                }
+                """.trimIndent()
+            )
             appendLine()
         }
         if ("pulse" in helpers) {
