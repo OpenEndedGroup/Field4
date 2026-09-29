@@ -1115,6 +1115,18 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
+    // The recipient is resolved now, not when the run started. A launch outlives the socket that
+    // asked for it — reload the browser and that socket is gone — and until 2026-09-29 everything the
+    // launch printed went on down it: `reply` wrote to the dead socket, and the reloaded page, now a
+    // mere peer, got `peer-output`, which an ordinary browser ignores (Main.kt shows it only to the
+    // Playwright page). When the origin has left the document, every session now showing the document
+    // gets the output as its own, and nobody gets it twice.
+    val info = if (box.isInsideInitialized()) box.inside else null
+    if (originSession != null && info != null && originSession !in info.sessions) {
+        val message = Message("output").payload(normalized)
+        info.sessions.forEach { _send(it, message) }
+        return
+    }
     reply?.invoke(Message("output").payload(normalized))
     _sendToPeerSessions(
         Message("peer-output").payload(normalized),
