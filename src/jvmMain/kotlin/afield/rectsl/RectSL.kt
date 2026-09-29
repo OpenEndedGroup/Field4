@@ -5378,20 +5378,20 @@ private fun sanitizeGlslIdentifier(name: String): String =
 
 object RectSLSmokeTest {
     val minimalAcceptanceSource: String = """
-        wall 30 4 meters
-        duration 10
-        fps 60
+        ->wall 30 4 meters
+        ->duration 10
+        ->fps 60
 
         "r" rect
-          -5 0 xy
-          1 square
-          0xff3300 solid fill
-          '( 0 -5   5 0   10 5 ) x
+          -5 0 ->xy
+          1 ->square
+          0xff3300 solid ->fill
+          '( 0=-5  5=0  10=5 ) ->x
         ;
 
-        dup "r2" rename
-          mirror-x
-          0x3333ff solid fill
+        "r" ->select clone  "r2" ->rename
+          ->mirror-x
+          0x3333ff solid ->fill
         ;
     """.trimIndent()
 
