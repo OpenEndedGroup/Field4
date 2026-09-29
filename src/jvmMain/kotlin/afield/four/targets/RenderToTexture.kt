@@ -310,6 +310,30 @@ open class RenderToTexture(
             }
         }
 
+    /**
+     * Record [copy] with color [attachment] in `TRANSFER_SRC_OPTIMAL`, then restore the layout it
+     * had — the same bracket the file saves below use, for a consumer outside this class that reads
+     * the attachment on the same command buffer. [FieldRTTStreamer][afield.four.stream.FieldRTTStreamer]
+     * uses it to copy each rendered frame into its IOSurface on KosmicKrisp. Outside a render pass.
+     */
+    fun recordColorTransferSource(command: CommandBuffer, attachment: Int = 0, copy: (vkImage: Long) -> Unit) {
+        check(parameters.colorTransferSrc) { "RenderToTexture attachment $attachment was not created with colorTransferSrc = true" }
+        check(!command.inRenderPassInstance) { "recordColorTransferSource must be recorded outside a render pass" }
+        MemoryStack.stackPush().use { stack ->
+            val range = VkImageSubresourceRange.calloc(stack)
+                .aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0).levelCount(1).baseArrayLayer(0)
+                .layerCount(colorLayerCount.coerceAtLeast(1))
+            val oldLayout = colorLayout[attachment]
+            val (srcStage, srcAccess) = captureSourceStageAndAccess(oldLayout)
+            transitionColorAttachment(command, attachment, srcStage, VK_PIPELINE_STAGE_2_COPY_BIT, srcAccess,
+                VK_ACCESS_2_TRANSFER_READ_BIT, oldLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, range)
+            copy(colorImageHandles[attachment])
+            transitionColorAttachment(command, attachment, VK_PIPELINE_STAGE_2_COPY_BIT, srcStage, VK_ACCESS_2_TRANSFER_READ_BIT,
+                srcAccess, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, oldLayout, range)
+            colorLayout[attachment] = oldLayout
+        }
+    }
+
     private fun recordPendingFileSaves(command: CommandBuffer) {
         val requests = dequeueFileSaves()
         if (requests.isEmpty()) return

@@ -4,6 +4,7 @@ import afield.four.Renderer
 import afield.four.Target
 import afield.four.device.CommandBuffer
 import afield.four.targets.RenderToTexture
+import afield.four.texture.IOSurfaceHostBuffer
 import afield.four.texture.MetalIOSurface
 import afield.four.texture.UnixFdPass
 import afield.four.texture.VulkanExternalMemory
@@ -77,6 +78,17 @@ class FieldRTTStreamer(
 
     /** The ring of RTTs to render into, created on [start]. Empty until then. */
     val surfaces = mutableListOf<RenderToTexture>()
+
+    /** Per ring slot on KosmicKrisp: the helper's IOSurface as a buffer the frame is copied into. */
+    private val hostBuffers = mutableListOf<IOSurfaceHostBuffer?>()
+
+    /** macOS: the global `IOSurfaceID`s of the helper's ring, in slot order. Empty until [start]. */
+    val ioSurfaceIds: List<Long> get() = allocatedIds.get()
+
+    /** Frames the helper reported encoded. */
+    @Volatile
+    var framesEncoded: Long = 0
+        private set
 
     @Volatile
     var streaming: Boolean = false
@@ -154,22 +166,28 @@ class FieldRTTStreamer(
             lprintln("error,field-stream", "expected ${maxOf(1, ringSize)} surfaces, got ${ids.size}"); return false
         }
 
-        // 2. import each surface (looked up by id) as the backing of its own RTT.
+        // 2. import each surface (looked up by id) as the backing of its own RTT — or, on KosmicKrisp,
+        // which cannot back an image with an IOSurface, give each an ordinary RTT and the surface's
+        // pages as a buffer that [render] copies the finished frame into (see IOSurfaceHostBuffer).
+        val viaHostBuffer = !renderer.device.supportsMetalObjects && renderer.device.supportsExternalMemoryHost
         for (id in ids) {
             val ref = MetalIOSurface.lookup(id)
             if (ref == 0L) {
                 lprintln("error,field-stream", "IOSurfaceLookup failed for id $id"); return false
             }
             val rtt = RenderToTexture(renderer) {
-                importMetalIOSurface = ref
+                if (!viaHostBuffer) importMetalIOSurface = ref
                 this.width = this@FieldRTTStreamer.width
                 this.height = this@FieldRTTStreamer.height
                 format = colorFormat
                 useDepth = false
                 colorSampled = true       // so the box can also sample it to screen if it wants
+                colorTransferSrc = true
             }
             surfaces += rtt
+            hostBuffers += if (viaHostBuffer) IOSurfaceHostBuffer(renderer.device, ref, readOnly = false) else null
         }
+        if (viaHostBuffer) lprintln("info,field-stream", "IOSurface ring via host-pointer buffers (${renderer.device.physicalDevice.driverName})")
 
         // 3. open the stream (surfaces already live in the helper from alloc).
         encoder.open(width = width, height = height, fps = fps, bitrateKbps = bitrateKbps,
@@ -231,6 +249,12 @@ class FieldRTTStreamer(
         streaming = false
         renderer.renderList.others.remove(name)
         encoder.close()
+        // After in-flight frames retire: a submitted frame may still be copying into one.
+        val buffers = hostBuffers.filterNotNull()
+        hostBuffers.clear()
+        if (buffers.isNotEmpty()) renderer.cleanup.add {
+            buffers.forEach { it.close(); MetalIOSurface.release(it.ioSurfaceRef) }
+        }
         lprintln("info,field-stream", "stopped after $seq frames")
     }
 
@@ -281,6 +305,11 @@ class FieldRTTStreamer(
         // render pass here is the same call path as registering it in the render list.
         val slot = (seq % surfaces.size).toInt()
         surfaces[slot].render(command, index)
+        // KosmicKrisp: the RTT is not the surface, so copy the frame into it on this same command
+        // buffer; the fence-gated `frame` tick below then covers the copy too.
+        hostBuffers.getOrNull(slot)?.let { host ->
+            surfaces[slot].recordColorTransferSource(command) { image -> host.copyFromImage(command.vkCommandBuffer, image, 4) }
+        }
 
         val s = seq
         // Presentation timestamp on the IDEAL grid, derived from the frame index — NOT from `now`.
@@ -324,7 +353,10 @@ class FieldRTTStreamer(
             }
             "opened" -> lprintln("info,field-stream", "encoder opened")
             // Closes the host's last span: submit (which waits the render fence) to encode complete.
-            "encoded" -> afield.graphics.VisionPoseLatency.encoded(ev.optLong("seq", -1L))
+            "encoded" -> {
+                framesEncoded++
+                afield.graphics.VisionPoseLatency.encoded(ev.optLong("seq", -1L))
+            }
             else -> {}
         }
     }

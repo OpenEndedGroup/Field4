@@ -72,7 +72,7 @@ object KotlinToJsCompiler {
 
     /** Compiler-fork version. The Kotlin/JS stdlib klib MUST match the compiler exactly (the fork
      *  hard-fails linking against a mismatched stdlib), which is why we vendor it next to the jars. */
-    private const val FORK_VERSION = "2.4.255-SNAPSHOT"
+    private const val FORK_VERSION = "2.5.255-SNAPSHOT"
 
     enum class Mode { IN_PROCESS, SUBPROCESS }
 

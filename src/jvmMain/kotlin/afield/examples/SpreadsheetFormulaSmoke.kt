@@ -1,0 +1,73 @@
+package afield.examples
+
+/*
+FIELD_TEST
+id: examples.spreadsheet.formulas
+runner: backdoor-box
+tags: [examples, spreadsheet, kotlin, smoke, regression]
+timeoutSec: 180
+waitSec: 1.0
+expect:
+  outputContains:
+    - "SPREADSHEET_FORMULAS_OK"
+*/
+/**
+ * Spreadsheet formulas, evaluated through the real `SpreadsheetEvaluator` in a live session.
+ *
+ * Every formula is compiled by a Kotlin REPL engine inside a `run { … }` that declares the sheet
+ * helpers (`cell`, `range`, `sum`, `max`, …) as local functions, with `self` bound to the box. The
+ * expectations were recorded on the K1 engine on 2026-09-28, before the spreadsheet moved to K2, so
+ * this is the check that the move changed nothing a sheet can see: cell and range references, the
+ * `self` binding, units, a Kotlin compile failure, and a runtime failure. Two deliberate changes: a
+ * formula that fails to compile now carries the compiler's first error (C1); under K1 it read only
+ * "Formula compilation failed". And `min`/`max` return 0 for an empty range, as Excel and Sheets do,
+ * instead of `null` (B3, C3, C4), so they can be used in arithmetic without `!!`. `avg` of an empty range is an error (C6), as
+ * Excel's `#DIV/0!` is, rather than the 0 it used to show.
+ *
+ * It prints two lines, not one per cell: per-session output back-pressure (`OutputBackPressure`,
+ * 8 in flight plus a 4-slot rolling buffer) drops the middle of a println burst by design, and the
+ * run's verdict can overtake the buffered tail, so a line per cell made the marker's arrival a race
+ * (8, 12 and 15 of 16 lines arrived on three runs, 2026-09-30). A failure still names every cell.
+ */
+private val SPREADSHEET_FORMULAS_SNIPPET = """
+setPropertyRaw("sheetFactor", 7.0, doResync = false)
+editSpreadsheet(broadcast = false) {
+    clearAll()
+    cell("A1", 2)
+    cell("A2", 3)
+    cell("A3", 5)
+    formula("B1", "A1 * 10")
+    formula("B2", "sum(A1:A3)")
+    formula("B3", "max(A1:A3) + min(A1:A3)")
+    formula("B4", "sqrt(16.0) + PI")
+    formula("B5", "self[\"sheetFactor\"] * A2")
+    formula("B6", "B1 + B2")
+    formula("B7", "\"text\".uppercase()")
+    formula("B8", "count(A1:A3)")
+    formula("B9", "3 | m")
+    formula("C1", "this is not ( kotlin")
+    formula("C2", "cell(\"Z99\")")
+    formula("C3", "max(D1:D3) + min(D1:D3)")
+    formula("C4", "max(A1:A3) + 1")
+    formula("C5", "avg(A1:A3)")
+    formula("C6", "avg(D1:D3)")
+}
+val expected = listOf(
+    "B1" to "20", "B2" to "10", "B3" to "7", "B4" to "7.1416", "B5" to "21", "B6" to "30",
+    "B7" to "TEXT", "B8" to "3", "B9" to "3 m", "C1" to "#ERR", "C2" to "#ERR", "C3" to "0", "C4" to "6", "C5" to "3.3333", "C6" to "#ERR",
+)
+val snap = getSpreadsheetSnapshot()
+val problems = mutableListOf<String>()
+val seen = expected.joinToString(" | ") { (ref, want) ->
+    val c = snap.cell(ref)
+    if (c?.display != want) problems += ref + ": expected " + want + ", got " + c?.display + " " + c?.errorDetail
+    ref + "=" + c?.display + (c?.errorDetail?.let { " (" + it + ")" } ?: "")
+}
+println(seen)
+val c1 = snap.cell("C1")?.errorDetail.orEmpty()
+if (!c1.startsWith("Formula compilation failed: ")) problems += "C1: a formula that does not compile must say why, got " + c1
+if (snap.cell("C2")?.errorDetail?.contains("outside the sheet") != true) problems += "C2: expected the out-of-range error, got " + snap.cell("C2")?.errorDetail
+if (snap.cell("C6")?.errorDetail?.contains("no numbers") != true) problems += "C6: an empty average must be an error, got " + snap.cell("C6")?.errorDetail
+if (problems.isNotEmpty()) error("spreadsheet formulas disagree: " + problems.joinToString("; "))
+println("SPREADSHEET_FORMULAS_OK")
+""".trimIndent()

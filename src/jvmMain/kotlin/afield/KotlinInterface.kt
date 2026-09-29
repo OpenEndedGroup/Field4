@@ -72,6 +72,10 @@ class KotlinInterface(
     }
 
     var evaluator: BasicJvmReplEvaluator
+    // Kotlin 2.5 raised the K1 IDE-services REPL compiler to DeprecationLevel.ERROR. This is the
+    // legacy K1 backend (still selectable, and used by the spreadsheet), so it is suppressed here
+    // and at the construction site below rather than removed.
+    @Suppress("DEPRECATION_ERROR")
     var compiler: KJvmReplCompilerWithIdeServices
 //    var compiler: K2KJvmReplCompilerWithCompletion
 
@@ -127,7 +131,7 @@ class KotlinInterface(
             }
         }
 
-        compiler = KJvmReplCompilerWithIdeServices()
+        compiler = @Suppress("DEPRECATION_ERROR") KJvmReplCompilerWithIdeServices()
         evaluator = BasicJvmReplEvaluator()
 
         context = KotlinContext()

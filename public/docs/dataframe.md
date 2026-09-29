@@ -242,7 +242,7 @@ Reusing the general machinery pays off again for nesting: a frame *inside* anoth
 
 The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2974#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:999#Kotlin DataFrame. The RUNTIME goes on the classpath here`).
 
-The runtime version is pinned to `1.0.0-Beta2`. The plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin, not bumping a line in `build.gradle.kts`.
+The runtime version is pinned to `1.0.0-Beta4`. The plugin was built from Field's `2.5.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin, not bumping a line in `build.gradle.kts`.
 
 ### What it costs every other box
 

@@ -72,9 +72,31 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         get() = supportedExtensions.contains(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
 
     /**
+     * VK_EXT_external_memory_host, enabled on macOS: an IOSurface's own pages imported as a
+     * `VkBuffer` ([afield.four.texture.IOSurfaceHostBuffer]). That is how IOSurfaces reach Vulkan on
+     * KosmicKrisp, which imports image memory only as an `MTLHeap` — never an IOSurface-backed
+     * `MTLTexture` — and has no `VK_EXT_metal_objects`.
+     */
+    val supportsExternalMemoryHost: Boolean
+        get() = OS == OSType.MACOS &&
+            supportedExtensions.contains(EXTExternalMemoryHost.VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME)
+
+    /** The alignment an imported host pointer and its size must have (16 KiB on Apple silicon). */
+    val minImportedHostPointerAlignment: Long by lazy {
+        if (!supportsExternalMemoryHost) 0L else MemoryStack.stackPush().use { stack ->
+            val host = VkPhysicalDeviceExternalMemoryHostPropertiesEXT.calloc(stack).`sType$Default`()
+            VK11.vkGetPhysicalDeviceProperties2(
+                physicalDevice.vkPhysicalDevice,
+                VkPhysicalDeviceProperties2.calloc(stack).`sType$Default`().pNext(host.address())
+            )
+            host.minImportedHostPointerAlignment()
+        }
+    }
+
+    /**
      * Refuse, naming the way out, when [supportsMetalObjects] is false. That is KosmicKrisp — the
-     * default Mac driver since 2026-09-29 — until the IOSurface paths move to
-     * VK_EXT_external_memory_metal (`dev_docs/KOSMICKRISP.md`).
+     * default Mac driver since 2026-09-29. The two live IOSurface paths no longer need it there
+     * (they go through [supportsExternalMemoryHost]); image-level IOSurface import/export still does.
      */
     fun requireMetalObjects(what: String) = check(supportsMetalObjects) {
         "$what needs VK_EXT_metal_objects, which the ${physicalDevice.driverName.ifEmpty { "current" }} Vulkan driver " +
@@ -290,6 +312,9 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                     addIfSupported(KHRPortabilitySubset.VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
                     // Lets an RTT color image export its backing IOSurface for GPU video streaming.
                     addIfSupported(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
+                    // IOSurface pages as a VkBuffer: how streaming and browser surfaces reach
+                    // KosmicKrisp, which has no metal_objects (see supportsExternalMemoryHost).
+                    addIfSupported(EXTExternalMemoryHost.VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME)
                 }
 
                 if (OS == OSType.LINUX) {

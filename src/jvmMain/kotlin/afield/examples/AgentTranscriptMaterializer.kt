@@ -84,6 +84,9 @@ object AgentTranscriptMaterializer {
         "external_browser_surface_macos_smoke",
         // The Linux/dma-buf receiver integration smoke, likewise.
         "external_browser_surface_linux_smoke",
+        // The macOS IOSurface round trip (streamer ring → CPU → browser receiver) on either driver:
+        // an integration probe that needs the field-encode helper, not a starting scene.
+        "iosurface_ring_roundtrip_smoke",
         "graphics_renderer_launch",
         // Needs both things this set is for: a renderer from a box it does not contain, and a
         // directory of images that is the reader's to supply. Opened on its own it would build a
