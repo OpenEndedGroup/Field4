@@ -471,9 +471,14 @@ val personalLayerProperty = "afield.personal.classpath"
 fun requiredRunJvmArgs(): List<String> {
     val os = System.getProperty("os.name").lowercase()
     val onWindowsOrLinux = os.contains("windows") || os.contains("linux")
+    val maxHeap = providers.gradleProperty("fieldMaxHeap").orNull
+        ?: providers.environmentVariable("AFIELD_MAX_HEAP").orNull ?: "8g"
+    require(maxHeap.matches(Regex("[1-9][0-9]*[kKmMgG]"))) {
+        "fieldMaxHeap / AFIELD_MAX_HEAP must be a positive JVM heap size, for example 24g"
+    }
 
     return buildList {
-        add("-Xmx8g")
+        add("-Xmx$maxHeap")
         add("--add-opens=java.base/java.net=ALL-UNNAMED")
         // Offline MIDI rendering. `MidiSystem.getSynthesizer()` actually returns
         // `com.sun.media.sound.AudioSynthesizer`, and its `openStream` is the only way to pull

@@ -140,6 +140,34 @@ box or an agent, `threeGeometryReviews(viewId)` reads the same inbox by ID. Note
 geometry revision and camera; [selecting and annotating geometry](geometry_review.md) explains
 points, faces, edges, vertices and visible-only rectangles.
 
+### See through surfaces
+
+Press **X-ray** in the viewer toolbar to reveal geometry behind filled surfaces. The
+**Surface** slider sets their opacity. Edges draw after the translucent faces, with
+slightly stronger stroke opacity, so the structure stays legible. Points keep their original contrast.
+This works in ordinary `three { … }` scenes without `inspect`. Turn it off to restore
+the original surface appearance. It changes the view only: no geometry is cut or moved.
+
+Picking still stops at the nearest surface, including in X-ray mode. Hide a part or
+use a section cut when you want to select geometry behind it. Saved notes and their
+images retain the X-ray setting and opacity, so a reviewer sees the same context.
+
+### Export a GLB
+
+Press **Export GLB** to download the visible geometry as a binary glTF file. The export
+keeps colors, part names, hidden-part choices and the current exploded or insertion
+positions. With **X-ray** enabled, surfaces carry the selected opacity in their materials;
+strokes retain their stronger opacity. Turn X-ray off before exporting an opaque model.
+Section cuts are baked into the exported surfaces and lines, without adding caps.
+
+Meshes, lines and points all travel in the file. Viewer controls, selection markers,
+measurement labels and the helper grid do not. This is a snapshot of the displayed
+geometry, rather than a fabrication solid or an animation. Other applications choose
+their own lighting and transparency sorting; line widths and point sizes also depend on
+the receiving viewer. Inspector units `mm`, `cm`, `m`, `in` and `ft` convert to glTF metres.
+An unspecified or other unit label leaves coordinates unchanged, with the label retained
+in the scene metadata.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
@@ -186,6 +214,11 @@ the builder `threeLines(...)` uses, so the two cannot disagree about what an FLi
 interactive objects, its topology strings and its click callbacks. And the mesh side is a lowering:
 `TriMesh.toThreeDrawable()` turns a mesh into a `ThreeDrawable`, which is *geometry plus how to draw
 it*, and the viewer draws drawables without knowing that meshes exist.
+
+A wide viewer can keep its controls compact with `controlGroup("controls", columns = 2) { ... }`.
+The control surface uses up to two columns and collapses to one in a narrow output. The ordinary
+`controlGroup("controls") { ... }` retains its single column; changing layout preserves control
+identities, cached values and callbacks.
 
 ## The camera is four numbers, and they are the rasterizer's four numbers
 
@@ -241,6 +274,10 @@ three(name = "comparison", channel = "comparison", width = 760, height = 320) {
 requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
 
 ### One WebGL context, several panels
+
+Drag to orbit; use the mouse wheel, trackpad scroll, or middle-button drag to dolly in and out.
+Multi-panel views retain your orbit and dolly across geometry and selection updates.
+Dolly moves the camera relative to its fitted starting view, so close inspection can crop the object.
 
 A contact sheet is N views of geometry side by side. The obvious translation is N viewers, and it is
 wrong: each iframe is its own WebGL context, Chrome caps live contexts at around sixteen and
@@ -524,6 +561,20 @@ The section plane cuts a mesh, wireframe overlay included. The explode scrubber 
 the annotations and leaves the solid where it is. Put the solid through `toFLines(...)` if you need it
 to come apart.
 
+## Editing a curve before an expensive operation
+
+`threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`
+provides the existing 3D anchor and Bézier-handle editor with a callback when a drag
+finishes. The callback receives detached copies of all the displayed FLines, after
+the drag's position updates. Camera movements do not call it. Select the pencil
+tool to edit and the camera tool to orbit or dolly.
+
+Keep the callback short: queue the snapshot, then validate it or rebuild dependent
+geometry on your own worker. The callback does not supply undo, persistence,
+constraints, or a solver; those belong to the application using the curves. Pass
+the accepted curves back to `threeLines` under the same viewer name to display any
+constraints you applied. `width` is optional and otherwise fills the output area.
+
 ## The payload both kinds of scene share
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are the FLine half, and a payload with an empty
@@ -548,3 +599,61 @@ context re-tile itself.
     loading="lazy"
     allowfullscreen>
 </iframe>
+
+## Optional viewer tools
+
+A scene can opt into a tool without making that tool part of Field. Tools are trusted
+ES modules served by the same Field server. The default viewer loads none.
+This small example adds a reference-axis toggle:
+
+```diffstatic {data-lang=kotlin}
+:::static
+three(name = "tools-example") {
+    tools("/threejs_tools_demo.js")
+    lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
+}
+```
+
+Each module exports a default factory returning a descriptor with a unique `id`.
+`mount(context)` receives a toolbar element, `THREE`, the camera and controls,
+`overlays`, the inspector API, `sources()` and `requestRender()`. Tool overlays stay
+out of GLB exports. `dispose()` releases the tool's own GPU resources and listeners;
+Field removes its toolbar and overlay group. `refresh()` runs after the viewer applies
+its base pose, rather than on an animation timer. Compute transformations from retained
+source coordinates, never by repeatedly transforming the previous result.
+
+For stateful tools, implement all three methods: `snapshot()`, `validate(state)` and
+`restore(state)`. State must be finite JSON of at most 32 KB per tool. Views and notes
+retain that state. Loading a view that needs an unavailable tool reports an error;
+it never imports a module from the note. Older views reset tools to their initial state.
+Validation must reject invalid input without mutation; restoration should not fail
+once validation has accepted it.
+
+Agents can use `FieldViewer.tools.register(descriptor)` or
+`await FieldViewer.tools.load("/path/to/tool.js")` in their capture browser. Both return
+an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
+Use the same source geometry revision when restoring a note. An application owns its
+modules and their behavior; registration does not validate geometry produced by a tool.
+
+??? aside "If you write a fence like these"
+    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
+    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
+    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
+    hatch, and the first figure on this page carries it.
+
+## Data colours and late viewers
+
+In a tiled `three` scene, surface picking uses the camera and viewport of the panel
+under the pointer. Click callbacks and hover highlights apply to that panel's objects
+(plus objects assigned to every panel); title bands do not pick geometry underneath.
+
+Use `mesh(mesh, unlit = true)` for force bands or other scalar data: the mesh's vertex
+colours are displayed without lighting or tone mapping. The default remains a lit surface.
+For a smooth surface with per-element colours, compute normals on the connected geometry
+before duplicating vertices for discontinuous colours; colour boundaries are not creases.
+
+Kotlin `display` panels are retained by the live box and replayed when a new browser finishes
+loading its document. This does not re-run code. The latest panel per channel, explicit
+open/close state, and current control values are replayed; cleared panels stay cleared.
+Retention is in memory (up to 128 panels and eight million HTML characters per box), not
+saved output across a server restart. Older panels are evicted when that budget is exceeded.

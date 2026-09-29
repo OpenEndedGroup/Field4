@@ -532,7 +532,7 @@ fun installAi4() {
 
     // Pick the agent engine by the /welcome provider setting. Both implement LlmBridge,
     // so IdeChatHelpers and the thread caches are provider-agnostic downstream.
-    fun createIdeBridge(uiLog: LogSink): LlmBridge = createLlmBridge(Ai4ModelDefaults.flagshipModel(), uiLog)
+    fun createIdeBridge(uiLog: LogSink): LlmBridge = afield.ai.core.createIdeBridge(uiLog)
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
@@ -817,6 +817,11 @@ fun installAi4() {
         val focus = ToolFocus(docPath, box, exec.property)
         // Document-authored tools contributed by boxes via the aiTool DSL (this request's snapshot).
         val documentAiTools = DocumentToolRegistry.toolsFor(docPath)
+        // Native graph + execution tools (NewBox, RunBox, PatchBoxText, ReadBoxOutput...). The editor
+        // kinds' reply rewrites this box's property, so their tools refuse to write it; the general
+        // chat's reply is prose, so nothing is reply-owned there.
+        val replyGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo, box, exec.property)
+        val chatGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
@@ -1799,6 +1804,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -1833,6 +1839,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = chatGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onTextDelta = { chunk ->
@@ -1883,6 +1890,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -1917,6 +1925,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -1951,6 +1960,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -2343,7 +2353,9 @@ fun installAi4() {
                     semanticRetrievalRebuild = semanticRetrievalRebuild,
                     agentMemory = agentMemory,
                     documentGuides = documentGuides,
-                    dynamicTools = DocumentToolRegistry.toolsFor(chatDocPath)
+                    dynamicTools = DocumentToolRegistry.toolsFor(chatDocPath),
+                    // The document chat had no way to edit a box before: no EditFile, no graph tools.
+                    fieldGraph = chatSession?.let { afield.ai.agent.FieldGraphTools.forTurn(it) }
                 )
 
                 chatThreadByKey[fileKey] = result.threadState

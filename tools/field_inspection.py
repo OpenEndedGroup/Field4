@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 
 
-def inspection_script(view_id, state=None, section=None, hidden=None, assembly=None, pick=None, note=None, region=None):
-    request=json.dumps(dict(viewId=view_id,state=state,section=section,hidden=hidden,assembly=assembly,pick=pick,note=note,region=region),allow_nan=False)
+def inspection_script(view_id, state=None, section=None, hidden=None, assembly=None, pick=None, note=None, region=None, xray=None, xray_opacity=None):
+    request=json.dumps(dict(viewId=view_id,state=state,section=section,hidden=hidden,assembly=assembly,pick=pick,note=note,region=region,xray=xray,xrayOpacity=xray_opacity),allow_nan=False)
     return """const request = %s;
 function find(w) {
     if (w.FieldInspector && new URL(w.location.href).searchParams.get('uid') === request.viewId) return w;
@@ -22,18 +22,19 @@ if(request.state){if(request.state.view)api.review(request.state);else api.resto
 if(request.section)api.section(request.section.normal, request.section.fraction);
 if(request.hidden)for(const [id,hide] of Object.entries(request.hidden))api.hide(id,hide);
 if(request.assembly!==null)api.assembly(request.assembly);
+if(request.xray!==null || request.xrayOpacity!==null)api.xray(request.xray ?? api.snapshot().xray,request.xrayOpacity ?? api.snapshot().xrayOpacity);
 if(request.region)api.region(request.region);
 if(request.pick)api.pick(request.pick.x,request.pick.y,request.pick.kind || 'face');
 return request.note!==null ? api.observe(request.note) : api.snapshot();""" % request
 
 
-async def inspect_view(client, view_id, *, state=None, section=None, hidden=None, assembly=None, pick=None, note=None, region=None, received=False, evidence_dir=None, include_resolved=False, timeout=60):
+async def inspect_view(client, view_id, *, state=None, section=None, hidden=None, assembly=None, pick=None, note=None, region=None, received=False, evidence_dir=None, include_resolved=False, xray=None, xray_opacity=None, timeout=60):
     if include_resolved and not received:
         raise ValueError("Review history requires received=True")
     if evidence_dir and not received:
         raise ValueError("Image export requires received=True")
     if received:
-        if any(value is not None for value in (state,section,assembly,pick,note,region)) or hidden:
+        if any(value is not None for value in (state,section,assembly,pick,note,region,xray,xray_opacity)) or hidden:
             raise ValueError("Reading the user's inbox cannot also change the capture browser")
         import asyncio, ssl, urllib.request, urllib.parse
         def read():
@@ -51,7 +52,7 @@ async def inspect_view(client, view_id, *, state=None, section=None, hidden=None
         return await asyncio.to_thread(read)
     import field_backdoor as fb
     await fb.ensure_playwright_attached(client,timeout=timeout,reason="inspect-view")
-    return await client.playwright_input(action="pageEval",script=inspection_script(view_id,state,section,hidden,assembly,pick,note,region),script_mode="body",timeout=timeout,wait_ms=100)
+    return await client.playwright_input(action="pageEval",script=inspection_script(view_id,state,section,hidden,assembly,pick,note,region,xray,xray_opacity),script_mode="body",timeout=timeout,wait_ms=100)
 
 
 def store_observation(path, *, artifact_digest, view, text, verdict="note"):

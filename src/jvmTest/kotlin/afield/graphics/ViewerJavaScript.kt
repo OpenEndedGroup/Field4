@@ -269,6 +269,7 @@ $region
      * write those four tests again.
      */
     val KNOWN_REGIONS: Map<String, List<String>> = mapOf(
+        "panel-pointer" to listOf("panelPointerAt"),
         "planar-tessellation" to listOf(
             "COPLANAR_SINE_OF_ANGLE",
             "COPLANAR_OFFSET_FRACTION",

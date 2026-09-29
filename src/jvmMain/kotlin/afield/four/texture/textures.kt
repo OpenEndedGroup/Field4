@@ -1,5 +1,6 @@
 package afield.four.texture
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.Target
 import afield.four.buffers.VulkanBuffer
@@ -474,22 +475,33 @@ open class LoadedTexture protected constructor(
             imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
         ): LoadedTexture = fromFile(fileName, renderer, imageFormat)
 
-        private val stubCache = java.util.WeakHashMap<Renderer, LoadedTexture>()
+        private val stubCache = java.util.WeakHashMap<Renderer, MutableMap<List<Any>, LoadedTexture>>()
+
+        /**
+         * A 1×1 texture of [rgba], uploaded and in `SHADER_READ_ONLY_OPTIMAL` before it is returned.
+         *
+         * Cached per renderer, colour and format. It used to be cached per renderer alone, so every
+         * later caller got the first caller's colour — the fabricate renderer's flat-normal, black
+         * emissive and white base-colour stubs were all one texture — and it was never uploaded
+         * unless the caller remembered to `transferNow()`, which most did not: the shared stub was
+         * sampled in `UNDEFINED` layout (VUID-vkCmdDraw-None-09600, on MoltenVK and KosmicKrisp).
+         */
+        @Synchronized
         fun stubTexture(
             renderer: Renderer = fromContext(),
             rgba: FloatArray = floatArrayOf(1f, 0.5f, 0.3f, 1f),
             imageFormat: Int = VK_FORMAT_R8G8B8A8_SRGB
         ): LoadedTexture {
-            stubCache[renderer]?.let { return it }
+            val bytes = rgba.map { (it.coerceIn(0f, 1f) * 255f).toInt() }
+            val perRenderer = stubCache.getOrPut(renderer) { mutableMapOf() }
+            perRenderer[bytes + imageFormat]?.let { return it }
             val data = MemoryUtil.memAlloc(4) // just leak it
-            data.put((rgba[0].coerceIn(0f,1f)*255f).toInt().toByte())
-            data.put((rgba[1].coerceIn(0f,1f)*255f).toInt().toByte())
-            data.put((rgba[2].coerceIn(0f,1f)*255f).toInt().toByte())
-            data.put((rgba[3].coerceIn(0f,1f)*255f).toInt().toByte())
+            bytes.forEach { data.put(it.toByte()) }
             data.flip()
             val decoded = DecodedImage(data, 1, 1)
-            val tex = LoadedTexture("stub_1x1", renderer, imageFormat, decoded)
-            stubCache[renderer] = tex
+            val tex = LoadedTexture("stub_1x1 ${bytes.joinToString(",")}", renderer, imageFormat, decoded)
+            tex.transferNow()
+            perRenderer[bytes + imageFormat] = tex
             return tex
         }
     }
@@ -545,13 +557,13 @@ open class LoadedTexture protected constructor(
             }
 
         VK10.vkCmdCopyBufferToImage(
-            cmd.vkCommandBuffer, bufferData.buffer, image.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, regions
+            cmd.vkCommandBuffer, bufferData.buffer, image.vkImage, vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL), regions
         )
     }
 
     private fun recordImageTransition(stack: MemoryStack, cmd: CommandBuffer, oldLayout: Int, newLayout: Int) {
         val barrier = VkImageMemoryBarrier.calloc(1, stack).sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-            .oldLayout(oldLayout).newLayout(newLayout).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+            .oldLayout(vkLayout(oldLayout)).newLayout(vkLayout(newLayout)).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED).image(image.vkImage)
             .subresourceRange { it: VkImageSubresourceRange ->
                 it.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0).levelCount(mipLevels).baseArrayLayer(0)
@@ -591,8 +603,8 @@ open class LoadedTexture protected constructor(
             run {
                 val barrier = VkImageMemoryBarrier.calloc(1, stack)
                     .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                    .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                    .newLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                    .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+                    .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL))
                     .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .image(image.vkImage)
@@ -643,9 +655,9 @@ open class LoadedTexture protected constructor(
             VK10.vkCmdBlitImage(
                 cmd.vkCommandBuffer,
                 image.vkImage,
-                VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                 image.vkImage,
-                VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 blit,
                 mipFilter
             )
@@ -653,8 +665,8 @@ open class LoadedTexture protected constructor(
             run {
                 val barrier = VkImageMemoryBarrier.calloc(1, stack)
                     .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                    .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-                    .newLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL))
+                    .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                     .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .image(image.vkImage)
@@ -683,8 +695,8 @@ open class LoadedTexture protected constructor(
         run {
             val barrier = VkImageMemoryBarrier.calloc(1, stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                .newLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+                .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                 .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                 .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                 .image(image.vkImage)
@@ -851,14 +863,14 @@ class StreamingTexture(
             cmd.vkCommandBuffer,
             bufferData.buffer,
             image.vkImage,
-            VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
             region
         )
     }
 
     private fun recordImageTransition(stack: MemoryStack, cmd: CommandBuffer, oldLayout: Int, newLayout: Int) {
         val barrier = VkImageMemoryBarrier.calloc(1, stack).sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-            .oldLayout(oldLayout).newLayout(newLayout).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+            .oldLayout(vkLayout(oldLayout)).newLayout(vkLayout(newLayout)).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED).image(image.vkImage)
             .subresourceRange { it: VkImageSubresourceRange ->
                 it.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0).levelCount(1).baseArrayLayer(0)
@@ -1057,14 +1069,14 @@ class MappedMonochromeTexture(
             cmd.vkCommandBuffer,
             bufferData.buffer,
             image.vkImage,
-            VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
             region
         )
     }
 
     private fun recordImageTransition(stack: MemoryStack, cmd: CommandBuffer, oldLayout: Int, newLayout: Int, levels: Int = targetMipLevels) {
         val barrier = VkImageMemoryBarrier.calloc(1, stack).sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-            .oldLayout(oldLayout).newLayout(newLayout).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+            .oldLayout(vkLayout(oldLayout)).newLayout(vkLayout(newLayout)).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED).image(image.vkImage)
             .subresourceRange { it: VkImageSubresourceRange ->
                 it.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0).levelCount(levels).baseArrayLayer(0)
@@ -1110,8 +1122,8 @@ class MappedMonochromeTexture(
             run {
                 val barrier = VkImageMemoryBarrier.calloc(1, stack)
                     .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                    .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                    .newLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+                    .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+                    .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL))
                     .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .image(image.vkImage)
@@ -1161,8 +1173,8 @@ class MappedMonochromeTexture(
 
             VK10.vkCmdBlitImage(
                 cmd.vkCommandBuffer,
-                image.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                image.vkImage, VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                image.vkImage, vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                image.vkImage, vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                 blit,
                 mipFilter
             )
@@ -1171,8 +1183,8 @@ class MappedMonochromeTexture(
             run {
                 val barrier = VkImageMemoryBarrier.calloc(1, stack)
                     .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                    .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-                    .newLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL))
+                    .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                     .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                     .image(image.vkImage)
@@ -1202,8 +1214,8 @@ class MappedMonochromeTexture(
         run {
             val barrier = VkImageMemoryBarrier.calloc(1, stack)
                 .sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-                .oldLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-                .newLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .oldLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL))
+                .newLayout(vkLayout(VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL))
                 .srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                 .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
                 .image(image.vkImage)
@@ -1359,7 +1371,7 @@ class StorageImage(val renderer: Renderer, val width: Int, val height: Int, val 
 
     private fun recordImageTransition(stack: MemoryStack, cmd: CommandBuffer, oldLayout: Int, newLayout: Int) {
         val barrier = VkImageMemoryBarrier.calloc(1, stack).sType(VK10.VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER)
-            .oldLayout(oldLayout).newLayout(newLayout).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
+            .oldLayout(vkLayout(oldLayout)).newLayout(vkLayout(newLayout)).srcQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED)
             .dstQueueFamilyIndex(VK10.VK_QUEUE_FAMILY_IGNORED).image(image.vkImage)
             .subresourceRange { it: VkImageSubresourceRange ->
                 it.aspectMask(VK10.VK_IMAGE_ASPECT_COLOR_BIT).baseMipLevel(0).levelCount(1).baseArrayLayer(0)

@@ -194,6 +194,7 @@ internal object Ai4BackdoorTools {
             documentGuides = DocumentGuideTools.forSession(sessionInfo),
             compileKotlin = codeTools.compileKotlin,
             evaluateKotlinExpression = codeTools.evaluateKotlinExpression,
+            fieldGraph = afield.ai.agent.FieldGraphTools(sessionInfo),
             focus = focusBox?.let { token ->
                 val box = boxByIdOrNull(token)
                     ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })

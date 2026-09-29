@@ -1,5 +1,6 @@
 package afield.four.texture
 
+import afield.four.device.vkLayout
 import afield.four.device.nameObject
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.vulkan.*
@@ -94,6 +95,9 @@ class Image(private val device: Device, val imageData: ImageData) {
             // MTLTexture IOSurface-exportable. Both are for zero-copy hand-off to a hardware video
             // encoder; import wins because a surface born via IOSurfaceCreate carries a real
             // pixelFormat (CoreVideo-wrappable), whereas MoltenVK's export leaves pixelFormat = 0.
+            if (imageData.importMetalIOSurface != 0L || imageData.exportMetalIOSurface) {
+                device.requireMetalObjects("An IOSurface-backed image")
+            }
             if (imageData.importMetalIOSurface != 0L) {
                 val importInfo = VkImportMetalIOSurfaceInfoEXT.calloc(stack)
                     .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_IMPORT_METAL_IO_SURFACE_INFO_EXT)
@@ -284,6 +288,7 @@ class Image(private val device: Device, val imageData: ImageData) {
      * or 0 if the surface could not be exported.
      */
     fun exportMetalIOSurfaceRef(): Long {
+        device.requireMetalObjects("Exporting an image's IOSurface")
         MemoryStack.stackPush().use { stack ->
             val ioInfo = VkExportMetalIOSurfaceInfoEXT.calloc(stack)
                 .sType(EXTMetalObjects.VK_STRUCTURE_TYPE_EXPORT_METAL_IO_SURFACE_INFO_EXT)
@@ -523,8 +528,8 @@ fun image_layout_transition(
             .srcAccessMask(src_access_mask)
             .dstStageMask(dst_stage_mask)
             .dstAccessMask(dst_access_mask)
-            .oldLayout(old_layout)
-            .newLayout(new_layout)
+            .oldLayout(vkLayout(old_layout))
+            .newLayout(vkLayout(new_layout))
             .srcQueueFamilyIndex(src_queue_family_index)
             .dstQueueFamilyIndex(dst_queue_family_index)
             .image(image)

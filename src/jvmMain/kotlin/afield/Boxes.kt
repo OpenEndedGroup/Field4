@@ -787,6 +787,12 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                     // Stop what the deleted boxes were running, dispose any renderer they own, and
                     // release their K2 compilation state; a deleted box is never re-run.
                     retireBoxes(targets, "delete-box")
+                    targets.forEach { target ->
+                        // Likewise its last-run line notes (Forth, Clojure, Python), never evicted before.
+                        afield.stdlib.LastRunNotes.forgetBox(target)
+                        // And its output history, which nothing will read again (review, 2026-09-29).
+                        BoxOutputLog.clear(target.id)
+                    }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
                     notify(countMessage)

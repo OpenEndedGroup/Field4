@@ -840,7 +840,13 @@ data class ToolExecutionContext(
      * provider-neutral MCP face ([ToolRegistry.describe]/[ToolRegistry.executeByName]).
      * A dynamic tool whose name collides with a built-in is ignored (built-ins win).
      */
-    val dynamicTools: List<BoxTool> = emptyList()
+    val dynamicTools: List<BoxTool> = emptyList(),
+
+    /**
+     * Native box graph + execution tools (NewBox, RunBox, ReadBoxOutput, ...) for one document.
+     * `null` hides them: only contexts that mean to let the agent edit and run the document wire it.
+     */
+    val fieldGraph: afield.ai.agent.FieldGraphTools? = null
 )
 
 /**

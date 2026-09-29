@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Quaternionf
 
@@ -417,9 +418,9 @@ class SideBySideStereoTarget(
                 org.lwjgl.vulkan.VK10.vkCmdCopyImage(
                     command.vkCommandBuffer,
                     srcImage,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                     dstImage,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                     region
                 )
 
@@ -812,9 +813,9 @@ class MultiviewSideBySideStereoTarget(
                 org.lwjgl.vulkan.VK10.vkCmdCopyImage(
                     command.vkCommandBuffer,
                     srcImage,
-                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                     dstImage,
-                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
                     region
                 )
 

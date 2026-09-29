@@ -208,6 +208,7 @@ internal object ManifoldNative {
     val allocSection: MethodHandle by lazy { alloc("manifold_alloc_cross_section") }
     val allocSectionVec: MethodHandle by lazy { alloc("manifold_alloc_cross_section_vec") }
     val allocMeshGL: MethodHandle by lazy { alloc("manifold_alloc_meshgl") }
+    val allocMeshGL64: MethodHandle by lazy { alloc("manifold_alloc_meshgl64") }
     val allocBox: MethodHandle by lazy { alloc("manifold_alloc_box") }
     val allocRect: MethodHandle by lazy { alloc("manifold_alloc_rect") }
     val allocPolygons: MethodHandle by lazy { alloc("manifold_alloc_polygons") }
@@ -219,6 +220,7 @@ internal object ManifoldNative {
     val deleteSection: MethodHandle by lazy { consume("manifold_delete_cross_section") }
     val deleteSectionVec: MethodHandle by lazy { consume("manifold_delete_cross_section_vec") }
     val deleteMeshGL: MethodHandle by lazy { consume("manifold_delete_meshgl") }
+    val deleteMeshGL64: MethodHandle by lazy { consume("manifold_delete_meshgl64") }
     val deleteBox: MethodHandle by lazy { consume("manifold_delete_box") }
     val deleteRect: MethodHandle by lazy { consume("manifold_delete_rect") }
     val deletePolygons: MethodHandle by lazy { consume("manifold_delete_polygons") }
@@ -411,6 +413,38 @@ internal object ManifoldNative {
     val meshGLNumProp: MethodHandle by lazy { count("manifold_meshgl_num_prop") }
     val meshGLVertProperties: MethodHandle by lazy { unary("manifold_meshgl_vert_properties") }
     val meshGLTriVerts: MethodHandle by lazy { unary("manifold_meshgl_tri_verts") }
+    val meshGLMergeLength: MethodHandle by lazy { count("manifold_meshgl_merge_length") }
+    val meshGLMergeFromVert: MethodHandle by lazy { unary("manifold_meshgl_merge_from_vert") }
+    val meshGLMergeToVert: MethodHandle by lazy { unary("manifold_meshgl_merge_to_vert") }
+
+    // MeshGL64 is the fabrication bridge. Unlike the ordinary rendering export it retains
+    // Manifold's internal double precision and, crucially, the run/face identity needed to
+    // reconstruct the polygonal planar faces behind the output triangulation.
+    val getMeshGL64: MethodHandle by lazy { unary("manifold_get_meshgl64") }
+    val ofMeshGL64: MethodHandle by lazy { unary("manifold_of_meshgl64") }
+    val meshGL64: MethodHandle by lazy {
+        handle(
+            "manifold_meshgl64",
+            FunctionDescriptor.of(ADDRESS, ADDRESS, ADDRESS, JAVA_LONG, JAVA_LONG, ADDRESS, JAVA_LONG),
+        )
+    }
+    val meshGL64NumVert: MethodHandle by lazy { count("manifold_meshgl64_num_vert") }
+    val meshGL64NumTri: MethodHandle by lazy { count("manifold_meshgl64_num_tri") }
+    val meshGL64NumProp: MethodHandle by lazy { count("manifold_meshgl64_num_prop") }
+    val meshGL64MergeLength: MethodHandle by lazy { count("manifold_meshgl64_merge_length") }
+    val meshGL64RunIndexLength: MethodHandle by lazy { count("manifold_meshgl64_run_index_length") }
+    val meshGL64RunOriginalIdLength: MethodHandle by lazy { count("manifold_meshgl64_run_original_id_length") }
+    val meshGL64FaceIdLength: MethodHandle by lazy { count("manifold_meshgl64_face_id_length") }
+    val meshGL64VertProperties: MethodHandle by lazy { unary("manifold_meshgl64_vert_properties") }
+    val meshGL64TriVerts: MethodHandle by lazy { unary("manifold_meshgl64_tri_verts") }
+    val meshGL64MergeFromVert: MethodHandle by lazy { unary("manifold_meshgl64_merge_from_vert") }
+    val meshGL64MergeToVert: MethodHandle by lazy { unary("manifold_meshgl64_merge_to_vert") }
+    val meshGL64RunIndex: MethodHandle by lazy { unary("manifold_meshgl64_run_index") }
+    val meshGL64RunOriginalId: MethodHandle by lazy { unary("manifold_meshgl64_run_original_id") }
+    val meshGL64FaceId: MethodHandle by lazy { unary("manifold_meshgl64_face_id") }
+    val meshGL64Tolerance: MethodHandle by lazy {
+        handle("manifold_meshgl64_tolerance", FunctionDescriptor.of(JAVA_DOUBLE, ADDRESS))
+    }
 
     // ---- boxes and rects ----------------------------------------------------------------------
 
@@ -820,3 +854,6 @@ data class RayHit(
 /** Internal float/int accessors kept beside the layouts they read. */
 internal fun MemorySegment.floatAt(index: Long): Float = getAtIndex(JAVA_FLOAT, index)
 internal fun MemorySegment.intAt(index: Long): Int = getAtIndex(JAVA_INT, index)
+
+internal fun MemorySegment.doubleAt(index: Long): Double = getAtIndex(JAVA_DOUBLE, index)
+internal fun MemorySegment.longAt(index: Long): Long = getAtIndex(JAVA_LONG, index)

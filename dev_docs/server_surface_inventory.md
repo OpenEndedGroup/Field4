@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 46 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 115 | nothing |
+| `/ws` **command** names (`handlers`) | 118 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -257,7 +257,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-115 command names, in the `handlers` table. This is the real command API, it is roughly twice
+118 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -273,8 +273,8 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 48 |
-| `agent_backdoor.kt` | 21 |
+| `Server.kt` | 49 |
+| `agent_backdoor.kt` | 23 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 5 |
@@ -313,6 +313,12 @@ What each of those reaches, checked against the code rather than inferred from t
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
 no sandbox between a `/ws` frame and that.
 
+`agent-task` and `agent-eval` (2026-09-29) are in the same class and add one thing: in `live`
+mode they call the configured AI provider, so a frame can also spend the machine's model tokens.
+The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
+(`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
+docs-annotation opt-ins do not loosen.
+
 | command | declared in |
 | --- | --- |
 | `agent-ai-tool-call` | `agent_backdoor.kt` |
@@ -322,6 +328,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-create-box` | `agent_backdoor.kt` |
 | `agent-dispose-graphics-context` | `agent_backdoor.kt` |
 | `agent-ensure-graphics-context` | `agent_backdoor.kt` |
+| `agent-eval` | `agent_backdoor.kt` |
 | `agent-get-property` | `agent_backdoor.kt` |
 | `agent-lifecycle-census` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
@@ -332,6 +339,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-run-jvm-main` | `agent_backdoor.kt` |
 | `agent-set-property` | `agent_backdoor.kt` |
 | `agent-snapshot` | `agent_backdoor.kt` |
+| `agent-task` | `agent_backdoor.kt` |
 | `agent-wait-frames` | `agent_backdoor.kt` |
 | `agent-why` | `agent_backdoor.kt` |
 | `agent-window-screenshot` | `agent_backdoor.kt` |
@@ -384,6 +392,7 @@ no sandbox between a `/ws` frame and that.
 | `import-ipynb` | `importing.kt` |
 | `import-metadata-edn` | `importing.kt` |
 | `import-metadata-edn-nested` | `importing.kt` |
+| `replay-output-areas` | `Server.kt` |
 | `initialize` | `Server.kt` |
 | `insert-template` | `templating.kt` |
 | `launch-all` | `executing.kt` |
@@ -476,7 +485,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 115 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 118 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
@@ -605,3 +614,9 @@ Demonstrated rather than asserted:
 `GET /three-review-image?uid=<view>&sha256=<hash>` serves bounded PNG sidecars only when the view’s retained notes reference that hash, under the same access policy.
 
 `POST /three-review-note?uid=<view>` explicitly resolves/reopens one note or appends an attributed reply. It requires the same loopback/same-site guard, JSON content, a matching note version and the current geometry revision. Updates run on Field’s main thread and retain an audit history.
+
+`replay-output-areas` returns the current document's retained output panels and
+control values to the requesting WebSocket session after its DOM is ready. It
+uses the existing document WebSocket access boundary, accepts no file path or
+code, does not execute boxes, and does not broadcast replay to other viewers.
+It adds no stronger authentication than the other document read commands.

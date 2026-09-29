@@ -1476,6 +1476,7 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
+    BoxOutputLog.observeBroadcast(message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -1812,7 +1813,8 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
             add("--disable-background-timer-throttling")
             add("--disable-backgrounding-occluded-windows")
             add("--disable-renderer-backgrounding")
-            add("--disable-frame-rate-limit")
+            // Keep Chromium's normal frame pacing. Uncapping RAF also disables GPU
+            // vsync and makes idle animated capture pages saturate a CPU/GPU core.
             add("--enable-gpu")
             add("--ignore-gpu-blocklist")
             if (System.getProperty("os.name").orEmpty().lowercase(Locale.US).contains("mac")) {
@@ -2151,6 +2153,9 @@ class Server {
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
 
+            // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
+            DocumentShutdownFlush.install()
+
             inMain {
                 while (true) {
                     try {
@@ -2202,6 +2207,24 @@ class Server {
                     t = System.currentTimeMillis()
                 }
             }
+
+            // The new browser asks only after its document DOM is ready. Replay panels to
+            // that session, without re-running code or disturbing existing viewers.
+            handlers["replay-output-areas"] = mutableSetOf({ _, _ ->
+                val info = thisSessionInfo.get()
+                val session = thisSession.get()
+                val boxes = (info.boxes.values + info.root).distinctBy { it.id }
+                    .filterNot { it.getPropertyRaw("_tombstone").isTrue() }
+                val messages = boxes.flatMap { box ->
+                    box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
+                        Message("control-value-update").payload(it)
+                    }
+                }
+                if (session != null) GlobalScope.launch {
+                    for (item in messages) session.send(Json.encodeToString(item))
+                }
+                Handled.yes
+            })
 
             handlers["initialize"] = mutableSetOf({ message, reply ->
                 sendProvisionalSet(thisSessionInfo.get().filename)
@@ -4282,6 +4305,46 @@ class Server {
                             call.respond(withContext(Dispatchers.IO) { afield.four.util.VulkanProbe.status(refresh) })
                         }
 
+                        // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
+                        // `?document=<name>` runs it in that open document; otherwise in a scratch one
+                        // that is discarded afterwards. Runs code and may spend model tokens, so it has
+                        // its own loopback + Host-allowlist + same-site guard (agentRouteAccess.kt), not
+                        // the docs-annotation policy, whose opt-ins must not open this.
+                        post("/api/agent-task") {
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentTaskRequest>(call.receiveText())
+                                val document = call.request.queryParameters["document"]
+                                json.encodeToString(withContext(Dispatchers.IO) { runAgentTaskHeadless(request, document) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
+                        }
+
+                        post("/api/agent-eval") {
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })
+                                json.encodeToString(withContext(Dispatchers.IO) {
+                                    afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+                                })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
+                        }
+
                         post("/api/python-settings") {
                             try {
                                 val request = call.receive<PythonSettingsRequest>()
@@ -5475,8 +5538,16 @@ class Server {
             // Pin a "startup" channel (plus any AFIELD_PIN_CHANNELS) to a non-scrolling region at the
             // top of the terminal so the boot stages annotate in place; degrades to plain stdout on
             // non-TTYs. The startup row collapses a few seconds after the first frame renders.
+            // First, before anything can start a thread: `field.sh` backgrounds this JVM from a
+            // non-interactive shell, which hands it SIGINT as *ignored*, and HotSpot then never
+            // installs its own handler — so `kill -INT` did nothing. See [InterruptSignal].
+            val interruptSignal = InterruptSignal.install()
+
             afield.logger.PinnedConsole.installWithStartup()
             lprintln("info,startup", "booting Field…")
+            if (interruptSignal != InterruptSignal.Outcome.ALREADY_HANDLED) {
+                lprintln("info,startup", "SIGINT: $interruptSignal")
+            }
 
             // Kotlin DataFrame is a third-party type, so it reaches `.h`/`.h2`/`display` through the
             // value registries rather than by implementing ToHTML. Idempotent; see

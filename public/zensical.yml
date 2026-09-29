@@ -223,6 +223,7 @@ nav:
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md
+      - Pressure Membranes: pressure_membranes.md
       # Directly after the hand-written particle systems, because it is the same compute-then-draw
       # shape with the rule replaced by a trained network — a velocity field in tier one, a Deep
       # Sets interaction over a GPU neighbour grid in tier two. Here rather than beside
@@ -261,6 +262,7 @@ nav:
     - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
+    - A Drawn Score, Heard: chain_drawn_score.md
   - AI & Agents:
     - AI Overview: aiFeatures.md
     - Talking a Function into Existence: function_conversation.md

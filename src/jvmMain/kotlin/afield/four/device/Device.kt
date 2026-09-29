@@ -41,6 +41,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     val supportsMaintenance7: Boolean
     val supportsMaintenance11: Boolean
     val supportsDynamicRenderingUnusedAttachments: Boolean
+    /** The device offers `unifiedImageLayouts`; [usesUnifiedImageLayouts] says whether Field turned it on. */
+    val supportsUnifiedImageLayouts: Boolean
+    /** `VK_KHR_unified_image_layouts` is enabled and [ImageLayouts] sends `GENERAL`. */
+    val usesUnifiedImageLayouts: Boolean
     val supportsMultiview: Boolean
     val raySupport: RayDeviceSupport
     val enabledExtensions: Set<String>
@@ -66,6 +70,16 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
     /** VK_EXT_metal_objects (MoltenVK) — required to export an RTT color image's backing IOSurface. */
     val supportsMetalObjects: Boolean
         get() = supportedExtensions.contains(org.lwjgl.vulkan.EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME)
+
+    /**
+     * Refuse, naming the way out, when [supportsMetalObjects] is false. That is KosmicKrisp — the
+     * default Mac driver since 2026-09-29 — until the IOSurface paths move to
+     * VK_EXT_external_memory_metal (`dev_docs/KOSMICKRISP.md`).
+     */
+    fun requireMetalObjects(what: String) = check(supportsMetalObjects) {
+        "$what needs VK_EXT_metal_objects, which the ${physicalDevice.driverName.ifEmpty { "current" }} Vulkan driver " +
+            "does not have. Run Field on MoltenVK for it: AFIELD_VULKAN_DRIVER=moltenvk ./field.sh"
+    }
 
     /** VK_KHR_external_memory_fd (Linux) — required to export an RTT color image's backing memory
      *  as an opaque fd for CUDA/NVENC import (see VulkanExternalMemory.kt / field-encode-linux). */
@@ -174,6 +188,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 VK11.vkGetPhysicalDeviceFeatures2(physicalDevice.vkPhysicalDevice, unusedAttachmentFeatureProbe)
                 unusedAttachmentFeatures.dynamicRenderingUnusedAttachments()
             } else false
+            val unifiedLayoutFeatures = VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.calloc(stack).`sType$Default`()
+            if (hasExt(KHRUnifiedImageLayouts.VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME)) probeFeatures(stack, unifiedLayoutFeatures.address())
+            supportsUnifiedImageLayouts = unifiedLayoutFeatures.unifiedImageLayouts()
+            usesUnifiedImageLayouts = supportsUnifiedImageLayouts && Options.unifiedImageLayouts && !Options.enableVR
             // Field sets only the depth-clamp dynamic state, so that is the EDS3 feature that decides
             // support. polygonMode is requested only where offered: KosmicKrisp has EDS3 without it
             // (and without fillModeNonSolid), and asking for it anyway fails vkCreateDevice.
@@ -231,6 +249,7 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 if (supportsDynamicRenderingUnusedAttachments) {
                     add(EXTDynamicRenderingUnusedAttachments.VK_EXT_DYNAMIC_RENDERING_UNUSED_ATTACHMENTS_EXTENSION_NAME)
                 }
+                if (usesUnifiedImageLayouts) add(KHRUnifiedImageLayouts.VK_KHR_UNIFIED_IMAGE_LAYOUTS_EXTENSION_NAME)
 
                 addIfSupported(KHR16bitStorage.VK_KHR_16BIT_STORAGE_EXTENSION_NAME)
 
@@ -487,6 +506,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, unusedAttachments.address()); tail = unusedAttachments.address()
             }
 
+            if (usesUnifiedImageLayouts) {
+                val unified = VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR.calloc(stack).`sType$Default`()
+                    .unifiedImageLayouts(true)
+                memPutAddress(tail + VkBaseOutStructure.PNEXT, unified.address()); tail = unified.address()
+            }
+
             // Optional: mesh shader + present features (Windows path).
             if (enableMeshShading) {
                 val mesh = VkPhysicalDeviceMeshShaderFeaturesEXT.calloc(stack)
@@ -611,6 +636,12 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
             lprintln(
                 "info,device",
                 "Device present timing: usesPresentTiming=$usesPresentTiming"
+            )
+            // Only now: an image created before the device existed could not have used it anyway.
+            ImageLayouts.unified = usesUnifiedImageLayouts
+            lprintln(
+                "info,device",
+                "Device unified image layouts: supported=$supportsUnifiedImageLayouts, used=$usesUnifiedImageLayouts"
             )
         }
     }

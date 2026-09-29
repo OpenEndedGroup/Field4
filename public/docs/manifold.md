@@ -560,3 +560,64 @@ library is absent:
 ```diffstatic {data-lang=bash}
 ./gradlew smokeManifold
 ```
+
+## Retain precision and inspect finite contacts
+
+Use `solid.toPlanarMesh()` when coordinates must remain double precision. The returned
+`SolidPlanarMesh` contains positions, triangle indices and connected polygonal-face
+provenance. `mesh.toSolid()` rebuilds a native solid without converting coordinates to
+Float32. `mesh.toTriMesh()` is the final conversion for drawing. Face provenance alone
+does not establish a crease: adjacent Boolean patches can be coplanar.
+
+`Solid.hullOfPointsD(doubleArrayOf(...))` accepts flat xyz triples at full precision.
+`Solid.scope { ... }` also closes its temporary native objects if the block throws.
+
+`planarContact(a, b, plane)` intersects the actual boundary polygons on a specified
+plane. Two infinite planes being coincident is insufficient; the finite polygons must
+overlap. `planarContacts(a, b)` discovers those finite patches automatically.
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.manifold.*
+import afield.stdlib.planning.Point3D
+
+val area = Solid.scope {
+    val a = Solid.cube(10.0).toPlanarMesh()
+    val b = Solid.cube(10.0).translated(10.0, 0.0, 0.0).toPlanarMesh()
+    val plane = ContactPlane(Point3D(10.0, 0.0, 0.0), Point3D(1.0, 0.0, 0.0))
+    planarContact(a, b, plane).area
+}
+println(area) // 100 square units
+```
+
+`auditApertures(...)` compares removed boundary regions on both sides against an
+independently supplied expected region. It also reports material outside the contact
+and an optional required margin. `GeometryTolerances` separates length, area and volume
+thresholds in caller-chosen units. These are geometric comparisons within native
+Boolean tolerances. They do not establish mechanical suitability.
+
+## Approximate a cubic with an explicit error bound
+
+`CubicBezier3D` is an immutable cubic over double-precision `Point3D` values.
+`valueAt(t)` evaluates its position; `tangentAt(t)` returns its unnormalised derivative.
+`flatten(maximumDeviation)` subdivides until each subcurve's control hull lies within
+the requested distance of its finite chord, returning a polyline including both endpoints.
+
+```diffstatic {data-lang=kotlin}
+:::static
+import afield.stdlib.planning.*
+
+val curve = CubicBezier3D(
+    Point3D(10.0, 0.0, 0.0), Point3D(10.0, 5.5, 0.0),
+    Point3D(5.5, 10.0, 0.0), Point3D(0.0, 10.0, 0.0)
+)
+val polyline = curve.flatten(maximumDeviation = 0.01)
+val radiusBound = curve.minimumRadiusBound(minimum = 9.0)
+```
+
+`minimumRadiusBound` recursively bounds speed and the derivative cross product using
+Bernstein control hulls. It returns a conservative numerical lower bound on radius,
+or throws if it cannot establish the requested minimum within its subdivision budget.
+Failure does not prove that the curve violates the threshold. Cusps, degenerate chords
+and arithmetic overflow are rejected. This uses floating-point arithmetic, not formal
+interval certification; the polyline error bound does not prove containment in another solid.

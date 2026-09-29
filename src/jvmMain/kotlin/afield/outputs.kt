@@ -44,6 +44,7 @@ interface HasOutput {
 }
 
 class DefaultOutput : HasOutput {
+    internal val retainedAreas = OutputAreaReplay()
     var proxy: (Any?, Boolean, Number) -> Unit = { _, _, _ -> }
     var displayProxy: (String, Any?) -> Unit = { _, _ -> }
     var errorProxy: (Any?, String, Int) -> Unit = { _, _, _ -> }
@@ -71,6 +72,7 @@ class DefaultOutput : HasOutput {
 
 private fun Box.sendOutputControl(action: String, channel: String? = null) {
     val channelValue = channel?.trim()?.takeIf { it.isNotEmpty() }
+    output.retainedAreas.control(action, channelValue)
     send(Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
 }
 
@@ -2480,12 +2482,25 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
  * @param block controls to add to the surface
  */
 fun Box.controlGroup(channel: String = "controls", block: ControlGroupBuilder.() -> Unit) {
+    controlGroup(channel, columns = 1, block = block)
+}
+
+/**
+ * A control surface with up to [columns] responsive columns. Use beside a wide mesh or plot
+ * to keep controls visible without a long vertical scroll. Narrow outputs collapse to fewer
+ * columns; the ordinary two-argument overload retains its existing single-column layout.
+ * Control identity, cached values, callbacks and tablet routing are unchanged.
+ */
+fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlGroupBuilder.() -> Unit) {
+    require(columns in 1..4) { "controlGroup columns must be between 1 and 4" }
     val builder = ControlGroupBuilder(this, channel)
     builder.apply(block)
     val grouped = builder.buildHtml()
     registerControllerControlGroup(this, channel, builder.buildControls())
     if (grouped.isNotBlank()) {
-        display(channel, """<div class="control-group">$grouped</div>""")
+        val layout = if (columns == 1) "" else
+            """ style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));width:min(${520 * columns}px,calc(100vw - 64px));max-width:${520 * columns}px;gap:6px" """
+        display(channel, """<div class="control-group"$layout>$grouped</div>""")
     }
 }
 

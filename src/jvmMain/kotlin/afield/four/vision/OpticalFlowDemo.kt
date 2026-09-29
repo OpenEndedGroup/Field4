@@ -33,7 +33,7 @@ class OpticalFlowDemo(val renderer: Renderer,val width: Int=960,val height: Int=
         textureResolver={ t -> fromViews(listOf(when(t.name){"motion"->flow.output;"firstImage"->pair.imageViewArray[0];"secondImage"->pair.imageViewArray[1];else->feedback[i]}),t.name,sampler) }
     })}
     private val displayMeshes=displays.map { m -> val p=m.pointer();val mesh=Mesh(renderer,p);mesh.resize(3,0,p);m.meshes["quad"]=mesh;mesh.push.setMembers(m.fi.pushConstants.single().members);mesh }
-    private val command=CommandBuffer(renderer.commandPool,true,false)
+    private val command=CommandBuffer(renderer.commandPool,true,true)
     private val fence=Fence(renderer.device,false)
     var dx=12f
     var dy=-8f

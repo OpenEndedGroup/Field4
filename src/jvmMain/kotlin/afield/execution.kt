@@ -466,6 +466,9 @@ private fun renderDisplayContent(content: Any?): String {
     }
 }
 
+private fun retainedDisplayContent(box: Box, channel: String, content: Any?): String =
+    renderDisplayContent(content).also { box.output.retainedAreas.put(channel, it) }
+
 private val renderedValueVisualizerHtmlRegex = Regex(
     pattern = """^\s*<div\b[^>]*\bclass\s*=\s*(['"])[^'"]*\bvalue-viz(?:-h2)?\b""",
     options = setOf(RegexOption.IGNORE_CASE)
@@ -1115,6 +1118,7 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
+    BoxOutputLog.observeOutput(normalized)
     // The recipient is resolved now, not when the run started. A launch outlives the socket that
     // asked for it — reload the browser and that socket is gone — and until 2026-09-29 everything the
     // launch printed went on down it: `reply` wrote to the dead socket, and the reloaded page, now a
@@ -1201,7 +1205,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     }
 
     box.output.displayProxy = { channel, content ->
-        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, renderDisplayContent(content))))
+        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
     }
 }
 
@@ -1473,7 +1477,7 @@ class KotlinExecution : BoxExecution {
                     box.output.displayProxy = { channel, content ->
                         send(
                             Message("set-output").payload(
-                                Set_output(box.id, "outputarea", channel, renderDisplayContent(content))
+                                Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))
                             )
                         )
                     }
@@ -2472,7 +2476,7 @@ class KotlinExecution : BoxExecution {
                                 box.id,
                                 "outputarea",
                                 channel,
-                                renderDisplayContent(content)
+                                retainedDisplayContent(box, channel, content)
                             )
                         )
                     )

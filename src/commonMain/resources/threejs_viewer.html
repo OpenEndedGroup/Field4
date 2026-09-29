@@ -147,6 +147,9 @@
             gap: 8px;
         }
 
+        /* The title owns the reserved header band; tools belong inside the canvas below it. */
+        #canvas-wrap.chrome-top ~ #hud { top: 32px; }
+
         #hud-right {
             margin-left: auto;
             flex-direction: column;
@@ -291,6 +294,13 @@
         #hud .hud-group, #hud .hud-button { border: 0; background: #000; }
         #hud button:focus-visible, #feature-review button:focus-visible,
         #hud select:focus-visible { color: var(--accent); }
+        #hud #xray-toggle.is-active { background: var(--accent); color: #000; }
+        #xray-tools { flex-shrink: 0; }
+        #viewer-tools { display: contents; }
+        .viewer-tool { user-select: none; }
+        .viewer-tool input, .viewer-tool textarea, .viewer-tool [role="status"] { user-select: text; }
+        #glb-status { max-width: 28em; white-space: normal; user-select: text; -webkit-user-select: text; }
+        #glb-status.is-error { color: #ff7777; }
         #feature-region-box { position: fixed; border: 1px dashed #fff; pointer-events: none; z-index: 8; }
         #feature-angle-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
         #feature-angle { width: 140px; accent-color: var(--accent); }
@@ -407,6 +417,16 @@
                 <b id="explode-readout">0</b>
             </span>
         </div>
+        <div class="hud-group hidden" id="xray-tools" aria-label="Surface display">
+            <button type="button" class="hud-button" id="xray-toggle" aria-pressed="false" title="See through filled surfaces; picks still stop at the nearest surface">X-ray</button>
+            <label class="hud-slider hidden" id="xray-opacity-wrap">Surface
+                <input type="range" id="xray-opacity" min="3" max="100" value="12" aria-label="X-ray surface opacity">
+                <b id="xray-readout">12%</b>
+            </label>
+            <button type="button" class="hud-button" id="export-glb" title="Download visible geometry with its current positions and materials">Export GLB</button>
+            <span id="glb-status" role="status" aria-live="polite"></span>
+        </div>
+        <div id="viewer-tools"></div>
         <div class="hud-group hidden" id="feature-tools">
             <label>Pick <select id="feature-mode" aria-label="Pick a model feature">
                 <option value="off">Off</option><option value="point">Point</option><option value="face">Face</option>
@@ -446,6 +466,17 @@
     <div id="review-threads"></div>
 </div>
 
+<script>
+// This must run before module imports: file previews cannot load the server's /vendor assets.
+if (window.location.protocol === 'file:') {
+    document.getElementById('hud').style.display = 'none';
+    const notice = document.createElement('div');
+    notice.style.cssText = 'position:fixed;inset:0;z-index:1000;display:grid;place-content:center;padding:32px;background:#080808;color:#ddd;font:16px Iosevka,monospace;line-height:1.6';
+    notice.textContent = 'This is the Field viewer template, not a live document. Open the running Field document using its http://localhost address. A file:// preview cannot receive simulation data.';
+    document.body.appendChild(notice);
+}
+</script>
+
 <!--
     three.js is vendored in-repo rather than pulled from a CDN.
 
@@ -470,6 +501,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createViewerTools } from '/threejs_tools.js';
 
 const container = document.getElementById('canvas-wrap');
 const marqueeEl = document.getElementById('marquee');
@@ -478,6 +510,19 @@ const selectionStatusEl = document.getElementById('selection-status');
 const modeGroupEl = document.getElementById('mode-group');
 const maskGroupEl = document.getElementById('mask-group');
 const urlParams = new URLSearchParams(window.location.search);
+const xrayState = { enabled: urlParams.get('xray') === '1', opacity: .12 };
+const xrayToggle = document.getElementById('xray-toggle');
+const xrayOpacity = document.getElementById('xray-opacity');
+function xrayHud() {
+    document.getElementById('xray-tools').classList.toggle('hidden', !editorState.uiVisible);
+    xrayToggle.classList.toggle('is-active', xrayState.enabled);
+    xrayToggle.setAttribute('aria-pressed', String(xrayState.enabled));
+    document.getElementById('xray-opacity-wrap').classList.toggle('hidden', !xrayState.enabled);
+    xrayOpacity.value = String(Math.round(xrayState.opacity * 100));
+    document.getElementById('xray-readout').textContent = Math.round(xrayState.opacity * 100) + '%';
+}
+xrayToggle.addEventListener('click', () => { xrayState.enabled = !xrayState.enabled; xrayHud(); requestRender(); });
+xrayOpacity.addEventListener('input', () => { xrayState.opacity = Number(xrayOpacity.value) / 100; xrayHud(); requestRender(); });
 
 // [viewer-region demand-render] BEGIN
 // One pending frame, with no polling while idle or hidden. Dirty state survives suspension.
@@ -512,7 +557,51 @@ const renderScheduler = createDemandRenderer(render,
     () => pageActive && contextAvailable && !document.hidden);
 function requestRender() { renderScheduler.request(); }
 // Read-only telemetry for live idle/render regression checks, separate from saved review state.
-window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats()});
+const viewerTools = createViewerTools({
+    host: document.getElementById('viewer-tools'), requestRender,
+    context: element => {
+        const overlays = new THREE.Group(); scene.add(overlays);
+        return {THREE, camera, controls, overlays, inspector: window.FieldInspector,
+            sources: () => featureSources().map(s => ({id:s.id, label:s.label, object:s.slot.object})),
+            release: () => scene.remove(overlays)};
+    }
+});
+window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools});
+let glbExporting = false;
+async function exportGLB({download=true} = {}) {
+    if (glbExporting) throw new Error('An export is already in progress.');
+    glbExporting = true;
+    const button = document.getElementById('export-glb'), status = document.getElementById('glb-status');
+    button.disabled = true; status.classList.remove('is-error'); status.textContent = 'Preparing GLB…';
+    try {
+        const {exportViewerGLB} = await import('/threejs_export.js');
+        const names = new Map();
+        for (const slot of payloadGeometrySlots.drawables) if (slot?.object)
+            names.set(slot.object, {id:slot.partId, label:slot.label || slot.partId});
+        for (const source of featureSources()) if (!names.has(source.slot.object))
+            names.set(source.slot.object, {id:source.id, label:source.label});
+        const state = inspectorSnapshot();
+        const data = await exportViewerGLB(baseGeometryRoot, {xray:state.xray, opacity:state.xrayOpacity,
+            units:inspectorState.spec?.units || '', names,
+            metadata:{viewId:urlParams.get('uid'), revision:featureIdentity(), explodeAmount:state.explode,
+                assemblyStep:state.assemblyStep, tools:state.tools, sectionEnabled:state.sectionEnabled,
+                renderOrigin:state.renderOrigin, renderUpAxis:state.renderUpAxis}});
+        if (download) {
+            const url = URL.createObjectURL(new Blob([data], {type:'model/gltf-binary'}));
+            const link = document.createElement('a');
+            link.href = url; link.download = (urlParams.get('uid') || 'field-view').replace(/[^a-zA-Z0-9_-]/g, '_') + (state.xray ? '-xray' : '') + '.glb';
+            document.body.appendChild(link); link.click(); link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+        }
+        status.textContent = 'GLB ready · ' + (data.byteLength < 1048576
+            ? Math.ceil(data.byteLength / 1024) + ' KB' : (data.byteLength / 1048576).toFixed(1) + ' MB');
+        return data;
+    } catch (error) {
+        status.classList.add('is-error'); status.textContent = 'Export failed: ' + error.message;
+        throw error;
+    } finally { button.disabled = false; glbExporting = false; }
+}
+document.getElementById('export-glb').addEventListener('click', () => { exportGLB().catch(() => {}); });
 document.addEventListener('visibilitychange', () => renderScheduler.visibilityChanged());
 window.addEventListener('pagehide', () => { pageActive = false; renderScheduler.visibilityChanged(); });
 window.addEventListener('pageshow', () => { pageActive = true; renderScheduler.visibilityChanged(); });
@@ -631,8 +720,8 @@ const raycaster = new THREE.Raycaster();
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
-const HANDLE_ANCHOR_SIZE_PX = 8;
-const HANDLE_CONTROL_SIZE_PX = 7;
+const HANDLE_ANCHOR_SIZE_PX = 5;
+const HANDLE_CONTROL_SIZE_PX = 3;
 const HANDLE_SELECTED_BONUS_PX = 2;
 const HANDLE_HIT_RADIUS_PX = 9;
 
@@ -1209,6 +1298,7 @@ function ensureAttribute(geometry, name, itemSize, fillValue) {
 // `docs_capture_audit.py`, which left all 43 of the page's other figures unmoved.
 function makeLineMaterial() {
     return new THREE.ShaderMaterial({
+        uniforms: { uXrayEdgeStrength: { value: 1.0 } },
         vertexShader: `
             attribute vec3 color;
             attribute float alpha;
@@ -1223,10 +1313,11 @@ function makeLineMaterial() {
         `,
         fragmentShader: `
             varying vec4 vColor;
+            uniform float uXrayEdgeStrength;
             #include <clipping_planes_pars_fragment>
             void main() {
                 #include <clipping_planes_fragment>
-                gl_FragColor = vColor;
+                gl_FragColor = vec4(vColor.rgb, min(1.0, vColor.a * uXrayEdgeStrength));
             }
         `,
         transparent: true,
@@ -1315,20 +1406,21 @@ function makeFillMaterial() {
 function makeSurfaceMaterial(style, hoverColor) {
     const s = style || {};
     const hover = hoverColor || null;
-    const material = new THREE.MeshStandardMaterial({
+    const parameters = {
         color: 0xffffff,
         vertexColors: true,
         side: s.doubleSided === false ? THREE.FrontSide : THREE.DoubleSide,
         transparent: true,
         opacity: s.opacity === undefined ? 1.0 : s.opacity,
-        roughness: 0.6,
-        metalness: 0.1,
-        flatShading: !!s.flatShading,
         // Push the surface back a touch so a wireframe drawn over it does not z-fight with it.
         polygonOffset: true,
         polygonOffsetFactor: 1,
         polygonOffsetUnits: 1
-    });
+    };
+    const material = s.unlit
+        ? new THREE.MeshBasicMaterial(parameters)
+        : new THREE.MeshStandardMaterial({...parameters, roughness: 0.6, metalness: 0.1, flatShading: !!s.flatShading});
+    material.toneMapped = !s.unlit;
     material.depthWrite = s.depthWrite !== false;
     material.onBeforeCompile = (shader) => {
         let fragmentPars = '#include <color_pars_fragment>\nvarying float vAlpha;';
@@ -1359,7 +1451,7 @@ function makeSurfaceMaterial(style, hoverColor) {
     // the key for the same reason and nothing weaker: without it a hovering solid added after a plain
     // one is handed the plain one's program and simply never highlights.
     material.customProgramCacheKey = () =>
-        'vertex-alpha-v3|' + (s.flatShading ? 'flat' : 'smooth') + '|' +
+        'vertex-alpha-v4|' + (s.unlit ? 'unlit|' : 'lit|') + (s.flatShading ? 'flat' : 'smooth') + '|' +
         (s.doubleSided === false ? 'front' : 'double') + '|' + (hover ? 'hover' : 'plain');
     return material;
 }
@@ -1380,6 +1472,7 @@ function makeWireframeOverlay(geometry, style) {
 function makeInteractiveLineMaterial(hoverColor) {
     return new THREE.ShaderMaterial({
         uniforms: {
+            uXrayEdgeStrength: { value: 1.0 },
             uHover: { value: 0.0 },
             uHoverColor: { value: hoverColor ? new THREE.Color(hoverColor[0], hoverColor[1], hoverColor[2]) : new THREE.Color(1, 1, 1) },
             uHoverAlpha: { value: hoverColor ? hoverColor[3] : 1.0 }
@@ -1400,13 +1493,14 @@ function makeInteractiveLineMaterial(hoverColor) {
             uniform float uHover;
             uniform vec3 uHoverColor;
             uniform float uHoverAlpha;
+            uniform float uXrayEdgeStrength;
             varying vec4 vColor;
             #include <clipping_planes_pars_fragment>
             void main() {
                 #include <clipping_planes_fragment>
                 vec3 c = mix(vColor.rgb, uHoverColor, uHover);
                 float a = mix(vColor.a, uHoverAlpha, uHover);
-                gl_FragColor = vec4(c, a);
+                gl_FragColor = vec4(c, min(1.0, a * uXrayEdgeStrength));
             }
         `,
         transparent: true,
@@ -1643,6 +1737,7 @@ function interactiveEntry(source, meshes, vertices) {
  */
 function surfaceEntry(source, meshes, drawableIndex, geometry) {
     const entry = interactiveEntry(source, meshes, []);
+    entry.panel = Number.isFinite(source.panel) ? source.panel : 0;
     entry.surface = {
         id: typeof source.id === 'string' ? source.id : '',
         drawableIndex: drawableIndex,
@@ -3077,15 +3172,16 @@ function setInteractiveHover(entry, hovered) {
 let hoverCache = { key: '', result: false };
 
 function hoverStateKey() {
-    const q = camera.quaternion;
-    const t = camera.position;
+    const pickCamera = pointerCamera || camera;
+    const q = pickCamera.quaternion;
+    const t = pickCamera.position;
     // `interactiveRevision` and not just the set's length: a payload can replace every entry without
     // changing how many there are, and a cache that missed that would hold a hover on an object that
     // no longer exists.
     return [
         pointer.x.toFixed(5), pointer.y.toFixed(5),
         t.x, t.y, t.z, q.x, q.y, q.z, q.w,
-        interactiveRevision
+        interactiveRevision, pointerPanel
     ].join(',');
 }
 
@@ -3103,8 +3199,9 @@ function updateInteractiveHover() {
         hoverCache = { key: key, result: false };
         return false;
     }
-    raycaster.setFromCamera(pointer, camera);
-    const meshes = hoverable.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+    raycaster.setFromCamera(pointer, pointerCamera || camera);
+    const meshes = hoverable.filter(entryInPointerPanel).flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+
     const hits = raycaster.intersectObjects(meshes, false);
     const hitSet = new Set(hits.map((hit) => hit.object));
     let anyPointer = false;
@@ -4846,7 +4943,7 @@ function featureCaptureEvidence(record) {
         const canvas=renderer.domElement, rect=canvas.getBoundingClientRect();
         camera.updateMatrixWorld(true);
         renderer.setViewport(0,0,rect.width,rect.height);
-        renderer.setScissorTest(false); renderer.render(scene,camera);
+        renderer.setScissorTest(false); renderGeometry(camera);
         const full=document.createElement('canvas');
         const scale=Math.min(1,1600/canvas.width,1600/canvas.height);
         full.width=Math.max(1,Math.round(canvas.width*scale)); full.height=Math.max(1,Math.round(canvas.height*scale));
@@ -4981,8 +5078,9 @@ function inspectorSnapshot() {
         renderUpAxis: (inspectorState.spec || {}).renderUpAxis || 'Y',
         sectionFlip: !!(((inspectorState.spec || {}).section || {}).flip),
         hidden: [...inspectorState.hidden].sort(), camera: camera.position.toArray(), target: controls.target.toArray(),
-        cameraFov:camera.fov,cameraZoom:camera.zoom,
+        cameraFov:camera.fov,cameraZoom:camera.zoom,cameraNear:camera.near,cameraFar:camera.far,
         explode: inspectorState.explodeAmount, assemblyStep: inspectorState.assemblyStep,
+        xray: xrayState.enabled, xrayOpacity: xrayState.opacity, tools: viewerTools.snapshot(),
         light: keyLight.position.toArray(), sectionEnabled: inspectorState.sectionEnabled,
         sectionFraction: inspectorState.sectionFraction, sectionNormal: ((inspectorState.spec || {}).section || {}).normal || [1,0,0],
         selectedPart: inspectorState.selectedPart, selectedTriangle: inspectorState.selectedTriangle, selection:featureClone(inspectorState.selection) };
@@ -5007,7 +5105,12 @@ function inspectorRestore(state) {
         throw new Error('Section normal must be nonzero');
     if (state.selectedPart != null && !ids.has(state.selectedPart)) throw new Error('Unknown selected part');
     if(state.cameraFov!=null&&(!Number.isFinite(state.cameraFov)||state.cameraFov<=0||state.cameraFov>=180))throw new Error('Invalid camera field of view');
+    if((state.cameraNear!=null||state.cameraFar!=null)&&(!Number.isFinite(state.cameraNear)||!Number.isFinite(state.cameraFar)||state.cameraNear<=0||state.cameraFar<=state.cameraNear))throw new Error('Invalid camera clipping range');
     if(state.cameraZoom!=null&&(!Number.isFinite(state.cameraZoom)||state.cameraZoom<=0))throw new Error('Invalid camera zoom');
+    if (state.xray != null && typeof state.xray !== 'boolean') throw new Error('Invalid x-ray mode');
+    if (state.xrayOpacity != null && (!Number.isFinite(state.xrayOpacity) || state.xrayOpacity < .03 || state.xrayOpacity > 1))
+        throw new Error('X-ray opacity must be between 0.03 and 1');
+    viewerTools.validate(state.tools ?? {});
     const selection=featureValidate(state.selection);
     if(selection && (selection.partId!==state.selectedPart || (selection.triangle??null)!==(state.selectedTriangle??null)))throw new Error('Selection owner mismatch');
     if (state.selectedTriangle != null && !selection) {
@@ -5016,11 +5119,16 @@ function inspectorRestore(state) {
         if (!Number.isInteger(state.selectedTriangle) || state.selectedTriangle < 0 || state.selectedTriangle >= count)
             throw new Error('Unknown selected triangle');
     }
+    xrayState.enabled = state.xray ?? false;
+    xrayState.opacity = state.xrayOpacity ?? .12;
+    xrayHud();
+    viewerTools.restore(state.tools ?? {});
     inspectorState.selection=selection;
     inspectorState.hidden = new Set(state.hidden || []);
     if (state.camera && state.camera.length) camera.position.fromArray(state.camera);
     if(state.cameraFov!=null)camera.fov=state.cameraFov;
     if(state.cameraZoom!=null)camera.zoom=state.cameraZoom;
+    if(state.cameraNear!=null){camera.near=state.cameraNear;camera.far=state.cameraFar;}
     camera.updateProjectionMatrix();
     if (state.target && state.target.length) controls.target.fromArray(state.target);
     if (state.light && state.light.length) keyLight.position.fromArray(state.light);
@@ -5077,6 +5185,7 @@ window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: in
     hide: (id, hidden=true) => { if(!inspectorPartIds().includes(id))throw new Error('Unknown part'); if(hidden)inspectorState.hidden.add(id);else inspectorState.hidden.delete(id);inspectorRefresh();inspectorPartHud();return inspectorSnapshot(); },
     section: (normal, fraction=.5) => inspectorRestore({...inspectorSnapshot(), sectionNormal:normal, sectionEnabled:true, sectionFraction:fraction}),
     assembly: step => inspectorRestore({...inspectorSnapshot(), assemblyStep:step}),
+    xray: (enabled=true, opacity=xrayState.opacity) => inspectorRestore({...inspectorSnapshot(), xray:enabled, xrayOpacity:opacity}),
     capture: featureCaptureEvidence,
     observe: featureObservation
 });
@@ -5086,8 +5195,10 @@ function inspectorRefresh() {
     interactiveRevision++;
     requestRender();
     inspectorApplyExplode();
+    viewerTools.refresh();
     inspectorApplySection();
-    for(const source of featureSources())if(inspectorState.hidden.has(source.id))source.slot.object.visible=false;
+    // Restore visibility for ordinary scenes too, including after unhide.
+    for(const source of featureSources())source.slot.object.visible=!inspectorState.hidden.has(source.id);
     inspectorRebuildOverlay();
 }
 
@@ -5363,6 +5474,8 @@ function setMode(mode) {
 }
 
 function updateEditableHud() {
+    xrayHud();
+    document.getElementById("viewer-tools").classList.toggle("hidden", !editorState.uiVisible);
     const editable = !!payloadState.editableEnabled;
     modeGroupEl.classList.toggle('hidden', !editable || !editorState.uiVisible);
     if (!editable) {
@@ -5449,6 +5562,7 @@ applyPickThresholds(null);
 
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
+    requestRender();
     payloadState = payload;
     editorState.pointerDown = null;
     editorState.dragging = null;
@@ -5490,7 +5604,15 @@ function applyGeometry(payload) {
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
     inspectorPartHud();
-    if (payload.inspector && payload.inspector.review) requestAnimationFrame(() => inspectorRestore(payload.inspector.review));
+    viewerTools.sync(payload.toolModules || []).then(() => {
+        if (payloadState !== payload) return;
+        const review = payload.inspector?.review;
+        if (review) inspectorRestore({...review, xray:review.xray ?? xrayState.enabled, xrayOpacity:review.xrayOpacity ?? xrayState.opacity});
+        inspectorRefresh();
+    }).catch(error => {
+        const status = document.getElementById('glb-status');
+        status.classList.add('is-error'); status.textContent = 'Viewer tool: ' + error.message;
+    });
     inspectorUpdateHud();
     inspectorRefresh();
 }
@@ -5538,8 +5660,42 @@ function connectWs() {
     ws.addEventListener('error', () => ws.close());
 }
 
+let pointerPanel = -1;
+let pointerCamera = null;
+
+// [viewer-region panel-pointer] BEGIN
+/** CSS canvas coordinates, bottom-left origin; title bands and empty grid cells are not pickable. */
+function panelPointerAt(x, y, viewports) {
+    for (let i = 0; i < viewports.length; i++) {
+        const v = viewports[i];
+        if (x >= v.x && x < v.x + v.w && y >= v.y && y < v.y + v.h) {
+            return { panel: i, x: (x - v.x) / v.w * 2 - 1, y: (y - v.y) / v.h * 2 - 1 };
+        }
+    }
+    return null;
+}
+// [viewer-region panel-pointer] END
+
+function entryInPointerPanel(entry) {
+    return pointerPanel === -1 || (pointerPanel >= 0 && (entry.panel === undefined || entry.panel === -1 || entry.panel === pointerPanel));
+}
+
 function setPointerFromEvent(event) {
     const rect = renderer.domElement.getBoundingClientRect();
+    pointerCamera = camera;
+    pointerPanel = -1;
+    if (panelState.cameras.length > 1 && editorState.mode === 'camera') {
+        updatePanelCameras();
+        const x = (event.clientX - rect.left) / rect.width * container.clientWidth;
+        const y = (rect.bottom - event.clientY) / rect.height * container.clientHeight;
+        const hit = panelPointerAt(x, y, panelState.cameras.map((_, i) => panelViewport(i, panelState.cameras.length)));
+        if (!hit) { pointerPanel = -2; pointer.set(2, 2); return; }
+        pointerPanel = hit.panel;
+        pointerCamera = panelState.cameras[hit.panel].camera;
+        pointerCamera.updateMatrixWorld();
+        pointer.set(hit.x, hit.y);
+        return;
+    }
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 }
@@ -5843,6 +5999,7 @@ function finishPointer(event) {
     if (editorState.dragging && editorState.dragging.pointerId === event.pointerId) {
         editorState.dragging = null;
         rebuildEditableView();
+        sendMessage({type: 'fline-edit-commit', sessionId: editorState.scene.sessionId});
     }
 
     const down = editorState.pointerDown;
@@ -5877,8 +6034,9 @@ renderer.domElement.addEventListener('click', (event) => {
         featurePick((event.clientX-r.left)/r.width,(event.clientY-r.top)/r.height,featureModeEl.value,true);return;
     }
     setPointerFromEvent(event);
-    raycaster.setFromCamera(pointer, camera);
-    const meshes = interactiveObjects.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+    raycaster.setFromCamera(pointer, pointerCamera || camera);
+    const meshes = interactiveObjects.filter(entryInPointerPanel).flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+
     const hits = raycaster.intersectObjects(meshes, false);
     if (!hits.length) return;
     const hitObject = hits[0].object;
@@ -5945,10 +6103,14 @@ function publishFrameSize(payload) {
  */
 function applyScenePanels(payload) {
     const panels = Array.isArray(payload.panels) ? payload.panels : [];
+    const columns = Math.max(1, payload.columns || 1);
+    // Geometry/selection updates must not consume the remaining orbit or zoom range.
+    const sameLayout = panels.length > 1 && panels.length === panelState.panels.length && columns === panelState.columns;
+    const orbitBase = sameLayout ? panelState.base : null;
     panelState.panels = panels;
-    panelState.columns = Math.max(1, payload.columns || 1);
+    panelState.columns = columns;
     panelState.cameras = [];
-    panelState.base = null;
+    panelState.base = orbitBase;
     clearPanelLabels();
 
     // The scene-wide "N ln | N tri | N p" HUD sits top-right, which is exactly where a tiled layout
@@ -5980,7 +6142,7 @@ function applyScenePanels(payload) {
     // from it is then wrong by however much framing changed, which is ~1 for unit-scale geometry and
     // enormous for anything else: extruded glyphs at extent 300 came out as dots, having been pushed
     // back a hundredfold, while spheres of radius 1 looked perfectly fine and hid the bug.
-    panelState.base = null;
+    // Existing layouts retain their baseline; only new layouts capture one on the first frame.
     renderPanelChrome(panels, panels.length, true);
 }
 
@@ -6091,9 +6253,16 @@ function updatePanelCameras() {
             yawDegrees: (spec.yawDegrees || 0) + dAzimuth,
             // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
-            distance: (spec.distance === undefined ? 2.7 : spec.distance) * zoom,
+            distance: spec.distance === undefined ? 2.7 : spec.distance,
             fieldOfViewDegrees: spec.fieldOfViewDegrees
         }, entry.bounds, true, entry.fitPoints);
+        // Fit establishes the reference framing. Dolly afterwards so fitting cannot undo zoom.
+        const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
+        entry.camera.position.sub(focus).multiplyScalar(zoom).add(focus);
+        const distance = entry.camera.position.distanceTo(focus);
+        entry.camera.near = Math.max(1e-5, distance * 0.01);
+        entry.camera.far = Math.max(distance * 100, entry.camera.near + 1);
+        entry.camera.updateProjectionMatrix();
     });
 }
 
@@ -6128,6 +6297,40 @@ function onResize() {
 window.addEventListener('resize', onResize);
 new ResizeObserver(onResize).observe(container);
 
+/** X-ray is presentation only. Leave source materials and the picking depth pass intact.
+ * Fills fade; edges gain a little opacity and point sprites keep their authored contrast. No cloned geometry,
+ * additional animation loop or permanently mutated material is needed.
+ */
+function renderGeometry(viewCamera) {
+    if (!xrayState.enabled) { renderer.render(scene, viewCamera); return; }
+    const saved = new Map(), edgeUniforms = new Map(), edgeOrder = new Map();
+    baseGeometryRoot.traverse(object => {
+        if (!object.isMesh && !object.isLine) return;
+        // Ghosted faces must not wash out an otherwise fully opaque geometric edge.
+        if (object.isLine) { edgeOrder.set(object, object.renderOrder); object.renderOrder = Math.max(1, object.renderOrder); }
+        for (const material of (Array.isArray(object.material) ? object.material : [object.material])) {
+            if (!material || saved.has(material)) continue;
+            if (object.isMesh) {
+                saved.set(material, {opacity:material.opacity, depthWrite:material.depthWrite});
+                material.opacity *= xrayState.opacity;
+                material.depthWrite = false;
+            } else if (material.uniforms?.uXrayEdgeStrength) {
+                const uniform = material.uniforms.uXrayEdgeStrength;
+                if (!edgeUniforms.has(uniform)) { edgeUniforms.set(uniform, uniform.value); uniform.value = 1.6; }
+            } else if (material.isLineBasicMaterial) {
+                saved.set(material, {opacity:material.opacity});
+                material.opacity = Math.min(1, material.opacity * 1.6);
+            }
+        }
+    });
+    try { renderer.render(scene, viewCamera); }
+    finally {
+        for (const [material, original] of saved) Object.assign(material, original);
+        for (const [uniform, value] of edgeUniforms) uniform.value = value;
+        for (const [object, order] of edgeOrder) object.renderOrder = order;
+    }
+}
+
 function render() {
     controls.update();
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
@@ -6142,7 +6345,7 @@ function render() {
             renderer.setViewport(vp.x, vp.y, vp.w, vp.h);
             renderer.setScissor(vp.x, vp.y, vp.w, vp.h);
             setPanelVisibility(i);
-            renderer.render(scene, panelState.cameras[i].camera);
+            renderGeometry(panelState.cameras[i].camera);
         }
         renderer.setScissorTest(false);
         // Leave every drawable visible, so a payload that drops back to one panel is not left with
@@ -6152,9 +6355,19 @@ function render() {
         });
     } else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
-        renderer.render(scene, camera);
+        renderGeometry(camera);
     }
 }
+
+// Capture also covers editor/inspector handlers that stop propagation. The queued
+// paint runs after they have updated geometry, selection, clipping or hover state.
+for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel', 'click', 'keydown', 'input', 'change']) {
+    document.addEventListener(type, requestRender, { capture: true, passive: true });
+}
+renderer.domElement.addEventListener('pointerleave', () => {
+    pointer.set(2, 2);
+    requestRender();
+});
 
 connectWs();
 requestRender();

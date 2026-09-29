@@ -94,7 +94,9 @@ data class OptimizeOptions(
     /** The single source of randomness; with `initJitter = 0` the run is randomness-free anyway. */
     val rngSeed: Long = 0L,
     /** Whether to offer a progress bar. Turn it off for an inner loop (a restart sweep, a demo). */
-    val showProgress: Boolean = true
+    val showProgress: Boolean = true,
+    /** Retain a copy of every parameter vector. Disable for large simulations; scalar history remains. */
+    val recordTrajectory: Boolean = true
 ) {
     init {
         require(iterations >= 0) { "iterations must be non-negative" }
@@ -147,6 +149,8 @@ data class OptimizeRun(
      * same point if the descent is deterministic, and nothing forces it to be.
      *
      * Each entry is a defensive copy, because the search mutates its point in place.
+     * Empty when [OptimizeOptions.recordTrajectory] is false; [initialX], [x], [losses]
+     * and [steps] remain available without storing every intermediate parameter vector.
      */
     val trajectory: List<DoubleArray>,
     /** How many iterations actually ran. */
@@ -155,7 +159,7 @@ data class OptimizeRun(
     val evaluations: Int,
     /** Whether a tolerance was met, as opposed to running out of iterations. */
     val converged: Boolean,
-    /** One of "gradient", "step", "line search", "max iterations", "no iterations". */
+    /** One of "observer", "gradient", "step", "line search", "max iterations", "no iterations". */
     val reason: String,
     /** The options this run was made with. */
     val options: OptimizeOptions
@@ -205,6 +209,14 @@ fun minimize(
     objective: (List<AD>) -> AD
 ): OptimizeRun = minimizeWithGradient(initial, options, valueAndGradOf(objective))
 
+/** An accepted optimizer state (including iteration zero), with line-search diagnostics.
+ * [x] and [gradient] are borrowed read-only arrays, valid only during the callback.
+ * Copy them only if retaining them. Rejected trial points are never reported.
+ */
+data class OptimizeProgress(val iteration: Int, val x: DoubleArray, val value: Double,
+    val gradient: DoubleArray, val evaluations: Int, val stepNorm: Double,
+    val lineSearchReductions: Int, val curvatureAccepted: Boolean?)
+
 /**
  * Minimises an objective you already have a value-and-gradient function for: the entry point for
  * a gradient that does not come from this file's [AD] (a hand-derived one, or the exact `Fn`-graph
@@ -213,6 +225,17 @@ fun minimize(
 fun minimizeWithGradient(
     initial: DoubleArray,
     options: OptimizeOptions = OptimizeOptions(),
+    valueAndGradient: (DoubleArray) -> ADGradient
+): OptimizeRun = minimizeWithGradient(initial, options, null, valueAndGradient)
+
+/** [minimizeWithGradient] with an accepted-state observer. Return true when the caller's
+ * convergence criterion is satisfied; the run stops with reason `observer`. Exceptions
+ * propagate (including cancellation). The default optimizer stopping rules still apply.
+ */
+fun minimizeWithGradient(
+    initial: DoubleArray,
+    options: OptimizeOptions,
+    observer: ((OptimizeProgress) -> Boolean)?,
     valueAndGradient: (DoubleArray) -> ADGradient
 ): OptimizeRun {
     require(initial.isNotEmpty()) { "initial must not be empty" }
@@ -234,13 +257,17 @@ fun minimizeWithGradient(
 
     var current = eval(x)
     val losses = mutableListOf(current.value)
-    val trajectory = mutableListOf(x.copyOf())
+    val trajectory = mutableListOf<DoubleArray>()
+    if (options.recordTrajectory) trajectory += x.copyOf()
     val steps = mutableListOf<OptimizeStep>()
 
-    if (options.iterations == 0) {
+    val initiallyAccepted = observer?.invoke(OptimizeProgress(0,x,current.value,current.gradient,
+        evaluations,0.0,0,null)) == true
+    if (options.iterations == 0 || initiallyAccepted) {
         return OptimizeRun(
             x, current.value, current.gradient, startX, losses.first(), steps, losses,
-            trajectory, 0, evaluations, converged = false, reason = "no iterations", options = options
+            trajectory, 0, evaluations, converged = initiallyAccepted,
+            reason = if (initiallyAccepted) "observer" else "no iterations", options = options
         )
     }
 
@@ -274,10 +301,16 @@ fun minimizeWithGradient(
             current = outcome.next
             iterationsRun = iteration
             losses += current.value
-            trajectory += x.copyOf()
+            if (options.recordTrajectory) trajectory += x.copyOf()
             steps += OptimizeStep(iteration, current.value, current.gradientInfNorm)
             reporter?.update(iteration.toLong(), options.iterations.toLong())
 
+            if (observer?.invoke(OptimizeProgress(iteration,x,current.value,current.gradient,
+                    evaluations,outcome.stepNorm,outcome.lineSearchReductions,outcome.curvatureAccepted)) == true) {
+                converged = true
+                reason = "observer"
+                break
+            }
             if (outcome.stepNorm <= options.stepTolerance) {
                 converged = true
                 reason = "step"
@@ -366,7 +399,8 @@ fun lbfgs(
 // ---------------------------------------------------------------------------------------------
 
 /** What one optimizer iteration produced: the new value/gradient and how far the step moved. */
-private class StepOutcome(val next: ADGradient, val stepNorm: Double)
+private class StepOutcome(val next: ADGradient, val stepNorm: Double,
+    val lineSearchReductions: Int = 0, val curvatureAccepted: Boolean? = null)
 
 /** The mutable per-run state of one descent; `step` mutates [x] in place and returns the outcome. */
 private interface DescentState {
@@ -455,12 +489,10 @@ private class LbfgsState(private val memory: Int) : DescentState {
         val direction = twoLoopRecursion(current.gradient, n)
 
         // The model can go uphill after a skipped curvature pair; fall back to steepest descent.
-        var slope = 0.0
-        for (i in 0 until n) slope += direction[i] * current.gradient[i]
+        var slope = DenseDoubleOps.dot(direction, current.gradient)
         if (slope >= 0.0) {
             for (i in 0 until n) direction[i] = -current.gradient[i]
-            slope = 0.0
-            for (i in 0 until n) slope += direction[i] * current.gradient[i]
+            slope = DenseDoubleOps.dot(direction, current.gradient)
         }
         if (slope >= 0.0 || !slope.isFinite()) return null
 
@@ -475,25 +507,28 @@ private class LbfgsState(private val memory: Int) : DescentState {
 
         val candidate = DoubleArray(n)
         var accepted: ADGradient? = null
-        var acceptedAlpha = 0.0
+        var reductions = 0
         for (attempt in 0 until options.maxLineSearchSteps) {
-            for (i in 0 until n) candidate[i] = x[i] + alpha * direction[i]
+            DenseDoubleOps.combine(candidate, x, alpha, direction)
             val probe = eval(candidate)
             if (probe.value.isFinite() && probe.value <= current.value + options.armijo * alpha * slope) {
                 accepted = probe
-                acceptedAlpha = alpha
                 break
             }
             alpha *= 0.5
+            reductions++
         }
         val next = accepted ?: return null
 
-        val s = DoubleArray(n) { acceptedAlpha * direction[it] }
+        val s = DoubleArray(n) { candidate[it] - x[it] }
         val y = DoubleArray(n) { next.gradient[it] - current.gradient[it] }
-        var sy = 0.0
-        for (i in 0 until n) sy += s[i] * y[i]
-        // Skip a pair with non-positive curvature rather than admit an indefinite model.
-        if (sy > 1e-16 && sy.isFinite()) {
+        val sy = DenseDoubleOps.dot(s, y)
+        // A relative curvature test is invariant to objective units; an absolute
+        // cutoff discards useful pairs when energies/gradients are normalized.
+        val sn = sqrt(DenseDoubleOps.dot(s, s))
+        val yn = sqrt(DenseDoubleOps.dot(y, y))
+        val usableCurvature = sy > 0.0 && sy.isFinite() && (1.0 / sy).isFinite() && sn > 0.0 && yn > 0.0 && sy / sn / yn > 1e-10
+        if (usableCurvature) {
             sHistory.addLast(s)
             yHistory.addLast(y)
             rhoHistory.addLast(1.0 / sy)
@@ -505,7 +540,7 @@ private class LbfgsState(private val memory: Int) : DescentState {
         }
 
         for (i in 0 until n) x[i] = candidate[i]
-        return StepOutcome(next, sqrt(s.sumOf { it * it }))
+        return StepOutcome(next, sqrt(DenseDoubleOps.dot(s, s)), reductions, usableCurvature)
     }
 
     /** Nocedal's two-loop recursion: the L-BFGS descent direction `-H∇f` without forming `H`. */
@@ -516,32 +551,26 @@ private class LbfgsState(private val memory: Int) : DescentState {
         for (index in k - 1 downTo 0) {
             val s = sHistory[index]
             val y = yHistory[index]
-            var sq = 0.0
-            for (i in 0 until n) sq += s[i] * q[i]
+            val sq = DenseDoubleOps.dot(s, q)
             val a = rhoHistory[index] * sq
             alphas[index] = a
-            for (i in 0 until n) q[i] -= a * y[i]
+            DenseDoubleOps.combine(q, q, -a, y)
         }
         if (k > 0) {
             val s = sHistory[k - 1]
             val y = yHistory[k - 1]
-            var sy = 0.0
-            var yy = 0.0
-            for (i in 0 until n) {
-                sy += s[i] * y[i]
-                yy += y[i] * y[i]
-            }
+            val sy = DenseDoubleOps.dot(s, y)
+            val yy = DenseDoubleOps.dot(y, y)
             val gamma = if (yy > 0.0) sy / yy else 1.0
-            for (i in 0 until n) q[i] *= gamma
+            DenseDoubleOps.scale(q, gamma)
         }
         for (index in 0 until k) {
             val s = sHistory[index]
             val y = yHistory[index]
-            var yq = 0.0
-            for (i in 0 until n) yq += y[i] * q[i]
+            val yq = DenseDoubleOps.dot(y, q)
             val beta = rhoHistory[index] * yq
             val diff = alphas[index] - beta
-            for (i in 0 until n) q[i] += diff * s[i]
+            DenseDoubleOps.combine(q, q, diff, s)
         }
         return q
     }

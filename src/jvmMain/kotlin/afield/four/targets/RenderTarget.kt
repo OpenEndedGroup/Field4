@@ -1,5 +1,6 @@
 package afield.four.targets
 
+import afield.four.device.vkLayout
 import afield.Rect
 import afield.four.Renderer
 import afield.four.Target
@@ -154,7 +155,7 @@ class RenderTarget(
                 VkRenderingAttachmentInfoKHR.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                     .imageView(ctx.swapChain.imageViews[index].vkImageView)
-                    .imageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+                    .imageLayout(vkLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL))
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                     .storeOp(VK_ATTACHMENT_STORE_OP_STORE)
@@ -172,7 +173,7 @@ class RenderTarget(
                 VkRenderingAttachmentInfoKHR.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR)
                     .imageView(ctx.depthAttachments[index].imageView.vkImageView)
-                    .imageLayout(depthLayout)
+                    .imageLayout(vkLayout(depthLayout))
                     .resolveMode(VK_RESOLVE_MODE_NONE)
                     .loadOp(VK_ATTACHMENT_LOAD_OP_CLEAR)
                     .storeOp(VK_ATTACHMENT_STORE_OP_DONT_CARE)

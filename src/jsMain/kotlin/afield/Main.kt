@@ -326,6 +326,7 @@ object LoadingTracker {
         }
         notify("finished loading \u2014 press <b>?</b> for help", "setup")
         updateEmptyDocumentWelcome()
+        send(Message("replay-output-areas"))
     }
 
     fun isFinished(): Boolean = finished

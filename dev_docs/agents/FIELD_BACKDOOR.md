@@ -415,6 +415,42 @@ to the backdoor transport. Curated examples are in `transcripts/`.
 Use backdoor capture commands after a macro when the result needs visual or
 output evidence.
 
+## Handing a task to Field's own agent: `agent-task`, `agent-eval`
+
+`agent-task` gives a whole goal to Field's in-Field agent instead of driving each
+step from outside. The server runs the turn in this session's document with the
+native graph tools (`NewBoxRequest`, `RunBoxRequest`, `ReadBoxOutputRequest`, …)
+and replies with an `AgentTaskResult`: verdict, tool-call log with each tool's own
+`ok`, final text, rounds, tokens, elapsed time.
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9477 \
+  --command "agent-task --goal 'Make a box named Squares that prints the squares of 1 to 8, and run it.' \
+     --check box-exists:Squares --check last-run-ok:Squares --check output-ints-include:Squares:1,4,9,16,25,36,49,64"
+```
+
+- `ok` is `verdict == "pass"`, and the checks decide the verdict. The agent's own claim does not.
+  With no `--check`, the verdict is `unchecked` and the command exits 1.
+- `--mode live` (the default) calls the configured provider. `--mode scripted --script file.json`
+  replays `[{"tool": "...", "arguments": {...}}, {"final": "..."}]` through the same tools with no
+  model; its result says `provider: "scripted"`.
+- `--setup file.json` applies tool calls before the turn, for example a box that fails to compile.
+  They are logged separately, and output checks ignore what the setup printed.
+- `--chat-box <box>` (live only) runs the task as that box's real AI4 panel turn (`ai-assist`,
+  kind `general`), so the exchange lands in its chat history. The per-call tool log then stays with
+  the panel.
+- The same tools are in every AI4 chat. `agent-task` is a headless entry into the AI4 chat turn,
+  not a separate agent.
+- After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent
+  made.
+- `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the seven-task
+  suite, each task in its own headless scratch document. Live runs are capped at 12 tasks and 32
+  rounds. The same two operations exist over HTTP as `POST /api/agent-task` and
+  `POST /api/agent-eval` (loopback, same-site only).
+
+Details, the tool list and measured results are in
+[`../ai/IN_FIELD_AGENT_HARNESS.md`](../ai/IN_FIELD_AGENT_HARNESS.md).
+
 ## Suite entrypoints
 
 ```bash

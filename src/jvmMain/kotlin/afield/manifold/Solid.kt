@@ -559,6 +559,207 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
     // ==========================================================================================
 
     /**
+     * Export the native polygon-face topology without narrowing positions to floats.
+     *
+     * Manifold guarantees that triangles with the same face id in the same run reconstruct one
+     * polygonal face, planar within [SolidPlanarMesh.nativeTolerance]. This is therefore the retained boundary
+     * for geometric inspection (not a fabrication approval); [toTriMesh] is only the renderer bridge.
+     */
+    fun toPlanarMesh(): SolidPlanarMesh {
+        val mesh = ManifoldNative.ptr(
+            ManifoldNative.getMeshGL64,
+            ManifoldNative.ptr(ManifoldNative.allocMeshGL64),
+            ptr,
+        )
+        try {
+            val vertexCountLong = ManifoldNative.long(ManifoldNative.meshGL64NumVert, mesh)
+            val triangleCountLong = ManifoldNative.long(ManifoldNative.meshGL64NumTri, mesh)
+            val propsLong = ManifoldNative.long(ManifoldNative.meshGL64NumProp, mesh)
+            val mergeCount = ManifoldNative.long(ManifoldNative.meshGL64MergeLength, mesh)
+            val runIndexCount = ManifoldNative.long(ManifoldNative.meshGL64RunIndexLength, mesh)
+            val runOriginalCount = ManifoldNative.long(ManifoldNative.meshGL64RunOriginalIdLength, mesh)
+            val faceIdCount = ManifoldNative.long(ManifoldNative.meshGL64FaceIdLength, mesh)
+            val tolerance = ManifoldNative.double(ManifoldNative.meshGL64Tolerance, mesh)
+
+            fun checkedCount(value: Long, name: String): Int {
+                check(value in 0..Int.MAX_VALUE.toLong()) { "$name $value does not fit Field's indexed mesh" }
+                return value.toInt()
+            }
+
+            val vertexCount = checkedCount(vertexCountLong, "vertex count")
+            val triangleCount = checkedCount(triangleCountLong, "triangle count")
+            val props = checkedCount(propsLong, "property count")
+            check(props >= 3) { "MeshGL64 reported $props properties per vertex; xyz are required" }
+            if (vertexCount == 0 || triangleCount == 0) {
+                return SolidPlanarMesh(DoubleArray(0), IntArray(0), IntArray(0), emptyList(), 0.0)
+            }
+            check(faceIdCount == triangleCountLong) {
+                "MeshGL64 returned $faceIdCount face ids for $triangleCountLong triangles"
+            }
+
+            Arena.ofConfined().use { arena ->
+                val vertexProperties = arena.allocate(ValueLayout.JAVA_DOUBLE, vertexCountLong * propsLong)
+                val triangleMemory = arena.allocate(ValueLayout.JAVA_LONG, triangleCountLong * 3L)
+                val faceIdMemory = arena.allocate(ValueLayout.JAVA_LONG, faceIdCount)
+                ManifoldNative.ptr(ManifoldNative.meshGL64VertProperties, vertexProperties, mesh)
+                ManifoldNative.ptr(ManifoldNative.meshGL64TriVerts, triangleMemory, mesh)
+                ManifoldNative.ptr(ManifoldNative.meshGL64FaceId, faceIdMemory, mesh)
+
+                val positions = DoubleArray(vertexCount * 3)
+                for (vertex in 0 until vertexCount) {
+                    val source = vertex.toLong() * propsLong
+                    val target = vertex * 3
+                    positions[target] = vertexProperties.doubleAt(source)
+                    positions[target + 1] = vertexProperties.doubleAt(source + 1)
+                    positions[target + 2] = vertexProperties.doubleAt(source + 2)
+                }
+
+                val parent = IntArray(vertexCount) { it }
+                fun root(index: Int): Int {
+                    var current = index
+                    while (parent[current] != current) current = parent[current]
+                    var compress = index
+                    while (parent[compress] != compress) {
+                        val next = parent[compress]
+                        parent[compress] = current
+                        compress = next
+                    }
+                    return current
+                }
+                fun union(a: Int, b: Int) {
+                    val ra = root(a)
+                    val rb = root(b)
+                    if (ra == rb) return
+                    if (ra < rb) parent[rb] = ra else parent[ra] = rb
+                }
+                fun vertexIndex(value: Long): Int {
+                    val index = checkedCount(value, "vertex index")
+                    check(index in parent.indices) { "MeshGL64 vertex index $value is outside $vertexCount vertices" }
+                    return index
+                }
+                if (mergeCount > 0L) {
+                    val fromMemory = arena.allocate(ValueLayout.JAVA_LONG, mergeCount)
+                    val toMemory = arena.allocate(ValueLayout.JAVA_LONG, mergeCount)
+                    ManifoldNative.ptr(ManifoldNative.meshGL64MergeFromVert, fromMemory, mesh)
+                    ManifoldNative.ptr(ManifoldNative.meshGL64MergeToVert, toMemory, mesh)
+                    for (at in 0 until mergeCount) {
+                        val from = vertexIndex(fromMemory.longAt(at))
+                        val to = vertexIndex(toMemory.longAt(at))
+                        val dx = positions[from * 3] - positions[to * 3]
+                        val dy = positions[from * 3 + 1] - positions[to * 3 + 1]
+                        val dz = positions[from * 3 + 2] - positions[to * 3 + 2]
+                        val separation = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
+                        check(separation <= maxOf(1e-6, tolerance * 4.0)) {
+                            "MeshGL64 merge pair $from/$to is separated by $separation; native merge pairs must be coincident"
+                        }
+                        union(from, to)
+                    }
+                }
+
+                val runStarts = if (runIndexCount > 0L) {
+                    val memory = arena.allocate(ValueLayout.JAVA_LONG, runIndexCount)
+                    ManifoldNative.ptr(ManifoldNative.meshGL64RunIndex, memory, mesh)
+                    LongArray(checkedCount(runIndexCount, "run index count")) { memory.longAt(it.toLong()) }
+                } else longArrayOf(0L, triangleCountLong * 3L)
+                check(runStarts.size >= 2 && runStarts.first() == 0L && runStarts.last() == triangleCountLong * 3L) {
+                    "MeshGL64 run indices do not encompass all triangles"
+                }
+                check(runStarts.all { it % 3L == 0L }) { "MeshGL64 run indices must be divisible by three" }
+                val runCount = runStarts.size - 1
+                val originalIds: IntArray? = if (runOriginalCount > 0L) {
+                    check(runOriginalCount.toInt() == runCount) {
+                        "MeshGL64 returned $runOriginalCount original ids for $runCount runs"
+                    }
+                    val memory = arena.allocate(ValueLayout.JAVA_INT, runOriginalCount)
+                    ManifoldNative.ptr(ManifoldNative.meshGL64RunOriginalId, memory, mesh)
+                    IntArray(runCount) { memory.intAt(it.toLong()) }
+                } else null
+
+                data class FaceKey(val run: Int, val faceId: Long)
+                data class RetainedTriangle(val a: Int, val b: Int, val c: Int, val face: FaceKey)
+
+                val retained = ArrayList<RetainedTriangle>(triangleCount)
+                var run = 0
+                for (triangle in 0 until triangleCount) {
+                    val rawOffset = triangle.toLong() * 3L
+                    while (run + 1 < runStarts.lastIndex && rawOffset >= runStarts[run + 1]) run++
+                    check(rawOffset >= runStarts[run] && rawOffset < runStarts[run + 1]) {
+                        "triangle $triangle is not covered by a MeshGL64 run"
+                    }
+                    val a = root(vertexIndex(triangleMemory.longAt(rawOffset)))
+                    val b = root(vertexIndex(triangleMemory.longAt(rawOffset + 1)))
+                    val c = root(vertexIndex(triangleMemory.longAt(rawOffset + 2)))
+                    if (a == b || b == c || c == a) continue
+                    retained += RetainedTriangle(a, b, c, FaceKey(run, faceIdMemory.longAt(triangle.toLong())))
+                }
+
+                val trianglesByFace = linkedMapOf<FaceKey, MutableList<Int>>()
+                retained.forEachIndexed { triangle, value ->
+                    trianglesByFace.getOrPut(value.face, ::mutableListOf) += triangle
+                }
+
+                // Face IDs are provenance, not process-global identities. Independent Boolean operands can
+                // legally reuse an OriginalID/faceID pair; when their transforms also match, Manifold may place
+                // those disconnected patches in one run. A polygonal face is necessarily edge-connected, so
+                // split such collisions here before planarity or renderer boundaries consume them.
+                data class EdgeKey(val low: Int, val high: Int)
+                val faceComponents = mutableListOf<Pair<FaceKey, IntArray>>()
+                trianglesByFace.forEach { (key, triangles) ->
+                    val triangleSet = triangles.toHashSet()
+                    val adjacency = triangles.associateWith { mutableListOf<Int>() }
+                    val firstAtEdge = mutableMapOf<EdgeKey, Int>()
+                    triangles.forEach { triangle ->
+                        val value = retained[triangle]
+                        val vertices = intArrayOf(value.a, value.b, value.c)
+                        for (edgeIndex in 0..2) {
+                            val a = vertices[edgeIndex]
+                            val b = vertices[(edgeIndex + 1) % 3]
+                            val edge = if (a < b) EdgeKey(a, b) else EdgeKey(b, a)
+                            firstAtEdge.putIfAbsent(edge, triangle)?.let { other ->
+                                if (other in triangleSet) {
+                                    adjacency.getValue(triangle) += other
+                                    adjacency.getValue(other) += triangle
+                                }
+                            }
+                        }
+                    }
+                    val unseen = triangles.toMutableSet()
+                    while (unseen.isNotEmpty()) {
+                        val seed = unseen.min()
+                        val queue = java.util.ArrayDeque<Int>()
+                        val component = mutableListOf<Int>()
+                        unseen.remove(seed)
+                        queue += seed
+                        while (queue.isNotEmpty()) {
+                            val triangle = queue.removeFirst()
+                            component += triangle
+                            adjacency.getValue(triangle).sorted().forEach { neighbour ->
+                                if (unseen.remove(neighbour)) queue += neighbour
+                            }
+                        }
+                        faceComponents += key to component.sorted().toIntArray()
+                    }
+                }
+                val triangleFaces = IntArray(retained.size) { -1 }
+                val faces = faceComponents.mapIndexed { index, (key, triangles) ->
+                    triangles.forEach { triangleFaces[it] = index }
+                    SolidPlanarFace(key.run, originalIds?.get(key.run), key.faceId, triangles)
+                }
+                check(triangleFaces.all { it >= 0 }) { "a retained MeshGL64 triangle has no polygonal face" }
+                val indices = IntArray(retained.size * 3)
+                retained.forEachIndexed { triangle, value ->
+                    indices[triangle * 3] = value.a
+                    indices[triangle * 3 + 1] = value.b
+                    indices[triangle * 3 + 2] = value.c
+                }
+                return SolidPlanarMesh(positions, indices, triangleFaces, faces, tolerance)
+            }
+        } finally {
+            ManifoldNative.unit(ManifoldNative.deleteMeshGL64, mesh)
+        }
+    }
+
+    /**
      * The [TriMesh] Field's mesh family, visualizers, `FLine` bridge and OBJ/STL writers all take.
      *
      * ```kotlin
@@ -790,15 +991,38 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
          */
         fun hullOfPoints(points: List<Vec3>): Solid {
             require(points.size >= 4) { "a hull needs at least 4 points, got ${points.size}" }
-            Arena.ofConfined().use { arena ->
-                val buffer = arena.allocate(ManifoldNative.VEC3, points.size.toLong())
-                points.forEachIndexed { i, p ->
-                    val base = i * 24L
-                    buffer.set(ValueLayout.JAVA_DOUBLE, base, p.x.toDouble())
-                    buffer.set(ValueLayout.JAVA_DOUBLE, base + 8, p.y.toDouble())
-                    buffer.set(ValueLayout.JAVA_DOUBLE, base + 16, p.z.toDouble())
+            return hullOfPointsD(DoubleArray(points.size * 3) { coordinate ->
+                val point = points[coordinate / 3]
+                when (coordinate % 3) {
+                    0 -> point.x.toDouble()
+                    1 -> point.y.toDouble()
+                    else -> point.z.toDouble()
                 }
-                return wrap(ManifoldNative.hullPoints, buffer, points.size.toLong())
+            })
+        }
+
+        /**
+         * A point-cloud hull without Float32 coordinate narrowing.
+         *
+         * [hullOfPoints] accepts Field's Float-backed [Vec3], which is the right convenience API for graphics
+         * but narrows large coordinates before Manifold ever sees them. Mixing that hull with an
+         * exact double-precision profile creates nominally coincident Boolean planes several microns apart.
+         * Coordinates are flat xyz triples to keep this shared API independent of any application's point type.
+         */
+        fun hullOfPointsD(coordinates: DoubleArray): Solid {
+            require(coordinates.all { it.isFinite() }) { "hull coordinates must be finite" }
+            require(coordinates.size % 3 == 0) { "hull coordinates must be xyz triples" }
+            val pointCount = coordinates.size / 3
+            require(pointCount >= 4) { "a hull needs at least 4 points, got $pointCount" }
+            Arena.ofConfined().use { arena ->
+                val buffer = arena.allocate(ManifoldNative.VEC3, pointCount.toLong())
+                for (i in 0 until pointCount) {
+                    val base = i * 24L
+                    buffer.set(ValueLayout.JAVA_DOUBLE, base, coordinates[i * 3])
+                    buffer.set(ValueLayout.JAVA_DOUBLE, base + 8, coordinates[i * 3 + 1])
+                    buffer.set(ValueLayout.JAVA_DOUBLE, base + 16, coordinates[i * 3 + 2])
+                }
+                return wrap(ManifoldNative.hullPoints, buffer, pointCount.toLong())
             }
         }
 
@@ -990,6 +1214,9 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
             val result: T
             try {
                 result = block()
+            } catch (failure: Throwable) {
+                tracked.asReversed().forEach { runCatching { it.close() } }
+                throw failure
             } finally {
                 TRACKER.set(previous)
             }

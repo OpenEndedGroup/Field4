@@ -252,6 +252,34 @@ def page_eval_body_warning(script: str) -> str | None:
     )
 
 
+def parse_agent_check(spec: str) -> dict[str, Any]:
+    """`kind:arg:arg` -> an AgentCheck payload; mirrors AgentCheck.parse on the server.
+
+    Kept in step with the Kotlin parser by hand; the server is the authority and re-validates the
+    kind, so a spelling this accepts and the server does not fails the task with an unknown-kind check.
+    """
+    kind, _, rest = spec.partition(":")
+    kind = kind.strip()
+    if kind in ("box-exists", "last-run-ok", "running", "not-running"):
+        return {"kind": kind, "box": rest}
+    if kind == "output-contains":
+        box, _, text = rest.partition(":")
+        return {"kind": kind, "box": box, "text": text}
+    if kind == "output-ints-include":
+        box, _, ints = rest.partition(":")
+        values = [int(x) for x in ints.replace(" ", ",").split(",") if x.strip()]
+        return {"kind": kind, "box": box, "ints": values}
+    if kind in ("property-contains", "property-lacks"):
+        parts = rest.split(":", 2)
+        if len(parts) != 3:
+            raise BackdoorError(f"{kind} needs <box>:<property>:<text>, got {spec!r}")
+        return {"kind": kind, "box": parts[0], "property": parts[1], "text": parts[2]}
+    if kind == "connected":
+        parent, _, child = rest.partition(":")
+        return {"kind": kind, "parent": parent, "child": child}
+    raise BackdoorError(f"unknown agent-task check kind {kind!r}")
+
+
 def command_result(command: str, ok: bool, data: Any = None, events: list[dict[str, Any]] | None = None, timed_out: bool = False) -> dict[str, Any]:
     return {
         "ok": ok,
@@ -3444,6 +3472,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     inspection.add_argument("--hide", action="append", default=[])
     inspection.add_argument("--show", action="append", default=[])
     inspection.add_argument("--assembly", type=float)
+    inspection.add_argument("--xray", action=argparse.BooleanOptionalAction, default=None)
+    inspection.add_argument("--xray-opacity", type=float)
     inspection.add_argument("--timeout", type=float)
 
     page_eval = subparsers.add_parser("page-eval", add_help=False)
@@ -3592,6 +3622,25 @@ def build_command_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not abort early if the target box emits a compile/runtime error while waiting.",
     )
+
+    agent_task_parser = subparsers.add_parser("agent-task", add_help=False)
+    agent_task_parser.add_argument("--goal", required=True)
+    agent_task_parser.add_argument("--check", dest="checks", action="append", default=[])
+    agent_task_parser.add_argument("--mode", choices=("live", "scripted"), default="live")
+    agent_task_parser.add_argument("--script", help="Path (or - for stdin) to a JSON script for --mode scripted")
+    agent_task_parser.add_argument("--setup", help="Path to a JSON list of setup tool calls applied before the turn")
+    agent_task_parser.add_argument("--max-rounds", type=int, default=24)
+    agent_task_parser.add_argument("--model", default="")
+    agent_task_parser.add_argument("--focus-box", default="")
+    agent_task_parser.add_argument("--chat-box", default="", help="Run the task as this box's real AI4 panel turn (live only)")
+    agent_task_parser.add_argument("--timeout", type=float)
+
+    agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
+    agent_eval_parser.add_argument("--mode", choices=("live", "scripted"), default="scripted")
+    agent_eval_parser.add_argument("--ids", default="", help="Comma-separated task ids; empty = all")
+    agent_eval_parser.add_argument("--max-rounds", type=int, default=24)
+    agent_eval_parser.add_argument("--model", default="")
+    agent_eval_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
     raw_send.add_argument("name")
@@ -4501,7 +4550,7 @@ async def dispatch_command(
         data = await inspect_view(client, args.view_id, state=state,
             section={"normal": args.section[:3], "fraction": args.section[3]} if args.section else None,
             hidden={**{key: True for key in args.hide}, **{key: False for key in args.show}},
-            assembly=args.assembly,
+            assembly=args.assembly, xray=args.xray, xray_opacity=args.xray_opacity,
             pick={"x":args.pick[0],"y":args.pick[1],"kind":args.feature} if args.pick else None,
             region=dict(zip(("cx","cy","width","height","angle"),args.region)) if args.region else None,
             note=args.note, received=args.received, evidence_dir=args.evidence_dir, include_resolved=args.include_resolved, timeout=args.timeout or client.default_timeout)
@@ -4573,6 +4622,54 @@ async def dispatch_command(
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "agent-task":
+        # Hands a whole task to Field's own agent. The server runs the turn (live provider or a
+        # scripted replay) in this session's document and replies with an AgentTaskResult. `ok` is
+        # the task's verdict, not the transport's: anything but "pass" exits 1, like `run` does for a
+        # box that failed (2026-09-14).
+        checks = []
+        for spec in args.checks:
+            checks.append(parse_agent_check(spec))
+        payload: dict[str, Any] = {
+            "goal": args.goal,
+            "checks": checks,
+            "mode": args.mode,
+            "maxToolRounds": args.max_rounds,
+            "model": args.model,
+            "focusBox": args.focus_box,
+            "chatBox": args.chat_box,
+        }
+        if args.script:
+            payload["script"] = client.read_text_source(args.script, command_line=command_line)
+        if args.setup:
+            payload["setup"] = client.read_text_source(args.setup, command_line=command_line)
+        timeout = args.timeout or max(client.default_timeout, 600.0)
+        event = await client.call_for_single_reply("agent-task", payload, timeout=timeout)
+        data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        try:
+            await client.refresh_snapshot(timeout=min(30.0, timeout))
+        except Exception as exc:  # the result is still the result
+            client.logger.exception("agent_task_snapshot_refresh_error", exc)
+        ok = data.get("verdict") == "pass"
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok, verdict=data.get("verdict"))
+        return result
+
+    if args.command == "agent-eval":
+        payload = {
+            "ids": [x.strip() for x in args.ids.split(",") if x.strip()],
+            "mode": args.mode,
+            "maxToolRounds": args.max_rounds,
+            "model": args.model,
+        }
+        timeout = args.timeout or max(client.default_timeout, 3600.0)
+        event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)
+        data = event.get("payload") if isinstance(event.get("payload"), dict) else {}
+        ok = bool(data) and data.get("passed") == data.get("population")
+        result = command_result(command_line, ok, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=ok)
         return result
 
     if args.command == "raw-send":

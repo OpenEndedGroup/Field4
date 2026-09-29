@@ -336,8 +336,18 @@ class SavingContext {
      * `Ai4AutoBoxNamer` and `FileWatchManager` — reach disk without passing the autosave loop's
      * `writesToDisk` check. [onComplete] still runs: callers latch on it, and one that never fires
      * is a hang rather than a refusal.
+     *
+     * [inline] writes on the calling thread instead of the misc pool. Only the shutdown flush
+     * ([flushPendingDocumentSaves]) wants that: it runs while the misc-drain shutdown hook is
+     * closing that pool, so work handed to it could be rejected.
      */
-    fun save(fn: String, boxes: Set<Box>, message: String? = null, onComplete: (() -> Unit)? = null) {
+    fun save(
+        fn: String,
+        boxes: Set<Box>,
+        message: String? = null,
+        onComplete: (() -> Unit)? = null,
+        inline: Boolean = false,
+    ) {
         if (ReadOnlyDocuments.blocksWritesTo(fn)) {
             SaveReloadLog.log("save-refused-read-only", "doc=$fn boxes=${boxes.size} message=${message ?: ""}")
             lprintln("info,saving", "read-only: not saving $fn")
@@ -360,7 +370,7 @@ class SavingContext {
         }
 
         // Phase 2: Perform I/O operations in background thread
-        saveInBackground(snapshot, fn, boxes, message, onComplete, System.nanoTime())
+        saveInBackground(snapshot, fn, boxes, message, onComplete, System.nanoTime(), inline)
     }
 
     /**
@@ -425,10 +435,11 @@ class SavingContext {
         boxes: Set<Box>,
         message: String?,
         onComplete: (() -> Unit)?,
-        scheduledAtNs: Long
+        scheduledAtNs: Long,
+        inline: Boolean = false,
     ) {
-        // Launch on background thread pool - using the project's standard miscPool
-        GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) {
+        // Runs on the project's standard miscPool, or on the caller when [inline] (see [save]).
+        val work: () -> Unit = work@{
             val totalStartedAt = System.nanoTime()
             val launchDelayMs = (totalStartedAt - scheduledAtNs) / 1_000_000L
             var root = fn
@@ -478,7 +489,7 @@ class SavingContext {
                             ),
                             document = Regex.escape(fn)
                         )
-                        return@launch
+                        return@work
                     }
 
                     val touched = mutableListOf<String>()
@@ -650,6 +661,7 @@ class SavingContext {
                 }
             }
         }
+        if (inline) work() else GlobalScope.launch(Runloop.miscPool.asCoroutineDispatcher()) { work() }
     }
 
     /**

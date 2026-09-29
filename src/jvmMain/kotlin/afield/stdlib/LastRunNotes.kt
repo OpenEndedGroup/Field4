@@ -114,6 +114,19 @@ object LastRunNotes {
     }
 
     /**
+     * Forget everything recorded for [box], every property. Called when the box is deleted: nothing
+     * else ever removed a record, and an entry holds its step's picture closure, which can keep a
+     * whole interpreter's state reachable for the life of the session (backlog N0928-7).
+     */
+    internal fun forgetBox(box: Box) {
+        val prefix = box.id + "\u001f"
+        records.keys.removeIf { it.startsWith(prefix) }
+    }
+
+    /** Whether anything is recorded for [box]'s [property]; for tests. */
+    internal fun hasRecord(box: Box, property: String = "code"): Boolean = records.containsKey(key(box, property))
+
+    /**
      * The note for [line] (1-based) of [source], the text of [box]'s [property] as the editor holds it
      * now, from the last run's record; null when the record says nothing about that line. [now] is
      * the clock the note's age is read from.

@@ -1548,6 +1548,7 @@ object StandardRenderer {
 				push.seedDefault("hasOcclusionMap") { 0f }
 				push.seedDefault("hasEmissiveMap") { 0f }
 				push.seedDefault("hasClearcoatMap") { 0f }
+				push.seedDefault("mapFlags") { 0f }
 				return this
 			}
 
@@ -1875,19 +1876,21 @@ object StandardRenderer {
 				layout(offset = 192) vec4 checkerColor;
 					layout(offset = 208) float checkerMix;
 					layout(offset = 224) vec4 emissiveFactor;
+					// Packed into the 212..223 gap so the block ends at 224. It used to run to 288,
+					// over the 256 bytes KosmicKrisp allows (MoltenVK allows 4096), and failed
+					// vkCreatePipelineLayout there. mapFlags bits, set by applyFabricateMaterial:
+					// 1 normal, 2 metallic-roughness, 4 occlusion, 8 emissive, 16 clearcoat.
+					layout(offset = 212) float clearcoatFactor;
+					layout(offset = 216) float clearcoatRoughness;
+					layout(offset = 220) float mapFlags;
 					layout(offset = 240) vec4 uvTransform;
-					layout(offset = 256) float hasNormalMap;
-						layout(offset = 260) float hasMetallicRoughnessMap;
-						layout(offset = 264) float hasOcclusionMap;
-						layout(offset = 268) float hasEmissiveMap;
-						layout(offset = 272) float clearcoatFactor;
-						layout(offset = 276) float clearcoatRoughness;
-						layout(offset = 280) float hasClearcoatMap;
-					} push;
+				} push;
+
+				bool hasMap(uint bit) { return (uint(push.mapFlags + 0.5) & bit) != 0u; }
 
 					vec3 mappedNormal(vec3 baseNormal) {
 						vec3 n = normalize(baseNormal);
-						if (push.hasNormalMap <= 0.5) return n;
+						if (!hasMap(1u)) return n;
 						vec3 mapNormal = texture(normalTex, vUv).xyz * 2.0 - 1.0;
 						mapNormal.xy *= 1.45;
 						if (abs(vTangent.w) > 0.5 && dot(vTangent.xyz, vTangent.xyz) > 1e-8) {
@@ -1919,20 +1922,20 @@ object StandardRenderer {
 				vec3 albedo = texel.rgb * push.baseColor.rgb;
 					float roughness = push.roughness;
 					float metallic = push.metallic;
-						if (push.hasMetallicRoughnessMap > 0.5) {
+						if (hasMap(2u)) {
 							vec4 mr = texture(metallicRoughnessTex, vUv);
 							roughness *= mr.g;
 							metallic *= mr.b;
 						}
-						if (push.hasOcclusionMap > 0.5) {
+						if (hasMap(4u)) {
 							float occlusion = texture(occlusionTex, vUv).r;
 							albedo *= mix(1.0, occlusion, clamp(push.ao, 0.0, 1.0));
 						}
-						if (push.hasEmissiveMap > 0.5) {
+						if (hasMap(8u)) {
 							albedo += texture(emissiveTex, vUv).rgb * push.emissiveFactor.rgb;
 						}
 						float clearcoat = clamp(push.clearcoatFactor, 0.0, 1.0);
-						if (push.hasClearcoatMap > 0.5) {
+						if (hasMap(16u)) {
 							clearcoat *= texture(clearcoatTex, vUv).r;
 						}
 						float clearcoatRoughness = clamp(push.clearcoatRoughness, 0.0, 1.0);

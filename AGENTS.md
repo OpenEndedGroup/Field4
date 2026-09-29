@@ -70,6 +70,10 @@ Top-level layout:
     disables it.
   - Keystore: `AFIELD_KEYSTORE_PATH`, `AFIELD_KEYSTORE_PASS`, `AFIELD_KEYSTORE_ALIAS`;
     `./gradlew generateLocalKeystore` writes `config/field4-local.p12`.
+- Stopping a Field you started: `kill -INT` the PID listening on its port
+  (`lsof -nP -iTCP:<port> -sTCP:LISTEN -t`) — that PID is the Field JVM. It exits in about 2 s,
+  first saving any edit the 5 s autosave had not reached; this works for a `./field.sh &` launch
+  too (`dev_docs/SIGINT_SHUTDOWN.md`).
 
 ---
 
@@ -378,8 +382,10 @@ shaderc, SPIRV-Cross via the `spvc` bindings) with optional OpenXR targets for V
 `util/Options.kt` holds global toggles (validation, VR, vsync, SDK hints). The file-by-file map
 is `src/VULKAN_GRAPHICS_SYSTEM.md`. On macOS, `Options.doVulkanSDK()` uses the loader from
 `VULKAN_SDK` or the newest `~/VulkanSDK/<version>` and pins `VK_DRIVER_FILES` to that SDK's
-MoltenVK or KosmicKrisp manifest (`AFIELD_VULKAN_DRIVER=moltenvk|kosmickrisp`;
-`dev_docs/KOSMICKRISP.md`); with no SDK, LWJGL's bundled MoltenVK is used.
+KosmicKrisp manifest by default on Apple silicon with macOS 26+ (MoltenVK elsewhere, or with
+`AFIELD_VULKAN_DRIVER=moltenvk`, which the IOSurface features still need;
+`dev_docs/KOSMICKRISP.md`). `Window` and `Instance` call it themselves, so no entrypoint can skip
+it. With no SDK, LWJGL's bundled MoltenVK is used.
 `afield.four.util.VulkanProbe` probes loader, driver, layers and SDK in a child JVM and shows them
 in the `/welcome` Vulkan panel (`/welcome#vulkan`, `GET /api/vulkan-status[?refresh=1]`), with
 per-OS install steps. Shader introspection uses LWJGL's SPIRV-Cross bindings; the old checked-in

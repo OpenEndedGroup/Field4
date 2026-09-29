@@ -1,5 +1,6 @@
 package afield.four.vision
 
+import afield.four.device.vkLayout
 import afield.four.Renderer
 import afield.four.buffers.VulkanBuffer
 import afield.four.device.*
@@ -53,7 +54,7 @@ class OpticalFlow(override val renderer: Renderer,override val first: HasImageVi
     private val unpackTimer=afield.four.lighting.LightingGpuTimer(renderer)
     override val gpuTimings get()=mapOf("conversion" to conversionTimer.samples.toList(),"opticalFlow" to opticalTimer.samples.toList(),"unpack" to unpackTimer.samples.toList())
     private val pool=CommandPool(device,family)
-    private val commands=listOf(CommandBuffer(renderer.commandPool,true,false),CommandBuffer(pool,true,false),CommandBuffer(renderer.commandPool,true,false))
+    private val commands=listOf(CommandBuffer(renderer.commandPool,true,true),CommandBuffer(pool,true,true),CommandBuffer(renderer.commandPool,true,true))
     private val ready=Semaphore(device,false)
     private val done=Semaphore(device,false)
     private val fence=Fence(device,false)
@@ -149,7 +150,7 @@ class OpticalFlow(override val renderer: Renderer,override val first: HasImageVi
                 transition(prep,inputs[i],VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
                 val copy=VkImageCopy.calloc(1,s).srcSubresource { it.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).layerCount(1) }
                     .dstSubresource { it.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).layerCount(1) }.extent { it.set(width,height,1) }
-                vkCmdCopyImage(prep.vkCommandBuffer,source.vkImage,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,inputs[i].vkImage,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,copy)
+                vkCmdCopyImage(prep.vkCommandBuffer,source.vkImage,vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),inputs[i].vkImage,vkLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),copy)
                 transition(prep,source,VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 transition(prep,inputs[i],VK_IMAGE_LAYOUT_GENERAL)
             }
@@ -161,7 +162,7 @@ class OpticalFlow(override val renderer: Renderer,override val first: HasImageVi
             outputs.forEachIndexed { i,im ->
                 transition(finish,im,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
                 val copy=VkBufferImageCopy.calloc(1,s).imageSubresource { it.aspectMask(VK_IMAGE_ASPECT_COLOR_BIT).layerCount(1) }.imageExtent { it.set(flowWidth,flowHeight,1) }
-                vkCmdCopyImageToBuffer(finish.vkCommandBuffer,im.vkImage,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,if(i==0)packed.buffer else costs.buffer,copy)
+                vkCmdCopyImageToBuffer(finish.vkCommandBuffer,im.vkImage,vkLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),if(i==0)packed.buffer else costs.buffer,copy)
             }
             val barrier=VkMemoryBarrier2.calloc(1,s).`sType$Default`().srcStageMask(VK_PIPELINE_STAGE_2_TRANSFER_BIT).srcAccessMask(VK_ACCESS_2_TRANSFER_WRITE_BIT)
                 .dstStageMask(VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT).dstAccessMask(VK_ACCESS_2_SHADER_READ_BIT)

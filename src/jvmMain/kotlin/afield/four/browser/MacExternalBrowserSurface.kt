@@ -6,7 +6,6 @@ import afield.four.texture.MetalIOSurface
 import afield.four.util.OS
 import afield.four.util.OSType
 import afield.logger.lprintln
-import org.lwjgl.vulkan.EXTMetalObjects
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_SAMPLED_BIT
 import org.lwjgl.vulkan.VK10.VK_IMAGE_USAGE_TRANSFER_SRC_BIT
 
@@ -25,9 +24,7 @@ class MacExternalBrowserSurface(
 
     init {
         require(OS == OSType.MACOS) { "MacExternalBrowserSurface requires macOS/MoltenVK" }
-        require(renderer.device.supportsMetalObjects) {
-            "MacExternalBrowserSurface requires ${EXTMetalObjects.VK_EXT_METAL_OBJECTS_EXTENSION_NAME}"
-        }
+        renderer.device.requireMetalObjects("MacExternalBrowserSurface")
     }
 
     override fun importFrame(frame: ExternalBrowserFrame): ImportedImage? {
