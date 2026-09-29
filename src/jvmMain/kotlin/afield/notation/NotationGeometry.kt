@@ -206,12 +206,12 @@ class NotationSpace internal constructor(
     private fun spaceY(wy: Double, r: Rect) = y.start + (wy - r.y) / r.h * (y.endInclusive - y.start)
 
     /**
-     * Marks that overlap the region, excluding the frame that defines it. A stroke that runs out
-     * of the region still counts; what lies outside is clipped away by the cuts and [events].
+     * Marks that overlap the region, excluding the frame (or shape) that defines it. A stroke that
+     * runs out of the region still counts; what lies outside is clipped away by the cuts and [events].
      */
     val marks: List<Mark> get() {
         val r = region() ?: return emptyList()
-        val defining = notation.marks.firstOrNull { it.kind == MarkType.FRAME && it.bounds == r }?.id
+        val defining = notation.marks.firstOrNull { !it.kind.isLinear && it.bounds == r }?.id
         return notation.marks.filter { m ->
             m.id != defining && m.bounds.let { b -> b.x <= r.x + r.w && b.x + b.w >= r.x && b.y <= r.y + r.h && b.y + b.h >= r.y }
         }
