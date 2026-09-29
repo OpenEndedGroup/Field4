@@ -1,6 +1,8 @@
 package afield.stacksl.study
 
 import afield.stdlib.StudyEvidence
+import afield.stdlib.StudyVariants
+import afield.stdlib.StudyCompare
 import afield.stdlib.StudyDifference
 import afield.ai.core.ToolImage
 import afield.stacksl.StackSLCompiler
@@ -108,9 +110,8 @@ class StackSLStudy(
 
     private val lineNotes = LinkedHashMap<String, java.util.Optional<afield.stdlib.LineNotes.Note>>()
 
-    private data class Speculation(val label: String, val note: String, val source: String)
-    private val speculations = linkedMapOf<String, Speculation>()
-    private var speculationBase: Pair<String, String>? = null
+    /** The candidates [tryVariants] tried and holds for [adoptVariant]. */
+    private val speculation = StudyVariants(directory, "stacksl")
     private val previews = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
 
     /** Called after anything that changes what the human view should show — a publication, a new batch of variants. */
@@ -239,25 +240,10 @@ class StackSLStudy(
      */
     fun resume(): String {
         val id = revisions.resume()
-        val latest = File(directory, "speculations").listFiles().orEmpty()
-            .filter { File(it, "variants.json").isFile }.maxByOrNull { it.name.toLongOrNull() ?: 0L }
-        if (latest != null) runCatching {
-            val batch = mapper.readTree(File(latest, "variants.json"))
-            if (batch["against"]?.asText() == id && batch["adopted"]?.isNull != false) {
-                synchronized(speculations) {
-                    speculations.clear()
-                    batch["variants"].forEach { v ->
-                        val label = v["label"].asText()
-                        speculations[label] = Speculation(label, v["note"].asText(), File(latest, v["file"].asText()).readText())
-                    }
-                }
-            }
-        }
+        speculation.resume(id)
         return id
     }
 
-    private val mapper = com.fasterxml.jackson.module.kotlin.jacksonObjectMapper()
-    private var heldBatch: File? = null
 
     /** The checked revision's id, or `empty`. */
     fun currentId(): String = revisions.currentId()
@@ -289,7 +275,7 @@ class StackSLStudy(
             "stages" to r.value.stages.map { mapOf("stage" to it.stage, "line" to it.line, "text" to it.text, "comment" to it.comment) },
             "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.map { knobSummary(it, names[it.knob]) } },
             "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
-            "pendingVariants" to synchronized(speculations) { speculations.values.map { mapOf("label" to it.label, "note" to it.note) } }.ifEmpty { null },
+            "pendingVariants" to speculation.pending(),
             "exports" to exports().ifEmpty { null },
             "frame" to FRAME
         ))
@@ -559,19 +545,10 @@ class StackSLStudy(
     fun sweep(id: String = "current", knob: Int, values: List<Double>, seconds: Double = StackSLStudyShader.REFERENCE_TIME, size: Int = 0): StudyReport {
         val r = revisions.revision(id)
         val k = r.value.knobs.getOrNull(knob) ?: throw StudyRejection("No knob $knob; ${r.id} has ${r.value.knobs.size}")
-        if (values.size !in 2..9) throw StudyRejection("Sweep 2..9 values")
         val dim = sizeIn(if (size > 0) size else if (r.value.animated && !rasterizer.fast) 112 else 160, 192)
         val clock = System.nanoTime()
-        val results = values.map { value ->
-            try {
-                val program = StackSLStudyShader.setKnobs(r.source, mapOf(knob to value))
-                val raw = frame(program, dim, seconds)
-                Triple(value, raw, null as String?)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Triple(value, null, e.message)
-            }
-        }
+        val results = StudyCompare.sweep(values) { value -> frame(StackSLStudyShader.setKnobs(r.source, mapOf(knob to value)), dim, seconds) }
+            .map { Triple(it.value, it.raster, it.error) }
         val tiles = results.map { (value, raw, error) ->
             val s = raw?.let { StudyEvidence.stats(it, seconds) }
             StudyEvidence.tile(raw?.let(StudyEvidence::displayed), StackSLStudyShader.formatKnob(value, "$value") +
@@ -595,10 +572,7 @@ class StackSLStudy(
      * for [adoptVariant]. A rejected candidate shows its reason in its row.
      */
     fun tryVariants(variants: List<Variant>, seconds: List<Double> = emptyList(), size: Int = 0): StudyReport {
-        if (variants.size !in 1..8) throw StudyRejection("Try 1..8 variants at a time")
-        if (variants.map { it.label }.distinct().size != variants.size || variants.any { !it.label.matches(Regex("[A-Za-z0-9][A-Za-z0-9 _.-]{0,31}")) }) {
-            throw StudyRejection("Variant labels must be distinct and short: up to 32 letters, digits, spaces, '.', '-' or '_', starting with a letter or digit")
-        }
+        StudyVariants.requireLabels(variants.map { it.label })
         val current = revisions.revision()
         val live = revisions.liveSource()
         val times = seconds.filter { it.isFinite() }.distinct().take(4).ifEmpty { listOf(StackSLStudyShader.REFERENCE_TIME) }
@@ -606,33 +580,17 @@ class StackSLStudy(
         val dim = sizeIn(if (size > 0) size else if (times.size == 1 || rasterizer.fast) 192 else 112, 192)
         val clock = System.nanoTime()
         val baseFrames = frames(current.source, dim, times)
-        val rows = mutableListOf(baseFrames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", "current") })
-        val labels = mutableListOf("${current.id}\n(current)")
-        val held = linkedMapOf<String, Speculation>()
         val epoch = revisions.epoch()
-        val facts = variants.map { v ->
-            if (revisions.isCancelled(epoch)) throw CancellationException()
-            labels += v.label + if (v.note.isNotBlank()) "\n" + v.note.take(40) else ""
-            try {
-                val source = v.source.ifBlank { SourceStudy.applyEdits(live, v.edits) }
-                val admitted = revisions.check(source)
-                val frames = frames(source, dim, times)
-                val diff = StudyEvidence.difference(baseFrames[0], frames[0], null, false).first
-                rows += frames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", v.label) }
-                held[v.label] = Speculation(v.label, v.note, source)
-                linkedMapOf("label" to v.label, "ok" to true, "note" to v.note, "warnings" to admitted.value.warnings.ifEmpty { null },
-                    "animated" to admitted.value.animated, "knobs" to admitted.value.knobs.size,
-                    "differenceFromCurrent" to mapOf("meanLevels" to diff.mean, "changedFraction" to diff.changedFraction),
-                    "frame" to StudyEvidence.stats(frames[0], times[0]).let { mapOf("luma" to it.luma, "detail" to it.detail, "colourfulness" to it.colourfulness, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) })
-            } catch (e: StudyRejection) {
-                rows += listOf(StudyEvidence.tile(null, v.label, "", e.message))
-                linkedMapOf("label" to v.label, "ok" to false, "error" to e.message)
-            }
+        val trial = speculation.tryAll(variants.map { StudyVariants.Candidate(it.label, it.note, it.source, it.edits) }, live,
+            revisions::check, { revisions.isCancelled(epoch) }, { frames(it, dim, times) },
+            { "t = ${StudyEvidence.format(times[it])} s" }) { value, drawn ->
+            val diff = StudyEvidence.difference(baseFrames[0], drawn[0], null, false).first
+            linkedMapOf("warnings" to value.warnings.ifEmpty { null }, "animated" to value.animated, "knobs" to value.knobs.size,
+                "differenceFromCurrent" to mapOf("meanLevels" to diff.mean, "changedFraction" to diff.changedFraction),
+                "frame" to StudyEvidence.stats(drawn[0], times[0]).let { mapOf("luma" to it.luma, "detail" to it.detail, "colourfulness" to it.colourfulness, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) })
         }
-        synchronized(speculations) {
-            speculations.clear(); speculations.putAll(held)
-            speculationBase = revisions.currentId() to SourceStudy.hash(live)
-        }
+        val rows = listOf(baseFrames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", "current") }) + trial.rows
+        val labels = listOf("${current.id}\n(current)") + trial.labels
         val single = times.size == 1
         val sheetRows = if (!single) rows else listOf(rows.mapIndexed { i, row ->
             val t = row.first()
@@ -642,42 +600,20 @@ class StackSLStudy(
         val bytes = StudyEvidence.sheet("StackSL variants · against ${current.id}" + if (single) " · t = ${StudyEvidence.format(times[0])} s" else "",
             "Unpublished candidates; adopt one with AdoptStackSLVariant, or ask for more.",
             if (single) sheetRows.flatten().chunked(5) else sheetRows, if (dim < 150) dim * 2 else dim, if (single) emptyList() else labels)
-        val batch = File(directory, "speculations/${System.currentTimeMillis()}").also { it.mkdirs() }
-        File(batch, "sheet.png").writeBytes(bytes)
-        val files = held.values.associate { it.label to it.label.replace(Regex("[^A-Za-z0-9_.-]"), "_") + ".stacksl" }
-        held.values.forEach { File(batch, files.getValue(it.label)).writeText(it.source) }
-        File(batch, "variants.json").writeText(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(linkedMapOf(
-            "against" to current.id, "liveSourceHash" to SourceStudy.hash(live), "adopted" to null,
-            "variants" to held.values.map { linkedMapOf("label" to it.label, "note" to it.note, "file" to files.getValue(it.label)) })))
-        heldBatch = batch
+        val batch = speculation.hold(current.id, SourceStudy.hash(live), trial.held, bytes)
         runCatching { onChange?.invoke() }
         return StudyReport(current.id, linkedMapOf("against" to current.id, "liveDirty" to (live != current.source), "seconds" to times,
-            "variants" to facts, "held" to held.keys.toList(), "imageFile" to File(batch, "sheet.png").absolutePath, "published" to false,
+            "variants" to trial.facts, "held" to trial.held.map { it.label }, "imageFile" to File(batch, "sheet.png").absolutePath, "published" to false,
             "renderSeconds" to cost(clock, (1 + variants.size) * times.size * dim * dim)),
             listOf(ToolImage(png(bytes), "Variants against ${current.id}: first row current, then one row per candidate")))
     }
 
-    private fun latestBatch(): File? = heldBatch ?: File(directory, "speculations").listFiles().orEmpty()
-        .filter { File(it, "variants.json").isFile }.maxByOrNull { it.name.toLongOrNull() ?: 0L }
-
     /** The candidates [tryVariants] is holding, label to source — what the human view offers to adopt. */
-    fun heldVariants(): List<Triple<String, String, String>> = synchronized(speculations) { speculations.values.map { Triple(it.label, it.note, it.source) } }
+    fun heldVariants(): List<Triple<String, String, String>> = speculation.held()
 
     /** Publish a held candidate. */
-    fun adoptVariant(expectedRevision: String, expectedSourceHash: String, label: String, description: String = ""): StudyReport {
-        val chosen = synchronized(speculations) { speculations[label] } ?: throw StudyRejection("No held variant '$label'; held: ${heldVariants().joinToString { it.first }.ifBlank { "none" }}")
-        val report = published(revisions.edit(expectedRevision, expectedSourceHash, chosen.source,
-            description.ifBlank { "adopt variant $label" + if (chosen.note.isNotBlank()) ": ${chosen.note}" else "" }), emptyList(), "Adopted variant $label")
-        synchronized(speculations) { speculations.clear() }
-        latestBatch()?.let { batch ->
-            runCatching {
-                val record = mapper.readTree(File(batch, "variants.json")) as com.fasterxml.jackson.databind.node.ObjectNode
-                record.put("adopted", label).put("as", report.revision)
-                File(batch, "variants.json").writeText(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(record))
-            }
-        }
-        return report
-    }
+    fun adoptVariant(expectedRevision: String, expectedSourceHash: String, label: String, description: String = ""): StudyReport =
+        speculation.adopt(revisions, expectedRevision, expectedSourceHash, label, description) { r -> published(r, emptyList(), "Adopted variant $label") }
 
     /**
      * Test what an edit preserved. `mode` `"rgb"` compares displayed colour, `"luma"` brightness only,
@@ -699,22 +635,12 @@ class StackSLStudy(
         if (mode == "stage" && (beforeStage == null || afterStage == null)) throw StudyRejection("mode=stage needs beforeStage and afterStage")
         if (mode !in setOf("rgb", "luma", "stage")) throw StudyRejection("mode is rgb, luma or stage")
         val pa = program(a, beforeStage.takeIf { mode == "stage" }); val pb = program(b, afterStage.takeIf { mode == "stage" })
-        val rows = mutableListOf<List<StudyEvidence.Tile>>()
         val allA = frames(pa, dim, times); val allB = frames(pb, dim, times)
-        val results = times.mapIndexed { i, t ->
-            val fa = allA[i]; val fb = allB[i]
-            val (outside, inside) = if (mode == "stage") StudyEvidence.rawDifference(fa, fb, region)
-                else StudyEvidence.difference(fa, fb, region, mode == "luma")
-            val when_ = "t = ${StudyEvidence.format(t)} s"
-            rows += listOf(
-                if (mode == "stage") StudyEvidence.normalizedTile(fa, a.id, "stage $beforeStage · $when_").first else StudyEvidence.tile(StudyEvidence.presented(fa), a.id, when_),
-                if (mode == "stage") StudyEvidence.normalizedTile(fb, b.id, "stage $afterStage · $when_").first else StudyEvidence.tile(StudyEvidence.presented(fb), b.id, when_),
-                if (mode == "stage") StudyEvidence.rawDifferenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)}")
-                else StudyEvidence.differenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)} levels"))
-            linkedMapOf("seconds" to t, "outside" to outside, "inside" to inside)
-        }
-        val tolerance = if (mode == "stage") 1e-6 else 1.0
-        val preserved = results.all { (it["outside"] as StudyDifference).max <= tolerance }
+        val px = StudyCompare.pixels(allA, allB, times, a.id, b.id, region, mode, { "t = ${StudyEvidence.format(it)} s" },
+            captions = if (mode != "stage") null else { t -> val w = "t = ${StudyEvidence.format(t)} s"; "stage $beforeStage · $w" to "stage $afterStage · $w" })
+        val rows = px.rows; val results = px.results
+        val tolerance = px.tolerance
+        val preserved = px.preserved
         // A line that ends in a store (`>edge`) leaves only the program's input on top, and two
         // programs always agree about their input: such a comparison is true and says nothing.
         // The input is what the root with no words returns; its definitions are the ones that compiled.
