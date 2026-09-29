@@ -410,6 +410,11 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   model; its result says `provider: "scripted"`.
 - `--setup file.json` applies tool calls before the turn, for example a box that fails to compile.
   They are logged separately, and output checks ignore what the setup printed.
+- `--chat-box <box>` (live only) runs the task as that box's real AI4 panel turn (`ai-assist`,
+  kind `general`), so the exchange lands in its chat history. The per-call tool log then stays with
+  the panel.
+- The same tools are in every AI4 chat. `agent-task` is a headless entry into the AI4 chat turn,
+  not a separate agent.
 - After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent
   made.
 - `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the seven-task
