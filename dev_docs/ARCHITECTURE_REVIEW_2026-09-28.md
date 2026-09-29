@@ -307,6 +307,21 @@ failures aren't only at the boundaries between lifecycles, they're that four use
 5. **Only then** carve `server()` along these seams (session lifecycle, controls, Playwright,
    RPC handlers) — the refactor falls out of the ownership model rather than preceding it.
 
+**Status, 2026-09-29.** Steps 1–4 are on `arch/review-2026-09-28`. The census is
+`lifecycle-census` / `field_lifecycle_census` over `LifecycleLedger` (attribution recorded at
+registration). `RunScope` owns what a run registers; launches, continue and batch launches open one
+per strand, execute-all one on `__run__`, and a strand's older scope closes *after* the new run has
+executed, so a re-run replaces rather than blanks. Audio patches, patSynth feeders, the eight
+control-callback maps, Runloop hooks and render-target `+=` are run-owned through the ledger;
+`streamProcess` moved from a stop hook to its run. Stop hooks remain as the *box*-lifetime owner
+(`DmxSockets` needs a socket to survive re-runs). `Server.stop` is the one stop entry point and
+documents what "stopped" means; `retireBoxes` closes runs, disposes renderers, disposes engines.
+Execution output resolves its recipient at send time, so a reloaded browser gets a running launch's
+prints. Not converted, deliberately: library code that caches a registration across runs
+(`setUnowned`, `registerUnowned*Callback`, the RTT streamer) — run ownership would kill it on the
+next run — and `ReturnValueRegistry` handlers keep their signature and their own `finally`, reading
+the scope through `RunScope.current()`. Smoke: `lifecycle.census.stop-releases`.
+
 ---
 
 ## Order of work
