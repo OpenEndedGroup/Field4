@@ -217,7 +217,7 @@ run on stop. That is what got noticed, and what the next section closes.
 | --- | --- |
 | `StreamProcessStopLeakTest.stopKillsTheProcess` | a real `/bin/sleep` is **dead** after `stop` (was: still alive) |
 | `StreamProcessStopLeakTest.reRunningTheBoxKillsTheProcess` | the end-phase route still works |
-| `StreamProcessStopLeakTest.theStopHookIsUnregisteredWhenTheProcessEndsOnItsOwn` | no stale hook after a natural exit — the case in point 3 |
+| `StreamProcessStopLeakTest.theStopHookIsUnregisteredWhenTheProcessEndsOnItsOwn` | no stale hook after a natural exit — the case in point 3 (renamed `theOwnershipIsDroppedWhenTheProcessEndsOnItsOwn` on 2026-09-29, when the process moved from a stop hook to the run's `RunScope`) |
 | `BoxStopHookTest` (5) | hooks run, run **once**, are drained, unregister, one throwing does not strand the others, and the drain happens **after** job cancellation |
 
 39 tests green across `BoxStopHookTest`, `StreamProcessStopLeakTest`, `FramesSemanticsTest` and

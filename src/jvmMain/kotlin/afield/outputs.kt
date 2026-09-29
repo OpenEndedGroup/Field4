@@ -424,10 +424,10 @@ data class StreamProcessEnd(
  *
  * The returned Frames ends when the process exits, and ending the Frames kills the process. So does
  * pressing stop on the box, but by a different route and with one difference worth knowing: stop
- * cancels the Frames end phase before it can run (see `Box.stopHooks` and
- * `dev_docs/frames_stop_end_phase.md`), so the child is killed by a stop hook while the suspending
- * [atEnd] callback — a box author's own teardown — is skipped. Ending the Frames in code, or letting
- * the process exit, runs [atEnd] normally.
+ * cancels the Frames end phase before it can run (see `dev_docs/frames_stop_end_phase.md`), so the
+ * child is killed when stop closes the run that started it ([RunScope]) while the suspending [atEnd]
+ * callback — a box author's own teardown — is skipped. Ending the Frames in code, or letting the
+ * process exit, runs [atEnd] normally.
  */
 fun Box.streamProcess(
     name: String,
@@ -445,18 +445,18 @@ fun Box.streamProcess(
     var reportedEnd = false
 
     /**
-     * Removes the stop hook installed further down. Assigned late, but [reportEnd] is the single
-     * funnel through which "this process is finished" passes, so the removal belongs there: a
-     * process that exits on its own never reaches the Frames end phase at all — the body reports
-     * and returns, and `frame()` is never called again — so unregistering only from `atEnd` would
-     * leave a stale hook on the box for every completed process.
+     * The run's ownership of the child, taken further down. Assigned late, but [reportEnd] is the
+     * single funnel through which "this process is finished" passes, so dropping it belongs there: a
+     * process that exits on its own never reaches the Frames end phase at all — the body reports and
+     * returns, and `frame()` is never called again — so dropping it only from `atEnd` would leave a
+     * stale entry on the run for every completed process.
      */
-    var unregisterStopHook: Runnable? = null
+    var processOwnership: Ownership? = null
 
     suspend fun reportEnd(exitCode: Int, terminated: Boolean = false) {
         if (reportedEnd) return
         reportedEnd = true
-        unregisterStopHook?.run()
+        processOwnership?.supersede()
         box.atEnd(
             StreamProcessEnd(
                 name = name,
@@ -611,22 +611,28 @@ fun Box.streamProcess(
         return true
     }
 
-    // Pressing stop does NOT run the end phase — `stopTrackedJobs` bumps the launch epoch before the
-    // body's cancellation can register an end job, so `registerLaunchJob` cancels it while it is
-    // still queued. That fence is load-bearing and stays; see Box.stopHooks. Without this hook the
-    // `destroy()` below simply never happened and the child outlived the box, which is the leak
-    // measured in dev_docs/frames_stop_end_phase.md. The hook releases the OS resource only: the
-    // suspending `atEnd` user callback still belongs to the end phase and is still skipped on stop.
-    unregisterStopHook = box.registerStopHook(Runnable { terminateProcess() })
+    // The end phase runs asynchronously after stop returns, if at all, so it cannot be what kills
+    // the child: without this the `destroy()` below never happened on stop and the child outlived
+    // the box, which is the leak measured in dev_docs/frames_stop_end_phase.md. The run that started
+    // the process owns it instead, so stop — or a later run of the same strand — closes the run and
+    // kills the child synchronously. That releases the OS resource only: the suspending `atEnd` user
+    // callback still belongs to the end phase.
+    processOwnership = LifecycleLedger.claim(
+        LifecycleKinds.STREAM_PROCESS,
+        label,
+        owner = box,
+        scope = RunScope.currentFor(box),
+        release = { terminateProcess() },
+    )
 
     runner.atEnd = suspend {
         val proc = process
         if (proc == null) {
-            // Nothing was ever spawned, so there is no reportEnd to carry the removal. The hook is
-            // registered unconditionally above and never reassigned, so it is non-null here — no
-            // safe call, and a future conditional registration becomes a compile error, not a
-            // silently skipped unregister.
-            unregisterStopHook.run()
+            // Nothing was ever spawned, so there is no reportEnd to carry the removal. The ownership
+            // is taken unconditionally above and never reassigned, so it is non-null here — no safe
+            // call, and a future conditional claim becomes a compile error, not a silently skipped
+            // release.
+            processOwnership.supersede()
         } else {
             val terminated = terminateProcess()
             val exitCode = runCatching { proc.exitValue() }.getOrDefault(-1)
@@ -1002,6 +1008,11 @@ internal fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit
     sliderCallbacks.register(sliderId, callback)
 }
 
+/** [registerSliderCallback] for library code that manages the slider's lifetime itself; no run owns it. */
+internal fun registerUnownedSliderCallback(sliderId: String, callback: (Double) -> Unit) {
+    sliderCallbacks.register(sliderId, callback, owned = false)
+}
+
 internal fun unregisterSliderCallback(sliderId: String) {
     sliderCallbacks.unregister(sliderId)
 }
@@ -1359,6 +1370,14 @@ private val stringCallbacks = OwnedCallbackRegistry<(String) -> Unit>("string")
 
 internal fun registerStringCallback(controlId: String, callback: (String) -> Unit) {
     stringCallbacks.register(controlId, callback)
+}
+
+/**
+ * [registerStringCallback] for library code that registers once and keeps the id across runs — a
+ * study viewer's action channel — so that no run's end removes it.
+ */
+internal fun registerUnownedStringCallback(controlId: String, callback: (String) -> Unit) {
+    stringCallbacks.register(controlId, callback, owned = false)
 }
 
 internal fun getStringCallback(controlId: String): ((String) -> Unit)? {

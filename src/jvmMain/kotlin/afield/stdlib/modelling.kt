@@ -547,12 +547,12 @@ class AdaptiveDistributionLoop(
         key: String,
         runloop: Runloop = Runloop.runLoop
     ): AdaptiveDistributionLoop {
-        runloop.preRun[key] = sequence {
+        runloop.preRun.setUnowned(key, sequence {
             while (true) {
                 tick()
                 yield(Unit)
             }
-        }
+        })
         return this
     }
 

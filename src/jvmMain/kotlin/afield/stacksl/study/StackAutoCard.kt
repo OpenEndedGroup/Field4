@@ -4,8 +4,8 @@ import afield.Box
 import afield.RunsAt
 import afield.buildSliderHtml
 import afield.plugins
-import afield.registerSliderCallback
-import afield.registerStringCallback
+import afield.registerUnownedSliderCallback
+import afield.registerUnownedStringCallback
 import afield.stdlib.BoxStudies
 import afield.stdlib.KnobNames
 import afield.stdlib.StackAutoNumbers
@@ -99,7 +99,7 @@ object StackAutoCard {
     /** The card's HTML: a section per slot with numbers. */
     fun html(box: Box): String {
         val id = "sa" + UUID.randomUUID().toString().replace("-", "").take(10)
-        val action = actions.getOrPut(box) { "stack-auto-card-${UUID.randomUUID()}".also { a -> registerStringCallback(a) { handle(box, it) } } }
+        val action = actions.getOrPut(box) { "stack-auto-card-${UUID.randomUUID()}".also { a -> registerUnownedStringCallback(a) { handle(box, it) } } }
         sliders.remove(box)?.forEach(::unregisterSliderCallback)
         val registered = mutableListOf<String>()
         // Every bound slot has a section — its picture in the shader is worth having without a number to turn.
@@ -129,7 +129,7 @@ object StackAutoCard {
                         val magnitude = Math.pow(10.0, Math.floor(Math.log10(raw)))
                         val step = listOf(1.0, 2.0, 5.0, 10.0).map { it * magnitude }.first { it >= raw * 0.999 }
                         val sliderId = "$id-${slot.name}-k${k.knob}"
-                        registerSliderCallback(sliderId) { value -> StackAutoNumbers.set(box, slot.name, k.wire, value) }
+                        registerUnownedSliderCallback(sliderId) { value -> StackAutoNumbers.set(box, slot.name, k.wire, value) }
                         registered += sliderId
                         val label = "<span class='locate' data-slot='${slot.name}' data-locate='${k.knob}' title='${esc(operand)} · ${esc(k.context)} — click to select ${esc(k.token)} in the editor'>" +
                             "k${k.knob} <span class='purpose'>${esc(names[k.knob] ?: operand)}</span></span>"

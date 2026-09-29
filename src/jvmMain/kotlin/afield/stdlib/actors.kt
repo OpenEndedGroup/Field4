@@ -352,7 +352,7 @@ private fun Box.drainMailbox() {
 private val registeredBoxes = ConcurrentLinkedQueue<Box>()
 
 private fun ensureActorPump() {
-    Runloop.runLoop.preRun[RUNLOOP_HOOK_KEY] = sequence {
+    Runloop.runLoop.preRun.setUnowned(RUNLOOP_HOOK_KEY, sequence {
         while (true) {
             val snapshot = registeredBoxes.toList()
             for (box in snapshot) {
@@ -360,7 +360,7 @@ private fun ensureActorPump() {
             }
             yield(Unit)
         }
-    }
+    })
 }
 
 /**

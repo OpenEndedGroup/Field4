@@ -2,7 +2,7 @@ package afield.stacksl.study
 
 import afield.Box
 import afield.displayOpen
-import afield.registerStringCallback
+import afield.registerUnownedStringCallback
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.cpu.StackSLCpu
 import afield.stdlib.SourceStudy
@@ -52,7 +52,7 @@ class StackSLStudyViewer(
     @Volatile private var status = ""
 
     init {
-        registerStringCallback(actionId) { handleAction(it) }
+        registerUnownedStringCallback(actionId) { handleAction(it) }
         study.onChange = { refreshLater() }
     }
 

@@ -5367,12 +5367,38 @@ class Server {
         }
 
 
+        /**
+         * Stop [box] — the stop button, `stop-box`/`stop-all`, a transcript's stop, and the stop pass
+         * of [retireBoxes]. When this returns, "stopped" means:
+         *
+         * - the box's language has been told to stop ([BoxExecution.stop]: a Python cell's tasks
+         *   cancelled, a Pd patch's generation bumped, Kotlin's jobs cancelled);
+         * - every launch of every strand is invalidated (the launch epoch and each strand's generation
+         *   are bumped), so work still queued for one is refused when it arrives;
+         * - its jobs are cancelled — cancelled, not finished: a coroutine unwinds on its next
+         *   suspension, over later Runloop ticks, and a `Frames` end phase may run after this returns;
+         * - its stop hooks have run, and every [RunScope] it had is closed, so what its runs
+         *   registered — audio patches, feeders, control callbacks, Runloop hooks, render modules,
+         *   child processes — is released now, synchronously ([stopTrackedJobs]);
+         * - a renderer it owns is being torn down: its dependents are stopped now and the device is
+         *   freed on the render thread once their jobs unwind, bounded at 2 s ([disposeBoxRenderer]),
+         *   which is why that runs before the job barrier rather than after it.
+         *
+         * It does not dispose the box's engine: a stopped box can be run again. Deleting a box, a
+         * history restore or a document's last client leaving go further, through [retireBoxes].
+         * `lifecycle-census` is how to check the result.
+         */
         fun stop(box: Box, entrypoint: String = "server.stop") {
             FlightRecorder.recordStopEntrypoint(entrypoint, box)
             box.ke.stop(box)
             // If this box owns an afield.four Renderer (e.g. the agent graphics-context box),
-            // cancelling its jobs above never disposes the native window/surface. Do that now.
+            // cancelling its jobs never disposes the native window/surface. Do that now — before the
+            // barrier below, because the teardown snapshots the owner's jobs to wait for them.
             disposeBoxRenderer(box)
+            // Kotlin's stop is this already; the other languages stop their own work but not the
+            // box-level jobs, hooks and run scopes, which every box has whatever its language.
+            // Idempotent, so running it after Kotlin's costs an epoch number.
+            box.stopTrackedJobs()
             broadcastWelcomeEvent("running")
         }
 

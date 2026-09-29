@@ -1584,6 +1584,11 @@ def build_backdoor_command(
             # counter its figure shows, and used to fail with "no output-area events were emitted"
             # against a box that had in fact drawn several thousand frames.
             commands.append(shlex.join(["output", "@last", "--kind", "all"]))
+            # `beforeStop` / `afterStop`: backdoor command lines run either side of the stop, each
+            # one's ok counting toward the test — how a lifecycle smoke asserts what a box holds
+            # while it runs (`lifecycle-census @last --expect-at-least ...`) and that stop released
+            # it (`lifecycle-census @last --expect-empty`).
+            commands.extend(str(line) for line in (test.get("beforeStop") or []))
             commands.append(
                 shlex.join(
                     [
@@ -1594,6 +1599,7 @@ def build_backdoor_command(
                     ]
                 )
             )
+            commands.extend(str(line) for line in (test.get("afterStop") or []))
         if bool((test.get("expect") or {}).get("allowExecutionErrors", False)):
             # `allowExecutionErrors` already suppressed `collect_execution_problems`
             # (:1651 below). Since 2026-09-14 `run`/`launch` also report `ok: false` for a

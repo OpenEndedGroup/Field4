@@ -501,12 +501,12 @@ class ShaderFieldQuantileWarpController(
     /** Add the pre-run hook that calls [tick] every frame. Idempotent. */
     fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldQuantileWarpController {
         if (installed) return this
-        runloop.preRun[hookKey] = sequence {
+        runloop.preRun.setUnowned(hookKey, sequence {
             while (true) {
                 tick()
                 yield(Unit)
             }
-        }
+        })
         installed = true
         return this
     }

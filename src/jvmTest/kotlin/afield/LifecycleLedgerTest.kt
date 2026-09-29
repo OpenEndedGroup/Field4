@@ -20,7 +20,7 @@ class LifecycleLedgerTest {
     fun aRegistrationIsAttributedToTheExecutingBox() {
         val box = Box("ledger-attribution")
         val registry = OwnedCallbackRegistry<(Double) -> Unit>("test-slider")
-        val ownership = Box.withBoxContextNow(box) { registry.register("s1") {} }
+        val ownership = Box.withBoxContextNow(box) { registry.register("s1", {}) }
 
         assertEquals(listOf(ownership), ownedBy(box, LifecycleKinds.CONTROL_CALLBACK))
         ownership.close()
@@ -63,7 +63,7 @@ class LifecycleLedgerTest {
     fun theCensusCountsWhatABoxHolds() {
         val box = Box("ledger-census")
         val registry = OwnedCallbackRegistry<() -> Unit>("test-census")
-        val ownership = Box.withBoxContextNow(box) { registry.register("c") {} }
+        val ownership = Box.withBoxContextNow(box) { registry.register("c", {}) }
 
         val entry = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
         assertTrue("\"control-callback\":1" in entry, entry)

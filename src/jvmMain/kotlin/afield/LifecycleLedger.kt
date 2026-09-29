@@ -62,7 +62,7 @@ class Ownership internal constructor(
  * knowable: an audio patch registered from a return-value handler, or a slider callback registered
  * from box code, carries no reference to its box afterwards.
  *
- * [census] turns the ledger into per-box counts; `lifecycle-census` exposes that over the backdoor.
+ * [lifecycleCensus] turns the ledger into per-box counts; `lifecycle-census` exposes that over the backdoor.
  */
 object LifecycleLedger {
     private val live: MutableSet<Ownership> = ConcurrentHashMap.newKeySet()
@@ -75,19 +75,25 @@ object LifecycleLedger {
      * claim on the same slot supersedes this one. [live], when given, is asked at census time whether
      * the subsystem still has it (a finished Runloop sequence, a module removed by hand); [release]
      * is what [Ownership.close] runs to take it out.
+     *
+     * The ownership is also handed to [scope] — by default the [RunScope] the executing run belongs
+     * to — so the run's end releases it. Pass `scope = null` for something the box does not own, only
+     * caused.
      */
     fun claim(
         kind: String,
         key: String,
         slot: Any? = null,
-        owner: Box? = Box.context.get(),
-        strand: String? = null,
+        owner: Box? = RunScope.executingBox(),
+        scope: RunScope? = RunScope.currentFor(owner),
         live: (() -> Boolean)? = null,
         release: (() -> Unit)? = null,
     ): Ownership {
-        val ownership = Ownership(kind, key, owner?.id, strand, slot, live, release)
+        val ownership = Ownership(kind, key, owner?.id, scope?.strand, slot, live, release)
         this.live.add(ownership)
         if (slot != null) slots.put(slot, ownership)?.supersede()
+        // Last, so a scope that has already closed releases this at once rather than keeping it.
+        scope?.own(ownership)
         return ownership
     }
 
@@ -137,13 +143,22 @@ object LifecycleKinds {
 class OwnedCallbackRegistry<T : Any>(private val name: String) {
     private val callbacks = ConcurrentHashMap<String, T>()
 
-    /** Install [callback] under [id], recorded against the executing box; returns its ownership. */
-    fun register(id: String, callback: T): Ownership {
+    /**
+     * Install [callback] under [id], recorded against the executing box; returns its ownership.
+     *
+     * By default the executing run owns it, so the run's end removes it. [owned] `false` is for
+     * library code that caches a control across runs (a study viewer's action id, made once) and
+     * removes it itself; it is still attributed, but no run takes it out.
+     */
+    fun register(id: String, callback: T, owned: Boolean = true): Ownership {
         callbacks[id] = callback
+        val owner = RunScope.executingBox()
         return LifecycleLedger.claim(
             LifecycleKinds.CONTROL_CALLBACK,
             "$name:$id",
             slot = LedgerSlot(this, id),
+            owner = owner,
+            scope = if (owned) RunScope.currentFor(owner) else null,
             live = { callbacks[id] === callback },
             release = { callbacks.remove(id, callback) },
         )
@@ -186,6 +201,10 @@ fun lifecycleCensus(boxes: Collection<Box>, includeUnattributed: Boolean = true)
                     put("activeJobs", jobs.count { it.isActive })
                     put("runningStrands", JsonArray(strands.map { JsonPrimitive(it) }))
                     put("stopHooks", hooks)
+                    // Informational: a scope is an owner, not a resource, so it is not in liveTotal.
+                    put("runScopes", JsonArray(box.runScopes.snapshot().map {
+                        JsonPrimitive("${it.strand}/${it.kind}#${it.id} live=${it.liveCount}")
+                    }))
                     put("owned", ownedCounts(owned))
                     put("ownedKeys", JsonArray(owned.take(50).map {
                         JsonPrimitive("${it.kind}:${it.key}" + (it.strand?.let { s -> " @$s" } ?: ""))

@@ -1637,7 +1637,7 @@ object OperationTranscript {
             "launch", "launch-all", "launch-fragment" -> {
                 if (direction == "undo") {
                     val target = mappedBox() ?: return false
-                    target.ke.stop(target)
+                    Server.stop(target, "transcript-undo-launch")
                     return true
                 }
                 // Route through the group path so an unresolved box / empty code becomes a
@@ -1648,7 +1648,7 @@ object OperationTranscript {
             "stop", "stop-all", "stop-box" -> {
                 if (direction == "undo") return false
                 val target = mappedBox() ?: return false
-                target.ke.stop(target)
+                Server.stop(target, "transcript-stop")
                 true
             }
             "wait" -> {

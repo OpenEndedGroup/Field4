@@ -1208,7 +1208,8 @@ class KotlinExecution : BoxExecution {
             val strand: String,
             val pendingWatermark: Int,
             val launchEpoch: Int,
-            val originSession: WebSocketSession?
+            val originSession: WebSocketSession?,
+            val runScope: RunScope
         )
 
 
@@ -1336,7 +1337,10 @@ class KotlinExecution : BoxExecution {
                     )
                 )
 
-                BatchLaunchRequest(box, exec, normalizedCode, strand, watermark, launchEpoch, originSession)
+                BatchLaunchRequest(
+                    box, exec, normalizedCode, strand, watermark, launchEpoch, originSession,
+                    runScope = box.runScopes.begin(strand, "launch")
+                )
             }
 
         private suspend fun runPreparedBatchLaunches(
@@ -1409,6 +1413,7 @@ class KotlinExecution : BoxExecution {
             try {
                 if (!box.isLaunchEpochCurrent(request.launchEpoch)) return
 
+                withContext(request.runScope.element) {
                 Box.withBoxContext(box) {
                     box.resetStdlibRandom()
                     resetLaunchSetupState(box)
@@ -1590,7 +1595,9 @@ class KotlinExecution : BoxExecution {
                     // Queueing this clear behind it keeps the hand-over ordered rather than racing.
                     withContext(Runloop.runLoop.main) { clearPendingOnce() }
                 }
+                }
             } finally {
+                box.runScopes.supersede(request.runScope)
                 clearPendingOnce()
                 trace.finish(executionSucceeded && box.isLaunchEpochCurrent(request.launchEpoch))
             }
@@ -2121,6 +2128,9 @@ class KotlinExecution : BoxExecution {
         send(Message("is-running").payload(IsRunning(execute.uid, true, wm, "__fragment__")))
         inMain {
             inside.resetStdlibRandom()
+            // Running the whole box is a new run: what the previous whole-box run registered and this
+            // one does not register again is released once this one has executed. See RunScope.
+            val runScope = inside.runScopes.begin(BoxRunScopes.RUN_STRAND, "run")
             executeInBox(
                 inside,
                 code,
@@ -2131,7 +2141,9 @@ class KotlinExecution : BoxExecution {
                 requestId = execute.requestId,
                 sourceText = execute.code,
                 executionMode = "run",
+                runScope = runScope,
                 finishedHandler = {
+                    inside.runScopes.supersede(runScope)
                     send(Message("is-running").payload(IsRunning(execute.uid, false, wm, "__fragment__")))
                 }) {}
         }
@@ -2150,6 +2162,8 @@ class KotlinExecution : BoxExecution {
         val launchMode = ACTIVE_LAUNCH_MODE
         val pendingWatermark = inside.runGeneration.incrementAndGet(strand)
         inside.currentRunningStates[strand] = RunningState(pendingWatermark, pendingLaunchMode)
+        // This launch's owner. The strand's previous run is closed once this one has executed.
+        val runScope = inside.runScopes.begin(strand, "launch")
         val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
         val telemetryContext = CodeUseTelemetryService.captureBoxContext(
             inside,
@@ -2199,7 +2213,9 @@ class KotlinExecution : BoxExecution {
                 sourceText = execute.code,
                 executionMode = "launch",
                 accepted = { inside.isLaunchEpochCurrent(launchEpoch) },
+                runScope = runScope,
                 finishedHandler = {
+                    inside.runScopes.supersede(runScope)
                     if (inside.currentRunningStates[strand]?.watermark == pendingWatermark) {
                         inside.currentRunningStates.remove(strand)
                     }
@@ -2303,8 +2319,10 @@ class KotlinExecution : BoxExecution {
                 trace.finish(false, "Launch was cancelled before installation")
                 return@inMain
             }
+            val runScope = inside.runScopes.begin(strand, "continue")
             try {
             configureOutputProxies(inside, trace.reply, originSession)
+            RunScope.withCurrent(runScope) {
             ReturnValueRegistry.launchPrepared(inside, cached.returnValue, strand, launchEpoch) { isRunning, notifiedStrand, watermark ->
                 if (isRunning) {
                     inside.currentRunningStates[notifiedStrand] = RunningState(watermark, launchMode)
@@ -2330,10 +2348,13 @@ class KotlinExecution : BoxExecution {
                     returnType = cached.returnValue.javaClass.name
                 )
             }
+            }
             trace.finish(true)
             } catch (failure: Throwable) {
                 trace.finish(false, failure.message ?: failure.javaClass.name)
                 throw failure
+            } finally {
+                inside.runScopes.supersede(runScope)
             }
         }
     }
@@ -2352,6 +2373,7 @@ class KotlinExecution : BoxExecution {
         sourceText: String = code,
         accepted: () -> Boolean = { true },
         finishedHandler: () -> Unit = {},
+        runScope: RunScope? = null,
         handleReturn: (Any?) -> Unit
     ) {
         // Running the box is the fix for a recycled engine, so the flag reloadPersonal set comes off
@@ -2360,7 +2382,11 @@ class KotlinExecution : BoxExecution {
         box.needsRerun = null
         val trace = ExecutionTrace(box, property, sourceText, requestId, executionMode, reply)
         var executionSucceeded = false
+        // What this execution registers belongs to [runScope] — the launch's, or execute-all's — and a
+        // fragment adds to the box's current whole-box run. See RunScope.
+        val scope = runScope ?: box.runScopes.ambient()
 
+        withContext(scope?.element ?: kotlin.coroutines.EmptyCoroutineContext) {
         Box.withBoxContext(box) {
             val telemetrySnippetId = CodeUseTelemetryService.newSnippetKey()
             val telemetryContext = CodeUseTelemetryService.captureBoxContext(
@@ -2740,6 +2766,7 @@ class KotlinExecution : BoxExecution {
                 finishTelemetry("execute-finished")
                 try { finishedHandler() } finally { trace.finish(executionSucceeded && accepted()) }
             }
+        }
         }
 
     }

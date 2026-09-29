@@ -7,6 +7,8 @@ import afield.IsRunning
 import afield.Message
 import afield.Rect
 import afield.RunningState
+import afield.captureLaunchEpoch
+import afield.registerLaunchJob
 import afield.Runloop
 import afield.disposeBoxRenderer
 import afield.four.Renderer
@@ -126,7 +128,8 @@ object LanguageRoots {
         root.runGeneration[strand] = generation
         root.currentRunningStates[strand] = RunningState(generation, MODE)
         send(Message("is-running").payload(IsRunning(root.id, true, generation, strand, MODE)))
-        root.jobs += inMain {
+        val epoch = root.captureLaunchEpoch()
+        val job = inMain {
             try {
                 renderer.run()
             } catch (t: Throwable) {
@@ -138,6 +141,7 @@ object LanguageRoots {
                 if (root.getPropertyRaw("renderer", null) === renderer && renderer.windows.all { it.shouldClose() }) disposeBoxRenderer(root)
             }
         }
+        root.registerLaunchJob(job, epoch) // the stop fence, not `jobs +=`: a stop in between cannot miss it
     }
 
     /** The running mode a language's own window reports. */

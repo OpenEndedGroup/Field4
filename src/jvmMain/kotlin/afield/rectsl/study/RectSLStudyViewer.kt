@@ -1,7 +1,7 @@
 package afield.rectsl.study
 
 import afield.Box
-import afield.registerStringCallback
+import afield.registerUnownedStringCallback
 import afield.rectsl.RectSLKnob
 import afield.rectsl.formatRectSLKnob
 import afield.rectsl.setRectSLKnobs
@@ -45,7 +45,7 @@ class RectSLStudyViewer(
     @Volatile private var status = ""
 
     init {
-        registerStringCallback(actionId) { json ->
+        registerUnownedStringCallback(actionId) { json ->
             val action = runCatching { mapper.readTree(json)["action"]?.asText() }.getOrNull()
             if (action == "preview") {
                 if (pendingPreview.getAndSet(json) == null) worker.execute { pendingPreview.getAndSet(null)?.let { handleAction(it) } }

@@ -2298,7 +2298,7 @@ private suspend fun recordFrameSynchronousToMp4(
         )
     }
 
-    Runloop.runLoop.postRun[hookName] = sequence {
+    Runloop.runLoop.postRun.setUnowned(hookName, sequence {
         installed.complete(Unit)
         while (frames.size < targetFrames && !completed.isCompleted) {
             val currentGate = gate.get()
@@ -2372,7 +2372,7 @@ private suspend fun recordFrameSynchronousToMp4(
                 completed.complete(Unit)
             }
         }
-    }
+    })
 
     try {
         installed.await()

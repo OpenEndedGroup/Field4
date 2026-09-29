@@ -18,15 +18,16 @@ import kotlin.test.assertTrue
  *
  * These tests ask the question that actually matters: **does a real external process outlive a
  * stop?** It used to, because stop cancelled the end job before it was dispatched. Two separate
- * things now prevent it: `Box.stopHooks`, which `stopTrackedJobs` drains synchronously, and — since
+ * things now prevent it: the [RunScope] that owns the process, which `stopTrackedJobs` closes
+ * synchronously (until 2026-09-29 this was a `Box.stopHooks` entry), and — since
  * [FramesSemanticsTest.boxStopStillRunsTheEndBlock] — the end phase itself.
  *
- * The belt-and-braces is deliberate and worth keeping: the hook is synchronous and covers the case
- * the end phase structurally cannot, a body that already returned and so never re-enters `frame()`.
- * `terminateProcess` is idempotent for exactly this reason, since both can fire for one stop.
+ * The belt-and-braces is deliberate and worth keeping: closing the run is synchronous and covers the
+ * case the end phase structurally cannot, a body that already returned and so never re-enters
+ * `frame()`. `terminateProcess` is idempotent for exactly this reason, since both can fire for one stop.
  *
  * The pairing is the point: [stopKillsTheProcess] and [reRunningTheBoxKillsTheProcess] reach the
- * same outcome by two different routes — a stop hook and the end phase respectively — so a
+ * same outcome by two different routes — the run's ownership and the end phase respectively — so a
  * regression in either route fails one test and not the other.
  */
 class StreamProcessStopLeakTest {
@@ -88,9 +89,9 @@ class StreamProcessStopLeakTest {
     }
 
     /**
-     * **The leak, fixed.** The `Box.stopHooks` entry `streamProcess` registers is drained
-     * synchronously inside `stopTrackedJobs`, so the child is already dead when `stop` returns —
-     * before the end phase, which now also runs, gets its first Runloop tick.
+     * **The leak, fixed.** The run that started the child owns it, and `stopTrackedJobs` closes the
+     * run synchronously, so the child is already dead when `stop` returns — before the end phase,
+     * which now also runs, gets its first Runloop tick.
      *
      * This asserted the opposite until 2026-08-19; see `dev_docs/frames_stop_end_phase.md`.
      */
@@ -100,7 +101,7 @@ class StreamProcessStopLeakTest {
         val (framer, _, sleeper) = startSleeper(box)
 
         KotlinExecution().stop(box)
-        // The hook runs synchronously inside stop, so the kill has already happened here; the pump
+        // The run closes synchronously inside stop, so the kill has already happened here; the pump
         // only gives the OS time to reap, so `isAlive` reflects it.
         for (attempt in 0 until 60) {
             if (!sleeper.isAlive) break
@@ -110,34 +111,38 @@ class StreamProcessStopLeakTest {
 
         assertTrue(
             !sleeper.isAlive,
-            "stop must kill the child: the Box.stopHooks drain in stopTrackedJobs is what does it " +
-                "synchronously, ahead of the end phase"
+            "stop must kill the child: closing the run that owns it in stopTrackedJobs is what does " +
+                "it synchronously, ahead of the end phase"
         )
     }
 
+    private fun processOwnerships(box: Box) =
+        LifecycleLedger.entries().count { it.ownerId == box.id && it.kind == LifecycleKinds.STREAM_PROCESS }
+
     /**
-     * The hook must not outlive the launch that installed it. A process that ends on its own runs
-     * the end phase, which unregisters — otherwise every `streamProcess` call would leave a stale
-     * entry on the box, and a later stop would walk a list of dead processes forever.
+     * The ownership must not outlive the process. A process that ends on its own runs the end phase,
+     * which drops it — otherwise every `streamProcess` call would leave a stale entry on the run, and
+     * a later stop would walk a list of dead processes forever.
      */
     @Test
-    fun theStopHookIsUnregisteredWhenTheProcessEndsOnItsOwn() {
+    fun theOwnershipIsDroppedWhenTheProcessEndsOnItsOwn() {
         val box = Box("stream-hook-unregister")
         val (framer, _, quick) = startSleeper(box)
-        assertEquals(1, box.stopHooks.size, "streamProcess should have installed exactly one hook")
+        assertEquals(1, processOwnerships(box), "streamProcess should have taken exactly one ownership")
+        assertTrue(box.stopHooks.isEmpty(), "and no stop hook: the run owns the process now")
 
         // Let it exit on its own terms rather than through stop, then pump so the end phase runs.
         quick.destroy()
         for (attempt in 0 until 400) {
             framer.frame()
-            if (box.stopHooks.isEmpty()) break
+            if (processOwnerships(box) == 0) break
             Thread.sleep(5)
         }
 
         assertEquals(
             0,
-            box.stopHooks.size,
-            "the end phase ran, so its stop hook is stale and must have been unregistered"
+            processOwnerships(box),
+            "the end phase ran, so the process's ownership is stale and must have been dropped"
         )
     }
 
@@ -175,9 +180,9 @@ class StreamProcessStopLeakTest {
         )
         assertTrue("proc.destroy()" in source, "outputs.kt no longer destroys the process")
         assertTrue(
-            "registerStopHook" in source,
-            "outputs.kt no longer registers a stop hook, so a stop would orphan the child again — " +
-                "this is the fix dev_docs/frames_stop_end_phase.md describes"
+            "LifecycleKinds.STREAM_PROCESS" in source && "release = { terminateProcess() }" in source,
+            "outputs.kt no longer hands the child to the run that started it, so a stop would orphan " +
+                "the child again — this is the fix dev_docs/frames_stop_end_phase.md describes"
         )
         assertEquals(
             1,

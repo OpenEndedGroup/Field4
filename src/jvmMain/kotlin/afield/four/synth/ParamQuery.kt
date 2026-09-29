@@ -570,12 +570,12 @@ internal object GraphBindingRuntime {
 
     private fun installRunloopHookIfNeeded() {
         if (hookInstalled) return
-        Runloop.runLoop.preRun[RUNLOOP_HOOK_KEY] = sequence {
+        Runloop.runLoop.preRun.setUnowned(RUNLOOP_HOOK_KEY, sequence {
             while (true) {
                 tickRunloop()
                 yield(Unit)
             }
-        }
+        })
         hookInstalled = true
     }
 

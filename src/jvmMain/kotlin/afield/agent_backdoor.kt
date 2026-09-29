@@ -810,6 +810,7 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
         graphicsBox.runGeneration[strand] = generation
         graphicsBox.currentRunningStates[strand] = RunningState(generation, "graphics-context")
         send(Message("is-running").payload(IsRunning(graphicsBox.id, true, generation, strand, "graphics-context")))
+        val epoch = graphicsBox.captureLaunchEpoch()
         val job = inMain {
             try {
                 renderer.run()
@@ -832,7 +833,8 @@ private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Bool
                 )
             }
         }
-        graphicsBox.jobs += job
+        // The stop fence, not `jobs +=`: a stop landing in between cannot miss the render job.
+        graphicsBox.registerLaunchJob(job, epoch)
     }
 
     needsResync.add(info.root to "children")
@@ -1020,12 +1022,12 @@ internal fun beginRendererTeardown(
     owner: Box,
     joinTimeoutMs: Long = RENDERER_TEARDOWN_JOIN_MS,
     onRenderThread: (suspend () -> Unit) -> Unit = { block -> inMain { block() } },
-    stopBox: (Box) -> Unit = { it.ke.stop(it) },
+    stopBox: (Box) -> Unit = { Server.stop(it, "renderer-teardown") },
     dispose: () -> Unit,
 ): List<Box> {
-    val dependents = rendererDependents(owner).filter {
-        it.jobs.isNotEmpty() || it.currentRunningStates.isNotEmpty() || it.stopHooks.isNotEmpty()
-    }
+    // The same test, and below the same stop, as everywhere else a box is stopped: a dependent whose
+    // runs hold render modules on this renderer counts as running even with no job left.
+    val dependents = rendererDependents(owner).filter { it.hasSomethingToStop() }
     val pending = (listOf(owner) + dependents).flatMap { b -> b.jobs.toList().map { b to it } }
 
     // The owner's own jobs (typically `start(renderer::run)`) are cancelled by the same barrier the

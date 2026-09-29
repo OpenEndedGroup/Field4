@@ -4,7 +4,10 @@ package afield.four.synth
 import afield.graphquery.LiveGraphEdge
 import afield.graphquery.LiveGraphInspectable
 import afield.Box
+import afield.RunScope
 import afield.RunsAt
+import afield.captureLaunchEpoch
+import afield.registerLaunchJob
 import afield.newRoot
 import afield.registerValuePrinter
 import kotlinx.coroutines.*
@@ -364,6 +367,7 @@ private fun installLiveSynthVisualizer(
     val box = Box.context.get()
         ?: throw IllegalStateException("Live synth visualizers require an active Box context")
     val intervalMs = (1000.0 / refreshHz.coerceIn(1.0, 60.0)).toLong().coerceAtLeast(16L)
+    val epoch = box.captureLaunchEpoch()
 
     val job = GlobalScope.launch(Box.boxContextElement(box)) {
         while (isActive) {
@@ -376,7 +380,9 @@ private fun installLiveSynthVisualizer(
         .put(key, job)
         ?.cancel()
 
-    box.jobs += job
+    // Through the epoch fence rather than `box.jobs +=`, so a stop that lands while this is being
+    // set up cannot miss the job; and owned by the run, so the next run of the strand ends it too.
+    if (box.registerLaunchJob(job, epoch)) RunScope.currentFor(box)?.ownJob(job)
 }
 
 fun AudioPatchSpec.liveSummary(

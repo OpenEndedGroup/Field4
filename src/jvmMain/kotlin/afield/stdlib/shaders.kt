@@ -1614,12 +1614,12 @@ class ShaderFieldAutoController(
      */
     fun install(runloop: Runloop = Runloop.runLoop): ShaderFieldAutoController {
         if (installed) return this
-        runloop.preRun[hookKey] = sequence {
+        runloop.preRun.setUnowned(hookKey, sequence {
             while (true) {
                 tick()
                 yield(Unit)
             }
-        }
+        })
         installed = true
         return this
     }

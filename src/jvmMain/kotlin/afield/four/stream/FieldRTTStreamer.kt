@@ -134,7 +134,7 @@ class FieldRTTStreamer(
         val opened = if (OS == OSType.LINUX) startLinux() else startMac()
         if (!opened) return emptyList()
 
-        renderer.renderList += name to this
+        renderer.renderList.others[name] = this // not `+=`: the streamer removes itself, and no box run owns it
         seq = 0
         streaming = true
         lprintln("info,field-stream",

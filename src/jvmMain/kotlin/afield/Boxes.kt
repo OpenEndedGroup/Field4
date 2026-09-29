@@ -312,10 +312,19 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * This generalises a workaround the tree already had: `Server.stop` disposes an `afield.four`
      * renderer explicitly, outside the end phase, for exactly this reason.
      *
-     * See `dev_docs/frames_stop_end_phase.md` for the measurement, and [Box.streamProcess] for the
-     * one caller that needs it today.
+     * These are *box*-lifetime: they survive re-runs and go only when the box stops, which is what a
+     * DMX socket wants (a re-run must not open a gap on the wire; see `DmxSockets`). Most things a
+     * run registers want the *run*'s lifetime instead — released by the next run of the strand as
+     * well as by stop — and belong to its [RunScope]; [Box.streamProcess] moved there. Stop drains
+     * both, hooks first. See `dev_docs/frames_stop_end_phase.md` for the measurement.
      */
     internal val stopHooks: MutableCollection<Runnable> = CopyOnWriteArrayList()
+
+    /**
+     * This box's open [RunScope]s — the owners of what each run of it registered. [stopTrackedJobs]
+     * closes them all; a later run of a strand closes that strand's earlier ones.
+     */
+    val runScopes: BoxRunScopes = BoxRunScopes(this)
 
     override var children by Delegation<MutableSet<Box>>()
     override var parents by Delegation<MutableSet<Box>>()
@@ -1333,9 +1342,9 @@ internal fun Box.registerStopHook(hook: Runnable): Runnable {
     return Runnable { stopHooks.remove(hook) }
 }
 
-/** Whether a stop would find anything to cancel or drain: jobs, running strands or stop hooks. */
+/** Whether a stop would find anything to cancel or drain: jobs, running strands, stop hooks or run-owned resources. */
 internal fun Box.hasSomethingToStop(): Boolean =
-    jobs.isNotEmpty() || currentRunningStates.isNotEmpty() || stopHooks.isNotEmpty()
+    jobs.isNotEmpty() || currentRunningStates.isNotEmpty() || stopHooks.isNotEmpty() || runScopes.liveCount > 0
 
 /**
  * Take [boxes] out of the running document: stop what they run, dispose any renderer they own, and
@@ -1350,9 +1359,12 @@ internal fun Box.hasSomethingToStop(): Boolean =
  * renderer box's dependents itself and then waits for *their* jobs to unwind before freeing the device
  * — stopping a dependent earlier would clear its job list, and the teardown would wait for nothing and
  * free buffers a cancelled loop is still writing (see `dev_docs/renderer_teardown_order.md`). Then
- * everything else that is still running, through the same [Server.stop] as the stop button; a box with
- * nothing to stop is skipped, so an idle Python cell does not interrupt the interpreter it shares.
- * Engines last.
+ * everything else that is still running, through the same [Server.stop] as the stop button, which
+ * closes every [RunScope] the box has; a box with nothing running only has its run scopes closed, so an
+ * idle Python cell does not interrupt the interpreter it shares. Engines last.
+ *
+ * So the chain is the same for every way a box leaves: close its runs, dispose its renderer, dispose
+ * its engine — stop is the first two of those, and [Server.stop] documents what it guarantees.
  */
 internal fun retireBoxes(boxes: Collection<Box>, entrypoint: String) {
     stopBoxes(boxes, entrypoint)
@@ -1370,10 +1382,15 @@ internal fun stopBoxes(boxes: Collection<Box>, entrypoint: String) {
         }
     }
     boxes.forEach { box ->
-        if (box.hasSomethingToStop()) {
-            runCatching { Server.stop(box, entrypoint) }.onFailure {
+        val running = box.jobs.isNotEmpty() || box.currentRunningStates.isNotEmpty() || box.stopHooks.isNotEmpty()
+        when {
+            running -> runCatching { Server.stop(box, entrypoint) }.onFailure {
                 lprintln("warning,box", "stopping box ${box.id} ($entrypoint) threw: $it")
             }
+            // Nothing running, but its runs may still hold registrations (a slider from a run that
+            // has finished, a Runloop hook): release those without telling the language to stop,
+            // which for a Python cell would interrupt the interpreter its siblings share.
+            else -> box.runScopes.closeAll()
         }
     }
 }
@@ -1403,6 +1420,9 @@ internal fun Box.stopTrackedJobs() {
             lprintln("warning,box", "A stop hook threw while stopping box $id: $it")
         }
     }
+    // Then every run's own registrations — audio patches, feeders, control callbacks, Runloop hooks,
+    // render modules, processes — newest run first, each run newest-registration first.
+    runScopes.closeAll()
 }
 
 fun syncExecutionStatus() {

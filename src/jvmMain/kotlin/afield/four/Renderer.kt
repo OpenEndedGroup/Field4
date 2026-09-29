@@ -652,7 +652,7 @@ class Renderer(
         runloop: Runloop = Runloop.runLoop,
         key: String = "renderer:${System.identityHashCode(this)}:beginGeometryWrites"
     ) {
-        runloop.preRun[key] = sequence {
+        runloop.preRun.setUnowned(key, sequence {
             while (true) {
                 try {
                     beginGeometryWrites()
@@ -668,7 +668,7 @@ class Renderer(
                 }
                 yield(null)
             }
-        }
+        })
         runloopGeometryHookKey = key
     }
 

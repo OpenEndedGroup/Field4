@@ -78,12 +78,21 @@ object ReturnValueRegistry {
             notify(false, strand, generation)
             return true
         }
-        if (launchCompositeIfPresent(inside, returnValue, strand, generation, launchEpoch, notify)) return true
-        if (dispatch(inside, returnValue, strand, generation, launchEpoch, notify)) return true
-        // no handler matched
-        notify(false, strand, generation)
-        return false
+        // Handlers find the run that owns what they register through RunScope.current(): the launch's
+        // scope when execution installed one, otherwise the box's ambient run (other languages).
+        val scope = RunScope.currentFor(inside)
+        return RunScope.withCurrent(scope) {
+            if (launchCompositeIfPresent(inside, returnValue, strand, generation, launchEpoch, notify)) return@withCurrent true
+            if (dispatch(inside, returnValue, strand, generation, launchEpoch, notify)) return@withCurrent true
+            // no handler matched
+            notify(false, strand, generation)
+            false
+        }
     }
+
+    /** The coroutine context element of the run a handler is dispatched for, if any. */
+    internal fun currentRunElement(): kotlin.coroutines.CoroutineContext =
+        RunScope.current()?.element ?: kotlin.coroutines.EmptyCoroutineContext
 
     internal fun dispatch(
         inside: Box,
@@ -177,7 +186,7 @@ fun registerSequenceReturnValue() {
     ReturnValueRegistry.handlers += handler@{ inside, returnValue, strand, generation, launchEpoch, notify ->
         if (returnValue !is Sequence<*>) return@handler false
         val a = returnValue.iterator()
-        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand)) {
+        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand) + ReturnValueRegistry.currentRunElement()) {
             if (!inside.isLaunchEpochCurrent(launchEpoch)) {
                 notify(false, strand, generation)
                 return@inMain
@@ -227,7 +236,7 @@ fun registerFramesReturnValue() {
             returnValue.shouldCancelAtEnd = { false }
             inside.jobs.remove(endJob)
         }
-        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand)) {
+        inMain(Box.boxContextElement(inside) + ProfileOrigin(inside, strand) + ReturnValueRegistry.currentRunElement()) {
             Box.withBoxContext(inside) {
                 val job = kotlin.coroutines.coroutineContext[Job]!!
                 returnValue.job = job
