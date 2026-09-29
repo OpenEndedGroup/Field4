@@ -40,11 +40,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
 
-        val oUboResolver = p.uboResolver
-        p.uboResolver = { oUboResolver(it) }
-
-        val oSsboResolver = p.ssboResolver
-        p.ssboResolver = {
+        p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
             val prev = current.uniforms[it.name]
             if (prev == null) oSsboResolver(it) else {
                 val prevSrc = prev.source
@@ -54,8 +50,7 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
             }
         }
 
-        val oTextureResolver = p.textureResolver
-        p.textureResolver = {
+        p.textureResolver = reloadWrap(p.textureResolver) { oTextureResolver, it ->
             if (forceReresolve) oTextureResolver(it) else try {
                 val tp = current.uniforms[it.name] as Module.TexturePointer
                 tp.texture to tp.sampler

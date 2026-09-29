@@ -35,11 +35,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
 
         p.errorHandler = onError
 
-        val oUboResolver = p.uboResolver
-        p.uboResolver = { oUboResolver(it) }
-
-        val oSsboResolver = p.ssboResolver
-        p.ssboResolver = {
+        p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
             val prev = current.uniforms[it.name]
             if (prev == null) oSsboResolver(it) else {
                 val prevSrc = prev.source
@@ -49,8 +45,7 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
             }
         }
 
-        val oTextureResolver = p.textureResolver
-        p.textureResolver = {
+        p.textureResolver = reloadWrap(p.textureResolver) { oTextureResolver, it ->
             try {
                 val tp = current.uniforms[it.name] as TexturePointer
                 tp.texture to tp.sampler

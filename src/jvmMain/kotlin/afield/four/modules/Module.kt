@@ -282,14 +282,12 @@ class ModulePointer(var current: Module) : Renderable {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
 
-        val oUboResolver = p.uboResolver
-        p.uboResolver = {
+        p.uboResolver = reloadWrap(p.uboResolver) { oUboResolver, it ->
             val already = current.uniforms[it.name]
             if (already is Module.Uniform) already.source!! else oUboResolver(it)
         }
 
-        val oSsboResolver = p.ssboResolver
-        p.ssboResolver = {
+        p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
             val prev = current.uniforms[it.name]
             if (prev == null) oSsboResolver(it) else {
                 val prevSrc = prev.source
@@ -299,8 +297,7 @@ class ModulePointer(var current: Module) : Renderable {
             }
         }
 
-        val oTextureResolver = p.textureResolver
-        p.textureResolver = {
+        p.textureResolver = reloadWrap(p.textureResolver) { oTextureResolver, it ->
             if (forceReresolve) {
                 val oo = oTextureResolver(it)
                 if (oo != null) oo

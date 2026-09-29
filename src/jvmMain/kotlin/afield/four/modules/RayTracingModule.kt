@@ -150,16 +150,14 @@ class RayTracingModulePointer(var current: RayTracingModule) : Renderable {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
 
-        val oldSsboResolver = p.ssboResolver
-        p.ssboResolver = {
+        p.ssboResolver = reloadWrap(p.ssboResolver) { oldSsboResolver, it ->
             val prev = current.uniforms[it.name]
             val prevSrc = prev?.source
             if (prevSrc != null && prevSrc.checkCompatibility(it) != false) oldSsboResolver(prevSrc)
             else oldSsboResolver(it)
         }
 
-        val oldTextureResolver = p.textureResolver
-        p.textureResolver = {
+        p.textureResolver = reloadWrap(p.textureResolver) { oldTextureResolver, it ->
             if (forceReresolve) {
                 oldTextureResolver(it) ?: current.textureUniform(it.name) ?: oldTextureResolver(it)
             } else {
