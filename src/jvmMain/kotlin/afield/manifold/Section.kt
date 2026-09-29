@@ -259,7 +259,10 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
      * exact — enough to move a computed area in the ninth significant figure. Stay in [Section] for a
      * chain of boolean or offset steps and come out to points once, at the end.
      */
-    fun toPolygons(): List<List<Vec2>> {
+    fun toPolygons(): List<List<Vec2>> = toDoublePolygons().map { ring -> ring.map { Vec2(it.first.toFloat(),it.second.toFloat()) } }
+
+    /** Native coordinates for dimensional audits; never pass through drawing Vec2s. */
+    internal fun toDoublePolygons(): List<List<Pair<Double,Double>>> {
         val polygons = ManifoldNative.ptr(
             ManifoldNative.sectionToPolygons,
             ManifoldNative.ptr(ManifoldNative.allocPolygons),
@@ -274,7 +277,7 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
                         val p = ManifoldNative.vec2(
                             ManifoldNative.invokeStruct(ManifoldNative.polygonsGetPoint, arena, polygons, c, i),
                         )
-                        Vec2(p.first.toFloat(), p.second.toFloat())
+                        p
                     }
                 }
             }
@@ -368,7 +371,11 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
          *   [FillRule.POSITIVE], an outline must be counter-clockwise and a hole clockwise — which is
          *   also how [toPolygons] hands them back, so a read/modify/write round trip preserves holes.
          */
-        fun ofPolygons(contours: List<List<Vec2>>, fillRule: FillRule = FillRule.POSITIVE): Section {
+        fun ofPolygons(contours: List<List<Vec2>>, fillRule: FillRule = FillRule.POSITIVE): Section =
+            ofDoublePolygons(contours.map { ring -> ring.map { it.x.toDouble() to it.y.toDouble() } },fillRule)
+
+        /** Double input for native geometry audits, without a Float drawing conversion. */
+        internal fun ofDoublePolygons(contours: List<List<Pair<Double,Double>>>, fillRule: FillRule = FillRule.POSITIVE): Section {
             val usable = contours.filter { it.size >= 3 }
             if (usable.isEmpty()) return empty()
             Arena.ofConfined().use { arena ->
@@ -378,8 +385,9 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
                     usable.forEachIndexed { index, contour ->
                         val points = arena.allocate(ManifoldNative.VEC2, contour.size.toLong())
                         contour.forEachIndexed { i, p ->
-                            points.set(ValueLayout.JAVA_DOUBLE, i * 16L, p.x.toDouble())
-                            points.set(ValueLayout.JAVA_DOUBLE, i * 16L + 8, p.y.toDouble())
+                            require(p.first.isFinite() && p.second.isFinite())
+                            points.set(ValueLayout.JAVA_DOUBLE, i * 16L, p.first)
+                            points.set(ValueLayout.JAVA_DOUBLE, i * 16L + 8, p.second)
                         }
                         val simple = ManifoldNative.ptr(
                             ManifoldNative.simplePolygon,

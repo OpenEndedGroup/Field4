@@ -4,7 +4,7 @@
 
 Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. Everything here is plain `Double`/`Float` Kotlin with no GPU and no window, so it runs in a box, a test or a headless docs capture equally well.
 
-18 source file(s), 1586 public symbol(s), 1202 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+20 source file(s), 1601 public symbol(s), 1217 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1725,6 +1725,45 @@ A particle filter whose particles each carry an [`UnscentedKalmanFilter`](math.m
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">roughenHypotheses</span><span class="p">(</span><span class="n">random</span><span class="p">:</span> <span class="nc">Random</span> <span class="o">=</span> <span class="nc">Random</span><span class="p">.</span><span class="nc">Default</span><span class="p">,</span> <span class="n">roughen</span><span class="p">:</span> <span class="p">(</span><span class="nc">H</span><span class="p">,</span> <span class="nc">Random</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">H</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/pf/#L589) | Roughen non-UKF / discrete parameters, if your hypothesis type has mutable-like dynamics. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">estimateMean</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stdlib/pf/#L607) | The filter's single best answer: every particle's state mean, averaged by weight. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">estimateCovariance</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Matrix</span></code>](source/jvmMain/afield/stdlib/pf/#L630) | The uncertainty of the whole ensemble: the weighted average of the particles' own covariances **plus** the scatter of their means about `estimateMean`. |
+
+## CubicBezier3D.kt { #cubicbezier3d-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/planning/CubicBezier3D.kt` — [read the source](source/jvmMain/afield/stdlib/planning/CubicBezier3D/)
+
+### CubicBezier3D { #cubicbezier3d-kt-cubicbezier3d }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">CubicBezier3D</span><span class="p">(</span><span class="k">val</span> <span class="n">start</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">,</span> <span class="k">val</span> <span class="n">control1</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">,</span> <span class="k">val</span> <span class="n">control2</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">,</span> <span class="k">val</span> <span class="n">end</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/CubicBezier3D/#L12)
+
+An immutable double-precision cubic in caller-chosen units. `start` and `end` are endpoints; `control1` and `control2` are the inner controls. The caller supplies all approximation tolerances and curvature thresholds.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">valueAt</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point3D</span></code>](source/jvmMain/afield/stdlib/planning/CubicBezier3D/#L16) | Position at a finite parameter `t` in the closed unit interval. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tangentAt</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point3D</span></code>](source/jvmMain/afield/stdlib/planning/CubicBezier3D/#L23) | Unnormalised derivative with respect to the unit parameter; it may be zero. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">minimumRadiusBound</span><span class="p">(</span><span class="n">minimum</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">maximumDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">18</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/planning/CubicBezier3D/#L42) | Conservative lower bound on radius across the continuous cubic, at least `minimum`. Subdivides Bernstein control hulls, bounding speed below and \|r' × r''\| above. Throws if the bound cannot be established within `maximumDepth`; failure is not proof that no valid curve exists. Zero chords/cusps and arithmetic overflow fail closed. This is a numerical bound, not interval-arithmetic certification. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">flatten</span><span class="p">(</span><span class="n">maximumDeviation</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">maximumDepth</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Point3D</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/planning/CubicBezier3D/#L69) | Polyline including both endpoints. Every subcurve's control hull is within `maximumDeviation` of its finite chord. This bounds curve-to-polyline distance; it does not prove containment in another shape. Throws on degenerate chords or failure to converge within `maximumDepth`. |
+
+## Point3D.kt { #point3d-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/planning/Point3D.kt` — [read the source](source/jvmMain/afield/stdlib/planning/Point3D/)
+
+### Point3D { #point3d-kt-point3d }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Point3D</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">z</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L8)
+
+Immutable double-precision coordinates; units are chosen by the caller.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">plus</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L11) | Coordinate-wise addition, returning a new value. |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">minus</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L13) | Coordinate-wise difference, also usable as a displacement. |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">unaryMinus</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L15) | Negates all coordinates without changing this value. |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">times</span><span class="p">(</span><span class="n">scale</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L17) | Multiplies every coordinate by `scale`; non-finite results are rejected. |
+| [<code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nf">dot</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L19) | Euclidean dot product, treating the coordinates as vectors. |
+| [<code class="highlight"><span class="k">infix</span> <span class="k">fun</span> <span class="nf">cross</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L21) | Right-handed cross product, treating the coordinates as vectors. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">length</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L23) | Euclidean distance from the origin in the caller's units. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">normalized</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Point3D</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L25) | Unit direction; rejects zero length and lengths that overflow. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">distanceTo</span><span class="p">(</span><span class="n">b</span><span class="p">:</span> <span class="nc">Point3D</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/planning/Point3D/#L28) | Euclidean distance to `b` in the caller's units. |
 
 ## randoms.kt { #randoms-kt }
 

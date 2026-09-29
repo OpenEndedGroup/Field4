@@ -301,6 +301,9 @@ data class ThreeGeometryPayload(
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val drawables: List<ThreeDrawable> = emptyList(),
+    /** Explicit same-origin ES modules installed as optional viewer tools; notes cannot load modules. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val toolModules: List<String> = emptyList(),
     /**
      * The viewports, when this is a contact sheet. Empty or one-element means a single full-bleed view.
      *

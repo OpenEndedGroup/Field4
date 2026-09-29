@@ -3219,6 +3219,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     inspection.add_argument("--hide", action="append", default=[])
     inspection.add_argument("--show", action="append", default=[])
     inspection.add_argument("--assembly", type=float)
+    inspection.add_argument("--xray", action=argparse.BooleanOptionalAction, default=None)
+    inspection.add_argument("--xray-opacity", type=float)
     inspection.add_argument("--timeout", type=float)
 
     page_eval = subparsers.add_parser("page-eval", add_help=False)
@@ -4154,7 +4156,7 @@ async def dispatch_command(
         data = await inspect_view(client, args.view_id, state=state,
             section={"normal": args.section[:3], "fraction": args.section[3]} if args.section else None,
             hidden={**{key: True for key in args.hide}, **{key: False for key in args.show}},
-            assembly=args.assembly,
+            assembly=args.assembly, xray=args.xray, xray_opacity=args.xray_opacity,
             pick={"x":args.pick[0],"y":args.pick[1],"kind":args.feature} if args.pick else None,
             region=dict(zip(("cx","cy","width","height","angle"),args.region)) if args.region else None,
             note=args.note, received=args.received, evidence_dir=args.evidence_dir, include_resolved=args.include_resolved, timeout=args.timeout or client.default_timeout)

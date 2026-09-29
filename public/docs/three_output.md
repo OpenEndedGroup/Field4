@@ -140,6 +140,34 @@ box or an agent, `threeGeometryReviews(viewId)` reads the same inbox by ID. Note
 geometry revision and camera; [selecting and annotating geometry](geometry_review.md) explains
 points, faces, edges, vertices and visible-only rectangles.
 
+### See through surfaces
+
+Press **X-ray** in the viewer toolbar to reveal geometry behind filled surfaces. The
+**Surface** slider sets their opacity. Edges draw after the translucent faces, with
+slightly stronger stroke opacity, so the structure stays legible. Points keep their original contrast.
+This works in ordinary `three { … }` scenes without `inspect`. Turn it off to restore
+the original surface appearance. It changes the view only: no geometry is cut or moved.
+
+Picking still stops at the nearest surface, including in X-ray mode. Hide a part or
+use a section cut when you want to select geometry behind it. Saved notes and their
+images retain the X-ray setting and opacity, so a reviewer sees the same context.
+
+### Export a GLB
+
+Press **Export GLB** to download the visible geometry as a binary glTF file. The export
+keeps colors, part names, hidden-part choices and the current exploded or insertion
+positions. With **X-ray** enabled, surfaces carry the selected opacity in their materials;
+strokes retain their stronger opacity. Turn X-ray off before exporting an opaque model.
+Section cuts are baked into the exported surfaces and lines, without adding caps.
+
+Meshes, lines and points all travel in the file. Viewer controls, selection markers,
+measurement labels and the helper grid do not. This is a snapshot of the displayed
+geometry, rather than a fabrication solid or an animation. Other applications choose
+their own lighting and transparency sorting; line widths and point sizes also depend on
+the receiving viewer. Inspector units `mm`, `cm`, `m`, `in` and `ft` convert to glTF metres.
+An unspecified or other unit label leaves coordinates unchanged, with the label retained
+in the scene metadata.
+
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
@@ -548,3 +576,38 @@ context re-tile itself.
     loading="lazy"
     allowfullscreen>
 </iframe>
+
+## Optional viewer tools
+
+A scene can opt into a tool without making that tool part of Field. Tools are trusted
+ES modules served by the same Field server. The default viewer loads none.
+This small example adds a reference-axis toggle:
+
+```diffstatic {data-lang=kotlin}
+:::static
+three(name = "tools-example") {
+    tools("/threejs_tools_demo.js")
+    lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
+}
+```
+
+Each module exports a default factory returning a descriptor with a unique `id`.
+`mount(context)` receives a toolbar element, `THREE`, the camera and controls,
+`overlays`, the inspector API, `sources()` and `requestRender()`. Tool overlays stay
+out of GLB exports. `dispose()` releases the tool's own GPU resources and listeners;
+Field removes its toolbar and overlay group. `refresh()` runs after the viewer applies
+its base pose, rather than on an animation timer. Compute transformations from retained
+source coordinates, never by repeatedly transforming the previous result.
+
+For stateful tools, implement all three methods: `snapshot()`, `validate(state)` and
+`restore(state)`. State must be finite JSON of at most 32 KB per tool. Views and notes
+retain that state. Loading a view that needs an unavailable tool reports an error;
+it never imports a module from the note. Older views reset tools to their initial state.
+Validation must reject invalid input without mutation; restoration should not fail
+once validation has accepted it.
+
+Agents can use `FieldViewer.tools.register(descriptor)` or
+`await FieldViewer.tools.load("/path/to/tool.js")` in their capture browser. Both return
+an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
+Use the same source geometry revision when restoring a note. An application owns its
+modules and their behavior; registration does not validate geometry produced by a tool.

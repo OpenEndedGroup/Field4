@@ -48,3 +48,18 @@ class ReviewReplyClientTest(unittest.IsolatedAsyncioTestCase):
             answer=await reply_review_note(SimpleNamespace(port=9811,read_only=True),'view',**args)
             self.assertFalse(answer['ok'])
             self.assertEqual(len(captured),1)
+
+
+class XrayInspectionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_inbox_read_rejects_xray_mutation_before_opening_browser(self):
+        from field_inspection import inspect_view
+        for kwargs in ({"xray": False}, {"xray_opacity": .2}):
+            with self.assertRaisesRegex(ValueError, "cannot also change"):
+                await inspect_view(None, 'view', received=True, **kwargs)
+
+    def test_xray_parameters_are_explicit_and_do_not_publish_a_note(self):
+        script = inspection_script('view', xray=False, xray_opacity=.2)
+        request = json.loads(script.split('const request = ', 1)[1].split(';', 1)[0])
+        self.assertFalse(request['xray'])
+        self.assertEqual(request['xrayOpacity'], .2)
+        self.assertNotIn('publish:true', script)

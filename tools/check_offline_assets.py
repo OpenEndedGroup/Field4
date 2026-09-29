@@ -13,6 +13,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 JS_RESOURCES = REPO_ROOT / "src" / "jsMain" / "resources"
 
 CANONICAL_FILES = (
+    "src/commonMain/resources/threejs_tools.js",
+    "src/commonMain/resources/threejs_export.js",
+    "src/commonMain/resources/vendor/three/0.184.0/three.module.js",
+    "src/commonMain/resources/vendor/three/0.184.0/three.core.js",
+    "src/commonMain/resources/vendor/three/0.184.0/addons/exporters/GLTFExporter.js",
     "src/commonMain/resources/offline.html",
     "src/commonMain/resources/edn-parser.js",
     "src/commonMain/resources/offline-viewer.js",

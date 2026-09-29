@@ -18,6 +18,11 @@ Choose a mode from **Pick** in the top-left toolbar:
 
 Edges and vertices are checked against the visible surfaces in front of them. A rectangle uses the depth buffer: a panel hidden behind the selected panel is excluded. Section cuts are respected, so cutting away the front surface exposes what can be selected next.
 
+**X-ray** fades filled surfaces so you can see geometry behind them. Adjust **Surface**
+to choose the opacity. It preserves the same nearest-surface selection rule: seeing
+through a panel does not make a click pass through it. Hide or section the front part
+to select what is behind it.
+
 Rectangles describe a patch in a particular view. Their saved reference retains that view even if you orbit before writing the note; the dashed rectangle disappears while you are looking from another angle. Selection currently requires a single viewport, rather than a contact sheet with several cameras.
 
 ![A rotated rectangular selection on the front of two stacked meshes, with its note saved to Field.](assets/geometry_review/rotated-region.png)
@@ -28,11 +33,11 @@ The second mesh lies behind this one. The selected region contains only the fron
 
 Type in **Note**, then press **Save note**. Field adds the note to the box that produced the view and saves it with a named document. In a scratch document, the note lives for that session.
 
-Saving also attaches a full geometry-view image and a close crop with the selection marked in cyan. The images retain the saved camera, clipping and explode state, even if you orbit before saving. The note editor stays out of the images so it cannot cover the feature. Older notes keep their original references; images are not invented for them.
+Saving also attaches a full geometry-view image and a close crop with the selection marked in cyan. The images retain the saved camera, clipping, explode and X-ray state, even if you orbit before saving. The note editor stays out of the images so it cannot cover the feature. Older notes keep their original references; images are not invented for them.
 
 **Copy reference** copies the complete reference as JSON for an agent conversation. If clipboard access is unavailable, the viewer displays selectable text. Save that JSON to a file and use **Load note** to restore it later.
 
-The reference contains the source box, geometry revision, feature coordinates, camera, hidden parts, section and explode or insertion state. A rebuilt mesh can have different triangle numbers: the viewer rejects a note from another geometry revision instead of attaching it to the wrong feature. Older notes remain available in Field.
+The reference contains the source box, geometry revision, feature coordinates, camera, hidden parts, section, explode or insertion state, and X-ray opacity. A rebuilt mesh can have different triangle numbers: the viewer rejects a note from another geometry revision instead of attaching it to the wrong feature. Older notes remain available in Field.
 
 ## Read it from Field
 

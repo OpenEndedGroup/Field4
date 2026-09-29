@@ -55,6 +55,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal val drawables = ArrayList<ThreeDrawable>()
     internal val flines = ArrayList<FLine>()
     internal val panels = ArrayList<ThreePanel>()
+    internal val toolModules = ArrayList<String>()
     internal var columns: Int = 1
     internal var camera: ThreeCameraSpec? = null
     internal var background: String? = null
@@ -127,6 +128,18 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
         )
+    }
+
+    /**
+     * Install optional viewer tools from same-origin ES-module paths. Each module exports a
+     * default factory returning a tool descriptor. Modules run with the viewer's privileges;
+     * supply only trusted application code. A saved review never imports a module on its own.
+     */
+    fun tools(vararg modules: String) {
+        require(modules.all { it.startsWith("/") && !it.startsWith("//") && '\\' !in it }) {
+            "Viewer tools need absolute same-origin paths"
+        }
+        toolModules += modules.filterNot { it in toolModules }
     }
 
     /** Add FLines. They keep every behaviour they have in [Box.threeLines] — picking, hover, fills. */
@@ -263,6 +276,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             ),
             autoFrame = autoFrame,
             drawables = drawables.toList(),
+            toolModules = toolModules.toList(),
             panels = panels.toList(),
             columns = columns,
             background = background,
