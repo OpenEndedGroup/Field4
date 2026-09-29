@@ -201,4 +201,18 @@ class LastRunNotesTest {
         assertNull(stale.png)
         assertEquals(listOf("9.0"), stale.value.filter { it.strong }.map { it.text })
     }
+
+    @Test
+    fun forgettingABoxDropsEveryPropertyAndNoOtherBox() {
+        val gone = Box("last-run-forget-gone")
+        // A box whose id starts with the other's: the key separator is what keeps it.
+        val kept = Box("last-run-forget-gone-not")
+        LastRunNotes.record(gone, "code", "a", 0, listOf(LastRunNotes.Produced(1, 1, "a")), at = t0)
+        LastRunNotes.record(gone, "clojure", "b", 0, listOf(LastRunNotes.Produced(1, 1, "b")), at = t0)
+        LastRunNotes.record(kept, "code", "c", 0, listOf(LastRunNotes.Produced(1, 1, "c")), at = t0)
+        LastRunNotes.forgetBox(gone)
+        assertTrue(!LastRunNotes.hasRecord(gone, "code") && !LastRunNotes.hasRecord(gone, "clojure"))
+        assertTrue(LastRunNotes.hasRecord(kept, "code"))
+        LastRunNotes.forgetBox(kept)
+    }
 }
