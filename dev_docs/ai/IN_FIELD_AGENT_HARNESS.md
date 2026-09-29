@@ -67,6 +67,12 @@ applied at once. Unlike `EditFile` it is not a provisional proposal.
   `agent-create-box` is now `createAgentBox` (`agent_backdoor.kt`). The tools call these, and they
   call the actionTable's `-connect` / `-disconnect` / `-delete-box`, so no execution logic is
   reimplemented. The websocket handlers call the same functions they used to inline.
+- Review fixes (2026-09-29, evening): `DeleteBoxRequest` and `LaunchBoxRequest(code=…)` are refused
+  on the reply-owned box. A candidate *launch* would leave unaccepted code running; use
+  `RunBoxRequest(code=…)`. `PatchBoxTextRequest` refuses a negative `occurrence`, counts and picks
+  matches by one non-overlapping rule, treats `endLine = 0` as "just `startLine`" everywhere, and
+  inserts only with an explicit `insert = true`. `BoxOutputLog` releases an evicted box's
+  characters, and a drop by either bound sets `Page.dropped`.
 - **`FieldGraphTools`** (`ai/agent/FieldGraphTools.kt`) sits behind a `FieldGraphHost` seam.
   `LiveFieldGraphHost` runs mutations on the Runloop and blocks off it. Tests use a host whose
   "execution" is a table. The tools are gated on `ToolExecutionContext.fieldGraph`, which is wired in
@@ -83,6 +89,40 @@ applied at once. Unlike `EditFile` it is not a provisional proposal.
 - `SendResult` gained `rounds`, `hitToolRoundCap`, `inputTokens` and `outputTokens`, all with
   additive defaults. The OpenAI bridge sums `Response.usage()` over every request in the turn, and
   the Anthropic bridge sums `Message.usage()`.
+
+## askFieldAgent answers in the AI4 panel (2026-09-29, evening)
+
+After running the demo, Marc asked for this: the output is the box's own AI4 chat panel, which is
+better formatted and lets the person continue the conversation. The custom HTML card is gone.
+
+- **Live**: the goal is dispatched to the real `ai-assist` handler as a `general` panel turn in
+  the target box, the same turn a message typed into that panel starts. It is saved in
+  `ai4_chat_history`. Then the checks run, and `AgentTaskTranscript.appendVerdict` adds a
+  `<<progress>>` block after the reply. Its first line is the whole verdict
+  (`✓ box-exists:Table  ✓ last-run-ok:Table  … — PASS`), because the panel folds a progress
+  entry to its first line. One line per check with its detail follows.
+- **Scripted**: the replay runs through the same tools. `appendScriptedTurn` writes the whole
+  exchange in the transcript's markup: the goal as `<<you>>`, "Scripted replay — no model was
+  called", each scripted tool call as a progress entry (as a live turn's appear), the scripted
+  reply under a `scripted replay · no model` identity, and the verdict.
+- **Fails fast**, with the reason in the transcript and in the result, when the box already has
+  an AI turn running, or when the handler does not start one (AI setup failed). A turn that did
+  start gets 10 minutes. The reply is taken only from what the history gained after dispatch,
+  following a `<<you>>` block that carries this goal, so another turn's reply is never returned.
+- The panel turn's visible user message is the goal alone. The headless task framing ("nobody can
+  answer questions") is used only by non-panel tasks. The panel's own round limit applies;
+  `maxToolRounds` is not passed through `ai-assist`.
+
+Verified live (openai gpt-6-astra, 3 turns):
+1. Demo live box: the panel showed the model's tool calls, its reply, and the verdict block.
+2. A follow-up `ai-assist` message in the same box asked what Table displayed and how many tool
+   rounds were used. It answered from the earlier turn ("rows (1, 1) … (5, 25) … 4 tool rounds"),
+   so the conversation continues.
+3. The demo live box re-run on the final build: `✓ box-exists:Table ✓ last-run-ok:Table
+   ✓ output-contains:Table ✓ output-ints-include:Table — PASS`.
+
+`ai4_chat_history` was read back (`agent-get-property`) after turns 1 and 2, and after the scripted
+box run.
 
 ## Tools
 
@@ -121,10 +161,10 @@ Playwright page (`agent-box-screenshot`), which a headless task does not have. T
   `POST /api/agent-task[?document=<open doc>]` with an `AgentTaskRequest` body, and
   `POST /api/agent-eval` with an `AgentEvalRequest`. Without `document`, a headless scratch document
   is made and discarded.
-- Box code: `askFieldAgent(goal, checks, mode = "auto"|"live"|"scripted", script, maxToolRounds, channel = "agent")`.
-  It runs on a background thread (the tools wait on other boxes' verdicts, which need the Runloop)
-  and draws a card with the verdict, the mode, and the tool log. `fieldAgentEvalScript(id)` returns
-  an eval task's scripted solution.
+- Box code: `askFieldAgent(goal, checks, mode = "auto"|"live"|"scripted", script, maxToolRounds, chatBox = null)`.
+  **It answers in an AI4 chat panel**: that of the calling box, or of `chatBox` (a box or a name).
+  It returns `CompletableFuture<AgentTaskResult>`. See "askFieldAgent answers in the AI4 panel"
+  below. `fieldAgentEvalScript(id)` returns an eval task's scripted solution.
 
 Check spellings: `box-exists:B`, `last-run-ok:B` (the latest verdict since the turn began succeeded
 *and* was for the current code), `output-contains:B:text` (only what was printed or displayed since
@@ -158,7 +198,7 @@ checks, driven by the canned solutions.
 
 | run | population | passed | notes |
 | --- | --- | --- | --- |
-| jvmTest `InFieldAgentHarnessTest` (fake host) | 18 tests | 18 | includes all 7 scripted solutions against the fake host |
+| jvmTest `InFieldAgentHarnessTest` + `Ai4ChatGraphWiringTest` + `AgentTaskPanelTest` (fake host; final, `--rerun`) | 18 + 8 + 3 tests | 29 | includes all 7 scripted solutions against the fake host |
 | scripted, live Field, backdoor `agent-eval` | 7 tasks | 6 → 7 | 6/7 first; parent-variable failed on the `val` idiom; 1/1 after the fix |
 | scripted, live Field, HTTP `/api/agent-eval` | 7 tasks | 7 | 17.6 s total |
 | live model, backdoor `agent-task` (Squares) | 1 task | 1 | openai gpt-6-astra, 7 rounds, 37,364 in / 557 out tokens, 48 s; 3 rounds spent on `CompileKotlinRequest` fileRef guesses |
