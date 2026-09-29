@@ -86,6 +86,7 @@ internal class ExecutionTrace(
                 .ifBlank { if (ok) "" else "Execution did not complete, or its launch was cancelled" }.take(32768)
         )
         ExecutionReports.publish(box, result)
+        BoxOutputLog.observeVerdict(result)
         downstream?.invoke(Message("execution-verdict").payload(result))
     }
 

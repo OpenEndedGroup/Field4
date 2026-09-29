@@ -220,6 +220,8 @@ class OpenAiIdeCodexBridge(
         var terminalRecorded = false
         var activePhase = "preparing"
         var activeToolStarted: Long? = null
+        var inputTokens: Long? = null
+        var outputTokens: Long? = null
         fun <T> modelRequest(phase: String, action: () -> T): T {
             activePhase = "model:$phase"
             toolIo("model_request", mapOf("phase" to phase))
@@ -227,7 +229,13 @@ class OpenAiIdeCodexBridge(
             val started = System.nanoTime()
             var succeeded = false
             try {
-                return action().also { succeeded = true }
+                return action().also { result ->
+                    succeeded = true
+                    (result as? Response)?.usage()?.orElse(null)?.let { usage ->
+                        inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
+                        outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
+                    }
+                }
             } finally {
                 val elapsed = (System.nanoTime() - started) / 1_000_000
                 modelElapsedMs += elapsed
@@ -540,6 +548,7 @@ class OpenAiIdeCodexBridge(
         val pendingCalls = response.output()
             .filter { it.isFunctionCall() }
             .mapNotNull { it.functionCall().orElse(null) }
+        val hitToolRoundCap = pendingCalls.isNotEmpty()
         if (pendingCalls.isNotEmpty()) {
             warn(
                 "maxToolRounds=$maxToolRounds reached with ${pendingCalls.size} pending tool call(s); " +
@@ -634,7 +643,11 @@ class OpenAiIdeCodexBridge(
             commentary = commentaryMessages.toList(),
             conversationAdditions = conversationAdditions.toList(),
             toolTranscript = toolTranscript.toList(),
-            modelIdentity = responseIdentity(response)
+            modelIdentity = responseIdentity(response),
+            rounds = rounds,
+            hitToolRoundCap = hitToolRoundCap,
+            inputTokens = inputTokens,
+            outputTokens = outputTokens
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -665,7 +678,14 @@ class OpenAiIdeCodexBridge(
         val commentary: List<String> = emptyList(),
         val conversationAdditions: List<String> = emptyList(),
         val toolTranscript: List<ToolTranscriptEntry> = emptyList(),
-        val modelIdentity: AiChatModelIdentity? = null
+        val modelIdentity: AiChatModelIdentity? = null,
+        /** Tool rounds this turn used; -1 when the bridge does not say. */
+        val rounds: Int = -1,
+        /** True when the turn hit maxToolRounds and the bridge forced a final answer. */
+        val hitToolRoundCap: Boolean = false,
+        /** Summed over every model request in the turn; null when the provider did not report usage. */
+        val inputTokens: Long? = null,
+        val outputTokens: Long? = null
     )
 
     data class ToolTranscriptEntry(

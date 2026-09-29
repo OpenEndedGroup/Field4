@@ -257,7 +257,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-114 command names, in the `handlers` table. This is the real command API, it is roughly twice
+116 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -274,7 +274,7 @@ the file, and the reach is described per file below in prose that a human checke
 | declaring file | commands |
 | --- | --- |
 | `Server.kt` | 49 |
-| `agent_backdoor.kt` | 19 |
+| `agent_backdoor.kt` | 21 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
 | `Ai4Installer.kt` | 5 |
@@ -313,6 +313,12 @@ What each of those reaches, checked against the code rather than inferred from t
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
 no sandbox between a `/ws` frame and that.
 
+`agent-task` and `agent-eval` (2026-09-29) are in the same class and add one thing: in `live`
+mode they call the configured AI provider, so a frame can also spend the machine's model tokens.
+The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
+(`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
+docs-annotation opt-ins do not loosen.
+
 | command | declared in |
 | --- | --- |
 | `agent-ai-tool-call` | `agent_backdoor.kt` |
@@ -322,6 +328,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-create-box` | `agent_backdoor.kt` |
 | `agent-dispose-graphics-context` | `agent_backdoor.kt` |
 | `agent-ensure-graphics-context` | `agent_backdoor.kt` |
+| `agent-eval` | `agent_backdoor.kt` |
 | `agent-get-property` | `agent_backdoor.kt` |
 | `agent-native-window-screenshot` | `agent_backdoor.kt` |
 | `agent-open-document` | `agent_backdoor.kt` |
@@ -331,6 +338,7 @@ no sandbox between a `/ws` frame and that.
 | `agent-run-jvm-main` | `agent_backdoor.kt` |
 | `agent-set-property` | `agent_backdoor.kt` |
 | `agent-snapshot` | `agent_backdoor.kt` |
+| `agent-task` | `agent_backdoor.kt` |
 | `agent-wait-frames` | `agent_backdoor.kt` |
 | `agent-window-screenshot` | `agent_backdoor.kt` |
 | `agent-window-video` | `agent_backdoor.kt` |
@@ -475,7 +483,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 114 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 116 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

@@ -215,6 +215,48 @@ private fun createSessionInformation(target: DocumentTarget, agentManaged: Boole
     return info
 }
 
+/**
+ * A scratch document with no websocket attached, for a task handed to Field's own agent over HTTP or
+ * by the eval runner. It is registered in [documents] like any other so the Runloop, the output log and
+ * the tools treat it normally; [closeHeadlessDocument] drops it again.
+ */
+internal fun openHeadlessScratchDocument(name: String = "agent-task"): SessionInformation {
+    val target = resolveDocumentTarget(name, scratch = true)
+    File(home).mkdirs()
+    val info = createSessionInformation(target, agentManaged = true)
+    info.documentExisted = false
+    info.attachedToLiveDocument = false
+    documents[target.sessionKey] = info
+    return info
+}
+
+/** Stop everything in a headless document and forget it — unless a browser has since attached to it. */
+internal fun closeHeadlessDocument(info: SessionInformation) {
+    if (info.sessions.isNotEmpty()) return
+    info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+    cleanupDetachedSession(info)
+}
+
+/**
+ * Run one [afield.ai.agent.AgentTaskRequest] in a live document named [documentName], or — when it is
+ * blank — in a fresh headless scratch document that is discarded afterwards.
+ */
+internal fun runAgentTaskHeadless(
+    request: afield.ai.agent.AgentTaskRequest,
+    documentName: String? = null,
+): afield.ai.agent.AgentTaskResult {
+    val live = documentName?.trim()?.takeIf { it.isNotEmpty() }?.let { name ->
+        documents.values.firstOrNull { it.documentName == name || it.filename == name }
+            ?: throw IllegalArgumentException("No open document named '$name'. Open it first, or omit document for a scratch one.")
+    }
+    val info = live ?: openHeadlessScratchDocument("agent-task")
+    try {
+        return afield.ai.agent.AgentTaskRunner.run(request, info)
+    } finally {
+        if (live == null) closeHeadlessDocument(info)
+    }
+}
+
 internal fun attachDocumentSession(
     session: WebSocketSession,
     documentName: String?,
@@ -666,7 +708,7 @@ private fun sendDocumentLoadStatus(
     )
 }
 
-private fun activeRunningStrands(box: Box): Map<String, Int> {
+internal fun activeRunningStrands(box: Box): Map<String, Int> {
     val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
     if (!hasActiveJobs) return emptyMap()
     return box.runGeneration
@@ -680,7 +722,7 @@ private fun idsFor(boxes: Collection<Box>): List<String> =
         .map { it.id }
         .sorted()
 
-private fun snapshotFor(box: Box): AgentBoxSnapshot {
+internal fun snapshotFor(box: Box): AgentBoxSnapshot {
     val nestedIn = box.nestedIn?.takeIf { !it.getPropertyRaw("_tombstone").isTrue() }?.id
     return AgentBoxSnapshot(
         uid = box.id,
@@ -777,7 +819,7 @@ private fun agentPropertyString(box: Box, property: String): String =
  * are intentionally not recorded here — the UI does not record those either; the transcript
  * tracks property edits, moves, and execution, and this closes the property-edit gap.
  */
-private fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
+internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
     if (property == "frame") {
         applyAgentProperty(box, property, value)
         return
@@ -1251,6 +1293,40 @@ private suspend fun runJvmMainViaSubprocess(request: AgentRunJvmMainRequest): Ag
     )
 }
 
+/**
+ * The body of `agent-create-box`: a new box under [info]'s root, named, framed, with [properties]
+ * applied through the recorded property path, and resynced to every attached client.
+ *
+ * Shared with Field's own agent (`NewBoxRequest`), so a box the in-Field agent makes is the same
+ * object, persisted the same way, as one the backdoor makes. [initKi] exists for tests, which have
+ * no Kotlin REPL to build.
+ */
+internal fun createAgentBox(
+    info: SessionInformation,
+    name: String,
+    frame: Rect,
+    properties: Map<String, JsonElement>,
+    initKi: Boolean = true,
+): Box {
+    val uid = UUID.randomUUID().toString()
+    val created = box(uid, createIfMissing = true, initIfCreated = initKi, root = info)
+
+    created.name = name
+    created.frame = frame
+    properties.forEach { (property, value) ->
+        applyAgentPropertyRecorded(created, property, value)
+    }
+
+    needsResync.add(info.root to "children")
+    needsResync.add(created to "parents")
+    needsResync.add(info.root to "actions")
+    needsResync.add(created to "actions")
+    created.resyncAll()
+    info.topologyGeneration++
+    doResync()
+    return created
+}
+
 @RunsAt(installHandlers)
 fun installAgentBackdoorHandlers() {
     handlers["agent-open-document"] = mutableSetOf({ message, reply ->
@@ -1328,6 +1404,39 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // Hand a whole task to Field's own agent, in this session's document, and reply with its
+    // AgentTaskResult. Runs off the socket thread: the turn blocks on the model and on box verdicts.
+    handlers["agent-task"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<afield.ai.agent.AgentTaskRequest>(message.payload!!)
+        val info: SessionInformation? = thisSessionInfo.get()
+        agentBackdoorScope.launch {
+            // No document on this socket: say so rather than let the coroutine die and the client time out.
+            val result = if (info == null) afield.ai.agent.AgentTaskResult(
+                taskId = request.taskId, goal = request.goal, mode = request.mode, provider = "", model = "",
+                verdict = "error", checks = emptyList(), toolCalls = emptyList(), finalText = "", rounds = 0,
+                maxToolRounds = request.maxToolRounds, hitToolRoundCap = false, elapsedMs = 0, documentName = "",
+                error = "This connection has no open document. Open one (agent-open-document) before agent-task."
+            ) else afield.ai.agent.AgentTaskRunner.run(request, info)
+            reply(Message("agent-task").payload(result))
+        }
+        Handled.yes
+    })
+
+    // The eval suite, one task per fresh headless scratch document (task box names are fixed).
+    handlers["agent-eval"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<afield.ai.agent.AgentEvalRequest>(message.payload!!)
+        agentBackdoorScope.launch {
+            val report = runCatching {
+                afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+            }.getOrElse { t ->
+                afield.ai.agent.AgentEvalReport(request.mode, "", request.model, 0, 0, emptyList(), 0, null, null,
+                    error = "${t.javaClass.simpleName}: ${t.message}")
+            }
+            reply(Message("agent-eval").payload(report))
+        }
+        Handled.yes
+    })
+
     handlers["agent-set-property"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentSetPropertyRequest>(message.payload!!)
         val info = thisSessionInfo.get()
@@ -1389,22 +1498,7 @@ fun installAgentBackdoorHandlers() {
     handlers["agent-create-box"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentCreateBox>(message.payload!!)
         val info = thisSessionInfo.get()
-        val uid = UUID.randomUUID().toString()
-        val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
-
-        created.name = request.name
-        created.frame = request.frame
-        request.properties.forEach { (property, value) ->
-            applyAgentPropertyRecorded(created, property, value)
-        }
-
-        needsResync.add(info.root to "children")
-        needsResync.add(created to "parents")
-        needsResync.add(info.root to "actions")
-        needsResync.add(created to "actions")
-        created.resyncAll()
-        info.topologyGeneration++
-        doResync()
+        val created = createAgentBox(info, request.name, request.frame, request.properties)
 
         reply(
             Message("agent-create-box").payload(

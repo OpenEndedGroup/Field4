@@ -21,6 +21,63 @@ private fun inItsLanguage(box: Box): Box {
     return box
 }
 
+/**
+ * The body of the `stop-box` handler, shared with Field's own agent (`StopBoxRequest`) so that both
+ * record the stop in the operation transcript and tear down an owned renderer identically.
+ */
+internal fun stopBoxRequest(target: Box, entrypoint: String) {
+    val box = inItsLanguage(target)
+    OperationTranscript.recordStop(box)
+    stop(box, entrypoint = entrypoint)
+}
+
+/**
+ * The body of the `execute-all` handler: reset the box's REPL (Kotlin), clear preamble bookkeeping,
+ * and run the whole property on the Runloop with the originating session rebound.
+ *
+ * Shared with Field's own agent (`RunBoxRequest`), which passes a null session: a headless run has no
+ * websocket to answer, and every output site already tolerates that (it falls back to a broadcast).
+ * Returns immediately; the verdict arrives through [reply] as `execution-verdict` when
+ * [Execute.requestId] is set.
+ */
+internal fun executeAllRequest(
+    target: Box,
+    exec: Execute,
+    reply: (Message) -> Unit,
+    originSession: io.ktor.websocket.WebSocketSession?,
+    originSessionInfo: SessionInformation?,
+) {
+    val box = inItsLanguage(target)
+    inMain {
+        val previousSession = thisSession.get()
+        val previousSessionInfo = thisSessionInfo.get()
+        try {
+            if (originSession == null) thisSession.remove() else thisSession.set(originSession)
+            if (originSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(originSessionInfo)
+            FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
+            // experimental
+            if (box.ke is KotlinExecution)
+                box.ki = makeKIHere(box, reason = "execute-all handler reset")
+            box.properties["_preamble"] = "" // remove record of previous preamble line execs
+            box.properties["_introduction"] = "" // ditto for introduction
+            box.properties.remove("_attic")
+            box.ke.executeAll(box, exec, reply)
+        } finally {
+            if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
+            if (previousSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousSessionInfo)
+        }
+    }
+}
+
+/** The body of the `launch-all` handler, shared with Field's own agent (`LaunchBoxRequest`). */
+internal fun launchAllRequest(target: Box, exec: Execute, reply: (Message) -> Unit) {
+    val box = inItsLanguage(target)
+    clearEditorOutputsForLaunch(exec.uid)
+    FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
+    OperationTranscript.recordLaunch(box, exec, strand = "default")
+    box.ke.launchAll(box, exec, exec.code, "default", reply)
+}
+
 @RunsAt(installHandlers)
 fun executing() {
 
@@ -28,10 +85,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Stop_box>(message.payload!!)
-            val box = inItsLanguage(box(exec.uid))
-
-            OperationTranscript.recordStop(box)
-            stop(box, entrypoint = "stop-box")
+            stopBoxRequest(box(exec.uid), entrypoint = "stop-box")
 
             Handled.yes
         })
@@ -59,30 +113,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = inItsLanguage(box(exec.uid))
-            val originSession = thisSession.get()
-            val originSessionInfo = thisSessionInfo.get()
-
-
-            inMain {
-                val previousSession = thisSession.get()
-                val previousSessionInfo = thisSessionInfo.get()
-                try {
-                    thisSession.set(originSession)
-                    thisSessionInfo.set(originSessionInfo)
-                    FlightRecorder.recordExecuteEntrypoint("execute-all", box, exec)
-                    // experimental
-                    if (box.ke is KotlinExecution)
-                        box.ki = makeKIHere(box, reason = "execute-all handler reset")
-                    box.properties["_preamble"] = "" // remove record of previous preamble line execs
-                    box.properties["_introduction"] = "" // ditto for introduction
-                    box.properties.remove("_attic")
-                    box.ke.executeAll(box, exec, reply)
-                } finally {
-                    if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
-                    if (previousSessionInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousSessionInfo)
-                }
-            }
+            executeAllRequest(box(exec.uid), exec, reply, thisSession.get(), thisSessionInfo.get())
 
             Handled.yes
         })
@@ -91,13 +122,7 @@ fun executing() {
         { message, reply: (Message) -> Unit ->
 
             val exec = Json.decodeFromJsonElement<Execute>(message.payload!!)
-            val box = inItsLanguage(box(exec.uid))
-
-            clearEditorOutputsForLaunch(exec.uid)
-            FlightRecorder.recordLaunchEntrypoint("launch-all", box, exec, strand = "default")
-            OperationTranscript.recordLaunch(box, exec, strand = "default")
-            box.ke.launchAll(box, exec, exec.code, "default", reply)
-
+            launchAllRequest(box(exec.uid), exec, reply)
 
             Handled.yes
         })
