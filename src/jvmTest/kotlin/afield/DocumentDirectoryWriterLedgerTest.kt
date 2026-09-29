@@ -239,6 +239,10 @@ class DocumentDirectoryWriterLedgerTest {
                 5,
                 "Dev smoke harness; writes its own temp fixture."
             ),
+            "src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt" to exempt(
+                4,
+                "Dev smoke harness; builds and writes its own temp document (the box code it runs names inside.filename)."
+            ),
             "src/jvmMain/kotlin/afield/examples/stdlib/FileManagerSmokeTest.kt" to exempt(
                 11,
                 "Dev smoke harness for FileManager; writes its own temp workspace."
