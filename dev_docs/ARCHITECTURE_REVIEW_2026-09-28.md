@@ -149,8 +149,16 @@ including stage add/remove, which a graphics module cannot exercise), smokes
 `four.shader-reload.transitions` and `four.shader-reload.transaction` (compile error, build/link
 failure). Not done: SSBO *values* are carried by name but an SSBO's buffer still follows the old
 `checkCompatibility` rule rather than the layout diff; texture/image bindings are reported but not
-re-resolved differently; a `ModuleRebuild` hook (`stack.auto` numbers) still runs after the generic
-carry and can overwrite it.
+re-resolved differently.
+
+**Follow-ups, 2026-09-29 (phase 6b).** A per-frame uniform block now gets a set value in every
+image's buffer (per-slot write generations in `Structure`; one `dirty` flag used to leave the other
+images stale). What a member accepts is *convert what converts without loss, refuse a different
+shape* (`coerce`, `StructureTypeCheck.kt`): `Int` into `uint64_t` or `float`, `Double` into `float`, a
+float into a half are converted; vector into scalar, wrong length, anything into a struct are refused.
+The `ModuleRebuild` hooks run after the generic carry by contract (`ReloadCarryOver.finishAndNotify`)
+and are told what it carried; the `stack.auto` hook only fills what the carry left and no longer
+re-applies old values over it.
 
 ---
 

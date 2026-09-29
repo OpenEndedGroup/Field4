@@ -197,20 +197,28 @@ object StackAutoNumbers {
     }
 
     /**
-     * A module of [box] (null when its owner is not known) was rebuilt: carry each numbers block's
-     * values from [old] to [new] — live values and a keyframe's bindings alike — and seed a block the
-     * old module did not have if its slot is live.
+     * A module of [box] (null when its owner is not known) was rebuilt, and the generic carry-over has
+     * already run ([afield.four.modules.ModuleRebuild]): it moved every value and keyframe binding of a
+     * numbers block that still fits, and dropped the rest. This only fills in after it, for a live slot:
+     * a block the generic carry had nothing for is seeded whole; a carried block gets, for each number
+     * it left without a value or binding, what was set on the slot or its literal. Nothing the generic
+     * carry put there is overwritten.
      */
-    fun carry(box: Box?, old: Map<String, Structure>, new: Map<String, Structure>) {
-        new.forEach { (name, structure) ->
+    fun carry(box: Box?, rebuild: afield.four.modules.ModuleRebuild.Rebuild) {
+        val b = box ?: return
+        rebuild.new.forEach { (name, structure) ->
             if (!isNumbersBlock(name, structure.members.map { it.name })) return@forEach
-            val before = old[name]
-            if (before != null) {
-                structure.members.forEach { m ->
-                    before.bindingFor(m.name)?.let { structure.bind(m.name, it) }
-                        ?: before.get<Any?>(m.name)?.let { structure[m.name] = it }
-                }
-            } else box?.let { b -> slots(b)[name.removeSuffix("_numbers")]?.takeIf { it.live }?.let { seed(it, structure) } }
+            val s = slots(b)[name.removeSuffix("_numbers")]?.takeIf { it.live } ?: return@forEach
+            if (!rebuild.carried(name)) {
+                seed(s, structure)
+                return@forEach
+            }
+            fun held(member: String) = structure.bindingFor(member) != null || structure.valueFor(member) != null
+            s.numbers.forEach { n ->
+                val member = member(s.name, n.index)
+                if (!held(member)) structure[member] = (s.values[n.index] ?: n.initial).toFloat()
+            }
+            if (!held(liveMember(s.name))) structure[liveMember(s.name)] = 1f
         }
     }
 }

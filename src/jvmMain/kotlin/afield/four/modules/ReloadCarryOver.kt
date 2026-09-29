@@ -72,9 +72,33 @@ internal object ReloadCarryOver {
     }
 
     /**
+     * What [finish] did: [notes], the lines worth telling the person (values that did not survive), and
+     * [carriedFrom], for each new structure it filled, the old structure's name.
+     */
+    class Finished(val notes: List<String>, val carriedFrom: Map<String, String>)
+
+    /**
+     * [finish], then the [ModuleRebuild] hooks — in that order, which is the contract: the generic carry
+     * decides what survives, and a hook only fills in what it left (see [ModuleRebuild]). Every module
+     * pointer's reload finishes through here. Returns [Finished.notes].
+     */
+    fun finishAndNotify(
+        pointer: Any,
+        transition: ShaderInterfaceTransition?,
+        previousUniforms: Collection<UpdatesDescriptorSet>,
+        nextUniforms: Map<String, UpdatesDescriptorSet>,
+        previousStructures: Map<String, Structure>,
+        nextStructures: Map<String, Structure>,
+    ): List<String> {
+        val finished = finish(transition, previousUniforms, nextUniforms, previousStructures, nextStructures)
+        ModuleRebuild.rebuilt(ModuleRebuild.Rebuild(pointer, previousStructures, nextStructures, finished.carriedFrom))
+        return finished.notes
+    }
+
+    /**
      * Finish a reload that installed a new module: carry values between the structures, zero the
      * uniform blocks allocated for this reload, and retire the old module's own buffers the new one
-     * does not use. Returns the lines worth telling the person — values that did not survive.
+     * does not use.
      */
     fun finish(
         transition: ShaderInterfaceTransition?,
@@ -82,8 +106,9 @@ internal object ReloadCarryOver {
         nextUniforms: Map<String, UpdatesDescriptorSet>,
         previousStructures: Map<String, Structure>,
         nextStructures: Map<String, Structure>,
-    ): List<String> {
+    ): Finished {
         val notes = mutableListOf<String>()
+        val carriedFrom = LinkedHashMap<String, String>()
         val previousSources = previousUniforms.mapNotNull { it.source }
         val nextSources = nextUniforms.values.mapNotNull { it.source }
 
@@ -101,6 +126,7 @@ internal object ReloadCarryOver {
             val oldName = transition?.oldNameOf(kind, name) ?: name
             val old = previousStructures[oldName] ?: return@forEach
             notes += structure.carryValuesFrom(old, name)
+            carriedFrom[name] = oldName
         }
 
         previousUniforms.forEach { u ->
@@ -108,7 +134,7 @@ internal object ReloadCarryOver {
             if (!source.allocatedByModule || nextSources.any { it === source }) return@forEach
             retire(source, u.binding.name)
         }
-        return notes
+        return Finished(notes, carriedFrom)
     }
 
     /** An SSBO: its buffer parameters ask for storage usage. Only uniform blocks are zeroed here. */

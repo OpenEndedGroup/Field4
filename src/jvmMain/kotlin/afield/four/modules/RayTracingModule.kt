@@ -177,7 +177,7 @@ class RayTracingModulePointer(var current: RayTracingModule) : Renderable {
             val transition = runCatching { shaderInterfaceTransition(previous.stages(), m.stages()) }.getOrNull()
             lastReloadReport = ModuleReloadReport(
                 transition,
-                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+                ReloadCarryOver.finishAndNotify(this, transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
             )
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.

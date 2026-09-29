@@ -765,7 +765,7 @@ private val stackAutoRebuildHookInstalled = java.util.concurrent.atomic.AtomicBo
  */
 private fun liveStackAutoShaderFunctionFor(box: Box, target: StackAutoShaderTarget): String {
     if (stackAutoRebuildHookInstalled.compareAndSet(false, true)) {
-        afield.four.modules.ModuleRebuild.hooks += { pointer, old, new -> StackAutoNumbers.carry(stackAutoShaderOwner(pointer), old, new) }
+        afield.four.modules.ModuleRebuild.hooks += { rebuild -> StackAutoNumbers.carry(stackAutoShaderOwner(rebuild.pointer), rebuild) }
         afield.four.modules.ModuleRebuild.onCreated += StackAutoNumbers::created
         // Code or a keyframe target that takes hold of a numbers block (`module.foo_numbers`) makes the slot live.
         afield.four.modules.ModuleRebuild.accessed += { pointer, blockName, structure ->

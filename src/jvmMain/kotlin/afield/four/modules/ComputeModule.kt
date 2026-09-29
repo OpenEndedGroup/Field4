@@ -78,9 +78,8 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
             }.getOrNull()
             lastReloadReport = ModuleReloadReport(
                 transition,
-                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+                ReloadCarryOver.finishAndNotify(this, transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
             )
-            ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.
             previous.cleanup()

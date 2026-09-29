@@ -340,9 +340,8 @@ class ModulePointer(var current: Module) : Renderable {
             val transition = before ?: runCatching { graphicsShaderInterfaceTransition(previous.vi, previous.fi, m.vi, m.fi) }.getOrNull()
             lastReloadReport = ModuleReloadReport(
                 transition,
-                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+                ReloadCarryOver.finishAndNotify(this, transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
             )
-            ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
             // Retire the module this one replaced now rather than when the GC finds it. cleanup() stops it
             // rendering at once and defers the handle destruction through the renderer's retirement queue,
