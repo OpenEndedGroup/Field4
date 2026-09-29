@@ -225,6 +225,10 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * from `_introduction`, so a stale copy made the next engine skip the introduction entirely.
      */
     fun disposeKi() {
+        // Drop any AI tools this box contributed to its document (see aiTool DSL). Retiring already
+        // released them through the run scopes (DocumentToolRegistry); this covers an engine
+        // recycled without a retire, whose compiled tool bodies go with it.
+        runCatching { afield.ai.core.DocumentToolRegistry.clearBox(this) }
         if (!kiDelegate.isInitialized) return
         try {
             ki.dispose()
@@ -1537,6 +1541,9 @@ import afield.stdlib.linalg.storage.*
 import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
+import afield.ai.core.aiTool
+import afield.rectsl.registerRectslStudioTools
+import afield.rectsl.renderRectslToImages
 """
 
 /**

@@ -63,6 +63,34 @@ real cost for a conversation that is not about the subject, which is why the hou
 Kotlin-evaluation callbacks, the agent memory. Most domain tools ignore it and close over their own
 state instead, which is fine.
 
+## The document-side face: `aiTool { }`
+
+`AgentToolExtensions.register` needs a request class, which box code can declare but rarely wants
+to. The `aiTool` DSL (`src/jvmMain/kotlin/afield/ai/core/BoxAiTools.kt`, in the box `intro`
+imports) is the lighter face for a document:
+
+```kotlin
+val echo = aiTool("echo.box") {
+    describe("Echo text with the owning box id.")
+    val text by param<String>("text to echo")          // name from the val, type from the generic
+    val times by param<Int>("repeat count", default = 2)
+    action { mapOf("boxId" to thisBox.id, "echo" to text().repeat(times())) }   // suspend, on the runloop
+}
+start { println(echo("hi", 3)) }                      // the handle is directly callable
+```
+
+It does not go through `ToolRegistry`'s handler map at all. Tools live in the per-document
+`DocumentToolRegistry`, reach a request as `ToolExecutionContext.dynamicTools` (the in-app chat and
+the MCP backdoor both fill it), and `ToolRegistry` honours that list in `addAllTo`/`execute`/
+`describe`/`executeByName`, with built-in names winning a collision. A result implementing
+`CarriesToolImages` (`BoxToolScope.image(...)` returns one) reaches both bridges' image paths.
+
+Each registration is an `ai-tool` ownership in the `LifecycleLedger`, owned `ACCUMULATING` by the
+registering run: a re-run replaces it without a gap, a re-run that stops registering it drops it, a
+stop leaves it answering, and retiring the box releases it. `ai.boxtools.mechanism`
+(`examples/ai/BoxAiToolsSmokeTest.kt`) checks all four; `ai.rectsl.tools` exercises the RectSL
+studio set (`rectsl.check`, `rectsl.run`) built on it.
+
 ## What a result should implement
 
 `SummarisesForToolLog` is close to mandatory in practice. Without it the tool I/O log records

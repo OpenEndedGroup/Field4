@@ -199,7 +199,9 @@ internal object Ai4BackdoorTools {
                     ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token })
                     ?: throw IllegalArgumentException("focusBox '$token' names no box in ${sessionInfo.filename}")
                 ToolFocus(docPath, box, (box.getPropertyRaw("default_property") as? String)?.takeIf { it.isNotBlank() } ?: "code")
-            }
+            },
+            // Document-authored tools (box aiTool DSL), visible to external MCP agents too.
+            dynamicTools = DocumentToolRegistry.toolsFor(docPath)
         )
     }
 }

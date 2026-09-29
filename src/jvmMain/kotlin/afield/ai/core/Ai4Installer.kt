@@ -815,6 +815,8 @@ fun installAi4() {
         val docPath = sessionInfo.filename
         val documentGuides = DocumentGuideTools.forSession(sessionInfo)
         val focus = ToolFocus(docPath, box, exec.property)
+        // Document-authored tools contributed by boxes via the aiTool DSL (this request's snapshot).
+        val documentAiTools = DocumentToolRegistry.toolsFor(docPath)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
@@ -1798,6 +1800,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
                     }
@@ -1831,6 +1834,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            dynamicTools = documentAiTools,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
                                 synchronized(liveLock) {
@@ -1880,6 +1884,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
                     }
@@ -1913,6 +1918,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
                     }
@@ -1946,6 +1952,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             workspaceSymbolSearch = workspaceSymbolSearch,
+                            dynamicTools = documentAiTools,
                             onProgress = progressCallback
                         )
                     }
@@ -2335,9 +2342,10 @@ fun installAi4() {
                     semanticRetrievalStatus = semanticRetrievalStatus,
                     semanticRetrievalRebuild = semanticRetrievalRebuild,
                     agentMemory = agentMemory,
-                    documentGuides = documentGuides
+                    documentGuides = documentGuides,
+                    dynamicTools = DocumentToolRegistry.toolsFor(chatDocPath)
                 )
-                
+
                 chatThreadByKey[fileKey] = result.threadState
                 
                 // Format response with markdown

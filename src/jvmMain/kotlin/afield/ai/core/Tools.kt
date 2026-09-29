@@ -830,7 +830,17 @@ data class ToolExecutionContext(
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
 
     /** What this conversation is about, when it is about one box: see [ToolFocus]. */
-    val focus: ToolFocus? = null
+    val focus: ToolFocus? = null,
+
+    /**
+     * Document-authored tools contributed by boxes via the [aiTool] DSL. These are
+     * resolved per-request (the anchoring document's [DocumentToolRegistry] snapshot)
+     * and layered on top of the static built-ins by [ToolRegistry]: they surface on
+     * both the OpenAI chat path ([ToolRegistry.addAllTo]/[ToolRegistry.execute]) and the
+     * provider-neutral MCP face ([ToolRegistry.describe]/[ToolRegistry.executeByName]).
+     * A dynamic tool whose name collides with a built-in is ignored (built-ins win).
+     */
+    val dynamicTools: List<BoxTool> = emptyList()
 )
 
 /**
@@ -943,16 +953,29 @@ internal class ToolRegistry {
                 builder.addTool(h.cls as Class<Any>)
             }
         }
+        // Document-authored tools (box aiTool DSL). Built-ins win on name collision.
+        dynamicToolsIn(ctx).forEach { tool ->
+            builder.addTool(tool.toFunctionTool())
+        }
     }
 
     fun execute(ctx: ToolExecutionContext, call: ResponseFunctionToolCall): Any {
         val h = handlers[call.name()]
+        if (h != null) {
+            @Suppress("UNCHECKED_CAST")
+            val handler = h as Handler<Any>
+            val args: Any = call.arguments(handler.cls)
+            return handler.fn(ctx, args)
+        }
+        // Fall through to a document-authored tool with this name.
+        val tool = dynamicToolsIn(ctx).firstOrNull { it.name == call.name() }
             ?: throw IllegalArgumentException("No tool registered for: ${call.name()}")
-        @Suppress("UNCHECKED_CAST")
-        val handler = h as Handler<Any>
-        val args: Any = call.arguments(handler.cls)
-        return handler.fn(ctx, args)
+        return tool.runBlockingFromToolLoop(ctx, call.arguments())
     }
+
+    /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */
+    private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> =
+        ctx.dynamicTools.filter { it.name !in handlers.keys }
 
     // --- Provider-neutral face (used by the MCP backdoor bridge) -----------
     // The OpenAI path above binds tools to ResponseCreateParams / ResponseFunctionToolCall.
@@ -973,11 +996,20 @@ internal class ToolRegistry {
                     put("inputSchema", ToolSchema.forClass(h.cls))
                 })
             }
+        dynamicToolsIn(ctx)
+            .sortedBy { it.name }
+            .forEach { tool ->
+                add(buildJsonObject {
+                    put("name", tool.name)
+                    if (tool.description.isNotBlank()) put("description", tool.description)
+                    put("inputSchema", tool.parametersSchema)
+                })
+            }
     }
 
-    /** True if [name] is registered and its gate passes under [ctx]. */
+    /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. */
     fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
-        handlers[name]?.available(ctx) == true
+        handlers[name]?.available(ctx) == true || dynamicToolsIn(ctx).any { it.name == name }
 
     /**
      * Deserialize [argsJson] into the tool's request class (Jackson, matching the
@@ -986,14 +1018,18 @@ internal class ToolRegistry {
      */
     fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String): Any {
         val h = handlers[name]
-            ?: throw IllegalArgumentException("No tool registered for: $name")
-        if (!h.available(ctx)) {
-            throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
+        if (h != null) {
+            if (!h.available(ctx)) {
+                throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
+            }
+            @Suppress("UNCHECKED_CAST")
+            val handler = h as Handler<Any>
+            val args: Any = aiToolMapper.readValue(argsJson.ifBlank { "{}" }, handler.cls)
+            return handler.fn(ctx, args)
         }
-        @Suppress("UNCHECKED_CAST")
-        val handler = h as Handler<Any>
-        val args: Any = aiToolMapper.readValue(argsJson.ifBlank { "{}" }, handler.cls)
-        return handler.fn(ctx, args)
+        val tool = dynamicToolsIn(ctx).firstOrNull { it.name == name }
+            ?: throw IllegalArgumentException("No tool registered for: $name")
+        return tool.runBlockingFromToolLoop(ctx, argsJson)
     }
 }
 
@@ -1026,7 +1062,7 @@ internal object ToolSchema {
         }
     }
 
-    private fun propertySchema(type: KType, description: String?): JsonObject {
+    internal fun propertySchema(type: KType, description: String?): JsonObject {
         val base = schemaForType(type)
         if (description.isNullOrBlank()) return base
         return buildJsonObject {
@@ -1035,7 +1071,7 @@ internal object ToolSchema {
         }
     }
 
-    private fun schemaForType(type: KType): JsonObject {
+    internal fun schemaForType(type: KType): JsonObject {
         val cls = type.jvmErasure
         return when {
             cls == String::class || cls == Char::class -> typeObject("string")

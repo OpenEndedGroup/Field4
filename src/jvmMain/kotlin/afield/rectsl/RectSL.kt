@@ -1640,12 +1640,17 @@ suspend fun prewarmRectSLEscapes(
     source: String,
     engine: KotlinScriptEngine
 ): Map<String, (RectEscapeContext) -> Any?> {
+    // If the engine has an associated Box (e.g. a live box's own ki), pass it as the implicit
+    // receiver so escapes can reference the box's state — and so the compiled snippet, whose
+    // generated class expects that receiver, is invoked with it (an empty implicits list here
+    // would eval with 0 args where 1 is expected). A bare engine has no associated box → empty.
+    val implicits: List<Any> = listOfNotNull(engine.associatedBox)
     val out = LinkedHashMap<String, (RectEscapeContext) -> Any?>()
     collectEscapeSources(RectLangTokenizer(source).tokenize()).forEach { src ->
         val diagnostics = mutableListOf<String>()
-        val snippet = engine.compileSnippet(escapeWrappedSource(src)) { diags -> diags.forEach { diagnostics += it.message } }
+        val snippet = engine.compileSnippet(escapeWrappedSource(src), implicits = implicits) { diags -> diags.forEach { diagnostics += it.message } }
             ?: throw RectLangException("{{ … }} did not compile: ${diagnostics.joinToString("; ").ifBlank { src.take(60) }}")
-        out[src] = castEscapeLambda(escapeSnippetValue(snippet.eval(onEvalException = { throw it }), src), src)
+        out[src] = castEscapeLambda(escapeSnippetValue(snippet.eval(implicits = implicits, onEvalException = { throw it }), src), src)
     }
     return out
 }
