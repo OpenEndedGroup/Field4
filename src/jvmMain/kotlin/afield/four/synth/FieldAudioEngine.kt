@@ -161,10 +161,12 @@ internal data class InlineAudioSummaryTarget(
  */
 class AudioPatchHandle internal constructor(
     private val engine: FieldAudioEngine,
-    private val id: String
+    private val id: String,
+    private val ownership: afield.Ownership? = null
 ) : AutoCloseable {
     override fun close() {
-        engine.unregister(id)
+        // The ownership's release is the unregister, so closing either one is closing both.
+        if (ownership != null) ownership.close() else engine.unregister(id)
     }
 
     override fun toString(): String = "AudioPatchHandle(id=$id)"
@@ -470,7 +472,15 @@ class FieldAudioEngine private constructor(
         spec.visualSampleRate = sampleRate
         val id = UUID.randomUUID().toString()
         patches[id] = spec
-        return AudioPatchHandle(this, id)
+        // Recorded against the box that is executing, so `lifecycle-census` can say whose patch is
+        // still in the mix; nothing else knows once registration returns.
+        val ownership = afield.LifecycleLedger.claim(
+            afield.LifecycleKinds.AUDIO_PATCH,
+            id,
+            live = { patches.containsKey(id) },
+            release = { unregister(id) },
+        )
+        return AudioPatchHandle(this, id, ownership)
     }
 
     internal fun unregister(id: String) {

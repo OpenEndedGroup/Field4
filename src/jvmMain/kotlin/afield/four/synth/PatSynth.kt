@@ -321,6 +321,9 @@ class PatSynthFeeder internal constructor(
     private val running = AtomicBoolean(false)
     private var thread: Thread? = null
 
+    /** This feeder's entry in the lifecycle ledger, from [start] to [stop]. */
+    private var ownership: afield.Ownership? = null
+
     /** Cycles queried so far. */
     @Volatile
     var cyclesFed: Long = 0L
@@ -328,6 +331,14 @@ class PatSynthFeeder internal constructor(
 
     internal fun start() {
         if (!running.compareAndSet(false, true)) return
+        // The thread starts here, at construction, before any box has returned the launch — so
+        // this, not the return-value handler, is the moment the owning box is knowable.
+        ownership = afield.LifecycleLedger.claim(
+            afield.LifecycleKinds.PATSYNTH_FEEDER,
+            "cps=$cps",
+            live = { running.get() },
+            release = { stop() },
+        )
         thread = kotlin.concurrent.thread(isDaemon = true, name = "pat-synth-feeder") {
             val origin = bank.frame
             val framesPerCycle = bank.sampleRate / cps
@@ -362,6 +373,7 @@ class PatSynthFeeder internal constructor(
         if (!running.compareAndSet(true, false)) return
         thread?.interrupt()
         thread = null
+        ownership?.close()
     }
 
     val isRunning: Boolean get() = running.get()

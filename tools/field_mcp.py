@@ -478,6 +478,15 @@ class FieldMcpServer:
         uid = self._resolve_box(client, str(token))
         return client.boxes[uid]
 
+    async def tool_lifecycle_census(self, args: dict[str, Any]) -> dict[str, Any]:
+        client = await self._ensure_attached()
+        token = args.get("box")
+        uid = None
+        if token:
+            await client.refresh_snapshot(timeout=self.timeout)
+            uid = self._resolve_box(client, str(token))
+        return await client.lifecycle_census(uid=uid, timeout=self.timeout)
+
     async def tool_create_box(self, args: dict[str, Any]) -> dict[str, Any]:
         name = str(args.get("name", "Untitled"))
         frame = args.get("frame") or {}
@@ -745,6 +754,14 @@ class FieldMcpServer:
             },
         },
         {
+            "name": "field_lifecycle_census",
+            "description": "Count what each box of the attached document (or one box) still holds at runtime: coroutine jobs, running strands, stop hooks, and owned resources by kind (audio patches, patSynth feeders, control callbacks, Runloop preRun/postRun hooks, render-target modules), plus whether its Kotlin engine is live. liveTotal excludes the engine, so a stopped box that left nothing behind reports 0.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"box": {"type": "string", "description": "Box uid or unique name. Omit for every box."}},
+            },
+        },
+        {
             "name": "field_outline",
             "description": "Token-efficient orientation: a compact one-line-per-box map of the attached document (live boxes only by default, no geometry, short ids), with a preview of each box's notes. Start here to get oriented before pulling full code.",
             "inputSchema": {
@@ -939,6 +956,7 @@ class FieldMcpServer:
             "field_snapshot": self.tool_snapshot,
             "field_outline": self.tool_outline,
             "field_read_box": self.tool_read_box,
+            "field_lifecycle_census": self.tool_lifecycle_census,
             "field_read_note": self.tool_read_note,
             "field_write_note": self.tool_write_note,
             "field_create_box": self.tool_create_box,

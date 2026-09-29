@@ -996,14 +996,14 @@ data class SliderConfig(
 )
 
 // Global registry for slider callbacks
-private val sliderCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Double) -> Unit>()
+private val sliderCallbacks = OwnedCallbackRegistry<(Double) -> Unit>("slider")
 
 internal fun registerSliderCallback(sliderId: String, callback: (Double) -> Unit) {
-    sliderCallbacks[sliderId] = callback
+    sliderCallbacks.register(sliderId, callback)
 }
 
 internal fun unregisterSliderCallback(sliderId: String) {
-    sliderCallbacks.remove(sliderId)
+    sliderCallbacks.unregister(sliderId)
 }
 
 internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
@@ -1011,10 +1011,10 @@ internal fun getSliderCallback(sliderId: String): ((Double) -> Unit)? {
 }
 
 // Global registry for FLine click callbacks
-private val flineClickCallbacks = java.util.concurrent.ConcurrentHashMap<String, (FLineIntersection) -> Unit>()
+private val flineClickCallbacks = OwnedCallbackRegistry<(FLineIntersection) -> Unit>("flineClick")
 
 internal fun registerFLineClickCallback(callbackId: String, callback: (FLineIntersection) -> Unit) {
-    flineClickCallbacks[callbackId] = callback
+    flineClickCallbacks.register(callbackId, callback)
 }
 
 internal fun getFLineClickCallback(callbackId: String): ((FLineIntersection) -> Unit)? {
@@ -1214,10 +1214,10 @@ private fun calculateDecimalPlaces(step: Double): Int {
 // Additional control types + HTML builders
 
 // 2D Vector control (using Field Vector2f)
-private val vec2Callbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector2f) -> Unit>()
+private val vec2Callbacks = OwnedCallbackRegistry<(Vector2f) -> Unit>("vec2")
 
 internal fun registerVec2Callback(controlId: String, callback: (Vector2f) -> Unit) {
-    vec2Callbacks[controlId] = callback
+    vec2Callbacks.register(controlId, callback)
 }
 
 internal fun getVec2Callback(controlId: String): ((Vector2f) -> Unit)? {
@@ -1322,10 +1322,10 @@ fun Box.vec2Control(
 }
 
 // Checkbox control
-private val checkboxCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Boolean) -> Unit>()
+private val checkboxCallbacks = OwnedCallbackRegistry<(Boolean) -> Unit>("checkbox")
 
 internal fun registerCheckboxCallback(controlId: String, callback: (Boolean) -> Unit) {
-    checkboxCallbacks[controlId] = callback
+    checkboxCallbacks.register(controlId, callback)
 }
 
 internal fun getCheckboxCallback(controlId: String): ((Boolean) -> Unit)? {
@@ -1355,10 +1355,10 @@ fun Box.checkbox(
 }
 
 // String input control
-private val stringCallbacks = java.util.concurrent.ConcurrentHashMap<String, (String) -> Unit>()
+private val stringCallbacks = OwnedCallbackRegistry<(String) -> Unit>("string")
 
 internal fun registerStringCallback(controlId: String, callback: (String) -> Unit) {
-    stringCallbacks[controlId] = callback
+    stringCallbacks.register(controlId, callback)
 }
 
 internal fun getStringCallback(controlId: String): ((String) -> Unit)? {
@@ -1389,10 +1389,10 @@ fun Box.stringInput(
 }
 
 // File upload control
-private val fileUploadCallbacks = java.util.concurrent.ConcurrentHashMap<String, (List<FileUploadEntry>) -> Unit>()
+private val fileUploadCallbacks = OwnedCallbackRegistry<(List<FileUploadEntry>) -> Unit>("fileUpload")
 
 internal fun registerFileUploadCallback(controlId: String, callback: (List<FileUploadEntry>) -> Unit) {
-    fileUploadCallbacks[controlId] = callback
+    fileUploadCallbacks.register(controlId, callback)
 }
 
 internal fun getFileUploadCallback(controlId: String): ((List<FileUploadEntry>) -> Unit)? {
@@ -1434,10 +1434,10 @@ fun Box.fileUpload(
 }
 
 // Color picker control (vec4, normalized - using Field Vector4f)
-private val colorCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Vector4f) -> Unit>()
+private val colorCallbacks = OwnedCallbackRegistry<(Vector4f) -> Unit>("color")
 
 internal fun registerColorCallback(controlId: String, callback: (Vector4f) -> Unit) {
-    colorCallbacks[controlId] = callback
+    colorCallbacks.register(controlId, callback)
 }
 
 internal fun getColorCallback(controlId: String): ((Vector4f) -> Unit)? {
@@ -1507,10 +1507,10 @@ fun Box.colorPicker(
 
 // Momentary button control ------------------------------------------------
 
-private val buttonCallbacks = java.util.concurrent.ConcurrentHashMap<String, (Boolean) -> Unit>()
+private val buttonCallbacks = OwnedCallbackRegistry<(Boolean) -> Unit>("button")
 
 internal fun registerButtonCallback(controlId: String, callback: (Boolean) -> Unit) {
-    buttonCallbacks[controlId] = callback
+    buttonCallbacks.register(controlId, callback)
 }
 
 internal fun getButtonCallback(controlId: String): ((Boolean) -> Unit)? = buttonCallbacks[controlId]

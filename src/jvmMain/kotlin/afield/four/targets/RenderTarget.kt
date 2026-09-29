@@ -34,37 +34,37 @@ class RenderTarget(
     @JvmName("plusAssign")
     operator fun plusAssign(m : Pair<String, ModulePointer>) {
         if (m.first in modules) modules.remove(m.first) // allow reordering
-        modules[m.first] = m.second
+        modules.putOwned(m.first, m.second)
     }
 
     @JvmName("plusAssign_mp")
     operator fun plusAssign(m : ModulePointer) {
-        modules[m.current.parameters.name] = m
+        modules.putOwned(m.current.parameters.name, m)
     }
 
     @JvmName("plusAssign_module")
     operator fun plusAssign(m : Pair<String, Module>) {
-        modules[m.first] = m.second.pointer()
+        modules.putOwned(m.first, m.second.pointer())
     }
 
     @JvmName("plusAssign_mesh")
     operator fun plusAssign(m : Pair<String, MeshModulePointer>) {
-        meshModules[m.first] = m.second
+        meshModules.putOwned(m.first, m.second)
     }
 
     @JvmName("plusAssign_mmp")
     operator fun plusAssign(m : MeshModulePointer) {
-        meshModules[m.current.parameters.name] = m
+        meshModules.putOwned(m.current.parameters.name, m)
     }
 
     @JvmName("plusAssign_mmodule")
     operator fun plusAssign(m : Pair<String, MeshModule>) {
-        meshModules[m.first] = m.second.pointer()
+        meshModules.putOwned(m.first, m.second.pointer())
     }
 
     @JvmName("plusAssign_target")
     operator fun plusAssign(m : Pair<String, Target>) {
-        others[m.first] = m.second
+        others.putOwned(m.first, m.second)
     }
 
     var seenBefore = mutableSetOf<Int>()

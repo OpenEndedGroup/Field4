@@ -138,8 +138,8 @@ class Runloop {
     var frame = 0L
 
     val main = Framer()
-    val preRun = MapOfSequences<String>()
-    val postRun = MapOfSequences<String>()
+    val preRun = MapOfSequences<String>(LifecycleKinds.RUNLOOP_PRE_RUN)
+    val postRun = MapOfSequences<String>(LifecycleKinds.RUNLOOP_POST_RUN)
     var shouldSleep = true
 
     var limiter = RateLimiter(10.0, 0.2)

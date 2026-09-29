@@ -2,11 +2,22 @@ package afield.four.util
 
 import afield.Generator
 
-class MapOfSequences<T> {
+/**
+ * Named sequences advanced one step per [update] — the Runloop's `preRun`/`postRun` hooks, a mesh's
+ * `update`. Setting a key replaces whatever ran under it; a sequence that ends is dropped.
+ *
+ * When [ledgerKind] is given, every [set] is an [afield.Ownership] in the lifecycle ledger, attributed
+ * to the box executing at the time, so `lifecycle-census` can say whose hook is still on the Runloop.
+ * [setUnowned] is for library code that removes its own hook.
+ */
+class MapOfSequences<T>(private val ledgerKind: String? = null) {
 
     private val lock = Any()
     private val starts = mutableMapOf<T, Sequence<Any?>>()
     private var ongoings = mutableMapOf<T, Iterator<Any?>>()
+
+    /** The sequence each started key came from, so [isCurrent] can compare by identity. */
+    private val ongoingSources = mutableMapOf<T, Sequence<Any?>>()
 
     fun update() {
         val current = synchronized(lock) {
@@ -29,6 +40,7 @@ class MapOfSequences<T> {
             synchronized(lock) {
                 if (ongoings[key] === iterator && !keep) {
                     ongoings.remove(key)
+                    ongoingSources.remove(key)
                 }
             }
         }
@@ -36,14 +48,42 @@ class MapOfSequences<T> {
         synchronized(lock) {
             starts.forEach { (t, u) ->
                 ongoings[t] = u.iterator()
+                ongoingSources[t] = u
             }
             starts.clear()
         }
     }
 
+    /** Run [sequence] under [t] from the next [update], replacing whatever ran there. */
     operator fun set(t: T, sequence: Sequence<Any?>) {
+        setUnowned(t, sequence)
+        claim(t, sequence)
+    }
+
+    /**
+     * [set] without the ledger entry, for library code that installs a hook on its own schedule and
+     * removes it itself — a renderer's geometry hook, a spreadsheet poll — rather than on a box's
+     * behalf.
+     */
+    fun setUnowned(t: T, sequence: Sequence<Any?>) {
         synchronized(lock) {
             starts[t] = sequence
+        }
+    }
+
+    /** Whether [sequence] is still what runs, or will run, under [t]. */
+    fun isCurrent(t: T, sequence: Sequence<Any?>): Boolean = synchronized(lock) {
+        starts[t] === sequence || (t !in starts && ongoingSources[t] === sequence)
+    }
+
+    /** Remove [t] only if [sequence] is still what it holds. */
+    fun removeIfCurrent(t: T, sequence: Sequence<Any?>) {
+        synchronized(lock) {
+            if (starts[t] === sequence) starts.remove(t)
+            if (ongoingSources[t] === sequence) {
+                ongoings.remove(t)
+                ongoingSources.remove(t)
+            }
         }
     }
 
@@ -51,7 +91,19 @@ class MapOfSequences<T> {
         synchronized(lock) {
             starts.remove(t)
             ongoings.remove(t)
+            ongoingSources.remove(t)
         }
+    }
+
+    private fun claim(t: T, sequence: Sequence<Any?>): afield.Ownership? {
+        val kind = ledgerKind ?: return null
+        return afield.LifecycleLedger.claim(
+            kind,
+            t.toString(),
+            slot = afield.LedgerSlot(this, t),
+            live = { isCurrent(t, sequence) },
+            release = { removeIfCurrent(t, sequence) },
+        )
     }
 }
 

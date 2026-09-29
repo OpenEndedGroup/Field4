@@ -590,6 +590,30 @@ reads the value, and it is resumed immediately; a high-hit probe can still pertu
 Backdoor-launched Field enables JDWP (5005, or the first free port above it) automatically; a
 bare `./gradlew runJvm` does not, and the probe says so.
 
+## Lifecycle census
+
+`lifecycle-census [<box>]` answers "what is this box still holding?" — the question behind every
+stop, delete and close bug. Per box: `jobs`, `runningStrands`, `stopHooks`, `owned` (lifecycle-ledger
+ownerships by kind: `audio-patch`, `patsynth-feeder`, `control-callback`, `runloop-preRun`,
+`runloop-postRun`, `render-module`, `stream-process`), a sample of `ownedKeys`, `engine`
+(`live`/`none`) and `liveTotal`, which sums everything but the engine. `unattributed` counts
+registrations made with no box executing. MCP: `field_lifecycle_census`.
+
+Two flags turn it into an assertion: `--expect-empty` polls until the box's `liveTotal` is 0 and
+fails at the timeout otherwise; `--expect-at-least KIND=N` (repeatable; `jobs`, `runningStrands` and
+`stopHooks` count as kinds) fails unless the box holds that much — the negative control an
+`--expect-empty` after `stop` needs, so it cannot pass against a box that never held anything.
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
+  --command 'new-box --name Probe' --command 'launch @last --file box.kt' \
+  --command 'lifecycle-census @last --expect-at-least control-callback=1' \
+  --command 'stop @last' --command 'lifecycle-census @last --expect-empty'
+```
+
+Attribution is recorded at registration (`LifecycleLedger.claim`, `LifecycleLedger.kt`), from the box
+executing at the time; nothing else knows the owner once the registration returns.
+
 ## Suite runner details
 
 Moved here from `AGENTS.md` on 2026-09-28.

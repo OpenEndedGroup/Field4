@@ -101,6 +101,9 @@ Native bridge tools (always present):
 - `field_screenshot_box` — render a box's output as an image.
 - `field_debug_probe` — inspect a live variable's value at runtime (see
   [Runtime debug probe](#runtime-debug-probe) below).
+- `field_lifecycle_census` — what each box still holds (jobs, strands, stop hooks, audio
+  patches, feeders, control callbacks, Runloop hooks, render modules, engine); the MCP face of
+  the backdoor's `lifecycle-census` command ([`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md#lifecycle-census)).
 
 ai4 registry tools (discovered dynamically once attached; the same registry the in-app
 OpenAI harness uses — see [`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)). Flattened

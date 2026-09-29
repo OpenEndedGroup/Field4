@@ -2479,6 +2479,18 @@ class FieldBackdoor:
         tools = payload.get("tools") if isinstance(payload, dict) else None
         return tools if isinstance(tools, list) else []
 
+    async def lifecycle_census(self, *, uid: str | None, timeout: float) -> dict[str, Any]:
+        """What each box (or just ``uid``) still holds: jobs, strands, stop hooks, owned resources.
+
+        Served by ``agent-lifecycle-census`` (agent_backdoor.kt). A box's ``liveTotal`` counts
+        everything except its engine, so a stopped box that left nothing behind reports 0.
+        """
+        event = await self.call_for_single_reply("agent-lifecycle-census", {"uid": uid}, timeout=timeout)
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-lifecycle-census returned an invalid payload")
+        return payload
+
     async def ai_tool_call(
         self,
         *,
@@ -3234,6 +3246,15 @@ def build_command_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("status", add_help=False)
     subparsers.add_parser("snapshot", add_help=False)
+    census_parser = subparsers.add_parser("lifecycle-census", add_help=False)
+    census_parser.add_argument("uid", nargs="?")
+    # Poll until the box's liveTotal is 0 (or the timeout passes, then ok: false) -- the check a
+    # stop/delete smoke makes. Teardown that hops to the main runloop lands a tick later.
+    census_parser.add_argument("--expect-empty", action="store_true")
+    # KIND=N: fail unless the box owns at least N of KIND (e.g. control-callback=1) -- the
+    # negative control that stops --expect-empty from passing against a box that never held anything.
+    census_parser.add_argument("--expect-at-least", action="append", default=[])
+    census_parser.add_argument("--timeout", type=float)
     subparsers.add_parser("boxes", add_help=False)
     sleep_parser = subparsers.add_parser("sleep", add_help=False)
     sleep_parser.add_argument("seconds", type=float)
@@ -3685,6 +3706,45 @@ async def dispatch_command(
     if args.command == "snapshot":
         data = await client.refresh_snapshot(timeout=client.default_timeout)
         result = command_result(command_line, True, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "lifecycle-census":
+        timeout = args.timeout or client.default_timeout
+        uid = client.resolve_box_token(args.uid) if args.uid else None
+        wanted: dict[str, int] = {}
+        for spec in args.expect_at_least:
+            kind, _, count = str(spec).partition("=")
+            wanted[kind.strip()] = int(count or "1")
+        deadline = time.monotonic() + timeout
+        problems: list[str] = []
+        while True:
+            data = await client.lifecycle_census(uid=uid, timeout=timeout)
+            boxes = data.get("boxes") or []
+            problems = []
+            if uid is not None and not boxes:
+                problems.append(f"no box {uid} in the attached document")
+            for box in boxes:
+                owned = box.get("owned") or {}
+                counts = dict(owned)
+                counts["jobs"] = box.get("jobs", 0)
+                counts["runningStrands"] = len(box.get("runningStrands") or [])
+                counts["stopHooks"] = box.get("stopHooks", 0)
+                for kind, least in wanted.items():
+                    if int(counts.get(kind, 0)) < least:
+                        problems.append(f"{box.get('uid')}: expected at least {least} {kind}, found {counts.get(kind, 0)}")
+                if args.expect_empty and int(box.get("liveTotal", 0)) != 0:
+                    problems.append(
+                        f"{box.get('uid')}: expected nothing left, found liveTotal={box.get('liveTotal')} "
+                        f"({', '.join(box.get('ownedKeys') or [])})"
+                    )
+            if not problems or time.monotonic() >= deadline or not (args.expect_empty or wanted):
+                break
+            await asyncio.sleep(0.1)
+        if problems:
+            data = dict(data)
+            data["problems"] = problems
+        result = command_result(command_line, not problems, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
         return result
 
@@ -4451,7 +4511,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, boxes, sleep, playwright-open, editor-open, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

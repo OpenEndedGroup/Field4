@@ -1272,6 +1272,27 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // What each box still holds after whatever the caller just did: jobs, running strands, stop hooks
+    // and every lifecycle-ledger ownership (audio patches, feeders, control callbacks, Runloop hooks,
+    // render modules), plus whether its engine is live. `uid` narrows it to one box; without it,
+    // every box of the attached document.
+    handlers["agent-lifecycle-census"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val uid = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("uid")
+            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
+            ?.takeIf { it.isNotBlank() }
+        val boxes = if (uid != null) listOfNotNull(info.boxes[uid]) else info.boxes.values.toList()
+        val census = lifecycleCensus(boxes)
+        val payload = kotlinx.serialization.json.JsonObject(
+            census + mapOf(
+                "requestedUid" to kotlinx.serialization.json.JsonPrimitive(uid),
+                "found" to kotlinx.serialization.json.JsonPrimitive(uid == null || boxes.isNotEmpty()),
+            )
+        )
+        reply(Message("agent-lifecycle-census").payload(payload))
+        Handled.yes
+    })
+
     // Provider-neutral ai4 tool surface (Tier-1: Macro*/SemanticRetrieval*/agent memory).
     // Reuses the same ToolRegistry the OpenAI harness uses; gates hide any tool whose
     // provider is not wired for the backdoor context. Surfaced over MCP by field_mcp.py.
