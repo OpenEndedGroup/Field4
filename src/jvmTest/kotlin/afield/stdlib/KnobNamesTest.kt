@@ -21,7 +21,7 @@ class KnobNamesTest {
     @AfterTest
     fun removeFolders() = folders.forEach { it.deleteRecursively() }
 
-    private val knobs = listOf(KnobNames.Knob(0, 1, "5", "multiplies"), KnobNames.Knob(1, 1, "0.2", "adds"))
+    private val knobs = listOf(StudyKnob(0, 1, "5", "multiplies"), StudyKnob(1, 1, "0.2", "adds"))
 
     @Test
     fun turningANumberKeepsTheShapeButRewritingALineDoesNot() {

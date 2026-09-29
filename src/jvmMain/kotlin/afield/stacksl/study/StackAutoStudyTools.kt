@@ -6,6 +6,7 @@ import afield.ai.core.AgentToolExtensions
 import afield.ai.core.ToolExecutionContext
 import afield.plugins
 import afield.stdlib.StudySourceEdit
+import afield.stdlib.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -36,7 +37,7 @@ data class PatchStackAutoSlot(val slot: String = "", val expectedRevision: Strin
     @JsonPropertyDescription("How many moments the sheet holds, 2..9, evenly spaced across over") val moments: Int = 4)
 
 /** One number to turn: knob index from Inspect, and its new value. */
-data class StackAutoNumberEdit(val knob: Int, val value: Double)
+data class StackAutoNumberEdit(override val knob: Int, override val value: Double) : afield.stdlib.NumberEdit
 
 @JsonClassDescription("Turn a slot's numbers live, through its uniform block — no recompile — and see the host shader with them. They stay turned but unkept unless keep is true, which writes them into the program as a new revision (then expectedRevision and expectedSourceHash are needed). Use it to try values; keep what the person likes.")
 data class SetStackAutoNumbers(val slot: String = "", val numbers: List<StackAutoNumberEdit>, val keep: Boolean = false,
@@ -110,7 +111,7 @@ fun installStackAutoStudyTools() {
     r.register(PatchStackAutoSlot::class.java, onASlotBox, LIBRARY) { ctx, q ->
         study(ctx, q.slot).patch(q.expectedRevision, q.expectedSourceHash, q.edits, q.description, q.alone, q.over, q.moments) }
     r.register(SetStackAutoNumbers::class.java, onASlotBox, LIBRARY) { ctx, q ->
-        study(ctx, q.slot).setNumbers(q.numbers.associate { it.knob to it.value }, q.keep, q.expectedRevision, q.expectedSourceHash,
+        study(ctx, q.slot).setNumbers(q.numbers.numbers(), q.keep, q.expectedRevision, q.expectedSourceHash,
             q.description.ifBlank { "numbers set: " + q.numbers.joinToString { "k${it.knob}=${it.value}" } }) }
     r.register(ObserveStackAutoSlot::class.java, onASlotBox, LIBRARY) { ctx, q -> study(ctx, q.slot).observe(q.alone, q.over, q.moments) }
     r.register(SweepStackAutoNumber::class.java, onASlotBox, LIBRARY) { ctx, q -> study(ctx, q.slot).sweep(q.knob, q.values) }

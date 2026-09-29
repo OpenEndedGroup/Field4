@@ -70,10 +70,7 @@ object StackAutoCard {
     private fun knobs(slot: StackAutoNumbers.Slot): List<StackSLKnob> =
         if (slot.numbers.isEmpty() || slot.source.isBlank()) emptyList() else runCatching { StackSLStudyShader.knobs(slot.source, slot.entrypoint) }.getOrDefault(emptyList())
 
-    private fun namingKnobs(source: String, knobs: List<StackSLKnob>): List<KnobNames.Knob> {
-        val lines = source.lines()
-        return knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) }
-    }
+    private fun namingKnobs(source: String, knobs: List<StackSLKnob>) = StackSLStudyViewer.studyKnobs(source, knobs)
 
     /** [box]'s `code`, or null when it has none (a box whose slots are bound from elsewhere). */
     private fun codeOf(box: Box): String? = box.getPropertyRaw("code", null) as? String

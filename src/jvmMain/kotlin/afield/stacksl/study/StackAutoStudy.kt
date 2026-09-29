@@ -230,8 +230,7 @@ class StackAutoSlotStudy internal constructor(
     }
 
     private fun names(r: SourceRevision<StackAutoSlotCheck>): Map<Int, String> = KnobNames.names("StackSL", StackSLStudy.ABOUT_FOR_NAMES, r.source,
-        r.value.knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, r.source.lines().getOrElse(it.line - 1) { "" })) },
-        File(revisions.directory.parentFile.path), false) {}.orEmpty()
+        StackSLStudyViewer.studyKnobs(r.source, r.value.knobs), File(revisions.directory.parentFile.path), false) {}.orEmpty()
 
     /** The host GLSL around the slot: where it is declared and every line that calls it — what its input and output mean. */
     private fun host(): List<String> = listOf("vertex", "fragment", "compute", "task", "mesh").flatMap { p ->
@@ -261,9 +260,7 @@ class StackAutoSlotStudy internal constructor(
                 "k${k.knob} L${k.line}:${k.column} ${k.token}" + (k.takenAs?.let { " → $it" } ?: "") +
                     (named[k.knob]?.let { " [$it]" } ?: "") + (now?.takeIf { kotlin.math.abs(it - k.value) > 1e-9 }?.let { " (turned to $it, not kept)" } ?: "")
             },
-            "keys" to StudyKeys.summary(File(revisions.directory.parentFile.path), KnobNames.shape("StackSL", r.source,
-                r.value.knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, r.source.lines().getOrElse(it.line - 1) { "" })) }),
-                r.value.knobs.associate { it.knob to it.value }),
+            "keys" to StudyKeys.summary(File(revisions.directory.parentFile.path), "StackSL", r.source, StackSLStudyViewer.studyKnobs(r.source, r.value.knobs)),
             "history" to revisions.history().takeLast(16).map { mapOf("id" to it.id, "description" to it.description) }
         ))
     }

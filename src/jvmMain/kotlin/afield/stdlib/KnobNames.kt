@@ -31,8 +31,6 @@ import java.util.concurrent.Executors
  * off, and names already stored are still shown.
  */
 internal object KnobNames {
-    /** One number, as the model is shown it: [operand] is what the language says reads it. */
-    data class Knob(val index: Int, val line: Int, val typed: String, val operand: String)
 
     private const val FILE = "knob-names.json"
     private const val KEPT_SHAPES = 32
@@ -46,7 +44,7 @@ internal object KnobNames {
     private val number = Regex("""0x[0-9a-fA-F]+|(?<![A-Za-z_\d.])-?(?:\d+\.?\d*|\.\d+)""")
 
     /** What the program's knobs are named by: its text with the numbers blanked, the language and the operands. */
-    fun shape(language: String, source: String, knobs: List<Knob>): String {
+    fun shape(language: String, source: String, knobs: List<StudyKnob>): String {
         val digest = MessageDigest.getInstance("SHA-256")
         digest.update("$language\n${number.replace(source, "#")}\n${knobs.joinToString("\n") { it.operand }}".toByteArray())
         return digest.digest().take(12).joinToString("") { "%02x".format(it) }
@@ -58,7 +56,7 @@ internal object KnobNames {
      * [ready] called when they are stored. [directory] is the study's; [about] a sentence on what the
      * language is, for the model.
      */
-    fun names(language: String, about: String, source: String, knobs: List<Knob>, directory: File?, ask: Boolean, ready: () -> Unit): Map<Int, String>? {
+    fun names(language: String, about: String, source: String, knobs: List<StudyKnob>, directory: File?, ask: Boolean, ready: () -> Unit): Map<Int, String>? {
         if (knobs.isEmpty()) return emptyMap()
         val key = shape(language, source, knobs)
         val slot = "${directory?.absolutePath}|$key"
@@ -96,7 +94,7 @@ internal object KnobNames {
         return !document.agentManaged || flag.equals("true", ignoreCase = true) || flag == "1"
     }
 
-    internal fun prompt(language: String, about: String, source: String, knobs: List<Knob>): String = buildString {
+    internal fun prompt(language: String, about: String, source: String, knobs: List<StudyKnob>): String = buildString {
         appendLine("You label the sliders of a live $language program in Field4. $about")
         appendLine("Each slider turns one number typed in the program. For each knob below, write a label of 2 to 4 lowercase words")
         appendLine("saying what turning that number changes in what the program draws: \"wave drift speed\", \"star brightness\", \"horizon glow height\".")
@@ -115,7 +113,7 @@ internal object KnobNames {
         knobs.forEach { appendLine("k${it.index} · line ${it.line} · ${it.typed} · ${it.operand}") }
     }
 
-    private fun request(language: String, about: String, source: String, knobs: List<Knob>): Pair<String, Map<Int, String>> {
+    private fun request(language: String, about: String, source: String, knobs: List<StudyKnob>): Pair<String, Map<Int, String>> {
         val model = Ai4ModelDefaults.envOrDefault("AFIELD_AI_KNOB_NAMES_MODEL", Ai4ModelDefaults.fastModel())
         val bridge = createLlmBridge(model, SilentLog, LlmReasoningEffort.LOW)
         val state = bridge.startThread(fileKey = "ai4:knob-names", fileText = "", instructions = "Return only the requested JSON. Do not call tools.")

@@ -349,6 +349,12 @@ class StackSLStudyViewer(
 
         private val NUMBER = Regex("""-?(?:\d+\.?\d*|\.\d+)""")
 
+        /** [knobs] of [source] as the language-neutral [afield.stdlib.StudyKnob]s names and keys are built on. */
+        internal fun studyKnobs(source: String, knobs: List<StackSLKnob>): List<afield.stdlib.StudyKnob> {
+            val lines = source.lines()
+            return knobs.map { afield.stdlib.StudyKnob(it.knob, it.line, it.token, purpose(it, lines.getOrElse(it.line - 1) { "" }), it.value) }
+        }
+
         /**
          * What [k]'s number does, in a few words, for its slider's label: the operand the compiler took it
          * as ([StackSLKnob.takenAs] — `mix amount`, `smoothstep high`), with arithmetic said as a verb

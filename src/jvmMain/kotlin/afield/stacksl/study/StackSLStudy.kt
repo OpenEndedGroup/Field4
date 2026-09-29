@@ -10,6 +10,8 @@ import afield.stacksl.StackSLSeverity
 import afield.stacksl.cpu.CpuRaster
 import afield.stacksl.cpu.StackSLCpu
 import afield.stdlib.KnobNames
+import afield.stdlib.StudyKnob
+import afield.stdlib.setNumbers
 import afield.stdlib.SourceRevision
 import afield.stdlib.SourceStudy
 import afield.stdlib.StudyAdmission
@@ -274,7 +276,7 @@ class StackSLStudy(
             "nonFiniteFraction" to r.value.nonFiniteFraction,
             "stages" to r.value.stages.map { mapOf("stage" to it.stage, "line" to it.line, "text" to it.text, "comment" to it.comment) },
             "knobs" to knobNames(r.source, r.value.knobs).let { names -> r.value.knobs.map { knobSummary(it, names[it.knob]) } },
-            "keys" to afield.stdlib.StudyKeys.summary(directory, knobShape(r.source, r.value.knobs), r.value.knobs.associate { it.knob to it.value }),
+            "keys" to afield.stdlib.StudyKeys.summary(directory, "StackSL", r.source, namingKnobs(r.source, r.value.knobs)),
             "pendingVariants" to speculation.pending(),
             "exports" to exports().ifEmpty { null },
             "frame" to FRAME
@@ -301,10 +303,7 @@ class StackSLStudy(
     /** The shape of [source] that knob names and the card's keys belong to ([KnobNames.shape]). */
     internal fun knobShape(source: String, knobs: List<StackSLKnob>): String = KnobNames.shape("StackSL", source, namingKnobs(source, knobs))
 
-    private fun namingKnobs(source: String, knobs: List<StackSLKnob>): List<KnobNames.Knob> {
-        val lines = source.lines()
-        return knobs.map { KnobNames.Knob(it.knob, it.line, it.token, StackSLStudyViewer.purpose(it, lines.getOrElse(it.line - 1) { "" })) }
-    }
+    private fun namingKnobs(source: String, knobs: List<StackSLKnob>): List<StudyKnob> = StackSLStudyViewer.studyKnobs(source, knobs)
 
     // ---- Publishing ---------------------------------------------------------------------------
 
@@ -345,13 +344,8 @@ class StackSLStudy(
     /** Publish new values for knobs of the live source (knob index to value), rewritten in place. */
     fun setNumbers(expectedRevision: String, expectedSourceHash: String, numbers: Map<Int, Double>, description: String,
                    previewSeconds: List<Double> = emptyList()): StudyReport {
-        if (numbers.isEmpty()) throw StudyRejection("Name at least one knob to set")
-        val live = revisions.liveSource()
-        if (expectedRevision != revisions.currentId() || expectedSourceHash != SourceStudy.hash(live)) {
-            throw StudyRejection("Conflict: inspect again; knob numbers refer to the live source you read.")
-        }
-        val rewritten = try { StackSLStudyShader.setKnobs(live, numbers) } catch (e: IllegalArgumentException) { throw StudyRejection(e.message ?: "Could not set those numbers") }
-        return published(revisions.edit(expectedRevision, expectedSourceHash, rewritten, description), previewSeconds, "Numbers set, checked and activated")
+        return published(revisions.setNumbers(expectedRevision, expectedSourceHash, numbers, description) { source, n -> StackSLStudyShader.setKnobs(source, n) },
+            previewSeconds, "Numbers set, checked and activated")
     }
 
     /** Check in whatever is in the editor now — a person's own edit — as a revision. */
@@ -859,7 +853,7 @@ data class StackSLCheck(
 )
 
 /** One knob to set, by its index in the live source's knob list, and the value to write there. */
-data class StackSLNumberEdit(val knob: Int, val value: Double)
+data class StackSLNumberEdit(override val knob: Int, override val value: Double) : afield.stdlib.NumberEdit
 
 /** A definition's stack bookkeeping: a called definition should end at depth 1. */
 data class StackSLDefinitionReport(val name: String, val finalDepth: Int, val maxDepth: Int, val pruned: Int)

@@ -7,6 +7,7 @@ import afield.ai.core.ToolExecutionContext
 import afield.plugins
 import afield.stdlib.FileManager
 import afield.stdlib.StudySourceEdit
+import afield.stdlib.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -139,7 +140,7 @@ fun installStackSLStudyTools() {
     r.register(PatchStackSLStudy::class.java, onAProgram, LIBRARY) { ctx, q ->
         studyOf(ctx).patch(q.expectedRevision, q.expectedSourceHash, q.edits, q.description, q.previewSeconds) }
     r.register(SetStackSLNumbers::class.java, onAProgram, LIBRARY) { ctx, q ->
-        studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.associate { it.knob to it.value }, q.description, q.previewSeconds) }
+        studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.numbers(), q.description, q.previewSeconds) }
     r.register(ObserveStackSLStudy::class.java, onAProgram, LIBRARY) { ctx, q -> studyOf(ctx).observe(q.revision, q.seconds, q.size, q.compareTo) }
     r.register(TraceStackSLStudy::class.java, onAProgram, LIBRARY) { ctx, q ->
         studyOf(ctx).trace(q.revision, q.seconds, probeU = q.probeU.takeIf { it >= 0 }, probeV = q.probeV.takeIf { it >= 0 }) }

@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-15 source file(s), 228 public symbol(s), 183 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+16 source file(s), 239 public symbol(s), 192 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -369,6 +369,42 @@ Where a study's frames come from: `P` — a program, a compiled scene — drawn 
 ## StudyKeys.kt { #studykeys-kt }
 
 `src/jvmMain/kotlin/afield/stdlib/StudyKeys.kt` — [read the source](source/jvmMain/afield/stdlib/StudyKeys/)
+
+## StudyKnob.kt { #studyknob-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/StudyKnob.kt` — [read the source](source/jvmMain/afield/stdlib/StudyKnob/)
+
+### Top-level functions { #studyknob-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">NumberEdit</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">numbers</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L39) | [`NumberEdit`](workspace.md#studyknob-kt-numberedit)s as knob index to value, the form a language's rewriter takes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">SourceStudy</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">setNumbers</span><span class="p">(</span><span class="n">expectedRevision</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">expectedSourceHash</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">withNumbers</span><span class="p">:</span> <span class="p">(</span><span class="n">source</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">,</span> <span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceRevision</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L47) | Publish `numbers` (knob index to value) written into the live source by `withNumbers` — the language's own rewriter, which keeps each number's spelling — as a new revision, with the usual guards: the knob indices refer to the live source the caller read, so a stale revision or hash is refused, and a value a word cannot hold is refused with the rewriter's reason. |
+
+### StudyKnob { #studyknob-kt-studyknob }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">StudyKnob</span><span class="p">(</span><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">operand</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L15)
+
+One number a person typed in a study's source — a *knob* — as everything language-neutral sees it: the fast model that names sliders (`KnobNames`), the keys a card saves (`StudyKeys`), a study's setNumbers tool.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span></code> | Index among the program's knobs, in source order — the number a tool call names. |
+| <code class="highlight"><span class="k">val</span> <span class="n">line</span><span class="p">:</span> <span class="nc">Int</span></code> | 1-based line of the number. |
+| <code class="highlight"><span class="k">val</span> <span class="n">typed</span><span class="p">:</span> <span class="nc">String</span></code> | The number as typed. |
+| <code class="highlight"><span class="k">val</span> <span class="n">operand</span><span class="p">:</span> <span class="nc">String</span></code> | What reads it, in the language's own words. |
+| <code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code> | Its value now. |
+
+### NumberEdit { #studyknob-kt-numberedit }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">NumberEdit</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L33)
+
+One knob to set, by index, and the value to write there — what every study's setNumbers request carries a list of. Each study's request class keeps its own element type (its JSON schema, with whatever the property descriptions say, is what a model has been shown), and implements this.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">knob</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L34) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StudyKnob/#L35) |  |
 
 ## StudyReport.kt { #studyreport-kt }
 

@@ -7,6 +7,7 @@ import afield.ai.core.ToolExecutionContext
 import afield.plugins
 import afield.stdlib.FileManager
 import afield.stdlib.StudySourceEdit
+import afield.stdlib.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -40,9 +41,9 @@ data class PatchRectSLStudy(val expectedRevision: String, val expectedSourceHash
 
 /** One knob to set, by its index in the live source's knob list, and the value to write there. */
 data class RectSLNumberEdit(
-    val knob: Int,
-    @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") val value: Double
-)
+    override val knob: Int,
+    @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") override val value: Double
+) : afield.stdlib.NumberEdit
 
 @JsonClassDescription("Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.")
 data class SetRectSLNumbers(val expectedRevision: String, val expectedSourceHash: String,
@@ -140,7 +141,7 @@ fun installRectSLStudyTools() {
     r.register(PatchRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q ->
         studyOf(ctx).patch(q.expectedRevision, q.expectedSourceHash, q.edits, q.description, q.previewSeconds) }
     r.register(SetRectSLNumbers::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.associate { it.knob to it.value }, q.description, q.previewSeconds) }
+        studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.numbers(), q.description, q.previewSeconds) }
     r.register(ObserveRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).observe(q.revision, q.seconds, q.size, q.compareTo) }
     r.register(TimelineRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).timeline(q.revision, q.frames) }
     r.register(TraceRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).trace(q.revision, q.seconds, q.mode, probeX = q.probeX ?: Double.NaN, probeY = q.probeY ?: Double.NaN) }

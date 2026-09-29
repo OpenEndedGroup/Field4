@@ -123,6 +123,10 @@ internal object StudyKeys {
         }
     }.ifEmpty { null }
 
+    /** [summary] for [knobs] of [source] in [language]: the shape and the current numbers both come from the knobs. */
+    fun summary(directory: File, language: String, source: String, knobs: List<StudyKnob>): List<String>? =
+        summary(directory, KnobNames.shape(language, source, knobs), knobs.associate { it.index to it.value })
+
     private fun fmt(v: Double) = if (v == Math.rint(v) && kotlin.math.abs(v) < 1e9) v.toLong().toString() else "%.4g".format(v).trimEnd('0').trimEnd('.')
 
     /** A name for the next key: `key-1`, `key-2`, … — the first not taken. */
