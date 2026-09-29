@@ -239,9 +239,10 @@ class FieldGraphTools(
     private fun refuseReplyOwned(box: Box, property: String): FieldGraphResult? =
         if ((box.id to property) !in replyOwned) null
         else FieldGraphResult(false,
-            "'${box.name}' $property is the text your reply rewrites in this editor turn, so an edit made here " +
-                "would be overwritten when the reply lands. Put the change in your reply instead. (Running its " +
-                "current code with RunBoxRequest, without `code`, is fine — it runs the code as it was before your reply.)",
+            "'${box.name}' $property is the text your reply rewrites in this editor turn: the reply becomes the " +
+                "proposal the user accepts, so an edit made here would be overwritten by it. Put the change in your " +
+                "reply. To test a candidate first, call RunBoxRequest on this box with `code` = your candidate: it " +
+                "runs that source without writing it.",
             uid = box.id, name = box.name, property = property)
 
     /** Uids of boxes this instance created, in order — the task runner reports them. */
@@ -324,7 +325,8 @@ class FieldGraphTools(
         refuseReplyOwned(box, req.property)?.let { return@onOwner it }
         require(req.value.length <= 2_000_000) { "Value is too large." }
         check(!info.readOnly) { "This document is read-only." }
-        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(req.value))
+        val value = if (req.property == "code") unwrapEditorScript(req.value) else req.value
+        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(value))
         needsResync.add(box to req.property)
         doResync()
         FieldGraphResult(true, "Set ${req.property} on '${box.name}' (${req.value.length} chars). Not run.",
@@ -415,10 +417,12 @@ class FieldGraphTools(
         // Blank means "not given". OpenAI's strict function schemas make every field required, so a
         // model that means "run what is there" sends `code: ""` — and before this, that *replaced*
         // the box's code with nothing and then failed with "no code" (seen in the first live demo).
-        val code = rawCode?.takeIf { it.isNotBlank() }
+        val code = rawCode?.takeIf { it.isNotBlank() }?.let(::unwrapEditorScript)
         val (box, source) = host.onOwner<Pair<FieldGraphResult?, Pair<Box, String>?>>(info) {
             val box = resolve(token)
-            if (code != null) refuseReplyOwned(box, "code")?.let { return@onOwner Pair(it, null) }
+            // The editor turn's own box: run the candidate without storing it — the reply is where the
+            // text goes, and it becomes the proposal the user accepts.
+            if (code != null && (box.id to "code") in replyOwned) return@onOwner Pair(null, box to code)
             if (code != null) {
                 applyAgentPropertyRecorded(box, "code", JsonPrimitive(code))
                 needsResync.add(box to "code")
@@ -513,6 +517,16 @@ class FieldGraphTools(
         )
     }
 }
+
+/**
+ * The editor chat shows the model Kotlin wrapped as `/*preamble*/ fun SCRIPT() { … /*postamble*/ }`
+ * ([afield.ai.core.KOTLIN_SCRIPT]), and models pass that wrapper back as `code`. Run as-is it only
+ * *declares* `SCRIPT` — which compiles, "succeeds", and prints nothing: the first live editor-turn
+ * candidate run on 2026-09-29 did exactly that. Strip it, the way the editor strips its own reply.
+ */
+internal fun unwrapEditorScript(code: String): String =
+    if (code.contains("/*preamble*/") && code.contains("/*postamble*/")) afield.ai.core.unwrapScriptLenient(code).trimEnd() + "\n"
+    else code
 
 /** Registers the graph tools on [tools], each gated on the context carrying a [FieldGraphTools]. */
 internal fun registerFieldGraphTools(tools: ToolRegistry) {

@@ -3405,6 +3405,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_task_parser.add_argument("--max-rounds", type=int, default=24)
     agent_task_parser.add_argument("--model", default="")
     agent_task_parser.add_argument("--focus-box", default="")
+    agent_task_parser.add_argument("--chat-box", default="", help="Run the task as this box's real AI4 panel turn (live only)")
     agent_task_parser.add_argument("--timeout", type=float)
 
     agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
@@ -4284,6 +4285,7 @@ async def dispatch_command(
             "maxToolRounds": args.max_rounds,
             "model": args.model,
             "focusBox": args.focus_box,
+            "chatBox": args.chat_box,
         }
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)

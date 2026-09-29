@@ -136,7 +136,9 @@ object BoxOutputLog {
             "normal", "" -> "out"
             else -> return // "ok", "clear", annotations: editor bookkeeping, not something the box said
         }
-        val text = if (kind == "err") htmlToText(output.html) else output.html
+        // Printed non-strings arrive as value-visualizer HTML; its style attributes are full of numbers
+        // (`12px`, `1.4`) that would pollute any check or reader looking for the printed values.
+        val text = if (kind == "err" || output.html.trimStart().startsWith("<")) htmlToText(output.html) else output.html
         if (text.isBlank()) return
         record(output.uid, kind, text.trimEnd('\n'), property = output.property, line = output.line)
     }

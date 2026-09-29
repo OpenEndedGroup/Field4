@@ -88,10 +88,14 @@ class Ai4ChatGraphWiringTest {
         assertFalse(set.success)
         assertTrue(set.message.contains("reply"))
         assertFalse(tools.patchText(PatchBoxTextRequest("Me", find = "0", replace = "1")).success)
-        assertFalse(tools.run(RunBoxRequest("Me", code = "println(2)")).success)
+        val candidate = tools.run(RunBoxRequest("Me", code = "println(0)", timeoutSeconds = 10.0))
+        assertTrue(candidate.success && candidate.stdout == listOf("0"), "a candidate for the reply-owned box runs")
+        tools.run(RunBoxRequest("Me", code = "println(2)", timeoutSeconds = 10.0))
         assertEquals("println(0)", info.boxes[me.uid]!!.getPropertyRaw("code"), "nothing wrote the reply-owned text")
 
         assertTrue(tools.run(RunBoxRequest("Me", timeoutSeconds = 10.0)).success, "running its current code is allowed")
+        val wrapped = tools.run(RunBoxRequest("Me", code = "/*preamble*/ fun SCRIPT() {\nprintln(0)\n/*postamble*/ }", timeoutSeconds = 10.0))
+        assertTrue(wrapped.success && wrapped.stdout == listOf("0"), "the editor's SCRIPT wrapper is stripped before running: ${wrapped.message}")
         assertTrue(tools.setProperty(SetBoxPropertyRequest("Me", property = "notes", value = "n")).success, "other properties are fine")
         assertTrue(tools.setProperty(SetBoxPropertyRequest("Other", value = "b")).success, "other boxes are fine")
     }
@@ -125,6 +129,14 @@ class Ai4ChatGraphWiringTest {
         assertNotNull(agentRouteRefusal("127.0.0.1", "192.168.1.5:9611", null, null), "a LAN literal is not localhost")
         assertNotNull(agentRouteRefusal("127.0.0.1", "localhost:9611", "cross-site", "https://evil.example"))
         assertNotNull(agentRouteRefusal("127.0.0.1", "localhost:9611", "same-site", "http://localhost:9493"))
+    }
+
+    @Test
+    fun printedValueHtmlIsLoggedAsText() {
+        val uid = "viz-" + System.nanoTime()
+        BoxOutputLog.observeOutput(afield.Output(uid = uid, line = 1, kind = "normal", frame = 0,
+            html = "<div style='font-size: 12px; line-height: 1.4'><span>[</span><span>1</span>, <span>8</span><span>]</span></div>"))
+        assertEquals("[1, 8]", BoxOutputLog.since(uid, 0).entries.single().text)
     }
 
     @Test

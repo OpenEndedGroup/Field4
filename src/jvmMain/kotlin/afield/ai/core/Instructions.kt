@@ -243,6 +243,6 @@ fun fieldGraphToolGuidance(editorTurn: Boolean): String = buildString {
     appendLine("  - Run/Launch compile the code themselves. `success: false` carries the compiler/runtime diagnostics in `error` and `errors`: fix and run again. Never claim a box works unless a Run/Launch result said success.")
     appendLine("  - Use these when the user asks to make, change, run or check boxes, or when running a box is the way to check an answer. Box code: the box is the implicit receiver; println(x); display(\"channel\", \"<html>\"); a parent shares a value with the boxes beneath it via `prop<Int>(level) = 3`, read in the child as `level` (plain `val`s stay local). Run the parent first.")
     if (editorTurn) {
-        appendLine("  - THIS turn's reply rewrites the current box's text. Put edits to the current box in your reply, not in Set/PatchBoxText (they refuse it). You may RunBoxRequest the current box without `code` to see how its code behaves before your edit, and you may freely create, edit and run OTHER boxes.")
+        appendLine("  - THIS turn's reply rewrites the current box's text (it becomes a proposal the user accepts). Put edits to the current box in your reply, not in Set/PatchBoxText (they refuse it). To check your edit before replying, call RunBoxRequest on the current box with `code` = your complete candidate: it runs that source without writing it, and returns its verdict and output. Other boxes you may create, edit and run freely.")
     }
 }.trimEnd()
