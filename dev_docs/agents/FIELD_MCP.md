@@ -104,6 +104,9 @@ Native bridge tools (always present):
 - `field_lifecycle_census` — what each box still holds (jobs, strands, stop hooks, audio
   patches, feeders, control callbacks, Runloop hooks, render modules, engine); the MCP face of
   the backdoor's `lifecycle-census` command ([`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md#lifecycle-census)).
+- `field_why` — why a box's inherited or context value resolves where it does: supplier, path,
+  property or variable, shadowed and equidistant candidates, and the preamble line that declared
+  the name; the MCP face of the backdoor's `why` ([`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md#why-does-this-value-resolve-here)).
 
 ai4 registry tools (discovered dynamically once attached; the same registry the in-app
 OpenAI harness uses — see [`SEMANTIC_RETRIEVAL.md`](./SEMANTIC_RETRIEVAL.md)). Flattened

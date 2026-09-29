@@ -2495,6 +2495,21 @@ class FieldBackdoor:
             raise BackdoorError("agent-lifecycle-census returned an invalid payload")
         return payload
 
+    async def why(self, *, uid: str, name: str | None, type_name: str | None, timeout: float) -> dict[str, Any]:
+        """Why ``uid`` resolves ``name`` (or a value of ``type_name``) where it does.
+
+        Served by ``agent-why`` (agent_backdoor.kt), which is ``ContextResolution.explain``: the
+        mechanism, the supplier, the path of boxes, the match kind, the candidates it shadows and any
+        equidistant competitor, and which sourced preamble line (if any) declared the name.
+        """
+        event = await self.call_for_single_reply(
+            "agent-why", {"uid": uid, "name": name, "type": type_name}, timeout=timeout
+        )
+        payload = event.get("payload")
+        if not isinstance(payload, dict):
+            raise BackdoorError("agent-why returned an invalid payload")
+        return payload
+
     async def ai_tool_call(
         self,
         *,
@@ -3266,6 +3281,18 @@ def build_command_parser() -> argparse.ArgumentParser:
     # check a stop smoke makes now that stop leaves sliders, Runloop hooks and render modules alone.
     census_parser.add_argument("--expect-stopped", action="store_true")
     census_parser.add_argument("--timeout", type=float)
+    why_parser = subparsers.add_parser("why", add_help=False)
+    why_parser.add_argument("uid")
+    why_parser.add_argument("name", nargs="?")
+    # A value by type, as fromContext<T>() finds it: a fully-qualified or simple class name.
+    why_parser.add_argument("--type", dest="type_name")
+    # Assertions, for a smoke: fail unless the supplier is this box (uid, alias or name), unless an
+    # equidistant box also supplies a different value, unless a box's value is shadowed.
+    why_parser.add_argument("--expect-supplier")
+    why_parser.add_argument("--expect-competing", action="append", default=[])
+    why_parser.add_argument("--expect-shadowed", action="append", default=[])
+    why_parser.add_argument("--expect-not-found", action="store_true")
+    why_parser.add_argument("--timeout", type=float)
     subparsers.add_parser("boxes", add_help=False)
     sleep_parser = subparsers.add_parser("sleep", add_help=False)
     sleep_parser.add_argument("seconds", type=float)
@@ -3802,6 +3829,39 @@ async def dispatch_command(
             if not problems or time.monotonic() >= deadline or not polling:
                 break
             await asyncio.sleep(0.1)
+        if problems:
+            data = dict(data)
+            data["problems"] = problems
+        result = command_result(command_line, not problems, data=data, events=[])
+        client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])
+        return result
+
+    if args.command == "why":
+        timeout = args.timeout or client.default_timeout
+        if not args.name and not args.type_name:
+            raise BackdoorError("why needs a name or --type")
+        uid = client.resolve_box_token(args.uid)
+        data = await client.why(uid=uid, name=args.name, type_name=args.type_name, timeout=timeout)
+        problems: list[str] = []
+        if data.get("error"):
+            problems.append(str(data["error"]))
+        supplier = (data.get("supplier") or {}).get("uid")
+        if args.expect_not_found and data.get("found"):
+            problems.append(f"expected nothing to supply it, found {supplier}")
+        if args.expect_supplier:
+            want = client.resolve_box_token(args.expect_supplier)
+            if supplier != want:
+                problems.append(f"expected supplier {want}, found {supplier}")
+        competing = {((c.get("supplier") or {}).get("uid")) for c in data.get("competing") or []}
+        for token in args.expect_competing:
+            want = client.resolve_box_token(token)
+            if want not in competing:
+                problems.append(f"expected {want} to compete at the same distance, competing: {sorted(c for c in competing if c)}")
+        shadowed = {((c.get("supplier") or {}).get("uid")) for c in data.get("shadowed") or []}
+        for token in args.expect_shadowed:
+            want = client.resolve_box_token(token)
+            if want not in shadowed:
+                problems.append(f"expected {want} to be shadowed, shadowed: {sorted(c for c in shadowed if c)}")
         if problems:
             data = dict(data)
             data["problems"] = problems
@@ -4605,7 +4665,7 @@ async def repl(
             return 0
         if line == "help":
             client.logger.log("repl_help")
-            print("Commands: open, status, snapshot, lifecycle-census, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
+            print("Commands: open, status, snapshot, lifecycle-census, why, boxes, sleep, playwright-open, editor-open, inspect-view, review-note, reply-note, page-eval, screenshot-window, screenshot-editor, screenshot-box, native-screenshot, wait-native-renderer, record-window, record-editor, record-box, new-box, delete-box, connect, disconnect, set, macro, transcript, run, launch, launch-batch, continue, wait-running, action, stop, wait-file, output, wait-output, raw-send, run-jvm-main, exit")
             continue
         try:
             parsed = parse_command(line)

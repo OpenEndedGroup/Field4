@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15775 public symbols across 430 source files**, 9360 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15783 public symbols across 431 source files**, 9364 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -27,7 +27,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 102 | 2800 | 1236 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 18 | 314 | 224 (71%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 19 | 322 | 228 (70%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -83,6 +83,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Colormaps.kt](visualization.md#colormaps-kt) | Visualization | 21 | 4 | The colour vocabulary the visualization helpers share: `Color4`, a `[0,1]`-component colour value with no dependencies, and `Colormaps`, eight named ramps that can be sampled at any parameter. | [Imaging and computer vision](../imaging_examples.md) |
 | [colors.kt](graphics.md#colors-kt) | Graphics | 14 | 14 | Colour constructors for the stdlib. | [Colors to FLine examples](../colors_examples.md) |
 | [Constraints.kt](polytopes.md#constraints-kt) | Polytopes | 68 | 33 | The constraint vocabulary a realization run is written in. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [ContextWhyTools.kt](workspace.md#contextwhytools-kt) | Workspace | 8 | 4 |  |  |
 | [contours.kt](graphics.md#contours-kt) | Graphics | 24 | 17 | Marching-squares iso-contours for 2D scalar fields, plus the scalar field most callers want to contour. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md) |
 | [Conway.kt](polytopes.md#conway-kt) | Polytopes | 14 | 9 | Conway prefix notation: the one-line string that names a polyhedron by how it is built. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [Core.kt](languages.md#core-kt) | Languages | 76 | 2 | The tree FieldML actually evaluates: the typed tree with its source positions dropped and its multi-parameter lambdas curried into one-parameter `CLam` nodes. | [FieldML stage by stage](../fieldml_stages.md) |

@@ -4,9 +4,42 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-18 source file(s), 314 public symbol(s), 224 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+19 source file(s), 322 public symbol(s), 228 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## ContextWhyTools.kt { #contextwhytools-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/ContextWhyTools.kt` — [read the source](source/jvmMain/afield/stdlib/ContextWhyTools/)
+
+### Top-level functions { #contextwhytools-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">installContextWhyTools</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/ContextWhyTools/#L40) | Offer [`WhyDoesThisResolve`](workspace.md#contextwhytools-kt-whydoesthisresolve) to any conversation focused on a box. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">whyDoesThisResolve</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">,</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span><span class="p">:</span> <span class="nc">WhyDoesThisResolveResult</span></code>](source/jvmMain/afield/stdlib/ContextWhyTools/#L49) | [`WhyDoesThisResolve`](workspace.md#contextwhytools-kt-whydoesthisresolve) for `box`. |
+
+### WhyDoesThisResolve { #contextwhytools-kt-whydoesthisresolve }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WhyDoesThisResolve</span><span class="p">(</span><span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;The name the code reads, e.g. &#96;&#95;speed&#96;, &#96;renderer&#96;. Give this or &#96;type&#96;.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;A class name, fully qualified or simple (e.g. &#96;afield.four.Renderer&#96;), to resolve by type.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="p">@</span><span class="nc">JsonPropertyDescription</span><span class="p">(</span><span class="s">&quot;The box asking, by uid or name; the focused box when omitted.&quot;</span><span class="p">)</span> <span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/ContextWhyTools/#L24)
+
+The AI4 tool that explains where a box's inherited or context value comes from (`ContextResolution.explain`).
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">type</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">box</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+
+### WhyDoesThisResolveResult { #contextwhytools-kt-whydoesthisresolveresult }
+
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">WhyDoesThisResolveResult</span><span class="p">(</span><span class="k">val</span> <span class="n">summary</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">explanation</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">Any</span><span class="o">?</span><span class="p">&gt;</span><span class="p">)</span> <span class="p">:</span> <span class="nc">SummarisesForToolLog</span></code>](source/jvmMain/afield/stdlib/ContextWhyTools/#L34)
+
+[`WhyDoesThisResolve`](workspace.md#contextwhytools-kt-whydoesthisresolve)'s answer: one sentence, and the whole explanation.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/ContextWhyTools/#L35) |  |
 
 ## EffectiveParameter.kt { #effectiveparameter-kt }
 

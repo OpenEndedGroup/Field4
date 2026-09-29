@@ -504,6 +504,24 @@ class FieldMcpServer:
             uid = self._resolve_box(client, str(token))
         return await client.lifecycle_census(uid=uid, timeout=self.timeout)
 
+    async def tool_why(self, args: dict[str, Any]) -> dict[str, Any]:
+        token = args.get("box")
+        name = args.get("name")
+        type_name = args.get("type")
+        if not token:
+            raise McpToolError("field_why requires a 'box' (uid or name).")
+        if not name and not type_name:
+            raise McpToolError("field_why requires a 'name' or a 'type'.")
+        client = await self._ensure_attached()
+        await client.refresh_snapshot(timeout=self.timeout)
+        uid = self._resolve_box(client, str(token))
+        return await client.why(
+            uid=uid,
+            name=str(name) if name else None,
+            type_name=str(type_name) if type_name else None,
+            timeout=self.timeout,
+        )
+
     async def tool_create_box(self, args: dict[str, Any]) -> dict[str, Any]:
         name = str(args.get("name", "Untitled"))
         frame = args.get("frame") or {}
@@ -790,6 +808,19 @@ class FieldMcpServer:
             },
         },
         {
+            "name": "field_why",
+            "description": "Explain why a box's inherited or context value resolves where it does: the walk that box's code performs for a name (an @exported / prop declaration in its preamble, else fromContextWithNameOrNull) or a type (fromContext<T>), and its answer - mechanism, supplier box, the path of boxes to it, whether it matched a property or a live variable, the candidates it shadows, any equidistant supplier with a different value (an ambiguity, resolved by parents order), and which sourced preamble line declared the name and which box that line came from. Reading it runs nothing.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "box": {"type": "string", "description": "Box uid or unique name: the box whose code reads the value."},
+                    "name": {"type": "string", "description": "The name read, e.g. _speed or renderer."},
+                    "type": {"type": "string", "description": "A class name (fully qualified or simple) to resolve by type, as fromContext<T>() does."},
+                },
+                "required": ["box"],
+            },
+        },
+        {
             "name": "field_outline",
             "description": "Token-efficient orientation: a compact one-line-per-box map of the attached document (live boxes only by default, no geometry, short ids), with a preview of each box's notes. Start here to get oriented before pulling full code.",
             "inputSchema": {
@@ -988,6 +1019,7 @@ class FieldMcpServer:
             "field_outline": self.tool_outline,
             "field_read_box": self.tool_read_box,
             "field_lifecycle_census": self.tool_lifecycle_census,
+            "field_why": self.tool_why,
             "field_read_note": self.tool_read_note,
             "field_write_note": self.tool_write_note,
             "field_create_box": self.tool_create_box,

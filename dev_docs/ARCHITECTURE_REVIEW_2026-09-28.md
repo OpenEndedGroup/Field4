@@ -74,6 +74,24 @@ four that differ in order and self-inclusion, and one explainer (the hover) that
 5. **Later:** a Kotlin `TopologyWatcher` that marks boxes whose last resolutions crossed a changed
    edge as stale (badge, not auto-rerun).
 
+**Status, 2026-09-29.** Steps 1–3 and the first half of 4 are on `arch/review-2026-09-28`: one walk
+(`ContextResolution`, every walker and the hover ported onto it), the policy decided and ledgered
+(no `@exported` self-pinning, `LinkedHashMap` vars, `parents`-order ties reported as `competing` on the
+`warning,context` channel), sourced preamble lines (`/*from:<uid>*/`, stale suppliers dropped,
+conflicting declarations keep the nearest), and the hover on the delegate's own walk. Phase 6b added
+`why`: `ContextResolution.explain(box, name | type)` (`ContextWhy.kt`) returns JSON — mechanism,
+supplier, path, match kind, shadowed and competing candidates, the declaring preamble line and the box
+its tag names, stale lines and conflicts for the name, and a one-sentence summary. Exposed as the
+backdoor command `why <box> <name> [--type <fqcn>]` (with `--expect-supplier/-competing/-shadowed`
+assertions), the MCP tool `field_why`, and the AI4 tool `WhyDoesThisResolve` (`ContextWhyTools.kt`,
+offered whenever a box is focused). Tests: `ContextWhyTest` (tie, shadowing, by-type, a declared name
+with its tagged line, the AI tool); smoke `context.why.tie-and-shadow` (a live three-box graph).
+**Not done:** Kotlin line notes for resolutions (`LastRunNotes` for Kotlin, `meta` = supplier + path,
+`volatile` across an edge) and step 5, the stale-resolution badge from a Kotlin `TopologyWatcher`. A
+design for both is drafted — record once per (mechanism, query) per run from `ContextResolution.search`,
+place by one stack walk on first sight plus a textual match, re-check each record's path edges and
+re-walk on a topology change — but is not landed.
+
 ---
 
 ## 2. Shader interface transitions

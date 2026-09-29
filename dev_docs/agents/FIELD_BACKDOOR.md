@@ -627,6 +627,30 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 Attribution is recorded at registration (`LifecycleLedger.claim`, `LifecycleLedger.kt`), from the box
 executing at the time; nothing else knows the owner once the registration returns.
 
+## Why does this value resolve here?
+
+`why <box> <name>` (or `why <box> --type <class>`) answers the question every inherited value raises:
+which box supplied it, and why that one. It is `ContextResolution.explain` (`ContextWhy.kt`), the same
+walk the box's own code performs: a name declared in the box's gathered preamble
+(`val Box._speed by InheritanceFromContext<Double>()`) is resolved with that declaration's delegate,
+exactly as the Monaco hover does; an undeclared name as `fromContextWithNameOrNull(name)`; a type as
+`fromContext<T>()` (a fully-qualified or simple class name). The answer: `mechanism`, `supplier`
+(uid and name), `path` (the boxes from the asker to the supplier), `matchKind` (`PROPERTY`,
+`VARIABLE`, `SELF`), `matchedName`, `value`, `competing` (equidistant boxes holding a *different*
+value — an ambiguity, settled by `parents` order), `shadowed` (every other box that also answers,
+farther or later), the `declaration` (the preamble line, its `from:` tag and the box that tag names)
+and any `stalePreambleLines` / `preambleConflicts` for the name, plus a one-sentence `summary`.
+Nothing runs. MCP: `field_why`; in the app, the AI tool `WhyDoesThisResolve`.
+
+Assertions, for a smoke: `--expect-supplier <box>`, `--expect-competing <box>` and
+`--expect-shadowed <box>` (repeatable), `--expect-not-found`. The smoke `context.why.tie-and-shadow`
+builds a three-box graph with a tie and a shadowed ancestor and checks all three.
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
+  --command 'why Child _speed' --command 'why Child --type afield.four.Renderer'
+```
+
 ## Suite runner details
 
 Moved here from `AGENTS.md` on 2026-09-28.

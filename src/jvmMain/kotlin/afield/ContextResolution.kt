@@ -55,6 +55,15 @@ object ContextResolution {
         explain: Boolean = false,
     ): Resolution? = search(box, query, policy, mechanism, explain).resolution
 
+    /**
+     * "Why does [box] resolve [name] (or a value of [type]) where it does?" as JSON: the mechanism, the
+     * supplier, the path of boxes, the match kind, the shadowed and competing candidates, and which
+     * sourced preamble line — if any — declared the name. The entry point behind the backdoor's `why`,
+     * the MCP tool `field_why` and the AI tool `WhyDoesThisResolve`; see [ContextWhy].
+     */
+    fun explain(box: Box, name: String? = null, type: String? = null): kotlinx.serialization.json.JsonObject =
+        ContextWhy.explain(box, name, type)
+
     /** A walk's answer plus how many ancestors it examined — the count `Inheritance` reports. */
     class Search(val resolution: Resolution?, val ancestorsExamined: Int)
 

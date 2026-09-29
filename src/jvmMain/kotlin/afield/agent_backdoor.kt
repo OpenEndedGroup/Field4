@@ -1295,6 +1295,31 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
+    // Why box `uid` resolves `name` (or a value of `type`) where it does: ContextResolution.explain —
+    // mechanism, supplier, path, match kind, shadowed and competing candidates, and the sourced
+    // preamble line that declared the name. Reads; runs nothing.
+    handlers["agent-why"] = mutableSetOf({ message, reply ->
+        val info = thisSessionInfo.get()
+        val request = message.payload as? kotlinx.serialization.json.JsonObject
+        fun field(key: String) = request?.get(key)
+            ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
+            ?.takeIf { it.isNotBlank() }
+        val uid = field("uid")
+        val box = uid?.let { info.boxes[it] }
+        fun failure(why: String) = kotlinx.serialization.json.JsonObject(mapOf(
+            "error" to kotlinx.serialization.json.JsonPrimitive(why),
+            "found" to kotlinx.serialization.json.JsonPrimitive(false),
+        ))
+        val payload = when {
+            box == null -> failure("no box $uid in the attached document")
+            field("name") == null && field("type") == null -> failure("why needs a name or a type")
+            else -> runCatching { ContextResolution.explain(box, field("name"), field("type")) }
+                .getOrElse { failure(it.message ?: it.toString()) }
+        }
+        reply(Message("agent-why").payload(payload))
+        Handled.yes
+    })
+
     // Provider-neutral ai4 tool surface (Tier-1: Macro*/SemanticRetrieval*/agent memory).
     // Reuses the same ToolRegistry the OpenAI harness uses; gates hide any tool whose
     // provider is not wired for the backdoor context. Surfaced over MCP by field_mcp.py.
