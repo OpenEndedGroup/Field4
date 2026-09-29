@@ -47,6 +47,22 @@ class LifecycleLedgerTest {
     }
 
     @Test
+    fun aClaimCarriesItsKindsPolicyUnlessItOverridesIt() {
+        val box = Box("ledger-policy")
+        val byKind = Box.withBoxContextNow(box) { LifecycleLedger.claim(LifecycleKinds.AUDIO_PATCH, "p") }
+        val overridden = Box.withBoxContextNow(box) {
+            LifecycleLedger.claim(LifecycleKinds.AUDIO_PATCH, "q", policy = ReleasePolicy.KEYED)
+        }
+        assertEquals(ReleasePolicy.RUNNING, byKind.policy)
+        assertEquals(ReleasePolicy.KEYED, overridden.policy)
+        box.stopTrackedJobs()
+        assertFalse(byKind.isLive, "stop releases a running claim")
+        assertTrue(overridden.isLive, "but not one whose claim made it keyed")
+        box.runScopes.closeAll()
+        assertFalse(overridden.isLive)
+    }
+
+    @Test
     fun aRunloopHookThatEndsDropsOutOfTheCensus() {
         val box = Box("ledger-runloop")
         val hooks = MapOfSequences<String>(LifecycleKinds.RUNLOOP_PRE_RUN)
@@ -65,9 +81,16 @@ class LifecycleLedgerTest {
         val registry = OwnedCallbackRegistry<() -> Unit>("test-census")
         val ownership = Box.withBoxContextNow(box) { registry.register("c", {}) }
 
-        val entry = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
+        val census = lifecycleCensus(listOf(box), includeUnattributed = false)
+        val entry = census["boxes"].toString()
         assertTrue("\"control-callback\":1" in entry, entry)
         assertTrue("\"liveTotal\":1" in entry, entry)
+        assertTrue("\"ACCUMULATING\":1" in entry, "the census counts ownerships by policy: $entry")
+        assertTrue("\"liveRunning\":0" in entry, "a slider is not something a stop would release: $entry")
+        val policies = census["policies"].toString()
+        assertTrue("\"control-callback\":\"ACCUMULATING\"" in policies, policies)
+        assertTrue("\"render-module\":\"KEYED\"" in policies, policies)
+        assertTrue("\"audio-patch\":\"RUNNING\"" in policies, policies)
         ownership.close()
         val after = lifecycleCensus(listOf(box), includeUnattributed = false)["boxes"].toString()
         assertTrue("\"liveTotal\":0" in after, after)

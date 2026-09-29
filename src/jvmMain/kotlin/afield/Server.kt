@@ -5419,9 +5419,11 @@ class Server {
          *   are bumped), so work still queued for one is refused when it arrives;
          * - its jobs are cancelled — cancelled, not finished: a coroutine unwinds on its next
          *   suspension, over later Runloop ticks, and a `Frames` end phase may run after this returns;
-         * - its stop hooks have run, and every [RunScope] it had is closed, so what its runs
-         *   registered — audio patches, feeders, control callbacks, Runloop hooks, render modules,
-         *   child processes — is released now, synchronously ([stopTrackedJobs]);
+         * - its stop hooks have run, and every [RunScope] it has has released what it holds as
+         *   [ReleasePolicy.RUNNING] — audio patches, feeders, child processes, jobs — now,
+         *   synchronously ([stopTrackedJobs]). What its runs registered under a key (render modules,
+         *   Runloop hooks) or as a control callback stays: a re-run replaces those and deleting the
+         *   box releases them ([retireBoxes]);
          * - a renderer it owns is being torn down: its dependents are stopped now and the device is
          *   freed on the render thread once their jobs unwind, bounded at 2 s ([disposeBoxRenderer]),
          *   which is why that runs before the job barrier rather than after it.

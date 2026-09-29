@@ -595,20 +595,33 @@ bare `./gradlew runJvm` does not, and the probe says so.
 `lifecycle-census [<box>]` answers "what is this box still holding?" — the question behind every
 stop, delete and close bug. Per box: `jobs`, `runningStrands`, `stopHooks`, `owned` (lifecycle-ledger
 ownerships by kind: `audio-patch`, `patsynth-feeder`, `control-callback`, `runloop-preRun`,
-`runloop-postRun`, `render-module`, `stream-process`), a sample of `ownedKeys`, `engine`
-(`live`/`none`) and `liveTotal`, which sums everything but the engine. `unattributed` counts
-registrations made with no box executing. MCP: `field_lifecycle_census`.
+`runloop-postRun`, `render-module`, `stream-process`), `ownedByPolicy`, a sample of `ownedKeys`
+(each tagged with its policy), `engine` (`live`/`none`), `liveTotal`, which sums everything but the
+engine, and `liveRunning`, which sums only what a stop releases. `policies` maps each kind to its
+release policy; `unattributed` counts registrations made with no box executing. MCP:
+`field_lifecycle_census`.
 
-Two flags turn it into an assertion: `--expect-empty` polls until the box's `liveTotal` is 0 and
-fails at the timeout otherwise; `--expect-at-least KIND=N` (repeatable; `jobs`, `runningStrands` and
-`stopHooks` count as kinds) fails unless the box holds that much — the negative control an
-`--expect-empty` after `stop` needs, so it cannot pass against a box that never held anything.
+Stop does not release everything. Each kind carries a release policy (`ReleasePolicy`,
+`RunScope.kt`): **KEYED** (render modules, Runloop hooks) lasts until the box retires — delete,
+tombstone, document close — and is replaced by a re-registration under the same key;
+**ACCUMULATING** (control callbacks) goes with the strand's next run, or retirement; **RUNNING**
+(audio patches, patSynth feeders, stream processes, jobs) goes with stop as well. So after a stop
+the right check is `--expect-stopped`, and after a delete `--expect-empty`.
+
+The flags that turn it into an assertion: `--expect-empty` polls until the box's `liveTotal` is 0,
+`--expect-stopped` until its `liveRunning` is 0, and both fail at the timeout otherwise;
+`--expect-at-least KIND=N` and `--expect-exactly KIND=N` (repeatable; `jobs`, `runningStrands` and
+`stopHooks` count as kinds) fail unless the box holds that much / exactly that many — the negative
+control an `--expect-empty` or `--expect-stopped` needs, so it cannot pass against a box that never
+held anything, and the way to say a re-run replaced a keyed registration rather than adding one.
 
 ```bash
 uv run --project . --group backdoor python tools/field_backdoor.py --json --port 9877 \
   --command 'new-box --name Probe' --command 'launch @last --file box.kt' \
-  --command 'lifecycle-census @last --expect-at-least control-callback=1' \
-  --command 'stop @last' --command 'lifecycle-census @last --expect-empty'
+  --command 'lifecycle-census @last --expect-at-least control-callback=1 --expect-at-least audio-patch=1' \
+  --command 'stop @last' \
+  --command 'lifecycle-census @last --expect-stopped --expect-exactly control-callback=1' \
+  --command 'delete-box @last' --command 'lifecycle-census @last --expect-empty'
 ```
 
 Attribution is recorded at registration (`LifecycleLedger.claim`, `LifecycleLedger.kt`), from the box

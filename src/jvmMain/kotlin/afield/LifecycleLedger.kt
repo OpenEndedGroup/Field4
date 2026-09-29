@@ -20,13 +20,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  * older run's teardown removing what the newer one just installed.
  *
  * [ownerId] is the box that was executing when the registration happened, [strand] the strand of
- * the run that owned it, if any.
+ * the run that owned it, if any. [policy] says which box event — stop, re-run, retire — its owning
+ * [RunScope] releases it on; see [ReleasePolicy].
  */
 class Ownership internal constructor(
     val kind: String,
     val key: String,
     val ownerId: String?,
     val strand: String?,
+    val policy: ReleasePolicy,
     private val slot: Any?,
     private val live: (() -> Boolean)?,
     private val release: (() -> Unit)?,
@@ -50,7 +52,7 @@ class Ownership internal constructor(
         if (closed.compareAndSet(false, true)) LifecycleLedger.forget(this)
     }
 
-    override fun toString(): String = "Ownership($kind '$key' owner=$ownerId strand=$strand live=$isLive)"
+    override fun toString(): String = "Ownership($kind/$policy '$key' owner=$ownerId strand=$strand live=$isLive)"
 }
 
 /**
@@ -77,8 +79,10 @@ object LifecycleLedger {
      * is what [Ownership.close] runs to take it out.
      *
      * The ownership is also handed to [scope] — by default the [RunScope] the executing run belongs
-     * to — so the run's end releases it. Pass `scope = null` for something the box does not own, only
-     * caused.
+     * to — which releases it on the events [policy] names: by default the kind's
+     * ([ReleasePolicy.forKind]), so a render module or Runloop hook lasts until the box retires, a
+     * control callback until the strand's next run, and an audio patch until stop. Pass
+     * `scope = null` for something the box does not own, only caused.
      */
     fun claim(
         kind: String,
@@ -87,12 +91,14 @@ object LifecycleLedger {
         owner: Box? = RunScope.executingBox(),
         scope: RunScope? = RunScope.currentFor(owner),
         live: (() -> Boolean)? = null,
+        policy: ReleasePolicy = ReleasePolicy.forKind(kind, hasSlot = slot != null),
         release: (() -> Unit)? = null,
     ): Ownership {
-        val ownership = Ownership(kind, key, owner?.id, scope?.strand, slot, live, release)
+        val ownership = Ownership(kind, key, owner?.id, scope?.strand, policy, slot, live, release)
         this.live.add(ownership)
         if (slot != null) slots.put(slot, ownership)?.supersede()
-        // Last, so a scope that has already closed releases this at once rather than keeping it.
+        // Last, so a scope that has already ended releases this at once if the event that ended it
+        // releases [policy], rather than keeping it.
         scope?.own(ownership)
         return ownership
     }
@@ -146,7 +152,10 @@ class OwnedCallbackRegistry<T : Any>(private val name: String) {
     /**
      * Install [callback] under [id], recorded against the executing box; returns its ownership.
      *
-     * By default the executing run owns it, so the run's end removes it. [owned] `false` is for
+     * By default the executing run owns it as [ReleasePolicy.ACCUMULATING]: the strand's next run
+     * removes it (after that run has registered its own, so a re-run leaves no gap), and so does the
+     * box's retirement, but a stop does not — a slider made by a launch that has already returned
+     * goes on working. [owned] `false` is for
      * library code that caches a control across runs (a study viewer's action id, made once) and
      * removes it itself; it is still attributed, but no run takes it out.
      */
@@ -174,12 +183,16 @@ class OwnedCallbackRegistry<T : Any>(private val name: String) {
 }
 
 /**
- * What each box of [boxes] still holds: jobs, running strands, stop hooks, ledger ownerships by kind,
- * and whether its K2 engine is live — the `lifecycle-census` backdoor command's answer.
+ * What each box of [boxes] still holds: jobs, running strands, stop hooks, ledger ownerships by kind
+ * and by [ReleasePolicy], and whether its K2 engine is live — the `lifecycle-census` backdoor
+ * command's answer. `policies` maps every kind present (and every known kind) to its policy.
  *
- * `liveTotal` sums everything except the engine, so "a stopped box leaves nothing behind" is
- * `liveTotal == 0`. Ownerships whose box is not in [boxes] are reported under `unattributed` when
- * [includeUnattributed] is set, which is how a registration made with no box executing shows up.
+ * `liveTotal` sums everything except the engine, so "a retired box leaves nothing behind" is
+ * `liveTotal == 0`. `liveRunning` counts only what a stop releases — jobs, running strands, stop
+ * hooks and [ReleasePolicy.RUNNING] ownerships — so "a stopped box is not running anything" is
+ * `liveRunning == 0`, while its keyed and accumulating registrations stay. Ownerships whose box is
+ * not in [boxes] are reported under `unattributed` when [includeUnattributed] is set, which is how a
+ * registration made with no box executing shows up.
  */
 fun lifecycleCensus(boxes: Collection<Box>, includeUnattributed: Boolean = true): JsonObject {
     val entries = LifecycleLedger.entries()
@@ -206,12 +219,27 @@ fun lifecycleCensus(boxes: Collection<Box>, includeUnattributed: Boolean = true)
                         JsonPrimitive("${it.strand}/${it.kind}#${it.id} live=${it.liveCount}")
                     }))
                     put("owned", ownedCounts(owned))
+                    put("ownedByPolicy", buildJsonObject {
+                        ReleasePolicy.entries.forEach { p -> put(p.name, owned.count { it.policy == p }) }
+                    })
                     put("ownedKeys", JsonArray(owned.take(50).map {
-                        JsonPrimitive("${it.kind}:${it.key}" + (it.strand?.let { s -> " @$s" } ?: ""))
+                        JsonPrimitive("${it.kind}:${it.key} [${it.policy}]" + (it.strand?.let { s -> " @$s" } ?: ""))
                     }))
+                    put("liveRunning", jobs.size + strands.size + hooks + owned.count { it.policy == ReleasePolicy.RUNNING })
                     put("liveTotal", jobs.size + strands.size + hooks + owned.size)
                 })
             }
+        })
+        put("policies", buildJsonObject {
+            val kinds = sortedMapOf<String, ReleasePolicy>()
+            listOf(
+                LifecycleKinds.AUDIO_PATCH, LifecycleKinds.PATSYNTH_FEEDER, LifecycleKinds.STREAM_PROCESS,
+                LifecycleKinds.CONTROL_CALLBACK, LifecycleKinds.RUNLOOP_PRE_RUN, LifecycleKinds.RUNLOOP_POST_RUN,
+                LifecycleKinds.RENDER_MODULE,
+            ).forEach { kinds[it] = ReleasePolicy.forKind(it) }
+            // A claim may override its kind's policy; report what the live ones actually carry.
+            entries.forEach { kinds[it.kind] = it.policy }
+            kinds.forEach { (kind, policy) -> put(kind, policy.name) }
         })
         if (includeUnattributed) {
             put("unattributed", ownedCounts(entries.filter { it.ownerId == null || it.ownerId !in ids }))

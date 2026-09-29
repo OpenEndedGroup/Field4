@@ -783,7 +783,7 @@ class FieldMcpServer:
         },
         {
             "name": "field_lifecycle_census",
-            "description": "Count what each box of the attached document (or one box) still holds at runtime: coroutine jobs, running strands, stop hooks, and owned resources by kind (audio patches, patSynth feeders, control callbacks, Runloop preRun/postRun hooks, render-target modules), plus whether its Kotlin engine is live. liveTotal excludes the engine, so a stopped box that left nothing behind reports 0.",
+            "description": "Count what each box of the attached document (or one box) still holds at runtime: coroutine jobs, running strands, stop hooks, and owned resources by kind (audio patches, patSynth feeders, control callbacks, Runloop preRun/postRun hooks, render-target modules), plus whether its Kotlin engine is live. liveTotal excludes the engine, so a deleted box that left nothing behind reports 0; liveRunning counts only what a stop releases (RUNNING-policy ownerships such as audio patches, plus jobs, strands and stop hooks), so a stopped box reports 0 there while its KEYED (render modules, Runloop hooks) and ACCUMULATING (control callbacks) registrations stay. policies maps each kind to its release policy.",
             "inputSchema": {
                 "type": "object",
                 "properties": {"box": {"type": "string", "description": "Box uid or unique name. Omit for every box."}},

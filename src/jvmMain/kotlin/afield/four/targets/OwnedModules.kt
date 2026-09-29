@@ -11,7 +11,9 @@ import afield.inMain
  * and record it in the lifecycle ledger against the box that is executing.
  *
  * The map belongs to the renderer, not to the box, so nothing used to take a box's module back out:
- * stopping or deleting the box left it drawing, and pinned the snippet classloader that built it.
+ * deleting the box left it drawing, and pinned the snippet classloader that built it. The claim is
+ * [afield.ReleasePolicy.KEYED]: stopping the box leaves the module drawing, a re-run that puts
+ * something under the same name replaces it, and retiring the box (delete, document close) removes it.
  * The ledger entry's release removes the entry only if it still holds [value] — a later run, or
  * another box, may have put something else under the same name — and does so on the main runloop,
  * which is where the render loop walks these maps.

@@ -8,6 +8,8 @@ import afield.Generator
  *
  * When [ledgerKind] is given, every [set] is an [afield.Ownership] in the lifecycle ledger, attributed
  * to the box executing at the time, so `lifecycle-census` can say whose hook is still on the Runloop.
+ * It is [afield.ReleasePolicy.KEYED]: a stop leaves the hook running, the next [set] of the same key
+ * replaces it, and only the box's retirement (delete, document close) takes it out.
  * [setUnowned] is for library code that removes its own hook.
  */
 class MapOfSequences<T>(private val ledgerKind: String? = null) {

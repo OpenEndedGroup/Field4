@@ -107,10 +107,20 @@ class BoxRetireAndReplaceKiTest {
         box.jobs.add(job)
         var hookRan = 0
         box.registerStopHook(Runnable { hookRan++ })
+        // What a stop leaves in place and only retirement releases: a slider callback and a keyed hook.
+        val sliders = OwnedCallbackRegistry<() -> Unit>("retire-running")
+        val hooks = afield.four.util.MapOfSequences<String>(LifecycleKinds.RUNLOOP_PRE_RUN)
+        val hook = sequence<Any?> { while (true) yield(Unit) }
+        Box.withBoxContextNow(box) {
+            sliders.register("s", {})
+            hooks["h"] = hook
+        }
         assertTrue(box.hasSomethingToStop())
 
         retireBoxes(listOf(box), "test")
 
+        assertNull(sliders["s"], "retiring releases the slider a stop would have left")
+        assertFalse(hooks.isCurrent("h", hook), "and the keyed Runloop hook")
         assertTrue(job.isCancelled, "the running job is cancelled")
         assertTrue(box.jobs.isEmpty(), "and dropped from the box")
         assertEquals(1, hookRan, "stop hooks drain, so a process the box owned is released")
@@ -125,10 +135,14 @@ class BoxRetireAndReplaceKiTest {
         val engine = FakeEngine()
         box.ki = engine.engine
         val epoch = box.captureLaunchEpoch()
+        val sliders = OwnedCallbackRegistry<() -> Unit>("retire-idle")
+        Box.withBoxContextNow(box) { sliders.register("s", {}) }
+        assertFalse(box.hasSomethingToStop(), "a slider alone is not something to stop")
 
         retireBoxes(listOf(box), "test")
 
         assertEquals(epoch, box.captureLaunchEpoch(), "nothing to stop, so no stop ran (an idle Python cell must not interrupt its shared interpreter)")
+        assertNull(sliders["s"], "but its registrations are released")
         assertEquals(1, engine.disposeCount)
     }
 }

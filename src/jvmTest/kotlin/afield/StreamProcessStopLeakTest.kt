@@ -18,11 +18,12 @@ import kotlin.test.assertTrue
  *
  * These tests ask the question that actually matters: **does a real external process outlive a
  * stop?** It used to, because stop cancelled the end job before it was dispatched. Two separate
- * things now prevent it: the [RunScope] that owns the process, which `stopTrackedJobs` closes
- * synchronously (until 2026-09-29 this was a `Box.stopHooks` entry), and — since
+ * things now prevent it: the [RunScope] that owns the process — a [ReleasePolicy.RUNNING] claim,
+ * which `stopTrackedJobs` releases synchronously while leaving the run's keyed and accumulating
+ * registrations in place (until 2026-09-29 this was a `Box.stopHooks` entry) — and, since
  * [FramesSemanticsTest.boxStopStillRunsTheEndBlock] — the end phase itself.
  *
- * The belt-and-braces is deliberate and worth keeping: closing the run is synchronous and covers the
+ * The belt-and-braces is deliberate and worth keeping: releasing the run's process is synchronous and covers the
  * case the end phase structurally cannot, a body that already returned and so never re-enters
  * `frame()`. `terminateProcess` is idempotent for exactly this reason, since both can fire for one stop.
  *
@@ -89,8 +90,8 @@ class StreamProcessStopLeakTest {
     }
 
     /**
-     * **The leak, fixed.** The run that started the child owns it, and `stopTrackedJobs` closes the
-     * run synchronously, so the child is already dead when `stop` returns — before the end phase,
+     * **The leak, fixed.** The run that started the child owns it as a running thing, and
+     * `stopTrackedJobs` releases the run's running things synchronously, so the child is already dead when `stop` returns — before the end phase,
      * which now also runs, gets its first Runloop tick.
      *
      * This asserted the opposite until 2026-08-19; see `dev_docs/frames_stop_end_phase.md`.
@@ -101,7 +102,7 @@ class StreamProcessStopLeakTest {
         val (framer, _, sleeper) = startSleeper(box)
 
         KotlinExecution().stop(box)
-        // The run closes synchronously inside stop, so the kill has already happened here; the pump
+        // The run releases what is running synchronously inside stop, so the kill has already happened here; the pump
         // only gives the OS time to reap, so `isAlive` reflects it.
         for (attempt in 0 until 60) {
             if (!sleeper.isAlive) break

@@ -2483,7 +2483,11 @@ class FieldBackdoor:
         """What each box (or just ``uid``) still holds: jobs, strands, stop hooks, owned resources.
 
         Served by ``agent-lifecycle-census`` (agent_backdoor.kt). A box's ``liveTotal`` counts
-        everything except its engine, so a stopped box that left nothing behind reports 0.
+        everything except its engine, so a retired box that left nothing behind reports 0; its
+        ``liveRunning`` counts only what a stop releases (jobs, strands, stop hooks and RUNNING
+        ownerships), so a stopped box reports 0 there while its keyed and accumulating
+        registrations -- render modules, Runloop hooks, sliders -- stay. ``policies`` maps each
+        ledger kind to its release policy.
         """
         event = await self.call_for_single_reply("agent-lifecycle-census", {"uid": uid}, timeout=timeout)
         payload = event.get("payload")
@@ -3254,6 +3258,13 @@ def build_command_parser() -> argparse.ArgumentParser:
     # KIND=N: fail unless the box owns at least N of KIND (e.g. control-callback=1) -- the
     # negative control that stops --expect-empty from passing against a box that never held anything.
     census_parser.add_argument("--expect-at-least", action="append", default=[])
+    # KIND=N: fail unless the box owns exactly N of KIND -- how a smoke says a re-run *replaced* a
+    # keyed registration rather than adding one, or that stop released a running kind (KIND=0).
+    census_parser.add_argument("--expect-exactly", action="append", default=[])
+    # Poll until the box's liveRunning is 0: nothing a stop releases is left (jobs, strands, stop
+    # hooks, RUNNING ownerships), while its KEYED / ACCUMULATING registrations may stay -- the
+    # check a stop smoke makes now that stop leaves sliders, Runloop hooks and render modules alone.
+    census_parser.add_argument("--expect-stopped", action="store_true")
     census_parser.add_argument("--timeout", type=float)
     subparsers.add_parser("boxes", add_help=False)
     sleep_parser = subparsers.add_parser("sleep", add_help=False)
@@ -3752,6 +3763,10 @@ async def dispatch_command(
         for spec in args.expect_at_least:
             kind, _, count = str(spec).partition("=")
             wanted[kind.strip()] = int(count or "1")
+        exactly: dict[str, int] = {}
+        for spec in args.expect_exactly:
+            kind, _, count = str(spec).partition("=")
+            exactly[kind.strip()] = int(count or "0")
         deadline = time.monotonic() + timeout
         problems: list[str] = []
         while True:
@@ -3769,12 +3784,22 @@ async def dispatch_command(
                 for kind, least in wanted.items():
                     if int(counts.get(kind, 0)) < least:
                         problems.append(f"{box.get('uid')}: expected at least {least} {kind}, found {counts.get(kind, 0)}")
+                for kind, want in exactly.items():
+                    if int(counts.get(kind, 0)) != want:
+                        problems.append(f"{box.get('uid')}: expected exactly {want} {kind}, found {counts.get(kind, 0)}")
+                if args.expect_stopped and int(box.get("liveRunning", 0)) != 0:
+                    running = [k for k in (box.get("ownedKeys") or []) if "[RUNNING]" in k]
+                    problems.append(
+                        f"{box.get('uid')}: expected nothing running, found liveRunning={box.get('liveRunning')} "
+                        f"({', '.join(running)})"
+                    )
                 if args.expect_empty and int(box.get("liveTotal", 0)) != 0:
                     problems.append(
                         f"{box.get('uid')}: expected nothing left, found liveTotal={box.get('liveTotal')} "
                         f"({', '.join(box.get('ownedKeys') or [])})"
                     )
-            if not problems or time.monotonic() >= deadline or not (args.expect_empty or wanted):
+            polling = args.expect_empty or args.expect_stopped or wanted or exactly
+            if not problems or time.monotonic() >= deadline or not polling:
                 break
             await asyncio.sleep(0.1)
         if problems:
@@ -4058,11 +4083,16 @@ async def dispatch_command(
         # just removed (the warm-session docs path deletes each capture's box and
         # then creates the next one at the same origin).
         deleted = set(data.get("boxes") or [])
+        # `@deleted` names the box just deleted -- the last box if it was among them -- so a
+        # `lifecycle-census @deleted --expect-empty` can check what the deletion released.
+        just_deleted = client.last_box_uid if client.last_box_uid in deleted else next(iter(sorted(deleted)), None)
         if client.last_box_uid in deleted:
             client.last_box_uid = None
         for alias, uid in list(client.box_aliases.items()):
             if uid in deleted:
                 del client.box_aliases[alias]
+        if just_deleted:
+            client.box_aliases["deleted"] = just_deleted
         result = command_result(command_line, not timed_out, data=data, events=events, timed_out=timed_out)
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"], timedOut=timed_out, eventCount=len(events))
         return result

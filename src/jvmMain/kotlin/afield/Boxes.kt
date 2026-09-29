@@ -1352,9 +1352,13 @@ internal fun Box.registerStopHook(hook: Runnable): Runnable {
     return Runnable { stopHooks.remove(hook) }
 }
 
-/** Whether a stop would find anything to cancel or drain: jobs, running strands, stop hooks or run-owned resources. */
+/**
+ * Whether a stop would find anything to cancel or drain: jobs, running strands, stop hooks or
+ * run-owned [ReleasePolicy.RUNNING] resources. Keyed and accumulating registrations (render modules,
+ * Runloop hooks, sliders) do not count, since stop leaves them where they are.
+ */
 internal fun Box.hasSomethingToStop(): Boolean =
-    jobs.isNotEmpty() || currentRunningStates.isNotEmpty() || stopHooks.isNotEmpty() || runScopes.liveCount > 0
+    jobs.isNotEmpty() || currentRunningStates.isNotEmpty() || stopHooks.isNotEmpty() || runScopes.liveRunningCount > 0
 
 /**
  * Take [boxes] out of the running document: stop what they run, dispose any renderer they own, and
@@ -1370,8 +1374,10 @@ internal fun Box.hasSomethingToStop(): Boolean =
  * — stopping a dependent earlier would clear its job list, and the teardown would wait for nothing and
  * free buffers a cancelled loop is still writing (see `dev_docs/renderer_teardown_order.md`). Then
  * everything else that is still running, through the same [Server.stop] as the stop button, which
- * closes every [RunScope] the box has; a box with nothing running only has its run scopes closed, so an
- * idle Python cell does not interrupt the interpreter it shares. Engines last.
+ * releases what the box's [RunScope]s hold as [ReleasePolicy.RUNNING]; then every scope is closed,
+ * releasing the keyed and accumulating registrations stop leaves in place (render modules, Runloop
+ * hooks, sliders, `once` values' registrations). A box with nothing running only has its scopes
+ * closed, so an idle Python cell does not interrupt the interpreter it shares. Engines last.
  *
  * So the chain is the same for every way a box leaves: close its runs, dispose its renderer, dispose
  * its engine — stop is the first two of those, and [Server.stop] documents what it guarantees.
@@ -1382,8 +1388,9 @@ internal fun retireBoxes(boxes: Collection<Box>, entrypoint: String) {
 }
 
 /**
- * The first two passes of [retireBoxes] — renderers, then everything else still running — without
- * releasing the engines; for the `reset` action, which replaces each engine itself.
+ * The first two passes of [retireBoxes] — renderers, then everything else still running, then every
+ * run scope closed — without releasing the engines; for the `reset` action, which replaces each
+ * engine itself, and so must not leave registrations made by code the old engine compiled.
  */
 internal fun stopBoxes(boxes: Collection<Box>, entrypoint: String) {
     boxes.forEach { box ->
@@ -1397,11 +1404,13 @@ internal fun stopBoxes(boxes: Collection<Box>, entrypoint: String) {
             running -> runCatching { Server.stop(box, entrypoint) }.onFailure {
                 lprintln("warning,box", "stopping box ${box.id} ($entrypoint) threw: $it")
             }
-            // Nothing running, but its runs may still hold registrations (a slider from a run that
-            // has finished, a Runloop hook): release those without telling the language to stop,
-            // which for a Python cell would interrupt the interpreter its siblings share.
-            else -> box.runScopes.closeAll()
+            // Nothing running: do not tell the language to stop, which for a Python cell would
+            // interrupt the interpreter its siblings share.
+            else -> {}
         }
+        // Either way its runs may still hold registrations stop leaves in place — a slider, a
+        // Runloop hook, a render module, the parent scope's `once` values: retiring releases them.
+        box.runScopes.closeAll()
     }
 }
 
@@ -1430,9 +1439,11 @@ internal fun Box.stopTrackedJobs() {
             lprintln("warning,box", "A stop hook threw while stopping box $id: $it")
         }
     }
-    // Then every run's own registrations — audio patches, feeders, control callbacks, Runloop hooks,
-    // render modules, processes — newest run first, each run newest-registration first.
-    runScopes.closeAll()
+    // Then what every run (and the box's parent scope) holds that is *running* — audio patches,
+    // feeders, processes, jobs — newest run first, each newest-registration first. Keyed and
+    // accumulating registrations (render modules, Runloop hooks, control callbacks) stay: a re-run
+    // or the box's retirement releases those, not stop. See ReleasePolicy.
+    runScopes.stopAll()
 }
 
 fun syncExecutionStatus() {
