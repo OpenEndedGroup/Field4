@@ -399,6 +399,7 @@ class ThreeGeometryViewState(val uid: String) {
 
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
     @Volatile private var lastPayload: String? = null
+    private var editSessionId: String? = null
 
     /**
      * Attach a websocket session to this viewer and replay the latest payload.
@@ -413,10 +414,15 @@ class ThreeGeometryViewState(val uid: String) {
     /**
      * Push a new payload to all attached viewers.
      */
+    @Synchronized
     fun update(payload: ThreeGeometryPayload) {
         val revision = threeReviewRevision(payload)
         reviewInbox.update(revision)
         val encoded = threeJson.encodeToString(payload.copy(revision = revision, sourceBox = reviewInbox.owner?.id))
+        val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
+        if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
+        editSessionId = nextSession
+
         lastPayload = encoded
         sessions.forEach { sendTo(it, encoded) }
         // Global listeners (native "subscribe-all" viewers) see every view's updates, including
@@ -536,9 +542,13 @@ fun installThreeJsHandler() {
                 val update = runCatching { threeJson.decodeFromJsonElement<FLineTranslatePoints>(payload) }.getOrNull()
                     ?: return@add Handled.no
                 val editSession = getFLineEditSession(update.sessionId) ?: return@add Handled.no
-                GlobalScope.launch {
-                    runCatching { editSession.translate(update) }
-                }
+                // Deltas and the following commit must retain websocket order.
+                runCatching { editSession.translate(update) }
+            }
+            "fline-edit-commit" -> {
+                val id = payload["sessionId"]?.jsonPrimitive?.contentOrNull ?: return@add Handled.no
+                val editSession = getFLineEditSession(id) ?: return@add Handled.no
+                runCatching { editSession.commit() }
             }
             "fline-edit-add-line" -> {
                 val update = runCatching { threeJson.decodeFromJsonElement<FLineAddLine>(payload) }.getOrNull()
@@ -606,7 +616,10 @@ fun installThreeJsHandler() {
  * @param name Viewer name used to build a stable id within this [Box].
  * @param height Iframe height in pixels.
  * @param samplesPerCubic Sampling density for cubic curves.
+ * @param onEditCommitted Receives detached FLines after a drag finishes. Keep the callback short;
+ * enqueue expensive validation or remeshing on your own worker. No callback on camera movement.
  * @param autoFrame If true, the viewer auto-frames the bounds on update.
+ * @param width Explicit iframe width in pixels, or null to fill the output area.
  */
 fun Box.threeLines(
     lines: Collection<FLine>,
@@ -615,18 +628,23 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState {
+    require(width == null || width > 0) { "Viewer width must be positive" }
     val uid = "${this.id}_$name"
     val ln = threeViewerIframeSource(uid)
     display(
         channel, """
-<iframe src='${ln}' style='border:none;padding:0;margin:0;width:100%;height:${height}px'>
+<iframe src='${ln}' style='border:none;padding:0;margin:0;width:${width?.let { "${it}px" } ?: "100%"};height:${height}px'>
 """
     )
     val view = threeViewFor(uid)
     view.bindSource(this)
-    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable)
+    val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable, onEditCommitted = onEditCommitted)
+        .copy(frameWidth = width, frameHeight = height)
+
     view.update(payload)
     return view
 }
@@ -660,7 +678,9 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState = threeLines(
     lines = lines.toList(),
     channel = channel,
@@ -668,7 +688,9 @@ fun Box.threeLines(
     height = height,
     samplesPerCubic = samplesPerCubic,
     autoFrame = autoFrame,
-    editable = editable
+    editable = editable,
+    onEditCommitted = onEditCommitted,
+    width = width
 )
 
 /**
@@ -681,7 +703,9 @@ fun Box.threeLines(
     height: Int = 420,
     samplesPerCubic: Int = 48,
     autoFrame: Boolean = true,
-    editable: Boolean = false
+    editable: Boolean = false,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null,
+    width: Int? = null
 ): ThreeGeometryViewState = threeLines(
     lines = linesByChannel.values.flatten(),
     channel = channel,
@@ -689,7 +713,9 @@ fun Box.threeLines(
     height = height,
     samplesPerCubic = samplesPerCubic,
     autoFrame = autoFrame,
-    editable = editable
+    editable = editable,
+    onEditCommitted = onEditCommitted,
+    width = width
 )
 
 internal class BoundsTracker {
@@ -756,7 +782,8 @@ internal fun buildThreeGeometryPayload(
     autoFrame: Boolean,
     editable: Boolean,
     groupKeys: List<String>? = null,
-    inspector: ThreeInspector? = null
+    inspector: ThreeInspector? = null,
+    onEditCommitted: ((List<FLine>) -> Unit)? = null
 ): ThreeGeometryPayload {
     val sourceLines = lines.toList()
     require(groupKeys == null || groupKeys.size == sourceLines.size) {
@@ -767,7 +794,7 @@ internal fun buildThreeGeometryPayload(
     val lineGroups = if (groupOfLine != null) ArrayList<Float>() else null
     val meshGroups = if (groupOfLine != null) ArrayList<Float>() else null
     val pointGroups = if (groupOfLine != null) ArrayList<Float>() else null
-    val editSession = if (editable) registerFLineEditSession(sourceLines, null) else null
+    val editSession = if (editable) registerFLineEditSession(sourceLines, null, onEditCommitted) else null
     val samples = samplesPerCubic.coerceAtLeast(2)
     val callbackIds = sourceLines.map { line ->
         line.onClick?.let { cb ->

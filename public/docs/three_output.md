@@ -215,6 +215,11 @@ interactive objects, its topology strings and its click callbacks. And the mesh 
 `TriMesh.toThreeDrawable()` turns a mesh into a `ThreeDrawable`, which is *geometry plus how to draw
 it*, and the viewer draws drawables without knowing that meshes exist.
 
+A wide viewer can keep its controls compact with `controlGroup("controls", columns = 2) { ... }`.
+The control surface uses up to two columns and collapses to one in a narrow output. The ordinary
+`controlGroup("controls") { ... }` retains its single column; changing layout preserves control
+identities, cached values and callbacks.
+
 ## The camera is four numbers, and they are the rasterizer's four numbers
 
 `ThreeCameraSpec` mirrors `MeshView` and `VisionGeometryPreview.Camera` one for one:
@@ -269,6 +274,10 @@ three(name = "comparison", channel = "comparison", width = 760, height = 320) {
 requires a single viewport, so use a separate single-view scene to review a mesh from a sheet.
 
 ### One WebGL context, several panels
+
+Drag to orbit; use the mouse wheel, trackpad scroll, or middle-button drag to dolly in and out.
+Multi-panel views retain your orbit and dolly across geometry and selection updates.
+Dolly moves the camera relative to its fitted starting view, so close inspection can crop the object.
 
 A contact sheet is N views of geometry side by side. The obvious translation is N viewers, and it is
 wrong: each iframe is its own WebGL context, Chrome caps live contexts at around sixteen and
@@ -552,6 +561,20 @@ The section plane cuts a mesh, wireframe overlay included. The explode scrubber 
 the annotations and leaves the solid where it is. Put the solid through `toFLines(...)` if you need it
 to come apart.
 
+## Editing a curve before an expensive operation
+
+`threeLines(curves, editable = true, width = 1000, onEditCommitted = { edited -> … })`
+provides the existing 3D anchor and Bézier-handle editor with a callback when a drag
+finishes. The callback receives detached copies of all the displayed FLines, after
+the drag's position updates. Camera movements do not call it. Select the pencil
+tool to edit and the camera tool to orbit or dolly.
+
+Keep the callback short: queue the snapshot, then validate it or rebuild dependent
+geometry on your own worker. The callback does not supply undo, persistence,
+constraints, or a solver; those belong to the application using the curves. Pass
+the accepted curves back to `threeLines` under the same viewer name to display any
+constraints you applied. `width` is optional and otherwise fills the output area.
+
 ## The payload both kinds of scene share
 
 `ThreeGeometryPayload`'s `lines` / `fills` / `points` are the FLine half, and a payload with an empty
@@ -611,3 +634,26 @@ Agents can use `FieldViewer.tools.register(descriptor)` or
 an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
 Use the same source geometry revision when restoring a note. An application owns its
 modules and their behavior; registration does not validate geometry produced by a tool.
+
+??? aside "If you write a fence like these"
+    The runner's output validator treats a bare `lines(` in the code as a call to `Box.lines(...)`, the 2D
+    SVG path, and then fails the capture because no `<svg>` appeared. Inside `three { }`, `lines(…)` is the
+    scene builder's and emits an iframe — `// FIELD_DOCS_EXPECT_SVG: false` in the fence is the escape
+    hatch, and the first figure on this page carries it.
+
+## Data colours and late viewers
+
+In a tiled `three` scene, surface picking uses the camera and viewport of the panel
+under the pointer. Click callbacks and hover highlights apply to that panel's objects
+(plus objects assigned to every panel); title bands do not pick geometry underneath.
+
+Use `mesh(mesh, unlit = true)` for force bands or other scalar data: the mesh's vertex
+colours are displayed without lighting or tone mapping. The default remains a lit surface.
+For a smooth surface with per-element colours, compute normals on the connected geometry
+before duplicating vertices for discontinuous colours; colour boundaries are not creases.
+
+Kotlin `display` panels are retained by the live box and replayed when a new browser finishes
+loading its document. This does not re-run code. The latest panel per channel, explicit
+open/close state, and current control values are replayed; cleared panels stay cleared.
+Retention is in memory (up to 128 panels and eight million HTML characters per box), not
+saved output across a server restart. Older panels are evicted when that budget is exceeded.

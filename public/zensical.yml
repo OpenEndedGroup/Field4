@@ -223,6 +223,7 @@ nav:
       - Progressive Path Tracing: path_tracing.md
       - Ray Tracing Examples: ray_tracing_examples.md
       - Particles, Cloth & Constraints: physics.md
+      - Pressure Membranes: pressure_membranes.md
       # Directly after the hand-written particle systems, because it is the same compute-then-draw
       # shape with the rule replaced by a trained network — a velocity field in tier one, a Deep
       # Sets interaction over a GPU neighbour grid in tier two. Here rather than beside

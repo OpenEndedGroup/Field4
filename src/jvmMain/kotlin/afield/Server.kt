@@ -1805,7 +1805,8 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
             add("--disable-background-timer-throttling")
             add("--disable-backgrounding-occluded-windows")
             add("--disable-renderer-backgrounding")
-            add("--disable-frame-rate-limit")
+            // Keep Chromium's normal frame pacing. Uncapping RAF also disables GPU
+            // vsync and makes idle animated capture pages saturate a CPU/GPU core.
             add("--enable-gpu")
             add("--ignore-gpu-blocklist")
             if (System.getProperty("os.name").orEmpty().lowercase(Locale.US).contains("mac")) {
@@ -2198,6 +2199,24 @@ class Server {
                     t = System.currentTimeMillis()
                 }
             }
+
+            // The new browser asks only after its document DOM is ready. Replay panels to
+            // that session, without re-running code or disturbing existing viewers.
+            handlers["replay-output-areas"] = mutableSetOf({ _, _ ->
+                val info = thisSessionInfo.get()
+                val session = thisSession.get()
+                val boxes = (info.boxes.values + info.root).distinctBy { it.id }
+                    .filterNot { it.getPropertyRaw("_tombstone").isTrue() }
+                val messages = boxes.flatMap { box ->
+                    box.output.retainedAreas.snapshot(box.id) + controllerControlsForBox(box.id).map {
+                        Message("control-value-update").payload(it)
+                    }
+                }
+                if (session != null) GlobalScope.launch {
+                    for (item in messages) session.send(Json.encodeToString(item))
+                }
+                Handled.yes
+            })
 
             handlers["initialize"] = mutableSetOf({ message, reply ->
                 sendProvisionalSet(thisSessionInfo.get().filename)

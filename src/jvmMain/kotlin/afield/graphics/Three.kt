@@ -112,6 +112,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         hoverColor: Vec4? = null,
         pickable: Boolean = false,
         group: Int = -1,
+        unlit: Boolean = false,
     ) {
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
@@ -119,6 +120,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 cullBackFaces = cullBackFaces,
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
+                unlit = unlit,
             ),
             label = label,
             panel = panel,

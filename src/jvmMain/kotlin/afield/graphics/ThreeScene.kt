@@ -65,6 +65,8 @@ data class ThreeDrawStyle(
     val flatShading: Boolean = false,
     /** Multiplied into the per-vertex alpha. */
     val opacity: Float = 1f,
+    /** Display data colours without lighting modulation. */
+    val unlit: Boolean = false,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",
@@ -91,6 +93,7 @@ data class ThreeDrawStyle(
             cullBackFaces: Boolean = true,
             flatShading: Boolean = false,
             opacity: Float = 1f,
+            unlit: Boolean = false,
         ) = ThreeDrawStyle(
             kind = "surface",
             doubleSided = !cullBackFaces,
@@ -98,6 +101,7 @@ data class ThreeDrawStyle(
             wireframe = wireframe,
             flatShading = flatShading,
             opacity = opacity,
+            unlit = unlit,
         )
 
         /** How an FLine's fills have always been drawn — translucent sheets, no depth write. */

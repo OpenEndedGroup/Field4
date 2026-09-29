@@ -147,6 +147,9 @@
             gap: 8px;
         }
 
+        /* The title owns the reserved header band; tools belong inside the canvas below it. */
+        #canvas-wrap.chrome-top ~ #hud { top: 32px; }
+
         #hud-right {
             margin-left: auto;
             flex-direction: column;
@@ -463,6 +466,17 @@
     <div id="review-threads"></div>
 </div>
 
+<script>
+// This must run before module imports: file previews cannot load the server's /vendor assets.
+if (window.location.protocol === 'file:') {
+    document.getElementById('hud').style.display = 'none';
+    const notice = document.createElement('div');
+    notice.style.cssText = 'position:fixed;inset:0;z-index:1000;display:grid;place-content:center;padding:32px;background:#080808;color:#ddd;font:16px Iosevka,monospace;line-height:1.6';
+    notice.textContent = 'This is the Field viewer template, not a live document. Open the running Field document using its http://localhost address. A file:// preview cannot receive simulation data.';
+    document.body.appendChild(notice);
+}
+</script>
+
 <!--
     three.js is vendored in-repo rather than pulled from a CDN.
 
@@ -706,8 +720,8 @@ const raycaster = new THREE.Raycaster();
 
 const pointer = new THREE.Vector2();
 const DRAG_THRESHOLD_PX = 4;
-const HANDLE_ANCHOR_SIZE_PX = 8;
-const HANDLE_CONTROL_SIZE_PX = 7;
+const HANDLE_ANCHOR_SIZE_PX = 5;
+const HANDLE_CONTROL_SIZE_PX = 3;
 const HANDLE_SELECTED_BONUS_PX = 2;
 const HANDLE_HIT_RADIUS_PX = 9;
 
@@ -1392,20 +1406,21 @@ function makeFillMaterial() {
 function makeSurfaceMaterial(style, hoverColor) {
     const s = style || {};
     const hover = hoverColor || null;
-    const material = new THREE.MeshStandardMaterial({
+    const parameters = {
         color: 0xffffff,
         vertexColors: true,
         side: s.doubleSided === false ? THREE.FrontSide : THREE.DoubleSide,
         transparent: true,
         opacity: s.opacity === undefined ? 1.0 : s.opacity,
-        roughness: 0.6,
-        metalness: 0.1,
-        flatShading: !!s.flatShading,
         // Push the surface back a touch so a wireframe drawn over it does not z-fight with it.
         polygonOffset: true,
         polygonOffsetFactor: 1,
         polygonOffsetUnits: 1
-    });
+    };
+    const material = s.unlit
+        ? new THREE.MeshBasicMaterial(parameters)
+        : new THREE.MeshStandardMaterial({...parameters, roughness: 0.6, metalness: 0.1, flatShading: !!s.flatShading});
+    material.toneMapped = !s.unlit;
     material.depthWrite = s.depthWrite !== false;
     material.onBeforeCompile = (shader) => {
         let fragmentPars = '#include <color_pars_fragment>\nvarying float vAlpha;';
@@ -1436,7 +1451,7 @@ function makeSurfaceMaterial(style, hoverColor) {
     // the key for the same reason and nothing weaker: without it a hovering solid added after a plain
     // one is handed the plain one's program and simply never highlights.
     material.customProgramCacheKey = () =>
-        'vertex-alpha-v3|' + (s.flatShading ? 'flat' : 'smooth') + '|' +
+        'vertex-alpha-v4|' + (s.unlit ? 'unlit|' : 'lit|') + (s.flatShading ? 'flat' : 'smooth') + '|' +
         (s.doubleSided === false ? 'front' : 'double') + '|' + (hover ? 'hover' : 'plain');
     return material;
 }
@@ -1722,6 +1737,7 @@ function interactiveEntry(source, meshes, vertices) {
  */
 function surfaceEntry(source, meshes, drawableIndex, geometry) {
     const entry = interactiveEntry(source, meshes, []);
+    entry.panel = Number.isFinite(source.panel) ? source.panel : 0;
     entry.surface = {
         id: typeof source.id === 'string' ? source.id : '',
         drawableIndex: drawableIndex,
@@ -3156,15 +3172,16 @@ function setInteractiveHover(entry, hovered) {
 let hoverCache = { key: '', result: false };
 
 function hoverStateKey() {
-    const q = camera.quaternion;
-    const t = camera.position;
+    const pickCamera = pointerCamera || camera;
+    const q = pickCamera.quaternion;
+    const t = pickCamera.position;
     // `interactiveRevision` and not just the set's length: a payload can replace every entry without
     // changing how many there are, and a cache that missed that would hold a hover on an object that
     // no longer exists.
     return [
         pointer.x.toFixed(5), pointer.y.toFixed(5),
         t.x, t.y, t.z, q.x, q.y, q.z, q.w,
-        interactiveRevision
+        interactiveRevision, pointerPanel
     ].join(',');
 }
 
@@ -3182,8 +3199,9 @@ function updateInteractiveHover() {
         hoverCache = { key: key, result: false };
         return false;
     }
-    raycaster.setFromCamera(pointer, camera);
-    const meshes = hoverable.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+    raycaster.setFromCamera(pointer, pointerCamera || camera);
+    const meshes = hoverable.filter(entryInPointerPanel).flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+
     const hits = raycaster.intersectObjects(meshes, false);
     const hitSet = new Set(hits.map((hit) => hit.object));
     let anyPointer = false;
@@ -5544,6 +5562,7 @@ applyPickThresholds(null);
 
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
+    requestRender();
     payloadState = payload;
     editorState.pointerDown = null;
     editorState.dragging = null;
@@ -5641,8 +5660,42 @@ function connectWs() {
     ws.addEventListener('error', () => ws.close());
 }
 
+let pointerPanel = -1;
+let pointerCamera = null;
+
+// [viewer-region panel-pointer] BEGIN
+/** CSS canvas coordinates, bottom-left origin; title bands and empty grid cells are not pickable. */
+function panelPointerAt(x, y, viewports) {
+    for (let i = 0; i < viewports.length; i++) {
+        const v = viewports[i];
+        if (x >= v.x && x < v.x + v.w && y >= v.y && y < v.y + v.h) {
+            return { panel: i, x: (x - v.x) / v.w * 2 - 1, y: (y - v.y) / v.h * 2 - 1 };
+        }
+    }
+    return null;
+}
+// [viewer-region panel-pointer] END
+
+function entryInPointerPanel(entry) {
+    return pointerPanel === -1 || (pointerPanel >= 0 && (entry.panel === undefined || entry.panel === -1 || entry.panel === pointerPanel));
+}
+
 function setPointerFromEvent(event) {
     const rect = renderer.domElement.getBoundingClientRect();
+    pointerCamera = camera;
+    pointerPanel = -1;
+    if (panelState.cameras.length > 1 && editorState.mode === 'camera') {
+        updatePanelCameras();
+        const x = (event.clientX - rect.left) / rect.width * container.clientWidth;
+        const y = (rect.bottom - event.clientY) / rect.height * container.clientHeight;
+        const hit = panelPointerAt(x, y, panelState.cameras.map((_, i) => panelViewport(i, panelState.cameras.length)));
+        if (!hit) { pointerPanel = -2; pointer.set(2, 2); return; }
+        pointerPanel = hit.panel;
+        pointerCamera = panelState.cameras[hit.panel].camera;
+        pointerCamera.updateMatrixWorld();
+        pointer.set(hit.x, hit.y);
+        return;
+    }
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 }
@@ -5946,6 +5999,7 @@ function finishPointer(event) {
     if (editorState.dragging && editorState.dragging.pointerId === event.pointerId) {
         editorState.dragging = null;
         rebuildEditableView();
+        sendMessage({type: 'fline-edit-commit', sessionId: editorState.scene.sessionId});
     }
 
     const down = editorState.pointerDown;
@@ -5980,8 +6034,9 @@ renderer.domElement.addEventListener('click', (event) => {
         featurePick((event.clientX-r.left)/r.width,(event.clientY-r.top)/r.height,featureModeEl.value,true);return;
     }
     setPointerFromEvent(event);
-    raycaster.setFromCamera(pointer, camera);
-    const meshes = interactiveObjects.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+    raycaster.setFromCamera(pointer, pointerCamera || camera);
+    const meshes = interactiveObjects.filter(entryInPointerPanel).flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
+
     const hits = raycaster.intersectObjects(meshes, false);
     if (!hits.length) return;
     const hitObject = hits[0].object;
@@ -6048,10 +6103,14 @@ function publishFrameSize(payload) {
  */
 function applyScenePanels(payload) {
     const panels = Array.isArray(payload.panels) ? payload.panels : [];
+    const columns = Math.max(1, payload.columns || 1);
+    // Geometry/selection updates must not consume the remaining orbit or zoom range.
+    const sameLayout = panels.length > 1 && panels.length === panelState.panels.length && columns === panelState.columns;
+    const orbitBase = sameLayout ? panelState.base : null;
     panelState.panels = panels;
-    panelState.columns = Math.max(1, payload.columns || 1);
+    panelState.columns = columns;
     panelState.cameras = [];
-    panelState.base = null;
+    panelState.base = orbitBase;
     clearPanelLabels();
 
     // The scene-wide "N ln | N tri | N p" HUD sits top-right, which is exactly where a tiled layout
@@ -6083,7 +6142,7 @@ function applyScenePanels(payload) {
     // from it is then wrong by however much framing changed, which is ~1 for unit-scale geometry and
     // enormous for anything else: extruded glyphs at extent 300 came out as dots, having been pushed
     // back a hundredfold, while spheres of radius 1 looked perfectly fine and hid the bug.
-    panelState.base = null;
+    // Existing layouts retain their baseline; only new layouts capture one on the first frame.
     renderPanelChrome(panels, panels.length, true);
 }
 
@@ -6194,9 +6253,16 @@ function updatePanelCameras() {
             yawDegrees: (spec.yawDegrees || 0) + dAzimuth,
             // Polar is measured from +y down, so a positive polar delta is a *lower* pitch.
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
-            distance: (spec.distance === undefined ? 2.7 : spec.distance) * zoom,
+            distance: spec.distance === undefined ? 2.7 : spec.distance,
             fieldOfViewDegrees: spec.fieldOfViewDegrees
         }, entry.bounds, true, entry.fitPoints);
+        // Fit establishes the reference framing. Dolly afterwards so fitting cannot undo zoom.
+        const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
+        entry.camera.position.sub(focus).multiplyScalar(zoom).add(focus);
+        const distance = entry.camera.position.distanceTo(focus);
+        entry.camera.near = Math.max(1e-5, distance * 0.01);
+        entry.camera.far = Math.max(distance * 100, entry.camera.near + 1);
+        entry.camera.updateProjectionMatrix();
     });
 }
 
@@ -6292,6 +6358,16 @@ function render() {
         renderGeometry(camera);
     }
 }
+
+// Capture also covers editor/inspector handlers that stop propagation. The queued
+// paint runs after they have updated geometry, selection, clipping or hover state.
+for (const type of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'wheel', 'click', 'keydown', 'input', 'change']) {
+    document.addEventListener(type, requestRender, { capture: true, passive: true });
+}
+renderer.domElement.addEventListener('pointerleave', () => {
+    pointer.set(2, 2);
+    requestRender();
+});
 
 connectWs();
 requestRender();

@@ -23,6 +23,13 @@ import kotlin.test.assertTrue
  * websocket, so it is tested as one.
  */
 class ThreeSceneTest {
+    @Test fun `unlit data surfaces survive serialization without changing the default`() {
+        val style=ThreeDrawStyle.surface(unlit=true)
+        val encoded=Json.encodeToString(ThreeDrawStyle.serializer(),style)
+        assertTrue(Json.decodeFromString(ThreeDrawStyle.serializer(),encoded).unlit)
+        assertFalse(ThreeDrawStyle.surface().unlit)
+    }
+
 
     /** The production encoder's configuration, from `ThreeJsViewer.kt`. */
     private val json = Json { encodeDefaults = true; ignoreUnknownKeys = true }
