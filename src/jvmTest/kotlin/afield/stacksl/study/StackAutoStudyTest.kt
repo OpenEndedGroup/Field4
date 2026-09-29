@@ -45,10 +45,34 @@ class StackAutoStudyTest {
         // The OpenAI client checks each tool's schema as it is added, and refuses one with no properties:
         // the first recorded turn (2026-09-28) failed on StackAutoSlotGuide before the model saw anything.
         val tools = listOf(StackAutoSlotGuide::class, InspectStackAutoSlot::class, EditStackAutoSlot::class, PatchStackAutoSlot::class,
-            SetStackAutoNumbers::class, ObserveStackAutoSlot::class, SweepStackAutoNumber::class, RestoreStackAutoRevision::class)
+            SetStackAutoNumbers::class, ObserveStackAutoSlot::class, SweepStackAutoNumber::class, RestoreStackAutoRevision::class,
+            CompareStackAutoSlot::class, TryStackAutoVariants::class, AdoptStackAutoVariant::class)
         val request = com.openai.models.responses.ResponseCreateParams.builder().model("gpt-5").input("")
         tools.forEach { request.addTool(it.java) }
         assertEquals(tools.size, request.build().tools().get().size)
+    }
+
+    /**
+     * Compare and TryVariants draw in the host shader, so without a module they can show nothing — and
+     * must say so, hold nothing, and leave the slot's program as it was, rather than wait on a main thread
+     * or publish. The in-shader path itself needs a window; see LIVE_STUDY_REVIEW.md.
+     */
+    @Test
+    fun compareAndVariantsWithoutAModuleSayWhyAndChangeNothing() {
+        val s = study()
+        val before = s.box.stackAutoShaderSources["program"]!!
+        val first = s.revisions.currentId()
+        val second = s.edit(first, SourceStudy.hash(before), "0.2 0.8 uv 3.0 * fbm smoothstep palette saturate", "second").revision
+        val compared = s.compare(first, second)
+        assertTrue((compared.facts["error"] as String).contains("no module"), compared.facts.toString())
+        val tried = s.tryVariants(listOf(StackAutoVariant("A", "0.1 0.2 uv fbm smoothstep palette saturate"), StackAutoVariant("B", "not stacksl %%")))
+        @Suppress("UNCHECKED_CAST")
+        val variants = tried.facts["variants"] as List<Map<String, Any?>>
+        assertEquals(listOf(false, false), variants.map { it["ok"] }, variants.toString())
+        assertEquals(emptyList<Any>(), tried.facts["held"])
+        assertEquals(second, s.revisions.currentId())
+        assertEquals("0.2 0.8 uv 3.0 * fbm smoothstep palette saturate", s.box.stackAutoShaderSources["program"])
+        assertFailsWith<StudyRejection> { s.adoptVariant(second, SourceStudy.hash("x"), "A") }
     }
 
     @Test

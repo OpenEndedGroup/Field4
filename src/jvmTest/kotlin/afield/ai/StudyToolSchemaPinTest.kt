@@ -48,6 +48,8 @@ class StudyToolSchemaPinTest {
         afield.stacksl.study.EditStackAutoSlot::class.java, afield.stacksl.study.PatchStackAutoSlot::class.java,
         afield.stacksl.study.SetStackAutoNumbers::class.java, afield.stacksl.study.ObserveStackAutoSlot::class.java,
         afield.stacksl.study.SweepStackAutoNumber::class.java, afield.stacksl.study.RestoreStackAutoRevision::class.java,
+        afield.stacksl.study.CompareStackAutoSlot::class.java, afield.stacksl.study.TryStackAutoVariants::class.java,
+        afield.stacksl.study.AdoptStackAutoVariant::class.java,
     )
 
     private val mapper = ObjectMapper().enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS).enable(SerializationFeature.INDENT_OUTPUT)

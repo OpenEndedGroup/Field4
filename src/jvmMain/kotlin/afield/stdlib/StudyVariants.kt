@@ -68,10 +68,12 @@ class StudyVariants(val directory: File, val extension: String) {
      * Check and draw each of [candidates] — resolving edits against [live] — with [check] (the study's
      * admission, publishing nothing) and [frames]; a refused candidate gets an error tile with the reason
      * instead. [facts] says what the report records of an admitted one beside its label, note and
-     * warnings; [timeLabel] captions each frame's tile.
+     * warnings; [timeLabel] captions each frame's tile. [present] is what a frame looks like on a tile:
+     * [StudyEvidence.presented] for raw output, identity for a capture that already is what is shown.
      */
     fun <T> tryAll(candidates: List<Candidate>, live: String, check: (String) -> StudyAdmission<T>, cancelled: () -> Boolean,
                    frames: (String) -> List<CpuRaster>, timeLabel: (Int) -> String,
+                   present: (CpuRaster) -> CpuRaster = StudyEvidence::presented,
                    facts: (value: T, frames: List<CpuRaster>) -> Map<String, Any?>): Trial {
         val rows = mutableListOf<List<StudyEvidence.Tile>>()
         val labels = mutableListOf<String>()
@@ -83,7 +85,7 @@ class StudyVariants(val directory: File, val extension: String) {
                 val source = v.source.ifBlank { SourceStudy.applyEdits(live, v.edits) }
                 val admitted = check(source)
                 val drawn = frames(source)
-                rows += drawn.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), timeLabel(i), v.label) }
+                rows += drawn.mapIndexed { i, f -> StudyEvidence.tile(present(f), timeLabel(i), v.label) }
                 kept += Held(v.label, v.note, source)
                 linkedMapOf<String, Any?>("label" to v.label, "ok" to true, "note" to v.note) + facts(admitted.value, drawn)
             } catch (e: StudyRejection) {
@@ -151,22 +153,24 @@ object StudyCompare {
      * Compare [before] and [after], frame by frame at [times]: displayed colour (`rgb`), brightness
      * (`luma`), or raw values (`stage`, for what a program leaves on the stack). [region] (`u0, v0, u1,
      * v1`) is where change is allowed; everything else is held to one 8-bit level, or 1e-6 raw.
-     * [captions] replaces each tile's time caption, for a stage comparison that names its stages.
+     * [captions] replaces each tile's time caption, for a stage comparison that names its stages. With
+     * [shown], the frames are captures of what is shown (see [StudyEvidence.fromPng]) rather than raw output.
      */
     fun pixels(before: List<CpuRaster>, after: List<CpuRaster>, times: List<Double>, beforeLabel: String, afterLabel: String,
                region: List<Double>?, mode: String, timeLabel: (Double) -> String,
-               captions: ((Double) -> Pair<String, String>)? = null): Pixels {
+               captions: ((Double) -> Pair<String, String>)? = null, shown: Boolean = false): Pixels {
         val raw = mode == "stage"
         val rows = mutableListOf<List<StudyEvidence.Tile>>()
         val results = times.mapIndexed { i, t ->
             val fa = before[i]; val fb = after[i]
-            val (outside, inside) = if (raw) StudyEvidence.rawDifference(fa, fb, region) else StudyEvidence.difference(fa, fb, region, mode == "luma")
+            val (outside, inside) = if (raw) StudyEvidence.rawDifference(fa, fb, region) else StudyEvidence.difference(fa, fb, region, mode == "luma", shown)
+            fun look(f: CpuRaster) = if (shown) f else StudyEvidence.presented(f)
             val (ca, cb) = captions?.invoke(t) ?: (timeLabel(t) to timeLabel(t))
             rows += listOf(
-                if (raw) StudyEvidence.normalizedTile(fa, beforeLabel, ca).first else StudyEvidence.tile(StudyEvidence.presented(fa), beforeLabel, ca),
-                if (raw) StudyEvidence.normalizedTile(fb, afterLabel, cb).first else StudyEvidence.tile(StudyEvidence.presented(fb), afterLabel, cb),
+                if (raw) StudyEvidence.normalizedTile(fa, beforeLabel, ca).first else StudyEvidence.tile(look(fa), beforeLabel, ca),
+                if (raw) StudyEvidence.normalizedTile(fb, afterLabel, cb).first else StudyEvidence.tile(look(fb), afterLabel, cb),
                 if (raw) StudyEvidence.rawDifferenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)}")
-                else StudyEvidence.differenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)} levels"))
+                else StudyEvidence.differenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)} levels", shown = shown))
             linkedMapOf("seconds" to t, "outside" to outside, "inside" to inside)
         }
         val tolerance = if (raw) 1e-6 else 1.0

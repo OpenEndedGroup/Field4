@@ -241,11 +241,12 @@ object StudyEvidence {
     /**
      * Displayed-colour difference between two same-size rasters, split into outside and inside an
      * optional `uv` [region] (`u0, v0, u1, v1`). With [lumaOnly] only brightness is compared. A pixel
-     * counts as changed when it moved by more than one 8-bit level.
+     * counts as changed when it moved by more than one 8-bit level. With [shown], [a] and [b] are
+     * already what the window shows (a capture, see [fromPng]) and are compared as they are.
      */
-    fun difference(a: CpuRaster, b: CpuRaster, region: List<Double>?, lumaOnly: Boolean): Pair<StudyDifference, StudyDifference?> {
+    fun difference(a: CpuRaster, b: CpuRaster, region: List<Double>?, lumaOnly: Boolean, shown: Boolean = false): Pair<StudyDifference, StudyDifference?> {
         require(a.width == b.width && a.height == b.height)
-        val pa = presented(a).toArgb(); val pb = presented(b).toArgb()
+        val pa = (if (shown) a else presented(a)).toArgb(); val pb = (if (shown) b else presented(b)).toArgb()
         return split(a.width, a.height, region, 1.0) { i ->
             if (lumaOnly) abs(lumaLevel(pa[i]) - lumaLevel(pb[i])) else levels(pa[i], pb[i]).toDouble()
         }
@@ -383,8 +384,8 @@ object StudyEvidence {
     }
 
     /** A difference heat map: black where equal, through red to yellow-white at [full] levels. */
-    fun differenceTile(a: CpuRaster, b: CpuRaster, label: String, caption: String, full: Double = 32.0): Tile {
-        val pa = presented(a).toArgb(); val pb = presented(b).toArgb()
+    fun differenceTile(a: CpuRaster, b: CpuRaster, label: String, caption: String, full: Double = 32.0, shown: Boolean = false): Tile {
+        val pa = (if (shown) a else presented(a)).toArgb(); val pb = (if (shown) b else presented(b)).toArgb()
         val out = IntArray(pa.size) { i ->
             val d = (levels(pa[i], pb[i]) / full).coerceIn(0.0, 1.0)
             val r = (255 * min(1.0, d * 2)).roundToInt(); val g = (255 * max(0.0, d * 2 - 1)).roundToInt()
@@ -428,4 +429,18 @@ object StudyEvidence {
     }
 
     fun format(v: Double): String = String.format(Locale.US, "%.3g", v)
+
+    /**
+     * A PNG — a capture of what a window or target shows — as a raster of the values it shows, `0..1`
+     * per channel, alpha one. Already presented: compare such rasters with `shown = true`.
+     */
+    fun fromPng(png: ByteArray): CpuRaster {
+        val image = ImageIO.read(png.inputStream()) ?: throw IllegalArgumentException("not an image")
+        val argb = image.getRGB(0, 0, image.width, image.height, null, 0, image.width)
+        val out = FloatArray(argb.size * 4)
+        argb.forEachIndexed { i, p ->
+            out[i * 4] = ((p shr 16) and 0xff) / 255f; out[i * 4 + 1] = ((p shr 8) and 0xff) / 255f; out[i * 4 + 2] = (p and 0xff) / 255f; out[i * 4 + 3] = 1f
+        }
+        return CpuRaster(image.width, image.height, out)
+    }
 }

@@ -41,6 +41,54 @@
       "type" : "object"
     }
   },
+  "AdoptStackAutoVariant" : {
+    "description" : "Publish a held slot variant by label as a new revision: bound live and written back into the code like an edit (guards as for an edit).",
+    "mcp" : {
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "expectedRevision", "expectedSourceHash", "label" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Publish a held slot variant by label as a new revision: bound live and written back into the code like an edit (guards as for an edit).",
+      "properties" : {
+        "description" : {
+          "type" : "string"
+        },
+        "expectedRevision" : {
+          "type" : "string"
+        },
+        "expectedSourceHash" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "description", "expectedRevision", "expectedSourceHash", "label", "slot" ],
+      "type" : "object"
+    }
+  },
   "AdoptStackSLVariant" : {
     "description" : "Publish a held variant by label as a new revision (guards as for an edit).",
     "mcp" : {
@@ -194,6 +242,72 @@
         }
       },
       "required" : [ "afterRevision", "allowedRegion", "beforeRevision", "mode", "seconds" ],
+      "type" : "object"
+    }
+  },
+  "CompareStackAutoSlot" : {
+    "description" : "Check what an edit preserved, in the host shader: each revision is bound live in turn and captured where the module draws, then the slot's own program is put back. mode rgb compares displayed colour, luma brightness only; allowedRegion [u0,v0,u1,v1] (0..1 of the capture, y up) is where change may happen, and outside it everything must stay within one level. A host that animates the slot differs between the two captures by its own motion too.",
+    "mcp" : {
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "beforeRevision" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Check what an edit preserved, in the host shader: each revision is bound live in turn and captured where the module draws, then the slot's own program is put back. mode rgb compares displayed colour, luma brightness only; allowedRegion [u0,v0,u1,v1] (0..1 of the capture, y up) is where change may happen, and outside it everything must stay within one level. A host that animates the slot differs between the two captures by its own motion too.",
+      "properties" : {
+        "afterRevision" : {
+          "type" : "string"
+        },
+        "allowedRegion" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "beforeRevision" : {
+          "type" : "string"
+        },
+        "mode" : {
+          "type" : "string"
+        },
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        }
+      },
+      "required" : [ "afterRevision", "allowedRegion", "beforeRevision", "mode", "seconds", "slot" ],
       "type" : "object"
     }
   },
@@ -2245,6 +2359,83 @@
         }
       },
       "required" : [ "seconds", "variants" ],
+      "type" : "object"
+    }
+  },
+  "TryStackAutoVariants" : {
+    "description" : "Speculate in the host shader: check 1..8 candidate programs for a slot, bind each live in turn and capture it where the module draws, then put the slot's own program back. Nothing is kept or written into the code. Each is a complete source or exact edits, with a short label (A, B or 'ember') and note; they are held for AdoptStackAutoVariant.",
+    "mcp" : {
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "variants" : {
+          "items" : {
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "variants" ],
+      "type" : "object"
+    },
+    "openai" : {
+      "$schema" : "https://json-schema.org/draft/2020-12/schema",
+      "additionalProperties" : false,
+      "description" : "Speculate in the host shader: check 1..8 candidate programs for a slot, bind each live in turn and capture it where the module draws, then put the slot's own program back. Nothing is kept or written into the code. Each is a complete source or exact edits, with a short label (A, B or 'ember') and note; they are held for AdoptStackAutoVariant.",
+      "properties" : {
+        "seconds" : {
+          "items" : {
+            "type" : "number"
+          },
+          "type" : "array"
+        },
+        "slot" : {
+          "type" : "string"
+        },
+        "variants" : {
+          "items" : {
+            "additionalProperties" : false,
+            "properties" : {
+              "edits" : {
+                "items" : {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "after" : {
+                      "type" : "string"
+                    },
+                    "before" : {
+                      "type" : "string"
+                    }
+                  },
+                  "required" : [ "after", "before" ],
+                  "type" : "object"
+                },
+                "type" : "array"
+              },
+              "label" : {
+                "type" : "string"
+              },
+              "note" : {
+                "type" : "string"
+              },
+              "source" : {
+                "type" : "string"
+              }
+            },
+            "required" : [ "edits", "label", "note", "source" ],
+            "type" : "object"
+          },
+          "type" : "array"
+        }
+      },
+      "required" : [ "seconds", "slot", "variants" ],
       "type" : "object"
     }
   },

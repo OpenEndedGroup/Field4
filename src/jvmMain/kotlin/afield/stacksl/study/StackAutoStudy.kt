@@ -1,6 +1,9 @@
 package afield.stacksl.study
 
 import afield.stdlib.StudyEvidence
+import afield.stdlib.StudyCompare
+import afield.stdlib.StudyRequest
+import afield.stdlib.StudyVariants
 import afield.Box
 import afield.ai.core.ToolImage
 import afield.four.ModuleDestinations
@@ -155,7 +158,7 @@ data class StackAutoSlotCheck(val problems: List<String>, val warnings: List<Str
  * Revisions live in `studies/<box>/stack.auto/<slot>/revisions`, beside the slot's knob names and keys.
  */
 class StackAutoSlotStudy internal constructor(
-    val box: Box, val slot: String, directory: File,
+    val box: Box, val slot: String, private val directory: File,
     // How an accepted program reaches the slot: bound live through the box's module, on Field's main
     // thread. A test, which has neither, passes its own.
     publisher: ((expected: String, replacement: String) -> Boolean)? = null
@@ -180,7 +183,19 @@ class StackAutoSlotStudy internal constructor(
     /** Bind [replacement] to the slot, live, and write it into the box's code where [expected] sits verbatim. */
     private fun publish(expected: String, replacement: String): Boolean = onMain {
         if (liveSource() != expected) return@onMain false
-        val module = stackAutoModulesOf(box).firstOrNull() ?: return@onMain false
+        if (!bindOnMain(expected, replacement)) return@onMain false
+        val code = box.getPropertyRaw("code", null) as? String
+        val at = code?.indexOf(expected)?.takeIf { it >= 0 && expected.isNotBlank() && code.indexOf(expected, it + 1) < 0 }
+        if (code != null && at != null) BoxStudies.replacer(box, "code")(code, code.substring(0, at) + replacement + code.substring(at + expected.length))
+        true
+    }
+
+    /**
+     * Bind [replacement] to the slot, live, without touching the box's code — what trying a program in
+     * the host shader does. [awaitBound] then says when it draws. On the main thread.
+     */
+    private fun bindOnMain(expected: String, replacement: String): Boolean {
+        val module = stackAutoModulesOf(box).firstOrNull() ?: return false
         // Armed before the slot changes, so the update cannot finish unseen.
         val done = java.util.concurrent.CompletableFuture<Boolean>()
         val listener: (Box, Boolean) -> Unit = { b, ok -> if (b === box) done.complete(ok) }
@@ -191,16 +206,94 @@ class StackAutoSlotStudy internal constructor(
             is ModulePointer -> stackAutoShaderSource(module, slot, replacement)
             is ComputeModulePointer -> stackAutoShaderSource(module, slot, replacement)
             is MeshModulePointer -> stackAutoShaderSource(module, slot, replacement)
-            else -> return@onMain false
+            else -> { done.complete(false); return false }
         }
-        val code = box.getPropertyRaw("code", null) as? String
-        val at = code?.indexOf(expected)?.takeIf { it >= 0 && expected.isNotBlank() && code.indexOf(expected, it + 1) < 0 }
-        if (code != null && at != null) BoxStudies.replacer(box, "code")(code, code.substring(0, at) + replacement + code.substring(at + expected.length))
         // Rebinding the same text queues nothing, and neither does a bind that was refused.
         val took = box.stackAutoShaderSources[slot] == replacement
         if (replacement == expected || !took) done.complete(took)
-        took
+        return took
     }
+
+    /**
+     * [program] drawn in the host shader: bound live (not written into the code), waited for, captured,
+     * as the window or target shows it — or null with why. The caller puts the slot's own program back.
+     */
+    private fun shot(program: String): Pair<afield.stacksl.cpu.CpuRaster?, String> {
+        // Nothing to bind into (a test's box, a module not built yet): say so without waiting on a main thread.
+        if (stackAutoModulesOf(box).isEmpty()) return null to "no module of this box has been built yet"
+        if (!onMain { bindOnMain(liveSource(), program) }) return null to "the slot would not take the program"
+        val drawn = awaitBound()
+        if (drawn == false) return null to "the pipeline update failed, so the shader still draws the previous program"
+        val p = StackAutoView.inShader(box, slot)
+        return (p.png?.let { runCatching { StudyEvidence.fromPng(it) }.getOrNull() }) to (if (drawn == null) "may still show the previous program (the update had not finished) — " else "") + p.note
+    }
+
+    /** Put [program] back as the slot's live program after trying others, waiting until it draws again. */
+    private fun rebind(program: String) {
+        if (stackAutoModulesOf(box).isEmpty()) return
+        runCatching { if (onMain { bindOnMain(liveSource(), program) }) awaitBound() }
+    }
+
+    private val speculation = StudyVariants(directory, "stacksl")
+
+    private fun png(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
+
+    /**
+     * What an edit preserved, in the host shader: [before] and [after] each bound live in turn and
+     * captured where the module draws, then the slot's own program put back. Displayed colour (`rgb`) or
+     * brightness (`luma`), held to one 8-bit level outside [region] (`u0, v0, u1, v1` of the capture).
+     */
+    fun compare(before: String, after: String = "current", mode: String = "rgb", region: List<Double>? = null): StudyReport {
+        if (mode !in setOf("rgb", "luma")) throw StudyRejection("mode is rgb or luma")
+        val a = revisions.revision(before); val b = revisions.revision(after)
+        val live = liveSource()
+        val (pa, na) = try { shot(a.source) } catch (e: Exception) { rebind(live); throw e }
+        val (pb, nb) = try { shot(b.source) } finally { rebind(live) }
+        if (pa == null || pb == null) return StudyReport(b.id, linkedMapOf("before" to a.id, "after" to b.id,
+            "error" to "Cannot capture both in your shader: ${if (pa == null) na else nb}"))
+        if (pa.width != pb.width || pa.height != pb.height) throw StudyRejection("The two captures differ in size (${pa.width}×${pa.height}, ${pb.width}×${pb.height})")
+        val px = StudyCompare.pixels(listOf(pa), listOf(pb), listOf(0.0), a.id, b.id, region, mode, { "in your shader" }, shown = true)
+        val bytes = StudyEvidence.sheet("stack.auto.$slot compare · ${a.id} → ${b.id} · $mode",
+            (region?.let { "Change allowed inside uv [${it.joinToString()}] of the capture; " } ?: "No change allowed; ") + "held to one 8-bit level.",
+            px.rows, 320, tileHeight = maxOf(24, 320 * pa.height / maxOf(1, pa.width)))
+        return StudyReport(b.id, linkedMapOf("slot" to slot, "before" to a.id, "after" to b.id, "mode" to mode, "region" to region,
+            "results" to px.results, "preservedOutsideRegion" to px.preserved, "tolerance" to px.tolerance, "captured" to nb,
+            "method" to "Each revision bound live in turn and captured where the module draws, a moment apart, then the slot's program put back. " +
+                "A host that animates the slot differs between the two captures by its motion too."),
+            listOf(ToolImage(png(bytes), "${a.id} → ${b.id} in your shader: before | after | difference")))
+    }
+
+    /**
+     * Try candidates in the host shader without keeping any: each is checked, bound live, captured where
+     * the module draws, and held for [adoptVariant]; then the slot's own program is put back.
+     */
+    fun tryVariants(variants: List<StudyRequest.Variant>): StudyReport {
+        StudyVariants.requireLabels(variants.map { it.label })
+        val current = revisions.revision()
+        val live = liveSource()
+        val trial = try {
+            val (now, nowNote) = shot(live)
+            val base = listOf(StudyEvidence.tile(now, "current", "", if (now == null) nowNote else null))
+            val t = speculation.tryAll(variants.map { StudyVariants.Candidate(it.label, it.note, it.source, it.edits) }, live, revisions::check,
+                { false }, { source -> shot(source).let { (r, why) -> listOf(r ?: throw StudyRejection("Cannot capture it in your shader: $why")) } },
+                { "in your shader" }, present = { it }) { value, _ -> linkedMapOf("warnings" to value.warnings.ifEmpty { null }, "knobs" to value.knobs.size) }
+            base to t
+        } finally { rebind(live) }
+        val (base, t) = trial
+        val bytes = StudyEvidence.sheet("stack.auto.$slot variants · against ${current.id}", "Unpublished candidates, each drawn in your shader; adopt one with AdoptStackAutoVariant.",
+            listOf(base) + t.rows, 256, listOf("${current.id}\n(current)") + t.labels)
+        val batch = speculation.hold(current.id, SourceStudy.hash(live), t.held, bytes)
+        return StudyReport(current.id, linkedMapOf("slot" to slot, "against" to current.id, "variants" to t.facts, "held" to t.held.map { it.label },
+            "imageFile" to File(batch, "sheet.png").absolutePath, "published" to false),
+            listOf(ToolImage(png(bytes), "Variants of stack.auto.$slot in your shader: first the current program, then one row per candidate")))
+    }
+
+    /** Publish a held candidate: bound live and written back into the code like an edit. */
+    fun adoptVariant(expectedRevision: String, expectedSourceHash: String, label: String, description: String = ""): StudyReport =
+        speculation.adopt(revisions, expectedRevision, expectedSourceHash, label, description) { r -> published(r, "adopted variant $label", false) }
+
+    /** The candidates [tryVariants] is holding: label, note, source. */
+    fun heldVariants(): List<Triple<String, String, String>> = speculation.held()
 
     private fun <T> onMain(block: () -> T): T =
         if (afield.Runloop.isMainThread) block() else kotlinx.coroutines.runBlocking { kotlinx.coroutines.withContext(afield.Runloop.runLoop.main) { block() } }
@@ -261,7 +354,8 @@ class StackAutoSlotStudy internal constructor(
                     (named[k.knob]?.let { " [$it]" } ?: "") + (now?.takeIf { kotlin.math.abs(it - k.value) > 1e-9 }?.let { " (turned to $it, not kept)" } ?: "")
             },
             "keys" to StudyKeys.summary(File(revisions.directory.parentFile.path), "StackSL", r.source, StackSLStudyViewer.studyKnobs(r.source, r.value.knobs)),
-            "history" to revisions.history().takeLast(16).map { mapOf("id" to it.id, "description" to it.description) }
+            "history" to revisions.history().takeLast(16).map { mapOf("id" to it.id, "description" to it.description) },
+            "pendingVariants" to speculation.pending()
         ))
     }
 
