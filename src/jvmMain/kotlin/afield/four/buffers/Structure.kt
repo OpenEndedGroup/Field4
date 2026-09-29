@@ -235,7 +235,9 @@ open class Structure(
      * Set [property] to [value], held until the next write to the buffer.
      *
      * Once this structure has a layout, [property] must be one of its members and [value] must fit the
-     * member's reflected type ([refusalFor]); otherwise nothing is stored, and the executing box is
+     * member's reflected type — the same shape, and a number the member can hold without loss, converted
+     * when it is written ([coerce]: an `Int` into a `uint64_t` or a `float`, a `Double` into a `float`,
+     * a whole `Float` into an `int`); otherwise nothing is stored, and the executing box is
      * warned on the lines of its code that name [property]. Both used to be stored anyway — an unknown
      * member with a stdout `println`, a mistyped one with nothing at all — and the mistyped one was then
      * written by its Kotlin type over whatever came next in the block. A structure with no layout yet
@@ -506,9 +508,11 @@ open class Structure(
                     if (raw is ProgressingUniform && !raw.isComplete) keepDirty = true
                     raw.evaluateUniform()
                 } else raw
-                val refusal = resolved?.let { member.refusalFor(it) }
-                if (refusal != null) refuseWrite(key, refusal)
-                else if (resolved != null) writeToBuffer(baseOffset + member.offset, resolved, f, cmd, name = key)
+                when (val coerced = resolved?.let { member.coerce(it) }) {
+                    is Coerced.Refused -> refuseWrite(key, coerced.why)
+                    is Coerced.Written -> writeToBuffer(baseOffset + member.offset, coerced.value, f, cmd, name = key)
+                    null -> {}
+                }
             } else if (!member.physicalPointer) {
                 member.type.fold(
                     {},
@@ -555,6 +559,7 @@ open class Structure(
             // 8-lane fp16 vector: its own writer emits the 16-byte uvec4 layout (two halfs per lane).
             is Vector8h -> v.get(offset, f)
             is UInt -> f.putInt(offset, v.toInt())
+            is HalfBits -> f.putShort(offset, v.bits)
             is ByteBuffer -> {
                 var was = f.position()
                 f.position(offset)

@@ -544,3 +544,17 @@ Buffers found by name in the context, or handed back by a custom resolver, are r
 were the first time and never zeroed or freed (`BufferParameters.allocatedByModule`). Tests:
 `ShaderInterfaceTransitionTest` (the matrix on real reflection, no GPU), `ReloadResolversTest`; smokes
 `four.shader-reload.transitions` (eight rows on a device) and `four.shader-reload.transaction`.
+
+### Follow-ups, same day: per-frame blocks, and what a member accepts
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| per-frame uniform blocks (a `FrameBufferGroup` per swapchain image) | a value set once is written into every image's buffer (`Structure.needsWrite(slot)`, `writeIfStale`) | one `dirty` flag was cleared after writing the *current* image's buffer, so the others kept the old value and consecutive frames alternated between old and new | none |
+| `Structure.set` / `writeToBuffer` — what fits a member | *convert what converts without loss, refuse a different shape* (`coerce`, `StructureTypeCheck.kt`): an integer into any integer member it fits (`Int` into `uint64_t` / `int64_t`, a `Long` into `int` when in range); an integer into `float` when exact (≤ 2²⁴); `Double` into `float`; a whole float into an integer; a float into `float16_t` (two bytes, packed); a half vector into a float vector and back. Vector into scalar, wrong length, matrix into vector, anything into a struct: refused | an `Int` set on a `float` member used to be written as its *bits* (`1` read as 1.4e-45), a `Float` on an `int` likewise, a `Float` on a `float16_t` wrote four bytes over the next member; the first 6a cut refused `Int` into `uint64_t` | none |
+
+Swept: every `push["…"] = <Int>` in `public/docs`, `templates`, `metadata_store` and `src/jvmMain`
+(`vertexOffset`, `indexOffset`, `vertexStride`, `useVertexColor`, `skinEnabled`, `count`, `width`,
+`height`, `step`) declares `uint` or `int`, which were already written correctly (the one `float step`,
+`OpticalFlowDemo`, is set from a `Float`). A float with
+a fraction set on an integer member, which used to be written as float bits, is now refused and
+reported. Tests: `StructurePerFrameWriteTest`, `StructureCoercionTest`.
