@@ -2144,6 +2144,9 @@ class Server {
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
 
+            // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
+            DocumentShutdownFlush.install()
+
             inMain {
                 while (true) {
                     try {
