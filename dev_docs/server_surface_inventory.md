@@ -315,7 +315,9 @@ no sandbox between a `/ws` frame and that.
 
 `agent-task` and `agent-eval` (2026-09-29) are in the same class and add one thing: in `live`
 mode they call the configured AI provider, so a frame can also spend the machine's model tokens.
-The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` are guarded loopback + same-site.
+The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
+(`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
+docs-annotation opt-ins do not loosen.
 
 | command | declared in |
 | --- | --- |

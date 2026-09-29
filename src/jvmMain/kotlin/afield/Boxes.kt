@@ -738,6 +738,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         // Release the box's K2 compilation state; a deleted box is never
                         // re-run, and otherwise its FIR/metadata leaks for the session's life.
                         target.disposeKi()
+                        // And its output history, which nothing will read again (review, 2026-09-29).
+                        BoxOutputLog.clear(target.id)
                     }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")

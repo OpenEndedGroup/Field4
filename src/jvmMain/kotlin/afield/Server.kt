@@ -4278,10 +4278,14 @@ class Server {
 
                         // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
                         // `?document=<name>` runs it in that open document; otherwise in a scratch one
-                        // that is discarded afterwards. Runs code and may spend model tokens, so it is
-                        // refused unless the caller is this machine and not a cross-site page.
+                        // that is discarded afterwards. Runs code and may spend model tokens, so it has
+                        // its own loopback + Host-allowlist + same-site guard (agentRouteAccess.kt), not
+                        // the docs-annotation policy, whose opt-ins must not open this.
                         post("/api/agent-task") {
-                            if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@post
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
                             val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
                             val response = try {
                                 val request = json.decodeFromString<afield.ai.agent.AgentTaskRequest>(call.receiveText())
@@ -4295,7 +4299,10 @@ class Server {
                         }
 
                         post("/api/agent-eval") {
-                            if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@post
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
                             val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
                             val response = try {
                                 val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })

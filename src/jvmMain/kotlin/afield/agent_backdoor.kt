@@ -1408,9 +1408,15 @@ fun installAgentBackdoorHandlers() {
     // AgentTaskResult. Runs off the socket thread: the turn blocks on the model and on box verdicts.
     handlers["agent-task"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<afield.ai.agent.AgentTaskRequest>(message.payload!!)
-        val info = thisSessionInfo.get()
+        val info: SessionInformation? = thisSessionInfo.get()
         agentBackdoorScope.launch {
-            val result = afield.ai.agent.AgentTaskRunner.run(request, info)
+            // No document on this socket: say so rather than let the coroutine die and the client time out.
+            val result = if (info == null) afield.ai.agent.AgentTaskResult(
+                taskId = request.taskId, goal = request.goal, mode = request.mode, provider = "", model = "",
+                verdict = "error", checks = emptyList(), toolCalls = emptyList(), finalText = "", rounds = 0,
+                maxToolRounds = request.maxToolRounds, hitToolRoundCap = false, elapsedMs = 0, documentName = "",
+                error = "This connection has no open document. Open one (agent-open-document) before agent-task."
+            ) else afield.ai.agent.AgentTaskRunner.run(request, info)
             reply(Message("agent-task").payload(result))
         }
         Handled.yes

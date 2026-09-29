@@ -27,8 +27,16 @@ import java.util.concurrent.atomic.AtomicLong
  * printed" without racing a box that prints forever.
  *
  * Bounds: [maxEntriesPerBox] per box (oldest dropped), [maxTextChars] per entry, [maxBoxes] boxes
- * (least-recently-written dropped). A box in a tight `println` loop therefore costs a fixed amount
- * of memory, and a reader that falls behind sees [Page.dropped] rather than silently missing lines.
+ * (least-recently-written dropped), and [maxTotalChars] across everything (oldest entries of the
+ * least-recently-written boxes dropped first). A box in a tight `println` loop therefore costs a
+ * fixed amount of memory, and a reader that falls behind sees [Page.dropped] rather than silently
+ * missing lines.
+ *
+ * A `display` replaces its channel on screen, so a new `display` entry replaces the box's previous
+ * entry for that channel here too. Without that, one animated box re-displaying 4 KB of HTML per frame
+ * filled its whole ring with frames nobody will read, and the per-box bounds alone allowed
+ * 400 × 4000 chars × 4096 boxes — gigabytes — before [maxTotalChars] existed (review, 2026-09-29).
+ * A deleted box's history is dropped by the `-delete-box` action.
  */
 object BoxOutputLog {
 
@@ -51,9 +59,12 @@ object BoxOutputLog {
     const val maxEntriesPerBox = 400
     const val maxTextChars = 4000
     const val maxBoxes = 4096
+    /** About 32 MB of UTF-16 across all boxes. */
+    const val maxTotalChars = 16_000_000L
 
     private val sequence = AtomicLong(0)
     private val lock = Any()
+    private var totalChars = 0L
     private val byBox = object : LinkedHashMap<String, ArrayDeque<Entry>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Entry>>?): Boolean =
             size > maxBoxes
@@ -76,8 +87,23 @@ object BoxOutputLog {
         synchronized(lock) {
             val entry = Entry(sequence.incrementAndGet(), uid, kind, clipped, channel, property, line, success = success)
             val deque = byBox.getOrPut(uid) { ArrayDeque() }
+            if (kind == "display") {
+                val it = deque.iterator()
+                while (it.hasNext()) {
+                    val old = it.next()
+                    if (old.kind == "display" && old.channel == channel) { totalChars -= old.text.length; it.remove() }
+                }
+            }
             deque.addLast(entry)
-            while (deque.size > maxEntriesPerBox) deque.removeFirst()
+            totalChars += clipped.length
+            while (deque.size > maxEntriesPerBox) totalChars -= deque.removeFirst().text.length
+            while (totalChars > maxTotalChars) {
+                val eldest = byBox.entries.firstOrNull() ?: break
+                val dropped = eldest.value.removeFirstOrNull()
+                if (dropped == null) { byBox.remove(eldest.key); continue }
+                totalChars -= dropped.text.length
+                if (eldest.value.isEmpty()) byBox.remove(eldest.key)
+            }
         }
     }
 
@@ -94,7 +120,13 @@ object BoxOutputLog {
     }
 
     /** Forget a box's history (tests, and a deleted box). */
-    fun clear(uid: String) = synchronized(lock) { byBox.remove(uid); Unit }
+    fun clear(uid: String) = synchronized(lock) {
+        byBox.remove(uid)?.let { removed -> totalChars -= removed.sumOf { it.text.length.toLong() } }
+        Unit
+    }
+
+    /** Characters currently held, for tests and diagnostics. */
+    fun heldChars(): Long = synchronized(lock) { totalChars }
 
     // ---- taps ---------------------------------------------------------------------------------
 

@@ -72,6 +72,19 @@ data class SetBoxPropertyRequest(
     val value: String,
 )
 
+@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; `occurrence` 1 = first, 0 = every match, and the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine = startLine - 1 inserts before startLine). Recorded like SetBoxPropertyRequest. Does not run it.")
+data class PatchBoxTextRequest(
+    val box: String,
+    val property: String = "code",
+    val find: String = "",
+    val replace: String = "",
+    val occurrence: Int = 1,
+    val allowMultiple: Boolean = false,
+    val startLine: Int = 0,
+    val endLine: Int = 0,
+    val replacement: String = "",
+)
+
 @JsonClassDescription("Read a text property of a box, most often `code`.")
 data class GetBoxPropertyRequest(val box: String, val property: String = "code")
 
@@ -206,7 +219,31 @@ object LiveFieldGraphHost : FieldGraphHost {
 class FieldGraphTools(
     val info: SessionInformation,
     private val host: FieldGraphHost = LiveFieldGraphHost,
+    /**
+     * `(uid, property)` pairs whose text this turn's *reply* will replace — the editor chat's current
+     * box and property, whose rewritten code is the reply itself. Writing those through a tool would
+     * be silently overwritten when the reply lands, so the tools refuse and say where the edit goes.
+     */
+    val replyOwned: Set<Pair<String, String>> = emptySet(),
 ) {
+    companion object {
+        /**
+         * The one way every AI4 path builds its graph tools: the editor chat passes the box and
+         * property its reply rewrites; the document chat, `chatGeneral` and `AgentTaskRunner` pass
+         * none.
+         */
+        fun forTurn(info: SessionInformation, replyOwnedBox: Box? = null, replyOwnedProperty: String = "code"): FieldGraphTools =
+            FieldGraphTools(info, replyOwned = replyOwnedBox?.let { setOf(it.id to replyOwnedProperty) }.orEmpty())
+    }
+
+    private fun refuseReplyOwned(box: Box, property: String): FieldGraphResult? =
+        if ((box.id to property) !in replyOwned) null
+        else FieldGraphResult(false,
+            "'${box.name}' $property is the text your reply rewrites in this editor turn, so an edit made here " +
+                "would be overwritten when the reply lands. Put the change in your reply instead. (Running its " +
+                "current code with RunBoxRequest, without `code`, is fine — it runs the code as it was before your reply.)",
+            uid = box.id, name = box.name, property = property)
+
     /** Uids of boxes this instance created, in order — the task runner reports them. */
     val created: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
 
@@ -284,6 +321,7 @@ class FieldGraphTools(
 
     fun setProperty(req: SetBoxPropertyRequest): FieldGraphResult = host.onOwner(info) {
         val box = resolve(req.box)
+        refuseReplyOwned(box, req.property)?.let { return@onOwner it }
         require(req.value.length <= 2_000_000) { "Value is too large." }
         check(!info.readOnly) { "This document is read-only." }
         applyAgentPropertyRecorded(box, req.property, JsonPrimitive(req.value))
@@ -291,6 +329,52 @@ class FieldGraphTools(
         doResync()
         FieldGraphResult(true, "Set ${req.property} on '${box.name}' (${req.value.length} chars). Not run.",
             uid = box.id, name = box.name, property = req.property)
+    }
+
+    fun patchText(req: PatchBoxTextRequest): FieldGraphResult = host.onOwner(info) {
+        val box = resolve(req.box)
+        refuseReplyOwned(box, req.property)?.let { return@onOwner it }
+        check(!info.readOnly) { "This document is read-only." }
+        val before = box.getPropertyRaw(req.property) as? String
+            ?: return@onOwner FieldGraphResult(false, "'${box.name}' has no text property '${req.property}'.", uid = box.id, name = box.name, property = req.property)
+        val after = when {
+            req.find.isNotEmpty() -> {
+                val count = Regex.escape(req.find).toRegex().findAll(before).count()
+                when {
+                    count == 0 -> return@onOwner FieldGraphResult(false,
+                        "`find` does not occur in ${req.property} of '${box.name}'. Read it with GetBoxPropertyRequest and match it exactly.",
+                        uid = box.id, name = box.name, property = req.property)
+                    req.occurrence == 0 -> before.replace(req.find, req.replace)
+                    req.occurrence == 1 && count > 1 && !req.allowMultiple -> return@onOwner FieldGraphResult(false,
+                        "`find` occurs $count times in ${req.property} of '${box.name}'. Add surrounding text to make it unique, " +
+                            "or pass occurrence=N (or 0 for all).", uid = box.id, name = box.name, property = req.property)
+                    req.occurrence > count -> return@onOwner FieldGraphResult(false,
+                        "occurrence ${req.occurrence} requested but `find` occurs $count times.", uid = box.id, name = box.name, property = req.property)
+                    else -> {
+                        var index = -1
+                        repeat(req.occurrence) { index = before.indexOf(req.find, index + 1) }
+                        before.substring(0, index) + req.replace + before.substring(index + req.find.length)
+                    }
+                }
+            }
+            req.startLine > 0 -> {
+                val lines = before.split("\n")
+                val start = req.startLine
+                val end = req.endLine.takeIf { it > 0 || it == start - 1 } ?: start
+                if (start > lines.size + 1 || end < start - 1 || end > lines.size) return@onOwner FieldGraphResult(false,
+                    "Line range $start..$end is outside ${req.property} of '${box.name}', which has ${lines.size} lines.",
+                    uid = box.id, name = box.name, property = req.property)
+                val replacementLines = if (req.replacement.isEmpty()) emptyList() else req.replacement.removeSuffix("\n").split("\n")
+                (lines.subList(0, start - 1) + replacementLines + lines.subList(end, lines.size)).joinToString("\n")
+            }
+            else -> return@onOwner FieldGraphResult(false, "Give either `find` (with `replace`) or `startLine` (with `endLine` and `replacement`).",
+                uid = box.id, name = box.name, property = req.property)
+        }
+        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(after))
+        needsResync.add(box to req.property)
+        doResync()
+        FieldGraphResult(true, "Patched ${req.property} on '${box.name}' (${before.length} -> ${after.length} chars). Not run.",
+            uid = box.id, name = box.name, property = req.property, value = after.takeIf { it.length <= 4000 })
     }
 
     fun getProperty(req: GetBoxPropertyRequest): FieldGraphResult = host.onOwner(info) {
@@ -332,15 +416,16 @@ class FieldGraphTools(
         // model that means "run what is there" sends `code: ""` — and before this, that *replaced*
         // the box's code with nothing and then failed with "no code" (seen in the first live demo).
         val code = rawCode?.takeIf { it.isNotBlank() }
-        val (box, source) = host.onOwner(info) {
+        val (box, source) = host.onOwner<Pair<FieldGraphResult?, Pair<Box, String>?>>(info) {
             val box = resolve(token)
+            if (code != null) refuseReplyOwned(box, "code")?.let { return@onOwner Pair(it, null) }
             if (code != null) {
                 applyAgentPropertyRecorded(box, "code", JsonPrimitive(code))
                 needsResync.add(box to "code")
                 doResync()
             }
-            box to ((box.getPropertyRaw("code") as? String).orEmpty())
-        }
+            Pair(null, box to ((box.getPropertyRaw("code") as? String).orEmpty()))
+        }.let { (refusal, resolved) -> refusal?.let { return it }; resolved!! }
         val verb = if (launch) "launch" else "run"
         if (source.isBlank()) return FieldGraphResult(false, "'${box.name}' has no code to $verb.", uid = box.id, name = box.name)
 
@@ -437,6 +522,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(DeleteBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.deleteBox(req) }
     tools.register(SetBoxPropertyRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.setProperty(req) }
     tools.register(GetBoxPropertyRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.getProperty(req) }
+    tools.register(PatchBoxTextRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.patchText(req) }
     tools.register(ConnectBoxesRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.connect(req) }
     tools.register(DisconnectBoxesRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.disconnect(req) }
     tools.register(RunBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.run(req) }
@@ -448,6 +534,6 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */
 val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
-    GetBoxPropertyRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
+    GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
     LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class
 ).map { it.java.simpleName }

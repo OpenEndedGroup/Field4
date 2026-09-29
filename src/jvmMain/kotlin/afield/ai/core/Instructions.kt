@@ -92,6 +92,8 @@ ${ctx.documentGuides.catalogueContext()}
         """.trimIndent()
     }
 
+    ctx.fieldGraph?.let { graph -> toolAds += fieldGraphToolGuidance(graph.replyOwned.isNotEmpty()) }
+
     if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         toolAds += "- ListAttachments: lists available attached context files."
         toolAds += "- AttachmentRequest: retrieve attached context by name/path (supports attached names and resolvable refs/paths; responses may suggest relatedGuides and relatedExamples)."
@@ -223,3 +225,24 @@ $guidance
 
     return "$core\n$toolsSection"
 }
+
+
+/**
+ * What the chat is told about the native box graph and execution tools. One text for every AI4 path
+ * that wires [ToolExecutionContext.fieldGraph] — the box panel, the document chat and headless
+ * `AgentTask`s — so the tools cannot be described two ways.
+ *
+ * [editorTurn] is true when this turn's reply rewrites the current box's text: the tools then refuse
+ * to write that text, and the model needs to know where such an edit belongs instead.
+ */
+fun fieldGraphToolGuidance(editorTurn: Boolean): String = buildString {
+    appendLine("- Box graph and execution (act on the live document directly; each change is recorded like a UI edit):")
+    appendLine("  - ListBoxesRequest, NewBoxRequest(name, code, parent), DeleteBoxRequest, ConnectBoxesRequest(parent, child), DisconnectBoxesRequest.")
+    appendLine("  - GetBoxPropertyRequest / SetBoxPropertyRequest (whole text) / PatchBoxTextRequest (find+replace, or a line range) for a box's `code` or other text property.")
+    appendLine("  - RunBoxRequest runs a box once and waits for ITS verdict; LaunchBoxRequest starts one that keeps running (`loop { }`, animation); StopBoxRequest stops it; ReadBoxOutputRequest reads what it printed or displayed since a marker, and can wait for text.")
+    appendLine("  - Run/Launch compile the code themselves. `success: false` carries the compiler/runtime diagnostics in `error` and `errors`: fix and run again. Never claim a box works unless a Run/Launch result said success.")
+    appendLine("  - Use these when the user asks to make, change, run or check boxes, or when running a box is the way to check an answer. Box code: the box is the implicit receiver; println(x); display(\"channel\", \"<html>\"); a parent shares a value with the boxes beneath it via `prop<Int>(level) = 3`, read in the child as `level` (plain `val`s stay local). Run the parent first.")
+    if (editorTurn) {
+        appendLine("  - THIS turn's reply rewrites the current box's text. Put edits to the current box in your reply, not in Set/PatchBoxText (they refuse it). You may RunBoxRequest the current box without `code` to see how its code behaves before your edit, and you may freely create, edit and run OTHER boxes.")
+    }
+}.trimEnd()

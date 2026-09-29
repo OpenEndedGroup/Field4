@@ -1,6 +1,7 @@
 package afield.ai.agent
 
 import afield.Box
+import afield.payload
 import afield.BoxOutputLog
 import afield.ExecutionReports
 import afield.SessionInformation
@@ -10,6 +11,7 @@ import afield.ai.core.LlmSendResult
 import afield.ai.core.ScriptedLlmBridge
 import afield.ai.core.ToolExecutionContext
 import afield.ai.core.createLlmBridge
+import afield.ai.core.createIdeBridge
 import afield.isTrue
 import afield.sourceRevision
 import kotlinx.serialization.Serializable
@@ -44,6 +46,13 @@ data class AgentTaskRequest(
     /** Appended to the harness instructions. */
     val extraInstructions: String = "",
     val taskId: String = "",
+    /**
+     * Run the task *as* this box's AI4 panel turn (uid or unique name): it goes through the real
+     * `ai-assist` handler with kind `general`, so the exchange is saved in the box's
+     * `ai4_chat_history` and shows in the normal chat UI. Live mode only. The per-call tool log is
+     * then not available here (the panel keeps it); the checks still decide the verdict.
+     */
+    val chatBox: String = "",
 )
 
 /**
@@ -129,30 +138,20 @@ data class AgentTaskResult(
     val createdBoxes: List<String> = emptyList(),
     val setupCalls: List<AgentToolCallRecord> = emptyList(),
     val error: String = "",
+    /** Set when the task ran as a box's panel turn ([AgentTaskRequest.chatBox]). */
+    val chatBox: String = "",
 )
 
-/** What the agent is told, in addition to the goal. Short on purpose: the tool descriptions carry the rest. */
-val AGENT_TASK_INSTRUCTIONS: String = """
-You are Field's own agent, working directly inside a live Field document. Field is a live-coding
-environment: a document is a graph of boxes, each holding Kotlin code that Field compiles and runs.
-
-Work only through your tools. The ones for this task:
-- ListBoxesRequest, NewBoxRequest, DeleteBoxRequest, GetBoxPropertyRequest, SetBoxPropertyRequest,
-  ConnectBoxesRequest, DisconnectBoxesRequest: read and edit the box graph.
-- RunBoxRequest runs a box once and returns its verdict; LaunchBoxRequest starts a box that keeps
-  running (loops, animation); StopBoxRequest stops it; ReadBoxOutputRequest reads what it printed.
-RunBoxRequest compiles the code itself and returns compile errors in `errors`, so you do not need
-CompileKotlinRequest first. Every Run/Launch result has `success`. When it is false, read `error` and `errors`, fix the code,
-and run again. Never claim success you have not seen in a tool result.
-
-Box code conventions:
-- The box is the implicit receiver. println(x) prints to the box's output.
-- display("channel", "<html>") shows HTML in an output area named channel.
-- A parent box shares a value with the boxes connected beneath it by writing `prop<Int>(level) = 3`;
-  a child then reads it simply as `level`. Plain `val`s are local to their box. Run the parent first.
-- A box that keeps running uses `loop { ... }`, which calls its body once per frame until stopped.
-
-When the goal is met, answer with one or two sentences saying what you did and what the tools showed.
+/**
+ * What a headless task adds to the ordinary AI4 chat instructions ([afield.ai.core.buildDynamicInstructions],
+ * which already describes the graph tools via [afield.ai.core.fieldGraphToolGuidance]). Only the
+ * facts that differ from a person typing in the chat: nobody will answer a question, and the turn is
+ * judged by checks.
+ */
+val HEADLESS_TASK_INSTRUCTIONS: String = """
+This turn was handed to you as a task, not typed by a person watching: nobody can answer questions.
+Work through your tools until the goal is met, then answer with one or two sentences saying what you
+did and what the tool results showed. The task is judged by checks on the document afterwards.
 """.trimIndent()
 
 object AgentTaskRunner {
@@ -205,12 +204,34 @@ object AgentTaskRunner {
                 }
             }
 
+            if (request.chatBox.isNotBlank()) {
+                require(request.mode == "live") { "chatBox runs through the real AI4 panel, which has no scripted mode." }
+                val marker = BoxOutputLog.mark()
+                val box = graph.resolve(request.chatBox)
+                val reply = runAsBoxChatTurn(info, box, request, budget)
+                val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
+                return AgentTaskResult(
+                    taskId = taskId, goal = request.goal, mode = request.mode, provider = "ai4-panel", model = "",
+                    verdict = when {
+                        outcomes.isEmpty() -> "unchecked"
+                        outcomes.all { it.passed } -> "pass"
+                        else -> "fail"
+                    },
+                    checks = outcomes, toolCalls = emptyList(), finalText = reply, rounds = -1, maxToolRounds = budget,
+                    hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
+                    setupCalls = setupLog, chatBox = box.id
+                )
+            }
+
             val marker = BoxOutputLog.mark()
             val b = bridgeFor(request)
             bridge = b
-            val instructions = AGENT_TASK_INSTRUCTIONS +
+            val extra = HEADLESS_TASK_INSTRUCTIONS +
                 (if (request.extraInstructions.isNotBlank()) "\n\n" + request.extraInstructions else "")
-            val thread = b.startThread("afield-task://${info.documentName}/$taskId", "", instructions)
+            // The same thread instructions and the same chat turn as the AI4 document chat: this is a
+            // headless entry into that turn, not a second harness.
+            val thread = b.startThread("afield-task://${info.documentName}/$taskId", "",
+                afield.ai.core.OpenAiIdeCodexBridge.defaultChatThreadInstructions)
             val prompt = buildString {
                 appendLine("GOAL: ${request.goal}")
                 appendLine()
@@ -219,7 +240,9 @@ object AgentTaskRunner {
                         .joinToString(", ") { it.name.ifBlank { it.id } }.ifBlank { "(none)" })
                 appendLine("You have at most $budget tool rounds.")
             }
-            val sent = b.send(thread, prompt, ctx = ctx, maxToolRounds = budget)
+            val sent = afield.ai.core.IdeChatHelpers(b).chatGeneral(
+                thread, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
+                maxToolRounds = budget, extraInstructions = extra)
 
             val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
             val verdict = when {
@@ -242,12 +265,48 @@ object AgentTaskRunner {
         }
     }
 
+    /**
+     * Hand the goal to the real `ai-assist` handler as [box]'s `general` panel turn and wait for it to
+     * finish. Returns the reply as saved in the box's chat history. The handler builds its own tool
+     * context (with the graph tools, since 2026-09-29) and bridge, exactly as for a person typing in
+     * the panel; this function only dispatches and waits.
+     */
+    private fun runAsBoxChatTurn(info: SessionInformation, box: Box, request: AgentTaskRequest, budget: Int): String {
+        val runningKey = afield.ai.core.AiBoxConversation.RUNNING_PROPERTY
+        val before = afield.ai.core.AiBoxConversation.read(box)
+        val assist = afield.AiAssist(
+            uid = box.id,
+            prompt = (box.getPropertyRaw("code") as? String).orEmpty(),
+            extraPrompt = request.goal + "\n\n" + HEADLESS_TASK_INSTRUCTIONS + "\nYou have at most $budget tool rounds.",
+            property = "code",
+            kind = "general",
+        )
+        val previous = afield.thisSessionInfo.get()
+        afield.thisSessionInfo.set(info)
+        try {
+            afield.handle(afield.Message("ai-assist").payload(assist)) { }
+        } finally {
+            if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
+        }
+        val deadline = System.currentTimeMillis() + 15 * 60_000L
+        var started = false
+        while (System.currentTimeMillis() < deadline) {
+            val running = box.getPropertyRaw(runningKey) == true
+            if (running) started = true
+            if (started && !running) break
+            if (!started && afield.ai.core.AiBoxConversation.read(box) != before && !running) break
+            Thread.sleep(200)
+        }
+        val history = afield.ai.core.AiBoxConversation.read(box)
+        return history.removePrefix(before).substringAfterLast("<<ai>>").trim().take(4000)
+    }
+
     fun defaultBridge(request: AgentTaskRequest): LlmBridge = when (request.mode) {
         "scripted" -> {
             require(request.script.isNotBlank()) { "scripted mode needs a script" }
             ScriptedLlmBridge(ScriptedLlmBridge.parse(request.script))
         }
-        "live" -> if (request.model.isNotBlank()) createLlmBridge(model = request.model) else createLlmBridge()
+        "live" -> if (request.model.isNotBlank()) createLlmBridge(model = request.model) else createIdeBridge()
         else -> throw IllegalArgumentException("mode must be 'live' or 'scripted', not '${request.mode}'")
     }
 
