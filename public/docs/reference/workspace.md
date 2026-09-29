@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-13 source file(s), 208 public symbol(s), 163 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+14 source file(s), 213 public symbol(s), 168 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -343,6 +343,28 @@ A difference between two frames, restricted to a region or its complement.
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">differenceTile</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">full</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">32.0</span><span class="p">)</span><span class="p">:</span> <span class="nc">Tile</span></code>](source/jvmMain/afield/stdlib/StudyEvidence/#L386) | A difference heat map: black where equal, through red to yellow-white at `full` levels. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">rawDifferenceTile</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">caption</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">full</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.1</span><span class="p">)</span><span class="p">:</span> <span class="nc">Tile</span></code>](source/jvmMain/afield/stdlib/StudyEvidence/#L397) | `differenceTile` for raw stack values: white where the largest component differs by `full` or more. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">format</span><span class="p">(</span><span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StudyEvidence/#L430) |  |
+
+## StudyFrames.kt { #studyframes-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/StudyFrames.kt` — [read the source](source/jvmMain/afield/stdlib/StudyFrames/)
+
+### Top-level functions { #studyframes-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">P</span><span class="p">&gt;</span> <span class="nc">StudyFrames</span><span class="p">&lt;</span><span class="nc">P</span><span class="p">&gt;</span><span class="p">.</span><span class="nf">renderAll</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">P</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CpuRaster</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StudyFrames/#L32) | `StudyFrames.render`, collected. |
+
+### StudyFrames { #studyframes-kt-studyframes }
+
+[<code class="highlight"><span class="k">interface</span> <span class="nc">StudyFrames</span><span class="p">&lt;</span><span class="k">in</span> <span class="nc">P</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StudyFrames/#L20)
+
+Where a study's frames come from: `P` — a program, a compiled scene — drawn at a size and a list of times, each frame handed back as a [`CpuRaster`](languages.md#stackslcpu-kt-cpuraster) of the program's raw output.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">description</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StudyFrames/#L22) | Which renderer produced the last frames, and why — repeated in every tool result. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">fast</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stdlib/StudyFrames/#L25) | Whether a frame is cheap right now — whether defaults can afford large sizes and many frames. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">input</span><span class="p">:</span> <span class="nc">P</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">seconds</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">each</span><span class="p">:</span> <span class="p">(</span><span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">raster</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StudyFrames/#L28) | `input` at `width` by `height`, once per time in `seconds`, handed to `each` in order. |
 
 ## StudyKeys.kt { #studykeys-kt }
 

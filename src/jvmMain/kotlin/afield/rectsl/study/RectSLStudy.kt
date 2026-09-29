@@ -1,5 +1,6 @@
 package afield.rectsl.study
 
+import afield.stdlib.renderAll
 import afield.stdlib.StudyEvidence
 import afield.stdlib.StudyDifference
 import afield.KotlinInterface2

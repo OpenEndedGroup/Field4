@@ -1,5 +1,7 @@
 package afield.rectsl.study
 
+import afield.stdlib.renderAll
+import afield.stdlib.StudyFrames
 import afield.Runloop
 import afield.four.Renderer
 import afield.four.modules.Mesh
@@ -192,25 +194,9 @@ class RectSLDrawable(
 /**
  * Where a RectSL study's frames come from: the GPU when a window is running ([RectSLGpuRasterizer]),
  * the CPU reference when it is not ([CpuRectSLRasterizer]). Both return linear colour, rows top to
- * bottom, the wall filling the frame.
+ * bottom, the wall filling the frame. A [StudyFrames] of a compiled scene.
  */
-interface RectSLRasterizer {
-    /** Which renderer produced the last frames, and why — repeated in every tool result. */
-    val description: String
-
-    /** Whether a frame is cheap right now. */
-    val fast: Boolean
-
-    /** [drawable] at [width] by [height], once per time in [seconds], handed to [each] in order. */
-    fun render(drawable: RectSLDrawable, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit)
-}
-
-/** [RectSLRasterizer.render], collected. */
-fun RectSLRasterizer.renderAll(drawable: RectSLDrawable, width: Int, height: Int, seconds: List<Double>): List<CpuRaster> {
-    val out = arrayOfNulls<CpuRaster>(seconds.size)
-    render(drawable, width, height, seconds) { i, raster -> out[i] = raster }
-    return out.map { requireNotNull(it) }
-}
+typealias RectSLRasterizer = StudyFrames<RectSLDrawable>
 
 /**
  * The CPU reference: the lowered mesh rasterized quad by quad at pixel centres, blended as the GPU
@@ -237,7 +223,8 @@ void main() {
 }
 """
 
-    override fun render(drawable: RectSLDrawable, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) {
+    override fun render(input: RectSLDrawable, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) {
+        val drawable = input
         val shaders = drawable.materials.filter { it.ok }.associate { m ->
             m.module.materialId to runCatching { parseGlslShader(StackSLCpu.expandStackAuto(MATERIAL_TEMPLATE, m.module.source)) }.getOrNull()
         }
@@ -378,7 +365,8 @@ class RectSLGpuRasterizer(
         private const val MAX_TARGETS = 4
     }
 
-    override fun render(drawable: RectSLDrawable, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) {
+    override fun render(input: RectSLDrawable, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) {
+        val drawable = input
         val renderer = rendererOf()
         val reason = when {
             renderer == null -> "no renderer: launch the window box"

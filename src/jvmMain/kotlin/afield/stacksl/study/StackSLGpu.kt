@@ -1,5 +1,7 @@
 package afield.stacksl.study
 
+import afield.stdlib.renderAll
+import afield.stdlib.StudyFrames
 import afield.Box
 import afield.Runloop
 import afield.four.Renderer
@@ -26,27 +28,24 @@ import java.util.concurrent.TimeUnit
  *
  * Everything a study measures and lays out works on [CpuRaster]s of the program's raw output, so the
  * renderer underneath is a choice: the GPU when a window is running ([StackSLGpuRasterizer]), the CPU
- * reference when it is not ([CpuStackSLRasterizer]). Rows run top to bottom in both, with `uv.y`
+ * reference when it is not ([CpuStackSLRasterizer]) — a [StudyFrames] of a program's text, square.
+ * Rows run top to bottom in both, with `uv.y`
  * upwards — `StackSLCpu.FRAG_UV_ORIGIN_IS_TOP_LEFT` has the story of why that is the same thing on
  * both sides.
  */
-interface StackSLRasterizer {
-    /** Which renderer produced the last frames, and why — repeated in every tool result. */
-    val description: String
-
-    /** Whether a frame is cheap right now — whether defaults can afford large sizes and many frames. */
-    val fast: Boolean
-
+interface StackSLRasterizer : StudyFrames<String> {
     /** [program]'s raw output at [size] square, once per time in [seconds], handed to [each] in order. */
     fun render(program: String, size: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit)
+
+    /** A StackSL study frame is square: [width] must equal [height]. */
+    override fun render(input: String, width: Int, height: Int, seconds: List<Double>, each: (index: Int, raster: CpuRaster) -> Unit) {
+        require(width == height) { "A StackSL study frame is square; asked for $width x $height" }
+        render(input, width, seconds, each)
+    }
 }
 
 /** [StackSLRasterizer.render], collected. */
-fun StackSLRasterizer.renderAll(program: String, size: Int, seconds: List<Double>): List<CpuRaster> {
-    val out = arrayOfNulls<CpuRaster>(seconds.size)
-    render(program, size, seconds) { i, raster -> out[i] = raster }
-    return out.map { requireNotNull(it) }
-}
+fun StackSLRasterizer.renderAll(program: String, size: Int, seconds: List<Double>): List<CpuRaster> = renderAll(program, size, size, seconds)
 
 /** The CPU reference: the same GLSL interpreted pixel by pixel. Exact and everywhere, and slow. */
 object CpuStackSLRasterizer : StackSLRasterizer {

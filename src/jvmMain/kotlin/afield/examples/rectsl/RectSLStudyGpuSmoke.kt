@@ -4,7 +4,7 @@ import afield.stdlib.StudyEvidence
 import afield.rectsl.study.CpuRectSLRasterizer
 import afield.rectsl.study.RectSLRasterizer
 import afield.rectsl.study.RectSLStudy
-import afield.rectsl.study.renderAll
+import afield.stdlib.renderAll
 import afield.stacksl.cpu.CpuRaster
 import afield.stacksl.study.StackSLStudyShader
 import java.awt.image.BufferedImage

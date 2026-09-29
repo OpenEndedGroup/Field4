@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15656 public symbols across 424 source files**, 9293 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15656 public symbols across 425 source files**, 9293 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -26,8 +26,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 102 | 2792 | 1235 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 13 | 208 | 163 (78%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 102 | 2787 | 1230 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 14 | 213 | 168 (78%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -367,7 +367,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [RectSLSoftRaster.kt](languages.md#rectslsoftraster-kt) | Languages | 61 | 61 | The third lowering: a RectSL scene as a **differentiable raster**, so a picture can be fitted. | [A RectSL animation, as a solid object](../chain_rectsl_spacetime.md) |
 | [RectSLSource.kt](languages.md#rectslsource-kt) | Languages | 27 | 15 | RectSL read as *source*: what the editor and the study tools need that a plain compile does not give — where things are. |  |
 | [RectSLStudy.kt](languages.md#rectslstudy-kt) | Languages | 50 | 39 |  |  |
-| [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 29 | 20 |  |  |
+| [RectSLStudyRender.kt](languages.md#rectslstudyrender-kt) | Languages | 25 | 16 |  |  |
 | [RectSLStudyTools.kt](languages.md#rectslstudytools-kt) | Languages | 41 | 7 |  | [Talking a scene into existence](../rectsl_conversation.md) |
 | [RectSLStudyViewer.kt](languages.md#rectslstudyviewer-kt) | Languages | 9 | 6 |  |  |
 | [RectSLVocabulary.kt](languages.md#rectslvocabulary-kt) | Languages | 3 | 3 |  |  |
@@ -417,7 +417,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |
 | [StackSLFit.kt](languages.md#stackslfit-kt) | Languages | 27 | 24 | Gradient descent on a StackSL program's own literals: fit a shader to a picture, then write the fitted numbers back into the program. |  |
-| [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 13 | 7 |  |  |
+| [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 12 | 6 |  |  |
 | [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 39 | 31 |  |  |
 | [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 46 | 38 |  |  |
 | [StackSLStudyShader.kt](languages.md#stackslstudyshader-kt) | Languages | 40 | 39 |  |  |
@@ -432,6 +432,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 37 | 24 |  |  |
+| [StudyFrames.kt](workspace.md#studyframes-kt) | Workspace | 5 | 5 |  |  |
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |
 | [StudyReport.kt](workspace.md#studyreport-kt) | Workspace | 3 | 1 |  |  |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
