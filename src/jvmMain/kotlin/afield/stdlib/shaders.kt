@@ -475,14 +475,20 @@ private fun parseStackAutoShaderTarget(raw: String): StackAutoShaderTarget {
 data class StackAutoReport(
     /** The slot this is about — the `foo` of `{{ stack.auto.foo }}`. */
     val name: String,
-    /** False when the program has an ERROR diagnostic; the caller has already been told separately. */
+    /** False when the program has an ERROR diagnostic, which is then in [errors]. */
     val compiled: Boolean,
     /** Almost certainly bugs. A definition whose net stack effect is not "consume one, leave one". */
     val problems: List<String> = emptyList(),
     /** The compiler's own non-ERROR diagnostics: warnings and notes from a compile that succeeded. */
     val warnings: List<String> = emptyList(),
     /** Worth seeing, not worth failing on — chiefly how much computed work nothing consumes. */
-    val notes: List<String> = emptyList()
+    val notes: List<String> = emptyList(),
+    /**
+     * Why it did not compile: the compiler's ERROR diagnostics, empty when [compiled]. Until 2026-09-29
+     * a failed report carried none of them — [warnings] leaves errors out — so a slot study refusing a
+     * candidate said "does not compile into stack.auto.foo:" and then nothing.
+     */
+    val errors: List<String> = emptyList()
 ) : ToHTML {
 
     /** Nothing to say: it compiled, no warnings, every definition balanced, nothing pruned. */
@@ -490,7 +496,7 @@ data class StackAutoReport(
 
     /** Every line, most serious first, for a log or a one-shot println. */
     val lines: List<String>
-        get() = problems.map { "problem: $it" } + warnings + notes.map { "note: $it" }
+        get() = errors.map { "error: $it" } + problems.map { "problem: $it" } + warnings + notes.map { "note: $it" }
 
     /**
      * The report as a small monospaced card: one coloured line per problem, warning and note, and a
@@ -502,6 +508,7 @@ data class StackAutoReport(
         append(escapeHtmlText(name))
         append(if (compiled) "</div>" else " &mdash; did not compile</div>")
         for ((label, colour, items) in listOf(
+            Triple("error", "#e0553a", errors),
             Triple("problem", "#e0553a", problems),
             Triple("warning", "#d9a13a", warnings),
             Triple("note", "#7f8c9b", notes)
@@ -612,7 +619,11 @@ internal fun stackAutoReportFor(name: String, result: StackSLCompileResult): Sta
         warnings = result.diagnostics
             .filter { it.severity != StackSLSeverity.ERROR }
             .map { it.toString() },
-        notes = notes
+        notes = notes,
+        errors = if (result.ok) emptyList() else result.diagnostics
+            .filter { it.severity == StackSLSeverity.ERROR }
+            .map { it.toString() }
+            .ifEmpty { listOf("the StackSL compiler refused it without a diagnostic") }
     )
 }
 

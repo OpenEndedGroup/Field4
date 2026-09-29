@@ -93,6 +93,9 @@ class StackAutoStudyTest {
         val r = s.revisions.revision()
         val refused = assertFailsWith<StudyRejection> { s.edit(r.id, SourceStudy.hash(r.source), "uv 4.0 * nosuchword", "broken") }
         assertTrue("does not compile into stack.auto.program" in refused.message!!, refused.message)
+        // The refusal says why: until 2026-09-29 its body was empty, because the report kept no errors.
+        val body = refused.message!!.substringAfter("stack.auto.program:").trim()
+        assertTrue(body.startsWith("error:") && "nosuchword" in body, refused.message)
         assertEquals(r.id, s.revisions.currentId())
     }
 }
