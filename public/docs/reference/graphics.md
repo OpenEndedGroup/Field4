@@ -4,9 +4,30 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-32 source file(s), 1474 public symbol(s), 1239 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+33 source file(s), 1478 public symbol(s), 1243 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
+
+## ShaderTransitionNotes.kt { #shadertransitionnotes-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/ShaderTransitionNotes.kt` — [read the source](source/jvmMain/afield/stdlib/ShaderTransitionNotes/)
+
+### Top-level functions { #shadertransitionnotes-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">markShaderReferenceLines</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">names</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/ShaderTransitionNotes/#L93) | Put an error marker on each line of `box`'s `code` that uses one of `names` — keyed by the shader name, valued by why it no longer means what it did — with a suggestion to re-run. At most a dozen lines per name, so a common member name cannot paint the whole box. Returns how many were marked. |
+
+### ShaderTransitionNotes { #shadertransitionnotes-kt-shadertransitionnotes }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">ShaderTransitionNotes</span></code>](source/jvmMain/afield/stdlib/ShaderTransitionNotes/#L25)
+
+What the last full shader reload of a box did to its interface, said where the person editing it is looking.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/ShaderTransitionNotes/#L34) | The summary the last reload of `box` recorded against `property`, or null. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">record</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">,</span> <span class="n">properties</span><span class="p">:</span> <span class="nc">Collection</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">transition</span><span class="p">:</span> <span class="nc">ShaderInterfaceTransition</span><span class="o">?</span><span class="p">,</span> <span class="n">carryNotes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyList</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/ShaderTransitionNotes/#L42) | Record `transition` as what the reload just did to `box`'s shader `properties` (the properties the person edits — `fragment`, or `fragment_s`, or the shared `vertex_fragment`), log its summary, and mark the lines of `code` that use a name it made stale. `carryNotes` are the values the reload could not carry. Returns the summary, `""` when nothing changed. |
 
 ## StandardDrawing.kt { #standarddrawing-kt }
 

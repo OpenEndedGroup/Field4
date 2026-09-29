@@ -21,6 +21,10 @@ import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
 class MeshModulePointer(var current: MeshModule) : Renderable {
+    /** What the last successful [reload] did to the interface and which values it could not carry. */
+    var lastReloadReport: ModuleReloadReport? = null
+        internal set
+
     fun prepareSampledImagesFor(command: CommandBuffer) {
         if (current.valid && current.enabled) {
             prepareSampledImagesForUniforms(current.uniforms.values, command)
@@ -39,6 +43,17 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
     ): Boolean {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
+
+        val nt = p.taskIntrospection
+        val nm = p.meshIntrospection
+        val nf = p.fragmentIntrospection
+        val before = if (nt != null && nm != null && nf != null) runCatching {
+            shaderInterfaceTransition(current.stages(), listOf("task" to nt, "mesh" to nm, "fragment" to nf))
+        }.getOrNull() else null
+
+        p.uboResolver = reloadWrap(p.uboResolver) { oUboResolver, it ->
+            ReloadCarryOver.ubo(current.uniforms, before, it, oUboResolver)
+        }
 
         p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
             val prev = current.uniforms[it.name]
@@ -65,6 +80,11 @@ class MeshModulePointer(var current: MeshModule) : Renderable {
             val previous = current
             m.copyMeshesFrom(previous)
             m.enabled = previous.enabled
+            val transition = before ?: runCatching { shaderInterfaceTransition(previous.stages(), m.stages()) }.getOrNull()
+            lastReloadReport = ModuleReloadReport(
+                transition,
+                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+            )
             ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.
@@ -143,6 +163,9 @@ class MeshModule(val parameters: Parameters) : Renderable {
             includeResolver = parameters.fragmentIncludeResolver
         )
 
+    /** The module's stages, named, for [shaderInterfaceTransition]. */
+    internal fun stages(): List<Pair<String, Introspection>> = listOf("task" to ti, "mesh" to mi, "fragment" to fi)
+
     val pushConstantSize = (ti.pushConstants + mi.pushConstants + fi.pushConstants).maxOfOrNull { it.size } ?: 0
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
@@ -195,13 +218,13 @@ class MeshModule(val parameters: Parameters) : Renderable {
             uniforms = mutableMapOf()
             liveUniformStructures = mutableMapOf()
 
-            ti.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            mi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ti.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            mi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
 
-            ti.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            mi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ti.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            mi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
             ModuleRebuild.created(liveUniformStructures)
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
@@ -321,22 +344,22 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     found = true
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
-                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 mi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
-                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 fi.ubos.forEach { if (it.set == set) {
                     found = true
                     val sz = it.size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
-                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.toBuffer(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
                 } }
                 if (!found) return@forEach
             }
@@ -349,24 +372,24 @@ class MeshModule(val parameters: Parameters) : Renderable {
                     var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
-                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 mi.ssbo.forEach { if (it.set == set) {
                     found = true
                     var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
-                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 fi.ssbo.forEach { if (it.set == set) {
                     found = true
                     var sz = it.size.toLong()
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
-                    val buf = parameters.ssboResolver(bp) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Module.Uniform(it.name, it, source = bp, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver) ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
+                    uniforms[it.name] = Module.Uniform(it.name, it, source = buf, buf.buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
                 } }
                 if (!found) return@forEach
             }

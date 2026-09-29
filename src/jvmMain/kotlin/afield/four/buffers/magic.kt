@@ -72,6 +72,13 @@ class BufferParameters(
     var postAdaptation = mutableListOf<(VulkanBuffer) -> Unit>();
     var result: FrameBufferGroup? = null
 
+    /**
+     * Set by a module that built this request, found no one else supplying it, and so allocated it
+     * itself: the buffer is the module's to carry across a full reload, zero, or retire. A buffer found
+     * by name in the context, or handed back by a custom resolver, is not. See `ReloadCarryOver`.
+     */
+    internal var allocatedByModule = false
+
     fun storage() {
         usage = usage or VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
     }

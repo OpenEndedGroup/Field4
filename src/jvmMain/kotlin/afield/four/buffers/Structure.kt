@@ -6,6 +6,9 @@ import afield.stdlib.linalg.Vector4f
 import afield.four.device.CommandBuffer
 import afield.four.modules.Introspected
 import afield.four.modules.layoutSizeInBytes
+import afield.four.modules.memberTypeKey
+import afield.four.modules.memberTypeName
+import afield.logger.lprintln
 import afield.four.util.Vec2h
 import afield.four.util.Vec3h
 import afield.four.util.Vec4h
@@ -162,15 +165,88 @@ open class Structure(
         return this
     }
 
+    /**
+     * Set [property] to [value], held until the next write to the buffer.
+     *
+     * Once this structure has a layout, [property] must be one of its members and [value] must fit the
+     * member's reflected type ([refusalFor]); otherwise nothing is stored, and the executing box is
+     * warned on the lines of its code that name [property]. Both used to be stored anyway — an unknown
+     * member with a stdout `println`, a mistyped one with nothing at all — and the mistyped one was then
+     * written by its Kotlin type over whatever came next in the block. A structure with no layout yet
+     * (a mesh's push constants before its module is known) stores what it is given, as before.
+     */
     operator fun set(property: String, value: Any) {
-        markDirty()
         val key = storageKey(property)
-        (value as? NeedsStartingValue<*>)?.startAt(bindings[key] ?: values[key])
-        if (!offsets.containsKey(property)) {
-            println("Warning: property $property does not exist in structure $offsets")
+        if (members.isNotEmpty()) {
+            val member = members.firstOrNull { it.name == property }
+            val refusal = if (member == null)
+                "`$property` is not in this block — the shader declares ${members.joinToString { "`${it.name}`" }.ifEmpty { "nothing" }}"
+            else member.refusalFor(value)
+            if (refusal != null) {
+                refuseSet(property, "$refusal; the value was not stored")
+                return
+            }
         }
+        markDirty()
+        (value as? NeedsStartingValue<*>)?.startAt(bindings[key] ?: values[key])
         values[key] = value
         bindings.remove(key)
+    }
+
+    /**
+     * Where a write this structure refuses is reported (see [refusalFor]). A module points its uniform
+     * structures at its error handler, which puts the message on the box; unset, it goes to the log.
+     */
+    var reportTo: ((String) -> Unit)? = null
+
+    // One report per distinct refusal: a value set every frame would otherwise report every frame.
+    private val reported: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
+
+    private fun refuseSet(property: String, message: String) {
+        val box = afield.RunScope.executingBox()
+        if (!rootStructure().reported.add("set:${box?.id}:$message")) return
+        lprintln("warning,graphics", message)
+        if (box != null) afield.stdlib.markShaderReferenceLines(box, mapOf(property to message))
+    }
+
+    private fun refuseWrite(key: String, why: String) {
+        val root = rootStructure()
+        if (!root.reported.add("write:$key:$why")) return
+        val message = "Not writing `$key` to the shader: $why. The value was set for a different interface; " +
+            "set one of the type the shader now declares."
+        root.reportTo?.let { runCatching { it(message) } } ?: lprintln("warning,graphics", message)
+    }
+
+    /**
+     * Take over [old]'s values and bindings wherever they still fit this structure's layout — the
+     * value-carrying half of a full shader reload. A plain value is kept when its member still exists and
+     * the value fits the member's new type; a binding (a lambda, whose result cannot be judged without
+     * running it) when its member exists with the same type as before. Returns one line per thing
+     * dropped, naming it as `[blockName].member`.
+     */
+    internal fun carryValuesFrom(old: Structure, blockName: String): List<String> {
+        val dropped = mutableListOf<String>()
+        for ((key, value) in old.values.toMap()) {
+            val member = memberAtPath(members, key)
+            val why = if (member == null) "no longer in the shader" else member.refusalFor(value)
+            if (why == null) values[key] = value else dropped += "`$blockName.$key` dropped: $why"
+        }
+        for ((key, binding) in old.bindings.toMap()) {
+            val member = memberAtPath(members, key)
+            val was = memberAtPath(old.members, key)
+            when {
+                member == null -> dropped += "`$blockName.$key` (bound) dropped: no longer in the shader"
+                was != null && memberTypeKey(member) != memberTypeKey(was) ->
+                    dropped += "`$blockName.$key` (bound) dropped: now ${memberTypeName(member)}, was ${memberTypeName(was)}"
+                else -> bindings[key] = binding
+            }
+        }
+        if (old.allBinding != null) {
+            if (old.members == members) allBinding = old.allBinding
+            else dropped += "`$blockName` whole-block binding dropped: the layout changed"
+        }
+        if (values.isNotEmpty() || bindings.isNotEmpty() || allBinding != null) markDirty()
+        return dropped
     }
 
     fun bind(property: String, value: Function0<*>) {
@@ -328,7 +404,7 @@ open class Structure(
     }
 
 
-    fun writeToBuffer(f: ByteBuffer, cmd : CommandBuffer, autowireReferences: (String) -> () -> HasBuffer) {
+    fun writeToBuffer(f: ByteBuffer, cmd : CommandBuffer?, autowireReferences: (String) -> () -> HasBuffer) {
         nullPointerChecks = pointers.filter { it.value }.toMutableMap()
         var keepDirty = false
         allBinding?.let {
@@ -352,7 +428,7 @@ open class Structure(
         baseOffset: Int,
         prefix: String,
         f: ByteBuffer,
-        cmd: CommandBuffer
+        cmd: CommandBuffer?
     ): Boolean {
         var keepDirty = false
         members.forEach { member ->
@@ -363,7 +439,9 @@ open class Structure(
                     if (raw is ProgressingUniform && !raw.isComplete) keepDirty = true
                     raw.evaluateUniform()
                 } else raw
-                if (resolved != null) writeToBuffer(baseOffset + member.offset, resolved, f, cmd, name = key)
+                val refusal = resolved?.let { member.refusalFor(it) }
+                if (refusal != null) refuseWrite(key, refusal)
+                else if (resolved != null) writeToBuffer(baseOffset + member.offset, resolved, f, cmd, name = key)
             } else if (!member.physicalPointer) {
                 member.type.fold(
                     {},
@@ -376,7 +454,7 @@ open class Structure(
         return keepDirty
     }
 
-    internal fun writeToBuffer(offset: Int, v: Any, f: ByteBuffer, cmd : CommandBuffer, name: String = "unnamed") {
+    internal fun writeToBuffer(offset: Int, v: Any, f: ByteBuffer, cmd : CommandBuffer?, name: String = "unnamed") {
         when (v) {
             is Float -> f.putFloat(offset, v)
             is Int -> f.putInt(offset, v)
@@ -420,7 +498,7 @@ open class Structure(
             is HasUniform<*> -> writeToBuffer(offset, v.evaluateUniform()!!, f, cmd, name)
 
             is HasBuffer -> {
-                val address = v.getGPUAddress(cmd)
+                val address = v.getGPUAddress(cmd ?: throw IllegalStateException("writing buffer reference `$name` needs a command buffer"))
                 if (address <= 0) {
                     throw IllegalArgumentException(" buffer for member ${name} does not have a gpu address. Make sure you call .addressable() on it's buffer parameters")
                 }

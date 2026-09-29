@@ -23,6 +23,10 @@ import org.lwjgl.vulkan.VK13.*
 import java.nio.ByteBuffer
 
 class ComputeModulePointer(var current: ComputeModule) : Renderable {
+    /** What the last successful [reload] did to the interface and which values it could not carry. */
+    var lastReloadReport: ModuleReloadReport? = null
+        internal set
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid) current.render(command, bounds)
         else {
@@ -34,6 +38,15 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
         if (current.valid && p == current.parameters) return false
 
         p.errorHandler = onError
+
+        val nc = p.computeIntrospection
+        val before = if (nc != null) runCatching {
+            shaderInterfaceTransition(listOf("compute" to current.ci), listOf("compute" to nc))
+        }.getOrNull() else null
+
+        p.uboResolver = reloadWrap(p.uboResolver) { oUboResolver, it ->
+            ReloadCarryOver.ubo(current.uniforms, before, it, oUboResolver)
+        }
 
         p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
             val prev = current.uniforms[it.name]
@@ -60,6 +73,13 @@ class ComputeModulePointer(var current: ComputeModule) : Renderable {
             val previous = current
             m.copyMeshesFrom(previous)
             m.enabled = previous.enabled
+            val transition = before ?: runCatching {
+                shaderInterfaceTransition(listOf("compute" to previous.ci), listOf("compute" to m.ci))
+            }.getOrNull()
+            lastReloadReport = ModuleReloadReport(
+                transition,
+                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+            )
             ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.
@@ -169,8 +189,8 @@ class ComputeModule(val parameters: Parameters) : Renderable {
             uniforms = mutableMapOf()
             liveUniformStructures = mutableMapOf()
 
-            ci.ubos.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            ci.ssbo.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            ci.ubos.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            ci.ssbo.forEach  { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
             ModuleRebuild.created(liveUniformStructures)
 
             val layoutMap = mutableMapOf<Int, SimpleDescriptorSetLayout>()
@@ -241,9 +261,9 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                 tag.forEach {
                     var sz = (it as Introspected.UBO).size.toLong()
                     val bp = buffer(it, it.name) { size = sz; source = it; uniform(); hosted() }
-                    val buf = parameters.uboResolver(bp)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver)
                         ?: throw IllegalArgumentException("can't link UBO ${it.name}")
-                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
+                    uniforms[it.name] = Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), kind)
                 }
             }
 
@@ -259,9 +279,9 @@ class ComputeModule(val parameters: Parameters) : Renderable {
                     if (sz == 0L) sz = parameters.ssboSizer(it)?.toLong() ?: 0L
 
                     val bp = buffer(it, it.name) { size = sz; source = it; storage(); hosted() }
-                    val buf = parameters.ssboResolver(bp)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver)
                         ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
-                    uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
+                    uniforms[it.name] = Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), kind)
                 }
             }
 

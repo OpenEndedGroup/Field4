@@ -138,6 +138,10 @@ data class RayTracingGroups(
 }
 
 class RayTracingModulePointer(var current: RayTracingModule) : Renderable {
+    /** What the last successful [reload] did to the interface and which values it could not carry. */
+    var lastReloadReport: ModuleReloadReport? = null
+        internal set
+
     override fun render(command: CommandBuffer, bounds: Rectanglef) {
         if (current.valid && current.enabled) current.render(command, bounds)
     }
@@ -170,6 +174,11 @@ class RayTracingModulePointer(var current: RayTracingModule) : Renderable {
             val previous = current
             m.copyTasksFrom(previous)
             m.enabled = previous.enabled
+            val transition = runCatching { shaderInterfaceTransition(previous.stages(), m.stages()) }.getOrNull()
+            lastReloadReport = ModuleReloadReport(
+                transition,
+                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+            )
             current = m
             // Retired through the renderer's deferred queue, as in ModulePointer.reload.
             previous.cleanup()
@@ -221,6 +230,15 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
 
     val groups: RayTracingGroups = parameters.rayTracingGroups ?: RayTracingGroups.fromParameters(parameters)
     val stageRecords = mutableListOf<StageRecord>()
+
+    /** The module's stages, named (`raygen`, `miss#2`, ...), for [shaderInterfaceTransition]. */
+    internal fun stages(): List<Pair<String, Introspection>> {
+        val seen = mutableMapOf<String, Int>()
+        return stageRecords.map { r ->
+            val n = seen.merge(r.stage.name, 1, Int::plus)!!
+            (if (n == 1) r.stage.name else "${r.stage.name}#$n") to r.introspection
+        }
+    }
 
     var uniforms: MutableMap<String, UpdatesDescriptorSet> = mutableMapOf()
     var liveUniformStructures: MutableMap<String, Structure> = mutableMapOf()
@@ -303,8 +321,8 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
             i.textures.forEach { note(it, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, record.stageFlag, maxOf(1, it.arrayCount)) }
             i.images.forEach { note(it, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, record.stageFlag) }
             i.accelerationStructures.forEach { note(it, VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR, record.stageFlag) }
-            i.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            i.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            i.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            i.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
         }
 
         val layoutMap = mutableMapOf<Int, DescriptorSetLayout.SimpleDescriptorSetLayout>()
@@ -331,8 +349,8 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
                 uniform()
                 hosted()
             }
-            val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${ubo.name}")
-            uniforms[ubo.name] = Module.Uniform(ubo.name, ubo, source = bp, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${ubo.name}")
+            uniforms[ubo.name] = Module.Uniform(ubo.name, ubo, source = buf, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         }
 
         stageRecords.flatMap { it.introspection.ssbo }.forEach { ssbo ->
@@ -344,9 +362,9 @@ class RayTracingModule(val parameters: Parameters) : Renderable {
                 storage()
                 hosted()
             }
-            val buf = parameters.ssboResolver(bp)
+            val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver)
                 ?: throw IllegalArgumentException("can't link SSBO buffer ${ssbo.name}, resolver returned null")
-            uniforms[ssbo.name] = Module.Uniform(ssbo.name, ssbo, source = bp, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+            uniforms[ssbo.name] = Module.Uniform(ssbo.name, ssbo, source = buf, buf.toBuffer(parameters.renderer), VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
         }
 
         stageRecords.flatMap { it.introspection.textures }.forEach { texture ->

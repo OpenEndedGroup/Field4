@@ -263,6 +263,10 @@ internal fun prepareSampledImagesForUniforms(
 }
 
 class ModulePointer(var current: Module) : Renderable {
+    /** What the last successful [reload] did to the interface and which values it could not carry. */
+    var lastReloadReport: ModuleReloadReport? = null
+        internal set
+
     fun prepareSampledImagesFor(command: CommandBuffer) {
         if (current.valid && current.enabled) {
             prepareSampledImagesForUniforms(current.uniforms.values, command)
@@ -282,9 +286,16 @@ class ModulePointer(var current: Module) : Renderable {
         if (current.valid && p == current.parameters && !forceReresolve) return false
         p.errorHandler = onError
 
+        // Known before the build when the caller introspected (every box reload does), so a renamed block
+        // can keep its buffer; otherwise worked out from the built module below.
+        val nv = p.vertexIntrospection
+        val nf = p.fragmentIntrospection
+        val before = if (nv != null && nf != null) runCatching {
+            graphicsShaderInterfaceTransition(current.vi, current.fi, nv, nf)
+        }.getOrNull() else null
+
         p.uboResolver = reloadWrap(p.uboResolver) { oUboResolver, it ->
-            val already = current.uniforms[it.name]
-            if (already is Module.Uniform) already.source!! else oUboResolver(it)
+            ReloadCarryOver.ubo(current.uniforms, before, it, oUboResolver)
         }
 
         p.ssboResolver = reloadWrap(p.ssboResolver) { oSsboResolver, it ->
@@ -326,6 +337,11 @@ class ModulePointer(var current: Module) : Renderable {
             val previous = current
             m.copyMeshesFrom(previous)
             m.enabled = previous.enabled
+            val transition = before ?: runCatching { graphicsShaderInterfaceTransition(previous.vi, previous.fi, m.vi, m.fi) }.getOrNull()
+            lastReloadReport = ModuleReloadReport(
+                transition,
+                ReloadCarryOver.finish(transition, previous.uniforms.values, m.uniforms, previous.liveUniformStructures, m.liveUniformStructures)
+            )
             ModuleRebuild.rebuilt(this, previous.liveUniformStructures, m.liveUniformStructures)
             current = m
             // Retire the module this one replaced now rather than when the GC finds it. cleanup() stops it
@@ -590,10 +606,10 @@ class Module(val parameters: Parameters) : Renderable {
             uniforms = mutableMapOf()
             liveUniformStructures = mutableMapOf()
 
-            vi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            vi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
-            fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members) }
+            vi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            fi.ubos.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            vi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
+            fi.ssbo.forEach { liveUniformStructures[it.name] = Structure().setMembers(it.members).reportingTo(parameters) }
             ModuleRebuild.created(liveUniformStructures)
 
             val layouts = mutableMapOf<Int, SimpleDescriptorSetLayout>()
@@ -702,9 +718,9 @@ class Module(val parameters: Parameters) : Renderable {
                     val bp = buffer(it, it.name) {
                         size = sz; source = it; uniform(); hosted()
                     }
-                    val buf = parameters.uboResolver(bp) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
+                    val buf = ReloadCarryOver.resolve(bp, parameters.uboResolver) ?: throw IllegalArgumentException("can't link UBO ${it.name}")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("UBO ${it.name}, no longer resolves")
                     }
@@ -733,10 +749,10 @@ class Module(val parameters: Parameters) : Renderable {
                     val bp = buffer(it, it.name) {
                         size = sz; source = it; storage(); hosted()
                     }
-                    val buf = parameters.ssboResolver(bp)
+                    val buf = ReloadCarryOver.resolve(bp, parameters.ssboResolver)
                         ?: throw IllegalArgumentException("can't link SSBO buffer ${it.name}, resolver returned null")
                     try {
-                        uniforms[it.name] = Uniform(it.name, it, source = bp, buf.toBuffer(parameters.renderer), kind)
+                        uniforms[it.name] = Uniform(it.name, it, source = buf, buf.toBuffer(parameters.renderer), kind)
                     } catch (_: NullPointerException) {
                         throw IllegalArgumentException("buffer ${it.name} resolved to null")
                     }
