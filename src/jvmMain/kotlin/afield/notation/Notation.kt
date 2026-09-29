@@ -80,8 +80,12 @@ class Mark internal constructor(
         ?.mapNotNull { (it as? JsonObject)?.takeIf { e -> e.string("type") == "text" }?.string("id") }
         ?.firstNotNullOfOrNull { view[it] }
 
-    /** A name given from code (`name =`), else the mark's own text, else the text bound to it. */
-    val label: String? get() = name ?: text ?: boundText?.text
+    /**
+     * A name given from code (`name =`), else the mark's own text, else the text bound to it, else
+     * — for a frame — the title Excalidraw keeps in the frame's own `name` field, which is where a
+     * frame named by hand has its name.
+     */
+    val label: String? get() = name ?: text ?: boundText?.text ?: (if (kind == MarkType.FRAME) json.string("name") else null)
 
     /** The name given from code with `name =`, or through [Notation.edit]. */
     val name: String? get() = json.custom("fieldName")?.stringOrNull()

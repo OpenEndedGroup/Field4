@@ -478,7 +478,13 @@ object PatSoundDocs {
      * smoothing from time resolution. The rise test compares a window against the one a full
      * window-length earlier (never an overlapping neighbour), the level test is relative to the
      * loudest window in the file so a note at `gain 0.08` still registers, and the detector only
-     * re-arms once the level falls below [releaseFraction] of the last onset's peak.
+     * re-arms once the level falls below [releaseFraction] of the level of the window that
+     * triggered the last onset. That is not the note's peak: the trigger is the first window to
+     * clear the rise test, which on a steep attack is a point low on the rising edge, so the level
+     * it re-arms against can be a few percent of the peak. Notes separated by less than true
+     * silence can then be missed — `DrawnScoreDocs` measured a run of 62 ms notes whose gaps fell
+     * to 5% of the peak lose sixteen strikes in one cycle and none in the next, because where the
+     * 2 ms hop happened to land against the attack differed between the two.
      *
      * With the defaults this counts every scene in [SCENES] exactly right. It is a counter for
      * patterns whose answer is known, not a general onset detector.
