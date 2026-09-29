@@ -72,7 +72,7 @@ data class SetBoxPropertyRequest(
     val value: String,
 )
 
-@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; `occurrence` 1 = first, 0 = every match, and the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine = startLine - 1 inserts before startLine). Recorded like SetBoxPropertyRequest. Does not run it.")
+@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; matches are counted without overlap; `occurrence` N = the Nth match, 0 = every match; the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts `replacement` before startLine instead of replacing). Recorded like SetBoxPropertyRequest. Does not run it.")
 data class PatchBoxTextRequest(
     val box: String,
     val property: String = "code",
@@ -83,6 +83,7 @@ data class PatchBoxTextRequest(
     val startLine: Int = 0,
     val endLine: Int = 0,
     val replacement: String = "",
+    val insert: Boolean = false,
 )
 
 @JsonClassDescription("Read a text property of a box, most often `code`.")
@@ -316,6 +317,9 @@ class FieldGraphTools(
     fun deleteBox(req: DeleteBoxRequest): FieldGraphResult = host.onOwner(info) {
         val box = resolve(req.box)
         require(box !== info.root) { "The document root cannot be deleted." }
+        if (replyOwned.any { it.first == box.id }) return@onOwner FieldGraphResult(false,
+            "'${box.name}' is the box this editor turn's reply rewrites; it cannot be deleted from inside that turn.",
+            uid = box.id, name = box.name)
         host.delete(info, box)
         FieldGraphResult(true, "Deleted '${box.name}'.", uid = box.id, name = box.name)
     }
@@ -341,8 +345,15 @@ class FieldGraphTools(
             ?: return@onOwner FieldGraphResult(false, "'${box.name}' has no text property '${req.property}'.", uid = box.id, name = box.name, property = req.property)
         val after = when {
             req.find.isNotEmpty() -> {
-                val count = Regex.escape(req.find).toRegex().findAll(before).count()
+                // One counting rule for both "how many" and "which one": non-overlapping, left to right.
+                val starts = generateSequence(before.indexOf(req.find).takeIf { it >= 0 }) { prev ->
+                    before.indexOf(req.find, prev + req.find.length).takeIf { it >= 0 }
+                }.toList()
+                val count = starts.size
                 when {
+                    req.occurrence < 0 -> return@onOwner FieldGraphResult(false,
+                        "occurrence must be 0 (all) or a positive match number, not ${req.occurrence}.",
+                        uid = box.id, name = box.name, property = req.property)
                     count == 0 -> return@onOwner FieldGraphResult(false,
                         "`find` does not occur in ${req.property} of '${box.name}'. Read it with GetBoxPropertyRequest and match it exactly.",
                         uid = box.id, name = box.name, property = req.property)
@@ -353,8 +364,7 @@ class FieldGraphTools(
                     req.occurrence > count -> return@onOwner FieldGraphResult(false,
                         "occurrence ${req.occurrence} requested but `find` occurs $count times.", uid = box.id, name = box.name, property = req.property)
                     else -> {
-                        var index = -1
-                        repeat(req.occurrence) { index = before.indexOf(req.find, index + 1) }
+                        val index = starts[req.occurrence - 1]
                         before.substring(0, index) + req.replace + before.substring(index + req.find.length)
                     }
                 }
@@ -362,12 +372,19 @@ class FieldGraphTools(
             req.startLine > 0 -> {
                 val lines = before.split("\n")
                 val start = req.startLine
-                val end = req.endLine.takeIf { it > 0 || it == start - 1 } ?: start
-                if (start > lines.size + 1 || end < start - 1 || end > lines.size) return@onOwner FieldGraphResult(false,
-                    "Line range $start..$end is outside ${req.property} of '${box.name}', which has ${lines.size} lines.",
-                    uid = box.id, name = box.name, property = req.property)
+                val end = if (req.endLine == 0) start else req.endLine
                 val replacementLines = if (req.replacement.isEmpty()) emptyList() else req.replacement.removeSuffix("\n").split("\n")
-                (lines.subList(0, start - 1) + replacementLines + lines.subList(end, lines.size)).joinToString("\n")
+                if (req.insert) {
+                    if (start > lines.size + 1) return@onOwner FieldGraphResult(false,
+                        "Cannot insert before line $start: ${req.property} of '${box.name}' has ${lines.size} lines.",
+                        uid = box.id, name = box.name, property = req.property)
+                    (lines.subList(0, start - 1) + replacementLines + lines.subList(start - 1, lines.size)).joinToString("\n")
+                } else {
+                    if (end < start || end > lines.size) return@onOwner FieldGraphResult(false,
+                        "Line range $start..$end is outside ${req.property} of '${box.name}', which has ${lines.size} lines.",
+                        uid = box.id, name = box.name, property = req.property)
+                    (lines.subList(0, start - 1) + replacementLines + lines.subList(end, lines.size)).joinToString("\n")
+                }
             }
             else -> return@onOwner FieldGraphResult(false, "Give either `find` (with `replace`) or `startLine` (with `endLine` and `replacement`).",
                 uid = box.id, name = box.name, property = req.property)
@@ -422,7 +439,14 @@ class FieldGraphTools(
             val box = resolve(token)
             // The editor turn's own box: run the candidate without storing it — the reply is where the
             // text goes, and it becomes the proposal the user accepts.
-            if (code != null && (box.id to "code") in replyOwned) return@onOwner Pair(null, box to code)
+            if (code != null && (box.id to "code") in replyOwned) {
+                // A candidate *run* ends; a candidate *launch* would leave the unaccepted code running.
+                if (launch) return@onOwner Pair(FieldGraphResult(false,
+                    "LaunchBoxRequest with `code` is refused on '${box.name}', the box this editor turn's reply rewrites: " +
+                        "it would leave unaccepted code running. Check the candidate with RunBoxRequest(code = …) instead.",
+                    uid = box.id, name = box.name, property = "code"), null)
+                return@onOwner Pair(null, box to code)
+            }
             if (code != null) {
                 applyAgentPropertyRecorded(box, "code", JsonPrimitive(code))
                 needsResync.add(box to "code")

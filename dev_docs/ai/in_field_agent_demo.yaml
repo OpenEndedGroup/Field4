@@ -1,20 +1,24 @@
 name: in_field_agent_demo
 description: >
-  Field's own agent, handed a goal from a box. Two boxes; replay into a fresh document, then run
-  each box (Run is enough: askFieldAgent returns at once and fills its "agent" output area when the
-  task finishes, usually within a few seconds for the scripted box and under a minute for live).
+  Field's own agent, handed a goal from a box, answering in that box's AI4 chat panel. Two boxes;
+  replay into a fresh document, then run each box. Run is enough: askFieldAgent returns at once, and
+  the box's AI4 panel (the "ai-chat" output) fills in when the turn finishes, usually a few seconds
+  for the scripted box and under a minute for the live one.
 
     1. agent_demo_scripted — SCRIPTED, no model. Replays the eval suite's "primes" solution through
-       the agent's real tools (NewBox, RunBox, ReadBoxOutput) and real Field execution, then checks
-       the document. Needs no credentials; its card says "SCRIPTED replay — no model was called".
-    2. agent_demo_live — LIVE, for you to edit. The same harness asks the configured provider
-       (Field's /welcome AI settings; on this machine OpenAI). Change the goal and the checks and run
-       it again. With no key configured it reports verdict ERROR with the provider's message.
+       the agent's real tools (NewBox, RunBox) and real Field execution. The panel shows the goal,
+       "Scripted replay — no model was called", each tool call as a progress entry, the scripted
+       reply, and a "Checks — PASS" block. Needs no credentials.
+    2. agent_demo_live — LIVE, for you to edit. The goal goes through the same ai-assist handler as
+       a message typed into this box's AI4 panel (Field's /welcome AI settings; on this machine
+       OpenAI). The panel shows the model's tool calls and reply, followed by the checks' verdict.
+       Carry on the conversation in the panel afterwards, as with any AI4 turn. With no key
+       configured, the panel says why the turn did not start.
 
-  Each card shows the verdict (decided by the checks, not by the agent's own words), the mode,
-  provider and model, rounds used, tokens when the provider reports them, every tool call with a
-  tick or cross for the tool's own verdict, and the checks. The agent's boxes (Primes, Table)
-  appear on the canvas beside these. See dev_docs/ai/IN_FIELD_AGENT_HARNESS.md.
+  The verdict comes from the checks, which read the document, not from the agent's own words. The
+  agent's boxes (Primes, Table) appear on the canvas to the right. askFieldAgent returns a
+  CompletableFuture<AgentTaskResult> for code that wants the structured result. See
+  dev_docs/ai/IN_FIELD_AGENT_HARNESS.md.
 operations:
   - create:
       box: agent_demo_scripted
@@ -22,7 +26,7 @@ operations:
       frame: { x: 80.0, y: 80.0, w: 340.0, h: 80.0 }
       properties:
         code: |
-          // Hands a goal to Field's own agent and shows its tool log and verdict under this box.
+          // Hands a goal to Field's own agent. The answer appears in this box's AI4 chat panel.
           // mode = "scripted": replays a canned solution through the agent's real tools and real Field
           // execution, with no model. Change it to "live" to ask the configured provider instead.
           askFieldAgent(
@@ -41,8 +45,9 @@ operations:
       frame: { x: 620.0, y: 80.0, w: 340.0, h: 80.0 }
       properties:
         code: |
-          // Edit the goal and the checks, then run this box. mode = "live" asks the configured AI
-          // provider; the verdict comes from the checks, which read the document, not from the reply.
+          // Edit the goal and the checks, then run this box. The turn is an ordinary AI4 chat turn in
+          // this box's panel, so you can keep talking to it there. Pass chatBox = "Other" to use
+          // another box's panel. The checks decide the verdict appended at the end.
           // Check spellings: box-exists:B  last-run-ok:B  output-contains:B:text  connected:A:B
           //                  output-ints-include:B:1,2,3  running:B  not-running:B  property-lacks:B:code:text
           askFieldAgent(

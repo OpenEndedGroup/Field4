@@ -204,24 +204,7 @@ object AgentTaskRunner {
                 }
             }
 
-            if (request.chatBox.isNotBlank()) {
-                require(request.mode == "live") { "chatBox runs through the real AI4 panel, which has no scripted mode." }
-                val marker = BoxOutputLog.mark()
-                val box = graph.resolve(request.chatBox)
-                val reply = runAsBoxChatTurn(info, box, request, budget)
-                val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
-                return AgentTaskResult(
-                    taskId = taskId, goal = request.goal, mode = request.mode, provider = "ai4-panel", model = "",
-                    verdict = when {
-                        outcomes.isEmpty() -> "unchecked"
-                        outcomes.all { it.passed } -> "pass"
-                        else -> "fail"
-                    },
-                    checks = outcomes, toolCalls = emptyList(), finalText = reply, rounds = -1, maxToolRounds = budget,
-                    hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
-                    setupCalls = setupLog, chatBox = box.id
-                )
-            }
+            if (request.chatBox.isNotBlank()) return runInChatPanel(request, info, host, contextFor, bridgeFor, graph, setupLog, budget, taskId, started)
 
             val marker = BoxOutputLog.mark()
             val b = bridgeFor(request)
@@ -266,12 +249,78 @@ object AgentTaskRunner {
     }
 
     /**
-     * Hand the goal to the real `ai-assist` handler as [box]'s `general` panel turn and wait for it to
-     * finish. Returns the reply as saved in the box's chat history. The handler builds its own tool
-     * context (with the graph tools, since 2026-09-29) and bridge, exactly as for a person typing in
-     * the panel; this function only dispatches and waits.
+     * The task as an AI4 panel turn in [AgentTaskRequest.chatBox]: its exchange is written into that
+     * box's `ai4_chat_history`, the panel shows it, and the person can carry on the conversation.
+     *
+     * Live: the goal goes through the real `ai-assist` handler (kind `general`) — the same turn a
+     * person's message starts — and the verdict is appended. Scripted: the replay runs through the
+     * same tools as always, and the whole exchange, tool calls included, is written into the
+     * transcript, labelled as a scripted replay.
+     *
+     * Fails fast, with the reason in the transcript *and* the result, when the box already has an AI
+     * turn running or when the handler does not start one (AI setup failed).
      */
-    private fun runAsBoxChatTurn(info: SessionInformation, box: Box, request: AgentTaskRequest, budget: Int): String {
+    private fun runInChatPanel(
+        request: AgentTaskRequest, info: SessionInformation, host: FieldGraphHost,
+        contextFor: (SessionInformation, FieldGraphTools, String?) -> ToolExecutionContext,
+        bridgeFor: (AgentTaskRequest) -> LlmBridge, graph: FieldGraphTools,
+        setupLog: List<AgentToolCallRecord>, budget: Int, taskId: String, started: Long,
+    ): AgentTaskResult {
+        fun elapsed() = (System.nanoTime() - started) / 1_000_000
+        val box = graph.resolve(request.chatBox)
+        fun refuse(message: String): AgentTaskResult {
+            AgentTaskTranscript.appendError(info, box, request.goal, message)
+            return AgentTaskResult(taskId = taskId, goal = request.goal, mode = request.mode, provider = "", model = "",
+                verdict = "error", checks = emptyList(), toolCalls = emptyList(), finalText = "", rounds = 0,
+                maxToolRounds = budget, hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
+                setupCalls = setupLog, error = message, chatBox = box.id)
+        }
+        if (box.getPropertyRaw(afield.ai.core.AiBoxConversation.RUNNING_PROPERTY) == true)
+            return refuse("'${box.name}' already has an AI turn running. Wait for it (or stop it) and ask again.")
+
+        if (request.mode == "scripted") {
+            val result = run(request.copy(chatBox = "", setup = ""), info, host, contextFor, bridgeFor)
+                .let { it.copy(taskId = taskId, setupCalls = setupLog, chatBox = box.id, elapsedMs = elapsed()) }
+            AgentTaskTranscript.appendScriptedTurn(info, box, request.goal, result)
+            return result
+        }
+        require(request.mode == "live") { "mode must be 'live' or 'scripted', not '${request.mode}'" }
+
+        val marker = BoxOutputLog.mark()
+        val turn = runAsBoxChatTurn(info, box, request, budget)
+        if (turn.error != null) return refuse(turn.error)
+        val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
+        val result = AgentTaskResult(
+            taskId = taskId, goal = request.goal, mode = request.mode,
+            provider = turn.identity?.provider ?: "ai4-panel", model = turn.identity?.let { it.responseModel ?: it.requestedModel }.orEmpty(),
+            verdict = when {
+                outcomes.isEmpty() -> "unchecked"
+                outcomes.all { it.passed } -> "pass"
+                else -> "fail"
+            },
+            checks = outcomes, toolCalls = emptyList(), finalText = turn.reply, rounds = -1, maxToolRounds = budget,
+            hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
+            setupCalls = setupLog, chatBox = box.id
+        )
+        AgentTaskTranscript.appendVerdict(info, box, result)
+        return result
+    }
+
+    internal data class PanelTurn(val reply: String, val identity: afield.AiChatModelIdentity? = null, val error: String? = null)
+
+    /** How long a turn that *did* start may run before this gives up on it (it keeps running). */
+    internal var panelTurnLimitMs: Long = 10 * 60_000L
+
+    /**
+     * Dispatch the goal to the real `ai-assist` handler and wait for *this* turn to finish.
+     *
+     * The handler marks the box running synchronously, before it launches the turn, so "not running
+     * right after dispatch" means it did not start (setup failed, or it refused) — reported at once,
+     * never waited on. The reply is taken from what the history gained after the transcript as it
+     * was before dispatch, and must follow a `<<you>>` block carrying this goal; anything else is an
+     * error, never another turn's reply.
+     */
+    private fun runAsBoxChatTurn(info: SessionInformation, box: Box, request: AgentTaskRequest, budget: Int): PanelTurn {
         val runningKey = afield.ai.core.AiBoxConversation.RUNNING_PROPERTY
         val before = afield.ai.core.AiBoxConversation.read(box)
         val assist = afield.AiAssist(
@@ -288,17 +337,25 @@ object AgentTaskRunner {
         } finally {
             if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
         }
-        val deadline = System.currentTimeMillis() + 15 * 60_000L
-        var started = false
-        while (System.currentTimeMillis() < deadline) {
-            val running = box.getPropertyRaw(runningKey) == true
-            if (running) started = true
-            if (started && !running) break
-            if (!started && afield.ai.core.AiBoxConversation.read(box) != before && !running) break
+        if (box.getPropertyRaw(runningKey) != true) return PanelTurn("", error =
+            "AI4 did not start a turn in '${box.name}': AI setup failed or no provider is configured (see Field's notifications and /welcome).")
+        val deadline = System.currentTimeMillis() + panelTurnLimitMs
+        while (box.getPropertyRaw(runningKey) == true) {
+            if (System.currentTimeMillis() > deadline) return PanelTurn("", error =
+                "The AI turn in '${box.name}' was still running after ${panelTurnLimitMs / 60_000} minutes; it was left running.")
             Thread.sleep(200)
         }
         val history = afield.ai.core.AiBoxConversation.read(box)
-        return history.removePrefix(before).substringAfterLast("<<ai>>").trim().take(4000)
+        val added = if (history.startsWith(before)) history.substring(before.length) else {
+            val key = request.goal.trim().take(60)
+            val at = history.lastIndexOf("<<you>>").takeIf { it >= 0 && history.indexOf(key, it) >= 0 }
+                ?: return PanelTurn("", error = "Could not find this task's turn in '${box.name}'s chat history.")
+            history.substring(at)
+        }
+        if (!added.contains(request.goal.trim().take(60))) return PanelTurn("", error = "The chat history gained a turn that is not this task's.")
+        val last = added.substringAfterLast("<<ai>>").trimStart('\n')
+        val (identity, text) = afield.AiChatModelIdentity.splitFromContent(last)
+        return PanelTurn(text.substringBefore("<<progress").trim().take(4000), identity)
     }
 
     fun defaultBridge(request: AgentTaskRequest): LlmBridge = when (request.mode) {

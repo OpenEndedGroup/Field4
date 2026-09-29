@@ -65,9 +65,21 @@ object BoxOutputLog {
     private val sequence = AtomicLong(0)
     private val lock = Any()
     private var totalChars = 0L
+    /** Per box, the newest seq ever dropped by a bound — how [since] knows a reader missed something. */
+    private val droppedUpTo = HashMap<String, Long>()
     private val byBox = object : LinkedHashMap<String, ArrayDeque<Entry>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Entry>>?): Boolean =
-            size > maxBoxes
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ArrayDeque<Entry>>?): Boolean {
+            if (size <= maxBoxes || eldest == null) return false
+            // Evicting a whole box must release its characters too, or the global cap drifts
+            // upward forever (review, 2026-09-29).
+            totalChars -= eldest.value.sumOf { it.text.length.toLong() }
+            droppedUpTo.remove(eldest.key)
+            return true
+        }
+    }
+
+    private fun noteDropped(entry: Entry) {
+        droppedUpTo[entry.uid] = maxOf(droppedUpTo[entry.uid] ?: 0L, entry.seq)
     }
 
     /** The current sequence number; everything recorded afterwards has a larger [Entry.seq]. */
@@ -96,13 +108,18 @@ object BoxOutputLog {
             }
             deque.addLast(entry)
             totalChars += clipped.length
-            while (deque.size > maxEntriesPerBox) totalChars -= deque.removeFirst().text.length
+            while (deque.size > maxEntriesPerBox) {
+                val dropped = deque.removeFirst()
+                totalChars -= dropped.text.length
+                noteDropped(dropped)
+            }
             while (totalChars > maxTotalChars) {
                 val eldest = byBox.entries.firstOrNull() ?: break
                 val dropped = eldest.value.removeFirstOrNull()
                 if (dropped == null) { byBox.remove(eldest.key); continue }
                 totalChars -= dropped.text.length
-                if (eldest.value.isEmpty()) byBox.remove(eldest.key)
+                noteDropped(dropped)
+                // Keep the (now empty) deque so the drop marker still answers for this box.
             }
         }
     }
@@ -111,10 +128,8 @@ object BoxOutputLog {
     fun since(uid: String, marker: Long, limit: Int = maxEntriesPerBox): Page = synchronized(lock) {
         val deque = byBox[uid] ?: return@synchronized Page(emptyList(), mark(), false)
         val all = deque.filter { it.seq > marker }
-        // If the oldest entry we still hold is newer than marker + 1, and entries between were
-        // written for this box, some were dropped. We cannot know for sure whether the gap was this
-        // box's, so we only say "dropped" when the deque is full — the only way it loses entries.
-        val dropped = deque.size >= maxEntriesPerBox && (deque.firstOrNull()?.seq ?: 0) > marker + 1
+        // Something this reader had not yet seen was dropped by a bound (per-box or global).
+        val dropped = (droppedUpTo[uid] ?: 0L) > marker
         val page = if (all.size <= limit) all else all.takeLast(limit)
         Page(page, page.lastOrNull()?.seq ?: marker, dropped || all.size > limit)
     }
@@ -122,6 +137,7 @@ object BoxOutputLog {
     /** Forget a box's history (tests, and a deleted box). */
     fun clear(uid: String) = synchronized(lock) {
         byBox.remove(uid)?.let { removed -> totalChars -= removed.sumOf { it.text.length.toLong() } }
+        droppedUpTo.remove(uid)
         Unit
     }
 

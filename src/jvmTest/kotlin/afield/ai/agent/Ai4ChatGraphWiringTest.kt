@@ -98,6 +98,9 @@ class Ai4ChatGraphWiringTest {
         assertTrue(wrapped.success && wrapped.stdout == listOf("0"), "the editor's SCRIPT wrapper is stripped before running: ${wrapped.message}")
         assertTrue(tools.setProperty(SetBoxPropertyRequest("Me", property = "notes", value = "n")).success, "other properties are fine")
         assertTrue(tools.setProperty(SetBoxPropertyRequest("Other", value = "b")).success, "other boxes are fine")
+        assertFalse(tools.launch(LaunchBoxRequest("Me", code = "println(0)", settleSeconds = 0.0)).success, "no candidate launch")
+        assertFalse(tools.deleteBox(DeleteBoxRequest("Me")).success, "the reply-owned box cannot be deleted")
+        assertNotNull(info.boxes[me.uid])
     }
 
     @Test
@@ -115,9 +118,18 @@ class Ai4ChatGraphWiringTest {
         assertEquals("var a = 1\nvar b = 5\nprintln(a + b)", code())
         assertTrue(tools.patchText(PatchBoxTextRequest("P", startLine = 2, endLine = 2, replacement = "var b = 7")).success)
         assertEquals("var a = 1\nvar b = 7\nprintln(a + b)", code())
-        assertTrue(tools.patchText(PatchBoxTextRequest("P", startLine = 1, endLine = 0, replacement = "// head")).success, "insert before line 1")
+        assertTrue(tools.patchText(PatchBoxTextRequest("P", startLine = 1, insert = true, replacement = "// head")).success, "insert before line 1")
         assertEquals("// head\nvar a = 1\nvar b = 7\nprintln(a + b)", code())
         assertFalse(tools.patchText(PatchBoxTextRequest("P", startLine = 9, endLine = 9, replacement = "x")).success)
+        // endLine 0 means "just startLine", the same at line 1 as anywhere else.
+        assertTrue(tools.patchText(PatchBoxTextRequest("P", startLine = 1, endLine = 0, replacement = "// top")).success)
+        assertEquals("// top\nvar a = 1\nvar b = 7\nprintln(a + b)", code())
+        assertFalse(tools.patchText(PatchBoxTextRequest("P", find = "var", replace = "x", occurrence = -1)).success, "negative occurrence refused, not thrown")
+        // Overlapping text is counted the same way it is replaced: "aa" in "aaa" is one match.
+        tools.setProperty(SetBoxPropertyRequest("P", value = "aaa"))
+        assertTrue(tools.patchText(PatchBoxTextRequest("P", find = "aa", replace = "b")).success)
+        assertEquals("ba", code())
+        assertFalse(tools.patchText(PatchBoxTextRequest("P", find = "a", replace = "b", occurrence = 2)).success)
     }
 
     @Test
@@ -129,6 +141,27 @@ class Ai4ChatGraphWiringTest {
         assertNotNull(agentRouteRefusal("127.0.0.1", "192.168.1.5:9611", null, null), "a LAN literal is not localhost")
         assertNotNull(agentRouteRefusal("127.0.0.1", "localhost:9611", "cross-site", "https://evil.example"))
         assertNotNull(agentRouteRefusal("127.0.0.1", "localhost:9611", "same-site", "http://localhost:9493"))
+    }
+
+    @Test
+    fun evictionReleasesCharactersAndReportsDrops() {
+        // Per-box bound: a reader from before the drop is told.
+        val uid = "drops-" + System.nanoTime()
+        val start = BoxOutputLog.mark()
+        repeat(BoxOutputLog.maxEntriesPerBox + 1) { BoxOutputLog.record(uid, "out", "x") }
+        assertTrue(BoxOutputLog.since(uid, start).dropped)
+        val tail = BoxOutputLog.since(uid, start).marker
+        BoxOutputLog.record(uid, "out", "y")
+        assertFalse(BoxOutputLog.since(uid, tail).dropped, "a reader after the drop missed nothing")
+        BoxOutputLog.clear(uid)
+
+        // Whole-box eviction (more than maxBoxes boxes) releases what those boxes held.
+        val prefix = "evict-" + System.nanoTime() + "-"
+        val before = BoxOutputLog.heldChars()
+        repeat(BoxOutputLog.maxBoxes + 50) { BoxOutputLog.record(prefix + it, "out", "0123456789") }
+        val held = BoxOutputLog.heldChars()
+        assertTrue(held - before <= BoxOutputLog.maxBoxes * 10L, "evicted boxes no longer count: grew by ${held - before}")
+        repeat(BoxOutputLog.maxBoxes + 50) { BoxOutputLog.clear(prefix + it) }
     }
 
     @Test
