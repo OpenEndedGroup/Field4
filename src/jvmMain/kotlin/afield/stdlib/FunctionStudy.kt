@@ -2,8 +2,6 @@
 
 package afield.stdlib
 
-import afield.ai.core.CarriesToolImages
-import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolImage
 import afield.createKotlinScriptEngine
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -49,10 +47,6 @@ data class StudyComposition(
 )
 
 data class StudyRevision(val id: String, val parent: String?, val description: String, val source: String, val composition: StudyComposition)
-data class StudyReport(val revision: String, val facts: Map<String, Any?>,
-    override val toolImages: List<ToolImage> = emptyList()) : CarriesToolImages, SummarisesForToolLog {
-    override fun toolLogSummary() = "$revision ${facts["message"] ?: facts.keys.joinToString()} images=${toolImages.size}"
-}
 
 /**
  * Experimental observation/transaction layer over Fn. No model transport and no alternate evaluator.

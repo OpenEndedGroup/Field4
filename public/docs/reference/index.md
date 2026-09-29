@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15640 public symbols across 423 source files**, 9280 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15655 public symbols across 424 source files**, 9291 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -19,15 +19,15 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Simulation](simulation.md) | 29 | 873 | 505 (57%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
-| [Function](function.md) | 15 | 601 | 391 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Function](function.md) | 15 | 598 | 391 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 18 | 552 | 486 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 33 | 1225 | 566 (46%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 34 | 1178 | 632 (53%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
-| [Languages](languages.md) | 103 | 2814 | 1249 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 11 | 168 | 138 (82%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Languages](languages.md) | 102 | 2792 | 1235 (44%) | Field's small languages, from the host side. |
+| [Workspace](workspace.md) | 13 | 208 | 163 (78%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -172,7 +172,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 18 | 18 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 29 | 12 |  | [Talking a function into existence](../function_conversation.md) |
+| [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 26 | 12 |  | [Talking a function into existence](../function_conversation.md) |
 | [FunctionStudyTools.kt](function.md#functionstudytools-kt) | Function | 39 | 16 |  | [Talking a function into existence](../function_conversation.md) |
 | [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 12 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |
@@ -420,7 +420,6 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StackSLGpu.kt](languages.md#stackslgpu-kt) | Languages | 13 | 7 |  |  |
 | [StackSLPrograms.kt](languages.md#stackslprograms-kt) | Languages | 39 | 31 |  |  |
 | [StackSLStudy.kt](languages.md#stackslstudy-kt) | Languages | 46 | 38 |  |  |
-| [StackSLStudyEvidence.kt](languages.md#stackslstudyevidence-kt) | Languages | 22 | 14 |  |  |
 | [StackSLStudyShader.kt](languages.md#stackslstudyshader-kt) | Languages | 40 | 39 |  |  |
 | [StackSLStudyTools.kt](languages.md#stackslstudytools-kt) | Languages | 38 | 6 |  | [Talking a shader into existence](../stacksl_conversation.md) |
 | [StackSLStudyViewer.kt](languages.md#stackslstudyviewer-kt) | Languages | 8 | 4 |  |  |
@@ -432,7 +431,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Measuring dependence between two signals](../statistics_examples.md) |
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
+| [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 37 | 24 |  |  |
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |
+| [StudyReport.kt](workspace.md#studyreport-kt) | Workspace | 3 | 1 |  |  |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Pure Data](../pure_data.md), [Making a sound in Field: every path there is](../sound_paths.md) |

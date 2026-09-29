@@ -102,40 +102,14 @@ object StackSLStudyShader {
         StackSLCpu.renderProgram(program, RAW_FRAGMENT, size, size,
             pushParams = floatArrayOf(seconds.toFloat(), 0f, 0f, 0f), samplers = GlslSamplers.REFUSE, parallel = parallel)
 
-    /** What [FRAGMENT] draws for a raw raster: non-finite colour becomes black, the rest is clamped, alpha is one. */
-    fun displayed(raw: CpuRaster): CpuRaster {
-        val out = FloatArray(raw.rgba.size)
-        for (p in 0 until raw.width * raw.height) {
-            val r = raw.rgba[p * 4]; val g = raw.rgba[p * 4 + 1]; val b = raw.rgba[p * 4 + 2]
-            val finite = r.isFinite() && g.isFinite() && b.isFinite()
-            out[p * 4] = if (finite) r.coerceIn(0f, 1f) else 0f
-            out[p * 4 + 1] = if (finite) g.coerceIn(0f, 1f) else 0f
-            out[p * 4 + 2] = if (finite) b.coerceIn(0f, 1f) else 0f
-            out[p * 4 + 3] = 1f
-        }
-        return CpuRaster(raw.width, raw.height, out)
-    }
+    /** What [FRAGMENT] draws for a raw raster: see [afield.stdlib.StudyEvidence.displayed]. */
+    fun displayed(raw: CpuRaster): CpuRaster = afield.stdlib.StudyEvidence.displayed(raw)
 
-    /**
-     * What a person sees of a raw raster in the window: [displayed], then the sRGB transfer function.
-     *
-     * The window's swapchain is `B8G8R8A8_SRGB` (scRGB when HDR is on, which looks the same for
-     * `0..1`), so the value the shader writes is treated as *linear* light and encoded for display on
-     * the way to the screen: `0.5` shows as sRGB 188, a light grey, not 128. An image that showed the
-     * written values directly would be markedly darker than the window, and a model reading it would
-     * be judging a different picture from the person. Every study image, every export and the card's
-     * WebGL preview go through this; clipping and NaN are still counted on the raw values.
-     */
-    fun presented(raw: CpuRaster): CpuRaster {
-        val shown = displayed(raw)
-        val out = shown.rgba.copyOf()
-        for (p in 0 until shown.width * shown.height) for (c in 0 until 3) out[p * 4 + c] = linearToSrgb(out[p * 4 + c])
-        return CpuRaster(shown.width, shown.height, out)
-    }
+    /** What a person sees of a raw raster in the window: see [afield.stdlib.StudyEvidence.presented]. */
+    fun presented(raw: CpuRaster): CpuRaster = afield.stdlib.StudyEvidence.presented(raw)
 
     /** The sRGB transfer function (IEC 61966-2-1), for a linear value in `0..1`. */
-    fun linearToSrgb(v: Float): Float =
-        if (v <= 0.0031308f) v * 12.92f else (1.055 * Math.pow(v.toDouble(), 1.0 / 2.4) - 0.055).toFloat()
+    fun linearToSrgb(v: Float): Float = afield.stdlib.StudyEvidence.linearToSrgb(v)
 
     /**
      * The raw `vec4` [program] leaves at one point, `(u, v)` in the frame's `0..1` coordinates.

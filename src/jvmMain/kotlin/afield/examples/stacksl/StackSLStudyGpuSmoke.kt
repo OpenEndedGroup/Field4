@@ -1,5 +1,6 @@
 package afield.examples.stacksl
 
+import afield.stdlib.StudyEvidence
 import afield.stacksl.cpu.AgreementTier
 import afield.stacksl.cpu.GalleryAgreement
 import afield.stacksl.cpu.StackSLCpu
@@ -78,8 +79,8 @@ object StackSLStudyGpuSmoke {
             val cpu = CpuStackSLRasterizer.renderAll(program, DIM, TIMES)
             TIMES.indices.map { i ->
                 // Both in 8-bit sRGB, as StackSLCpuGallery.compare measures and the window shows.
-                val g = StackSLStudyShader.displayed(gpu[i]).toSrgbArgb()
-                val c = StackSLStudyShader.displayed(cpu[i])
+                val g = StudyEvidence.displayed(gpu[i]).toSrgbArgb()
+                val c = StudyEvidence.displayed(cpu[i])
                 rows += g to StackSLCpuGallery.galleryArgb(c)
                 val agreement = StackSLCpuGallery.compare(program, tier, c, g, DIM)
                 holds(program, tier, agreement)

@@ -1,5 +1,6 @@
 package afield.stacksl.study
 
+import afield.stdlib.StudyEvidence
 import afield.Box
 import afield.displayOpen
 import afield.registerUnownedStringCallback
@@ -283,7 +284,7 @@ class StackSLStudyViewer(
             if (variants.isNotEmpty()) {
                 append("<h4>Variants held for adoption</h4><div class='strip'>")
                 variants.forEach { (label, note, source) ->
-                    val image = runCatching { png(StackSLStudyShader.presented(study.frame(source, 96, StackSLStudyShader.REFERENCE_TIME, parallel = false)).toPngBytes()) }.getOrNull()
+                    val image = runCatching { png(StudyEvidence.presented(study.frame(source, 96, StackSLStudyShader.REFERENCE_TIME, parallel = false)).toPngBytes()) }.getOrNull()
                     append("<div class='cell'>${image?.let { "<img src='$it'>" } ?: ""}<span>${esc(label)}</span><span class='muted' title='${esc(note)}'>${esc(note)}</span><button data-act='adopt' data-label='${esc(label)}'>Adopt</button></div>")
                 }
                 append("</div>")
@@ -327,7 +328,7 @@ class StackSLStudyViewer(
                 else {
                     // A line that ends by storing (>name) is shown by the value it stored.
                     val raw = study.frame(outline.stageProgram(source, stage.wordsThrough), 64, StackSLStudyShader.REFERENCE_TIME, parallel = false)
-                    val (tile, _) = StackSLStudyEvidence.normalizedTile(raw, "", "")
+                    val (tile, _) = StudyEvidence.normalizedTile(raw, "", "")
                     val bytes = afield.util.PngEncoder.encode(tile.argb!!, tile.width, tile.height)
                     png(bytes)
                 }

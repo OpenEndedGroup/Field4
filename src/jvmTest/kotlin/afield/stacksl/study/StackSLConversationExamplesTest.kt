@@ -1,5 +1,6 @@
 package afield.stacksl.study
 
+import afield.stdlib.StudyEvidence
 import afield.stdlib.SourceStudy
 import afield.testRepoRoot
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -118,7 +119,7 @@ class StackSLConversationExamplesTest {
             for (t in listOf(1.0, 2.0)) {
                 val a = StackSLStudyShader.renderRaw(original.source, 32, t)
                 val b = StackSLStudyShader.renderRaw(half.source, 32, 2 * t)
-                val (difference, _) = StackSLStudyEvidence.difference(a, b, null, false)
+                val (difference, _) = StudyEvidence.difference(a, b, null, false)
                 assertTrue(difference.max <= 1.0, "half-speed at ${2 * t}s should be the original at ${t}s: $difference")
             }
         }

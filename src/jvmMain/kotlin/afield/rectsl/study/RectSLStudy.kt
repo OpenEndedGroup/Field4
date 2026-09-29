@@ -1,5 +1,7 @@
 package afield.rectsl.study
 
+import afield.stdlib.StudyEvidence
+import afield.stdlib.StudyDifference
 import afield.KotlinInterface2
 import afield.Runloop
 import afield.ai.core.ToolImage
@@ -26,8 +28,6 @@ import afield.rectsl.rectSLKnobs
 import afield.rectsl.rectSLLineAndColumn
 import afield.rectsl.setRectSLKnobs
 import afield.stacksl.cpu.CpuRaster
-import afield.stacksl.study.StackSLDifference
-import afield.stacksl.study.StackSLStudyEvidence
 import afield.stacksl.study.StackSLStudyShader
 import afield.stdlib.KnobNames
 import afield.stdlib.SourceRevision
@@ -384,7 +384,7 @@ class RectSLStudy(
         fun hex(c: afield.Color4): String = "#%02x%02x%02x".format(
             (c.r.coerceIn(0.0, 1.0) * 255 + 0.5).toInt(), (c.g.coerceIn(0.0, 1.0) * 255 + 0.5).toInt(), (c.b.coerceIn(0.0, 1.0) * 255 + 0.5).toInt())
 
-        fun fmt(v: Double): String = StackSLStudyEvidence.format(v)
+        fun fmt(v: Double): String = StudyEvidence.format(v)
 
         /** A time in seconds to the millisecond, trailing zeros dropped: 17.967, 0.033, 4. Three significant figures would print 17.967 as 18.0. */
         fun secs(v: Double): String =
@@ -600,25 +600,25 @@ class RectSLStudy(
         if (revisions.isCancelled(epoch)) throw CancellationException()
         val frames = framesOf(d, long, times)
         val before = other?.let { o -> framesOf(drawableOf(o), long, times) }
-        val stats = frames.mapIndexed { i, f -> StackSLStudyEvidence.stats(f, times[i]) }
+        val stats = frames.mapIndexed { i, f -> StudyEvidence.stats(f, times[i]) }
         val sampled = times.map { d.scene.sample(it) }
-        val rows = mutableListOf(frames.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${secs(times[i])} s",
+        val rows = mutableListOf(frames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${secs(times[i])} s",
             "${sampled[i].rects.count { visibleOn(it, d.scene) }} visible · luma ${fmt(stats[i].luma)}") })
         val labels = mutableListOf(r.id)
         val differences = before?.let { b ->
             val o = other
-            rows += b.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${secs(times[i])} s", o.id) }
+            rows += b.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${secs(times[i])} s", o.id) }
             labels += o.id
-            val diffs = b.indices.map { i -> StackSLStudyEvidence.difference(b[i], frames[i], null, false).first }
+            val diffs = b.indices.map { i -> StudyEvidence.difference(b[i], frames[i], null, false).first }
             if (diffs.any { it.mean <= 40.0 }) {
-                rows += b.indices.map { i -> StackSLStudyEvidence.differenceTile(b[i], frames[i], "difference", "max ${diffs[i].max.toInt()} · mean ${fmt(diffs[i].mean)} levels") }
+                rows += b.indices.map { i -> StudyEvidence.differenceTile(b[i], frames[i], "difference", "max ${diffs[i].max.toInt()} · mean ${fmt(diffs[i].mean)} levels") }
                 labels += "difference\nwhite ≥ 32 levels"
             }
             diffs.mapIndexed { i, diff -> mapOf("seconds" to times[i], "difference" to diff) }
         }
-        val motion = frames.zipWithNext().mapIndexed { i, (a, b) -> StackSLStudyEvidence.motion(a, b, times[i], times[i + 1]) }
+        val motion = frames.zipWithNext().mapIndexed { i, (a, b) -> StudyEvidence.motion(a, b, times[i], times[i + 1]) }
         val (tw, th) = tileSize(d.scene, if (times.size == 1) 640 else 320)
-        val bytes = StackSLStudyEvidence.sheet("RectSL study · ${r.id}", r.description.take(140), rows, tw, labels,
+        val bytes = StudyEvidence.sheet("RectSL study · ${r.id}", r.description.take(140), rows, tw, labels,
             if (!r.value.animated) "Nothing in this scene changes over time: one frame is all there is." else "", th)
         val file = save("${r.id}-${times.joinToString("_")}-$long${other?.let { "-vs-${it.id}" }.orEmpty()}.png", bytes)
         return StudyReport(r.id, linkedMapOf(
@@ -654,9 +654,9 @@ class RectSLStudy(
         val metrics = report.frameMetrics
         val wallArea = scene.wall.width * scene.wall.height
         val (tw, th) = tileSize(scene, 240)
-        val tiles = rasters.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${secs(times[i])} s",
+        val tiles = rasters.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${secs(times[i])} s",
             "${scene.sample(times[i]).rects.count { visibleOn(it, scene) }} visible") }
-        val frames = StackSLStudyEvidence.sheet("RectSL timeline · ${r.id} · ${secs(scene.duration)} s",
+        val frames = StudyEvidence.sheet("RectSL timeline · ${r.id} · ${secs(scene.duration)} s",
             "Frames evenly across the clip; below, what is visible and moving over time, events as ticks.", tiles.chunked(4), tw,
             footer = "Coverage counts overlapping rectangles twice; speed is in wall units per second.", tileHeight = th)
         val bytes = belowSheet(frames) { width ->
@@ -777,7 +777,7 @@ class RectSLStudy(
         val long = (if (size > 0) size else 720).coerceIn(160, 1280)
         val clock = System.nanoTime()
         val raster = framesOf(d, long, listOf(seconds)).single()
-        val shown = StackSLStudyShader.presented(raster)
+        val shown = StudyEvidence.presented(raster)
         val w = raster.width; val h = raster.height
         val image = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
         image.setRGB(0, 0, w, h, shown.toArgb(), 0, w)
@@ -812,9 +812,9 @@ class RectSLStudy(
         val argb = IntArray(w * h); image.getRGB(0, 0, w, h, argb, 0, w)
         val lines = r.source.lines()
         val (tw, th) = tileSize(scene, min(long, 900))
-        val bytes = StackSLStudyEvidence.sheet("RectSL trace · ${r.id} · t = ${secs(seconds)} s",
+        val bytes = StudyEvidence.sheet("RectSL trace · ${r.id} · t = ${secs(seconds)} s",
             "Each visible rectangle outlined in its line's colour; L<n> is the line of the program that made it.",
-            listOf(listOf(StackSLStudyEvidence.Tile(argb, w, h, "${sampled.size} visible rectangles", ""))), tw, tileHeight = th,
+            listOf(listOf(StudyEvidence.Tile(argb, w, h, "${sampled.size} visible rectangles", ""))), tw, tileHeight = th,
             footer = byLine.keys.take(8).joinToString("   ") { "L$it ${lines.getOrElse(it - 1) { "" }.substringBefore('#').trim().take(28)}" })
         val file = save("${r.id}-identify-$seconds.png", bytes)
         return StudyReport(r.id, linkedMapOf(
@@ -885,7 +885,7 @@ class RectSLStudy(
             val (through, pd) = cuts(source).filter { it.first >= line }
                 .firstNotNullOfOrNull { (l, prefix) -> runCatching { l to drawable(prefix) }.getOrNull() } ?: return@runCatching null
             val raster = framesOf(pd, LINE_NOTE_LONG, listOf(t)).single()
-            val shown = StackSLStudyShader.presented(raster)
+            val shown = StudyEvidence.presented(raster)
             val w = raster.width; val h = raster.height
             val image = BufferedImage(w, h, BufferedImage.TYPE_INT_RGB)
             image.setRGB(0, 0, w, h, shown.toArgb(), 0, w)
@@ -939,13 +939,13 @@ class RectSLStudy(
                 val raster = framesOf(pd, long, listOf(seconds)).single()
                 val count = pd.scene.nodes.count { it is RectNode }
                 facts += linkedMapOf("line" to line, "text" to text.take(120), "rects" to count, "compiles" to true)
-                StackSLStudyEvidence.tile(StackSLStudyShader.presented(raster), "after line $line · $count rects", text)
+                StudyEvidence.tile(StudyEvidence.presented(raster), "after line $line · $count rects", text)
             } catch (e: StudyRejection) {
                 facts += linkedMapOf("line" to line, "text" to text.take(120), "compiles" to false)
-                StackSLStudyEvidence.tile(null, "after line $line", text, "does not compile on its own")
+                StudyEvidence.tile(null, "after line $line", text, "does not compile on its own")
             }
         }
-        val bytes = StackSLStudyEvidence.sheet("RectSL build · ${r.id} · t = ${secs(seconds)} s",
+        val bytes = StudyEvidence.sheet("RectSL build · ${r.id} · t = ${secs(seconds)} s",
             "The scene as it stands after each line that makes something" + if (shown.size < all.size) " (${shown.size} of ${all.size}, evenly spaced)" else "",
             tiles.chunked(4), tw, tileHeight = th)
         val file = save("${r.id}-build-$seconds.png", bytes)
@@ -974,7 +974,7 @@ class RectSLStudy(
             } ?: return@mapIndexed summary
             val effect = try {
                 val nudged = frames(setRectSLKnobs(r.source, mapOf(k.knob to k.value + step)), 96, times)
-                val diffs = base.indices.map { StackSLStudyEvidence.difference(base[it], nudged[it], null, false).first }
+                val diffs = base.indices.map { StudyEvidence.difference(base[it], nudged[it], null, false).first }
                 val mean = diffs.maxOf { it.mean }; val maxLevels = diffs.maxOf { it.max }
                 mapOf("nudge" to round4(step), "meanLevels" to round4(mean), "maxLevels" to maxLevels,
                     "reading" to when { maxLevels == 0.0 -> "no visible effect at these times"; mean < 0.5 -> "subtle"; mean < 4 -> "moderate"; else -> "strong" })
@@ -1007,10 +1007,10 @@ class RectSLStudy(
         }
         val (tw, th) = tileSize(d.scene, 240)
         val tiles = results.map { (value, raster, error) ->
-            StackSLStudyEvidence.tile(raster?.let(StackSLStudyShader::presented), formatRectSLKnob(value, k.text) + if (abs(value - k.value) < 1e-12) "  (now)" else "",
+            StudyEvidence.tile(raster?.let(StudyEvidence::presented), formatRectSLKnob(value, k.text) + if (abs(value - k.value) < 1e-12) "  (now)" else "",
                 "", error)
         }
-        val bytes = StackSLStudyEvidence.sheet("RectSL sweep · ${r.id} · knob $knob '${k.text}' at ${k.line}:${k.column}", "${k.role} — ${k.context}", tiles.chunked(4), tw, tileHeight = th)
+        val bytes = StudyEvidence.sheet("RectSL sweep · ${r.id} · knob $knob '${k.text}' at ${k.line}:${k.column}", "${k.role} — ${k.context}", tiles.chunked(4), tw, tileHeight = th)
         val file = save("${r.id}-sweep-$knob-${values.joinToString("_")}.png", bytes)
         return StudyReport(r.id, linkedMapOf("revision" to r.id, "knob" to knobSummary(k), "seconds" to seconds,
             "values" to results.map { (value, _, error) -> linkedMapOf("value" to value, "error" to error) },
@@ -1033,7 +1033,7 @@ class RectSLStudy(
         val times = seconds.filter { it.isFinite() }.distinct().take(4).ifEmpty { if (current.value.animated) defaultTimes(d.scene, 3) else listOf(0.0) }
         val long = (if (size > 0) size else 240).coerceIn(48, 480)
         val clock = System.nanoTime()
-        val rows = mutableListOf(framesOf(d, long, times).mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${secs(times[i])} s", "current") })
+        val rows = mutableListOf(framesOf(d, long, times).mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${secs(times[i])} s", "current") })
         val labels = mutableListOf("${current.id}\n(current)")
         val held = linkedMapOf<String, Speculation>()
         val epoch = revisions.epoch()
@@ -1044,18 +1044,18 @@ class RectSLStudy(
                 val source = v.source.ifBlank { SourceStudy.applyEdits(live, v.edits) }
                 val admitted = revisions.check(source)
                 val frames = framesOf(drawable(source), long, times)
-                rows += frames.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${secs(times[i])} s", v.label) }
+                rows += frames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${secs(times[i])} s", v.label) }
                 held[v.label] = Speculation(v.label, v.note, source)
                 linkedMapOf("label" to v.label, "ok" to true, "note" to v.note, "warnings" to admitted.value.warnings.ifEmpty { null },
                     "rects" to admitted.value.rects, "animated" to admitted.value.animated, "knobs" to admitted.value.knobs.size)
             } catch (e: StudyRejection) {
-                rows += listOf(StackSLStudyEvidence.tile(null, v.label, "", e.message))
+                rows += listOf(StudyEvidence.tile(null, v.label, "", e.message))
                 linkedMapOf("label" to v.label, "ok" to false, "error" to e.message)
             }
         }
         synchronized(speculations) { speculations.clear(); speculations.putAll(held) }
         val (tw, th) = tileSize(d.scene, 240)
-        val bytes = StackSLStudyEvidence.sheet("RectSL variants · against ${current.id}", "Unpublished candidates; adopt one with AdoptRectSLVariant, or ask for more.",
+        val bytes = StudyEvidence.sheet("RectSL variants · against ${current.id}", "Unpublished candidates; adopt one with AdoptRectSLVariant, or ask for more.",
             rows, tw, labels, tileHeight = th)
         val batch = File(directory, "speculations/${System.currentTimeMillis()}").also { it.mkdirs() }
         File(batch, "sheet.png").writeBytes(bytes)
@@ -1118,20 +1118,20 @@ class RectSLStudy(
         // Both drawn at the after-scene's frame size, so two walls of different shapes still line up pixel for pixel.
         val (w, h) = RectSLStudyShader.frameSize(db.scene, long)
         val allA = rasterizer.renderAll(da, w, h, times); val allB = rasterizer.renderAll(db, w, h, times)
-        val rows = mutableListOf<List<StackSLStudyEvidence.Tile>>()
+        val rows = mutableListOf<List<StudyEvidence.Tile>>()
         val results = times.mapIndexed { i, t ->
-            val (outside, inside) = StackSLStudyEvidence.difference(allA[i], allB[i], uvRegion, mode == "luma")
+            val (outside, inside) = StudyEvidence.difference(allA[i], allB[i], uvRegion, mode == "luma")
             rows += listOf(
-                StackSLStudyEvidence.tile(StackSLStudyShader.presented(allA[i]), a.id, "t = ${secs(t)} s"),
-                StackSLStudyEvidence.tile(StackSLStudyShader.presented(allB[i]), b.id, "t = ${secs(t)} s"),
-                StackSLStudyEvidence.differenceTile(allA[i], allB[i], "difference", "outside: max ${fmt(outside.max)} levels"))
+                StudyEvidence.tile(StudyEvidence.presented(allA[i]), a.id, "t = ${secs(t)} s"),
+                StudyEvidence.tile(StudyEvidence.presented(allB[i]), b.id, "t = ${secs(t)} s"),
+                StudyEvidence.differenceTile(allA[i], allB[i], "difference", "outside: max ${fmt(outside.max)} levels"))
             linkedMapOf("seconds" to t, "outside" to outside, "inside" to inside)
         }
-        val preserved = results.all { (it["outside"] as StackSLDifference).max <= 1.0 }
+        val preserved = results.all { (it["outside"] as StudyDifference).max <= 1.0 }
         val originsB = compile(b.source).origins; val originsA = compile(a.source).origins
         val changes = sceneChanges(da.scene, db.scene, times, originsA, originsB)
         val (tw, th) = tileSize(db.scene, 280)
-        val bytes = StackSLStudyEvidence.sheet("RectSL compare · ${a.id} → ${b.id} · $mode",
+        val bytes = StudyEvidence.sheet("RectSL compare · ${a.id} → ${b.id} · $mode",
             (region?.let { "Change allowed inside [${it.joinToString()}]; " } ?: "No change allowed; ") + "held to one 8-bit level.", rows, tw, tileHeight = th)
         val file = save("${a.id}-vs-${b.id}-$mode.png", bytes)
         return StudyReport(b.id, linkedMapOf("before" to a.id, "after" to b.id, "mode" to mode, "region" to region, "results" to results,
@@ -1271,7 +1271,7 @@ class RectSLStudy(
     }
 
     private fun exportPng(r: SourceRevision<RectSLCheck>, file: File, long: Int, seconds: Double) {
-        val bytes = StackSLStudyShader.presented(frames(r.source, long, listOf(seconds)).single()).toPngBytes()
+        val bytes = StudyEvidence.presented(frames(r.source, long, listOf(seconds)).single()).toPngBytes()
         file.absoluteFile.parentFile.mkdirs()
         val temp = Files.createTempFile(file.absoluteFile.parentFile.toPath(), ".rectsl-export-", ".png")
         Files.write(temp, bytes)
@@ -1325,7 +1325,7 @@ class RectSLStudy(
     private fun shownByte(v: Float): Int = if (!v.isFinite()) 0 else SHOWN_BYTES[(v.coerceIn(0f, 1f) * (SHOWN_BYTES.size - 1) + 0.5f).toInt()].toInt() and 0xff
 
     private val SHOWN_BYTES: ByteArray by lazy {
-        ByteArray(65536) { i -> Math.round(StackSLStudyShader.linearToSrgb(i / 65535f).coerceIn(0f, 1f) * 255f).toByte() }
+        ByteArray(65536) { i -> Math.round(StudyEvidence.linearToSrgb(i / 65535f).coerceIn(0f, 1f) * 255f).toByte() }
     }
 
     /**
@@ -1339,7 +1339,7 @@ class RectSLStudy(
         previews[key]?.let { return it }
         val file = File(File(directory, "thumbnails"), "${r.id}-$long-$seconds.png")
         if (file.isFile) return file.readBytes().also { previews[key] = it }
-        val bytes = StackSLStudyShader.presented(frames(r.source, long, listOf(seconds)).single()).toPngBytes()
+        val bytes = StudyEvidence.presented(frames(r.source, long, listOf(seconds)).single()).toPngBytes()
         if (rasterizer.description.startsWith("GPU")) {
             previews[key] = bytes
             file.parentFile.mkdirs()

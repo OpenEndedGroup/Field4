@@ -1,5 +1,6 @@
 package afield.rectsl.study
 
+import afield.stdlib.StudyEvidence
 import afield.Box
 import afield.registerUnownedStringCallback
 import afield.rectsl.RectSLKnob
@@ -306,7 +307,7 @@ class RectSLStudyViewer(
                     val image = runCatching {
                         val d = RectSLStudy.drawable(source)
                         val (w, h) = RectSLStudyShader.frameSize(d.scene, 160)
-                        png(afield.stacksl.study.StackSLStudyShader.presented(study.rasterizer.renderAll(d, w, h, listOf(times.getOrElse(1) { 0.0 })).single()).toPngBytes())
+                        png(afield.stdlib.StudyEvidence.presented(study.rasterizer.renderAll(d, w, h, listOf(times.getOrElse(1) { 0.0 })).single()).toPngBytes())
                     }.getOrNull()
                     append("<div class='cell'>${image?.let { "<img src='$it'>" } ?: ""}<span>${esc(label)}</span><span class='muted' title='${esc(note)}'>${esc(note)}</span><button data-act='adopt' data-label='${esc(label)}'>Adopt</button></div>")
                 }

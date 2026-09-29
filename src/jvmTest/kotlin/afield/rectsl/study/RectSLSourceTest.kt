@@ -1,5 +1,6 @@
 package afield.rectsl.study
 
+import afield.stdlib.StudyEvidence
 import afield.rectsl.compileRectSLWithSource
 import afield.rectsl.rectSLKnobs
 import afield.rectsl.setRectSLKnobs
@@ -126,7 +127,7 @@ class RectSLSourceTest {
         // 0x808080 is linear 0.2159, which the window encodes back to 128.
         val grey = at(-1.0, -0.5)
         assertTrue(abs(grey[0] - 0.2159f) < 0.002f, "grey is linear 0.216, got ${grey[0]}")
-        val shown = StackSLStudyShader.presented(raster).toArgb()[((32 - 16 + 7) * 64 + 16)]
+        val shown = StudyEvidence.presented(raster).toArgb()[((32 - 16 + 7) * 64 + 16)]
         assertEquals(128, (shown shr 16) and 0xff, "0x808080 shows as 128")
     }
 
@@ -148,7 +149,7 @@ class RectSLSourceTest {
         assertTrue(compiled.ok, compiled.problems.joinToString { it.summary })
         val raster = CpuRectSLRasterizer.renderAll(RectSLStudy.drawable(source), 32, 32, listOf(0.0)).single()
         // The material's output is written as typed: half of uv.x, so the right edge shows about 0.46 × 255.
-        val shown = StackSLStudyShader.presented(raster).toArgb()
+        val shown = StudyEvidence.presented(raster).toArgb()
         val left = (shown[16 * 32 + 2] shr 16) and 0xff; val right = (shown[16 * 32 + 29] shr 16) and 0xff
         assertTrue(left < 20 && right in 105..125, "the material ramps across the tile: left $left, right $right")
     }

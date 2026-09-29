@@ -1,5 +1,6 @@
 package afield.stacksl.study
 
+import afield.stdlib.StudyEvidence
 import afield.Box
 import afield.ai.core.ToolImage
 import afield.four.ModuleDestinations
@@ -115,7 +116,7 @@ object StackAutoView {
         require(compiled.analysis.requiredSamplers.isEmpty()) { "it samples ${compiled.analysis.requiredSamplers.joinToString()}, which only your shader provides" }
         val rasterizer = rasterizers.getOrPut(box) { StackSLGpuRasterizer({ BoxStudies.rendererAbove(box) }) }
         val raster = rasterizer.renderAll(drawn, 256, listOf(StackSLStudyShader.REFERENCE_TIME)).single()
-        Picture(StackSLStudyShader.presented(raster).toPngBytes(),
+        Picture(StudyEvidence.presented(raster).toPngBytes(),
             "stack.auto.$slot alone, at t = ${StackSLStudyShader.REFERENCE_TIME} s, input vec4(uv, hash, 0, time) on a unit square — not the input your shader gives it · ${rasterizer.description}")
     } catch (e: Exception) {
         Picture(null, "Cannot draw stack.auto.$slot alone: ${e.message}")

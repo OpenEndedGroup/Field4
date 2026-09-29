@@ -1,5 +1,7 @@
 package afield.stacksl.study
 
+import afield.stdlib.StudyEvidence
+import afield.stdlib.StudyFrameStats
 import afield.Box
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.cpu.StackSLCpu
@@ -195,16 +197,16 @@ class StackSLStudyTest {
     @Test fun displayedRawIsExactlyWhatTheFragmentDraws() {
         for (program in listOf("uv fbm palette saturate", "p 3 * sqrt", "uv 2 * 0.5t +")) {
             val direct = StackSLCpu.renderProgram(program, StackSLStudyShader.FRAGMENT, 24, 24, pushParams = floatArrayOf(2.5f, 0f, 0f, 0f))
-            val derived = StackSLStudyShader.displayed(StackSLStudyShader.renderRaw(program, 24, 2.5))
+            val derived = StudyEvidence.displayed(StackSLStudyShader.renderRaw(program, 24, 2.5))
             assertContentEquals(direct.toArgb(), derived.toArgb(), program)
         }
     }
 
     @Test fun imagesAreEncodedTheWayTheSrgbWindowShowsThem() {
-        val presented = StackSLStudyShader.presented(StackSLStudyShader.renderRaw("0.5", 4, 0.0))
+        val presented = StudyEvidence.presented(StackSLStudyShader.renderRaw("0.5", 4, 0.0))
         val argb = presented.toArgb()[0]
         assertEquals(188, (argb shr 16) and 0xff, "0.5 linear is sRGB 188, the grey an sRGB swapchain shows")
-        assertEquals(0, (StackSLStudyShader.presented(StackSLStudyShader.renderRaw("0", 4, 0.0)).toArgb()[0] shr 8) and 0xff)
+        assertEquals(0, (StudyEvidence.presented(StackSLStudyShader.renderRaw("0", 4, 0.0)).toArgb()[0] shr 8) and 0xff)
         assertContains(StackSLStudyShader.webgl2("0.5").fragment, "study_srgb(clamp(c, 0.0, 1.0))")
     }
 
@@ -252,7 +254,7 @@ class StackSLStudyTest {
 
     @Test fun observeMeasuresClippingNaNAndMotion() = withStudy("2\n") { study, _ ->
         val bright = study.observe(size = 32)
-        @Suppress("UNCHECKED_CAST") val frame = (bright.facts["frames"] as List<StackSLFrameStats>).single()
+        @Suppress("UNCHECKED_CAST") val frame = (bright.facts["frames"] as List<StudyFrameStats>).single()
         assertEquals(1.0, frame.clippedAbove)
         assertEquals(1.0, frame.luma)
         assertEquals(1, bright.toolImages.size)

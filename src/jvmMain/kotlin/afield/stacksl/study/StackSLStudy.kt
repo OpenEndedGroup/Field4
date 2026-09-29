@@ -1,5 +1,7 @@
 package afield.stacksl.study
 
+import afield.stdlib.StudyEvidence
+import afield.stdlib.StudyDifference
 import afield.ai.core.ToolImage
 import afield.stacksl.StackSLCompiler
 import afield.stacksl.StackSLSeverity
@@ -90,7 +92,7 @@ class StackSLStudy(
             val outline = StackSLCompiler.outline(source)
             if (!StackSLCpu.compile(outline.rootPrefix(source, stage.wordsThrough)).ok) return@runCatching null
             val raw = frame(outline.stageProgram(source, stage.wordsThrough), LINE_NOTE_SIZE, StackSLStudyShader.REFERENCE_TIME, parallel = false)
-            val (tile, scaled) = StackSLStudyEvidence.normalizedTile(raw, "", "")
+            val (tile, scaled) = StudyEvidence.normalizedTile(raw, "", "")
             val stored = outline.storedMark(stage.wordsThrough)
             val what = stored?.let { "the value it stores in >$it" } ?: "what it leaves on the stack"
             afield.stdlib.LineNotes.Note(
@@ -413,25 +415,25 @@ class StackSLStudy(
         if (revisions.isCancelled(epoch)) throw CancellationException()
         val frames = frames(r.source, dim, times)
         val before = other?.let { o -> frames(o.source, dim, times) }
-        val stats = frames.mapIndexed { i, f -> StackSLStudyEvidence.stats(f, times[i]) }
-        val rows = mutableListOf(frames.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${StackSLStudyEvidence.format(times[i])} s",
-            "luma ${StackSLStudyEvidence.format(stats[i].luma)} · clip ${pct(stats[i].clippedAbove)}") })
+        val stats = frames.mapIndexed { i, f -> StudyEvidence.stats(f, times[i]) }
+        val rows = mutableListOf(frames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s",
+            "luma ${StudyEvidence.format(stats[i].luma)} · clip ${pct(stats[i].clippedAbove)}") })
         val labels = mutableListOf(r.id)
         val differences = before?.let { b ->
             val o = other
-            rows += b.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${StackSLStudyEvidence.format(times[i])} s", o.id) }
+            rows += b.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", o.id) }
             labels += o.id
-            val d = b.indices.map { i -> StackSLStudyEvidence.difference(b[i], frames[i], null, false).first }
+            val d = b.indices.map { i -> StudyEvidence.difference(b[i], frames[i], null, false).first }
             // A difference map of two unrelated pictures is solid white and says nothing a glance at the rows does not.
             if (d.any { it.mean <= 40.0 }) {
-                rows += b.indices.map { i -> StackSLStudyEvidence.differenceTile(b[i], frames[i], "difference", "max ${d[i].max.toInt()} · mean ${StackSLStudyEvidence.format(d[i].mean)} levels") }
+                rows += b.indices.map { i -> StudyEvidence.differenceTile(b[i], frames[i], "difference", "max ${d[i].max.toInt()} · mean ${StudyEvidence.format(d[i].mean)} levels") }
                 labels += "difference\nwhite ≥ 32 levels"
             }
             d.mapIndexed { i, diff -> mapOf("seconds" to times[i], "difference" to diff) }
         }
-        val motion = frames.zipWithNext().mapIndexed { i, (a, b) -> StackSLStudyEvidence.motion(a, b, times[i], times[i + 1]) }
+        val motion = frames.zipWithNext().mapIndexed { i, (a, b) -> StudyEvidence.motion(a, b, times[i], times[i + 1]) }
         val grain = stats.any { f -> f.featureSize != null && f.featureSize * dim < 2.5 }
-        val bytes = StackSLStudyEvidence.sheet(
+        val bytes = StudyEvidence.sheet(
             "StackSL study · ${r.id}", r.description.take(140), rows, if (dim < 160) dim * 2 else dim,
             labels.map { it }, if (!r.value.animated) "This program does not read time: one frame is all there is." else "")
         val file = save("${r.id}-${times.joinToString("_")}-${dim}${other?.let { "-vs-${it.id}" }.orEmpty()}.png", bytes)
@@ -442,7 +444,7 @@ class StackSLStudy(
             "grain" to if (grain) "Features are about one pixel wide at this size: the picture varies faster than it can be sampled. Often the per-pixel hash in input.z reaching a noise coordinate (use uv, or zero z), or a spatial scale too large to resolve." else null,
             "warnings" to r.value.warnings.ifEmpty { null }, "imageFile" to file.absolutePath,
             "method" to "CPU reference render of the study shader; statistics from the raw program output before the clamp."
-        ), listOf(ToolImage(png(bytes), "${r.id}: frames at ${times.joinToString { StackSLStudyEvidence.format(it) }} s" +
+        ), listOf(ToolImage(png(bytes), "${r.id}: frames at ${times.joinToString { StudyEvidence.format(it) }} s" +
             (other?.let { "; second row ${it.id}, third row the difference" } ?: ""))))
     }
 
@@ -469,21 +471,21 @@ class StackSLStudy(
         val stages = r.value.stages.let { all -> if (all.size <= 24) all else (all.indices.filter { it % ((all.size + 22) / 23) == 0 } + all.lastIndex).distinct().map { all[it] } }
         val dim = sizeIn(if (size > 0) size else if (rasterizer.fast) 128 else 72, 160)
         val clock = System.nanoTime()
-        val tiles = mutableListOf<StackSLStudyEvidence.Tile>()
+        val tiles = mutableListOf<StudyEvidence.Tile>()
         val facts = stages.map { stage ->
             val prefix = outline.rootPrefix(r.source, stage.wordsThrough)
             val compiled = StackSLCpu.compile(prefix)
             val depth = compiled.analysis.functions.lastOrNull { it.name == "<root>" }?.finalStackDepth
             val stored = outline.storedMark(stage.wordsThrough)
             if (!compiled.ok) {
-                tiles += StackSLStudyEvidence.tile(null, "${stage.granularity} ${stage.line}", stage.text, "does not compile on its own")
+                tiles += StudyEvidence.tile(null, "${stage.granularity} ${stage.line}", stage.text, "does not compile on its own")
                 mapOf("stage" to stage.stage, "line" to stage.line, "text" to stage.text, "compiles" to false)
             } else {
                 // A line that ends by storing (>name) is shown by the value it stored.
                 val raw = frame(outline.stageProgram(r.source, stage.wordsThrough), dim, seconds)
                 val label = "${if (stage.granularity == "line") "L" else "w"}${stage.line}${if (stage.granularity == "word") ":${stage.stage}" else ""}" +
                     (stored?.let { " → $it" } ?: " · depth $depth")
-                val (tile, normalized) = StackSLStudyEvidence.normalizedTile(raw, label, stage.text)
+                val (tile, normalized) = StudyEvidence.normalizedTile(raw, label, stage.text)
                 tiles += tile
                 val ranges = (0 until 4).map { c ->
                     val values = (0 until dim * dim).map { raw.rgba[it * 4 + c] }.filter { it.isFinite() }
@@ -499,7 +501,7 @@ class StackSLStudy(
         }
         val probe = if (probeU != null && probeV != null) probe(r.source, outline, probeU, probeV, seconds) else null
         val columns = 6
-        val bytes = StackSLStudyEvidence.sheet("StackSL trace · ${r.id} · t = ${StackSLStudyEvidence.format(seconds)} s",
+        val bytes = StudyEvidence.sheet("StackSL trace · ${r.id} · t = ${StudyEvidence.format(seconds)} s",
             "Top of the stack after each ${stages.firstOrNull()?.granularity ?: "stage"} (→ name: the value a store line put in that mark); depth counts the program's input at the bottom.",
             tiles.chunked(columns), 150,
             footer = "Stretched tiles map each channel's own min..max to 0..1; colour tiles are shown as the frame would draw them.")
@@ -507,7 +509,7 @@ class StackSLStudy(
         return StudyReport(r.id, linkedMapOf("revision" to r.id, "seconds" to seconds, "size" to dim, "stages" to facts,
             "probe" to probe, "imageFile" to file.absolutePath, "renderSeconds" to cost(clock, stages.size * dim * dim),
             "method" to "Each tile renders the program cut after that stage; definitions are kept whole."),
-            listOf(ToolImage(png(bytes), "${r.id}: what each stage leaves on top of the stack at ${StackSLStudyEvidence.format(seconds)} s")))
+            listOf(ToolImage(png(bytes), "${r.id}: what each stage leaves on top of the stack at ${StudyEvidence.format(seconds)} s")))
     }
 
     private fun Double.round4() = (this * 10000).let { kotlin.math.round(it) } / 10000
@@ -541,7 +543,7 @@ class StackSLStudy(
             val step = if (abs(k.value) > 1e-3) abs(k.value) * 0.1 else 0.05
             val effect = try {
                 val nudged = frame(StackSLStudyShader.setKnobs(r.source, mapOf(k.knob to k.value + step)), 48, seconds)
-                val d = StackSLStudyEvidence.difference(base, nudged, null, false).first
+                val d = StudyEvidence.difference(base, nudged, null, false).first
                 mapOf("nudge" to step.round4(), "meanLevels" to d.mean, "maxLevels" to d.max, "changedFraction" to d.changedFraction,
                     "reading" to when { d.max == 0.0 -> "no visible effect here"; d.mean < 0.5 -> "subtle"; d.mean < 4 -> "moderate"; else -> "strong" })
             } catch (e: IllegalArgumentException) {
@@ -571,16 +573,16 @@ class StackSLStudy(
             }
         }
         val tiles = results.map { (value, raw, error) ->
-            val s = raw?.let { StackSLStudyEvidence.stats(it, seconds) }
-            StackSLStudyEvidence.tile(raw?.let(StackSLStudyShader::displayed), StackSLStudyShader.formatKnob(value, "$value") +
-                if (abs(value - k.value) < 1e-12) "  (now)" else "", s?.let { "luma ${StackSLStudyEvidence.format(it.luma)} · detail ${StackSLStudyEvidence.format(it.detail)}" } ?: "", error)
+            val s = raw?.let { StudyEvidence.stats(it, seconds) }
+            StudyEvidence.tile(raw?.let(StudyEvidence::displayed), StackSLStudyShader.formatKnob(value, "$value") +
+                if (abs(value - k.value) < 1e-12) "  (now)" else "", s?.let { "luma ${StudyEvidence.format(it.luma)} · detail ${StudyEvidence.format(it.detail)}" } ?: "", error)
         }
-        val bytes = StackSLStudyEvidence.sheet("StackSL sweep · ${r.id} · knob $knob '${k.token}' at ${k.line}:${k.column}",
+        val bytes = StudyEvidence.sheet("StackSL sweep · ${r.id} · knob $knob '${k.token}' at ${k.line}:${k.column}",
             "${k.role}${k.feeds?.let { " feeding $it" } ?: ""} — ${k.context}", tiles.chunked(5), maxOf(dim, 150))
         val file = save("${r.id}-sweep-$knob-${values.joinToString("_")}.png", bytes)
         return StudyReport(r.id, linkedMapOf("revision" to r.id, "knob" to knobSummary(k), "seconds" to seconds,
             "values" to results.map { (value, raw, error) -> linkedMapOf("value" to value, "error" to error,
-                "stats" to raw?.let { StackSLStudyEvidence.stats(it, seconds) }?.let { mapOf("luma" to it.luma, "detail" to it.detail, "featureSize" to it.featureSize, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) }) },
+                "stats" to raw?.let { StudyEvidence.stats(it, seconds) }?.let { mapOf("luma" to it.luma, "detail" to it.detail, "featureSize" to it.featureSize, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) }) },
             "imageFile" to file.absolutePath, "published" to false, "renderSeconds" to cost(clock, values.size * dim * dim)),
             listOf(ToolImage(png(bytes), "${r.id}: knob $knob ('${k.token}') at ${values.joinToString()}")))
     }
@@ -604,7 +606,7 @@ class StackSLStudy(
         val dim = sizeIn(if (size > 0) size else if (times.size == 1 || rasterizer.fast) 192 else 112, 192)
         val clock = System.nanoTime()
         val baseFrames = frames(current.source, dim, times)
-        val rows = mutableListOf(baseFrames.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${StackSLStudyEvidence.format(times[i])} s", "current") })
+        val rows = mutableListOf(baseFrames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", "current") })
         val labels = mutableListOf("${current.id}\n(current)")
         val held = linkedMapOf<String, Speculation>()
         val epoch = revisions.epoch()
@@ -615,15 +617,15 @@ class StackSLStudy(
                 val source = v.source.ifBlank { SourceStudy.applyEdits(live, v.edits) }
                 val admitted = revisions.check(source)
                 val frames = frames(source, dim, times)
-                val diff = StackSLStudyEvidence.difference(baseFrames[0], frames[0], null, false).first
-                rows += frames.mapIndexed { i, f -> StackSLStudyEvidence.tile(StackSLStudyShader.presented(f), "t = ${StackSLStudyEvidence.format(times[i])} s", v.label) }
+                val diff = StudyEvidence.difference(baseFrames[0], frames[0], null, false).first
+                rows += frames.mapIndexed { i, f -> StudyEvidence.tile(StudyEvidence.presented(f), "t = ${StudyEvidence.format(times[i])} s", v.label) }
                 held[v.label] = Speculation(v.label, v.note, source)
                 linkedMapOf("label" to v.label, "ok" to true, "note" to v.note, "warnings" to admitted.value.warnings.ifEmpty { null },
                     "animated" to admitted.value.animated, "knobs" to admitted.value.knobs.size,
                     "differenceFromCurrent" to mapOf("meanLevels" to diff.mean, "changedFraction" to diff.changedFraction),
-                    "frame" to StackSLStudyEvidence.stats(frames[0], times[0]).let { mapOf("luma" to it.luma, "detail" to it.detail, "colourfulness" to it.colourfulness, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) })
+                    "frame" to StudyEvidence.stats(frames[0], times[0]).let { mapOf("luma" to it.luma, "detail" to it.detail, "colourfulness" to it.colourfulness, "clippedAbove" to it.clippedAbove, "palette" to it.palette.take(3)) })
             } catch (e: StudyRejection) {
-                rows += listOf(StackSLStudyEvidence.tile(null, v.label, "", e.message))
+                rows += listOf(StudyEvidence.tile(null, v.label, "", e.message))
                 linkedMapOf("label" to v.label, "ok" to false, "error" to e.message)
             }
         }
@@ -634,10 +636,10 @@ class StackSLStudy(
         val single = times.size == 1
         val sheetRows = if (!single) rows else listOf(rows.mapIndexed { i, row ->
             val t = row.first()
-            StackSLStudyEvidence.Tile(t.argb, t.width, t.height, labels[i].substringBefore('\n').let { if (i == 0) "current" else it },
+            StudyEvidence.Tile(t.argb, t.width, t.height, labels[i].substringBefore('\n').let { if (i == 0) "current" else it },
                 labels[i].substringAfter('\n', "").ifBlank { if (i == 0) current.id else "" }, t.error)
         })
-        val bytes = StackSLStudyEvidence.sheet("StackSL variants · against ${current.id}" + if (single) " · t = ${StackSLStudyEvidence.format(times[0])} s" else "",
+        val bytes = StudyEvidence.sheet("StackSL variants · against ${current.id}" + if (single) " · t = ${StudyEvidence.format(times[0])} s" else "",
             "Unpublished candidates; adopt one with AdoptStackSLVariant, or ask for more.",
             if (single) sheetRows.flatten().chunked(5) else sheetRows, if (dim < 150) dim * 2 else dim, if (single) emptyList() else labels)
         val batch = File(directory, "speculations/${System.currentTimeMillis()}").also { it.mkdirs() }
@@ -697,31 +699,31 @@ class StackSLStudy(
         if (mode == "stage" && (beforeStage == null || afterStage == null)) throw StudyRejection("mode=stage needs beforeStage and afterStage")
         if (mode !in setOf("rgb", "luma", "stage")) throw StudyRejection("mode is rgb, luma or stage")
         val pa = program(a, beforeStage.takeIf { mode == "stage" }); val pb = program(b, afterStage.takeIf { mode == "stage" })
-        val rows = mutableListOf<List<StackSLStudyEvidence.Tile>>()
+        val rows = mutableListOf<List<StudyEvidence.Tile>>()
         val allA = frames(pa, dim, times); val allB = frames(pb, dim, times)
         val results = times.mapIndexed { i, t ->
             val fa = allA[i]; val fb = allB[i]
-            val (outside, inside) = if (mode == "stage") StackSLStudyEvidence.rawDifference(fa, fb, region)
-                else StackSLStudyEvidence.difference(fa, fb, region, mode == "luma")
-            val when_ = "t = ${StackSLStudyEvidence.format(t)} s"
+            val (outside, inside) = if (mode == "stage") StudyEvidence.rawDifference(fa, fb, region)
+                else StudyEvidence.difference(fa, fb, region, mode == "luma")
+            val when_ = "t = ${StudyEvidence.format(t)} s"
             rows += listOf(
-                if (mode == "stage") StackSLStudyEvidence.normalizedTile(fa, a.id, "stage $beforeStage · $when_").first else StackSLStudyEvidence.tile(StackSLStudyShader.presented(fa), a.id, when_),
-                if (mode == "stage") StackSLStudyEvidence.normalizedTile(fb, b.id, "stage $afterStage · $when_").first else StackSLStudyEvidence.tile(StackSLStudyShader.presented(fb), b.id, when_),
-                if (mode == "stage") StackSLStudyEvidence.rawDifferenceTile(fa, fb, "difference", "outside: max ${StackSLStudyEvidence.format(outside.max)}")
-                else StackSLStudyEvidence.differenceTile(fa, fb, "difference", "outside: max ${StackSLStudyEvidence.format(outside.max)} levels"))
+                if (mode == "stage") StudyEvidence.normalizedTile(fa, a.id, "stage $beforeStage · $when_").first else StudyEvidence.tile(StudyEvidence.presented(fa), a.id, when_),
+                if (mode == "stage") StudyEvidence.normalizedTile(fb, b.id, "stage $afterStage · $when_").first else StudyEvidence.tile(StudyEvidence.presented(fb), b.id, when_),
+                if (mode == "stage") StudyEvidence.rawDifferenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)}")
+                else StudyEvidence.differenceTile(fa, fb, "difference", "outside: max ${StudyEvidence.format(outside.max)} levels"))
             linkedMapOf("seconds" to t, "outside" to outside, "inside" to inside)
         }
         val tolerance = if (mode == "stage") 1e-6 else 1.0
-        val preserved = results.all { (it["outside"] as StackSLDifference).max <= tolerance }
+        val preserved = results.all { (it["outside"] as StudyDifference).max <= tolerance }
         // A line that ends in a store (`>edge`) leaves only the program's input on top, and two
         // programs always agree about their input: such a comparison is true and says nothing.
         // The input is what the root with no words returns; its definitions are the ones that compiled.
         fun inputOnly(r: SourceRevision<StackSLCheck>, stage: List<CpuRaster>): Boolean {
             val input = frames(StackSLCompiler.outline(r.source).rootPrefix(r.source, 0), dim, times)
-            return stage.indices.all { StackSLStudyEvidence.rawDifference(stage[it], input[it], null).first.max <= tolerance }
+            return stage.indices.all { StudyEvidence.rawDifference(stage[it], input[it], null).first.max <= tolerance }
         }
         val programInput = if (mode == "stage") listOf(inputOnly(a, allA), inputOnly(b, allB)) else null
-        val bytes = StackSLStudyEvidence.sheet("StackSL compare · ${a.id} → ${b.id} · $mode",
+        val bytes = StudyEvidence.sheet("StackSL compare · ${a.id} → ${b.id} · $mode",
             (region?.let { "Change allowed inside uv [${it.joinToString()}]; " } ?: "No change allowed; ") + "held to ${if (mode == "stage") "1e-6" else "one 8-bit level"}.",
             rows, if (dim < 150) dim * 2 else dim)
         val file = save("${a.id}-vs-${b.id}-$mode.png", bytes)
@@ -853,7 +855,7 @@ class StackSLStudy(
         val r = exportable(id, expectedSourceHash)
         if (file.exists() && !overwrite) throw StudyRejection("${file.name} exists; ask for overwrite to replace it")
         val dim = size.coerceIn(16, 2048)
-        val bytes = StackSLStudyShader.presented(frame(r.source, dim, seconds)).toPngBytes()
+        val bytes = StudyEvidence.presented(frame(r.source, dim, seconds)).toPngBytes()
         file.absoluteFile.parentFile.mkdirs()
         val temp = Files.createTempFile(file.absoluteFile.parentFile.toPath(), ".stacksl-export-", ".png")
         Files.write(temp, bytes)
@@ -880,7 +882,7 @@ class StackSLStudy(
         try {
             rasterizer.render(r.source, dim, List(frames) { start + it.toDouble() / fps }) { i, raw ->
                 if (revisions.isCancelled(epoch)) throw CancellationException("Export cancelled")
-                File(folder, "%05d.png".format(i)).writeBytes(StackSLStudyShader.presented(raw).toPngBytes())
+                File(folder, "%05d.png".format(i)).writeBytes(StudyEvidence.presented(raw).toPngBytes())
                 progress(i + 1)
             }
             file.absoluteFile.parentFile.mkdirs()
@@ -906,7 +908,7 @@ class StackSLStudy(
             val folder = File(directory, "thumbnails").also { it.mkdirs() }
             val file = File(folder, "${r.id}-$size-$seconds.png")
             if (file.isFile) file.readBytes()
-            else StackSLStudyShader.presented(frame(r.source, size, seconds, parallel)).toPngBytes().also { file.writeBytes(it) }
+            else StudyEvidence.presented(frame(r.source, size, seconds, parallel)).toPngBytes().also { file.writeBytes(it) }
         }
     }
 }

@@ -1,4 +1,6 @@
-package afield.stacksl.study
+@file:afield.CompletionCategory("Workspace")
+
+package afield.stdlib
 
 import afield.stacksl.cpu.CpuRaster
 import java.awt.BasicStroke
@@ -17,20 +19,21 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * What a StackSL study can say about a picture in numbers, and how it lays pictures out for a model
- * to look at.
+ * What a study can say about a picture in numbers, and how it lays pictures out for a model to look
+ * at. Every study that draws — StackSL, RectSL, a stack.auto slot — measures and lays out its frames
+ * here, so a measurement means the same thing in all of them.
  *
  * A model shown only an image will describe the image. These measurements are the things it cannot
  * read reliably off a thumbnail, each one a question a conversation about a shader actually asks:
- * *is it blown out?* ([StackSLFrameStats.clippedAbove]), *is anything NaN?* (`nonFinite`), *is it
+ * *is it blown out?* ([StudyFrameStats.clippedAbove]), *is anything NaN?* (`nonFinite`), *is it
  * flat or busy?* (`detail`, `featureSize`), *what colours is it?* (`palette`), *did it move?*
- * ([StackSLMotion]), *did my edit change what I said it would, and only that?* ([StackSLDifference]).
- * All of them are taken from the program's **raw** output before [StackSLStudyShader.FRAGMENT]'s clamp,
- * so clipping is counted rather than hidden.
+ * ([StudyMotion]), *did my edit change what I said it would, and only that?* ([StudyDifference]).
+ * All of them are taken from the program's **raw** output before the frame's clamp ([displayed]), so
+ * clipping is counted rather than hidden.
  */
-data class StackSLFrameStats(
+data class StudyFrameStats(
     val seconds: Double,
-    /** Mean R, G, B in `0..1` as the window shows them — sRGB-encoded, see [StackSLStudyShader.presented]. */
+    /** Mean R, G, B in `0..1` as the window shows them — sRGB-encoded, see [StudyEvidence.presented]. */
     val meanRgb: List<Double>,
     /** Mean luma (Rec. 709) of the presented image, and its standard deviation. */
     val luma: Double,
@@ -47,16 +50,16 @@ data class StackSLFrameStats(
     /** Hasler–Süsstrunk colourfulness on the 0..255 scale: under ~15 reads as grey, over ~80 as vivid. */
     val colourfulness: Double,
     /** The frame's main colours by k-means, most common first, with the fraction of pixels each covers. */
-    val palette: List<StackSLSwatch>
+    val palette: List<StudySwatch>
 )
 
-data class StackSLSwatch(val hex: String, val fraction: Double)
+data class StudySwatch(val hex: String, val fraction: Double)
 
 /** How much consecutive frames differ: mean absolute change in 8-bit levels, and the fraction of pixels that moved by more than two levels. */
-data class StackSLMotion(val fromSeconds: Double, val toSeconds: Double, val meanLevels: Double, val changedFraction: Double)
+data class StudyMotion(val fromSeconds: Double, val toSeconds: Double, val meanLevels: Double, val changedFraction: Double)
 
 /** A difference between two frames, restricted to a region or its complement. */
-data class StackSLDifference(
+data class StudyDifference(
     val scope: String,
     val pixels: Int,
     /** Largest per-channel difference, in 8-bit levels (or raw units when comparing stages). */
@@ -69,10 +72,45 @@ data class StackSLDifference(
     val atV: Double?
 )
 
-internal object StackSLStudyEvidence {
+object StudyEvidence {
 
-    fun stats(raw: CpuRaster, seconds: Double): StackSLFrameStats {
-        val shown = StackSLStudyShader.presented(raw)
+    /** What a study frame draws for a raw raster: non-finite colour becomes black, the rest is clamped, alpha is one. */
+    fun displayed(raw: CpuRaster): CpuRaster {
+        val out = FloatArray(raw.rgba.size)
+        for (p in 0 until raw.width * raw.height) {
+            val r = raw.rgba[p * 4]; val g = raw.rgba[p * 4 + 1]; val b = raw.rgba[p * 4 + 2]
+            val finite = r.isFinite() && g.isFinite() && b.isFinite()
+            out[p * 4] = if (finite) r.coerceIn(0f, 1f) else 0f
+            out[p * 4 + 1] = if (finite) g.coerceIn(0f, 1f) else 0f
+            out[p * 4 + 2] = if (finite) b.coerceIn(0f, 1f) else 0f
+            out[p * 4 + 3] = 1f
+        }
+        return CpuRaster(raw.width, raw.height, out)
+    }
+
+    /**
+     * What a person sees of a raw raster in the window: [displayed], then the sRGB transfer function.
+     *
+     * The window's swapchain is `B8G8R8A8_SRGB` (scRGB when HDR is on, which looks the same for
+     * `0..1`), so the value the shader writes is treated as *linear* light and encoded for display on
+     * the way to the screen: `0.5` shows as sRGB 188, a light grey, not 128. An image that showed the
+     * written values directly would be markedly darker than the window, and a model reading it would
+     * be judging a different picture from the person. Every study image, every export and the cards'
+     * WebGL previews go through this; clipping and NaN are still counted on the raw values.
+     */
+    fun presented(raw: CpuRaster): CpuRaster {
+        val shown = displayed(raw)
+        val out = shown.rgba.copyOf()
+        for (p in 0 until shown.width * shown.height) for (c in 0 until 3) out[p * 4 + c] = linearToSrgb(out[p * 4 + c])
+        return CpuRaster(shown.width, shown.height, out)
+    }
+
+    /** The sRGB transfer function (IEC 61966-2-1), for a linear value in `0..1`. */
+    fun linearToSrgb(v: Float): Float =
+        if (v <= 0.0031308f) v * 12.92f else (1.055 * Math.pow(v.toDouble(), 1.0 / 2.4) - 0.055).toFloat()
+
+    fun stats(raw: CpuRaster, seconds: Double): StudyFrameStats {
+        val shown = presented(raw)
         val n = raw.width * raw.height
         var below = 0; var above = 0; var nonFinite = 0
         val sum = DoubleArray(3)
@@ -91,7 +129,7 @@ internal object StackSLStudyEvidence {
         }
         val lumaMean = luma.average()
         val lumaSpread = sqrt(luma.sumOf { (it - lumaMean) * (it - lumaMean) } / n)
-        return StackSLFrameStats(
+        return StudyFrameStats(
             seconds = seconds,
             meanRgb = sum.map { round(it / n) },
             luma = round(lumaMean),
@@ -149,7 +187,7 @@ internal object StackSLStudyEvidence {
     }
 
     /** Deterministic k-means (k = 5) over at most 4096 evenly strided pixels, farthest-point seeded. */
-    private fun palette(shown: CpuRaster): List<StackSLSwatch> {
+    private fun palette(shown: CpuRaster): List<StudySwatch> {
         val n = shown.width * shown.height
         val stride = max(1, n / 4096)
         val samples = (0 until n step stride).map { p -> doubleArrayOf(shown.rgba[p * 4].toDouble(), shown.rgba[p * 4 + 1].toDouble(), shown.rgba[p * 4 + 2].toDouble()) }
@@ -173,19 +211,19 @@ internal object StackSLStudyEvidence {
             .filter { it.second >= 0.01 }
             .sortedByDescending { it.second }
             .map { (c, f) ->
-                StackSLSwatch("#%02x%02x%02x".format(Locale.US, (c[0] * 255).roundToInt().coerceIn(0, 255),
+                StudySwatch("#%02x%02x%02x".format(Locale.US, (c[0] * 255).roundToInt().coerceIn(0, 255),
                     (c[1] * 255).roundToInt().coerceIn(0, 255), (c[2] * 255).roundToInt().coerceIn(0, 255)), round(f))
             }
     }
 
-    fun motion(a: CpuRaster, b: CpuRaster, from: Double, to: Double): StackSLMotion {
-        val pa = StackSLStudyShader.presented(a).toArgb(); val pb = StackSLStudyShader.presented(b).toArgb()
+    fun motion(a: CpuRaster, b: CpuRaster, from: Double, to: Double): StudyMotion {
+        val pa = presented(a).toArgb(); val pb = presented(b).toArgb()
         var total = 0.0; var changed = 0
         for (i in pa.indices) {
             val d = levels(pa[i], pb[i])
             total += channelMean(pa[i], pb[i]); if (d > 2) changed++
         }
-        return StackSLMotion(from, to, round(total / pa.size), round(changed.toDouble() / pa.size))
+        return StudyMotion(from, to, round(total / pa.size), round(changed.toDouble() / pa.size))
     }
 
     private fun levels(p: Int, q: Int): Int = maxOf(
@@ -205,16 +243,16 @@ internal object StackSLStudyEvidence {
      * optional `uv` [region] (`u0, v0, u1, v1`). With [lumaOnly] only brightness is compared. A pixel
      * counts as changed when it moved by more than one 8-bit level.
      */
-    fun difference(a: CpuRaster, b: CpuRaster, region: List<Double>?, lumaOnly: Boolean): Pair<StackSLDifference, StackSLDifference?> {
+    fun difference(a: CpuRaster, b: CpuRaster, region: List<Double>?, lumaOnly: Boolean): Pair<StudyDifference, StudyDifference?> {
         require(a.width == b.width && a.height == b.height)
-        val pa = StackSLStudyShader.presented(a).toArgb(); val pb = StackSLStudyShader.presented(b).toArgb()
+        val pa = presented(a).toArgb(); val pb = presented(b).toArgb()
         return split(a.width, a.height, region, 1.0) { i ->
             if (lumaOnly) abs(lumaLevel(pa[i]) - lumaLevel(pb[i])) else levels(pa[i], pb[i]).toDouble()
         }
     }
 
     /** Raw-value difference (largest component) — for comparing what two programs leave on the stack at a stage. */
-    fun rawDifference(a: CpuRaster, b: CpuRaster, region: List<Double>?): Pair<StackSLDifference, StackSLDifference?> {
+    fun rawDifference(a: CpuRaster, b: CpuRaster, region: List<Double>?): Pair<StudyDifference, StudyDifference?> {
         require(a.width == b.width && a.height == b.height)
         return split(a.width, a.height, region, 1e-6) { i ->
             (0 until 4).maxOf { c ->
@@ -237,7 +275,7 @@ internal object StackSLStudyEvidence {
         }
     }
 
-    private fun split(w: Int, h: Int, region: List<Double>?, threshold: Double, delta: (Int) -> Double): Pair<StackSLDifference, StackSLDifference?> {
+    private fun split(w: Int, h: Int, region: List<Double>?, threshold: Double, delta: (Int) -> Double): Pair<StudyDifference, StudyDifference?> {
         region?.let { require(it.size == 4 && it[0] < it[2] && it[1] < it[3]) { "A region is [u0, v0, u1, v1] with u0 < u1 and v0 < v1" } }
         val outside = Accumulator(if (region == null) "whole frame" else "outside the allowed region", threshold)
         val inside = Accumulator("inside the allowed region", threshold)
@@ -247,7 +285,7 @@ internal object StackSLStudyEvidence {
             val inRegion = region != null && u >= region[0] && u <= region[2] && v >= region[1] && v <= region[3]
             (if (inRegion) inside else outside).add(i, delta(i))
         }
-        fun result(a: Accumulator) = StackSLDifference(
+        fun result(a: Accumulator) = StudyDifference(
             a.scope, a.pixels, round(a.max), round(if (a.pixels == 0) 0.0 else a.total / a.pixels),
             round(if (a.pixels == 0) 0.0 else a.changed.toDouble() / a.pixels),
             a.at.takeIf { it >= 0 }?.let { round((it % w + 0.5) / w) },
@@ -278,7 +316,7 @@ internal object StackSLStudyEvidence {
             val v = raw.rgba[p * 4 + c]
             if (v.isFinite()) { lo = min(lo, v); hi = max(hi, v); los[c] = min(los[c], v); his[c] = max(his[c], v) }
         }
-        if (lo >= -1e-4f && hi <= 1.0001f) return tile(StackSLStudyShader.presented(raw), label, caption) to false
+        if (lo >= -1e-4f && hi <= 1.0001f) return tile(presented(raw), label, caption) to false
         val out = FloatArray(raw.rgba.size)
         for (p in 0 until n) {
             for (c in 0 until 3) {
@@ -346,7 +384,7 @@ internal object StackSLStudyEvidence {
 
     /** A difference heat map: black where equal, through red to yellow-white at [full] levels. */
     fun differenceTile(a: CpuRaster, b: CpuRaster, label: String, caption: String, full: Double = 32.0): Tile {
-        val pa = StackSLStudyShader.presented(a).toArgb(); val pb = StackSLStudyShader.presented(b).toArgb()
+        val pa = presented(a).toArgb(); val pb = presented(b).toArgb()
         val out = IntArray(pa.size) { i ->
             val d = (levels(pa[i], pb[i]) / full).coerceIn(0.0, 1.0)
             val r = (255 * min(1.0, d * 2)).roundToInt(); val g = (255 * max(0.0, d * 2 - 1)).roundToInt()

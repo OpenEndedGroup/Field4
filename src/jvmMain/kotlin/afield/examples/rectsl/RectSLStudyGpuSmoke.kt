@@ -1,5 +1,6 @@
 package afield.examples.rectsl
 
+import afield.stdlib.StudyEvidence
 import afield.rectsl.study.CpuRectSLRasterizer
 import afield.rectsl.study.RectSLRasterizer
 import afield.rectsl.study.RectSLStudy
@@ -79,7 +80,7 @@ object RectSLStudyGpuSmoke {
     private fun shown(raster: CpuRaster, x: Double, y: Double): Int {
         val col = ((x + 2) / 4 * raster.width).toInt().coerceIn(0, raster.width - 1)
         val row = ((1 - y) / 2 * raster.height).toInt().coerceIn(0, raster.height - 1)
-        return StackSLStudyShader.presented(raster).toArgb()[row * raster.width + col] and 0xffffff
+        return StudyEvidence.presented(raster).toArgb()[row * raster.width + col] and 0xffffff
     }
 
     private fun levels(a: Int, b: Int) = maxOf(abs((a shr 16 and 0xff) - (b shr 16 and 0xff)), abs((a shr 8 and 0xff) - (b shr 8 and 0xff)), abs((a and 0xff) - (b and 0xff)))
@@ -100,7 +101,7 @@ object RectSLStudyGpuSmoke {
                 check(levels(c, expected) <= 1) { "$name: the CPU reference shows #%06x at (${at[0]}, ${at[1]}) t=${at[2]}, expected #%06x".format(c, expected) }
             }
             val worst = times.indices.map { i ->
-                val g = StackSLStudyShader.presented(gpu[i]).toArgb(); val c = StackSLStudyShader.presented(cpu[i]).toArgb()
+                val g = StudyEvidence.presented(gpu[i]).toArgb(); val c = StudyEvidence.presented(cpu[i]).toArgb()
                 if (times[i] in TIMES) rows += g to c
                 val within = g.indices.count { levels(g[it], c[it]) <= 2 }.toDouble() / g.size
                 check(within > 0.97) { "$name at t=${times[i]}: only ${"%.1f".format(within * 100)}% of pixels agree to two levels" }
