@@ -4,7 +4,6 @@ package afield.stdlib
 
 import afield.ai.core.ToolImage
 import afield.createKotlinScriptEngine
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Font
@@ -17,7 +16,6 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Base64
 import java.util.concurrent.CancellationException
-import java.util.concurrent.atomic.AtomicLong
 import javax.imageio.ImageIO
 import kotlin.math.*
 import kotlin.script.experimental.api.ResultValue
@@ -53,28 +51,31 @@ data class StudyRevision(val id: String, val parent: String?, val description: S
  * Source is authoritative. A candidate is compiled on a fresh Field Kotlin engine and checked before
  * compare-and-swap publishes it. This is trusted local Kotlin, NOT an isolation/security boundary.
  * Cancellation invalidates pending publication; arbitrary non-cooperative Kotlin cannot be killed here.
+ *
+ * Revisions, guards, `HEAD` and cancellation are [SourceStudy]'s, as for every other study: this class
+ * is the language adapter (compile to a [StudyComposition], then [validate]) and the tools that read
+ * compositions. A revision loaded back from disk is compiled but not re-validated, as before the port —
+ * a check tightened since it was accepted does not make an old revision unreadable.
  */
 class FunctionStudy(
     private val directory: File,
     private val readSource: () -> String,
-    private val replaceSource: (expected: String, replacement: String) -> Boolean,
+    replaceSource: (expected: String, replacement: String) -> Boolean,
     private val compiler: (String) -> StudyComposition = ::compileStudy
 ) {
-    private val revisions = linkedMapOf<String, StudyRevision>()
-    private val cancelled = AtomicLong()
+    /** The revision history this study publishes through: `studies/<box id>/<id>.kt` and `<id>.json`. */
+    val revisions: SourceStudy<StudyComposition> = SourceStudy(directory, "kt", readSource, replaceSource,
+        admit = { source, cancelled -> admit(source, cancelled) },
+        load = { source -> StudyAdmission(compiler(source)) })
 
     /** The line the person's editor cursor is on in this study's box, or null — see [BoxStudies.personAt]. */
     @Volatile
     var editorLine: () -> Int? = { null }
-    private val mapper = jacksonObjectMapper()
     private var selected = emptyList<String>()
     private var selection = 0.0 to 3600.0
-    private var active = "empty"
-    init { directory.mkdirs() }
 
     companion object {
-        fun hash(source: String): String = MessageDigest.getInstance("SHA-256").digest(source.toByteArray())
-            .joinToString("") { "%02x".format(it) }
+        fun hash(source: String): String = SourceStudy.hash(source)
 
         /** Uses Field's established compiler; each expression must return StudyComposition. */
         fun compileStudy(source: String): StudyComposition {
@@ -92,59 +93,43 @@ class FunctionStudy(
         }
     }
 
-    fun cancel(): String { cancelled.incrementAndGet(); return "Pending publication/observations cancelled; working revision retained." }
-    private fun checkCancelled(epoch: Long) {
-        if (cancelled.get() != epoch || Thread.currentThread().isInterrupted) throw CancellationException("Function study cancelled")
+    /** Compile and validate a candidate: [SourceStudy]'s admission for a function study. */
+    private fun admit(source: String, cancelled: () -> Boolean): StudyAdmission<StudyComposition> {
+        if (source.isEmpty()) throw StudyRejection("Candidate source must contain 1..40000 characters")
+        val candidate = compiler(source)
+        if (cancelled()) throw CancellationException("Function study cancelled")
+        validate(candidate, cancelled)
+        return StudyAdmission(candidate, linkedMapOf("events" to candidate.events, "choices" to candidate.choices, "seed" to candidate.seed))
     }
 
-    @Synchronized
-    fun currentId() = active
-    private fun historyIds(): List<String> {
-        val ids = mutableListOf<String>()
-        var cursor: String? = active.takeUnless { it == "empty" }
-        while (cursor != null && cursor !in ids) {
-            ids += cursor
-            cursor = mapper.readTree(File(directory, "$cursor.json"))["parent"]?.takeUnless { it.isNull }?.asText()
-        }
-        return ids.reversed()
+    fun cancel(): String { revisions.cancel(); return "Pending publication/observations cancelled; working revision retained." }
+    private fun checkCancelled(epoch: Long) {
+        if (revisions.isCancelled(epoch)) throw CancellationException("Function study cancelled")
     }
+
+    fun currentId(): String = revisions.currentId()
+
     /** A revision by id, or the active one for `"current"` or a blank id — as a model often sends. */
-    @Synchronized
-    fun revision(id: String = "current"): StudyRevision {
-        val key = if (id.isBlank() || id == "current") active else id
-        revisions[key]?.let { return it }
-        require(key.matches(Regex("r[0-9]+-[a-f0-9]{12}"))) { "Unknown revision $key" }
-        val sourceFile = File(directory, "$key.kt")
-        require(sourceFile.isFile) { "Unknown revision $key" }
-        val meta = mapper.readTree(File(directory, "$key.json"))
-        val source = sourceFile.readText()
-        require(key.substringAfter('-') == hash(source).take(12)) { "Revision source changed on disk: $key" }
-        val result = StudyRevision(key, meta["parent"]?.takeUnless { it.isNull }?.asText(), meta["description"].asText(), source, compiler(source))
-        revisions[key] = result
-        return result
-    }
+    fun revision(id: String = "current"): StudyRevision =
+        revisions.revision(id).let { StudyRevision(it.id, it.parent, it.description, it.source, it.value) }
 
     /** Resume only when the saved source still agrees. A manual edit remains explicitly dirty. */
-    @Synchronized
-    fun resume(): String {
-        val head = File(directory, "HEAD")
-        if (head.isFile) { active = head.readText().trim(); revision(active) }
-        return active
-    }
+    fun resume(): String = revisions.resume()
 
     @Synchronized
     fun inspect(id: String = "current"): StudyReport {
         val live = readSource()
-        if (active == "empty") return StudyReport(active, mapOf("message" to "No checked composition yet", "liveSourceHash" to hash(live), "liveSource" to live))
+        if (currentId() == SourceStudy.EMPTY) return StudyReport(SourceStudy.EMPTY, mapOf("message" to "No checked composition yet", "liveSourceHash" to hash(live), "liveSource" to live))
         val r = revision(id)
+        val checked = revision().source
         return StudyReport(r.id, mapOf("parent" to r.parent, "description" to r.description,
             "durationSeconds" to r.composition.duration, "channels" to r.composition.channelNames,
             "events" to r.composition.events.sortedBy { it.start }, "choices" to r.composition.choices,
-            "source" to r.source, "liveSourceHash" to hash(live), "dirty" to (live != revision().source),
-            "liveSource" to live.takeIf { live != revision().source },
+            "source" to r.source, "liveSourceHash" to hash(live), "dirty" to (live != checked),
+            "liveSource" to live.takeIf { live != checked },
             "personAt" to BoxStudies.personAt(editorLine(), live),
             "selectedIds" to selected, "selectionSeconds" to listOf(selection.first, selection.second),
-            "history" to historyIds(),
+            "history" to revisions.history().map { it.id },
             "semantics" to "Seconds; pure random access required. Event metadata is declared, not a proof about arbitrary Kotlin. Fn lambdas may be opaque to graph rewrites."))
     }
 
@@ -157,53 +142,20 @@ class FunctionStudy(
         return inspect()
     }
 
-    /** Two guards: checked revision AND the current editable source, including uncompiled manual edits. */
-    @Synchronized
-    fun patch(base: String, sourceHash: String, edits: List<StudySourceEdit>, description: String): StudyReport {
-        val source = readSource()
-        require(base == active && sourceHash == hash(source)) { "Conflict: inspect the current revision and live source before patching." }
-        require(edits.size in 1..32) { "Supply 1..32 exact replacements" }
-        val ranges = edits.map { change ->
-            require(change.before.isNotEmpty()) { "Empty match is ambiguous; include surrounding source" }
-            val at = source.indexOf(change.before)
-            require(at >= 0 && source.indexOf(change.before, at + 1) < 0) { "Patch match must occur exactly once; include more context" }
-            Triple(at, at + change.before.length, change.after)
-        }.sortedBy { it.first }
-        require(ranges.zipWithNext().all { (a, b) -> a.second <= b.first }) { "Patch matches overlap" }
-        val candidate = StringBuilder(source)
-        ranges.asReversed().forEach { (start, end, text) -> candidate.replace(start, end, text) }
-        return edit(base, sourceHash, candidate.toString(), description)
-    }
+    /** Two guards: checked revision AND the current editable source, including uncompiled manual edits. See [SourceStudy.patch]. */
+    fun patch(base: String, sourceHash: String, edits: List<StudySourceEdit>, description: String): StudyReport =
+        activated(revisions.patch(base, sourceHash, edits, description))
 
-    @Synchronized
-    fun edit(base: String, sourceHash: String, source: String, description: String): StudyReport {
-        val before = readSource()
-        require(base == active && sourceHash == hash(before)) { "Conflict: revision or live source changed. Inspect and reconcile; nothing overwritten." }
-        require(source.length in 1..40000) { "Candidate source must contain 1..40000 characters" }
-        val epoch = cancelled.get()
-        val candidate = compiler(source)
-        checkCancelled(epoch)
-        validate(candidate, epoch)
-        checkCancelled(epoch)
-        require(readSource() == before) { "Conflict: source changed during compilation; candidate not activated." }
-        val number = directory.listFiles().orEmpty().filter { it.extension == "json" }
-            .mapNotNull { it.name.substringBefore('-').removePrefix("r").toIntOrNull() }.maxOrNull()?.plus(1) ?: 1
-        val id = "r$number-${hash(source).take(12)}"
-        val parent = active.takeUnless { it == "empty" }
-        // Write the durable candidate before publication; unreferenced files are harmless on a conflict.
-        File(directory, "$id.kt").writeText(source)
-        File(directory, "$id.json").writeText(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(mapOf(
-            "id" to id, "parent" to parent, "description" to description, "events" to candidate.events,
-            "choices" to candidate.choices, "seed" to candidate.seed)))
-        checkCancelled(epoch)
-        require(replaceSource(before, source)) { "Conflict: source changed at publication; working revision retained." }
-        revisions[id] = StudyRevision(id, parent, description, source, candidate)
-        active = id
-        File(directory, "HEAD").writeText(id)
-        return StudyReport(id, mapOf("message" to "Compiled, checked and activated", "parent" to parent,
-            "sourceHash" to hash(source), "events" to candidate.events, "description" to description,
+    /** See [SourceStudy.edit]: stale guards, a failed compile or check, or a concurrent edit change nothing. */
+    fun edit(base: String, sourceHash: String, source: String, description: String): StudyReport =
+        activated(revisions.edit(base, sourceHash, source, description))
+
+    private fun activated(r: SourceRevision<StudyComposition>): StudyReport {
+        val candidate = r.value
+        return StudyReport(r.id, mapOf("message" to "Compiled, checked and activated", "parent" to r.parent,
+            "sourceHash" to hash(r.source), "events" to candidate.events, "description" to r.description,
             "validation" to mapOf("compileSuccess" to true, "checksPassed" to true,
-                "sourceHash" to hash(source), "revision" to id, "scope" to "complete standalone StudyComposition source"),
+                "sourceHash" to hash(r.source), "revision" to r.id, "scope" to "complete standalone StudyComposition source"),
             "checks" to "Finite/bounded samples at <=20ms, declared holds, deterministic repeated probes. Observe and compare before judging the edit."))
     }
 
@@ -232,7 +184,7 @@ class FunctionStudy(
         sampleRate: Double = 100.0, scale: Double = 100.0, header: Boolean = false, overwrite: Boolean = false): StudyReport {
         val r = revision(id)
         require(hash(r.source) == expectedSourceHash) { "Export source hash differs from the inspected revision" }
-        if (id == "current" || r.id == active) require(readSource() == r.source) {
+        if (id == "current" || r.id == currentId()) require(readSource() == r.source) {
             "Live source differs from the checked revision. Reconcile it with PatchFunctionStudy/EditFunctionStudy before exporting."
         }
         require(outputs.size == r.composition.channels.size && outputs.map { it.canonicalPath }.distinct().size == outputs.size)
@@ -243,7 +195,7 @@ class FunctionStudy(
         val last = samples.toInt()
         val extra = last / sampleRate < r.composition.duration
         val rows = last + 1 + if (extra) 1 else 0
-        val epoch = cancelled.get()
+        val epoch = revisions.epoch()
         val staged = mutableListOf<File>()
         try {
             val records = outputs.mapIndexed { channel, output ->
@@ -295,7 +247,7 @@ class FunctionStudy(
         } finally { staged.forEach { it.delete() } }
     }
 
-    private fun validate(c: StudyComposition, epoch: Long) {
+    private fun validate(c: StudyComposition, cancelled: () -> Boolean) {
         require(c.duration.isFinite() && c.duration > 0 && c.duration <= 7200) { "Duration outside (0,7200] seconds" }
         require(c.channels.size in 1..8 && c.channels.size == c.channelNames.size)
         require(c.channels.all { it.domain.min <= 0.0 && it.domain.max >= c.duration }) {
@@ -312,7 +264,7 @@ class FunctionStudy(
         val probes = listOf(0.0, c.duration * .137, c.duration * .51, c.duration)
         val expected = c.channels.map { f -> probes.map { f(it) } }
         for (i in 0..n) {
-            if (i % 2048 == 0) checkCancelled(epoch)
+            if (i % 2048 == 0 && cancelled()) throw CancellationException("Function study cancelled")
             val t = c.duration * i / n
             for (f in c.channels) require(f(t).let { it.isFinite() && it >= -1e-9 && it <= 1 + 1e-9 }) { "Non-finite or outside assumed [0,1] at $t seconds" }
         }
@@ -347,7 +299,7 @@ class FunctionStudy(
     /** Revision-consistent pixels + landmarks + measured holds/joins. Same samples feed image and extrema. */
     @Synchronized
     fun observe(id: String, start: Double, end: Double, compareTo: String = ""): StudyReport {
-        val epoch = cancelled.get()
+        val epoch = revisions.epoch()
         val r = revision(id)
         val old = compareTo.takeIf { it.isNotBlank() }?.let(::revision)
         require(old == null || old.composition.channelNames == r.composition.channelNames)

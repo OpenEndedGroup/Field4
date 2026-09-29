@@ -25,9 +25,10 @@ import kotlinx.coroutines.launch
  *
  * What the language adds is one function, [SourceStudy]'s `admit`: compile and check a candidate,
  * returning a value (whatever the language's tools need — a composition, a compiled shader report)
- * or throwing [StudyRejection] with a message a person or a model can act on. `afield.stacksl.study`
- * is the first adapter; `FunctionStudy` predates this class and implements the same protocol with the
- * same file layout, so a revision directory written by either reads the same way.
+ * or throwing [StudyRejection] with a message a person or a model can act on. The StackSL, RectSL,
+ * stack.auto and function studies are all adapters over it; `FunctionStudy` predated it and kept a
+ * private copy of the protocol until 2026-09-29, with the same file layout, so a revision directory
+ * written before then still reads.
  *
  * ### On disk
  *
@@ -69,6 +70,8 @@ data class SourceRevisionSummary(val id: String, val parent: String?, val descri
  *   whether it did; this is the compare-and-swap that protects a person's concurrent edit
  * @param admit compile and check a candidate. Throw [StudyRejection] to refuse it. The second argument
  *   says whether the pending operation has been cancelled, for adapters with long checks.
+ * @param load how a revision read back from disk becomes a value; [admit] by default. An adapter whose
+ *   checks may tighten over time passes a compile-only load, so an old revision stays readable.
  */
 class SourceStudy<T>(
     val directory: File,
@@ -76,7 +79,8 @@ class SourceStudy<T>(
     private val readSource: () -> String,
     private val replaceSource: (expected: String, replacement: String) -> Boolean,
     private val admit: (source: String, cancelled: () -> Boolean) -> StudyAdmission<T>,
-    val maxSourceLength: Int = 40000
+    val maxSourceLength: Int = 40000,
+    private val load: ((source: String) -> StudyAdmission<T>)? = null
 ) {
     private val revisions = linkedMapOf<String, SourceRevision<T>>()
     private val cancelled = AtomicLong()
@@ -171,7 +175,7 @@ class SourceStudy<T>(
         val source = sourceFile.readText()
         if (key.substringAfter('-') != hash(source).take(12)) throw StudyRejection("Revision source changed on disk: $key")
         val meta = readMeta(key)
-        val admitted = admit(source) { false }
+        val admitted = load?.invoke(source) ?: admit(source) { false }
         val result = SourceRevision(key, meta.parent, meta.description, source, admitted.value, admitted.facts)
         revisions[key] = result
         return result

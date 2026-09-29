@@ -123,6 +123,31 @@ class FunctionStudyTest {
         } finally { dir.deleteRecursively() }
     }
 
+    /**
+     * A revision directory written before FunctionStudy was ported onto SourceStudy (2026-09-29) — events,
+     * choices and seed at the top of `<id>.json`, no `created` — still resumes, and a revision that no
+     * longer passes validation is still readable: loading compiles, it does not re-check.
+     */
+    @Test
+    fun revisionsWrittenBeforeThePortResumeAndLoadWithoutRevalidation() {
+        val dir = Files.createTempDirectory("function-study-legacy").toFile()
+        try {
+            val source = "legacy"
+            val id = "r1-" + FunctionStudy.hash(source).take(12)
+            dir.resolve("$id.kt").writeText(source)
+            dir.resolve("$id.json").writeText("""{"id":"$id","parent":null,"description":"old","events":[],"choices":[],"seed":0}""")
+            dir.resolve("HEAD").writeText(id)
+            // Would fail validation today (a narrowed domain), as a check tightened since acceptance would.
+            val study = FunctionStudy(dir, { source }, { _, _ -> fail("Must not publish") }) {
+                constant().copy(channels = List(3) { Functions.fn(0.0..1.0) { .5 } })
+            }
+            assertEquals(id, study.resume())
+            assertEquals("old", study.revision().description)
+            assertEquals(false, study.inspect().facts["dirty"])
+            assertEquals(listOf(id), study.inspect().facts["history"])
+        } finally { dir.deleteRecursively() }
+    }
+
     @Test fun narrowedFnDomainIsRejectedInsteadOfSilentlyEvaluatedOutsideItsDomain() {
         val dir = Files.createTempDirectory("function-study-test").toFile()
         try {

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15655 public symbols across 424 source files**, 9291 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15656 public symbols across 424 source files**, 9293 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -19,7 +19,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Simulation](simulation.md) | 29 | 873 | 505 (57%) | Making a shape behave. |
 | [Imaging](imaging.md) | 6 | 255 | 209 (81%) | Rasters and computer vision: convolution and the filter family, gradients and edges, corners, blobs and morphology, multiscale pyramids, warps and optical flow. |
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
-| [Function](function.md) | 15 | 598 | 391 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
+| [Function](function.md) | 15 | 599 | 393 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 18 | 552 | 486 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 33 | 1225 | 566 (46%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
@@ -172,7 +172,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [FunctionRewriteKotlin.kt](function.md#functionrewritekotlin-kt) | Function | 18 | 18 | The bridge that gives the string rewrite DSL a real Kotlin right-hand side. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [FunctionRewritePattern.kt](function.md#functionrewritepattern-kt) | Function | 13 | 11 | The third rewriting surface in the family, and the algebraic one. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
 | [Functions.kt](math.md#functions-kt) | Math | 548 | 461 | The `Fn` toolkit: one-dimensional signals as values you can build, compose, sample and draw. | [Functions to FLine examples (Field graphics)](../functions_examples.md) |
-| [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 26 | 12 |  | [Talking a function into existence](../function_conversation.md) |
+| [FunctionStudy.kt](function.md#functionstudy-kt) | Function | 27 | 14 |  | [Talking a function into existence](../function_conversation.md) |
 | [FunctionStudyTools.kt](function.md#functionstudytools-kt) | Function | 39 | 16 |  | [Talking a function into existence](../function_conversation.md) |
 | [GaussianSplatRenderer.kt](renderers.md#gaussiansplatrenderer-kt) | Renderers | 27 | 15 | Rendering a Gaussian splat capture: PLY reading, packing, depth sorting and the built-in splat shaders. |  |
 | [GestureBoard.kt](audio-ai.md#gestureboard-kt) | Audio AI | 12 | 12 | Temporal sketches for source-conditioned generation, with prompt regions, onset events, and parameter curves that together express a generation intent. | [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md) |

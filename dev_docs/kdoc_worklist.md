@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9291 of 15655 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9293 of 15656 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**785 undocumented entry points** (types, top-level functions and values) and 5247 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**785 undocumented entry points** (types, top-level functions and values) and 5246 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -42,7 +42,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
-| [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 1 | 13 | 46% |
+| [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 1 | 12 | 51% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | dataframe, visualizers, agent_transcripts | 1 | 1 | 77% |
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
