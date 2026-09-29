@@ -1,0 +1,12 @@
+{
+  "id" : "r3-75bf01122fde",
+  "parent" : "r2-2145de178a28",
+  "description" : "Ragged interior burn-through near maximum travel, healing on return; preserve iron-to-orange heat",
+  "created" : "2026-09-28T18:55:38.766307Z",
+  "sourceHash" : "75bf01122fde371c5c1b40c283ee2dd4b7cc7eef3454784d07324b2ec3fa890e",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 25
+  }
+}

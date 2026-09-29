@@ -1,0 +1,12 @@
+{
+  "id" : "r4-c762b06a2147",
+  "parent" : "r3-75bf01122fde",
+  "description" : "Much larger peak burn with coarse, deep torn edges and full healing at home",
+  "created" : "2026-09-28T18:56:27.284890Z",
+  "sourceHash" : "c762b06a2147092fa259989729f60b7ca99240b8e55757774786383a8324f5b4",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 25
+  }
+}

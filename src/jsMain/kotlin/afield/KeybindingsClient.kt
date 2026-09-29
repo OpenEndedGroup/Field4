@@ -58,6 +58,13 @@ object Keybindings {
             group = "Global"
         ),
         CommandBinding(
+            id = "toggle-drawing-layer",
+            label = "Toggle Drawing Layer",
+            detail = "Draw and annotate over the canvas; mouse and keyboard go to the drawing while it is on",
+            defaults = listOf("alt+d"),
+            group = "Global"
+        ),
+        CommandBinding(
             id = "show-cheatsheet",
             label = "Show Cheatsheet",
             detail = "Show the keyboard shortcut cheatsheet overlay",

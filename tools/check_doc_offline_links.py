@@ -72,6 +72,9 @@ CARRIER_PAGES = {
     "public/docs/agent_transcripts.md",
     "public/docs/aperture_playground.md",
     "public/docs/direct_lighting.md",
+    # Added 2026-09-29: the drawing page links its starting point. Shape checked:
+    # `offline.html?file=assets/agent_transcripts/drawing_notation/metadata.edn`, no leading slash.
+    "public/docs/drawing_and_notation.md",
     "public/docs/faust.md",
     "public/docs/fieldml_host_bridge.md",
     "public/docs/fline_examples.md",

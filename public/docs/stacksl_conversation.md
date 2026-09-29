@@ -639,8 +639,9 @@ sending a message continues from the last revision.
     must hold `HEAD`, every recorded `CompareStackSLStudy` must give the same verdict again, and each
     person-side action must have produced the revision it records. It also checks the aurora's half
     speed directly: the new program at 2t matches the old one at t. The FIELD_TEST
-    `stacksl.study.gpu-agreement` compares GPU renders with the CPU interpreter on six programs, with
-    tolerances by kind of program, and times four 256² frames of a five-octave noise program.
+    `stacksl.study.gpu-agreement` compares GPU renders with the CPU interpreter on six programs,
+    hard-checking exact and smooth operations while recording hash-amplified fBm differences as
+    sketchy diagnostic evidence; it also times four 256² frames of a five-octave noise program.
 
     The sessions shown are the third recording: after the GPU path replaced CPU rendering, and after
     the evidence images were given the window's sRGB encoding.

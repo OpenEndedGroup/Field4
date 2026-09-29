@@ -308,3 +308,6 @@ config/field4-local.p12
 # filesystem, so an untracked folder here reads as an undeclared demo.
 dev_docs/agents/demos/.agent-scratch/
 dev_docs/agents/demos/ai4_loop_verification/
+
+# Excalidraw bundle build inputs (output is committed under src/jsMain/resources/excalidraw/)
+tools/excalidraw-bundle/node_modules/

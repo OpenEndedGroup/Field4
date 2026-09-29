@@ -49,6 +49,7 @@ nav:
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
+    - Drawing and Notation: drawing_and_notation.md
     - Where Field Looks for a File: files_and_paths.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
@@ -73,6 +74,7 @@ nav:
   - Seeing Values:
     - Visualizers & Controls: visualizers.md
     - Field's 3D Output: three_output.md
+    - Point to geometry and leave notes: geometry_review.md
     - Charts as FLines: chart.md
     - DataFrames in a Box: dataframe.md
     - Interactive Guides: interactive_guides.md
@@ -264,6 +266,7 @@ nav:
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
+    - Talking to the StackSL in Your Shader: stackauto_conversation.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a

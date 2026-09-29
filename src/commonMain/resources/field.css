@@ -1380,6 +1380,8 @@ body {
 .field-main-canvas {
     position: relative;
     z-index: 1;
+    /* mainCanvasTransform() is translate(t) scale(mainZoom): screen = world * zoom + t. */
+    transform-origin: 0 0;
 }
 
 .monaco-editor .margin-view-overlays .codicon-folding-collapsed,
@@ -4179,7 +4181,8 @@ kbd {
     padding: 9px 11px;
     border: 1px solid rgba(var(--field-accent-rgb), 0.26);
     border-radius: 6px;
-    background: rgba(var(--field-base-rgb), 0.9);
+    /* The same black as the drawing layer's Excalidraw islands (see "Excalidraw, dressed as Field"). */
+    background: rgba(0, 0, 0, 0.92);
     color: var(--field-fg);
     font-family: var(--field-font-system);
     font-size: 12px;
@@ -4964,4 +4967,90 @@ body.mode-transparent .box.selected:hover::before {
    noise. Suppress them here; the paired canvas window still shows them. */
 body.mode-editor-only .field-toast {
     display: none !important;
+}
+
+/* Drawing layer (src/jsMain/kotlin/afield/drawingLayer.kt): an Excalidraw scene over the canvas.
+   Inactive, it is visible but inert and shows none of Excalidraw's UI. */
+.field-drawing-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+}
+
+.field-drawing-layer .field-drawing-root {
+    width: 100%;
+    height: 100%;
+}
+
+.field-drawing-inactive {
+    pointer-events: none;
+}
+
+.field-drawing-inactive .layer-ui__wrapper,
+.field-drawing-inactive .App-bottom-bar,
+.field-drawing-inactive .footer-center {
+    display: none;
+}
+
+.field-drawing-active {
+    z-index: 21;
+}
+
+/* Excalidraw, dressed as Field: Iosevka, black islands with Field's thin border, and Field's accent
+   instead of Excalidraw's purple. Excalidraw's own stylesheet is injected after this one, so every
+   rule here is scoped by #field-drawing-layer to outrank it. Excalidraw themes itself almost
+   entirely through these custom properties; they are listed in its bundled index.css. */
+#field-drawing-layer .excalidraw.theme--dark {
+    --ui-font: var(--field-font-system);
+    --island-bg-color: rgba(0, 0, 0, 0.92);
+    --popup-bg-color: rgba(0, 0, 0, 0.94);
+    --default-bg-color: #000;
+    --input-bg-color: #000;
+    --color-surface-lowest: #000;
+    --color-surface-low: rgba(var(--field-base-rgb), 1);
+    --color-surface-mid: #000;
+    --color-surface-high: rgba(var(--field-accent-rgb), 0.14);
+    --button-gray-1: #000;
+    --button-gray-2: rgba(var(--field-accent-rgb), 0.14);
+    --button-gray-3: rgba(var(--field-accent-rgb), 0.22);
+    --button-hover-bg: rgba(var(--field-accent-rgb), 0.12);
+    --color-primary: var(--field-accent);
+    --color-primary-darker: rgba(var(--field-accent-rgb), 0.85);
+    --color-primary-darkest: rgba(var(--field-accent-rgb), 0.7);
+    --color-primary-hover: rgba(var(--field-accent-rgb), 0.85);
+    --color-primary-light: rgba(var(--field-accent-rgb), 0.2);
+    --color-brand-hover: rgba(var(--field-accent-rgb), 0.85);
+    --color-surface-primary-container: rgba(var(--field-accent-rgb), 0.2);
+    --color-on-primary-container: var(--field-accent);
+    --color-on-surface: var(--field-fg);
+    --shadow-island: none;
+    --border-radius-lg: 6px;
+    --border-radius-md: 5px;
+    font-family: var(--field-font-system);
+}
+
+#field-drawing-layer .excalidraw .Island,
+#field-drawing-layer .excalidraw .zoom-actions,
+#field-drawing-layer .excalidraw .undo-redo-buttons,
+#field-drawing-layer .excalidraw .help-icon,
+#field-drawing-layer .excalidraw .dropdown-menu-button,
+#field-drawing-layer .excalidraw .sidebar-trigger {
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+/* The zoom/undo cluster sits bottom-left in Excalidraw, which is where Field's notifications stack.
+   Float it to the right, next to the help button. */
+#field-drawing-layer .excalidraw .layer-ui__wrapper__footer {
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+#field-drawing-layer .excalidraw .layer-ui__wrapper__footer-left {
+    order: 2;
+}
+
+#field-drawing-layer .excalidraw .layer-ui__wrapper__footer-right {
+    order: 3;
 }

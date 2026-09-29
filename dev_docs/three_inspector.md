@@ -44,8 +44,8 @@ view.section(0.0, 0.0, 1.0, fraction = 0.42)
 view.measureFaces(panels[0], panels[3], "clear ")
 ```
 
-A payload with no `inspector` block behaves exactly as it did before any of this existed: no HUD, no
-clipping planes, no kept copy of the base positions. That is asserted, not assumed
+A payload with no `inspector` block has no measurement or explode HUD. General feature
+review now adds its own Pick control, with topology derived lazily when used. That is asserted, not assumed
 (`a payload with no group attribute passes through untouched`).
 
 ## Where the work happens, and why that matters
@@ -170,3 +170,12 @@ constructor right but not that nobody has added a fourth beside it, which is how
   (the human had uncommitted work in it), so the user-facing documentation is a section of
   `fline_examples.md` rather than a page of its own. Beside `threeLines` is arguably the right home
   anyway, but if it grows, promoting it is a one-line nav change.
+
+## Geometry review back into Field
+
+The shared viewer now has **Pick → Face / Edge / Vertex** and a note card. It supports
+ordinary meshes, FLine strokes and points as well as canonical topology supplied by geometry producers. The exact source,
+revision and view travel back through the viewer WebSocket into `ThreeGeometryViewState`;
+notes live on the originating box's `geometryReviews` property. Agents can read the
+human's selection without opening another browser. See
+[Geometry review](agents/GEOMETRY_REVIEW.md) for usage, element identity and limitations.

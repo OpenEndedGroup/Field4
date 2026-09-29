@@ -1,0 +1,12 @@
+{
+  "id" : "r5-bf9185b8cc3c",
+  "parent" : "r4-c762b06a2147",
+  "description" : "Widen peak openings further and sustain the torn-metal phase around maximum extension",
+  "created" : "2026-09-28T18:56:46.805103Z",
+  "sourceHash" : "bf9185b8cc3c1ac94d961d2be4440aa4f4196e6fce1fc2017b1457b3ee5c4930",
+  "facts" : {
+    "problems" : null,
+    "warnings" : null,
+    "knobs" : 25
+  }
+}

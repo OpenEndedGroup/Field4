@@ -1,0 +1,37 @@
+{
+  "25439bb0647b2bdb19d55f9f" : {
+    "model" : "gpt-6-luna",
+    "names" : {
+      "0" : "face position and size"
+    }
+  },
+  "cc2ad736f4dc1502e28b5c39" : {
+    "model" : "gpt-6-luna",
+    "names" : {
+      "0" : "burst timing",
+      "1" : "burst phase scale",
+      "2" : "wave travel speed",
+      "3" : "rest phase cutoff",
+      "4" : "wave easing curve",
+      "5" : "outward travel distance",
+      "6" : "red channel strength",
+      "7" : "face size preservation"
+    }
+  },
+  "7f3078cfc3d18a4cc3e23fb8" : {
+    "model" : "gpt-6-luna",
+    "names" : {
+      "0" : "wave cycle duration",
+      "1" : "face phase offset",
+      "2" : "extension attack duration",
+      "3" : "return phase direction",
+      "4" : "return phase start",
+      "5" : "return phase duration",
+      "6" : "minimum face extension",
+      "7" : "maximum face extension",
+      "8" : "horizontal face travel",
+      "9" : "vertical face travel",
+      "10" : "face depth scale"
+    }
+  }
+}

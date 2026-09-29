@@ -96,6 +96,10 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
+        // code, read it back, register a stroke reaction, and read two graphic scores by cutting
+        // them. No client is needed — the scene is server-side data — so every box executes headless.
+        "drawing_notation",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",

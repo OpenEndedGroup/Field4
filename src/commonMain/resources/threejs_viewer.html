@@ -164,6 +164,14 @@
             pointer-events: auto;
         }
 
+        #hud-right { min-width: 0; max-width: calc(100% - 70px); }
+        #part-inspector { flex-wrap: wrap; max-width: 100%; font-size: 11px; background: #101314; }
+        #part-inspector label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+        #part-inspector input[type="range"] { width: 72px; min-width: 0; }
+        #part-inspector input[type="checkbox"] { margin: 2px; }
+        #part-inspector details summary { cursor: pointer; padding: 3px 6px; }
+        #part-inspector .part-list { display: flex; flex-wrap: wrap; gap: 5px; max-width: 420px; max-height: 145px; overflow: auto; }
+
         .hud-button {
             appearance: none;
             border: 1px solid rgba(98, 215, 255, 0.16);
@@ -274,6 +282,69 @@
             display: none;
         }
 
+        /* Controls are chrome; notes, references and diagnostics remain copyable. */
+        #hud, #feature-review { user-select: none; -webkit-user-select: none; }
+        #feature-note, #feature-reference, #feature-message, #feature-description {
+            user-select: text; -webkit-user-select: text;
+        }
+        #hud :focus, #feature-review :focus { outline: none; box-shadow: none; }
+        #hud .hud-group, #hud .hud-button { border: 0; background: #000; }
+        #hud button:focus-visible, #feature-review button:focus-visible,
+        #hud select:focus-visible { color: var(--accent); }
+        #feature-region-box { position: fixed; border: 1px dashed #fff; pointer-events: none; z-index: 8; }
+        #feature-angle-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        #feature-angle { width: 140px; accent-color: var(--accent); }
+        #feature-angle-value { min-width: 4ch; text-align: right; font-variant-numeric: tabular-nums; }
+        #feature-tools select, #feature-review button, #feature-review textarea {
+            font: inherit; color: var(--ink); background: #242424; border: 0; border-radius: 6px;
+        }
+        #hud-left { flex-wrap: wrap; max-width: 56%; }
+        #inspector-group, #feature-tools { flex-shrink: 0; }
+        #feature-tools { font-size: 11px; background: #000; padding: 4px 8px; }
+        #feature-tools label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        #feature-tools button { white-space: nowrap; }
+        #feature-tools select { max-width: 100px; padding: 4px 6px; }
+        #feature-description { white-space: pre-line; }
+        #feature-review {
+            position: absolute; bottom: 38px; left: 12px; z-index: 10; padding: 16px;
+            width: min(360px, calc(100% - 24px)); max-height: calc(100% - 110px); overflow: auto;
+            background: #000; border: 0; border-radius: 8px; font-size: 12px;
+        }
+        #feature-review p { margin: 0 0 12px; overflow-wrap: anywhere; }
+        #feature-review textarea { display: block; width: 100%; resize: vertical; padding: 10px; margin: 6px 0 12px; }
+        #feature-review button { padding: 7px 10px; cursor: pointer; }
+        #feature-review #feature-save { background: var(--accent); color: #000; }
+        #feature-review #feature-save:focus-visible { background: #b4edff; }
+        #feature-review button:disabled { opacity: .4; cursor: default; }
+        #feature-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        #feature-message { color: var(--muted); margin: 10px 0 0 !important; }
+        #feature-message[data-error="true"] { color: #ff7070; }
+
+        #review-inbox {
+            position: absolute; right: 12px; bottom: 38px; z-index: 11; width: min(420px, calc(100% - 24px));
+            max-height: calc(100% - 110px); overflow: auto; background: #000; border-radius: 8px; padding: 16px;
+            font-size: 12px; user-select: none; -webkit-user-select: none;
+        }
+        #review-inbox :focus { outline: none; box-shadow: none; }
+        #review-inbox button, #review-inbox textarea { font: inherit; border: 0; border-radius: 6px; padding: 8px 10px; background: #242424; color: var(--ink); }
+        #review-inbox textarea { width: 100%; display: block; margin: 6px 0 12px; resize: vertical; user-select: text; -webkit-user-select: text; }
+        #review-inbox button { cursor: pointer; }
+        #review-inbox button:focus-visible { color: var(--accent); }
+        #review-inbox button:disabled { opacity: .4; cursor: default; }
+        #review-inbox .review-primary { background: var(--accent); color: #000; }
+        #review-inbox .review-primary:focus-visible { background: #b4edff; }
+        #review-inbox .review-copy { user-select: text; -webkit-user-select: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+        #review-inbox .review-meta, #review-counts { color: var(--muted); }
+        #review-inbox .review-error { color: #ff7070; }
+        #review-inbox p { margin: 8px 0 12px; }
+        #review-inbox summary { padding: 10px 0; cursor: pointer; overflow-wrap: anywhere; }
+        #review-inbox details + details { margin-top: 8px; }
+        #review-inbox .review-entry { margin: 12px 0; padding: 8px 12px; background: #141414; border-radius: 6px; }
+        #review-inbox a { display: inline-block; margin: 8px 12px 8px 0; color: var(--accent); }
+        #review-inbox label { display: block; margin-top: 12px; }
+        #review-inbox input[type=checkbox] { accent-color: var(--accent); }
+        .review-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
         #marquee {
             position: absolute;
             z-index: 9;
@@ -336,12 +407,43 @@
                 <b id="explode-readout">0</b>
             </span>
         </div>
+        <div class="hud-group hidden" id="feature-tools">
+            <label>Pick <select id="feature-mode" aria-label="Pick a model feature">
+                <option value="off">Off</option><option value="point">Point</option><option value="face">Face</option>
+                <option value="edge">Edge</option><option value="vertex">Vertex</option><option value="region">Rectangle</option>
+            </select></label>
+            <button type="button" class="hud-button" id="feature-load">Load note</button>
+            <button type="button" class="hud-button" id="feature-inbox">Notes</button>
+            <input type="file" id="feature-file" accept=".json,application/json" hidden>
+        </div>
     </div>
     <div id="hud-right">
         <div id="inspector-status"></div>
+        <div id="part-inspector" class="hud-group hidden" aria-label="Parts and construction order"></div>
         <div class="selection-status is-empty hidden" id="selection-status"></div>
         <div class="meta" id="meta">waiting for data...</div>
     </div>
+</div>
+<div id="feature-region-box" class="hidden"></div>
+<div id="feature-review" class="hidden" aria-label="Selected model feature">
+    <label id="feature-angle-wrap" class="hidden">Angle <input id="feature-angle" type="range" value="0" min="-180" max="180" step="5" aria-label="Rectangle angle"> <output id="feature-angle-value" for="feature-angle">0°</output></label>
+    <p id="feature-description">Click a feature to identify it.</p>
+    <label>Note<textarea id="feature-note" rows="2" placeholder="What should change here?"></textarea></label>
+    <div id="feature-actions">
+        <button type="button" id="feature-copy">Copy reference</button>
+        <button type="button" id="feature-save">Save note</button>
+        <button type="button" id="feature-clear">Clear</button>
+    </div>
+    <p id="feature-message" aria-live="polite"></p>
+    <textarea id="feature-reference" class="hidden" rows="4" readonly aria-label="Feature reference to copy"></textarea>
+</div>
+
+<div id="review-inbox" class="hidden" aria-label="Geometry review threads">
+    <div class="review-actions"><button type="button" id="review-refresh">Refresh</button><button type="button" id="review-close">Close</button></div>
+    <label><input type="checkbox" id="review-completed"> Include resolved</label>
+    <p id="review-counts"></p>
+    <p id="review-error" class="review-copy review-error" aria-live="polite"></p>
+    <div id="review-threads"></div>
 </div>
 
 <!--
@@ -377,6 +479,44 @@ const modeGroupEl = document.getElementById('mode-group');
 const maskGroupEl = document.getElementById('mask-group');
 const urlParams = new URLSearchParams(window.location.search);
 
+// [viewer-region demand-render] BEGIN
+// One pending frame, with no polling while idle or hidden. Dirty state survives suspension.
+function createDemandRenderer(draw, requestFrame, cancelFrame, visible) {
+    let pending = null, dirty = false, drawing = false, frames = 0;
+    function request() {
+        dirty = true;
+        if (!drawing && pending === null && visible()) pending = requestFrame(flush);
+    }
+    function flush() {
+        pending = null;
+        if (!dirty || !visible()) return;
+        dirty = false;
+        drawing = true;
+        try { draw(); frames++; }
+        finally {
+            drawing = false;
+            // Orbit damping can invalidate again during draw; continue only until it settles.
+            if (dirty) request();
+        }
+    }
+    function visibilityChanged() {
+        if (pending !== null) { cancelFrame(pending); pending = null; }
+        request();
+    }
+    return { request, visibilityChanged, stats: () => ({frames, pending: pending !== null, dirty, visible: visible()}) };
+}
+// [viewer-region demand-render] END
+let pageActive = true, contextAvailable = true;
+const renderScheduler = createDemandRenderer(render,
+    callback => requestAnimationFrame(callback), id => cancelAnimationFrame(id),
+    () => pageActive && contextAvailable && !document.hidden);
+function requestRender() { renderScheduler.request(); }
+// Read-only telemetry for live idle/render regression checks, separate from saved review state.
+window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats()});
+document.addEventListener('visibilitychange', () => renderScheduler.visibilityChanged());
+window.addEventListener('pagehide', () => { pageActive = false; renderScheduler.visibilityChanged(); });
+window.addEventListener('pageshow', () => { pageActive = true; renderScheduler.visibilityChanged(); });
+
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
 function getDpr() {
     const override = parseFloat(urlParams.get('dpr'));
@@ -401,6 +541,9 @@ controls.dampingFactor = 0.08;
 controls.rotateSpeed = 0.7;
 controls.zoomSpeed = 0.9;
 controls.panSpeed = 0.6;
+controls.addEventListener('change', requestRender);
+renderer.domElement.addEventListener('webglcontextlost', () => { contextAvailable = false; renderScheduler.visibilityChanged(); });
+renderer.domElement.addEventListener('webglcontextrestored', () => { contextAvailable = true; renderScheduler.visibilityChanged(); });
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.7));
 const keyLight = new THREE.DirectionalLight(0xffffff, 0.7);
@@ -2961,7 +3104,7 @@ function updateInteractiveHover() {
         return false;
     }
     raycaster.setFromCamera(pointer, camera);
-    const meshes = hoverable.flatMap((entry) => entry.meshes);
+    const meshes = hoverable.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
     const hits = raycaster.intersectObjects(meshes, false);
     const hitSet = new Set(hits.map((hit) => hit.object));
     let anyPointer = false;
@@ -3070,6 +3213,7 @@ function addPayloadDrawables(list) {
 
         slot.panel = (d.panel === undefined || d.panel === null) ? 0 : d.panel;
         slot.label = d.label || null;
+        slot.partId = d.id || d.label || String(index);
         slot.group = Number.isFinite(d.group) ? d.group : -1;
         // The drawable's own kind, kept because `slot.kind` is the upsert cache key (`drawable-3`) and
         // says nothing about whether this is a surface. The section's cut outline needs to know.
@@ -3079,6 +3223,8 @@ function addPayloadDrawables(list) {
             slot.object.matrixAutoUpdate = false;
             slot.object.matrix.fromArray(d.transform);
         }
+        slot.object.updateMatrixWorld(true);
+        slot.baseMatrix = slot.object.matrix.clone();
         if (kind === 'surface' && d.style && d.style.wireframe) {
             slot.wire = makeWireframeOverlay(slot.object.geometry, d.style);
             slot.object.add(slot.wire);
@@ -3699,6 +3845,7 @@ function createHandleSprites(items, selectedRefKeys) {
 }
 
 function renderEditableOverlay() {
+    requestRender();
     clearGroup(editorOverlayRoot);
     editableHitObjects = [];
     if (editorState.mode !== 'edit' || !editorState.scene || !editorState.uiVisible) {
@@ -3850,7 +3997,12 @@ const inspectorState = {
     cut: null,
     measuring: false,
     pending: null,
-    picked: []
+    picked: [],
+    hidden: new Set(),
+    assemblyStep: null,
+    selectedPart: null,
+    selectedTriangle: null,
+    selection: null
 };
 
 function inspectorDiagonal(bounds) {
@@ -3870,7 +4022,10 @@ function inspectorDiagonal(bounds) {
  * whose fill is in another must have one centroid, not two.
  */
 function inspectorCapture(payload) {
-    const spec = payload.inspector || null;
+    featurePayload=payload; featureSourceCache=null;
+    const spec = payload.inspector || {enabled:false,artifactDigest:payload.revision,section:{},renderOrigin:[0,0,0]};
+    const sameArtifact = spec && inspectorState.spec && spec.artifactDigest && spec.artifactDigest === inspectorState.spec.artifactDigest;
+    if (!sameArtifact) { inspectorState.hidden = new Set(); inspectorState.assemblyStep = null; inspectorState.selectedPart = null; inspectorState.selectedTriangle = null; inspectorState.selection = null; featureNoteEl.value=''; }
     inspectorState.spec = spec;
     inspectorState.bounds = payload.bounds || null;
     inspectorState.diagonal = inspectorDiagonal(payload.bounds);
@@ -3926,7 +4081,9 @@ function inspectorCapture(payload) {
             ? d.geometry.attributes.position.array : null;
         if (!array) return;
         for (let i = 0; i + 2 < array.length; i += 3) {
-            allPositions.push(array[i], array[i + 1], array[i + 2]);
+            const point = new THREE.Vector3(array[i], array[i + 1], array[i + 2]);
+            if (d.transform) point.applyMatrix4(new THREE.Matrix4().fromArray(d.transform));
+            allPositions.push(point.x, point.y, point.z);
             allGroups.push(group);
         }
     });
@@ -4006,12 +4163,23 @@ function inspectorApplyExplode() {
     // and before this it simply stood still while the FLines around it came apart.
     payloadGeometrySlots.drawables.forEach((slot) => {
         if (!slot || !slot.object) return;
-        // A drawable with its own `transform` has `matrixAutoUpdate` off, so writing `position` would
-        // change nothing and quietly do nothing. It is left where its author put it.
-        if (slot.object.matrixAutoUpdate === false) return;
         const group = Number.isFinite(slot.group) ? slot.group : -1;
-        const offset = (group >= 0 && group < offsets.length) ? offsets[group] : [0, 0, 0];
-        slot.object.position.set(offset[0], offset[1], offset[2]);
+        let offset = (group >= 0 && group < offsets.length) ? offsets[group] : [0, 0, 0];
+        if (inspectorState.assemblyStep !== null && (spec.assembly || []).length) {
+            const index = spec.assembly.findIndex(m => m.part === slot.partId || m.part === (spec.groups || [])[group]);
+            if (index >= 0) {
+                const fraction = Math.max(0, Math.min(1, index + 1 - inspectorState.assemblyStep));
+                offset = spec.assembly[index].displacement.map(v => v * fraction);
+            } else offset = [0,0,0];
+        }
+        if (slot.object.matrixAutoUpdate === false) {
+            slot.object.matrix.copy(slot.baseMatrix);
+            slot.object.matrix.elements[12] += offset[0];
+            slot.object.matrix.elements[13] += offset[1];
+            slot.object.matrix.elements[14] += offset[2];
+            slot.object.matrixWorldNeedsUpdate = true;
+        } else slot.object.position.set(offset[0], offset[1], offset[2]);
+        slot.object.visible = !inspectorState.hidden.has(slot.partId);
     });
     // An interactive object is one FLine, so its group is uniform: move the whole object.
     inspectorState.interactive.forEach((entry) => {
@@ -4178,7 +4346,7 @@ function inspectorDrawCut() {
     // section through a scene with a mesh in it drew a cut line round the annotations and none round
     // the thing being annotated, which is the half that a fabricator cares about.
     payloadGeometrySlots.drawables.forEach((slot) => {
-        if (!slot || !slot.object || slot.kindOfDraw !== 'surface') return;
+        if (!slot || !slot.object || slot.kindOfDraw !== 'surface' || inspectorState.hidden.has(slot.partId)) return;
         const geometry = slot.object.geometry;
         const position = geometry.getAttribute('position');
         if (!position) return;
@@ -4248,8 +4416,10 @@ function inspectorSetStatus(text) {
 
 /** Rebuild every overlay: the authored dimensions, the picked one, the cut. */
 function inspectorRebuildOverlay() {
+    requestRender();
     clearGroup(inspectorRoot);
     const spec = inspectorState.spec;
+    featureDraw(); featureHud();
     if (!spec || !spec.enabled) return;
     const lines = [];
     (spec.measurements || []).forEach((m) => {
@@ -4275,16 +4445,656 @@ function inspectorRebuildOverlay() {
     inspectorSetStatus(lines.join('   ·   '));
 }
 
+// Feature references use canonical solid topology when supplied, rendered topology otherwise.
+// No work is done per animation frame. Topology is built lazily when inspection is requested.
+let featurePayload = null, featureSourceCache = null;
+const featureModeEl = document.getElementById('feature-mode');
+const featureNoteEl = document.getElementById('feature-note');
+const featureMessageEl = document.getElementById('feature-message');
+let featureSaving = false;
+function featureMessage(message, error=false) {
+    featureMessageEl.textContent=message; featureMessageEl.dataset.error=String(error);
+}
+
+const featureClone = value => value == null ? null : JSON.parse(JSON.stringify(value));
+function featureIdentity() { return inspectorState.spec?.artifactDigest || featurePayload?.revision || null; }
+function featureToDisplay(point) {
+    const origin=inspectorState.spec?.renderOrigin || [0,0,0];
+    const p=point.map((v,i)=>v-origin[i]);
+    return new THREE.Vector3(...(inspectorState.spec?.renderUpAxis==='Z' ? [p[0],p[2],-p[1]] : p));
+}
+function featureToCanonical(point) {
+    const p=point.toArray(), origin=inspectorState.spec?.renderOrigin || [0,0,0];
+    return (inspectorState.spec?.renderUpAxis==='Z' ? [p[0],-p[2],p[1]] : p).map((v,i)=>v+origin[i]);
+}
+function featureSources() {
+    if(featureSourceCache)return featureSourceCache;
+    const sources=[];
+    const add=(slot,id,label,source,canonical=null) => {
+        if(!slot?.object?.geometry?.getAttribute('position'))return;
+        sources.push({slot,id,label:label||id,source,canonical,topology:null});
+    };
+    payloadGeometrySlots.drawables.forEach((slot,index)=> {
+        const canonical=inspectorState.spec?.parts?.[slot.partId];
+        if(canonical && !slot.object.isMesh)return; // the companion outline is the same feature
+        add(slot,canonical ? slot.partId : `drawable:${index}`,slot.label||slot.partId,
+            {kind:'drawable',index,id:slot.partId},canonical);
+    });
+    payloadGeometrySlots.interactive.forEach((slot,index)=> {
+        const entry=featurePayload?.interactive?.[index];
+        for(const role of ['fills','lines','points'])add(slot?.[role],`fline:${entry?.lineIndex ?? index}:${role}`,
+            entry?.label || `FLine ${entry?.lineIndex ?? index}`,{kind:'fline',index:entry?.lineIndex ?? index,role});
+    });
+    for(const role of ['fills','lines','points'])add(payloadGeometrySlots[role],`batch:${role}`,role,{kind:'batch',role});
+    featureSourceCache=sources;
+    return sources;
+}
+function featureTopology(source) {
+    if(source.topology)return source.topology;
+    if(source.canonical)return source.topology=source.canonical;
+    const object=source.slot.object, geometry=object.geometry;
+    const position=geometry.getAttribute('position');
+    const positions=[], local=source.source.kind==='batch' ? inspectorState.base[source.source.role] : null;
+    const base=source.slot.baseMatrix || new THREE.Matrix4();
+    for(let i=0;i<position.count;i++) {
+        const p=local ? new THREE.Vector3(...local.slice(3*i,3*i+3)) : new THREE.Vector3().fromBufferAttribute(position,i);
+        positions.push(...featureToCanonical(p.applyMatrix4(base)));
+    }
+    const indices=Array.from(geometry.index?.array || Array.from({length:position.count},(_,i)=>i));
+    const edges=[], faces=[], unique=new Map(), first=[];
+    for(let i=0;i<position.count;i++) {
+        const key=positions.slice(3*i,3*i+3).join(',');
+        if(!unique.has(key))unique.set(key,i);
+        first[i]=unique.get(key);
+    }
+    if(object.isMesh) {
+        const incidence=new Map(), normals=[];
+        for(let t=0;t<indices.length/3;t++) {
+            faces[t]=t;
+            const p=[0,1,2].map(k=>new THREE.Vector3(...positions.slice(3*indices[3*t+k],3*indices[3*t+k]+3)));
+            normals[t]=p[1].sub(p[0]).cross(p[2].sub(p[0])).normalize();
+            for(let e=0;e<3;e++) {
+                const a=first[indices[3*t+e]], b=first[indices[3*t+(e+1)%3]];
+                const pair=[Math.min(a,b),Math.max(a,b)], key=pair.join(',');
+                if(!incidence.has(key))incidence.set(key,{pair,triangles:[]});
+                incidence.get(key).triangles.push(t);
+            }
+        }
+        const root=t=>{while(faces[t]!==t){faces[t]=faces[faces[t]];t=faces[t];}return t;};
+        for(const {pair,triangles:t} of incidence.values()) {
+            if(t.length!==2 || normals[t[0]].dot(normals[t[1]])<=0 ||
+                normals[t[0]].clone().cross(normals[t[1]]).length()>1e-8)edges.push(pair);
+            else faces[root(t[0])]=root(t[1]);
+        }
+        for(let t=0;t<faces.length;t++)faces[t]=root(t);
+    } else if(object.isLineSegments) {
+        for(let i=0;i+1<indices.length;i+=2)edges.push([indices[i],indices[i+1]]);
+    }
+    return source.topology={positions,indices,edges,faces};
+}
+function featureWorld(source,point,index=null) {
+    const p=featureToDisplay(point), slot=source.slot;
+    slot.object.updateWorldMatrix(true,false);
+    if(source.source.kind==='batch') {
+        // Batched explode moves buffer vertices, rather than the object transform.
+        const g=featureTopology(source), vertex=index ?? g.positions.findIndex((v,i)=>i%3===0 &&
+            g.positions[i]===point[0] && g.positions[i+1]===point[1] && g.positions[i+2]===point[2])/3;
+        if(vertex>=0)return new THREE.Vector3().fromBufferAttribute(slot.object.geometry.getAttribute('position'),vertex).applyMatrix4(slot.object.matrixWorld);
+    }
+    return p.applyMatrix4((slot.baseMatrix || new THREE.Matrix4()).clone().invert()).applyMatrix4(slot.object.matrixWorld);
+}
+function featurePoint(g,i) { return g.positions.slice(3*i,3*i+3); }
+function featureAnchorWorld(source,selection) {
+    const g=featureTopology(source), vertex=i=>featureWorld(source,featurePoint(g,i),i);
+    if(selection.kind==='vertex')return vertex(selection.vertex);
+    if(selection.kind==='edge')return vertex(selection.edge[0]).lerp(vertex(selection.edge[1]),selection.edgeT);
+    return selection.barycentric.reduce((point,w,k)=>point.addScaledVector(vertex(g.indices[3*selection.triangle+k]),w),new THREE.Vector3());
+}
+function featureVisible(point) {
+    const cut=inspectorState.cut;
+    return !cut || point.x*cut.n[0]+point.y*cut.n[1]+point.z*cut.n[2]+cut.d>=-1e-7;
+}
+function featureProject(source,point) {
+    // A restored camera can be queried before the next render updates its inverse.
+    camera.updateMatrixWorld(true);
+    const world=featureWorld(source,point), projected=world.clone().project(camera);
+    return {x:(projected.x+1)/2,y:(1-projected.y)/2,depth:projected.z,world};
+}
+function featureValidate(selection) {
+    if(selection==null)return null;
+    if(selection.artifactDigest!==featureIdentity())throw new Error('Feature belongs to a different geometry revision');
+    const source=featureSources().find(s=>s.id===selection.partId);
+    if(!source)throw new Error('Unknown feature owner');
+    const g=featureTopology(source), s=featureClone(selection);
+    const vertex=i=>Number.isInteger(i)&&i>=0&&i<g.positions.length/3;
+    const weights=(w,n)=>Array.isArray(w)&&w.length===n&&w.every(v=>Number.isFinite(v)&&v>=0&&v<=1)&&Math.abs(w.reduce((a,b)=>a+b,0)-1)<1e-7;
+    let point;
+    if(s.kind==='vertex' && vertex(s.vertex))point=featurePoint(g,s.vertex);
+    else if(s.kind==='edge' && s.edge?.length===2 && s.edge.every(vertex) &&
+        g.edges.some(e=>e[0]===s.edge[0]&&e[1]===s.edge[1]) && Number.isFinite(s.edgeT)&&s.edgeT>=0&&s.edgeT<=1) {
+        point=featurePoint(g,s.edge[0]).map((v,i)=>v*(1-s.edgeT)+featurePoint(g,s.edge[1])[i]*s.edgeT);
+    } else if(['point','face','region'].includes(s.kind) && Number.isInteger(s.triangle)&&s.triangle>=0&&s.triangle<g.faces.length&&
+        s.face===g.faces[s.triangle]&&weights(s.barycentric,3)) {
+        point=[0,1,2].map(i=>s.barycentric.reduce((v,w,k)=>v+w*g.positions[3*g.indices[3*s.triangle+k]+i],0));
+    } else throw new Error('Invalid feature reference');
+    if(!Array.isArray(s.point)||s.point.length!==3||s.point.some((v,i)=>!Number.isFinite(v)||Math.abs(v-point[i])>Math.max(1e-7,Math.abs(point[i])*1e-12)))
+        throw new Error('Feature coordinates disagree with its topology');
+    if(s.kind==='region') {
+        const r=s.region;
+        if(!r||![r.cx,r.cy,r.width,r.height,r.angle].every(Number.isFinite)||r.cx<0||r.cx>1||r.cy<0||r.cy>1||r.width<=0||r.width>1||r.height<=0||r.height>1||Math.abs(r.angle)>180||!Array.isArray(r.surfaces)||!r.surfaces.length)throw new Error('Invalid region reference');
+        if(!Array.isArray(r.viewport)||r.viewport.length!==2||r.viewport.some(v=>!Number.isFinite(v)||v<=0))throw new Error('Invalid region viewport');
+        for(const surface of r.surfaces) {
+            const owner=featureSources().find(s=>s.id===surface.partId);
+            if(!owner||!Array.isArray(surface.triangles)||!surface.triangles.length||surface.triangles.some(t=>!Number.isInteger(t)||t<0||t>=featureTopology(owner).faces.length))throw new Error('Invalid region surface');
+        }
+    }
+    return s;
+}
+function featureSet(selection,publish=false) {
+    inspectorState.selection=featureValidate(selection);
+    inspectorState.selectedPart=selection?.partId || null;
+    inspectorState.selectedTriangle=selection?.triangle ?? null;
+    document.getElementById('feature-reference').classList.add('hidden');
+    featureMessage('');
+    inspectorRebuildOverlay(); featureHud();
+    if(publish)sendMessage({type:'three-selection',revision:featureIdentity(),record:featureObservation('', 'note')});
+    return featureClone(inspectorState.selection);
+}
+// A depth-tested ID pass selects the frontmost triangle at every covered CSS pixel.
+// Sampling a sparse grid of rays misses small lips; selecting by projected bounds sees through walls.
+function featureRegionContains(region,x,y,width,height) {
+    const dx=(x-region.cx)*width,dy=(y-region.cy)*height,a=region.angle*Math.PI/180;
+    return Math.abs(dx*Math.cos(a)+dy*Math.sin(a))<=region.width*width/2 &&
+        Math.abs(-dx*Math.sin(a)+dy*Math.cos(a))<=region.height*height/2;
+}
+function featureRegion(region,publish=false) {
+    if(panelState.cameras.length>1)throw new Error('Region review requires a single viewport');
+    const r={cx:region.cx,cy:region.cy,width:region.width,height:region.height,angle:region.angle||0};
+    if(!Object.values(r).every(Number.isFinite)||r.cx<0||r.cx>1||r.cy<0||r.cy>1||r.width<=0||r.width>1||r.height<=0||r.height>1||Math.abs(r.angle)>180)
+        throw new Error('Invalid rectangle');
+    const rect=renderer.domElement.getBoundingClientRect(),width=Math.max(1,Math.round(rect.width)),height=Math.max(1,Math.round(rect.height));
+    const target=new THREE.WebGLRenderTarget(width,height,{type:THREE.UnsignedByteType,format:THREE.RGBAFormat,depthBuffer:true,stencilBuffer:false});
+    target.texture.colorSpace=THREE.NoColorSpace;
+    const pickScene=new THREE.Scene(), entries=[null], allocated=[];
+    const cut=inspectorState.cut;
+    const clippingPlanes=cut?[new THREE.Plane(new THREE.Vector3(...cut.n),cut.d)]:[];
+    const material=new THREE.ShaderMaterial({side:THREE.DoubleSide,clipping:true,clippingPlanes,
+        vertexShader:`attribute vec3 pickId; varying vec3 featureId;
+#include <clipping_planes_pars_vertex>
+void main(){featureId=pickId;vec4 mvPosition=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mvPosition;
+#include <clipping_planes_vertex>
+}`,
+        fragmentShader:`varying vec3 featureId;
+#include <clipping_planes_pars_fragment>
+void main(){
+#include <clipping_planes_fragment>
+gl_FragColor=vec4(featureId,1.0);}`});
+    const oldTarget=renderer.getRenderTarget(),oldViewport=renderer.getViewport(new THREE.Vector4()),oldScissor=renderer.getScissor(new THREE.Vector4());
+    const oldScissorTest=renderer.getScissorTest(),oldColor=renderer.getClearColor(new THREE.Color()),oldAlpha=renderer.getClearAlpha();
+    const oldAutoClear=renderer.autoClear;
+    try {
+        for(const source of featureSources()) {
+            const object=source.slot.object;
+            if(!object.isMesh||!object.visible||inspectorState.hidden.has(source.id))continue;
+            object.updateWorldMatrix(true,false);
+            const geometry=object.geometry,index=geometry.index,pos=geometry.getAttribute('position');
+            const count=(index?.count||pos.count)/3,points=new Float32Array(count*9),colors=new Float32Array(count*9);
+            for(let t=0;t<count;t++) {
+                const id=entries.length;if(id>=0xffffff)throw new Error('Too many triangles for a region reference');
+                entries.push({source,triangle:t});
+                for(let k=0;k<3;k++) {
+                    const vertex=index?index.getX(t*3+k):t*3+k;
+                    points.set([pos.getX(vertex),pos.getY(vertex),pos.getZ(vertex)],9*t+3*k);
+                    colors.set([(id&255)/255,((id>>8)&255)/255,((id>>16)&255)/255],9*t+3*k);
+                }
+            }
+            const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(points,3));g.setAttribute('pickId',new THREE.BufferAttribute(colors,3));allocated.push(g);
+            const m=material.clone();m.side=object.material.side;m.clippingPlanes=clippingPlanes;allocated.push(m);
+            const mesh=new THREE.Mesh(g,m);mesh.matrixAutoUpdate=false;mesh.matrix.copy(object.matrixWorld);pickScene.add(mesh);
+        }
+        // setRenderTarget uses the target's pixel dimensions. setViewport takes
+        // logical screen pixels and applies DPR again, shifting this ID pass away
+        // from the rays used below on Retina / high-DPI displays.
+        renderer.setRenderTarget(target);renderer.setScissorTest(false);
+        renderer.setClearColor(0x000000,0);renderer.autoClear=true;
+        camera.updateMatrixWorld(true);renderer.render(pickScene,camera);
+        const angle=r.angle*Math.PI/180;
+        const rx=(Math.abs(Math.cos(angle))*r.width*width+Math.abs(Math.sin(angle))*r.height*height)/2;
+        const ry=(Math.abs(Math.sin(angle))*r.width*width+Math.abs(Math.cos(angle))*r.height*height)/2;
+        const x0=Math.max(0,Math.floor(r.cx*width-rx)),y0=Math.max(0,Math.floor(r.cy*height-ry));
+        const x1=Math.min(width,Math.ceil(r.cx*width+rx)),y1=Math.min(height,Math.ceil(r.cy*height+ry));
+        const w=x1-x0,h=y1-y0,pixels=new Uint8Array(w*h*4);
+        renderer.readRenderTargetPixels(target,x0,height-y1,w,h,pixels);
+        const surfaces=new Map();let anchor=null,best=Infinity,pixelCount=0;
+        for(let row=0;row<h;row++)for(let col=0;col<w;col++) {
+            const x=(x0+col+.5)/width,y=(y1-row-.5)/height;
+            if(!featureRegionContains(r,x,y,width,height))continue;
+            const offset=4*(row*w+col),id=pixels[offset]+(pixels[offset+1]<<8)+(pixels[offset+2]<<16),entry=entries[id];
+            if(!entry)continue;
+            pixelCount++;
+            if(!surfaces.has(entry.source.id))surfaces.set(entry.source.id,new Set());
+            surfaces.get(entry.source.id).add(entry.triangle);
+            const distance=(x-r.cx)**2+(y-r.cy)**2;
+            if(distance<best){best=distance;anchor={...entry,x,y};}
+        }
+        if(!anchor)return featureSet(null,publish);
+        const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(2*anchor.x-1,1-2*anchor.y),camera);
+        const hit=ray.intersectObject(anchor.source.slot.object,false).find(h=>h.faceIndex===anchor.triangle);
+        if(!hit)throw new Error('Could not resolve the visible region anchor');
+        const selection=featureSurfaceSelection(anchor.source,hit,'region');
+        selection.region={...r,viewport:[width,height],pixelCount,view:{...inspectorSnapshot(),selection:null,selectedPart:null,selectedTriangle:null},
+            surfaces:[...surfaces].map(([partId,triangles])=>({partId,triangles:[...triangles].sort((a,b)=>a-b)}))};
+        return featureSet(selection,publish);
+    } finally {
+        renderer.setRenderTarget(oldTarget);renderer.setViewport(oldViewport);renderer.setScissor(oldScissor);renderer.setScissorTest(oldScissorTest);
+        renderer.setClearColor(oldColor,oldAlpha);renderer.autoClear=oldAutoClear;
+        allocated.forEach(o=>o.dispose());material.dispose();target.dispose();requestRender();
+    }
+}
+function featureSurfaceSelection(source,hit,kind) {
+    const g=featureTopology(source),t=hit.faceIndex,geometry=hit.object.geometry,p=geometry.getAttribute('position'),idx=geometry.index;
+    const points=[0,1,2].map(k=>new THREE.Vector3().fromBufferAttribute(p,idx?idx.getX(3*t+k):3*t+k));
+    const bary=new THREE.Triangle(...points).getBarycoord(hit.object.worldToLocal(hit.point.clone()),new THREE.Vector3()).toArray().map(v=>Math.max(0,Math.min(1,v)));
+    const sum=bary.reduce((a,b)=>a+b,0);bary.forEach((v,i)=>bary[i]=v/sum);
+    const point=[0,1,2].map(i=>bary.reduce((v,w,k)=>v+w*g.positions[3*g.indices[3*t+k]+i],0));
+    return {artifactDigest:featureIdentity(),partId:source.id,kind,triangle:t,face:g.faces[t],barycentric:bary,point};
+}
+controls.addEventListener('change',()=>{if(inspectorState.selection?.region)featureRectangleBox(inspectorState.selection.region);});
+let featureDrag=null;
+function featureDisplayRegion(region) {
+    if(!region?.viewport)return region;
+    const rect=renderer.domElement.getBoundingClientRect(),ratio=(region.viewport[0]/region.viewport[1])/(rect.width/rect.height);
+    return {...region,cx:.5+(region.cx-.5)*ratio,width:region.width*ratio};
+}
+function featureRectangleBox(region) {
+    const box=document.getElementById('feature-region-box'),rect=renderer.domElement.getBoundingClientRect();
+    const sameView=!region?.view || (region.view.camera.every((v,i)=>Math.abs(v-camera.position.toArray()[i])<1e-7) && region.view.target.every((v,i)=>Math.abs(v-controls.target.toArray()[i])<1e-7) && (region.view.cameraFov??camera.fov)===camera.fov && (region.view.cameraZoom??camera.zoom)===camera.zoom && region.view.explode===inspectorState.explodeAmount && region.view.assemblyStep===inspectorState.assemblyStep);
+    box.classList.toggle('hidden',!region||!sameView);if(!region||!sameView)return;
+    region=featureDisplayRegion(region);
+    box.style.left=(rect.left+region.cx*rect.width)+'px';box.style.top=(rect.top+region.cy*rect.height)+'px';
+    box.style.width=(region.width*rect.width)+'px';box.style.height=(region.height*rect.height)+'px';
+    box.style.transform=`translate(-50%,-50%) rotate(${region.angle||0}deg)`;
+}
+function featureDragRegion(event) {
+    const rect=renderer.domElement.getBoundingClientRect();
+    const x=Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),y=Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height));
+    return {cx:(x+featureDrag.x)/2,cy:(y+featureDrag.y)/2,width:Math.abs(x-featureDrag.x),height:Math.abs(y-featureDrag.y),angle:Number(document.getElementById('feature-angle').value)};
+}
+renderer.domElement.addEventListener('pointerdown',event=>{
+    if(featureModeEl.value!=='region'||event.button!==0)return;
+    const rect=renderer.domElement.getBoundingClientRect();
+    featureDrag={x:(event.clientX-rect.left)/rect.width,y:(event.clientY-rect.top)/rect.height,pointer:event.pointerId};
+    renderer.domElement.setPointerCapture(event.pointerId);controls.enabled=false;event.preventDefault();event.stopImmediatePropagation();
+},true);
+renderer.domElement.addEventListener('pointermove',event=>{
+    if(!featureDrag)return;featureRectangleBox(featureDragRegion(event));event.preventDefault();event.stopImmediatePropagation();
+},true);
+renderer.domElement.addEventListener('pointerup',event=>{
+    if(!featureDrag)return;
+    const region=featureDragRegion(event);featureDrag=null;controls.enabled=true;
+    renderer.domElement.releasePointerCapture(event.pointerId);event.preventDefault();event.stopImmediatePropagation();
+    if(region.width>.002&&region.height>.002)try {featureRegion(region,true);}catch(e){featureMessage(String(e),true);}
+},true);
+renderer.domElement.addEventListener('pointercancel',()=>{featureDrag=null;controls.enabled=true;featureRectangleBox(null);},true);
+document.getElementById('feature-angle').oninput=()=>{
+    const angle=Number(document.getElementById('feature-angle').value);
+    document.getElementById('feature-angle-value').textContent=angle+'°';
+    // Preview while dragging; resolve visible surfaces once the slider is released.
+    if(inspectorState.selection?.region)featureRectangleBox({...inspectorState.selection.region,angle});
+};
+document.getElementById('feature-angle').onchange=()=>{
+    if(inspectorState.selection?.region)try{featureRegion({...featureDisplayRegion(inspectorState.selection.region),angle:Number(document.getElementById('feature-angle').value)},true);}catch(e){featureMessage(String(e),true);}
+};
+
+function featurePick(x,y,kind='face',publish=false) {
+    if(panelState.cameras.length>1)throw new Error('Feature review currently requires a single viewport');
+    if(!['point','face','edge','vertex'].includes(kind)||![x,y].every(v=>Number.isFinite(v)&&v>=0&&v<=1))throw new Error('Pick uses normalized canvas coordinates and face, edge or vertex');
+    camera.updateMatrixWorld(true);
+    const sources=featureSources().filter(s=>s.slot.object.visible && !inspectorState.hidden.has(s.id));
+    const meshes=sources.filter(s=>s.slot.object.isMesh).map(s=>s.slot.object);
+    meshes.forEach(m=>m.updateWorldMatrix(true,false));
+    const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2(2*x-1,1-2*y),camera);
+    const hits=ray.intersectObjects(meshes,false).filter(h=>featureVisible(h.point));
+    if(kind==='face'||kind==='point') {
+        const hit=hits[0];if(!hit)return featureSet(null,publish);
+        const source=sources.find(s=>s.slot.object===hit.object);
+        return featureSet(featureSurfaceSelection(source,hit,kind),publish);
+    }
+    const rect=renderer.domElement.getBoundingClientRect(), candidates=[];
+    for(const source of sources) {
+        const g=featureTopology(source);
+        const vertices=source.slot.object.isPoints ? [...new Set(g.indices)] : [...new Set(g.edges.flat())];
+        const features=kind==='vertex' ? vertices.map(v=>[v]) : g.edges;
+        for(const ids of features) {
+            const a=featurePoint(g,ids[0]), wa=featureWorld(source,a,ids[0]);
+            let point=a, world=wa, t=0;
+            if(ids.length===2) {
+                const b=featurePoint(g,ids[1]), wb=featureWorld(source,b,ids[1]);
+                world=new THREE.Vector3();ray.ray.distanceSqToSegment(wa,wb,null,world);
+                t=Math.max(0,Math.min(1,world.clone().sub(wa).dot(wb.clone().sub(wa))/wa.distanceToSquared(wb)));
+                if(!Number.isFinite(t))continue;
+                point=a.map((v,i)=>v*(1-t)+b[i]*t);
+            }
+            if(!featureVisible(world))continue;
+            const p=world.clone().project(camera);if(p.z < -1 || p.z > 1)continue;
+            const distance=Math.hypot(((p.x+1)/2-x)*rect.width,((1-p.y)/2-y)*rect.height);
+            if(distance>12)continue;
+            const visibilityRay=new THREE.Raycaster();visibilityRay.setFromCamera(new THREE.Vector2(p.x,p.y),camera);
+            const blocker=visibilityRay.intersectObjects(meshes,false).find(h=>featureVisible(h.point));
+            if(blocker && blocker.distance<visibilityRay.ray.origin.distanceTo(world)-Math.max(1e-5,inspectorState.diagonal*1e-7))continue;
+            candidates.push({distance,depth:p.z,selection:{artifactDigest:featureIdentity(),partId:source.id,kind,point,
+                ...(kind==='vertex'?{vertex:ids[0]}:{edge:ids,edgeT:t})}});
+        }
+    }
+    candidates.sort((a,b)=>a.distance-b.distance||a.depth-b.depth);
+    return featureSet(candidates[0]?.selection || null,publish);
+}
+function featureDraw() {
+    const s=inspectorState.selection;if(!s)return;
+    const source=featureSources().find(p=>p.id===s.partId);
+    if(!source?.slot.object.visible||inspectorState.hidden.has(s.partId))return;
+    const g=featureTopology(source), positions=[];
+    if(s.kind==='face')for(let t=0;t<g.faces.length;t++)if(g.faces[t]===s.face)
+        for(let k=0;k<3;k++)positions.push(...featureWorld(source,featurePoint(g,g.indices[3*t+k]),g.indices[3*t+k]).toArray());
+    if(s.kind==='edge')for(const i of s.edge)positions.push(...featureWorld(source,featurePoint(g,i),i).toArray());
+    if(['vertex','point','region'].includes(s.kind))positions.push(...featureAnchorWorld(source,s).toArray());
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+    const cut=inspectorState.cut, clippingPlanes=cut?[new THREE.Plane(new THREE.Vector3(...cut.n),cut.d)]:[];
+    const options={color:0xffffff,clippingPlanes,depthWrite:false};
+    const overlay=s.kind==='face'?new THREE.Mesh(geometry,new THREE.MeshBasicMaterial({...options,transparent:true,opacity:.35,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2})):
+        s.kind==='edge'?new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({...options,depthTest:false})):
+        new THREE.Points(geometry,new THREE.PointsMaterial({...options,size:9,sizeAttenuation:false,depthTest:false}));
+    overlay.renderOrder=1000;inspectorRoot.add(overlay);
+    if(s.kind==='face'||s.kind==='edge') {
+        const markerGeometry=new THREE.BufferGeometry().setFromPoints([featureAnchorWorld(source,s)]);
+        const marker=new THREE.Points(markerGeometry,new THREE.PointsMaterial({...options,size:7,sizeAttenuation:false,depthTest:false}));
+        marker.renderOrder=1001;inspectorRoot.add(marker);
+    }
+}
+function featureHud() {
+    const s=inspectorState.selection;
+    featureRectangleBox(s?.region || null);
+    document.getElementById('feature-angle-wrap').classList.toggle('hidden',featureModeEl.value!=='region' && s?.kind!=='region');
+    if(s?.region)document.getElementById('feature-angle').value=String(s.region.angle);
+    document.getElementById('feature-angle-value').textContent=document.getElementById('feature-angle').value+'°';
+    document.getElementById('feature-tools').classList.toggle('hidden',!featureIdentity() || !editorState.uiVisible);
+    featureModeEl.disabled=panelState.cameras.length>1;
+    featureModeEl.title=featureModeEl.disabled?'Open a single viewport for feature review':'';
+    document.getElementById('feature-review').classList.toggle('hidden',!s && featureModeEl.value==='off');
+    const source=s && featureSources().find(p=>p.id===s.partId);
+    document.getElementById('feature-description').textContent=s ? `${source.label} · ${s.kind}${s.region?' · '+s.region.surfaces.length+' visible part(s)':''}\n${s.point.map(v=>v.toFixed(3)).join(', ')} ${inspectorState.spec?.units||''}` : (featureModeEl.value==='region'?'Drag a rectangle over visible surfaces. Rotate it with the Angle slider.':'Click a feature. Edge and vertex picks snap within 12 pixels.');
+    for(const id of ['feature-copy','feature-save'])document.getElementById(id).disabled=!s || (id==='feature-save' && featureSaving);
+}
+function featureObservation(text,verdict='note') {
+    if(!['note','accepted','rejected'].includes(verdict)||typeof text!=='string')throw new Error('Invalid observation');
+    const current=inspectorSnapshot();
+    const view=inspectorState.selection?.region?.view ? {...inspectorState.selection.region.view,selection:featureClone(inspectorState.selection),selectedPart:current.selectedPart,selectedTriangle:current.selectedTriangle} : current;
+    if(!view.artifactDigest)throw new Error('Geometry identity required');
+    const source=featureSources().find(s=>s.id===inspectorState.selection?.partId);
+    return {schemaVersion:2,viewId:clientUid,sourceBox:featurePayload?.sourceBox||null,artifactDigest:view.artifactDigest,
+        source:source?.source||null,coordinatePrecision:source?.canonical?'canonical-double':'display-float',
+        selection:featureClone(inspectorState.selection),text,verdict,view,createdAt:new Date().toISOString()};
+}
+// Render the saved observation synchronously and restore the user's current view before paint.
+// These are geometry-canvas images, without the note editor covering the selected feature.
+function featureCaptureEvidence(record) {
+    if(!record?.selection)throw new Error('Pick a feature before saving a note');
+    if(panelState.cameras.length>1)throw new Error('Image review requires a single viewport');
+    const current=inspectorSnapshot(), noteText=featureNoteEl.value;
+    try {
+        featureReview(record);
+        const canvas=renderer.domElement, rect=canvas.getBoundingClientRect();
+        camera.updateMatrixWorld(true);
+        renderer.setViewport(0,0,rect.width,rect.height);
+        renderer.setScissorTest(false); renderer.render(scene,camera);
+        const full=document.createElement('canvas');
+        const scale=Math.min(1,1600/canvas.width,1600/canvas.height);
+        full.width=Math.max(1,Math.round(canvas.width*scale)); full.height=Math.max(1,Math.round(canvas.height*scale));
+        const ctx=full.getContext('2d');ctx.drawImage(canvas,0,0,full.width,full.height);
+        const s=record.selection, region=s.region ? featureDisplayRegion(s.region) : null;
+        const source=featureSources().find(p=>p.id===s.partId), projected=featureAnchorWorld(source,s).project(camera);
+        const anchor={x:(projected.x+1)/2,y:(1-projected.y)/2};
+        const cx=(region?.cx ?? anchor.x)*full.width,cy=(region?.cy ?? anchor.y)*full.height;
+        const a=(region?.angle||0)*Math.PI/180;
+        const w=region ? region.width*full.width : 32, h=region ? region.height*full.height : 32;
+        ctx.save();ctx.translate(cx,cy);ctx.rotate(a);ctx.strokeStyle='#62d7ff';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.strokeRect(-w/2,-h/2,w,h);ctx.restore();
+        const rx=(Math.abs(Math.cos(a))*w+Math.abs(Math.sin(a))*h)/2+40;
+        const ry=(Math.abs(Math.sin(a))*w+Math.abs(Math.cos(a))*h)/2+40;
+        const x0=Math.max(0,Math.floor(cx-rx)),y0=Math.max(0,Math.floor(cy-ry));
+        const x1=Math.min(full.width,Math.ceil(cx+rx)),y1=Math.min(full.height,Math.ceil(cy+ry));
+        if(x1<=x0 || y1<=y0)throw new Error('Selected feature is outside the saved view');
+        const crop=document.createElement('canvas'), cropScale=Math.min(1,1024/(x1-x0),1024/(y1-y0));
+        crop.width=Math.max(1,Math.round((x1-x0)*cropScale));crop.height=Math.max(1,Math.round((y1-y0)*cropScale));
+        crop.getContext('2d').drawImage(full,x0,y0,x1-x0,y1-y0,0,0,crop.width,crop.height);
+        const encode=c=>({width:c.width,height:c.height,dataUrl:c.toDataURL('image/png')});
+        return {schemaVersion:1,artifactDigest:record.artifactDigest,view:featureClone(record.view),
+            viewport:[rect.width,rect.height],cropBounds:[x0/full.width,y0/full.height,(x1-x0)/full.width,(y1-y0)/full.height],
+            context:encode(full),crop:encode(crop)};
+    } finally { inspectorRestore(current); featureNoteEl.value=noteText; requestRender(); }
+}
+
+function featureReview(record) {
+    if(record.viewId!==clientUid || record.artifactDigest!==featureIdentity() ||
+        record.view?.artifactDigest!==record.artifactDigest || JSON.stringify(record.selection)!==JSON.stringify(record.view?.selection))
+        throw new Error('Note belongs to a different view or geometry');
+    if(typeof record.text!=='string')throw new Error('Invalid note');
+    inspectorRestore(record.view);featureNoteEl.value=record.text;featureHud();return inspectorSnapshot();
+}
+featureModeEl.onchange=()=>{inspectorState.measuring=false;featureHud();};
+document.getElementById('feature-clear').onclick=()=>{featureSet(null,true);featureModeEl.value='off';featureNoteEl.value='';featureHud();};
+document.getElementById('feature-copy').onclick=async()=>{
+    const text=JSON.stringify(featureObservation(featureNoteEl.value),null,2);
+    try {await navigator.clipboard.writeText(text);featureMessage('Reference copied. Paste it into your agent conversation.');}
+    catch(_) {const area=document.getElementById('feature-reference');area.value=text;area.classList.remove('hidden');area.focus();area.select();featureMessage('Copy this selected reference.');}
+};
+document.getElementById('feature-save').onclick=()=>{
+    if(featureSaving)return;
+    try {
+        if(!wsState.ws || wsState.ws.readyState!==WebSocket.OPEN)throw new Error('Field is disconnected; reconnect before saving');
+        const record=featureObservation(featureNoteEl.value);
+        record.evidence=featureCaptureEvidence(record);
+        featureSaving=true; featureHud();
+        sendMessage({type:'three-observation',revision:featureIdentity(),record});
+        featureMessage('Saving note and images…');
+    } catch(e) { featureSaving=false; featureHud(); featureMessage(String(e),true); }
+};
+document.getElementById('feature-load').onclick=()=>document.getElementById('feature-file').click();
+document.getElementById('feature-file').onchange=async event=>{
+    try {featureReview(JSON.parse(await event.target.files[0].text()));}
+    catch(e){featureMessage(String(e),true);document.getElementById('feature-review').classList.remove('hidden');}
+    event.target.value='';
+};
+
+// A thread is durable context. Reading it never acknowledges it or moves the camera.
+const reviewInboxEl=document.getElementById('review-inbox');
+const reviewThreadsEl=document.getElementById('review-threads');
+const reviewErrorEl=document.getElementById('review-error');
+const reviewDrafts=new Map(), reviewExpanded=new Set();
+let reviewLoadSerial=0;
+function reviewText(parent,tag,text,className='') {
+    const el=document.createElement(tag);el.textContent=text;el.className=className;parent.append(el);return el;
+}
+async function reviewLoadThreads() {
+    const serial=++reviewLoadSerial;
+    reviewErrorEl.textContent='';
+    try {
+        const response=await fetch('/three-review?'+new URLSearchParams({uid:clientUid,includeResolved:String(document.getElementById('review-completed').checked)}));
+        if(!response.ok)throw new Error(await response.text()||'Could not read notes');
+        const inbox=await response.json();if(serial!==reviewLoadSerial)return;
+        document.getElementById('review-counts').textContent=`${inbox.openCount} open · ${inbox.resolvedCount} resolved`;
+        reviewThreadsEl.replaceChildren();
+        if(!inbox.notes.length)reviewText(reviewThreadsEl,'p','No open notes. Include resolved to read completed threads.','review-copy');
+        for(const note of inbox.notes) {
+            const card=document.createElement('details');card.dataset.noteId=note.id;card.open=reviewExpanded.has(note.id);reviewThreadsEl.append(card);
+            card.ontoggle=()=>{if(card.open)reviewExpanded.add(note.id);else reviewExpanded.delete(note.id);};
+            reviewText(card,'summary',`${note.status||'open'} · ${note.text.slice(0,80)}${note.text.length>80?'…':''} · ${(note.replies||[]).length} ${(note.replies||[]).length===1?'reply':'replies'}`);
+            reviewText(card,'p',note.text,'review-copy');
+            reviewText(card,'p',`Recorded ${note.createdAt||''} · geometry ${String(note.artifactDigest).slice(0,12)}`,'review-copy review-meta');
+            if(note.artifactDigest===featureIdentity()) {
+                const show=reviewText(card,'button','Show feature');show.type='button';
+                show.onclick=()=>{try {featureReview(note);}catch(error){reviewErrorEl.textContent=String(error);}};
+            } else reviewText(card,'p','Earlier geometry. Its saved evidence remains available.','review-copy review-meta');
+            if(note.evidence)for(const kind of ['context','crop']) {
+                const hash=note.evidence[kind]?.sha256;if(!/^[0-9a-f]{64}$/.test(hash||''))continue;
+                const link=reviewText(card,'a',kind==='context'?'Context image':'Close crop');
+                link.href='/three-review-image?'+new URLSearchParams({uid:clientUid,sha256:hash});link.target='_blank';link.rel='noopener';
+            }
+            const entries=[...(note.replies||[]).map(e=>({...e,reply:true})),...(note.history||[])].sort((a,b)=>a.version-b.version);
+            for(const entry of entries) {
+                const block=reviewText(card,'div','', 'review-entry');
+                reviewText(block,'p',`${entry.actor} · ${entry.reply?'reply':entry.status} · ${entry.at}`,'review-copy review-meta');
+                reviewText(block,'p',entry.reply?entry.text:entry.summary,'review-copy');
+                reviewText(block,'p',`Geometry ${String(entry.checkedRevision).slice(0,12)}`,'review-copy review-meta');
+            }
+            const label=reviewText(card,'label','Reply or resolution');
+            const input=document.createElement('textarea');input.rows=3;input.maxLength=16000;input.setAttribute('aria-label','Reply to annotation');
+            input.value=reviewDrafts.get(note.id)||'';input.oninput=()=>reviewDrafts.set(note.id,input.value);label.append(input);
+            const actions=reviewText(card,'div','','review-actions');
+            const reply=reviewText(actions,'button','Add reply','review-primary'), status=reviewText(actions,'button',note.status==='resolved'?'Reopen':'Resolve');
+            reply.type=status.type='button';
+            const feedback=reviewText(card,'p','','review-copy review-error');feedback.setAttribute('aria-live','polite');
+            async function write(asReply) {
+                const text=input.value.trim();if(!text){feedback.textContent='Write a reply or explain the resolution first.';return;}
+                reply.disabled=status.disabled=true;feedback.textContent='';
+                const request={id:note.id,actor:'Viewer user',checkedRevision:inbox.revision,expectedVersion:note.version||0,
+                    ...(asReply?{reply:text}:{status:note.status==='resolved'?'open':'resolved',summary:text})};
+                try {
+                    const response=await fetch('/three-review-note?'+new URLSearchParams({uid:clientUid}),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(request)});
+                    if(!response.ok)throw new Error(await response.text());
+                    reviewDrafts.delete(note.id);await reviewLoadThreads();
+                }catch(error){feedback.textContent=String(error);reply.disabled=status.disabled=false;}
+            }
+            reply.onclick=()=>write(true);status.onclick=()=>write(false);
+        }
+    } catch(error) {if(serial===reviewLoadSerial)reviewErrorEl.textContent=String(error);}
+}
+document.getElementById('feature-inbox').onclick=()=>{reviewInboxEl.classList.toggle('hidden');if(!reviewInboxEl.classList.contains('hidden'))reviewLoadThreads();};
+document.getElementById('review-close').onclick=()=>reviewInboxEl.classList.add('hidden');
+document.getElementById('review-refresh').onclick=reviewLoadThreads;
+document.getElementById('review-completed').onchange=reviewLoadThreads;
+
+// Artifact-bound state is shared by manual controls, saved reviews and agent automation.
+function inspectorPartIds() { return featureSources().map(s=>s.id).sort(); }
+function inspectorSnapshot() {
+    return { artifactDigest: featureIdentity(), partIds: inspectorPartIds(),
+        renderOrigin: (inspectorState.spec || {}).renderOrigin || [0,0,0],
+        renderUpAxis: (inspectorState.spec || {}).renderUpAxis || 'Y',
+        sectionFlip: !!(((inspectorState.spec || {}).section || {}).flip),
+        hidden: [...inspectorState.hidden].sort(), camera: camera.position.toArray(), target: controls.target.toArray(),
+        cameraFov:camera.fov,cameraZoom:camera.zoom,
+        explode: inspectorState.explodeAmount, assemblyStep: inspectorState.assemblyStep,
+        light: keyLight.position.toArray(), sectionEnabled: inspectorState.sectionEnabled,
+        sectionFraction: inspectorState.sectionFraction, sectionNormal: ((inspectorState.spec || {}).section || {}).normal || [1,0,0],
+        selectedPart: inspectorState.selectedPart, selectedTriangle: inspectorState.selectedTriangle, selection:featureClone(inspectorState.selection) };
+}
+function inspectorRestore(state) {
+    if (!state.artifactDigest || state.artifactDigest !== featureIdentity() ||
+        JSON.stringify([...state.partIds].sort()) !== JSON.stringify(inspectorPartIds()))
+        throw new Error('Inspection state belongs to different geometry; face remapping requires review');
+    if (JSON.stringify(state.renderOrigin || [0,0,0]) !== JSON.stringify(inspectorState.spec.renderOrigin || [0,0,0]))
+        throw new Error('Inspection state uses a different render origin');
+    if ((state.renderUpAxis || 'Y') !== (inspectorState.spec.renderUpAxis || 'Y'))
+        throw new Error('Inspection state uses different display axes');
+    const ids = new Set(inspectorPartIds());
+    if ((state.hidden || []).some(id => !ids.has(id))) throw new Error('Unknown hidden part');
+    for (const vector of [state.camera, state.target, state.light, state.sectionNormal])
+        if (vector && vector.length && (vector.length !== 3 || !vector.every(Number.isFinite))) throw new Error('Invalid view vector');
+    if (!Number.isFinite(state.explode) || state.explode < 0 || !Number.isFinite(state.sectionFraction) ||
+        state.sectionFraction < 0 || state.sectionFraction > 1) throw new Error('Invalid inspection parameters');
+    if (state.assemblyStep != null && (!Number.isFinite(state.assemblyStep) || state.assemblyStep < 0 ||
+        state.assemblyStep > (inspectorState.spec.assembly || []).length)) throw new Error('Invalid assembly step');
+    if (!state.sectionNormal || state.sectionNormal.length !== 3 || state.sectionNormal.every(v => v === 0))
+        throw new Error('Section normal must be nonzero');
+    if (state.selectedPart != null && !ids.has(state.selectedPart)) throw new Error('Unknown selected part');
+    if(state.cameraFov!=null&&(!Number.isFinite(state.cameraFov)||state.cameraFov<=0||state.cameraFov>=180))throw new Error('Invalid camera field of view');
+    if(state.cameraZoom!=null&&(!Number.isFinite(state.cameraZoom)||state.cameraZoom<=0))throw new Error('Invalid camera zoom');
+    const selection=featureValidate(state.selection);
+    if(selection && (selection.partId!==state.selectedPart || (selection.triangle??null)!==(state.selectedTriangle??null)))throw new Error('Selection owner mismatch');
+    if (state.selectedTriangle != null && !selection) {
+        const slot = featureSources().find(s => s.id === state.selectedPart && s.slot.object.isMesh)?.slot;
+        const count = slot ? (slot.object.geometry.index?.count ?? slot.object.geometry.getAttribute('position')?.count ?? 0) / 3 : 0;
+        if (!Number.isInteger(state.selectedTriangle) || state.selectedTriangle < 0 || state.selectedTriangle >= count)
+            throw new Error('Unknown selected triangle');
+    }
+    inspectorState.selection=selection;
+    inspectorState.hidden = new Set(state.hidden || []);
+    if (state.camera && state.camera.length) camera.position.fromArray(state.camera);
+    if(state.cameraFov!=null)camera.fov=state.cameraFov;
+    if(state.cameraZoom!=null)camera.zoom=state.cameraZoom;
+    camera.updateProjectionMatrix();
+    if (state.target && state.target.length) controls.target.fromArray(state.target);
+    if (state.light && state.light.length) keyLight.position.fromArray(state.light);
+    inspectorState.spec.section = {...inspectorState.spec.section, normal: state.sectionNormal, flip: !!state.sectionFlip};
+    inspectorState.explodeAmount = state.explode; inspectorState.assemblyStep = state.assemblyStep ?? null;
+    explodeSliderEl.value = String(Math.round(inspectorState.explodeAmount / inspectorState.explodeMax * 1000));
+    explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, inspectorState.spec.units || '', 0);
+    inspectorState.sectionEnabled = !!state.sectionEnabled; inspectorState.sectionFraction = state.sectionFraction;
+    inspectorState.selectedPart = state.selectedPart || null; inspectorState.selectedTriangle = state.selectedTriangle ?? null;
+    controls.update(); inspectorRefresh(); inspectorPartHud();
+    return inspectorSnapshot();
+}
+function inspectorPartHud() {
+    const host = document.getElementById('part-inspector');
+    const wasOpen = host.querySelector('details')?.open || false; host.replaceChildren();
+    host.classList.toggle('hidden', !(inspectorState.spec && inspectorState.spec.enabled));
+    const ids = inspectorPartIds();
+    let partHost = host;
+    if (ids.length > 8) {
+        const details = document.createElement('details'); details.open = wasOpen;
+        const summary = document.createElement('summary'); summary.textContent = 'Parts (' + ids.length + ')';
+        partHost = document.createElement('div'); partHost.className = 'part-list';
+        details.append(summary, partHost); host.append(details);
+    }
+    ids.forEach(id => {
+        const label = document.createElement('label'), input = document.createElement('input');
+        input.type = 'checkbox'; input.checked = !inspectorState.hidden.has(id); input.setAttribute('aria-label', 'Show ' + id);
+        input.onchange = () => { if(input.checked)inspectorState.hidden.delete(id); else inspectorState.hidden.add(id); inspectorRefresh(); };
+        label.append(input, document.createTextNode(id)); partHost.append(label);
+    });
+    const motions = (inspectorState.spec || {}).assembly || [];
+    if (motions.length) {
+        const label = document.createElement('label'), slider = document.createElement('input');
+        slider.type = 'range'; slider.min = '0'; slider.max = String(motions.length); slider.step = '.01';
+        slider.value = String(inspectorState.assemblyStep ?? motions.length); slider.setAttribute('aria-label','Checked insertion order');
+        slider.oninput = () => { inspectorState.assemblyStep = Number(slider.value); inspectorRefresh(); };
+        label.append(document.createTextNode('Insertion order'),slider);host.append(label);
+    }
+    const light = document.createElement('input'); light.type = 'range'; light.min = '0'; light.max = '360'; light.value=String((Math.atan2(keyLight.position.z,keyLight.position.x)*180/Math.PI+360)%360);
+    light.setAttribute('aria-label','Grazing light direction'); light.oninput = () => { const a=Number(light.value)*Math.PI/180;keyLight.position.set(Math.cos(a)*10,1,Math.sin(a)*10); requestRender(); };
+    const lightLabel = document.createElement('label');
+    lightLabel.append(document.createTextNode('Light'),light); host.append(lightLabel);
+}
+window.FieldInspector = Object.freeze({ snapshot: inspectorSnapshot, restore: inspectorRestore,
+    pick:featurePick, region:featureRegion, select:featureSet, review:featureReview,
+    project:(id,point)=>{const s=featureSources().find(p=>p.id===id);if(!s)throw new Error('Unknown feature owner');const p=featureProject(s,point);return {x:p.x,y:p.y,depth:p.depth};},
+    sources:()=>featureSources().map(s=>({id:s.id,label:s.label,source:s.source,precision:s.canonical?'canonical-double':'display-float'})),
+    // Display-space diagnostics for automation; never use these Float bounds as Boolean geometry.
+    rendered: () => payloadGeometrySlots.drawables.filter(s => s.object && s.object.isMesh).map(s => {
+        s.object.updateWorldMatrix(true, false);
+        const bounds = new THREE.Box3().setFromObject(s.object);
+        return {partId:s.partId, visible:s.object.visible, min:bounds.min.toArray(), max:bounds.max.toArray(), matrix:s.object.matrixWorld.toArray()};
+    }),
+    hide: (id, hidden=true) => { if(!inspectorPartIds().includes(id))throw new Error('Unknown part'); if(hidden)inspectorState.hidden.add(id);else inspectorState.hidden.delete(id);inspectorRefresh();inspectorPartHud();return inspectorSnapshot(); },
+    section: (normal, fraction=.5) => inspectorRestore({...inspectorSnapshot(), sectionNormal:normal, sectionEnabled:true, sectionFraction:fraction}),
+    assembly: step => inspectorRestore({...inspectorSnapshot(), assemblyStep:step}),
+    capture: featureCaptureEvidence,
+    observe: featureObservation
+});
+
 /** Everything, in the order the pieces depend on each other. */
 function inspectorRefresh() {
+    interactiveRevision++;
+    requestRender();
     inspectorApplyExplode();
     inspectorApplySection();
+    for(const source of featureSources())if(inspectorState.hidden.has(source.id))source.slot.object.visible=false;
     inspectorRebuildOverlay();
 }
 
 function inspectorUpdateHud() {
     const spec = inspectorState.spec;
     const on = !!(spec && spec.enabled);
+    featureHud();
     inspectorGroupEl.classList.toggle('hidden', !on || !editorState.uiVisible);
     if (!on) {
         renderer.localClippingEnabled = false;
@@ -4309,6 +5119,7 @@ function inspectorUpdateHud() {
 }
 
 explodeSliderEl.addEventListener('input', () => {
+    inspectorState.assemblyStep = null;
     inspectorState.explodeAmount = (Number(explodeSliderEl.value) / 1000) * inspectorState.explodeMax;
     const spec = inspectorState.spec || {};
     explodeReadoutEl.textContent = measureFormat(inspectorState.explodeAmount, spec.units || '', 0);
@@ -4678,6 +5489,8 @@ function applyGeometry(payload) {
     // Last, because it reads the geometry the steps above created and because framing the camera first
     // means the first dimension is offset across the view the user is actually going to see.
     inspectorCapture(payload);
+    inspectorPartHud();
+    if (payload.inspector && payload.inspector.review) requestAnimationFrame(() => inspectorRestore(payload.inspector.review));
     inspectorUpdateHud();
     inspectorRefresh();
 }
@@ -4710,9 +5523,11 @@ function connectWs() {
     ws.addEventListener('message', (event) => {
         let message = null;
         try { message = JSON.parse(event.data); } catch (_) { return; }
+        if(message.type==='three-review-ack'){featureSaving=false; featureHud(); featureMessage(message.message,!message.ok);return;}
         applyGeometry(message);
     });
     ws.addEventListener('close', () => {
+        if(featureSaving){featureSaving=false;featureHud();featureMessage('Connection lost while saving. Check the inbox before retrying.',true);}
         if (!wsState.reconnectTimer) {
             wsState.reconnectTimer = window.setTimeout(() => {
                 wsState.reconnectTimer = null;
@@ -4911,6 +5726,7 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
 });
 
 renderer.domElement.addEventListener('pointermove', (event) => {
+    requestRender();
     setPointerFromEvent(event);
     if (editorState.mode === 'camera') {
         if (cameraPointerDown) {
@@ -5002,6 +5818,7 @@ renderer.domElement.addEventListener('pointermove', (event) => {
 });
 
 function finishPointer(event) {
+    requestRender();
     if (editorState.mode === 'camera') {
         cameraPointerDown = null;
         return;
@@ -5048,15 +5865,30 @@ function finishPointer(event) {
 
 renderer.domElement.addEventListener('pointerup', finishPointer);
 renderer.domElement.addEventListener('pointercancel', finishPointer);
+renderer.domElement.addEventListener('pointerleave', () => {
+    pointer.set(1e6, 1e6);
+    requestRender();
+});
 renderer.domElement.addEventListener('click', (event) => {
     if (editorState.mode !== 'camera' || cameraIsDragging) return;
+    if(featureModeEl.value==='region')return;
+    if(featureModeEl.value!=='off' && !inspectorState.measuring) {
+        const r=renderer.domElement.getBoundingClientRect();
+        featurePick((event.clientX-r.left)/r.width,(event.clientY-r.top)/r.height,featureModeEl.value,true);return;
+    }
     setPointerFromEvent(event);
     raycaster.setFromCamera(pointer, camera);
-    const meshes = interactiveObjects.flatMap((entry) => entry.meshes);
+    const meshes = interactiveObjects.flatMap((entry) => entry.meshes).filter(mesh => mesh.visible);
     const hits = raycaster.intersectObjects(meshes, false);
     if (!hits.length) return;
     const hitObject = hits[0].object;
     const owner = interactiveObjects.find((entry) => entry.meshes.includes(hitObject)) || null;
+    // Interactive entries do not carry a part id. Use the drawable slot that
+    // owns the hit mesh, so a click produces an artifact-restorable selection.
+    const part = payloadGeometrySlots.drawables.find(slot => slot.object === hitObject);
+    inspectorState.selection=null;
+    inspectorState.selectedPart = featureSources().find(s=>s.slot.object===hitObject)?.id || part?.partId || null;
+    inspectorState.selectedTriangle = part && hitObject.isMesh ? (hits[0].faceIndex ?? null) : null;
 
     // The measure tool takes the click instead of the server callback: while you are measuring, a click
     // is a pick, not a `fline-click`. Two picks make a dimension, and a third starts over — the same
@@ -5269,11 +6101,12 @@ function updatePanelCameras() {
 function setPanelVisibility(index) {
     payloadGeometrySlots.drawables.forEach((slot) => {
         if (!slot || !slot.object) return;
-        slot.object.visible = slot.panel === -1 || slot.panel === index;
+        slot.object.visible = !inspectorState.hidden.has(slot.partId) && (slot.panel === -1 || slot.panel === index);
     });
 }
 
 function onResize() {
+    requestRender();
     const width = container.clientWidth;
     const height = container.clientHeight;
     renderer.setPixelRatio(getDpr());
@@ -5282,7 +6115,7 @@ function onResize() {
     camera.updateProjectionMatrix();
     // A camera that was fitted to the frame has to be refitted when the frame changes shape —
     // including the resize the chrome bands trigger, which happens once on every mesh payload.
-    if (payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
+    if (!inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
         applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true, fitPointsForPanel(-1));
         const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
@@ -5290,8 +6123,10 @@ function onResize() {
     }
     if (pointMaterial && pointMaterial.uniforms) pointMaterial.uniforms.uPixelRatio.value = getDpr();
     if (editorState.marquee) showMarquee(editorState.marquee);
+    if(inspectorState.selection?.region)featureRectangleBox(inspectorState.selection.region);
 }
 window.addEventListener('resize', onResize);
+new ResizeObserver(onResize).observe(container);
 
 function render() {
     controls.update();
@@ -5313,17 +6148,16 @@ function render() {
         // Leave every drawable visible, so a payload that drops back to one panel is not left with
         // most of its geometry switched off.
         payloadGeometrySlots.drawables.forEach((slot) => {
-            if (slot && slot.object) slot.object.visible = true;
+            if (slot && slot.object) slot.object.visible = !inspectorState.hidden.has(slot.partId);
         });
     } else {
         renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
         renderer.render(scene, camera);
     }
-    requestAnimationFrame(render);
 }
 
 connectWs();
-render();
+requestRender();
 </script>
 </body>
 </html>

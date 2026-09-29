@@ -454,6 +454,11 @@ class RunnerOptions:
     expects_error: bool
     # Hardware-specific reference captures are retained unless explicitly requested on their host.
     capture_profile: str | None = None
+    # `clip="x,y,w,h"`: crop the finished screenshot to this rectangle, in CSS pixels of the page
+    # (the canvas's world coordinates when it is unpanned and unzoomed). For `capture="window"`
+    # figures of something drawn on the canvas, where the capture viewport is far larger than the
+    # drawing and `trim` cannot see past the dot grid.
+    clip: tuple[float, float, float, float] | None = None
 
 
 def capture_profile_enabled(profile: str | None) -> bool:
@@ -2531,6 +2536,7 @@ class RunnerState:
                 timeout_sec=options.timeout,
                 min_mtime=source_image_min_mtime,
             )
+        clip_screenshot(screenshot_path=screenshot_path, options=options, backdoor_stdout=completed.stdout)
         trim_screenshot_border(screenshot_path=screenshot_path, options=options)
         visual_gap = validate_screenshot_pixels(screenshot_path=screenshot_path, options=options)
         if visual_gap is not None:
@@ -2928,6 +2934,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         native_wait_frames=int(parse_float(first_attr(attrs, "native-wait-frames", "native_wait_frames"), default=30.0)),
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
+        clip=parse_clip(first_attr(attrs, "clip")),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -4162,6 +4169,49 @@ def _content_profile_crop(image, tolerance: int = 16, min_fraction: float = 0.00
     if (right - left) * (bottom - top) >= width * height * 0.96:
         return None
     return left, top, right, bottom
+
+
+def parse_clip(value: str | None) -> tuple[float, float, float, float] | None:
+    """`clip="x,y,w,h"` in CSS pixels; None when absent."""
+    if value is None or not str(value).strip():
+        return None
+    parts = [p.strip() for p in str(value).split(",")]
+    if len(parts) != 4:
+        raise ValueError(f"clip must be x,y,w,h (got {value!r})")
+    x, y, w, h = (float(p) for p in parts)
+    if w <= 0 or h <= 0:
+        raise ValueError(f"clip width and height must be positive (got {value!r})")
+    return (x, y, w, h)
+
+
+def clip_screenshot(*, screenshot_path: Path, options: RunnerOptions, backdoor_stdout: str) -> None:
+    """Crop a finished capture to `clip`, a rectangle in CSS pixels.
+
+    The PNG is in device pixels, so the scale is the image width over the viewport width the
+    screenshot command reported (its JSON result carries `"viewport": {..., "w": ...}`). The crop is
+    of the real screenshot; nothing is drawn or composited.
+    """
+    if options.clip is None or options.source_image:
+        return
+    try:
+        from PIL import Image
+    except Exception:
+        raise RuntimeError("clip= needs Pillow to crop the screenshot")
+    matches = re.findall(r'"viewport":\s*\{[^}]*?"w":\s*([0-9.]+)', backdoor_stdout or "")
+    with Image.open(screenshot_path) as source:
+        image = source.copy()
+    if not matches:
+        raise RuntimeError(f"clip= could not read the capture viewport width for {screenshot_path}")
+    scale = image.width / float(matches[-1])
+    x, y, w, h = options.clip
+    box = (
+        max(0, round(x * scale)), max(0, round(y * scale)),
+        min(image.width, round((x + w) * scale)), min(image.height, round((y + h) * scale)),
+    )
+    if box[2] <= box[0] or box[3] <= box[1]:
+        raise RuntimeError(f"clip={options.clip} lies outside the {image.width}x{image.height} capture {screenshot_path}")
+    image.crop(box).save(screenshot_path)
+    LOG.info("Field docs runner clipped screenshot %s to %s css px (scale %.2f)", screenshot_path, options.clip, scale)
 
 
 def trim_screenshot_border(*, screenshot_path: Path, options: RunnerOptions) -> None:

@@ -341,6 +341,25 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
   the optional Flask server (`CHAT_SERVER_URL`, default `http://localhost:5002`;
   `server/guide_chat_server.py`; data in `chat_data/`).
 
+### Drawing layer (Excalidraw)
+
+- An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
+- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation` (`mainCanvasTransform()`), so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. Every writer of `mainTranslation` must call `drawingLayerViewportChanged` (there are four: `applyViewportTranslation`, the wheel and middle-drag pans in `Main.kt`, and bookmark restore).
+
+### Notation: box code ↔ the drawing
+
+- `notation` (the box is the implicit receiver) reads, writes and reacts to the drawing layer's scene: `notation.marks/strokes/arrows/named()/over(box)`, `notation { rect(); arrow(from = box, to = box); stroke(fline) }` (owned by the box, replaced on re-run), `notation.edit/delete/anchor`, `notation.onStroke/onArrow/onText/onChange { }`. Source in `src/jvmMain/kotlin/afield/notation/`; design and the full API in `dev_docs/NOTATION.md`.
+- Reading by intersection: `notation.space("score", x = 0.0..8.0, y = 84.0..48.0)` maps a region to its own axes; `vertical(t)` / `horizontal(p)` return `Hit`s (value, span, along, slope, pen pressure); `events` / `between(t0, t1)` / `sounding(t)` for playheads.
+- Clients send their scene as `notation-scene`, merged server-side by element version (`NotationScene.merge`). Tests: `NotationTest`, `NotationIntersectionTest`.
+
+### Canvas zoom
+
+- Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
+- Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
+- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
+- One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
+- The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
 ### FLine
 
 `afield.graphics.FLine` (`afield/graphics/FLine.kt`) is the core drawn line/path type, with

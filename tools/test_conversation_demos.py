@@ -6,8 +6,8 @@ function packager's check was failing on main):
 - `tools/stacksl_conversation_documents.py` and `tools/rectsl_conversation_documents.py` write the
   StackSL and RectSL documents' `metadata.edn`, copy each starter's shared files into its recorded
   sessions, and generate the study's words guide;
-- `tools/package_stacksl_conversation.py`, `tools/package_rectsl_conversation.py` and
-  `tools/package_function_conversation.py` build each public page's listings, transcript pages,
+- `tools/package_stacksl_conversation.py`, `tools/package_rectsl_conversation.py`,
+  `tools/package_stackauto_conversation.py` and `tools/package_function_conversation.py` build each public page's listings, transcript pages,
   images and downloads from the recorded sessions.
 
 The packagers render transcripts with Python-Markdown, which comes with the `docs` dependency group
@@ -52,6 +52,10 @@ class ConversationDemoTest(unittest.TestCase):
 
     def test_the_rectsl_page_matches_its_recorded_sessions(self):
         result = self.docs_python("tools/package_rectsl_conversation.py")
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_the_stackauto_page_matches_its_recorded_session(self):
+        result = self.docs_python("tools/package_stackauto_conversation.py")
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
 
     def test_the_function_page_matches_its_recorded_session(self):

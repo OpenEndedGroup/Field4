@@ -210,7 +210,7 @@ class FieldApiCorsExposureTest {
      *
      * ## What the table says, and it is the honest answer to "is Field's API authenticated"
      *
-     * **49 of 53 state-changing routes have no route-specific guard of any kind** — 36 of 40
+     * **49 of 54 state-changing routes have no route-specific guard of any kind** — 36 of 40
      * before the verbless shape was counted — including `POST /api/shutdown-instance`, which
      * a foreign origin was measured stopping the server with, `POST /api/agent-worktrees/delete`,
      * and now `ANY /lazy-value-fragment`, which takes four query parameters straight into
@@ -517,7 +517,7 @@ class FieldApiCorsExposureTest {
          */
         const val ALL_METHODS = "ANY"
 
-        /** Four route-specific guards; the application-wide switch is off by default. */
+        /** Five route-specific guards; the application-wide switch is off by default. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
             // Thirteen verbless routes, every one of them a page-serving `handle { }` that
             // also accepts POST, PUT and DELETE. `/lazy-value-fragment` is the one with real
@@ -576,6 +576,7 @@ class FieldApiCorsExposureTest {
             // Nested inside `route("/vision")`, and published as `POST /stream` until
             // 2026-08-22 because path resolution returned early on a leading slash.
             "POST /vision/stream" to "none",
+            "POST /three-review-note" to "loopback + same-site",
             "PUT /api/docs-annotations/{id}/resolve" to "loopback + same-site",
             "PUT /api/document-tags" to "none",
             "PUT /field-audio/{...}" to "none",

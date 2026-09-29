@@ -2527,6 +2527,14 @@ private fun stackAutoShaderTypeLabel(type: ShaderReloadType): String =
         ShaderReloadType.RAY_TRACING -> "ray tracing shader"
     }
 
+/**
+ * Called on Field's main thread when a box's queued `stack.auto` pipeline update has finished and nothing
+ * newer is queued behind it: true when the new pipeline is in place (the next frame draws it), false when
+ * the update failed and the old one still draws. A slot change is only *queued* when its setter returns; a
+ * caller that must see the result waits for this.
+ */
+val stackAutoShaderUpdated = java.util.concurrent.CopyOnWriteArrayList<(box: Box, success: Boolean) -> Unit>()
+
 private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
     val updateKey = ShaderReloadKey(System.identityHashCode(box), type)
     val state = stackAutoShaderUpdateStates.computeIfAbsent(updateKey) {
@@ -2567,6 +2575,7 @@ private fun requestStackAutoShaderUpdate(box: Box, type: ShaderReloadType) {
                             else "Stack.auto $label update failed in '${box.name}'",
                             "shader"
                         )
+                        if (!state.pending.get()) stackAutoShaderUpdated.forEach { runCatching { it(box, success) } }
                     }
                 }
             } while (state.pending.get())

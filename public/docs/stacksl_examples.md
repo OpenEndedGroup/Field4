@@ -1150,6 +1150,17 @@ these return is the end result in your shader, as **Show it in your shader** cap
 and the program drawn alone is offered only as a debugging view. Revisions are kept in
 the box's `studies/`, beside the slot's knob names and keys.
 
+A slot your shader animates, by a time it pushes, is one moment per picture, and the tools
+cannot move your time for you. Give Edit, Patch or Observe `over` (seconds) and the picture
+is a numbered sheet of real frames across that long instead. An edit returns once the new
+pipeline is drawing, which MoltenVK can take seconds to build, and says so with
+`boundLive`; there is then nothing to reload.
+
+[Talking to the StackSL in your shader](stackauto_conversation.md) follows a recorded
+conversation of this kind step by step: a snub dodecahedron whose vertex shader's slot sends
+its faces flying in a wave, and whose fragment shader's slot heats them and burns them out to
+ragged frames at the peak.
+
 ### In the editor
 
 The StackSL inside the box's Kotlin gets the editor's StackSL help where it sits:

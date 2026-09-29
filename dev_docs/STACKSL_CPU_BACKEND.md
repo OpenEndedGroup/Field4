@@ -112,6 +112,15 @@ pixels differ by 200.
 
 That is chaos, not error, and it is reported as a distribution rather than bounded by an epsilon.
 
+The live `stacksl.study.gpu-agreement` smoke treats this tier as **sketchy diagnostic evidence**,
+not a portable pass/fail precision check. On a Linux RTX 4090 (driver 610.43.02), the palette study
+`uv 5 * 0.1t + fbm palette saturate` measured mean 15.10 levels, max 162, with 26.05% of pixels
+within one level of the CPU. Isolating the fBm loop showed the mismatch jump from 0.005 levels at
+one octave to 2.60 at two; either the `mat2` warp or the `+17.17` translation alone was enough to
+cross hash-cell boundaries. The smoke still hard-checks exact arithmetic and smooth operations,
+asserts it actually rendered on the GPU, writes the comparison sheet, and reports these hash
+statistics for inspection.
+
 ### `hash11-chaos` — cannot agree, and should not be asked to
 
 `_hash11`, behind `valueNoise`, is `fract(sin(p * 127.1) * 43758.5453123)` — the `sin` is right
