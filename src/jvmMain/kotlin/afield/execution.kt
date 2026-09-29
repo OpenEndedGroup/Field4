@@ -1057,6 +1057,7 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
+    BoxOutputLog.observeOutput(normalized)
     reply?.invoke(Message("output").payload(normalized))
     _sendToPeerSessions(
         Message("peer-output").payload(normalized),
@@ -1476,10 +1477,14 @@ class KotlinExecution : BoxExecution {
                                 onEvalError = { diagnostics ->
                                     hasError = true
                                     fragmentFailed = true
-                                    diagnostics.forEach {
-                                        lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
-                                    }
-                                    pinEvalError(box, diagnostics)
+                                    reportEvalError(
+                                        box,
+                                        reply,
+                                        request.originSession,
+                                        diagnostics,
+                                        request.exec.line,
+                                        request.exec.property
+                                    )
                                 },
                                 onEvalException = { throwable ->
                                     hasError = true
@@ -1619,6 +1624,50 @@ class KotlinExecution : BoxExecution {
                 "${d.severity}: ${d.message}$loc".trim().takeIf { it.isNotBlank() }
             }
             PinnedConsole.error(box.id, "eval error · ${box.id.take(8)}", lines)
+        }
+
+        /**
+         * Report an eval-time *diagnostic* failure — the evaluator refusing the compiled snippet, as
+         * opposed to the snippet throwing (see [reportEvalException]). Pinning alone was all this path
+         * used to do, so the box got no error mark and the receipt said only "did not complete": a
+         * `ClassFormatError` from `val (a, _) = p` (2026-09-28) looked exactly like a hang. These
+         * diagnostics rarely carry a location, so the mark goes on [lineOffset] when they do not; a located
+         * one is placed exactly as the compile-error path places it.
+         */
+        internal fun reportEvalError(
+            box: Box,
+            reply: ((Message) -> Unit)?,
+            originSession: WebSocketSession?,
+            diagnostics: List<ScriptDiagnostic>,
+            lineOffset: Int,
+            property: String = "code"
+        ) {
+            diagnostics.forEach {
+                lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
+            }
+            pinEvalError(box, diagnostics)
+            val diagnostic = diagnostics.firstOrNull {
+                it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
+            } ?: diagnostics.firstOrNull() ?: return
+            // The evaluator usually folds the exception into its message already; add it only if not.
+            val cause = diagnostic.exception
+            val message = if (cause == null || cause.message?.let { it in diagnostic.message } == true) diagnostic.message
+                else "${diagnostic.message} — ${cause.javaClass.simpleName}: ${cause.message}"
+            val start = diagnostic.location?.start
+            dispatchExecutionOutput(
+                box,
+                reply,
+                Output(
+                    uid = box.id,
+                    line = start?.line ?: lineOffset,
+                    startColumn = start?.col ?: -1,
+                    kind = "error",
+                    property = property,
+                    html = escapeForHtml(message),
+                    frame = Runloop.runLoop.frame.toInt()
+                ),
+                originSession = originSession
+            )
         }
 
         /**
@@ -2444,10 +2493,7 @@ class KotlinExecution : BoxExecution {
                     }, { evalError ->
                         hasError = true
                         lprintln("error,execution", "eval error")
-                        evalError.forEach {
-                            lprintln("error,execution", "  ${it.code} ${it.message} ${it.location}")
-                        }
-                        pinEvalError(box, evalError)
+                        reportEvalError(box, trace.reply, originSession, evalError, ln, property)
                     }, { evalException ->
                         hasError = true
                         lprintln("error,execution", "exception thrown in fragment inside box $box")

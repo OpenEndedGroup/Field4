@@ -53,10 +53,11 @@ val extraLwjglNativeClassifiers =
     if (lwjglNatives == "natives-macos-arm64") listOf("natives-macos") else emptyList()
 
 
-val kotlinVersion = "2.4.0"
+val kotlinVersion = "2.5.0-Beta1"
+// Name-based destructuring needs no flag at language 2.5: the full form and `[a, b]` are on by default,
+// and the short form (which would make a plain `(a, b)` bind by name) stays off.
 val kotlinExperimentalCompilerArgs = listOf(
     "-Xcollection-literals",
-    "-Xname-based-destructuring=only-syntax",
 )
 val serializationVersion = "1.6.0"
 val ktorVersion = "3.5.2"
@@ -609,8 +610,8 @@ fun configuredJdwpArg(): String? {
 }
 
 plugins {
-    kotlin("multiplatform") version "2.4.0"
-    kotlin("plugin.serialization") version "2.4.0"
+    kotlin("multiplatform") version "2.5.0-Beta1"
+    kotlin("plugin.serialization") version "2.5.0-Beta1"
     id("me.filippov.gradle.jvm.wrapper") version "0.14.0"
     id("com.github.node-gradle.node") version "7.1.0"
 }
@@ -1027,13 +1028,12 @@ kotlin {
                 implementation("org.jetbrains:markdown:0.5.2")
                 implementation("io.github.sashirestela:simple-openai:3.22.2")
 
-                val customKotlinVersion = "2.4.255-SNAPSHOT"
+                val customKotlinVersion = "2.5.255-SNAPSHOT"
 
                 /*
                 gently customized versions of the kotlin scripting front-end to provide better completion and skip the history check on the repl evaluator to allow us to reused compiled fragments
                  */
                 implementation(files("libs/analysis-api-$customKotlinVersion.jar"))
-                implementation(files("libs/analysis-api-fir-generator-$customKotlinVersion.jar"))
 
                 implementation(files("libs/jep-4.3.1.jar"))
 
@@ -1078,9 +1078,9 @@ kotlin {
                 // DataFrame runtime of its own, so putting it here would give box code two copies of
                 // `DataFrame`. KotlinInterface2 hands that jar to the compiler via -Xplugin instead,
                 // which loads it in the compiler's own plugin classloader. The plugin was built from
-                // our 2.4.255-SNAPSHOT fork, whose libs.versions.toml pins this runtime version;
+                // our 2.5.255-SNAPSHOT fork, whose libs.versions.toml pins this runtime version;
                 // the plugin statically interprets the runtime's API, so the two must stay in step.
-                implementation("org.jetbrains.kotlinx:dataframe-core:1.0.0-Beta2")
+                implementation("org.jetbrains.kotlinx:dataframe-core:1.0.0-Beta4")
                 implementation("org.apache.maven:maven-core:3.8.8")
                 implementation("org.apache.maven.resolver:maven-resolver-api:1.9.22")
                 implementation("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.22")
@@ -1227,7 +1227,7 @@ tasks {
     withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_24)
-            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_4)
+            languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_5)
             javaParameters.set(true)
             freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
         }

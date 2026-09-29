@@ -61,6 +61,7 @@ class IdeChatHelpers(
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         focus: ToolFocus? = null,
+        fieldGraph: afield.ai.agent.FieldGraphTools? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -89,7 +90,8 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
-            focus = focus
+            focus = focus,
+            fieldGraph = fieldGraph
         )
 
         val instructions = buildDynamicInstructions(
@@ -152,6 +154,7 @@ class IdeChatHelpers(
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         focus: ToolFocus? = null,
+        fieldGraph: afield.ai.agent.FieldGraphTools? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -183,9 +186,32 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
-            focus = focus
+            focus = focus,
+            fieldGraph = fieldGraph
         )
 
+        return chatGeneral(state, code, lang, userPrompt, ctx, imageUrls, vectorStoreIds,
+            onTextDelta = onTextDelta, onProgress = onProgress)
+    }
+
+    /**
+     * The document/general chat turn, given an already-built tool context. Every AI4 prose turn goes
+     * through here: the box panel's `general` kind and the document chat (via the overload above), and
+     * `AgentTaskRunner`, which is a headless entry into this same turn rather than a harness of its own.
+     */
+    fun chatGeneral(
+        state: OpenAiIdeCodexBridge.ThreadState,
+        code: String,
+        lang: LanguageSpec,
+        userPrompt: String,
+        ctx: ToolExecutionContext,
+        imageUrls: List<String> = emptyList(),
+        vectorStoreIds: List<String> = emptyList(),
+        maxToolRounds: Int = 24,
+        extraInstructions: String = "",
+        onTextDelta: ((String) -> Unit)? = null,
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
+    ): OpenAiIdeCodexBridge.SendResult {
         val instructions = buildDynamicInstructions(
             mode = InstructionMode.Chat,
             lang = lang,
@@ -195,9 +221,13 @@ class IdeChatHelpers(
             ctx = ctx
         )
 
-        val attachmentNote = attachmentContextNote(attachments)
+        val attachmentNote = attachmentContextNote(ctx.attachments)
         val prompt = buildString {
             append(instructions)
+            if (extraInstructions.isNotBlank()) {
+                append("\n\n")
+                append(extraInstructions)
+            }
             if (attachmentNote.isNotBlank()) {
                 append("\n\n")
                 append(attachmentNote)
@@ -215,7 +245,8 @@ class IdeChatHelpers(
             imageDataUrls = imageUrls,
             onTextDelta = onTextDelta,
             onProgress = onProgress,
-            maxOutputTokens = 10000
+            maxOutputTokens = 10000,
+            maxToolRounds = maxToolRounds
         )
     }
 
@@ -247,6 +278,7 @@ class IdeChatHelpers(
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         focus: ToolFocus? = null,
+        fieldGraph: afield.ai.agent.FieldGraphTools? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -275,7 +307,8 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
-            focus = focus
+            focus = focus,
+            fieldGraph = fieldGraph
         )
 
         val instructions = buildDynamicInstructions(
@@ -341,6 +374,7 @@ class IdeChatHelpers(
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
         focus: ToolFocus? = null,
+        fieldGraph: afield.ai.agent.FieldGraphTools? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
@@ -369,7 +403,8 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
-            focus = focus
+            focus = focus,
+            fieldGraph = fieldGraph
         )
 
         val instructions = buildDynamicInstructions(

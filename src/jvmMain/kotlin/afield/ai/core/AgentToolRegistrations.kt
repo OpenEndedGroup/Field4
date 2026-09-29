@@ -17,6 +17,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
         registerDocumentSourceTools(tools)
+        afield.ai.agent.registerFieldGraphTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.

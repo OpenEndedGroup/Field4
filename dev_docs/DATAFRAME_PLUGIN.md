@@ -23,9 +23,9 @@ jar contains its own copy of `DataFrame`; put it on the app classpath beside the
 dependency and box code sees **two copies of the same type**:
 `KotlinInterface2.kt:2940#two copies of`. `-Xplugin` loads it into the compiler's own plugin
 classloader instead, so only the compiler ever sees it. The runtime goes on the classpath the ordinary
-way: `build.gradle.kts:952#dataframe-core:1.0.0-Beta2`.
+way: `build.gradle.kts:1078#dataframe-core:1.0.0-Beta4`.
 
-The jar is 9,758,425 bytes and is git-lfs tracked: `.gitattributes:28#libs/dataframe-plugin.jar filter=lfs`.
+The jar is 10,269,299 bytes and is git-lfs tracked: `.gitattributes:28#libs/dataframe-plugin.jar filter=lfs`.
 
 ### Switches
 
@@ -44,8 +44,8 @@ contributors.
 
 ### The version pin is a pin
 
-`dataframe-core` is pinned to `1.0.0-Beta2`. The comment beside it states the constraint that makes
-this a pin rather than a preference: the plugin was built from Field's `2.4.255-SNAPSHOT` Kotlin fork,
+`dataframe-core` is pinned to `1.0.0-Beta4`. The comment beside it states the constraint that makes
+this a pin rather than a preference: the plugin was built from Field's `2.5.255-SNAPSHOT` Kotlin fork,
 whose `libs.versions.toml` names that runtime version, and **the plugin statically interprets the
 runtime's API** — `build.gradle.kts:949#The plugin was built from`. So moving to a released DataFrame
 1.0 means re-syncing the fork and rebuilding the plugin. It is not a line edit.

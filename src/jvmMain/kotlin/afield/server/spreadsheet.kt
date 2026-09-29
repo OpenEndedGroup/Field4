@@ -19,6 +19,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import kotlin.script.experimental.api.ResultValue
+import kotlin.script.experimental.api.ScriptDiagnostic
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -350,19 +351,24 @@ object SpreadsheetEvalHelpers {
     fun sum(values: Any?): Double = flattenNumeric(values).sum()
 
     @JvmStatic
+    // Unlike min/max, an empty average has no sensible value (Excel's `#DIV/0!`), so the cell errors
+    // rather than showing a 0 that looks like data.
     fun avg(values: Any?): Double {
         val flattened = flattenNumeric(values)
-        return if (flattened.isEmpty()) 0.0 else flattened.sum() / flattened.size
+        if (flattened.isEmpty()) error("average of a range with no numbers")
+        return flattened.sum() / flattened.size
     }
 
     @JvmStatic
     fun mean(values: Any?): Double = avg(values)
 
+    // An empty range is 0, as in Excel and Sheets, so `max(A1:A3) + 1` is a formula rather than a
+    // compile error about adding to a `Double?`.
     @JvmStatic
-    fun min(values: Any?): Double? = flattenNumeric(values).minOrNull()
+    fun min(values: Any?): Double = flattenNumeric(values).minOrNull() ?: 0.0
 
     @JvmStatic
-    fun max(values: Any?): Double? = flattenNumeric(values).maxOrNull()
+    fun max(values: Any?): Double = flattenNumeric(values).maxOrNull() ?: 0.0
 
     @JvmStatic
     fun count(values: Any?): Int = flattenAny(values).size
@@ -1123,17 +1129,28 @@ private fun bindSpreadsheetBox(runtime: SpreadsheetRuntime, target: Box): Spread
 private class SpreadsheetEvaluator(private val cachePrefix: String) {
     private val lock = Any()
     private val compiled = ConcurrentHashMap<String, PreparedSnippet>()
-    private val compiler = KotlinInterface(filePrefix = cachePrefix)
+    // K2, like box code. Formulas moved off the legacy K1 engine on 2026-09-28, with no change a sheet
+    // can see (examples.spreadsheet.formulas pins that); K1's REPL compiler is an error-level
+    // deprecation from Kotlin 2.5.
+    private val compiler = KotlinInterface2(filePrefix = cachePrefix)
 
     fun evaluate(expression: String, runtime: SpreadsheetRuntime): EvalResult {
         val source = buildSource(expression)
+        var compileError: String? = null
         val snippet = synchronized(lock) {
             compiled[source] ?: runBlocking {
-                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = {})
+                compiler.compileSnippet(source, implicits = emptyList(), onCompileError = { diagnostics ->
+                    compileError = diagnostics.firstOrNull {
+                        it.severity.ordinal >= ScriptDiagnostic.Severity.ERROR.ordinal
+                    }?.message
+                })
             }?.also {
                 compiled[source] = it
             }
-        } ?: return EvalResult(value = null, errorDetail = "Formula compilation failed")
+        } ?: return EvalResult(
+            value = null,
+            errorDetail = compileError?.let { "Formula compilation failed: $it" } ?: "Formula compilation failed"
+        )
 
         return withSpreadsheetRuntime(runtime) {
             try {
@@ -1787,7 +1804,7 @@ private object SpreadsheetService {
             insertText = "avg(range(\"A1:A4\"))",
             kind = "function",
             detail = "Average numeric values",
-            documentation = "Returns the arithmetic mean of numeric values.",
+            documentation = "Returns the arithmetic mean of numeric values; an error if there are none.",
             cursorOffset = 11
         ),
         GeneralCompletion(
@@ -1795,7 +1812,7 @@ private object SpreadsheetService {
             insertText = "min(range(\"A1:A4\"))",
             kind = "function",
             detail = "Minimum numeric value",
-            documentation = "Returns the smallest numeric value in a range or list.",
+            documentation = "Returns the smallest numeric value in a range or list, or 0 if it has none.",
             cursorOffset = 11
         ),
         GeneralCompletion(
@@ -1803,7 +1820,7 @@ private object SpreadsheetService {
             insertText = "max(range(\"A1:A4\"))",
             kind = "function",
             detail = "Maximum numeric value",
-            documentation = "Returns the largest numeric value in a range or list.",
+            documentation = "Returns the largest numeric value in a range or list, or 0 if it has none.",
             cursorOffset = 11
         ),
         GeneralCompletion(

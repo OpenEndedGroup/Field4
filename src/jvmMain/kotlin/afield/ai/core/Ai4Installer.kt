@@ -532,7 +532,7 @@ fun installAi4() {
 
     // Pick the agent engine by the /welcome provider setting. Both implement LlmBridge,
     // so IdeChatHelpers and the thread caches are provider-agnostic downstream.
-    fun createIdeBridge(uiLog: LogSink): LlmBridge = createLlmBridge(Ai4ModelDefaults.flagshipModel(), uiLog)
+    fun createIdeBridge(uiLog: LogSink): LlmBridge = afield.ai.core.createIdeBridge(uiLog)
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
@@ -815,6 +815,11 @@ fun installAi4() {
         val docPath = sessionInfo.filename
         val documentGuides = DocumentGuideTools.forSession(sessionInfo)
         val focus = ToolFocus(docPath, box, exec.property)
+        // Native graph + execution tools (NewBox, RunBox, PatchBoxText, ReadBoxOutput...). The editor
+        // kinds' reply rewrites this box's property, so their tools refuse to write it; the general
+        // chat's reply is prose, so nothing is reply-owned there.
+        val replyGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo, box, exec.property)
+        val chatGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
@@ -1797,6 +1802,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1830,6 +1836,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = chatGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onTextDelta = { chunk ->
                                 if (!streamActive.get() || chunk.isEmpty()) return@chatGeneral
@@ -1879,6 +1886,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1912,6 +1920,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -1945,6 +1954,7 @@ fun installAi4() {
                             agentMemory = agentMemory,
                             documentGuides = documentGuides,
                             focus = focus,
+                            fieldGraph = replyGraph,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             onProgress = progressCallback
                         )
@@ -2335,7 +2345,9 @@ fun installAi4() {
                     semanticRetrievalStatus = semanticRetrievalStatus,
                     semanticRetrievalRebuild = semanticRetrievalRebuild,
                     agentMemory = agentMemory,
-                    documentGuides = documentGuides
+                    documentGuides = documentGuides,
+                    // The document chat had no way to edit a box before: no EditFile, no graph tools.
+                    fieldGraph = chatSession?.let { afield.ai.agent.FieldGraphTools.forTurn(it) }
                 )
                 
                 chatThreadByKey[fileKey] = result.threadState
