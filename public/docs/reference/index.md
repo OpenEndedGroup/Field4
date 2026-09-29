@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15682 public symbols across 427 source files**, 9317 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15756 public symbols across 429 source files**, 9348 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -27,7 +27,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 102 | 2787 | 1230 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 16 | 239 | 192 (80%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 18 | 313 | 223 (71%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -238,6 +238,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LineNotePictures.kt](workspace.md#linenotepictures-kt) | Workspace | 5 | 5 |  |  |
 | [LineNotes.kt](workspace.md#linenotes-kt) | Workspace | 9 | 9 |  |  |
 | [LineNoteTools.kt](workspace.md#linenotetools-kt) | Workspace | 11 | 5 |  |  |
+| [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  |  |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 110 | 67 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
 | [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
@@ -401,6 +402,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
+| [SourceFramesStudy.kt](workspace.md#sourceframesstudy-kt) | Workspace | 20 | 8 |  |  |
 | [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 39 | 30 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. |  |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 | The frequency-domain end of the synth: an `FFT`, two short-time transforms built on it, and a wavetable that keeps its waveforms as spectra. |  |

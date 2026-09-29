@@ -997,7 +997,8 @@ class RectSLStudy(
     }
 
     /** A candidate for [tryVariants]: a complete program, or exact edits to the live source. */
-    data class Variant(val label: String, val source: String = "", val edits: List<StudySourceEdit> = emptyList(), val note: String = "")
+    data class Variant(override val label: String, override val source: String = "", override val edits: List<StudySourceEdit> = emptyList(),
+                       override val note: String = "") : afield.stdlib.StudyRequest.Variant
 
     /** Check and draw several candidates beside the current scene, and hold them — unpublished — for [adoptVariant]. */
     fun tryVariants(variants: List<Variant>, seconds: List<Double> = emptyList(), size: Int = 0): StudyReport {

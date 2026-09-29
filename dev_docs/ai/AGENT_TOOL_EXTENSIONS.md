@@ -91,6 +91,22 @@ stop leaves it answering, and retiring the box releases it. `ai.boxtools.mechani
 (`examples/ai/BoxAiToolsSmokeTest.kt`) checks all four; `ai.rectsl.tools` exercises the RectSL
 studio set (`rectsl.check`, `rectsl.run`) built on it.
 
+## Studies: one registrar for the standard verbs
+
+A study's standard verbs — Inspect, Edit, Patch, SetNumbers, Observe, Compare, Sweep, TryVariants,
+AdoptVariant, Restore — are wired once, in `src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt`:
+
+- A library study keeps its request classes (their names are the tool names, their fields and
+  descriptions the schemas; `StudyToolSchemaPinTest` pins all of them), makes each implement the
+  matching `StudyRequest.*` interface, adapts its study class to `LiveStudy`, and calls
+  `registerStudyTools(scope, gate, studyOf, StudyToolClasses(...))`. What stays in its `*StudyTools.kt`
+  is the declarations, the guide and its extras (Trace, Knobs, Timeline, Export).
+- A document calls `registerStudyTools("Prefix", study)` from box code: the same ten verbs become
+  box-authored tools (`InspectPrefixStudy`, …) on a `LiveStudy` — its own, or a `SourceFramesStudy`
+  built from `sourceFramesStudy(property, studyFrames(…) { … })`, which implements every verb from
+  the shared pieces. `study.document.registrar` (`examples/ai/DocumentStudySmokeTest.kt`) is the
+  worked example, driven through all ten verbs.
+
 ## What a result should implement
 
 `SummarisesForToolLog` is close to mandatory in practice. Without it the tool I/O log records

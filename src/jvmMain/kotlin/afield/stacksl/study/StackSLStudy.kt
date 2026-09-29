@@ -559,7 +559,8 @@ class StackSLStudy(
     }
 
     /** A candidate for [tryVariants]: a complete program, or exact edits to the live source. */
-    data class Variant(val label: String, val source: String = "", val edits: List<StudySourceEdit> = emptyList(), val note: String = "")
+    data class Variant(override val label: String, override val source: String = "", override val edits: List<StudySourceEdit> = emptyList(),
+                       override val note: String = "") : afield.stdlib.StudyRequest.Variant
 
     /**
      * Check and render several candidates beside the current program, and hold them — unpublished —
