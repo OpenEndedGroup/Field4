@@ -43,16 +43,15 @@ loop { if (work.isDone) println(work.get()) }
 /**
  * Proof that a StackSL study's GPU frames are the program's frames: the same programs rendered by
  * [afield.stacksl.study.StackSLGpuRasterizer] on a live renderer and by the CPU reference. Exact
- * arithmetic and smooth-transcendental tiers have hard bounds; hash21-amplified comparisons are
- * intentionally diagnostic only because tiny differences in fBm's warped coordinates cross hash
- * lattice boundaries on some GPUs. `uv saturate` must be bit-identical, which catches a flipped
- * image.
+ * arithmetic, smooth-transcendental tiers, and the 2D fBm palette have hard bounds; the 4D fbm4
+ * hash comparison remains diagnostic because tiny differences in its warped coordinates can
+ * cross hash lattice boundaries. `uv saturate` must be bit-identical, which catches a flipped image.
  *
  * It also times an observation-sized render (four 256×256 frames of a five-octave volumetric program),
  * since the reason the GPU path exists is that the CPU reference takes minutes for it.
  *
  * [run] writes the evidence sheet — GPU above, CPU below — after the hard checks pass, retaining
- * hash21 differences as visible evidence without treating them as a portable precision bound.
+ * remaining hash21 differences as visible evidence without treating them as a portable bound.
  */
 object StackSLStudyGpuSmoke {
 
@@ -94,11 +93,15 @@ object StackSLStudyGpuSmoke {
         check(seconds < 10.0) { "four 256x256 frames took ${"%.1f".format(seconds)}s on the GPU; the point of the GPU path is that they do not" }
         writeSheet(rows, sheet)
         return "stacksl study GPU agreement: ${PROGRAMS.size} programs at ${TIMES.size} times; " +
-            "exact and smooth tiers hold bounds; hash21 is sketchy diagnostic only; " +
+            "exact, smooth, and 2D fBm tiers hold bounds; 4D fbm4 hash remains diagnostic; " +
             "four 256x256 frames of '$heavy' in ${"%.2f".format(seconds)}s on ${rasterizer.description}; " +
-            lines.joinToString("; ") {
-                val label = if (it.tier == AgreementTier.HASH21_AMPLIFIED) "${it.tier.label} (sketchy diagnostic)" else it.tier.label
-                "$label mean=${"%.3f".format(it.meanLevels)} max=${it.maxLevels}"
+            PROGRAMS.zip(lines).joinToString("; ") { (program, agreement) ->
+                val label = when {
+                    agreement.tier != AgreementTier.HASH21_AMPLIFIED -> agreement.tier.label
+                    program == "uv 5 * 0.1t + fbm palette saturate" -> "2D fBm"
+                    else -> "${agreement.tier.label} (4D diagnostic)"
+                }
+                "$label mean=${"%.3f".format(agreement.meanLevels)} max=${agreement.maxLevels}"
             }
     }
 
@@ -108,10 +111,13 @@ object StackSLStudyGpuSmoke {
         when (tier) {
             AgreementTier.EXACT_OPS, AgreementTier.SMOOTH_TRANSCENDENTAL ->
                 check(a.maxLevels <= 1) { "$tier programs agree to within a level: $a" }
-            // fBm's warped coordinates can differ by a few ulps between CPU and GPU, then land in
-            // different floor() cells. RTX 4090 measured mean differences above 15 levels for the
-            // palette study, so this tier is useful evidence but not a portable smoke-test bound.
-            AgreementTier.HASH21_AMPLIFIED -> Unit
+            AgreementTier.HASH21_AMPLIFIED -> when (program) {
+                "uv 5 * 0.1t + fbm palette saturate" -> check(a.meanLevels < 0.1 && a.maxLevels <= 1) {
+                    "2D fBm should remain visually CPU/GPU-equivalent: $a"
+                }
+                // Keep fbm4 as evidence only until its 4D arithmetic is stabilized separately.
+                else -> Unit
+            }
             AgreementTier.HASH11_UNBOUNDED, AgreementTier.FEEDBACK -> Unit
         }
     }
