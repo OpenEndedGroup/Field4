@@ -128,14 +128,43 @@ Sweep, same 55 GPU smoke tests, complete output counted: **55/55 on the default 
 with unified layouts on in all 37 Vulkan devices created, 0 validation errors, 0 VUIDs, 0 warnings.**
 MoltenVK: 55/55, 0 errors, 0 VUIDs, mapping inactive. Performance effect not measured.
 
+## IOSurfaces on KosmicKrisp (2026-09-29)
+
+Both live IOSurface paths import a surface another process created: `FieldRTTStreamer` renders into
+the `field-encode` helper's 32BGRA ring, and `MacExternalBrowserSurface` reads Electron's frames.
+On MoltenVK the surface backs a `VkImage` (`VK_EXT_metal_objects`), as before.
+
+`VK_EXT_external_memory_metal` does not give KosmicKrisp that. Measured with
+`vkGetPhysicalDeviceImageFormatProperties2` over BGRA8/BGRA8_SRGB/RGBA8/RGBA16F, both tilings and
+every usage Field needs: KosmicKrisp imports image memory **only as `MTLHEAP`**. `MTLTEXTURE` import
+is `VK_ERROR_FORMAT_NOT_SUPPORTED` everywhere, and `MTLBUFFER` is not importable. Metal has no heap
+over an IOSurface, so an externally created IOSurface cannot back a Vulkan image there. (MoltenVK
+imports `MTLTEXTURE`, `MTLHEAP` and `MTLBUFFER`, all dedicated-only.)
+
+What works on both drivers is `VK_EXT_external_memory_host`. On Apple silicon an IOSurface is
+ordinary unified memory, 16 KiB-aligned (= `minImportedHostPointerAlignment`), so its pages import as
+a `VkBuffer` (`afield.four.texture.IOSurfaceHostBuffer`). One GPU copy per frame then moves the
+pixels, at the surface's own row pitch; the CPU never touches them. The streamer copies each finished
+frame into its ring slot (`RenderToTexture.recordColorTransferSource`) before the fence-gated `frame`
+tick. The browser surface copies the IOSurface into a per-slot staging image in `recordPreCopy`, so
+conflation, fences and releases are unchanged. A standalone probe verified both directions exactly at
+1920×1080 and 1366×768 (whose 5504-byte pitch is not width × 4).
+
+`dev_docs/agents/transcripts/iosurface_ring_roundtrip_smoke.yaml` runs both paths on real
+`field-encode` IOSurfaces. It reads the ring back on the CPU, then hands slot 0 to the browser
+surface as a Mach port and reads the resident image back. It passes on KosmicKrisp (host buffers)
+and MoltenVK (image import) with 0 validation errors; so does the older MoltenVK-only
+`external_browser_surface_macos_smoke.yaml`. Image-level import/export
+(`RTTParameters.importMetalIOSurface`/`exportMetalIOSurface`, `Image.exportMetalIOSurfaceRef`) stays
+MoltenVK-only and refuses on KosmicKrisp by name; nothing in Field uses the export path.
+
 ## Still to do
 
-1. **IOSurface interop.** `Image.exportMetalIOSurfaceRef`, the IOSurface-backed RTT
-   (`RenderToTexture`, `FieldRTTStreamer`, `field-encode`) and `MacExternalBrowserSurface` need
-   `VK_EXT_metal_objects`. On KosmicKrisp they must move to `VK_EXT_external_memory_metal`, or stay
-   MoltenVK-only. None of them is in the smoke catalog, so the sweep does not cover them.
-2. **Wireframe.** No `fillModeNonSolid`: `fillMode = LINE` needs a fallback, or at least an error
-   that names the missing feature.
+1. **IOSurface zero-copy on KosmicKrisp.** Today it is one GPU copy per frame, since
+   `MTLTEXTURE` import is not offered. Revisit if a later KosmicKrisp adds it, or `VK_EXT_metal_objects`.
+2. **Wireframe.** No `fillModeNonSolid`: `fillMode = LINE` would fail at pipeline creation. Marc
+   does not use it (lines are drawn as a line *topology*, which KosmicKrisp supports), so this is
+   only a clearer error, not a fallback.
 3. **Unified layouts on NVIDIA.** Recent NVIDIA drivers offer the extension too, but it is on by
    default only on macOS. Linux/Windows opt in with `AFIELD_FOUR_UNIFIED_LAYOUTS=true` until a sweep
    there covers the NVENC/CUDA, dma-buf and D3D11 import paths.

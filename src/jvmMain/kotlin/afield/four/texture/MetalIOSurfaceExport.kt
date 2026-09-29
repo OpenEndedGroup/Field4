@@ -36,6 +36,37 @@ object MetalIOSurface {
         ioSurfaceLibrary.getFunctionAddress("IOSurfaceCreateMachPort")
     }
 
+    private val pIOSurfaceLock: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceLock") }
+    private val pIOSurfaceUnlock: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceUnlock") }
+    private val pIOSurfaceGetBaseAddress: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetBaseAddress") }
+    private val pIOSurfaceGetBytesPerRow: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetBytesPerRow") }
+    private val pIOSurfaceGetAllocSize: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetAllocSize") }
+    private val pIOSurfaceGetWidth: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetWidth") }
+    private val pIOSurfaceGetHeight: Long by lazy { ioSurfaceLibrary.getFunctionAddress("IOSurfaceGetHeight") }
+
+    /** `kIOSurfaceLockReadOnly`: the lock's owner promises not to write through the CPU mapping. */
+    const val LOCK_READ_ONLY = 0x1
+
+    /**
+     * `IOSurfaceLock(ref, options, NULL)`: pin the surface's CPU mapping so [baseAddress] is valid.
+     * The address is only defined while the surface is locked. Balance with [unlock].
+     */
+    fun lock(ioSurfaceRef: Long, options: Int = 0) {
+        val result = JNI.callPPI(ioSurfaceRef, options, 0L, pIOSurfaceLock)
+        check(result == 0) { "IOSurfaceLock failed: $result" }
+    }
+
+    fun unlock(ioSurfaceRef: Long, options: Int = 0) {
+        val result = JNI.callPPI(ioSurfaceRef, options, 0L, pIOSurfaceUnlock)
+        check(result == 0) { "IOSurfaceUnlock failed: $result" }
+    }
+
+    fun baseAddress(ioSurfaceRef: Long): Long = JNI.callPP(ioSurfaceRef, pIOSurfaceGetBaseAddress)
+    fun bytesPerRow(ioSurfaceRef: Long): Long = JNI.callPP(ioSurfaceRef, pIOSurfaceGetBytesPerRow)
+    fun allocSize(ioSurfaceRef: Long): Long = JNI.callPP(ioSurfaceRef, pIOSurfaceGetAllocSize)
+    fun width(ioSurfaceRef: Long): Int = JNI.callPP(ioSurfaceRef, pIOSurfaceGetWidth).toInt()
+    fun height(ioSurfaceRef: Long): Int = JNI.callPP(ioSurfaceRef, pIOSurfaceGetHeight).toInt()
+
     private val coreFoundationLibrary: SharedLibrary by lazy {
         runCatching { apiCreateLibrary("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation") }
             .getOrElse { apiCreateLibrary("CoreFoundation") }
