@@ -121,6 +121,13 @@ class NotationIntersectionTest {
     }
 
     @Test
+    fun horizontalCutsReadWhereMarksPassAHeight() {
+        n { line(listOf(vec(0, 0), vec(100, 100)), name = "d") }
+        assertEquals(listOf(40.0), n.named("d")!!.xAt(40.0).map { Math.round(it * 1e6) / 1e6 })
+        assertEquals(40.0, n.horizontal(40.0).single().value, 1e-9)
+    }
+
+    @Test
     fun aSegmentCutComesBackInOrderAlongIt() {
         n {
             line(listOf(vec(100, 0), vec(100, 100)), name = "first")

@@ -49,6 +49,7 @@ nav:
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
+    - Drawing and Notation: drawing_and_notation.md
     - Where Field Looks for a File: files_and_paths.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages

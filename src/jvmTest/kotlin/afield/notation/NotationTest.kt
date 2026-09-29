@@ -249,6 +249,28 @@ class NotationTest {
     }
 
     @Test
+    fun marksCanBeFoundByPositionAndBySelection() {
+        a.notation { rect(1000, 1000, 10, 10, name = "far"); rect(1100, 1000, 10, 10, name = "farther") }
+        assertEquals(listOf("far", "farther"), a.notation.near(vec(990, 1005), 150.0).mapNotNull { it.name })
+        assertEquals(listOf("far"), a.notation.inside(Rect(990.0, 990.0, 50.0, 50.0)).mapNotNull { it.name })
+        NotationStore.setSelection(session, listOf(a.notation.named("farther")!!.id))
+        assertEquals(listOf("farther"), a.notation.selected.mapNotNull { it.name })
+    }
+
+    @Test
+    fun arrowAndChangeReactionsSeeWhatAPersonDrew() {
+        val arrows = mutableListOf<String>()
+        var changes = 0
+        a.notation.onArrow { arrows += it.id }
+        a.notation.onChange { changes += it.added.size + it.updated.size }
+        val before = scene()
+        val after = before.withElements(listOf(element("a1", "arrow", 0.0, 0.0, points = listOf(0.0 to 0.0, 5.0 to 5.0))))
+        dispatchNotationChange(session, NotationChange.between(before, after))
+        assertEquals(listOf("a1"), arrows)
+        assertEquals(1, changes)
+    }
+
+    @Test
     fun geometryBecomesAnFLine() {
         a.notation { rect(0, 0, 10, 20, name = "r"); stroke(listOf(vec(0, 0), vec(3, 4), vec(6, 0)), name = "s") }
         val r = a.notation.named("r")!!.toFLine()

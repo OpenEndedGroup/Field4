@@ -430,6 +430,16 @@ layers = "default,secondLayer"
 
 The layers palette shows any layer that's mentioned by any box; the currently selected 'active' layer determines which set of frames you are currently manipulating. If you hide the box that's got the layers panel in it, f1-`show all layers` will get you back. `alt-]` solos the next layer, and `alt-[` solos the previous layer; the command palette labels include the target layer names.
 
+## Drawing on the canvas
+
+`alt-d` turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. `alt-d` again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
+
+The fun part is that boxes can read the drawing and draw on it. `notation { arrow(from = thisBox, to = other) }` draws an arrow that follows both boxes around; `notation.onStroke { }` hears every stroke you make; and `notation.space(...)` lets you read a region like a score, cutting it at an instant and asking what's there. Here's Cage's _Fontana Mix_, read by a box:
+
+![Six coloured curves in a frame labelled 'fontana mix', a grid, a point and a straight line, with the box's readout of where the line crosses the curves](assets/drawing_and_notation/fontana.png)
+
+There's a whole page on it: [Drawing and Notation](drawing_and_notation.md).
+
 ## The Welcome page
 
 The first page of the bundled version of Field is accessible from any web-browser via `https://localhost:9092/welcome.html`:
