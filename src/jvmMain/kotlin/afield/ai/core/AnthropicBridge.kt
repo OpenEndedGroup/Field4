@@ -139,7 +139,17 @@ class AnthropicBridge(
         val conversationAdditions = mutableListOf<String>()
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
 
+        var inputTokens = 0L
+        var outputTokens = 0L
+        fun countUsage(message: Message) {
+            runCatching { message.usage() }.getOrNull()?.let {
+                inputTokens += it.inputTokens()
+                outputTokens += it.outputTokens()
+            }
+        }
+        var hitToolRoundCap = false
         var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
+        countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
         logShape("initial", response)
@@ -226,7 +236,9 @@ class AnthropicBridge(
             if (!includeTools) {
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer without further tools.")
             }
+            if (!includeTools) hitToolRoundCap = true
             response = createMessage(buildParams(system, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens))
+            countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
             logShape(if (includeTools) "followup" else "forced_final", response)
@@ -249,7 +261,11 @@ class AnthropicBridge(
             commentary = commentary.toList(),
             conversationAdditions = conversationAdditions.toList(),
             toolTranscript = transcript.toList(),
-            modelIdentity = modelIdentity.copy(responseModel = response.model().asString())
+            modelIdentity = modelIdentity.copy(responseModel = response.model().asString()),
+            rounds = rounds,
+            hitToolRoundCap = hitToolRoundCap,
+            inputTokens = inputTokens,
+            outputTokens = outputTokens
         )
     }
 

@@ -1469,6 +1469,7 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
+    BoxOutputLog.observeBroadcast(message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->

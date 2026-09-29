@@ -666,7 +666,7 @@ private fun sendDocumentLoadStatus(
     )
 }
 
-private fun activeRunningStrands(box: Box): Map<String, Int> {
+internal fun activeRunningStrands(box: Box): Map<String, Int> {
     val hasActiveJobs = box.jobs.any { !it.isCancelled && it.isActive }
     if (!hasActiveJobs) return emptyMap()
     return box.runGeneration
@@ -680,7 +680,7 @@ private fun idsFor(boxes: Collection<Box>): List<String> =
         .map { it.id }
         .sorted()
 
-private fun snapshotFor(box: Box): AgentBoxSnapshot {
+internal fun snapshotFor(box: Box): AgentBoxSnapshot {
     val nestedIn = box.nestedIn?.takeIf { !it.getPropertyRaw("_tombstone").isTrue() }?.id
     return AgentBoxSnapshot(
         uid = box.id,
@@ -777,7 +777,7 @@ private fun agentPropertyString(box: Box, property: String): String =
  * are intentionally not recorded here — the UI does not record those either; the transcript
  * tracks property edits, moves, and execution, and this closes the property-edit gap.
  */
-private fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
+internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
     if (property == "frame") {
         applyAgentProperty(box, property, value)
         return
@@ -1252,6 +1252,40 @@ private suspend fun runJvmMainViaSubprocess(request: AgentRunJvmMainRequest): Ag
 }
 
 @RunsAt(installHandlers)
+/**
+ * The body of `agent-create-box`: a new box under [info]'s root, named, framed, with [properties]
+ * applied through the recorded property path, and resynced to every attached client.
+ *
+ * Shared with Field's own agent (`NewBoxRequest`), so a box the in-Field agent makes is the same
+ * object, persisted the same way, as one the backdoor makes. [initKi] exists for tests, which have
+ * no Kotlin REPL to build.
+ */
+internal fun createAgentBox(
+    info: SessionInformation,
+    name: String,
+    frame: Rect,
+    properties: Map<String, JsonElement>,
+    initKi: Boolean = true,
+): Box {
+    val uid = UUID.randomUUID().toString()
+    val created = box(uid, createIfMissing = true, initIfCreated = initKi, root = info)
+
+    created.name = name
+    created.frame = frame
+    properties.forEach { (property, value) ->
+        applyAgentPropertyRecorded(created, property, value)
+    }
+
+    needsResync.add(info.root to "children")
+    needsResync.add(created to "parents")
+    needsResync.add(info.root to "actions")
+    needsResync.add(created to "actions")
+    created.resyncAll()
+    info.topologyGeneration++
+    doResync()
+    return created
+}
+
 fun installAgentBackdoorHandlers() {
     handlers["agent-open-document"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentOpenDocument>(message.payload!!)
@@ -1389,22 +1423,7 @@ fun installAgentBackdoorHandlers() {
     handlers["agent-create-box"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AgentCreateBox>(message.payload!!)
         val info = thisSessionInfo.get()
-        val uid = UUID.randomUUID().toString()
-        val created = box(uid, createIfMissing = true, initIfCreated = true, root = info)
-
-        created.name = request.name
-        created.frame = request.frame
-        request.properties.forEach { (property, value) ->
-            applyAgentPropertyRecorded(created, property, value)
-        }
-
-        needsResync.add(info.root to "children")
-        needsResync.add(created to "parents")
-        needsResync.add(info.root to "actions")
-        needsResync.add(created to "actions")
-        created.resyncAll()
-        info.topologyGeneration++
-        doResync()
+        val created = createAgentBox(info, request.name, request.frame, request.properties)
 
         reply(
             Message("agent-create-box").payload(

@@ -830,7 +830,13 @@ data class ToolExecutionContext(
     val workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
 
     /** What this conversation is about, when it is about one box: see [ToolFocus]. */
-    val focus: ToolFocus? = null
+    val focus: ToolFocus? = null,
+
+    /**
+     * Native box graph + execution tools (NewBox, RunBox, ReadBoxOutput, ...) for one document.
+     * `null` hides them: only contexts that mean to let the agent edit and run the document wire it.
+     */
+    val fieldGraph: afield.ai.agent.FieldGraphTools? = null
 )
 
 /**
