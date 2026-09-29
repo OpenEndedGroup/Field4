@@ -53,7 +53,7 @@ data class AgentTaskRequest(
  * - `box-exists` [box]
  * - `output-contains` [box] [text] — printed or displayed since the agent's turn began ([box] blank = any box)
  * - `output-ints-include` [box] [ints] — those integers appear, in order, in what it printed/displayed
- * - `property-contains` [box] [property] [text]
+ * - `property-contains` / `property-lacks` [box] [property] [text]
  * - `last-run-ok` [box] — its latest run/launch since the turn began succeeded, and was of its current code
  * - `connected` [parent] [child]
  * - `running` / `not-running` [box]
@@ -71,7 +71,7 @@ data class AgentCheck(
     companion object {
         /**
          * The CLI spelling: `kind:arg:arg`. `output-contains:Primes:2, 3, 5`, `connected:A:B`,
-         * `last-run-ok:Primes`, `output-ints-include:Primes:2,3,5,7`, `property-contains:Box:code:text`.
+         * `last-run-ok:Primes`, `output-ints-include:Primes:2,3,5,7`, `property-contains:Box:code:text`, `property-lacks:Box:code:text`.
          * Only the last argument may contain `:`.
          */
         fun parse(spec: String): AgentCheck {
@@ -82,9 +82,9 @@ data class AgentCheck(
                 "output-contains" -> AgentCheck(kind, box = rest.substringBefore(':'), text = rest.substringAfter(':', ""))
                 "output-ints-include" -> AgentCheck(kind, box = rest.substringBefore(':'),
                     ints = rest.substringAfter(':', "").split(',', ' ').mapNotNull { it.trim().toLongOrNull() })
-                "property-contains" -> {
+                "property-contains", "property-lacks" -> {
                     val parts = rest.split(':', limit = 3)
-                    require(parts.size == 3) { "property-contains:<box>:<property>:<text>" }
+                    require(parts.size == 3) { "$kind:<box>:<property>:<text>" }
                     AgentCheck(kind, box = parts[0], property = parts[1], text = parts[2])
                 }
                 "connected" -> AgentCheck(kind, parent = rest.substringBefore(':'), child = rest.substringAfter(':', ""))
@@ -141,13 +141,15 @@ Work only through your tools. The ones for this task:
   ConnectBoxesRequest, DisconnectBoxesRequest: read and edit the box graph.
 - RunBoxRequest runs a box once and returns its verdict; LaunchBoxRequest starts a box that keeps
   running (loops, animation); StopBoxRequest stops it; ReadBoxOutputRequest reads what it printed.
-Every Run/Launch result has `success`. When it is false, read `error` and `errors`, fix the code,
+RunBoxRequest compiles the code itself and returns compile errors in `errors`, so you do not need
+CompileKotlinRequest first. Every Run/Launch result has `success`. When it is false, read `error` and `errors`, fix the code,
 and run again. Never claim success you have not seen in a tool result.
 
 Box code conventions:
 - The box is the implicit receiver. println(x) prints to the box's output.
 - display("channel", "<html>") shows HTML in an output area named channel.
-- A child box sees the variables its parent boxes defined when they ran (run the parent first).
+- A parent box shares a value with the boxes connected beneath it by writing `prop<Int>(level) = 3`;
+  a child then reads it simply as `level`. Plain `val`s are local to their box. Run the parent first.
 - A box that keeps running uses `loop { ... }`, which calls its body once per frame until stopped.
 
 When the goal is met, answer with one or two sentences saying what you did and what the tools showed.
@@ -296,6 +298,11 @@ object AgentTaskRunner {
                 val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
                 val value = b.getPropertyRaw(check.property) as? String ?: return fail("no text property ${check.property}")
                 if (value.contains(check.text)) pass("contains it") else fail("${check.property} does not contain '${check.text}'")
+            }
+            "property-lacks" -> {
+                val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
+                val value = b.getPropertyRaw(check.property) as? String ?: ""
+                if (!value.contains(check.text)) pass("does not contain it") else fail("${check.property} contains '${check.text}'")
             }
             "last-run-ok" -> {
                 val b = box(check.box) ?: return fail("no unique live box '${check.box}'")

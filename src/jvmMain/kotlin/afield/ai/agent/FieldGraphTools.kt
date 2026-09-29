@@ -84,7 +84,7 @@ data class DisconnectBoxesRequest(val parent: String, val child: String)
 @JsonClassDescription("Run a box's code once to completion (like the Run command) and wait for its verdict. Returns success=false with compile/runtime errors when it fails, plus what it printed and displayed during the run. If `code` is given it replaces the box's code first.")
 data class RunBoxRequest(
     val box: String,
-    @JsonPropertyDescription("Optional replacement source; omitted = run the box's current code.")
+    @JsonPropertyDescription("Optional replacement source; omitted or blank = run the box's current code.")
     val code: String? = null,
     val timeoutSeconds: Double = 30.0,
 )
@@ -262,15 +262,17 @@ class FieldGraphTools(
         )
     }
 
-    /** Below everything else, or beside the parent: new boxes should not land on top of old ones. */
+    /**
+     * To the right of everything already on the canvas. Not below: output areas hang beneath their
+     * boxes, so a box placed "under the lowest box" lands on top of that box's output (it did, in the
+     * first demo capture). A child goes directly beneath its parent's column only when that column
+     * is the rightmost; otherwise it too goes right, which keeps every new box clear of every output.
+     */
     private fun nextFrame(parent: Box?): Rect {
         val others = info.boxes.values.filter(::live)
-        if (parent != null && parent !== info.root) {
-            val siblings = parent.children.filter(::live)
-            return Rect(parent.frame.x + 40.0 + 220.0 * siblings.size, parent.frame.y + parent.frame.h + 60.0, 200.0, 60.0)
-        }
-        val bottom = others.maxOfOrNull { it.frame.y + it.frame.h } ?: 40.0
-        return Rect(60.0, bottom + 40.0, 200.0, 60.0)
+        val right = others.maxOfOrNull { it.frame.x + it.frame.w } ?: 20.0
+        val top = parent?.takeIf { it !== info.root }?.frame?.y ?: (others.minOfOrNull { it.frame.y } ?: 80.0)
+        return Rect(right + 60.0, top, 200.0, 60.0)
     }
 
     fun deleteBox(req: DeleteBoxRequest): FieldGraphResult = host.onOwner(info) {
@@ -325,7 +327,11 @@ class FieldGraphTools(
 
     fun launch(req: LaunchBoxRequest): FieldGraphResult = execute(req.box, req.code, req.timeoutSeconds, launch = true, settleSeconds = req.settleSeconds)
 
-    private fun execute(token: String, code: String?, timeoutSeconds: Double, launch: Boolean, settleSeconds: Double): FieldGraphResult {
+    private fun execute(token: String, rawCode: String?, timeoutSeconds: Double, launch: Boolean, settleSeconds: Double): FieldGraphResult {
+        // Blank means "not given". OpenAI's strict function schemas make every field required, so a
+        // model that means "run what is there" sends `code: ""` — and before this, that *replaced*
+        // the box's code with nothing and then failed with "no code" (seen in the first live demo).
+        val code = rawCode?.takeIf { it.isNotBlank() }
         val (box, source) = host.onOwner(info) {
             val box = resolve(token)
             if (code != null) {

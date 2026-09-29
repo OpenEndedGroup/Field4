@@ -4276,6 +4276,39 @@ class Server {
                             call.respond(withContext(Dispatchers.IO) { afield.four.util.VulkanProbe.status(refresh) })
                         }
 
+                        // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
+                        // `?document=<name>` runs it in that open document; otherwise in a scratch one
+                        // that is discarded afterwards. Runs code and may spend model tokens, so it is
+                        // refused unless the caller is this machine and not a cross-site page.
+                        post("/api/agent-task") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@post
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentTaskRequest>(call.receiveText())
+                                val document = call.request.queryParameters["document"]
+                                json.encodeToString(withContext(Dispatchers.IO) { runAgentTaskHeadless(request, document) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
+                        }
+
+                        post("/api/agent-eval") {
+                            if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@post
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })
+                                json.encodeToString(withContext(Dispatchers.IO) {
+                                    afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+                                })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
+                        }
+
                         post("/api/python-settings") {
                             try {
                                 val request = call.receive<PythonSettingsRequest>()
