@@ -7,7 +7,9 @@ A recorded conversation with the two StackSL programs *inside* one box's own sha
 the solid whole, one warm grey. Six AI4 turns (gpt-6-astra through OpenAI) and one action by a person
 talked them into a burst that passes down the solid as a wave, faces glowing hot as they fly and
 burning out to ragged frames at the peak. Recorded 2026-09-28, with the window running, so every
-picture came from the real shaders on its GPU.
+picture came from the real shaders on its GPU. The public walkthrough is
+`public/docs/stackauto_conversation.md`, built by `tools/package_stackauto_conversation.py`; the
+document it starts from is `stackauto_conversation`.
 
 The two programs are two conversations, but they share one chat: AI4 keeps one transcript per box,
 and both slots belong to this box's one module. Each turn names its slot, and the tools take it.

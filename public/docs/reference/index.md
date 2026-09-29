@@ -411,7 +411,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StackAutoCard.kt](languages.md#stackautocard-kt) | Languages | 5 | 5 |  |  |
 | [stackAutoNumbers.kt](graphics.md#stackautonumbers-kt) | Graphics | 24 | 24 |  |  |
 | [StackAutoStudy.kt](languages.md#stackautostudy-kt) | Languages | 21 | 19 |  |  |
-| [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 21 | 3 |  | [StackSL examples](../stacksl_examples.md) |
+| [StackAutoStudyTools.kt](languages.md#stackautostudytools-kt) | Languages | 21 | 3 |  | [Talking to the StackSL in your shader](../stackauto_conversation.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSL.kt](languages.md#stacksl-kt) | Languages | 71 | 11 | StackSL — a concatenative shading language that compiles to GLSL, in one file with no runtime. | [StackSL examples](../stacksl_examples.md) |
 | [stacksl.kt](graphics.md#stacksl-kt) | Graphics | 19 | 19 | Host-side entry points for StackSL: compiling the stack language to GLSL, and evaluating it on the GPU sample by sample. | [StackSL cheatsheet](../stacksl_cheatsheet.md), [StackSL examples](../stacksl_examples.md) |
 | [StackSLCpu.kt](languages.md#stackslcpu-kt) | Languages | 16 | 15 | StackSL's CPU backend: the same GLSL a GPU would run, evaluated one pixel at a time on the JVM, so a StackSL program can be rendered, unit-tested, diffed and documented with no graphics context at all. |  |

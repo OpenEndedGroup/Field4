@@ -148,7 +148,8 @@ class AgentDemoRegistrationTest {
             "rectsl_conversation_score",
             "rectsl_conversation_tide",
             // Landed 2026-09-28: a recorded conversation with the two stack.auto slots inside one box's
-            // shaders, in UNVERIFIED for the same reason.
+            // shaders, and (2026-09-29) its starter, both in UNVERIFIED for the same reason.
+            "stackauto_conversation",
             "stackauto_conversation_polytope",
         )
 
@@ -236,6 +237,11 @@ class AgentDemoRegistrationTest {
             "rectsl_conversation_tide" to
                 "A recorded session beside the rectsl_conversation starter; same root, same replay test, " +
                 "same reason as rectsl_conversation_lanterns.",
+            "stackauto_conversation" to
+                "The starter for stackauto_conversation_polytope, as that recording began, shipped as the zip on " +
+                "public/docs/stackauto_conversation.md (tools/package_stackauto_conversation.py). Like the " +
+                "recording, its Kotlin needs a window; StackAutoConversationExampleTest checks it holds each " +
+                "slot's first revision and the host lines the first Inspect of each slot read.",
             "stackauto_conversation_polytope" to
                 "A recorded AI4 conversation, kept out of the transcript registry for the reason the other " +
                 "conversations are (a turn needs a provider key). Its box Kotlin builds a mesh under a " +
