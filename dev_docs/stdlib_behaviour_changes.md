@@ -491,3 +491,34 @@ would no longer start with `import` and would be gathered among declarations —
 imports still persist after a disconnect, as before. Driven: the context ledgers, `@exported`
 annotation and batch-launch smokes, exported type names, shared types and REPL snippet
 declarations, all passing.
+
+## 2026-09-29 — run ownership of registrations, and what stop, re-run and delete release (`arch/review-2026-09-28`)
+
+Before this branch nothing took most of a box's registrations back out: a slider callback, a Runloop
+hook or a module added to a render target stayed until the process ended, whatever the box did.
+Phase 4 of the architecture review made every such registration owned by the run that made it
+(`RunScope`, `src/jvmMain/kotlin/afield/RunScope.kt`) and, as first landed, released all of it on
+stop and on the strand's next run. That was corrected the same day (step 4b) to a per-kind release
+policy, `ReleasePolicy`, because launching things that go on after a stop is an everyday idiom and
+most registration is a `Map<String, …>` whose key is chosen so a re-run replaces:
+
+| policy | kinds | released by |
+| --- | --- | --- |
+| `KEYED` | render modules (`renderer += "name" to m`, compute and ray-tracing modules, `others`), `Runloop.preRun` / `postRun` hooks, any other slot-keyed claim | only retiring the box: delete, tombstone, document close, `reset`. A registration under the same key replaces it, as before |
+| `ACCUMULATING` | control callbacks — `slider`, `checkbox`, `colorPicker`, … (a fresh UUID each run) | the strand's next run, once it has executed (so the new control is registered before the old one goes); retiring the box |
+| `RUNNING` | audio patches, patSynth feeder threads, `streamProcess` children, run-owned coroutine jobs | stop; the strand's next run; retiring the box |
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| stop (the stop button, `stop-box`, `Server.stop`) | releases a box's `RUNNING` registrations synchronously; leaves `KEYED` and `ACCUMULATING` ones | an audio patch, feeder or process a launch registered without returning it now stops with the box (before: it played on). A slider or Runloop hook from a stopped launch keeps working, as it always did | none |
+| re-run / re-launch of a strand | after the new run has executed, the previous run's `ACCUMULATING` and `RUNNING` registrations are released | a slider the new run does not create again stops answering (before: every run's callback stayed registered and pinned its classloader); a patSynth feeder the previous run started and did not return stops | none |
+| delete, document close, `reset` | release everything the box registered, `KEYED` included | a deleted box's render module stops drawing and its Runloop hook stops running (before: both outlived the box) | none |
+| `once.x { … }` (`Onceing`, `stdlib/scratch.kt`) | the computation runs with the box's parent run scope current, so what it registers belongs to the box and no re-run releases it; when a scope releases anything it registered — stop for a `RUNNING` kind, or retirement — the cached property is removed and the next run recomputes | `once.feeder { patSynth(…) }` is rebuilt on the first run after a stop instead of returning a stopped feeder; `once.slider { slider(…) }` survives re-runs and stops. A `once` whose computation registered nothing (shader strings, most `prop` values) behaves exactly as before | none |
+
+What was swept: every `LifecycleLedger.claim` call site (`FieldAudioEngine.register`,
+`PatSynth.start`, `Box.streamProcess`, `OwnedCallbackRegistry.register`, `MapOfSequences.set`,
+`putOwned` in `four/targets`) — each takes its kind's default policy. Library code that caches a
+registration across runs keeps its unowned paths (`setUnowned`, `register(owned = false)`); the
+parent scope, `box.runScopes.parent.withCurrent { … }`, is now the owned alternative. Tests:
+`RunScopeTest`, `LifecycleLedgerTest`, `BoxRetireAndReplaceKiTest`, `StreamProcessStopLeakTest`;
+smokes `lifecycle.census.stop-releases` and `lifecycle.census.relaunch-replaces-once-survives`.

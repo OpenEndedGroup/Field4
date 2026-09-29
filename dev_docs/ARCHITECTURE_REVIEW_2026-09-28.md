@@ -322,6 +322,39 @@ prints. Not converted, deliberately: library code that caches a registration acr
 next run — and `ReturnValueRegistry` handlers keep their signature and their own `finally`, reading
 the scope through `RunScope.current()`. Smoke: `lifecycle.census.stop-releases`.
 
+**Step 4b, 2026-09-29: release policies.** As first landed, stop and every re-run released
+*everything* a run had registered. That was too aggressive for Field: launching things that go on
+after a stop is an everyday idiom, and most registration is a `Map<String, …>` whose key is chosen so
+that a re-run replaces the previous entry. So every ledger kind now carries a `ReleasePolicy`
+(`RunScope.kt`), which a claim may override:
+
+| policy | kinds | released by |
+| --- | --- | --- |
+| `KEYED` | render modules (every `putOwned` map), Runloop `preRun`/`postRun`, any other slot-keyed claim | retire only (delete, tombstone, document close, `reset`); a same-key registration still replaces by slot |
+| `ACCUMULATING` | control callbacks (a fresh UUID per run) | the strand's next run, after it has executed; retire |
+| `RUNNING` | audio patches, patSynth feeders, stream processes, run-owned jobs | stop; the strand's next run; retire |
+
+Stop now releases only `RUNNING` things, in every scope the box has, and cancels each scope's job.
+The design choice was to leave the stopped run scopes *open* rather than fold their survivors into a
+box-level scope: a stopped launch's slider must still be released by that strand's next launch, and
+only its own strand-tagged scope knows that. A stopped scope is latched, so a running thing a
+straggler registers into it is released at once, and the ambient scope a fragment uses is opened
+fresh after a stop. Supersede releases `ACCUMULATING` and `RUNNING` and closes the scope; its
+surviving `KEYED` ownerships move to the box's new **parent scope** (`box.runScopes.parent`), which
+no run supersedes, since from then on the key rather than the run decides. `retireBoxes` closes
+everything, including the parent. `once.x { … }` computes with the parent scope current, so what it
+registers belongs to the box; when a scope releases anything a once computation registered (a stop
+for a running kind, or retire), the cached value is cleared and the next run recomputes it. A value
+whose computation registered nothing is never cleared. The parent scope is also the answer for the
+library code listed above as "not converted": `box.runScopes.parent.withCurrent { … }` gives it an
+owner that lasts until the box retires. The census reports `liveRunning` (what a stop would
+release), `ownedByPolicy` and a `policies` map; the backdoor gained `--expect-stopped`,
+`--expect-exactly KIND=N` and the `@deleted` alias. Smokes: `lifecycle.census.stop-releases` (now
+stop → keeps the slider and hook; delete → empty) and
+`lifecycle.census.relaunch-replaces-once-survives`. Not done: a renderer's disposal does not release
+its dependents' render-module ownerships — the maps die with the renderer, but the ledger entries (and
+the snippet classloaders they pin) wait for the dependent box to retire.
+
 ---
 
 ## Order of work
