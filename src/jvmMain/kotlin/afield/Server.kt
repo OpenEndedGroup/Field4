@@ -5440,8 +5440,16 @@ class Server {
             // Pin a "startup" channel (plus any AFIELD_PIN_CHANNELS) to a non-scrolling region at the
             // top of the terminal so the boot stages annotate in place; degrades to plain stdout on
             // non-TTYs. The startup row collapses a few seconds after the first frame renders.
+            // First, before anything can start a thread: `field.sh` backgrounds this JVM from a
+            // non-interactive shell, which hands it SIGINT as *ignored*, and HotSpot then never
+            // installs its own handler — so `kill -INT` did nothing. See [InterruptSignal].
+            val interruptSignal = InterruptSignal.install()
+
             afield.logger.PinnedConsole.installWithStartup()
             lprintln("info,startup", "booting Field…")
+            if (interruptSignal != InterruptSignal.Outcome.ALREADY_HANDLED) {
+                lprintln("info,startup", "SIGINT: $interruptSignal")
+            }
 
             // Kotlin DataFrame is a third-party type, so it reaches `.h`/`.h2`/`display` through the
             // value registries rather than by implementing ToHTML. Idempotent; see

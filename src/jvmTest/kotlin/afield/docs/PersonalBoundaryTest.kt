@@ -117,6 +117,9 @@ class PersonalBoundaryTest {
         private val PUBLIC_IMPORT_ROOTS = setOf(
             // Field, platform, Kotlin
             "afield", "kotlin", "kotlinx", "java", "javax", "jdk", "js", "kotlinext",
+            // `sun.misc.Signal` (module jdk.unsupported): the only public signal-handler API, used
+            // by afield.InterruptSignal so Field exits on SIGINT when launched with it ignored.
+            "sun",
             // third-party JVM
             "org", "com", "io", "arrow", "smile", "imgui", "okhttp3", "jep", "plotly", "clojure",
             "space", "eu", "ai", "field", "web", "shared",
