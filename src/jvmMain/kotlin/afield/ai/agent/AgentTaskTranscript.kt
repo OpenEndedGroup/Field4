@@ -22,7 +22,7 @@ import afield.payload
  */
 object AgentTaskTranscript {
 
-    val SCRIPTED_IDENTITY = AiChatModelIdentity("scripted", "scripted replay")
+    val SCRIPTED_IDENTITY = AiChatModelIdentity("scripted", "no model", responseModel = "scripted replay")
 
     fun AgentCheck.spec(): String = when (kind) {
         "connected" -> "$kind:$parent:$child"
@@ -32,10 +32,15 @@ object AgentTaskTranscript {
         else -> "$kind:$box"
     }
 
-    /** The verdict block: `Checks — PASS` then one `✓`/`✗` line per check. */
+    private fun AgentCheck.subject(): String = if (kind == "connected") "$parent→$child" else box
+
+    /** The verdict block: a one-line summary (`✓ box-exists:Primes  ✓ … — PASS`), then one line per check with its detail. */
     fun verdictBlock(result: AgentTaskResult): String = buildString {
         append("<<progress>>\n")
-        append("Checks — ${result.verdict.uppercase()}")
+        // The panel shows a progress entry's first line and folds the rest, so the first line carries
+        // the whole verdict: every check's mark and name, then the outcome.
+        append(result.checks.joinToString("  ") { (if (it.passed) "✓ " else "✗ ") + it.check.kind + ":" + it.check.subject() })
+        append(if (result.checks.isEmpty()) "No checks — ${result.verdict.uppercase()}" else " — ${result.verdict.uppercase()}")
         if (result.mode == "scripted") append(" (scripted replay, no model was called)")
         append("\n")
         if (result.error.isNotBlank()) append("error: ${result.error.take(600)}\n")

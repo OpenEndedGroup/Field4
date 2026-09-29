@@ -51,7 +51,8 @@ class AgentTaskPanelTest {
         assertTrue("<<progress>>\nNewBoxRequest finished" in history)
         assertTrue("<<progress>>\nRunBoxRequest finished" in history)
         assertTrue("\"provider\":\"scripted\"" in history, "the reply is labelled with the scripted identity")
-        assertTrue("Checks — PASS (scripted replay, no model was called)" in history)
+        assertTrue("✓ box-exists:Primes  ✓ last-run-ok:Primes  ✓ output-ints-include:Primes — PASS (scripted replay, no model was called)" in history,
+            "the verdict's first line summarises every check")
         assertTrue("✓ box-exists:Primes" in history && "✓ output-ints-include:Primes:2,3,5,7,11,13,17,19,23,29" in history)
 
         // A second task appends; it does not replace the conversation.

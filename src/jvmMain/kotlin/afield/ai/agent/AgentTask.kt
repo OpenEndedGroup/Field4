@@ -326,7 +326,10 @@ object AgentTaskRunner {
         val assist = afield.AiAssist(
             uid = box.id,
             prompt = (box.getPropertyRaw("code") as? String).orEmpty(),
-            extraPrompt = request.goal + "\n\n" + HEADLESS_TASK_INSTRUCTIONS + "\nYou have at most $budget tool rounds.",
+            // Just the goal: this is an ordinary panel turn the person can see and continue, so the
+            // headless "nobody can answer" framing does not apply, and it would be shown to them as
+            // their own message. The panel's own round limit applies (maxToolRounds is not passed).
+            extraPrompt = request.goal,
             property = "code",
             kind = "general",
         )
