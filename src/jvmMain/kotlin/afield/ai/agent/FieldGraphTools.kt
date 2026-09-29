@@ -272,7 +272,7 @@ class FieldGraphTools(
         val others = info.boxes.values.filter(::live)
         val right = others.maxOfOrNull { it.frame.x + it.frame.w } ?: 20.0
         val top = parent?.takeIf { it !== info.root }?.frame?.y ?: (others.minOfOrNull { it.frame.y } ?: 80.0)
-        return Rect(right + 60.0, top, 200.0, 60.0)
+        return Rect(right + 120.0, top, 200.0, 60.0)
     }
 
     fun deleteBox(req: DeleteBoxRequest): FieldGraphResult = host.onOwner(info) {

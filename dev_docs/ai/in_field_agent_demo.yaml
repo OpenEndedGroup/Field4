@@ -37,7 +37,7 @@ operations:
           )
   - create:
       box: agent_demo_live
-      name: Your turn (live model)
+      name: Your turn (live)
       frame: { x: 620.0, y: 80.0, w: 340.0, h: 80.0 }
       properties:
         code: |
