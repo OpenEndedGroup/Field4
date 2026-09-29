@@ -1057,6 +1057,7 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
+    BoxOutputLog.observeOutput(normalized)
     reply?.invoke(Message("output").payload(normalized))
     _sendToPeerSessions(
         Message("peer-output").payload(normalized),

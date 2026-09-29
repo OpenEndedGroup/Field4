@@ -1469,6 +1469,7 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
+    BoxOutputLog.observeBroadcast(message)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -4295,6 +4296,46 @@ class Server {
                             if (call.refuseUnlessSameSiteDocsClient(afield.server.docsAccessPolicy)) return@get
                             val refresh = call.request.queryParameters["refresh"] == "1"
                             call.respond(withContext(Dispatchers.IO) { afield.four.util.VulkanProbe.status(refresh) })
+                        }
+
+                        // Field's own agent, headless: POST an AgentTaskRequest, get an AgentTaskResult.
+                        // `?document=<name>` runs it in that open document; otherwise in a scratch one
+                        // that is discarded afterwards. Runs code and may spend model tokens, so it has
+                        // its own loopback + Host-allowlist + same-site guard (agentRouteAccess.kt), not
+                        // the docs-annotation policy, whose opt-ins must not open this.
+                        post("/api/agent-task") {
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentTaskRequest>(call.receiveText())
+                                val document = call.request.queryParameters["document"]
+                                json.encodeToString(withContext(Dispatchers.IO) { runAgentTaskHeadless(request, document) })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
+                        }
+
+                        post("/api/agent-eval") {
+                            afield.server.agentRouteRefusal(
+                                call.request.local.remoteAddress, call.request.headers[HttpHeaders.Host],
+                                call.request.headers["Sec-Fetch-Site"], call.request.headers[HttpHeaders.Origin]
+                            )?.let { refusal -> call.respond(HttpStatusCode.Forbidden, mapOf("error" to refusal)); return@post }
+                            val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+                            val response = try {
+                                val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })
+                                json.encodeToString(withContext(Dispatchers.IO) {
+                                    afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+                                })
+                            } catch (e: Exception) {
+                                call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
+                                return@post
+                            }
+                            call.respondText(response, ContentType.Application.Json)
                         }
 
                         post("/api/python-settings") {

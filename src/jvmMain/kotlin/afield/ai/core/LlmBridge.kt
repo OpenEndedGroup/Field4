@@ -49,6 +49,13 @@ fun createLlmBridge(
             )
         )
 
+/**
+ * The bridge every AI4 chat uses: the configured provider at the flagship model. The box panel and the
+ * document chat build theirs here, and so does a live `AgentTask`, so a task runs on exactly the
+ * engine a person's chat would.
+ */
+fun createIdeBridge(log: LogSink = StdoutLog): LlmBridge = createLlmBridge(Ai4ModelDefaults.flagshipModel(), log)
+
 interface LlmBridge {
     /** Configured identity while a request is pending; response metadata arrives through progress/results. */
     val modelIdentity: AiChatModelIdentity? get() = null
