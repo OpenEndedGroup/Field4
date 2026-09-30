@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 data class FunctionStudyGuide(val unused: String = "")
 
 @JsonClassDescription("Inspect this function study: authoritative Kotlin, stable event IDs, assumptions, selection, revision history and live source hash. Inspect once before editing; when dirty, liveSource is the editable source and source is the checked revision. Reuse the returned hash for the edit. Historical revisions are immutable. Prefer PatchFunctionStudy for local changes.")
-data class InspectFunctionStudy(val revision: String = "current")
+data class InspectFunctionStudy(override val revision: String = "current") : StudyRequest.Inspect
 
 @JsonClassDescription("Compile, check and activate a COMPLETE Kotlin candidate in this box. Must return StudyComposition of pure Functions.Fn channels. Expected revision AND live source hash from Inspect are required. Failed compile/check keeps the working revision. This is trusted local Kotlin in Field, not a sandbox. Preserve unrelated source and stable event IDs. Returns compilation/check evidence and an actual image preview; this satisfies Kotlin verification for this standalone study. No extra CompileKotlin or Observe call is needed unless a different interval or additional evidence is required. Prefer PatchFunctionStudy for small edits.")
 data class EditFunctionStudy(
@@ -226,6 +226,11 @@ object FunctionStudies {
     }
 }
 
+/** A function study through the standard verbs it shares: Inspect. */
+private class FunctionLiveStudy(val box: Box) : LiveStudy {
+    override fun inspect(q: StudyRequest.Inspect): StudyReport = FunctionStudies.ready(box).inspect(q.revision.ifBlank { "current" })
+}
+
 private val onAFunctionStudy: (ToolExecutionContext) -> Boolean = { ctx -> ctx.focus?.let { FunctionStudies.isStudy(it.box, it.property) } == true }
 private fun studyBox(ctx: ToolExecutionContext): Box = ctx.focus?.box ?: throw IllegalStateException("Function study tools work on the box whose chat is open")
 
@@ -237,8 +242,9 @@ private const val LIBRARY = "afield.stdlib.function-study"
 fun installFunctionStudyTools() {
     val r = AgentToolExtensions
     r.register(FunctionStudyGuide::class.java, onAFunctionStudy, LIBRARY) { _, _ -> FunctionStudyGuideText(FunctionStudies.guide) }
-    r.register(InspectFunctionStudy::class.java, onAFunctionStudy, LIBRARY) { ctx, q ->
-        FunctionStudies.ready(studyBox(ctx)).inspect(q.revision.ifBlank { "current" }) }
+    // The one standard verb whose shape a function study shares; the others are interval-shaped (see
+    // DIFFERENT_SHAPE in tools/check_study_tools.py) and are registered below.
+    registerStudyTools(LIBRARY, onAFunctionStudy, { ctx -> FunctionLiveStudy(studyBox(ctx)) }, StudyToolClasses(inspect = InspectFunctionStudy::class.java))
     r.register(EditFunctionStudy::class.java, onAFunctionStudy, LIBRARY) { ctx, q ->
         val box = studyBox(ctx)
         FunctionStudies.finishEdit(box, FunctionStudies.ready(box).edit(q.expectedRevision, q.expectedSourceHash, q.source, q.description),
