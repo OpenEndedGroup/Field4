@@ -26,6 +26,19 @@ dependencies {
     implementation("org.jetbrains.kotlin:analysis-api-platform-interface-for-ide:$analysisApiVersion") {
         isTransitive = false
     }
+    // Until 2.4.20 these two shipped inside kotlin-compiler-common-for-ide; 2.5.0 splits them out,
+    // and without them every AA session build fails at runtime on a missing
+    // META-INF/analysis-api/low-level-api-fir.xml (the compile does not notice).
+    implementation("org.jetbrains.kotlin:low-level-api-fir-for-ide:$analysisApiVersion") {
+        isTransitive = false
+    }
+    implementation("org.jetbrains.kotlin:symbol-light-classes-for-ide:$analysisApiVersion") {
+        isTransitive = false
+    }
+    // The Analysis API's POMs bring kotlin-reflect transitively, which `isTransitive = false` drops.
+    // LLFirTypeLazyResolver reads a property reference's getter, so without it every completion
+    // fails with KotlinReflectionNotSupportedError and Field quietly serves K1.
+    implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlin:kotlin-compiler-common-for-ide:$analysisApiVersion") {
         isTransitive = false
     }
