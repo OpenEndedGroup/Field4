@@ -176,7 +176,7 @@ print("the drawing box is at x =", field.named("drawing").frame.x)
 <!-- field-box id="lua_sequencer" index="9" -->
 
 ```edn [field-box id="lua_sequencer" role="properties"]
-{"id" "lua_sequencer" "index" 9 "name" "sequencer" "parents" ["root" "lua_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lua_root"} "name" "sequencer" "_tombstone" false "frame" #afield/rect [990.0 320.0 160.0 80.0] "code_language" "Lua"} "blockProperties" [{"name" "code" "language" "lua" "path" "lua_sequencer_code_.kt" "lines" 9 "characters" 578 "sha256" "7987e3b752f420cdd99be9ab9afe3b0dac3bf6e782e54f018e748f387208a736"}]}
+{"id" "lua_sequencer" "index" 9 "name" "sequencer" "parents" ["root" "lua_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lua_root"} "name" "sequencer" "_tombstone" false "frame" #afield/rect [40.0 900.0 160.0 80.0] "code_language" "Lua"} "blockProperties" [{"name" "code" "language" "lua" "path" "lua_sequencer_code_.kt" "lines" 9 "characters" 578 "sha256" "7987e3b752f420cdd99be9ab9afe3b0dac3bf6e782e54f018e748f387208a736"}]}
 ```
 
 ```lua [field-property box="lua_sequencer" name="code" path="lua_sequencer_code_.kt"]

@@ -1,10 +1,15 @@
 # Lua (LuaJIT) in Field — mechanics, measurements, traps
 
-Added 2026-09-30. User-facing page: `public/docs/lua.md`. Loadable scene: `dev_docs/agents/transcripts/lua_demo.yaml`
-(backdoor: `macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml`, then `macro run lua_demo`). It is
-deliberately *not* in `dev_docs/agents/transcripts/`, so the transcript-corpus guards (index, layouts,
-completion-corpus manifest, `DemoTranscriptExecSmokeTest`) do not yet know it; adding it there is a
-follow-up that has to satisfy `AgentTranscriptIndexGuard`.
+Added 2026-09-30. User-facing page: `public/docs/lua.md`. Loadable scene and welcome-screen starting
+point: `dev_docs/agents/transcripts/lua_demo.yaml`, materialized into
+`public/docs/assets/agent_transcripts/lua_demo/` (open **lua_demo** from the welcome screen, or with the
+backdoor `macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml`, then `macro run lua_demo`).
+It went into the corpus by `dev_docs/GUARD_CORPORA.md`'s "adding one transcript" list: `EXECUTE` in
+`DemoTranscriptExecSmokeTest` (only the Kotlin root is executed, and it needs no LuaJIT), an entry on
+`public/docs/agent_transcripts.md` (totals 165 / 85), the bundle, and 13 completion-corpus rows. The
+generated table in `dev_docs/GUARD_CORPORA.md` was **not** edited: it was already red at the base
+(163 vs 164, owned by another branch that night) and now wants 165 transcripts / 175 recursive / 159
+bundles.
 
 ## Pieces
 
@@ -14,7 +19,8 @@ follow-up that has to satisfy `AgentTranscriptIndexGuard`.
 | `src/jvmMain/kotlin/afield/lua/LuaState.kt` | one `lua_State`: lock, marshalling, `run`/`load`/`call`, `runGuarded` (budget + line recording), `tick`, `callGuarded`, `close`. |
 | `src/jvmMain/resources/afield/lua/prelude.lua` | the Lua half of the API (`print`, `display`, `box` proxies, `field.named`, `line`/`lines`, `slider`/`checkbox`, `spawn`/`wait`, the guard/recorder hook, the message handler, completion). |
 | `src/jvmMain/kotlin/afield/lua/LuaLanguage.kt` | `LuaExecution` (main language `lua`, code_language `Lua` → Monaco's stock `lua` grammar), the box handlers, line notes via `LastRunNotes`, completion. |
-| `src/jvmTest/kotlin/afield/lua/` | `LuaStateTest` (13) and `LuaBoxTest` (11), every native test an `Assume` on `LuaLibrary.isAvailable`, so without LuaJIT they are *skipped*, not passed. 24/24 passed, 0 skipped on 2026-09-30. |
+| `src/jvmTest/kotlin/afield/lua/` | `LuaStateTest` (13), `LuaBoxTest` (12) and `LuaCatalogTest` (2), every native test an `Assume` on `LuaLibrary.isAvailable`, so without LuaJIT they are *skipped*, not passed. 27/27 passed, 0 skipped on 2026-09-30. |
+| `src/jvmMain/kotlin/afield/lua/LuaCatalog.kt`, `src/jvmMain/resources/afield/lua/lua-stdlib.txt`, `lua-field.txt` | completion signatures: 146 Lua 5.1/LuaJIT functions and 34 Field ones, one `signature \| doc` a line. `LuaCatalogTest` holds both to a live state with the prelude in both directions (180 live = 180 catalogued). |
 | `tools/field_languages.py`, `tools/build_zensical_docs.py` | `lua` needs a language root; `requires="luajit"` is a docs native prerequisite. |
 
 ## Lifecycle
@@ -29,6 +35,26 @@ fragment: ambient), so a slider callback registered from Lua is `ACCUMULATING` a
 
 All box Lua runs on the main Runloop thread (`inMain`); slider callbacks hop there too. The lock in
 `LuaState` is belt and braces for tests.
+
+## Sound
+
+A Lua box sequences; Field's pattern voice sounds it. `play(seq, opts)` turns a Lua list (numbers MIDI
+notes, `false`/`"~"` rests, nested lists divided steps; `field.mini` does the conversion) into
+mini-notation and hands `pat(…)` to `patSynth`, registered with `FieldAudioEngine.shared().register(audio(launch))`.
+Lua never renders a sample: the patSynth feeder schedules ahead, and the engine thread renders the
+bank (AGENTS.md §5 — nothing samples the graph from the Runloop). The registration and feeder are
+claimed by the executing `RunScope` as `RUNNING`: the census showed `liveRunning 2` on the sequencer box
+while playing and `0` after `stop`. `hush()` and a second `play` replace what the box plays.
+`field.render` is `patSynthRenderStereo` — the same bank rendered offline block by block — shown as a
+player in the `sound` panel, optionally written as a `.wav`, and measured (`frames`, `seconds`, `peak`,
+`rms`, `crossings`).
+
+Measured (`LuaBoxTest.aSequenceBuiltInLuaIsHeardAtThePitchesItNamed`): `{60, 64, 67, 72}` built in Lua,
+sine voice, decay 0.15, 0.5 cps, is heard by zero crossings at 260.0 / 330.0 / 395.0 / 525.0 Hz against
+261.6 / 329.6 / 392.0 / 523.3 (asserted within 2%); `field.render{69}` writes a one-second stereo wav and
+counts 439 crossings a second, peak 0.21, rms 0.150. **Trap:** `PatSoundDocs.estimateHz` read those same
+renders an octave or two low (130.8, 65.7, 65.4 Hz) — use zero crossings on a sine voice instead. With a
+long decay (2 s) consecutive notes overlap and crossings go wrong too (348 for 392 Hz).
 
 ## Traps
 
@@ -65,18 +91,21 @@ All box Lua runs on the main Runloop thread (`inMain`); slider callbacks hop the
 
 ## Verification, 2026-09-30
 
-Backdoor on port 9721, a fresh replay of `lua_demo.yaml` (`applied=24 skipped=0 errors=0`), every box run
-one at a time: root (`LuaJIT at /opt/homebrew/lib/libluajit-5.1.dylib`), hello (`hello from LuaJIT
-2.1.1774896198`, `x is 42`), this box (twice: `run 1`, `run 2`), drawing (PNG checked), wave (launched,
-PNG checked, stopped), spawned (launched: four ticks 0.5 s apart, `done`), an error (line 3), runaway
-(stopped after 1 s, line 4), jit (`interpreted 0.248 s, compiled 0.048 s: 5x`), accumulates (then the
-fragment `greet("Field")` → `"hello, Field"`), controls (slider moved to 85 → circle redrawn, orange
-pixels 24612 → 110272), line notes (the recorded notes for hello, `x = 42` on line 4). The docs page's
-nine captures came from `FIELD_DOCS_RUNNER_MODE=always|incremental --page lua.md`, each opened.
+Backdoor on port 9721, a fresh replay of the corpus `lua_demo.yaml`, every box run one at a time
+(final run: `.nightly-tmp/final2-outputs.txt` in that night's worktree): root (`LuaJIT at
+/opt/homebrew/lib/libluajit-5.1.dylib`), hello (`hello from LuaJIT 2.1.1774896198`, `x is 42`), this box
+(twice: `run 1`, `run 2`), drawing (PNG checked), wave (launched, PNG checked, stopped), spawned (launched:
+four ticks 0.5 s apart, `done`), an error (line 3), runaway (stopped after 1 s, line 4), jit
+(`interpreted 0.264 s, compiled 0.048 s: 5x`), accumulates (then the fragment `greet("Field")` →
+`"hello, Field"`; `x * 2` on hello → 84), controls (slider moved to 85 → circle redrawn, orange pixels
+24612 → 110272), sequencer (`notes 65 64 64 77 57 64 60 77`, `2 s, peak 0.47, rms 0.139`, the player PNG
+checked, census `liveRunning 2` → `0` on stop), line notes (hello's recorded notes, `x = 42` on line 4).
+`DemoTranscriptExecSmokeTest` filtered to `lua_demo`: PASS, applied=26. The docs page's ten captures came
+from `FIELD_DOCS_RUNNER_MODE=always|incremental --page lua.md`, each opened.
 
 ## Not done
 
-- Lua does not reach Field's audio or pattern layers, and nothing uses LuaJIT's `ffi`.
+- Lua reaches sound only through the pattern voice (no DSP graph, no Pd bridge from Lua), and nothing uses LuaJIT's `ffi`.
 - `afield/lua` is not a `StdlibReferenceGenerator` source root, so it has no reference page (adding it
   needs a reference regeneration).
 - Windows/Linux discovery paths are written and untested.

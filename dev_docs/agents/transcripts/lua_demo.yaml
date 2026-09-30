@@ -171,7 +171,7 @@ operations:
   - create:
       box: lua_sequencer
       name: "sequencer"
-      frame: { x: 990.0, y: 320.0, w: 160.0, h: 80.0 }
+      frame: { x: 40.0, y: 900.0, w: 160.0, h: 80.0 }
       properties:
         code_language: Lua
         code: |
