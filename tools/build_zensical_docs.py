@@ -796,6 +796,27 @@ def prune_stale_page(*, source_docs: Path, site_dir: Path, relative: Path) -> No
         parent.rmdir()
 
 
+def emit_build_info(*, site_dir: Path, repo_root: Path) -> None:
+    """Write `field-docs-build.json`: which commit this site was built from.
+
+    The annotation panel (`docsAnnotations.js`) copies `commit` into every note it saves, and
+    `tools/docs_notes.py sync` matches the note's quote against the page's Markdown *at that
+    commit* before tracking it forward with `git blame`. Without it a note written on Monday and
+    synced on Friday is matched against Friday's text. `docsDirty` records that the Markdown had
+    uncommitted edits, in which case the working tree, not the commit, is what was rendered.
+    """
+    def git(*args: str) -> str:
+        result = subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True, check=False)
+        return result.stdout.strip() if result.returncode == 0 else ""
+
+    info = {
+        "commit": git("rev-parse", "HEAD"),
+        "docsDirty": bool(git("status", "--porcelain", "--", "public/docs")),
+        "builtAtEpochMs": int(time.time() * 1000),
+    }
+    (site_dir / "field-docs-build.json").write_text(json.dumps(info, indent=2) + "\n", encoding="utf-8")
+
+
 def emit_offline_viewer(*, site_dir: Path) -> None:
     """Copy the offline document viewer into the built site.
 
@@ -926,6 +947,7 @@ def run(args: argparse.Namespace) -> int:
     if returncode == 0:
         site_dir = public_dir / "field4"
         emit_offline_viewer(site_dir=site_dir)
+        emit_build_info(site_dir=site_dir, repo_root=repo_root)
         copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)
         print(f"Copied {copied} workspace markdown file(s) verbatim (not built as pages).")
 

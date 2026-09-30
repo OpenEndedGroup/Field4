@@ -47,7 +47,7 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
         val hue = hues[degree] ?: vec(0.70, 0.74, 0.80)
         val orbit = orbits.faceClasses.indexOfFirst { face.id in it }
         val normal = faceNormal(face.id)
-        val centre = faceCentroids()[topology.elements(2).indexOfFirst { it.id == face.id }]
+        val centre = faceCentroids[topology.elements(2).indexOfFirst { it.id == face.id }]
         val depth = (centre.x * normal.x + centre.y * normal.y + centre.z * normal.z).toDouble()
 
         line.filled = true

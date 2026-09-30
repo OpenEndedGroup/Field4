@@ -10,7 +10,9 @@ const w=frame.contentWindow,d=w.document,tools=w.FieldViewer.tools,api=w.FieldIn
 const original=api.snapshot();
 try {
  expect(tools.ids().includes('axes-marker'),'Field-authored module loads its tool');
- const button=d.querySelector('[data-tool="axes-marker"] button');button.click();
+ const button=d.querySelector('[data-tool="axes-marker"] button');
+ expect(w.getComputedStyle(button).fontSize==='12px'&&button.getBoundingClientRect().height===28,'Extension tools inherit standard toolbar type and spacing');
+ button.click();
  const saved=api.snapshot();expect(saved.tools['axes-marker'].shown===true,'Tool state is saved with the view');
  button.click();api.restore(saved);expect(button.getAttribute('aria-pressed')==='true','Restore applies tool state');
  const legacy={...original};delete legacy.tools;api.restore(legacy);

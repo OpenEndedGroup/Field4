@@ -647,12 +647,13 @@ private fun maxVertexMovement(before: DoubleArray, after: DoubleArray): Double {
 }
 
 /** Face centroids, in `topology.elements(2)` order. Handy when inspecting a canonical result. */
-fun PolyhedralObject.faceCentroids(): List<Vec3> {
-    val problem = RealizationProblem.of(this)
-    val x = problem.initialCoordinates
-    return problem.faceCycles.map { cycle ->
-        val centre = Vec3()
-        cycle.forEach { centre.add(Vec3(x[3 * it].toFloat(), x[3 * it + 1].toFloat(), x[3 * it + 2].toFloat())) }
-        centre.mul(1f / cycle.size)
+val PolyhedralObject.faceCentroids: List<Vec3>
+    get() {
+        val problem = RealizationProblem.of(this)
+        val x = problem.initialCoordinates
+        return problem.faceCycles.map { cycle ->
+            val centre = Vec3()
+            cycle.forEach { centre.add(Vec3(x[3 * it].toFloat(), x[3 * it + 1].toFloat(), x[3 * it + 2].toFloat())) }
+            centre.mul(1f / cycle.size)
+        }
     }
-}

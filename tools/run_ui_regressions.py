@@ -3670,6 +3670,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-parts",
+            description="Parts hierarchy, companion buffers, tri-state groups and reversible Shift solo.",
+            commands=[
+                "new-box --name PartsRegression",
+                shell_join(["run", "@last", "--file", str(REPO_ROOT / "tools/ui_regressions/three-parts.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(REPO_ROOT / "tools/ui_regressions/three-parts.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-xray",
             description="X-ray renders hidden geometry while preserving nearest-surface picks, saved evidence and idle rendering.",
             commands=[

@@ -216,6 +216,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * Pair it with `mesh(…, pickable = true)`: the toolbar is what draws the dimension, and the flag is
      * what lets the ray find the solid. Neither is much use without the other.
      *
+     * @param partPaths Parts-menu folder paths keyed by mesh ID, group name, or review feature ID.
+     * For example, `mapOf("wheel" to listOf("Vehicle", "Running gear"))`. These are display labels;
+     * geometry IDs and saved annotation references stay unchanged.
      * @param units appended to every dimension: `"mm"`.
      * @param measurements dimensions the figure carries from the moment it is drawn, as distinct from
      * the ones a reader picks.
@@ -233,6 +236,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
         assembly: List<ThreeAssemblyMotion> = emptyList(),
         review: ThreeReviewState? = null,
+        partPaths: Map<String, List<String>> = emptyMap(),
     ) {
         inspector = ThreeInspector(
             enabled = true,
@@ -243,7 +247,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             units = units,
             decimals = decimals,
             pickToMeasure = pickToMeasure,
-            artifactDigest = artifactDigest, renderOrigin = renderOrigin, renderUpAxis = renderUpAxis, assembly = assembly, review = review,
+            artifactDigest = artifactDigest, renderOrigin = renderOrigin, renderUpAxis = renderUpAxis, assembly = assembly, review = review, partPaths = partPaths,
         )
     }
 

@@ -253,6 +253,12 @@ data class ThreeInspector(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val assembly: List<ThreeAssemblyMotion> = emptyList(),
     @EncodeDefault(EncodeDefault.Mode.NEVER) val review: ThreeReviewState? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val parts: Map<String, ThreePartTopology> = emptyMap(),
+    /**
+     * Parts-menu folders, keyed by drawable ID, assembly group name, or review feature ID.
+     * Folder labels do not rename geometry or invalidate saved annotations.
+     */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val partPaths: Map<String, List<String>> = emptyMap(),
 )
 
 /**

@@ -351,7 +351,6 @@ private fun convexHullTriangleFaces(coordinates: List<Vec3>): List<List<Int>> {
 }
 
 internal fun PolyhedralObject.realizationIndex(vertex: ElementId): Int {
-    val index = topology.elements(0).indexOfFirst { it.id == vertex }
-    require(index >= 0) { "element ${vertex.value} is not a topology vertex" }
-    return index
+    return topology.vertexMap[vertex.value]
+        ?: throw IllegalArgumentException("element ${vertex.value} is not a topology vertex")
 }
