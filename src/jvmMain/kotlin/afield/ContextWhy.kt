@@ -37,7 +37,7 @@ object ContextWhy {
         val mechanism: ContextResolution.Mechanism
         val delegate: String?
         if (declaration != null && type == null) {
-            val hover = resolveInheritedDeclarationForHover(box, name!!, gathered!!.text)
+            val hover = resolveInheritedDeclarationForHover(box, name, gathered!!.text)
             resolution = hover?.resolution
             delegate = hover?.delegate
             mechanism = when (hover?.delegate) {

@@ -299,13 +299,13 @@ class RunScopeTest {
         assertTrue(lastPatch!!.get(), "and leaves its patch playing")
 
         box.stopTrackedJobs()
-        assertFalse(lastPatch!!.get(), "stop releases the patch inside once")
+        assertFalse(lastPatch.get(), "stop releases the patch inside once")
         assertNull(box.getPropertyRaw("runScopeTestPatch"), "and clears the value that depended on it")
 
         val v2 = run()
         assertTrue(v2 !== v1, "so the next run computes a fresh one")
         assertEquals(2, computed)
-        assertTrue(lastPatch!!.get(), "whose patch is live: the parent scope does not latch a stop")
+        assertTrue(lastPatch.get(), "whose patch is live: the parent scope does not latch a stop")
     }
 
     @Test

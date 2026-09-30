@@ -435,7 +435,7 @@ class DatalogEngine(
         }
 
         val steps = ArrayList<DlStep>()
-        val remaining = ArrayList(rule.body)
+        val remaining = rule.body.toMutableList()
         var recursiveScans = 0
 
         while (remaining.isNotEmpty()) {

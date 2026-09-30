@@ -992,7 +992,7 @@ internal fun relaunchRendererDependents(
     val stopped = rendererTeardownStopped.remove(owner.id).orEmpty()
     owner.actions.remove(RELAUNCH_STOPPED_DEPENDENTS_ACTION)
     needsResync.add(owner to "actions")
-    val batch = buildList {
+    val batch = buildList<Box> {
         if (owner.getPropertyRaw("renderer") !is Renderer) add(owner)
         stopped.filterTo(this) { it !== owner }
     }
