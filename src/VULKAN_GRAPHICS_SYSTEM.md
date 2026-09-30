@@ -83,7 +83,7 @@ The intended structured-memory direction is **schema + allocation + address**, n
 - `afield/four/util/MapOfSequences.kt`: Small scheduler/sequence helper used for per-frame callbacks and update hooks.
 - `afield/four/util/AutoDisposer.kt`: Deferred cleanup queue that lets resources register cleanup actions drained on the render thread.
 - `afield/four/util/templating.kt`: Lightweight templating engine used to preprocess shader/live-coding code with resolvers and macro expansion. `GpuSchema.template` is designed to be published directly into a box's `shaderTemplate` map so `{{ Particle.all }}` can carry Kotlin layout declarations into GLSL in the same live-coding unit.
-- `afield/four/util/superpc.kt`: Earlier push-constant-specific reflection experiment. Useful precedent, but `GpuSchema` is the general structured-memory direction: it is placement-independent and handles arbitrary addressable buffers as well as push-constant serialization.
+- `afield/four/util/superpc.kt`: Push-constant-specific reflection path that remains useful for compact PC-centric data. `GpuSchema` complements it with a placement-independent ABI for values that may instead live in UBO/SSBO/device-addressable storage.
 - `afield/four/util/16bits.kt`: Helpers for working with 16-bit/half precision packing/unpacking.
 - `afield/four/util/util.kt`: OS detection, memory type selection, math helpers, and generic utility functions.
 
@@ -93,7 +93,7 @@ The intended structured-memory direction is **schema + allocation + address**, n
 - `afield/four/examples/NewMain7_errorChecking.kt`: Demonstrates error handling/reload paths for modules/shaders.
 - `afield/four/examples/NewMain8_writeToImage.kt`: Shows writing to images/offscreen targets and sampling results.
 - `public/docs/gpu_schema.md`: Worked `@GpuStruct` examples covering nested schemas, template expansion, addressable arrays, push-constant binding, ABI hashes, and the roadmap to untyped pointers.
-- `public/docs/assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510_*`: Canonical graphics lesson updated from the old `PushConstants<T>` experiment to a `GpuSchema<Particle>` array stored in an addressable Field buffer and reached through a reflected physical pointer.
+- `public/docs/assets/canonical_graphics/b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_*`: Additional canonical `5d. GPU schema` box showing a `GpuSchema<Particle>` array in an addressable Field buffer reached through a reflected physical pointer. The existing `5c. some more templating` / `PushConstants<T>` example remains alongside it.
 
 ## Live-Coding Stdlib
 - `afield/stdlib/shaders.kt`: Live-coding glue that preprocesses/compiles shaders, wires macro-expanded module constructors (`moduleHere`, etc.), manages shader reloads, error surfacing, and generates inserts/bindings for uniforms/push constants within the hot-reload loop.
