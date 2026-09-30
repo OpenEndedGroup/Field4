@@ -861,6 +861,13 @@ kotlin {
         compilerOptions {
             target = "es2015"
             freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
+            // At language 2.5 the klib IR inliner defaults to `intra-module`, and under incremental
+            // compilation it cannot re-inline an unchanged file's inline function from the IC cache:
+            // edit one file and the next build dies with "IrClassSymbolImpl is unbound: kotlin/Unit"
+            // or "Cannot deserialize inline function from a non-Kotlin library". Reproduced on stock
+            // 2.5.0-Beta1 in two files, 6 of 6 rebuilds; with this flag 0 of 6
+            // (dev_docs/KOTLIN_2_5_JS_IC_INLINER.md). Remove when a 2.5 release survives that repro.
+            freeCompilerArgs.add("-Xklib-ir-inliner=disabled")
         }
 
         // The Kotlin/JS incremental-compilation cache treats every entry in its cache directory as
