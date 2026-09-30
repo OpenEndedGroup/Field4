@@ -1,6 +1,6 @@
 name: lua_demo
 description: |
-  **Lua inside Field, over LuaJIT.** A Kotlin root whose children are Lua, nine Lua boxes, and one
+  **Lua inside Field, over LuaJIT.** A Kotlin root whose children are Lua, ten Lua boxes, and one
   Kotlin box that reads the Lua boxes' line notes. Needs LuaJIT: `brew install luajit` (the root
   says whether it was found). Run each box on its own; the two marked *launch* want Launch, not Run.
 
@@ -16,6 +16,7 @@ description: |
     - **jit** — the same loop interpreted and compiled, timed. The JIT starts off in a Lua box so the
       runaway guard works; `jit.on()` opts in for code you trust to finish.
     - **accumulates** — one Lua state per box, kept across runs: run the first line, then the second.
+    - **controls** — `slider(...)` from Lua; moving it calls back into the box's Lua.
     - **line notes** (Kotlin) — prints the notes Field keeps for **hello**; run **hello** first.
 operations:
   - create:
@@ -153,6 +154,19 @@ operations:
           function greet(who) return "hello, " .. who end
           greet("Field")
   - create:
+      box: lua_controls
+      name: "controls"
+      frame: { x: 990.0, y: 180.0, w: 160.0, h: 80.0 }
+      properties:
+        code_language: Lua
+        code: |
+          -- A slider made from Lua: move it and the circle follows. slider() returns its first value.
+          local function draw(r)
+            local frame = line():rect(0, 0, 300, 200):color(0.5, 0.5, 0.5):width(1)
+            lines(frame, line():circle(150, 100, r):color(1, 0.5, 0.2):fill(), {w = 300, h = 200})
+          end
+          draw(slider("radius", 5, 90, 40, draw))
+  - create:
       box: lua_notes
       name: "line notes"
       frame: { x: 420.0, y: 320.0, w: 160.0, h: 80.0 }
@@ -173,5 +187,6 @@ operations:
   - connect: { parent: lua_root, child: lua_runaway }
   - connect: { parent: lua_root, child: lua_jit }
   - connect: { parent: lua_root, child: lua_accumulate }
+  - connect: { parent: lua_root, child: lua_controls }
   - execute: { box: lua_root, property: code }
   - await: {}

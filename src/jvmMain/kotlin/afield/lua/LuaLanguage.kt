@@ -12,7 +12,9 @@ import afield.Message
 import afield.Metadata
 import afield.Output
 import afield.Rect
+import afield.BoxRunScopes
 import afield.ReleasePolicy
+import afield.RunScope
 import afield.RunsAt
 import afield.Runloop
 import afield.configureOutputProxies
@@ -20,6 +22,8 @@ import afield.dispatchExecutionOutput
 import afield.early
 import afield.graphics.FLine
 import afield.graphics.lines
+import afield.slider
+import afield.checkbox
 import afield.inMain
 import afield.payload
 import afield.plugins
@@ -139,7 +143,15 @@ class LuaExecution(val inside: Box) : BoxExecution {
             clearErrorStatus(inside, trace.reply, originSession)
 
             val names = if (recordingLineNotes) assignedNames(code) else null
-            val outcome = lua.runGuarded(code, names, asExpression = fragment)
+            // The run's scope owns what it registers (a slider's callback): a whole run replaces the
+            // last whole run's, a fragment adds to the newest, as for a Kotlin box.
+            val scope = when {
+                fragment -> inside.runScopes.ambient()
+                launch -> inside.runScopes.begin(strand, "launch")
+                else -> inside.runScopes.begin(BoxRunScopes.RUN_STRAND, "run")
+            }
+            val outcome = RunScope.withCurrent(scope) { lua.runGuarded(code, names, asExpression = fragment) }
+            if (!fragment && scope != null) inside.runScopes.supersede(scope)
             val offset = execute.line
             val result = outcome.result
             if (names != null) recordNotes(inside, code, offset, outcome)
@@ -181,7 +193,7 @@ class LuaExecution(val inside: Box) : BoxExecution {
                 try {
                     while (inside.runGeneration[strand] == generation && !lua.isClosed) {
                         val now = System.nanoTime()
-                        val r = lua.tick(now / 1e9, (now - last) / 1e9)
+                        val r = RunScope.withCurrent(scope) { lua.tick(now / 1e9, (now - last) / 1e9) }
                         last = now
                         if (r is LuaState.Result.Err) {
                             inside.error(r.message, "code", offset + (r.line ?: 1))
@@ -477,7 +489,36 @@ internal fun luaHandlersFor(box: Box): Map<String, LuaState.Handler> = mapOf(
         listOf(list.size)
     },
     "frame" to LuaState.Handler { _, _ -> listOf(Runloop.runLoop.frame.toDouble()) },
+    "slider" to LuaState.Handler { _, args ->
+        val label = args.getOrNull(0)?.toString() ?: "value"
+        val min = (args.getOrNull(1) as? Number)?.toDouble() ?: 0.0
+        val max = (args.getOrNull(2) as? Number)?.toDouble() ?: 1.0
+        val initial = (args.getOrNull(3) as? Number)?.toDouble() ?: ((min + max) / 2)
+        val fn = args.getOrNull(4) as? LuaState.LuaFunction ?: throw IllegalArgumentException("slider(label, min, max, initial, fn) needs a function")
+        box.slider(label, min, max, step = (max - min) / 1000, initialValue = initial) { v -> callBack(box, fn, v) }
+        listOf(initial)
+    },
+    "checkbox" to LuaState.Handler { _, args ->
+        val label = args.getOrNull(0)?.toString() ?: "on"
+        val initial = args.getOrNull(1) == true
+        val fn = args.getOrNull(2) as? LuaState.LuaFunction ?: throw IllegalArgumentException("checkbox(label, initial, fn) needs a function")
+        box.checkbox(label, initial) { v -> callBack(box, fn, v) }
+        listOf(initial)
+    },
 )
+
+/**
+ * Call a Lua callback — a slider's, a checkbox's — on the main thread, as all of a box's Lua runs, under
+ * the frame budget; an error is marked on the line it happened on. A callback whose state has closed
+ * (the box was deleted or stopped being Lua) is dropped.
+ */
+private fun callBack(box: Box, fn: LuaState.LuaFunction, value: Any?) {
+    inMain {
+        if (fn.state.isClosed) return@inMain
+        val r = RunScope.withCurrent(box.runScopes.ambient()) { fn.state.callGuarded(fn, value) }
+        if (r is LuaState.Result.Err) box.error(r.message, "code", r.line ?: -1)
+    }
+}
 
 private val READ_ONLY = setOf("children", "parents", "id", "code_language", "_tombstone")
 

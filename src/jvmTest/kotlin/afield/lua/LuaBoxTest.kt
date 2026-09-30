@@ -114,6 +114,18 @@ class LuaBoxTest {
     }
 
     @Test
+    fun aSliderIsMadeInTheControlsPanelWithItsCallbackRegistered() {
+        val (_, lua, out) = boxWithLua("lua-slider")
+        assertEquals(listOf(0.25), ok(lua.run("return slider('gain', 0, 1, 0.25, function(v) gain = v end)")))
+        val (channel, html) = out.shown.single()
+        assertEquals("controls", channel)
+        val id = assertNotNull(Regex("""id="(slider-[0-9a-f-]+)"""").find(html)?.groupValues?.get(1), html.take(400))
+        assertNotNull(afield.getSliderCallback(id), "the Lua function is behind a registered slider callback")
+        val err = assertIs<LuaState.Result.Err>(lua.run("slider('x', 0, 1)"))
+        assertTrue("needs a function" in err.message, err.message)
+    }
+
+    @Test
     fun luaLinesBecomeFLinesWithTheirStyle() {
         val f = luaLineToFLine(mapOf(
             "ops" to listOf(listOf("m", 0.0, 0.0), listOf("l", 10.0, 0.0), listOf("c", 10.0, 5.0, 5.0, 10.0, 0.0, 10.0), listOf("z")),

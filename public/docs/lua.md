@@ -118,6 +118,21 @@ end)
 Running (rather than launching) a box that defines `update` or spawns a function says it needs a
 launch. Stopping the box ends `update` and drops its spawned functions, but its globals stay.
 
+## Sliders
+
+`slider(label, min, max, initial, fn)` puts a slider in the box's `controls` panel and calls `fn`
+with its value each time it moves; it returns `initial`, so the first drawing and every later one can
+go through the same function. `checkbox(label, initial, fn)` is the same for a checkbox. The callback
+runs in the box's Lua, on Field's main thread, under the frame budget.
+
+```diffstatic_runner {data-lang=lua screenshot="assets/lua/slider.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-slider" w="820" h="80" alt="A Lua box's output: a controls panel with one slider, RADIUS, at 40, and below it a lines panel with a filled orange circle centred in a thin grey rectangle."}
+local function draw(r)
+  local frame = line():rect(0, 0, 300, 200):color(0.5, 0.5, 0.5):width(1)
+  lines(frame, line():circle(150, 100, r):color(1, 0.5, 0.2):fill(), {w = 300, h = 200})
+end
+draw(slider("radius", 5, 90, 40, draw))
+```
+
 ## Errors
 
 An error is marked on the line it happened on, after whatever the run printed first:

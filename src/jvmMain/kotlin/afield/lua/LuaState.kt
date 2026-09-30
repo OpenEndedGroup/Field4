@@ -185,6 +185,11 @@ class LuaState(raw: Map<String, Handler> = emptyMap()) : AutoCloseable {
         guarded(null, false, perFrame = true) { call("__field_tick", now, dt) }.result
     }
 
+    /** Call [fn] under the frame budget: a callback from Field (a slider moving) into the box's Lua. */
+    fun callGuarded(fn: LuaFunction, vararg args: Any?): Result = lock.withLock {
+        guarded(null, false, perFrame = true) { call(fn, *args) }.result
+    }
+
     private fun guarded(fn: LuaFunction?, names: Any, perFrame: Boolean, body: () -> Result): Outcome {
         val begun = call("__field_begin", fn, names.takeIf { it != false }, perFrame)
         if (begun is Result.Err) return Outcome(begun, emptyMap(), false)

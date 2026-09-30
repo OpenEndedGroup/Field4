@@ -136,6 +136,29 @@ if raw.named then
   function field.named(name) return untag(named(name)) end
 end
 
+-- ── controls ───────────────────────────────────────────────────────────────────────────────────
+
+if raw.slider then
+  local make = checked(raw.slider)
+  --- slider(label, min, max, [initial,] fn): a slider in the box's `controls` panel; fn(value) each
+  --- time it moves. Returns the initial value, so `local gain = slider(...)` starts right.
+  function slider(label, min, max, initial, fn)
+    if type(initial) == "function" then initial, fn = nil, initial end
+    return make(label, min, max, initial, fn)
+  end
+  field.slider = slider
+end
+
+if raw.checkbox then
+  local make = checked(raw.checkbox)
+  --- checkbox(label, [initial,] fn): a checkbox in the `controls` panel; fn(checked) on each click.
+  function checkbox(label, initial, fn)
+    if type(initial) == "function" then initial, fn = false, initial end
+    return make(label, initial == true, fn)
+  end
+  field.checkbox = checkbox
+end
+
 -- ── lines ───────────────────────────────────────────────────────────────────────────────────────
 
 local Line = {}
