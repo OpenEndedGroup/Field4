@@ -122,11 +122,11 @@ class KeyframerCoverageTest {
             "Key::diff(Key, String, String)" to covered(),
             "Key::diffHtml(Key, String, String)" to covered(),
             "Key::diffText(Key, String, String)" to covered(),
-            // Declared as `Key.() -> Unit`; reflection cannot see the receiver, so the ledger keys
-            // are the normalised arrow form (see readableType).
-            "Key::update((Key) -> Unit)" to covered(),
+            // Declared as `Key.() -> Unit`. Before Kotlin 2.5, reflection could not see the receiver and
+            // these keys were `(Key) -> Unit`; 2.5's kotlin-reflect renders the declared form.
+            "Key::update(Key.() -> Unit)" to covered(),
             "Key::applyKey()" to covered(),
-            "Key::updateAndApply((Key) -> Unit)" to covered(),
+            "Key::updateAndApply(Key.() -> Unit)" to covered(),
             "Key::save(Path, String?)" to covered(),
             "Key::updateCode(String, Boolean)" to covered(),
             "Key::copyUpdateCodeToClipboard(String, Boolean)" to
