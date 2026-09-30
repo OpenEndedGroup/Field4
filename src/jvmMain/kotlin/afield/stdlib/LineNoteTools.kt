@@ -48,7 +48,7 @@ fun installLineNoteTools() {
     val offered: (ToolExecutionContext) -> Boolean = { ctx ->
         val focus = ctx.focus
         focus != null && LineNotes.offersFor(focus.box, focus.property) &&
-            !(focus.property == "code" && focus.box.ke?.languageName.equals("kotlin", ignoreCase = true))
+            !(focus.property == "code" && focus.box.ke.languageName.equals("kotlin", ignoreCase = true))
     }
     AgentToolExtensions.register(ReadLineNotes::class.java, offered, "afield.stdlib.line-notes") { ctx, request ->
         val focus = ctx.focus ?: throw IllegalStateException("ReadLineNotes works on the box whose chat is open")

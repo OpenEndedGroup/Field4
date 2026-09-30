@@ -173,8 +173,14 @@ data class AaCandidate(
     val isSynthetic: Boolean get() = name.startsWith("__")
 }
 
-/** Candidates plus a human-readable note (populated when the list is empty, to explain why). */
-data class AaCompletionResult(val candidates: List<AaCandidate>, val note: String = "")
+/**
+ * Candidates plus a human-readable note (populated when the list is empty, to explain why).
+ *
+ * [error] is set only when completion *threw*: an empty list with a note is an answer ("no element at
+ * cursor"), an empty list with an error is a broken backend, and the two must not look alike on the
+ * wire — every completion failing with `KotlinReflectionNotSupportedError` looked like "no candidates".
+ */
+data class AaCompletionResult(val candidates: List<AaCandidate>, val note: String = "", val error: String? = null)
 
 /**
  * THE LOWERING: a box's editing context reduced to one synthetic Kotlin file, plus the map of where
@@ -795,7 +801,8 @@ class AaCompleter(
         val lowered = try {
             lower(snippet, cursor, preamble, declarations, implicitReceivers, extraImports, replImports)
         } catch (t: Throwable) {
-            return AaCompletionResult(emptyList(), "lower error ${t.javaClass.simpleName}: ${t.message}")
+            val why = "lower error ${t.javaClass.simpleName}: ${t.message}"
+            return AaCompletionResult(emptyList(), why, error = why)
         }
         return try {
             val file = KtPsiFactory.contextual(contextFile, markGenerated = false, eventSystemEnabled = false)
@@ -803,7 +810,8 @@ class AaCompleter(
             val scope = indexFor(lowered.boxImports, lowered.providedImports)
             completeAt(file, lowered.cursorOffset, lowered.isDot, lowered.prefix, jsTarget, scope.index, scope.extraPackages)
         } catch (t: Throwable) {
-            AaCompletionResult(emptyList(), "error ${t.javaClass.simpleName}: ${t.message}")
+            val why = "error ${t.javaClass.simpleName}: ${t.message}"
+            AaCompletionResult(emptyList(), why, error = why)
         }
     }
 

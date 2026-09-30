@@ -453,6 +453,10 @@ def iter_candidate_files(root: Path) -> list[Path]:
 def validate_annotation(path: Path, line_no: int, annotation: dict[str, Any]) -> dict[str, Any]:
     if "requiresDisplay" in annotation and not isinstance(annotation["requiresDisplay"], bool):
         raise ParseError(f"{path}:{line_no}: requiresDisplay must be true or false")
+    # A string here ("yes") would read as false and quietly put the test back to running without a
+    # sidecar, which is the blind spot this key exists to close.
+    if "requiresSidecar" in annotation and not isinstance(annotation["requiresSidecar"], bool):
+        raise ParseError(f"{path}:{line_no}: requiresSidecar must be true or false")
     for key in ("id", "runner"):
         if key not in annotation:
             raise ParseError(f"{path}:{line_no}: missing required field '{key}'")

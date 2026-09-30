@@ -19,7 +19,7 @@
     org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi::class
 )
 
-package com.facebook.ktfmt.format
+package afield
 
 import org.jetbrains.kotlin.cli.extensionsStorage
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
@@ -36,9 +36,19 @@ import org.jetbrains.kotlin.idea.KotlinFileType
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
+import org.jetbrains.ktfmt.format.ParseError
 
-/** Parser parses a Kotlin file given as a string and returns its parse tree. */
-object Parser {
+/**
+ * Parses Kotlin source as a script (which box code is) and returns its parse tree, for Field code
+ * that wants PSI without compiling: the comment pass in `formatter.kt`, the RemoteJS instrumenter,
+ * and the pattern-rewrite smoke test.
+ *
+ * Until 2026-09-30 this was a copy of ktfmt's `Parser` under ktfmt's own class name, meant to
+ * replace it on the classpath. It did not: ktfmt's jar won, and the copy only worked because
+ * ktfmt 0.64's `Parser` had the same `parse(String)`. It is Field's own class now; ktfmt keeps its
+ * parser. Derived from ktfmt's `Parser` (Apache 2.0, notice above).
+ */
+object FieldKtParser {
 
     /**
      * The environment used to open a KtFile.

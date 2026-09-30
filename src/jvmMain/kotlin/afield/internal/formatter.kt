@@ -1,7 +1,8 @@
 package afield
 
-import com.facebook.ktfmt.format.Formatter
-import com.facebook.ktfmt.format.Parser
+import org.jetbrains.ktfmt.format.FileType
+import org.jetbrains.ktfmt.format.Formatter
+import org.jetbrains.ktfmt.format.KotlinCode
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.psiUtil.collectDescendantsOfType
@@ -9,7 +10,8 @@ import org.jetbrains.kotlin.psi.psiUtil.endOffset
 import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
 fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
-    val formatted = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), code)
+    // Box code is a script: top-level statements, not only declarations.
+    val formatted = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), KotlinCode(code, FileType.SCRIPT))
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
 }
 
@@ -39,7 +41,7 @@ private class LineCommentLine(val end: Int, val lineStart: Int, val indent: Stri
 fun blockifyLineCommentRuns(code: String): String {
     // If ktfmt handed us something we can't re-parse, the transform simply doesn't apply.
     val file = try {
-        Parser.parse(code)
+        FieldKtParser.parse(code)
     } catch (t: Throwable) {
         return code
     }
