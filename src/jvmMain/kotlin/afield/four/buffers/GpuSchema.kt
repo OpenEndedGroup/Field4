@@ -167,7 +167,7 @@ class GpuSchema<T : Any> internal constructor(
         append(glslName)
         append("Array {\n    ")
         append(glslName)
-        append(" values[];\n};")
+        append(" elements[];\n};")
     }
 
     /**
@@ -292,7 +292,7 @@ fun <T : Any> Structure.bindGpu(schema: GpuSchema<T>, value: () -> T) {
     bindAll { writer }
 }
 
-inline fun <reified T : Any> gpuSchema(): GpuSchema<T> = GpuSchemas.schema(T::class)
+inline fun <reified T : Any> gpuSchema(): GpuSchema<T> = gpuSchema(T::class)
 
 fun <T : Any> gpuSchema(type: KClass<T>): GpuSchema<T> = GpuSchemas.schema(type)
 

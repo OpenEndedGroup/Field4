@@ -57,6 +57,16 @@ class IndexContentTests(unittest.TestCase):
             gen.scan_symbols(box)
         self.index = gen.INDEX_FILE.read_text(encoding="utf-8")
 
+    def test_gpu_schema_lesson_is_persisted_under_renderer(self):
+        uid = "b42d7b13-680e-4f9b-b789-8e6e7d8c4a21"
+        self.assertIn(uid, self.boxes, "Sidecars alone do not create a box on first open")
+        lesson = self.boxes[uid]
+        self.assertEqual("5d. GPU schema", lesson.display_name)
+        self.assertEqual(["611072da-1af6-4d2d-85bf-07a9ba191aca"], lesson.parents)
+        self.assertFalse(lesson.tombstoned)
+        self.assertEqual({"code", "vertex", "fragment"}, set(lesson.files))
+        self.assertIn("| 5d. GPU schema | `window` |", self.index)
+
     def test_every_live_numbered_lesson_appears(self):
         missing = [
             box.display_name

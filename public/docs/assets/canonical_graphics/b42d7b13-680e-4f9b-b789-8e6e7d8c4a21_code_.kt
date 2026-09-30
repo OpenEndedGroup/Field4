@@ -4,7 +4,7 @@ import afield.four.modules.*
 import afield.stdlib.linalg.*
 
 // This is deliberately a sibling to the PushConstants<T> example, not a replacement for it.
-// The sidecar can bootstrap itself when added to the canonical document by Field's file watcher.
+// Persisted beneath the renderer box in metadata.edn.
 name = "5d. GPU schema"
 frame = frame.copy(x = -343.5, y = 102.0, w = 111.0, h = 74.0)
 
@@ -32,7 +32,7 @@ particleData.mapAndWrite_bytes {
 }
 
 //%-
-val renderer = root.children.named("window").getPropertyRaw("renderer") as Renderer
+val renderer: Renderer = fromContext()
 
 var module = moduleHere {
     primitiveType = triangles

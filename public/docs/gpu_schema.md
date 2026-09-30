@@ -6,7 +6,7 @@ The first slice lives in `afield.four.buffers.GpuSchema`. It reflects an annotat
 
 ## A particle schema
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.four.buffers.*
 import afield.stdlib.linalg.*
 
@@ -33,7 +33,7 @@ Constructor-property order is ABI order. `Particle` above has one schema object 
 
 Useful inspection while live coding:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 println(particle.sizeBytes)
 println(particle.strideBytes)
 println(particle.offsetOf("material"))
@@ -47,14 +47,14 @@ A schema change — adding, removing, reordering, or changing the type of a fiel
 
 After `shaderTemplate["Particle"] = particle.template`, a shader in the same box can say:
 
-```glsl
+```diffstatic {data-lang=glsl}
 #version 460
 {{ Particle.all }}
 ```
 
 `Particle.all` expands to the nested ordinary GLSL structs followed by two addressable views, conceptually:
 
-```glsl
+```diffstatic {data-lang=glsl}
 #extension GL_EXT_buffer_reference : require
 
 struct Material {
@@ -75,7 +75,7 @@ layout(buffer_reference, std430, buffer_reference_align = 16) buffer ParticleRef
 };
 
 layout(buffer_reference, std430, buffer_reference_align = 16) buffer ParticleArray {
-    Particle values[];
+    Particle elements[];
 };
 ```
 
@@ -95,7 +95,7 @@ The generated reference names are therefore predictable: `ParticleRef` and `Part
 
 `defaultBuffer` is already host-visible, storage-capable, and device-addressable. Allocate it using the schema stride and ask the schema to pack the values:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val values = listOf(
     Particle(vec(-0.7f, -0.5f, 0f), 0.2f, Material(vec(1,0,0,1), .4f, 0f), 1u),
     Particle(vec( 0.0f,  0.5f, 0f), 0.2f, Material(vec(0,1,0,1), .6f, 0f), 2u),
@@ -113,7 +113,7 @@ particleBuffer.mapAndWrite_bytes {
 
 The buffer can then travel through the existing reflected physical-pointer path. For example:
 
-```glsl
+```diffstatic {data-lang=glsl}
 {{ Particle.all }}
 
 layout(push_constant) uniform Push {
@@ -122,21 +122,21 @@ layout(push_constant) uniform Push {
 } pc;
 
 void useParticle(uint i) {
-    Particle p = pc.particles.values[i];
+    Particle p = pc.particles.elements[i];
     // ...
 }
 ```
 
 and Kotlin binds the actual address in the usual Field way:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 mesh.particles = { particleBuffer }
 mesh.count = { values.size.toUInt() }
 ```
 
 The important division is:
 
-```text
+```diffstatic {data-lang=text}
 GpuSchema<Particle>          VulkanBuffer
 layout / packing / GLSL      allocation / lifetime / device address
           \                    /
@@ -150,7 +150,7 @@ The Kotlin model does not say that a device address *is* permanently a `Particle
 
 A small value can also be the entire reflected push block. `GpuSchema.writer` adapts one value to `WritesToBuffer`, and `Structure.bindGpu` is the convenience form:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 @GpuStruct
 data class DrawParams(
     val color: Vector4f,
@@ -169,7 +169,7 @@ For larger state, prefer a push constant containing one or more device addresses
 
 `GpuArrayView` is the lightweight packing/address-arithmetic half of the eventual typed buffer API:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 val bytes = ByteBuffer.allocateDirect(1024 * particle.strideBytes)
 val array = particle.arrayView(bytes, 1024)
 
@@ -198,6 +198,24 @@ The target architecture is Vulkan's untyped-pointer model: a GPU address has sto
 The source-level contract here already reflects that direction: Kotlin keeps `GpuSchema` separate from the address. The current GLSL backend casts an address into a generated `buffer_reference` type; a future SPIR-V/Slang backend can instead use `SPV_KHR_untyped_pointers` without changing the data declaration or CPU packing API.
 
 Do not make shader code depend on a Kotlin-side `ParticlePtr` object being the identity of the allocation. The stable concepts are the schema, the allocation, and the address passed between them.
+
+## Verification
+
+`GpuSchemaTest` checks CPU packing, nested member offsets and array stride against real
+shader reflection, template expansion, and shader compilation. It also reads the canonical
+lesson through Field's document codec to check its persisted renderer connection and sidecars.
+
+The GPU smoke `four.gpu-schema.readback` packs three distinct nested structs, loads them through
+the generated buffer-reference array, and reads back all 33 scalar components. The output is
+prefilled with sentinels so a shader that never runs cannot pass. Run it with:
+
+```diffstatic {data-lang=bash}
+uv run --project . --group backdoor python tools/run_field_tests.py --id four.gpu-schema.readback
+```
+
+The canonical `5d. GPU schema` lesson is persisted beneath `window` in the supplied document.
+Launch `window`, then the lesson, to draw its three-particle triangle. For a separate document,
+copy the lesson's Kotlin and shader properties into a box connected beneath your renderer.
 
 ## Where to extend this
 

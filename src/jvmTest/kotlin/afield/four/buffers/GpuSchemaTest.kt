@@ -1,5 +1,7 @@
 package afield.four.buffers
 
+import afield.four.modules.Introspection
+import afield.four.modules.Introspected
 import afield.four.modules.ShaderKind
 import afield.four.modules.ShaderSPIRVUtils
 import afield.four.util.Resolver
@@ -28,6 +30,23 @@ data class TestParticle(
 )
 
 class GpuSchemaTest {
+    @Test
+    fun canonicalLessonLoadsWithRendererParentAndShaderSidecars() {
+        val corpus = java.io.File("public/docs/assets/canonical_graphics")
+        val boxes = afield.SavingContext().readEdnTransfers(corpus.absolutePath).associateBy { it.id }
+        val uid = "b42d7b13-680e-4f9b-b789-8e6e7d8c4a21"
+        val renderer = "611072da-1af6-4d2d-85bf-07a9ba191aca"
+        val lesson = boxes.getValue(uid)
+        assertEquals("5d. GPU schema", lesson.properties["name"])
+        assertTrue(renderer in lesson.properties["parents"].toString())
+        assertTrue(uid in boxes.getValue(renderer).properties["children"].toString())
+        for ((property, extension) in listOf("code" to "kt", "vertex" to "glsl", "fragment" to "glsl")) {
+            val sidecar = "${uid}_${property}_.$extension"
+            assertTrue(sidecar in lesson.properties[property].toString())
+            assertTrue(java.io.File(corpus, sidecar).readText().isNotBlank())
+        }
+    }
+
     @Test
     fun std430LayoutAndNestedPackingComeFromOneSchema() {
         val material = gpuSchema<TestMaterial>()
@@ -93,9 +112,46 @@ class GpuSchemaTest {
         assertTrue("struct TestParticle" in expanded)
         assertTrue("buffer TestParticleRef" in expanded)
         assertTrue("buffer TestParticleArray" in expanded)
-        assertTrue("TestParticle values[];" in expanded)
+        assertTrue("TestParticle elements[];" in expanded)
         assertTrue("stride=${schema.strideBytes}" in expanded)
         assertTrue("abi=${schema.abiHash}" in expanded)
+    }
+
+    @Test
+    fun reflectedShaderOffsetsAndArrayStrideMatchCpuSchema() {
+        val schema = gpuSchema<TestParticle>()
+        val shader = Introspection(
+            """
+            #version 460
+            ${schema.glslDeclarations()}
+            layout(local_size_x = 1) in;
+            layout(std430, set = 0, binding = 0) buffer Input { TestParticle values[]; } inputData;
+            layout(std430, set = 0, binding = 1) buffer Output { float result; } outputData;
+            void main() {
+                TestParticle p = inputData.values[1];
+                outputData.result = p.position.x + p.radius + p.material.color.x
+                    + p.material.roughness + p.material.metallic + float(p.flags);
+            }
+            """.trimIndent(), ShaderKind.COMPUTE_SHADER
+        )
+        try {
+            assertTrue(shader.valid)
+            val array = shader.ssbo.single { it.name == "Input" }.members.single()
+            assertEquals(schema.strideBytes, array.arrayStride)
+            fun compare(expected: GpuSchema<*>, actual: List<Introspected.Member>) {
+                assertEquals(expected.fields.map { it.name }, actual.map { it.name })
+                expected.fields.zip(actual).forEach { (field, member) ->
+                    assertEquals(field.offsetBytes, member.offset, "${expected.glslName}.${field.name}")
+                    val nested = field.type as? GpuFieldType.Struct
+                    if (nested != null) compare(nested.schema, member.type.fold(
+                        { error("Expected nested struct for ${field.name}") }, { it }
+                    ))
+                }
+            }
+            compare(schema, array.type.fold({ error("Expected struct array") }, { it }))
+        } finally {
+            shader.code.free()
+        }
     }
 
     @Test
@@ -117,7 +173,7 @@ class GpuSchemaTest {
 
             void main() {
                 if (pc.count == 0u) return;
-                TestParticle p = pc.particles.values[0];
+                TestParticle p = pc.particles.elements[0];
                 result.value = vec4(p.position * p.radius, p.material.roughness + float(p.flags & 1u));
             }
         """.trimIndent()
