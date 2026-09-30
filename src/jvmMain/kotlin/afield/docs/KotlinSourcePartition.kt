@@ -813,7 +813,12 @@ object KotlinSourcePartition {
                     at++
                 }
                 if (depth <= 0) {
-                    if (bodyOpen >= 0 && bodyClose >= 0) return Extent(line, bodyOpen, bodyClose)
+                    // A property's `get() { … }` closes a brace body too, and returning on it cut
+                    // `set(value) { … }` below it loose — three lines of `Structure.kt`'s `dirty`. The
+                    // first accessor's braces stay the body; a following accessor only extends the end.
+                    if (bodyOpen >= 0 && bodyClose >= 0 && !accessorFollows(line, hi)) {
+                        return Extent(line, bodyOpen, bodyClose)
+                    }
                     if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
                 }
                 line++
@@ -880,6 +885,23 @@ object KotlinSourcePartition {
             // deliberately a second question rather than a change to the first: stripping up front would
             // erase the `@get:` that the first question matches on.
             return CONTINUES_BEFORE.containsMatchIn(stripModifiers(stripAnnotations(head)))
+        }
+
+        /**
+         * Whether the next code line after [line] — past an annotation/modifier run such as
+         * `@Synchronized` — is a property accessor, `get`/`set` with or without a use-site target.
+         */
+        fun accessorFollows(line: Int, hi: Int): Boolean {
+            var index = nextCodeLine(line + 1, hi) ?: return false
+            var budget = MAX_PREFIX_RUN
+            while (isPrefixOnlyLine(index)) {
+                if (budget-- <= 0) return false
+                index = nextCodeLine(index + 1, hi) ?: return false
+            }
+            if (recognize(masked.code[index]) != null) return false
+            val head = masked.code[index].trimStart()
+            return ACCESSOR.containsMatchIn(stripModifiers(head)) ||
+                ACCESSOR.containsMatchIn(stripModifiers(stripAnnotations(head)))
         }
 
         /** The next line in `[from, hi)` carrying any code at all. */
@@ -1112,4 +1134,7 @@ object KotlinSourcePartition {
      */
     private val CONTINUES_BEFORE =
         Regex("""^(?:\?\.|\?:|::|&&|\|\||[.=,{]|[+*/%]|->|:|by\b|where\b|else\b|catch\b|finally\b|get\b|set\b|@get:|@set:)""")
+
+    /** A property accessor's first token: `get`/`set` as a word, or its `@get:`/`@set:` use-site target. */
+    private val ACCESSOR = Regex("""^(?:get\b|set\b|@get:|@set:)""")
 }
