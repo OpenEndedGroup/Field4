@@ -1058,7 +1058,14 @@ kotlin {
                 implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
-                implementation("com.facebook:ktfmt:0.64")
+                // ktfmt 0.64, the last release, cannot link against the 2.5 PSI. This is Kotlin/ktfmt
+                // main with a kotlin-2.5 compatibility source set (dev_docs/KTFMT_KOTLIN_2_5.md);
+                // replace it with org.jetbrains:ktfmt once a release supports 2.5. A local jar has no
+                // POM, so its runtime dependencies are named here, at the versions 0.64 resolved to.
+                implementation(files("libs/ktfmt-0.65-SNAPSHOT-kotlin-2.5.jar"))
+                implementation("com.google.googlejavaformat:google-java-format:1.23.0")
+                implementation("com.google.guava:guava:33.5.0-jre")
+                implementation("org.ec4j.core:ec4j-core:1.2.0")
 
                 implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))
