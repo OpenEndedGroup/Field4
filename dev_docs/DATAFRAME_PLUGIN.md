@@ -248,9 +248,9 @@ That distinction is doing all the work, so the totals are stated separately and 
 counted. Compiled source carries 4<!--count:valuePrinterInterfaceKeys--> interface-keyed
 registrations, all DataFrame's and all in one file
 (`DataFrameVisualizer.kt:62#ValuePrinterRegistry.register(DataFrame::class.java)` and the three beside
-it), and 51<!--count:valuePrinterClassKeys--> class-keyed ones across `FourVisualizers.kt`,
-`PolytopeVisualizers.kt`, `four/synth/Visualizers.kt`, `JoltPhysicsWorld.kt`, `fmchirp.kt` and
-`four/fabricated/PathTraceInstrument.kt`. Every
+it), and 52<!--count:valuePrinterClassKeys--> class-keyed ones across `FourVisualizers.kt`,
+`PolytopeVisualizers.kt`, `four/synth/Visualizers.kt`, `JoltPhysicsWorld.kt`, `fmchirp.kt`,
+`four/fabricated/PathTraceInstrument.kt` and `stdlib/StudyReportView.kt`. Every
 one of the latter goes through the reified wrapper `registerValuePrinter<T>`
 (`ValueVisualizer.kt:2578#inline fun <reified T : Any> registerValuePrinter`), which is why a grep for
 `ValuePrinterRegistry.register` sees only the first group — and why this paragraph, until 2026-08-23,

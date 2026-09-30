@@ -34,37 +34,7 @@ internal object Ai4BackdoorTools {
             if (uid == sessionInfo.root.id) sessionInfo.root else sessionInfo.boxes[uid]
         }
         val refResolver: (String, String) -> FileRef = { raw, defaultProperty ->
-            val trimmed = raw.trim()
-            when {
-                trimmed.startsWith("afield://") -> {
-                    val parts = trimmed.removePrefix("afield://").split("/", limit = 3)
-                    when (parts.size) {
-                        3 -> FileRef(parts[0], parts[1], parts[2])
-                        2 -> FileRef(parts[0], parts[1], defaultProperty)
-                        else -> FileRef(docName, trimmed, defaultProperty)
-                    }
-                }
-                sessionInfo.boxes.containsKey(trimmed) -> FileRef(docName, trimmed, defaultProperty)
-                else -> {
-                    // A duplicated name is refused, not resolved: uniqueBoxOrRefuse throws
-                    // AmbiguousBoxNameException, which agent-ai-tool-call turns into ok=false with the
-                    // count and "reference one by its uid instead" — the same refusal
-                    // tools/field_mcp.py's _resolve_box has always given.
-                    //
-                    // A name that matches *nothing* still falls through to the literal-uid branch
-                    // below, deliberately and unchanged. That branch is not a guess: it is how an
-                    // honest uid reaches its box when the uid is not in `sessionInfo.boxes` (the
-                    // document root), and when the token is simply a typo the provider's own
-                    // "Unknown box '<token>'" is a better message than anything this resolver could
-                    // give. Only ambiguity errors here, because only ambiguity has no answer.
-                    val byName = uniqueBoxOrRefuse(
-                        trimmed,
-                        sessionInfo.boxes.values.filter { it.name == trimmed }
-                    )
-                    if (byName != null) FileRef(docName, byName.id, defaultProperty)
-                    else FileRef(docName, trimmed, defaultProperty)
-                }
-            }
+            resolveBackdoorFileRef(sessionInfo, docName, raw, defaultProperty)
         }
         val codeTools = Ai4CodeToolProviders(
             docName = docName,
@@ -204,5 +174,58 @@ internal object Ai4BackdoorTools {
             // Document-authored tools (box aiTool DSL), visible to external MCP agents too.
             dynamicTools = DocumentToolRegistry.toolsFor(docPath)
         )
+    }
+}
+
+/**
+ * How the backdoor/task tool context reads a box reference: a uid, a unique name, or an afield:// ref.
+ * Top level so it can be tested without a Kotlin compiler.
+ */
+internal fun resolveBackdoorFileRef(sessionInfo: SessionInformation, docName: String, raw: String, defaultProperty: String): FileRef {
+    // A box of *this* document named by uid or unique name, or null. Ambiguity throws (see below).
+    val boxHere: (String) -> Box? = { token ->
+        sessionInfo.boxes[token]
+            ?: uniqueBoxOrRefuse(token, sessionInfo.boxes.values.filter { it.name == token && token.isNotBlank() })
+    }
+    val trimmed = raw.trim()
+    return when {
+        trimmed.startsWith("afield://") -> {
+            val parts = trimmed.removePrefix("afield://").split("/", limit = 3)
+            // This context reaches exactly one document, so a ref whose box segment names one
+            // of its boxes means that box, whatever the document segment says. The live model
+            // guessed the document segment in every eval run of 2026-09-29/30 — the box uid
+            // (`afield://<uid>/code`), the display name (`afield://agent-task/<uid>/code`),
+            // `scratch` — and spent a round or two per task finding the real one (the scratch
+            // directory's uuid) through ListContents. A box uid is unique across documents, so
+            // this cannot pick another document's box.
+            when (parts.size) {
+                3 -> boxHere(parts[1])?.let { FileRef(docName, it.id, parts[2]) }
+                    ?: FileRef(parts[0], parts[1], parts[2])
+                2 -> boxHere(parts[0])?.let { FileRef(docName, it.id, parts[1]) }
+                    ?: FileRef(parts[0], parts[1], defaultProperty)
+                else -> boxHere(parts[0])?.let { FileRef(docName, it.id, defaultProperty) }
+                    ?: FileRef(docName, trimmed, defaultProperty)
+            }
+        }
+        sessionInfo.boxes.containsKey(trimmed) -> FileRef(docName, trimmed, defaultProperty)
+        else -> {
+            // A duplicated name is refused, not resolved: uniqueBoxOrRefuse throws
+            // AmbiguousBoxNameException, which agent-ai-tool-call turns into ok=false with the
+            // count and "reference one by its uid instead" — the same refusal
+            // tools/field_mcp.py's _resolve_box has always given.
+            //
+            // A name that matches *nothing* still falls through to the literal-uid branch
+            // below, deliberately and unchanged. That branch is not a guess: it is how an
+            // honest uid reaches its box when the uid is not in `sessionInfo.boxes` (the
+            // document root), and when the token is simply a typo the provider's own
+            // "Unknown box '<token>'" is a better message than anything this resolver could
+            // give. Only ambiguity errors here, because only ambiguity has no answer.
+            val byName = uniqueBoxOrRefuse(
+                trimmed,
+                sessionInfo.boxes.values.filter { it.name == trimmed }
+            )
+            if (byName != null) FileRef(docName, byName.id, defaultProperty)
+            else FileRef(docName, trimmed, defaultProperty)
+        }
     }
 }

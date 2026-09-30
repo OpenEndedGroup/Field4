@@ -24,22 +24,26 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import java.net.InetAddress
 import java.net.URI
 import java.net.URLDecoder
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
+import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
 import java.util.HexFormat
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
 private const val DOCS_ORIGIN = "https://openendedgroup.com"
@@ -93,6 +97,9 @@ internal const val DOCS_ANNOTATIONS_STORE_PROPERTY = "afield.docsAnnotations.sto
 
 /** Annotation notebook path. Unset preserves the shared `~/.afield/docs-annotations.json` default. */
 internal const val DOCS_ANNOTATIONS_STORE_ENV = "AFIELD_DOCS_ANNOTATIONS_STORE"
+
+/** Which coding agent the revision harness runs per page: `codex` (the default) or `claude`. */
+internal const val DOCS_IMPROVEMENT_AGENT_ENV = "AFIELD_DOCS_IMPROVEMENT_AGENT"
 
 /** Header carrying [DOCS_IMPROVEMENT_TOKEN_ENV] on a launch request. */
 internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Token"
@@ -434,8 +441,50 @@ data class DocsAnnotationAnchor(
     val endOffset: Int = 0,
     val xRatio: Double? = null,
     val yRatio: Double? = null,
+    /**
+     * The commit the page in front of the human was built from, read by the panel out of the
+     * site's `field-docs-build.json`. `tools/docs_notes.py` matches the quote against the page's
+     * Markdown *at that commit*, which is what lets a note written days before anyone syncs it
+     * still land on the sentence that was actually read. Empty for the published site when it
+     * predates that file.
+     */
+    val sourceCommit: String = "",
+    /** `local` or `published`: which copy of the page the note was written on. */
+    val docsSource: String = "",
+    /** The rendered heading the selection sits under, a second anchor when the quote is short. */
+    val heading: String = "",
+    /** `content`, or `chrome` for a selection in the site header or navigation rather than the page. */
+    val region: String = "",
 )
 
+/**
+ * One entry in a note's thread: a human reply, an agent's question, resolution or memory, or the
+ * harness recording a run that left the note untouched. Written by `tools/docs_notes.py` and by
+ * the routes below; the panel renders them.
+ */
+@Serializable
+data class DocsAnnotationEntry(
+    val id: String = "",
+    /** `comment`, `memory`, `question`, `reply`, `resolution`, `reopen`, `run`, `handoff`, `blocked` or `unblocked`. */
+    val kind: String = "comment",
+    /** `human`, `harness`, or `agent:<name>`. */
+    val author: String = "human",
+    val text: String = "",
+    val atEpochMs: Long = 0,
+    val runId: String = "",
+    val commit: String = "",
+    val changedFiles: List<String> = emptyList(),
+    /** For `handoff`, `blocked` and `unblocked`: the id of the handoff note concerned. */
+    val handoff: String = "",
+)
+
+/**
+ * The note is shared with `tools/docs_notes.py`, which reads and writes this same file. Every
+ * top-level key that tool writes must be a property here, because [DocsAnnotationStore] rewrites
+ * the whole file from these data classes and `ignoreUnknownKeys` would silently drop anything
+ * else; `tools/test_docs_notes.py` (`KotlinSchemaTest`) fails when the two disagree. What only the
+ * tool understands lives inside [source], which is kept verbatim.
+ */
 @Serializable
 data class DocsAnnotation(
     val id: String = "",
@@ -447,6 +496,26 @@ data class DocsAnnotation(
     val updatedAtEpochMs: Long = 0,
     val resolvedAtEpochMs: Long? = null,
     val resolution: String = "",
+    /**
+     * `note` — a request, in the revision queue; `memory`, which an agent left and nobody works;
+     * or `handoff`, a larger task an agent queued as a document for a separate, interactive pass.
+     */
+    val kind: String = "note",
+    val thread: List<DocsAnnotationEntry> = emptyList(),
+    /**
+     * Where the note lives in the source: file, current line range, and the `git blame` origins
+     * that carry it forward through later commits. Owned by `tools/docs_notes.py sync`; the
+     * server only preserves it, and drops it when a human moves the note's anchor.
+     */
+    val source: JsonObject? = null,
+    /**
+     * For a `handoff`: its document (`path`, under `dev_docs/handoffs/`), `scope` (`project` or
+     * `crosscutting`), `blocking`, `state` (`open`, `taken`, `done`, `dropped`), the `page` it was
+     * filed from and the notes it came from. Owned by `tools/docs_notes.py`; preserved here.
+     */
+    val handoff: JsonObject? = null,
+    /** `HEAD` of [recordedInCheckout] when the note was first saved; the fallback when [DocsAnnotationAnchor.sourceCommit] is empty. */
+    val recordedAtCommit: String = "",
     /**
      * The checkout whose Field recorded this note.
      *
@@ -461,8 +530,22 @@ data class DocsAnnotation(
 )
 
 @Serializable private data class DocsAnnotationFile(val version: Int = 1, val annotations: List<DocsAnnotation> = emptyList())
-@Serializable data class DocsAnnotationUpsert(val annotation: DocsAnnotation)
+/**
+ * [reply] is how the panel answers an agent's question without a route of its own: post the
+ * note's id with the reply, and it is appended to the thread as the human's, which puts the note
+ * back in the queue (see `awaiting_human` in `tools/docs_notes.py`).
+ */
+@Serializable
+data class DocsAnnotationUpsert(val annotation: DocsAnnotation, val reply: String = "")
 @Serializable data class DocsAnnotationResolve(val resolved: Boolean = true, val resolution: String = "")
+
+/** Whether a note is waiting for work: a request, unresolved, not blocked by a handoff, with no agent question pending. Mirrors `in_queue`. */
+internal fun DocsAnnotation.isQueued(): Boolean {
+    if (kind != "note" || resolvedAtEpochMs != null) return false
+    if (thread.lastOrNull { it.kind == "blocked" || it.kind == "unblocked" || it.kind == "reopen" }?.kind == "blocked") return false
+    val lastTurn = thread.lastOrNull { it.kind == "question" || it.kind == "reply" || it.kind == "reopen" }
+    return lastTurn?.kind != "question"
+}
 @Serializable data class DocsImprovementLaunchRequest(val tags: List<String> = emptyList())
 @Serializable data class DocsImprovementStatus(
     val running: Boolean = false,
@@ -533,26 +616,44 @@ private object DocsAnnotationStore {
 
     fun list(): List<DocsAnnotation> = synchronized(lock) { read().annotations }
 
-    fun upsert(input: DocsAnnotation): DocsAnnotation = synchronized(lock) {
+    /**
+     * Saves a note from the panel. An existing note is *merged*, not replaced: the panel knows
+     * nothing of the thread, the source association or the resolution, and a save that dropped
+     * them would erase every agent's work on the note. Only a moved anchor clears `source`,
+     * because the association then describes a sentence the note is no longer about.
+     */
+    fun upsert(input: DocsAnnotation, reply: String = ""): DocsAnnotation = fileLocked {
         require(input.pageUrl.startsWith(DOCS_ORIGIN + DOCS_ROOT)) { "annotation page must be in Field docs" }
         require(input.note.isNotBlank()) { "annotation note is empty" }
         val now = System.currentTimeMillis()
         val old = read().annotations
         val id = input.id.ifBlank { UUID.randomUUID().toString() }
         val existing = old.firstOrNull { it.id == id }
+        val anchor = if (existing != null && input.anchor == DocsAnnotationAnchor()) existing.anchor else input.anchor
+        val replyEntry = reply.trim().takeIf { it.isNotEmpty() && existing != null }?.let {
+            DocsAnnotationEntry(id = UUID.randomUUID().toString().take(12), kind = "reply", author = "human", text = it, atEpochMs = now)
+        }
         val saved = input.copy(
             id = id,
             tags = docsAnnotationTags(input.note, input.tags),
+            anchor = anchor,
             createdAtEpochMs = existing?.createdAtEpochMs ?: now,
             updatedAtEpochMs = now,
+            resolvedAtEpochMs = existing?.resolvedAtEpochMs,
+            resolution = existing?.resolution.orEmpty(),
+            kind = existing?.kind ?: "note",
+            thread = existing?.thread.orEmpty() + listOfNotNull(replyEntry),
+            source = existing?.source?.takeIf { anchor == existing.anchor },
+            handoff = existing?.handoff,
             // An edit does not relocate a note: whoever first recorded it stays recorded.
             recordedInCheckout = existing?.recordedInCheckout?.ifBlank { null } ?: docsImprovementDirectory.display,
+            recordedAtCommit = existing?.recordedAtCommit?.ifBlank { null } ?: docsCheckoutHead(),
         )
         write(old.filterNot { it.id == id } + saved)
         saved
     }
 
-    fun resolve(id: String, request: DocsAnnotationResolve): DocsAnnotation? = synchronized(lock) {
+    fun resolve(id: String, request: DocsAnnotationResolve): DocsAnnotation? = fileLocked {
         var result: DocsAnnotation? = null
         val now = System.currentTimeMillis()
         val updated = read().annotations.map {
@@ -560,16 +661,35 @@ private object DocsAnnotationStore {
                 resolvedAtEpochMs = if (request.resolved) now else null,
                 resolution = if (request.resolved) request.resolution else "",
                 updatedAtEpochMs = now,
+                thread = it.thread + DocsAnnotationEntry(
+                    id = UUID.randomUUID().toString().take(12),
+                    kind = if (request.resolved) "resolution" else "reopen",
+                    author = "human",
+                    text = request.resolution,
+                    atEpochMs = now,
+                ),
             ).also { value -> result = value }
         }
         if (result != null) write(updated)
         result
     }
 
-    fun delete(id: String): Boolean = synchronized(lock) {
+    fun delete(id: String): Boolean = fileLocked {
         val current = read().annotations
         val updated = current.filterNot { it.id == id }
         if (updated.size == current.size) false else true.also { write(updated) }
+    }
+
+    /**
+     * The in-JVM lock plus a POSIX record lock on `<store>.lock`, which `tools/docs_notes.py`
+     * takes too (`fcntl.lockf`). Without the second, the tool's sync and the panel's save are two
+     * read-modify-writes of one file and the later one silently discards the other's note.
+     */
+    private fun <T> fileLocked(block: () -> T): T = synchronized(lock) {
+        Files.createDirectories(path.parent)
+        FileChannel.open(path.resolveSibling("${path.fileName}.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->
+            channel.lock().use { block() }
+        }
     }
 
     private fun read(): DocsAnnotationFile = runCatching {
@@ -651,6 +771,36 @@ internal fun writeDocsAnnotationsAtomically(path: Path, json: Json, annotations:
     Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
 }
 
+/**
+ * `HEAD` of the checkout this server attributes notes to, or empty. Recorded on a note's first
+ * save so `tools/docs_notes.py` has a commit to match the quote against even when the page did
+ * not say which commit it was built from. Bounded, and never fatal: a note is worth saving
+ * without it.
+ */
+private fun docsCheckoutHead(): String {
+    val directory = docsImprovementDirectory.path ?: return ""
+    return runCatching {
+        val process = ProcessBuilder("git", "rev-parse", "HEAD").directory(directory.toFile())
+            .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+        val out = process.inputStream.bufferedReader().readText().trim()
+        if (process.waitFor(5, TimeUnit.SECONDS) && process.exitValue() == 0 && out.matches(Regex("[0-9a-f]{40}"))) out else ""
+    }.getOrDefault("")
+}
+
+/**
+ * The interpreter prefix for `tools/docs_notes.py`: `AFIELD_DOCS_NOTES_PYTHON` if set, else
+ * `uv run --no-project`, else `python3`. The tool is stdlib-only, so any of them will do;
+ * `uv` is looked for by path as well as on `PATH`, because a JVM launched from a GUI has a
+ * PATH that rarely includes it.
+ */
+internal fun docsNotesPython(): List<String> {
+    System.getenv("AFIELD_DOCS_NOTES_PYTHON")?.trim()?.takeIf { it.isNotEmpty() }?.let { return listOf(it) }
+    val searched = System.getenv("PATH").orEmpty().split(java.io.File.pathSeparator).filter { it.isNotBlank() }.map { Paths.get(it, "uv") } +
+        listOf(Paths.get("/opt/homebrew/bin/uv"), Paths.get("/usr/local/bin/uv"), Paths.get(System.getProperty("user.home"), ".local", "bin", "uv"))
+    val uv = searched.firstOrNull { Files.isExecutable(it) }
+    return if (uv != null) listOf(uv.toString(), "run", "--no-project", "python") else listOf("python3")
+}
+
 private object DocsImprovementTask {
     private val lock = Any()
     private var state = DocsImprovementStatus(enabled = docsAccessPolicy.improvementEnabled, workingDirectory = docsImprovementDirectory.display)
@@ -661,7 +811,7 @@ private object DocsImprovementTask {
         // the run has no defined blast radius and must not begin at all.
         val directory = docsImprovementDirectory.path
             ?: return idle("Cannot run: ${docsImprovementDirectory.problem}. Set $DOCS_IMPROVEMENT_DIRECTORY_ENV to a checkout.")
-        val selected = DocsAnnotationStore.list().filter { it.resolvedAtEpochMs == null && (tags.isEmpty() || it.tags.any(tags::contains)) }
+        val selected = DocsAnnotationStore.list().filter { it.isQueued() && (tags.isEmpty() || it.tags.any(tags::contains)) }
         if (selected.isEmpty()) return idle("No unresolved annotations match this filter.")
         val runId = UUID.randomUUID().toString()
         // Loud, and on the server's own log rather than only in an HTTP response: a run
@@ -678,7 +828,7 @@ private object DocsImprovementTask {
             startedAtEpochMs = System.currentTimeMillis(),
             enabled = true, workingDirectory = directory.toString(),
         )
-        thread(name = "docs-annotation-improvement", isDaemon = true) { run(runId, selected, directory) }
+        thread(name = "docs-annotation-improvement", isDaemon = true) { run(runId, tags, directory) }
         state
     }
 
@@ -689,22 +839,32 @@ private object DocsImprovementTask {
         workingDirectory = docsImprovementDirectory.display,
     )
 
-    private fun run(runId: String, notes: List<DocsAnnotation>, directory: Path) {
-        val prompt = buildString {
-            appendLine("Improve Field4 documentation in this checkout using the user annotations below.")
-            appendLine("Make narrow source-grounded edits. After fixing a note, update ${DocsAnnotationStore.path} by setting resolvedAtEpochMs and a short resolution. Preserve unresolved notes and unrelated work.")
-            notes.forEach { appendLine("- ${it.id} ${it.pageUrl} tags=${it.tags}: ${it.note} quote=${it.anchor.exact}") }
-        }
+    /**
+     * Runs the revision harness, `tools/docs_notes.py revise`, rather than one agent over every
+     * note. The harness associates each note with its source lines, partitions the queue per
+     * page, runs one agent per page in parallel, and applies what each agent recorded to this
+     * store itself — so the agents are never told to edit the store, which the old single prompt
+     * did, and which a sandboxed agent outside `~/.afield` could not do anyway.
+     *
+     * The agent is [DOCS_IMPROVEMENT_AGENT_ENV] (`codex` unless set, as it always was here).
+     * Nothing is committed: `--commit` is for a human running the harness by hand.
+     */
+    private fun run(runId: String, tags: List<String>, directory: Path) {
+        val agent = System.getenv(DOCS_IMPROVEMENT_AGENT_ENV)?.trim()?.takeIf { it in setOf("codex", "claude") } ?: "codex"
+        val command = docsNotesPython() + listOf(
+            "tools/docs_notes.py", "--store", DocsAnnotationStore.path.toString(), "--repo", directory.toString(),
+            "revise", "--agent", agent,
+        ) + tags.flatMap { listOf("--tag", it) }
+        lprintln("docs-annotations", "Documentation improvement run=$runId: ${command.joinToString(" ")}")
         val log = StringBuilder()
         var code = -1
         try {
-            val process = ProcessBuilder("codex", "exec", "--sandbox", "workspace-write", prompt)
-                .directory(directory.toFile()).redirectErrorStream(true).start()
+            val process = ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true).start()
             process.inputStream.bufferedReader().useLines { lines -> lines.forEach { if (log.length < 120_000) log.appendLine(it) } }
             code = process.waitFor()
-            finish(runId, code, if (code == 0) "Documentation improvement task finished in $directory." else "Documentation improvement task in $directory exited with $code.", log.toString())
+            finish(runId, code, if (code == 0) "Documentation revision finished in $directory." else "Documentation revision in $directory exited with $code.", log.toString())
         } catch (error: Exception) {
-            finish(runId, code, "Could not run Codex: ${error.message}", log.appendLine(error.toString()).toString())
+            finish(runId, code, "Could not run the documentation revision harness: ${error.message}", log.appendLine(error.toString()).toString())
         }
     }
     private fun finish(runId: String, code: Int, message: String, log: String) = synchronized(lock) {
@@ -858,7 +1018,8 @@ internal fun Route.installDocsAnnotationRoutes(
     }
     post("/api/docs-annotations") {
         if (call.refuseUnlessSameSiteDocsClient(policy)) return@post
-        call.respond(DocsAnnotationStore.upsert(call.receive<DocsAnnotationUpsert>().annotation))
+        val upsert = call.receive<DocsAnnotationUpsert>()
+        call.respond(DocsAnnotationStore.upsert(upsert.annotation, upsert.reply))
     }
     put("/api/docs-annotations/{id}/resolve") {
         if (call.refuseUnlessSameSiteDocsClient(policy)) return@put

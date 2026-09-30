@@ -48,7 +48,7 @@ fun installContextWhyTools() {
 /** [WhyDoesThisResolve] for [box]. */
 fun whyDoesThisResolve(box: Box, name: String?, type: String?): WhyDoesThisResolveResult {
     require(!name.isNullOrBlank() || !type.isNullOrBlank()) { "give a name or a type" }
-    val json = ContextResolution.explain(box, name?.takeIf { it.isNotBlank() }, type?.takeIf { it.isNotBlank() })
+    val json = ContextResolution.explain(box, name?.takeIf { it.isNotBlank() }, type?.takeIf { it.isNotBlank() }).json
     @Suppress("UNCHECKED_CAST")
     val plain = ContextWhy.plain(json) as Map<String, Any?>
     return WhyDoesThisResolveResult(plain["summary"] as? String ?: "", plain)

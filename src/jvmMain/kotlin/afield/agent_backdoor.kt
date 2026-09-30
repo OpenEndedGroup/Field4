@@ -230,10 +230,25 @@ internal fun openHeadlessScratchDocument(name: String = "agent-task"): SessionIn
     return info
 }
 
-/** Stop everything in a headless document and forget it — unless a browser has since attached to it. */
+/**
+ * Stop everything in a headless document and forget it — unless a browser has since attached to it.
+ *
+ * AI4's own capture page ([afield.ai.agent.BoxOutputCapture]) is not "a browser that attached": it is
+ * released first, and its websocket's detach is waited for, or every task that looked at a box would
+ * leave its document (and everything its boxes launched) alive for good.
+ */
 internal fun closeHeadlessDocument(info: SessionInformation) {
+    val captured = runCatching { afield.ai.agent.BoxOutputCapture.isHeld(info) }.getOrDefault(false)
+    if (captured) {
+        info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+        runCatching { afield.ai.agent.BoxOutputCapture.release(info) }
+        val deadline = System.currentTimeMillis() + 5_000
+        while (info.sessions.isNotEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(25)
+    }
     if (info.sessions.isNotEmpty()) return
-    info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+    if (!captured) info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+    // The capture socket's detach may already have retired it (cleanupDetachedSession on the last client).
+    if (documents.values.none { it === info }) return
     cleanupDetachedSession(info)
 }
 
@@ -255,6 +270,18 @@ internal fun runAgentTaskHeadless(
     } finally {
         if (live == null) closeHeadlessDocument(info)
     }
+}
+
+/**
+ * The eval suite, one task per fresh headless scratch document, with the leak evidence filled in:
+ * documents open before and after, and AI4 capture pages still open after (both should return to
+ * where they started — every task document is closed, and its capture page with it).
+ */
+internal fun runAgentEvalHeadless(request: afield.ai.agent.AgentEvalRequest): afield.ai.agent.AgentEvalReport {
+    val before = documents.size
+    val report = afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+    return report.copy(documentsBefore = before, documentsAfter = documents.size,
+        capturePagesOpenAfter = runCatching { afield.ai.agent.BoxOutputCapture.openPages() }.getOrDefault(-1))
 }
 
 internal fun attachDocumentSession(
@@ -1389,7 +1416,7 @@ fun installAgentBackdoorHandlers() {
         val payload = when {
             box == null -> failure("no box $uid in the attached document")
             field("name") == null && field("type") == null -> failure("why needs a name or a type")
-            else -> runCatching { ContextResolution.explain(box, field("name"), field("type")) }
+            else -> runCatching { ContextResolution.explain(box, field("name"), field("type")).json }
                 .getOrElse { failure(it.message ?: it.toString()) }
         }
         reply(Message("agent-why").payload(payload))
@@ -1473,7 +1500,7 @@ fun installAgentBackdoorHandlers() {
         val request = Json.decodeFromJsonElement<afield.ai.agent.AgentEvalRequest>(message.payload!!)
         agentBackdoorScope.launch {
             val report = runCatching {
-                afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+                runAgentEvalHeadless(request)
             }.getOrElse { t ->
                 afield.ai.agent.AgentEvalReport(request.mode, "", request.model, 0, 0, emptyList(), 0, null, null,
                     error = "${t.javaClass.simpleName}: ${t.message}")

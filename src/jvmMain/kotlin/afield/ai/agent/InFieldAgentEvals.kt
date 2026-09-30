@@ -4,7 +4,7 @@ import afield.ai.core.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
- * A small eval suite for Field's own agent: seven tasks, each a goal, the setup it starts from,
+ * A small eval suite for Field's own agent: ten tasks (three of them graded by pixels), each a goal, the setup it starts from,
  * checks that decide it, and a scripted solution.
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
@@ -42,6 +42,66 @@ object InFieldAgentEvals {
     val TICKER_CODE = "var n = 0\nloop { n++ }"
     val DIVIDER_CODE = "val xs = listOf<Int>()\nprintln(\"first is \" + xs.first())"
     val DIVIDER_FIXED = "val xs = listOf<Int>()\nprintln(xs.firstOrNull()?.let { \"first is \$it\" } ?: \"empty\")"
+
+    // ---- visual tasks: the defect, or the answer, is in the pixels ----------------------------------
+
+    /**
+     * A swatch whose colour is decided by the cascade: a stylesheet `!important` red, a more specific
+     * green, an inline purple — and then a script that sets an inline `!important` blue, which beats
+     * them all. Reading the source invites "red"; the picture is blue.
+     */
+    val SWATCH_CODE = "display(\"main\", \"\"\"<style>#sw { background: #d62728 !important; } .x .y #sw { background: #2ca02c; }</style>" +
+        "<div class=\"x\"><div class=\"y\"><div id=\"sw\" style=\"background: #9467bd; width: 240px; height: 120px\"></div></div></div>" +
+        "<script>document.getElementById('sw').style.setProperty('background', '#1f77b4', 'important')</script>\"\"\")"
+    val ANSWER_CODE = "println(\"blue\")"
+
+    val SUN_CODE = "display(\"main\", \"\"\"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"200\">" +
+        "<rect width=\"300\" height=\"200\" fill=\"#0b1a4a\"/><circle cx=\"150\" cy=\"100\" r=\"50\" fill=\"#ffd700\"/></svg>\"\"\")"
+
+    /** Percent heights inside a parent of auto height compute to auto: five empty bars, zero pixels tall. */
+    val BARS_CODE = "val values = listOf(20, 40, 60, 80, 100)\n" +
+        "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:\${v}%'></div>\" }\n" +
+        "display(\"main\", \"<div style='background:white; padding:8px'>\$bars</div>\")"
+    val BARS_FIXED = BARS_CODE.replace("height:\${v}%", "height:\${v}px")
+
+    /**
+     * Look → revise → look. Chart's container has class `bars`, and *another* box, Theme, displays a
+     * stylesheet that makes `.bars` `flex-direction: row-reverse` — output panels share one page, so a
+     * style in one panel reaches every other. The bars therefore appear in the reverse of the list's
+     * order, and sorting the list ascending, the obvious first move, draws them tallest-first. Chart's
+     * own code does not say so; the picture does. (The first version put row-reverse in Chart's own
+     * code; the live model read it and got it right first time, twice, so it tested nothing.) The
+     * scripted solution makes the mistake on purpose, sees it, and fixes it.
+     */
+    val THEME_CODE = "display(\"main\", \"<style>.bars { flex-direction: row-reverse; justify-content: flex-end; }</style>" +
+        "<div style='font: 12px monospace'>theme loaded</div>\")"
+    private fun chartCode(values: String, tallestRed: Boolean): String =
+        "val values = $values\n" +
+            "val top = values.maxOrNull()\n" +
+            "val bars = values.joinToString(\"\") { v -> \"<div style='width:24px; margin:3px; height:\${v}px; background:\" + " +
+            (if (tallestRed) "(if (v == top) \"#d62728\" else \"#1f77b4\")" else "\"#1f77b4\"") + " + \"'></div>\" }\n" +
+            "display(\"main\", \"<div class='bars' style='display:flex; align-items:flex-end; " +
+            "background:white; padding:8px; height:110px'>\$bars</div>\")"
+    /**
+     * Look → revise → look, with a trap no source states: the output panel's width. Five 28 px bars
+     * fit; ten wrap onto a second row, which the picture shows and the code cannot (the panel is as
+     * wide as the box, and a new box's frame is chosen by Field). `bars-sorted-red` turned out not to
+     * force a revision: the live model read the stylesheet in the other box through ListContents and
+     * pre-empted it in all four runs.
+     */
+    private fun rowCode(values: String, nowrap: Boolean): String =
+        "val values = $values\n" +
+            "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:28px; " +
+            "margin:3px; background:#1f77b4; height:\${v}px'></div>\" }\n" +
+            "display(\"main\", \"<div style='background:white; padding:8px" + (if (nowrap) "; white-space:nowrap" else "") + "'>\$bars</div>\")"
+    val ROW_CODE = rowCode("listOf(20, 30, 40, 50, 60)", nowrap = false)
+    val ROW_FIRST_TRY = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = false)
+    val ROW_FIXED = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = true)
+
+    val CHART_CODE = chartCode("listOf(55, 25, 90, 40, 70)", tallestRed = false)
+    /** The first try: sorted ascending, tallest red — drawn tallest-first because of row-reverse. */
+    val CHART_FIRST_TRY = chartCode("listOf(55, 25, 90, 40, 70).sorted()", tallestRed = true)
+    val CHART_FIXED = chartCode("listOf(55, 25, 90, 40, 70).sortedDescending()", tallestRed = true)
 
     val tasks: List<EvalTask> = listOf(
         EvalTask(
@@ -132,7 +192,95 @@ object InFieldAgentEvals {
                 call("RunBoxRequest", "box" to "Divider"),
                 "Divider now uses firstOrNull and prints empty.")
         ),
+        EvalTask(
+            "swatch-colour",
+            AgentTaskRequest(
+                goal = "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
+                    "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                    "blue, purple, orange), and run Answer.",
+                setup = steps(call("NewBoxRequest", "name" to "Swatch", "code" to SWATCH_CODE), call("RunBoxRequest", "box" to "Swatch")),
+                checks = listOf(check("last-run-ok:Answer"), check("output-contains:Answer:blue"),
+                    check("property-lacks:Answer:code:red")),
+                taskId = "swatch-colour"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Swatch", "note" to "which colour the rectangle is"),
+                call("NewBoxRequest", "name" to "Answer", "code" to ANSWER_CODE),
+                call("RunBoxRequest", "box" to "Answer"),
+                "The rectangle is blue: the script's inline !important wins. Answer prints blue.")
+        ),
+        EvalTask(
+            "draw-sun",
+            AgentTaskRequest(
+                goal = "Make a box named Sun that uses display to show, in the output channel \"main\", a 300 by 200 SVG " +
+                    "picture: a dark blue night sky filling the whole picture, with a filled yellow circle (the sun) in it. " +
+                    "Run it and check that the picture looks right.",
+                checks = listOf(check("box-exists:Sun"), check("last-run-ok:Sun"), check("output-picture:Sun"),
+                    check("output-colour:Sun:#0a1850:0.15"), check("output-colour:Sun:#ffe000:0.01")),
+                taskId = "draw-sun"
+            ),
+            steps(call("NewBoxRequest", "name" to "Sun", "code" to SUN_CODE),
+                call("RunBoxRequest", "box" to "Sun"),
+                call("ViewBoxOutputRequest", "box" to "Sun", "note" to "a yellow sun on a dark blue sky"),
+                "Sun displays a yellow circle on a dark blue sky; the capture shows both.")
+        ),
+        EvalTask(
+            "bars-visible",
+            AgentTaskRequest(
+                goal = "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
+                    "them. Fix Bars so that the five bars are visible at those heights, run it, and check what it shows.",
+                setup = steps(call("NewBoxRequest", "name" to "Bars", "code" to BARS_CODE), call("RunBoxRequest", "box" to "Bars")),
+                checks = listOf(check("last-run-ok:Bars"), check("output-colour:Bars:#1f77b4:0.02")),
+                taskId = "bars-visible"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Bars", "note" to "are the bars visible?"),
+                call("SetBoxPropertyRequest", "box" to "Bars", "value" to BARS_FIXED),
+                call("RunBoxRequest", "box" to "Bars"),
+                call("ViewBoxOutputRequest", "box" to "Bars", "note" to "five blue bars of increasing height"),
+                "Percent heights had no definite parent height to resolve against, so every bar was 0 px tall; they are px now.")
+        ),
+        EvalTask(
+            "bars-sorted-red",
+            AgentTaskRequest(
+                goal = "The box Chart shows five bars. Change it so that, as displayed, the bars are sorted by height — " +
+                    "shortest on the left, tallest on the right — and the tallest bar is red (#d62728) while the others " +
+                    "stay blue. Run it and check what it shows; keep going until it looks right.",
+                setup = steps(call("NewBoxRequest", "name" to "Theme", "code" to THEME_CODE), call("RunBoxRequest", "box" to "Theme"),
+                    call("NewBoxRequest", "name" to "Chart", "code" to CHART_CODE), call("RunBoxRequest", "box" to "Chart")),
+                checks = listOf(check("last-run-ok:Chart"), check("output-colour:Chart:#d62728:0.01"),
+                    check("output-rising:Chart:#1f77b4,#d62728:5")),
+                taskId = "bars-sorted-red"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Chart", "note" to "the starting order"),
+                call("SetBoxPropertyRequest", "box" to "Chart", "value" to CHART_FIRST_TRY),
+                call("RunBoxRequest", "box" to "Chart"),
+                call("ViewBoxOutputRequest", "box" to "Chart", "note" to "sorted shortest-to-tallest, tallest red?"),
+                call("SetBoxPropertyRequest", "box" to "Chart", "value" to CHART_FIXED),
+                call("RunBoxRequest", "box" to "Chart"),
+                call("ViewBoxOutputRequest", "box" to "Chart", "note" to "rising left to right, the rightmost red"),
+                "Something outside Chart reverses its bars (they drew tallest-first after sorting ascending); sorted descending they rise, the tallest red.")
+        ),
+        EvalTask(
+            "bars-one-row",
+            AgentTaskRequest(
+                goal = "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
+                    "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
+                    "right. Run it and check what it shows; keep going until it looks right.",
+                setup = steps(call("NewBoxRequest", "name" to "Row", "code" to ROW_CODE), call("RunBoxRequest", "box" to "Row")),
+                checks = listOf(check("last-run-ok:Row"), check("output-rising:Row:#1f77b4:10")),
+                taskId = "bars-one-row"
+            ),
+            steps(call("SetBoxPropertyRequest", "box" to "Row", "value" to ROW_FIRST_TRY),
+                call("RunBoxRequest", "box" to "Row"),
+                call("ViewBoxOutputRequest", "box" to "Row", "note" to "ten bars in one row?"),
+                call("SetBoxPropertyRequest", "box" to "Row", "value" to ROW_FIXED),
+                call("RunBoxRequest", "box" to "Row"),
+                call("ViewBoxOutputRequest", "box" to "Row", "note" to "ten bars in one row, rising"),
+                "Ten bars wrapped onto two rows in the panel's width; white-space:nowrap keeps them in one.")
+        ),
     )
+
+    /** Tasks whose checks read pixels; they need a Field that can capture box output. */
+    val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible", "bars-sorted-red", "bars-one-row")
 
     fun byId(id: String): EvalTask = tasks.firstOrNull { it.id == id }
         ?: throw IllegalArgumentException("No eval task '$id'. Known: ${tasks.joinToString { it.id }}")
@@ -145,6 +293,17 @@ data class AgentEvalRequest(
     val mode: String = "scripted",
     val model: String = "",
     val maxToolRounds: Int = 24,
+    /** `on` / `off` pins the distilled lessons in every task's instructions; blank = default ([AgentLessons]). */
+    val lessons: String = "",
+    /** After the run, distil its tool misuse into the lessons file ([AgentLessons.distilAndWrite]). */
+    val distil: Boolean = false,
+    /**
+     * Path to a saved [AgentEvalReport]: run nothing, distil that report instead (implies [distil]).
+     * How a change to [AgentLessons.distil] is applied to a run already paid for.
+     */
+    val distilFrom: String = "",
+    /** Withhold ViewBoxOutputRequest from every task (the counterfactual for the visual tasks). */
+    val blind: Boolean = false,
 )
 
 @Serializable
@@ -159,6 +318,24 @@ data class AgentEvalReport(
     val inputTokens: Long?,
     val outputTokens: Long?,
     val error: String = "",
+    /** Sum of [AgentTaskResult.misuseCalls]. */
+    val misuseCalls: Int = 0,
+    /** Sum of [AgentTaskResult.imagesSeen]. */
+    val imagesSeen: Int = 0,
+    val rounds: Int = 0,
+    /** Whether the lessons were on, and which version of the file was read. */
+    val lessons: Boolean = false,
+    val lessonsVersion: Int = 0,
+    /** Set when the request asked to distil: what was written. */
+    val distilled: List<String> = emptyList(),
+    val distilMessage: String = "",
+    /**
+     * Leak evidence, filled by the server's entry points ([afield.runAgentEvalHeadless]): open documents
+     * before and after the run, and AI4 capture pages still open after it. -1 = not measured.
+     */
+    val documentsBefore: Int = -1,
+    val documentsAfter: Int = -1,
+    val capturePagesOpenAfter: Int = -1,
 )
 
 object AgentEvalRunner {
@@ -171,21 +348,31 @@ object AgentEvalRunner {
      * its result; the server passes one that opens a headless scratch document per task.
      */
     fun run(request: AgentEvalRequest, runTask: (AgentTaskRequest) -> AgentTaskResult): AgentEvalReport {
+        if (request.distilFrom.isNotBlank()) {
+            val saved = AgentLessons.readReport(request.distilFrom)
+            val outcome = AgentLessons.distilAndWrite(saved)
+            return saved.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
+        }
         val started = System.nanoTime()
         val chosen = if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
         val live = request.mode == "live"
         require(!live || chosen.size <= MAX_LIVE_TASKS) { "A live eval is capped at $MAX_LIVE_TASKS tasks." }
         val rounds = if (live) request.maxToolRounds.coerceAtMost(MAX_LIVE_ROUNDS) else request.maxToolRounds
+        val lessonsOn = AgentLessons.resolve(request.lessons)
+        val lessonsPin = if (lessonsOn) "on" else "off"
+        val lessonsVersion = AgentLessons.rawText()?.let { AgentLessons.parse(it).version } ?: 0
         val results = chosen.map { task ->
             runTask(task.request.copy(
                 mode = request.mode,
                 model = request.model,
                 maxToolRounds = rounds,
-                script = if (live) "" else task.solution
+                script = if (live) "" else task.solution,
+                lessons = lessonsPin,
+                blind = request.blind,
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
-        return AgentEvalReport(
+        val report = AgentEvalReport(
             mode = request.mode,
             provider = results.firstOrNull { it.provider.isNotBlank() }?.provider.orEmpty(),
             model = results.firstOrNull { it.model.isNotBlank() }?.model.orEmpty(),
@@ -195,6 +382,14 @@ object AgentEvalRunner {
             elapsedMs = (System.nanoTime() - started) / 1_000_000,
             inputTokens = sum { it.inputTokens },
             outputTokens = sum { it.outputTokens },
+            misuseCalls = results.sumOf { it.misuseCalls },
+            imagesSeen = results.sumOf { it.imagesSeen },
+            rounds = results.sumOf { it.rounds.coerceAtLeast(0) },
+            lessons = lessonsOn,
+            lessonsVersion = lessonsVersion,
         )
+        if (!request.distil) return report
+        val outcome = AgentLessons.distilAndWrite(report)
+        return report.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
     }
 }

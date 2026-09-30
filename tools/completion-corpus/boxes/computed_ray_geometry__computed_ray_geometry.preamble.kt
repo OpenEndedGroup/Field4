@@ -7,6 +7,7 @@ import afield.four.buffers.*
 import afield.four.modules.ClusterGeometryDemo
 var Box.lab by Inheritance<ClusterGeometryDemo>() /**/
 val Once.lab by Onceing<ClusterGeometryDemo>() /**/
+val Why.lab by Whying() /**/
 /*start*/
 /*compute-structure-type:Cluster:Cluster*/
 class Cluster(
@@ -122,5 +123,7 @@ fun BufferParameters.asClusters(): Clusters =
 /*compute-pc-binding-group:invalidMode*/ var ComputeMeshGroup.invalidMode by ComputeMeshGroup.BoundFromStructure<Int>()
 var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
 val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+val Why.window by Whying() /*from:agent_graphics_context*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/
+val Why.renderer by Whying() /*from:agent_graphics_context*/ /**/

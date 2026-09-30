@@ -95,5 +95,7 @@ fun BufferParameters.asHistory(): History =
 /*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // x world grain cell; y stroke seconds; z gain; w debug view.
 var Box.window by Inheritance<Window>() /*from:flow_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:flow_renderer*/ /**/
+val Why.window by Whying() /*from:flow_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:flow_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:flow_renderer*/ /**/
+val Why.renderer by Whying() /*from:flow_renderer*/ /**/

@@ -1,0 +1,112 @@
+name: ai4_sees_its_output_demo
+description: >
+  AI4 looking at what a box shows, and using what it saw. Seven boxes; replay into a fresh document,
+  then run them left to right, one at a time. The three "AI4 ..." boxes return at once; each one's
+  AI4 chat panel (the "ai-chat" output under it) fills in when its turn finishes, with the tool
+  calls, the picture AI4 was shown (ViewBoxOutputRequest attaches it to the conversation, and the
+  panel prints it), the reply, and a line of checks that read the document and its pixels.
+
+    1. Swatch — run it first. A rectangle whose colour is settled by the cascade: a stylesheet
+       `!important` red, a more specific green, an inline purple, and then a script that sets an
+       inline `!important` blue. Read the source and you will probably say red; look and it is blue.
+    2. Bars — run it second. Five bars meant to be 20..100 px tall. They are percent heights inside
+       a parent of auto height, so each computes to 0 px and the panel is an empty white strip.
+    3. AI4 looks (scripted, no model) — replays the eval task "swatch-colour" through the real tools:
+       ViewBoxOutputRequest on Swatch, then a box Answer that prints blue. Needs no credentials; its
+       panel says "Scripted replay — no model was called".
+    4. AI4 looks (live) — the same question to the configured model (Field's /welcome AI settings).
+       Its answer goes in a box named Colour; the checks want it to print blue.
+    5. AI4 fixes what it sees (live) — asks the model to make Bars visible and check. It should look,
+       see the blank strip, change the heights, run Bars, and look again. The checks measure the
+       share of Bars' picture that is the bars' blue.
+
+    6. Row — run it after the others. Five 28 px bars in one row.
+    7. AI4 look, revise, look (live) — asks for five more bars in the same row. Ten wrap onto a
+       second row at this panel's width, which nothing in the code says; the model has to see it,
+       revise, and look again. The checks count the bars in the picture and want ten, rising.
+
+  Carry on the conversation in any panel afterwards, as with any AI4 turn; ask what it saw. See
+  dev_docs/ai/AI4_SEES_ITS_OUTPUT.md for the tool, the checks, and the measurements.
+operations:
+  - create:
+      box: ai4_sees_swatch
+      name: Swatch
+      frame: { x: 80.0, y: 80.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          display("main", """<style>#sw { background: #d62728 !important; } .x .y #sw { background: #2ca02c; }</style><div class="x"><div class="y"><div id="sw" style="background: #9467bd; width: 240px; height: 120px"></div></div></div><script>document.getElementById('sw').style.setProperty('background', '#1f77b4', 'important')</script>""")
+  - create:
+      box: ai4_sees_bars
+      name: Bars
+      frame: { x: 80.0, y: 420.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          val values = listOf(20, 40, 60, 80, 100)
+          val bars = values.joinToString("") { v -> "<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:${v}%'></div>" }
+          display("main", "<div style='background:white; padding:8px'>$bars</div>")
+  - create:
+      box: ai4_sees_scripted
+      name: AI4 looks (scripted, no model)
+      frame: { x: 480.0, y: 80.0, w: 340.0, h: 60.0 }
+      properties:
+        code: |
+          // Replays the eval task "swatch-colour": look at Swatch, then answer. No model is called.
+          askFieldAgent(
+              goal = "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
+                  "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                  "blue, purple, orange), and run Answer.",
+              checks = listOf("last-run-ok:Answer", "output-contains:Answer:blue", "property-lacks:Answer:code:red"),
+              mode = "scripted",
+              script = fieldAgentEvalScript("swatch-colour"),
+          )
+  - create:
+      box: ai4_sees_live_swatch
+      name: AI4 looks (live)
+      frame: { x: 1320.0, y: 80.0, w: 340.0, h: 60.0 }
+      properties:
+        code: |
+          // The same question to the configured model. It has ViewBoxOutputRequest; whether it looks is up to it.
+          askFieldAgent(
+              goal = "The box Swatch displays a coloured rectangle. Make a box named Colour that prints just the name " +
+                  "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                  "blue, purple, orange), and run Colour. Say how you know.",
+              checks = listOf("last-run-ok:Colour", "output-contains:Colour:blue", "property-lacks:Colour:code:red"),
+              mode = "live",
+          )
+  - create:
+      box: ai4_sees_live_bars
+      name: AI4 fixes what it sees (live)
+      frame: { x: 2160.0, y: 80.0, w: 340.0, h: 60.0 }
+      properties:
+        code: |
+          // Checks: output-picture:B (a capture that is not blank), output-colour:B:#rrggbb:share (that much of it is that colour).
+          askFieldAgent(
+              goal = "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
+                  "them. Look at what it shows, fix Bars so that the five bars are visible at those heights, run it, and " +
+                  "look again to check.",
+              checks = listOf("last-run-ok:Bars", "output-picture:Bars", "output-colour:Bars:#1f77b4:0.02"),
+              mode = "live",
+          )
+  - create:
+      box: ai4_sees_row
+      name: Row
+      frame: { x: 80.0, y: 760.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          val values = listOf(20, 30, 40, 50, 60)
+          val bars = values.joinToString("") { v -> "<div style='display:inline-block; vertical-align:bottom; width:28px; margin:3px; background:#1f77b4; height:${v}px'></div>" }
+          display("main", "<div style='background:white; padding:8px'>$bars</div>")
+  - create:
+      box: ai4_sees_live_row
+      name: AI4 look, revise, look (live)
+      frame: { x: 3000.0, y: 80.0, w: 340.0, h: 60.0 }
+      properties:
+        code: |
+          // output-rising:B:#hex:N counts the bars in B's picture: at least N, rising left to right.
+          askFieldAgent(
+              goal = "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
+                  "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
+                  "right. Run it and check what it shows; keep going until it looks right.",
+              checks = listOf("last-run-ok:Row", "output-rising:Row:#1f77b4:10"),
+              mode = "live",
+          )

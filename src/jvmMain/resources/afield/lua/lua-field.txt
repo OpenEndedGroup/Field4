@@ -1,0 +1,37 @@
+# Field's own Lua API — what the prelude (prelude.lua) adds to a box's Lua — for completion:
+#   name(signature) | what it does
+# LuaCatalogTest checks this against a box's live state in both directions.
+display(html) | HTML into the box's `output` panel; display(channel, html) into a panel of that name
+line([points]) | a new line to draw; line{{x, y}, ...} starts it as a polyline through the points
+lines(line, ...) | draws lines in the box's `lines` panel; a last table {w=, h=, channel=, fit=} sets the panel
+spawn(fn, ...) | runs fn as a coroutine, resumed once a frame while the box is launched
+wait([seconds]) | inside a spawned function: pause for seconds, or one frame
+slider(label, min, max, [initial], fn) | a slider in the `controls` panel; fn(value) each time it moves; returns initial
+checkbox(label, [initial], fn) | a checkbox in the `controls` panel; fn(checked) on each click
+play(sequence, [options]) | loops a sequence through Field's pattern voice until the box stops: {cps=, wave=, decay=, sustain=, gain=}
+hush() | stops what this box is playing
+field.describe(value) | value as a line note shows it: 42, "hi", {1, 2, 3}, a table of 5 entries
+field.display(html) | the same as display
+field.named(name) | the box of that name in this document, or nil
+field.line([points]) | the same as line
+field.lines(line, ...) | the same as lines
+field.slider(label, min, max, [initial], fn) | the same as slider
+field.checkbox(label, [initial], fn) | the same as checkbox
+field.mini(sequence) | a sequence as mini-notation: {60, {64, 67}, false} is "60 [64 67] ~"
+field.play(sequence, [options]) | the same as play
+field.hush() | the same as hush
+field.render(sequence, [options]) | the sequence rendered offline and shown as a player; returns {frames, seconds, sampleRate, peak, rms, crossings}; options as play's, plus cycles= and wav=path
+field.clock() | wall-clock seconds, for timing
+field.frame() | Field's Runloop frame number
+field.spawn(fn, ...) | the same as spawn
+field.wait([seconds]) | the same as wait
+Line.moveTo(x, y) | starts a new piece of the line at (x, y); returns the line
+Line.lineTo(x, y) | a straight segment to (x, y)
+Line.cubicTo(ax, ay, bx, by, x, y) | a cubic Bézier through control points a and b to (x, y)
+Line.close() | closes the current piece back to its start
+Line.circle(x, y, r) | a circle of radius r around (x, y)
+Line.rect(x, y, w, h) | a rectangle
+Line.color(r, g, b, [a]) | the line's colour, each 0..1
+Line.width(w) | the stroke width
+Line.fill([on]) | fills closed pieces
+Line.stroke([on]) | strokes the line (on by default)
