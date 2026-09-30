@@ -29,8 +29,11 @@ This guide summarizes the layout and responsibilities of the afield.four Vulkan 
 - `afield/four/buffers/DynamicBuffer.kt`: Growable buffer that can append/resize and reupload when content changes.
 - `afield/four/buffers/FrameBufferGroup.kt`: Manages per-frame buffer instances for multi-buffered uniform/storage data.
 - `afield/four/buffers/Structure.kt`: CPU-side struct abstraction for UBO/SSBO data with binding, reflection-based offsets, and buffer proxying.
+- `afield/four/buffers/GpuSchema.kt`: Kotlin-to-GPU ABI layer. Reflects `@GpuStruct` primary-constructor data into one std430-compatible schema used for CPU packing, array stride/address arithmetic, GLSL struct generation, and `GL_EXT_buffer_reference` views. The schema is intentionally independent of Vulkan allocation/binding so the same layout can live in a PC/UBO/SSBO or behind a device address.
 - `afield/four/buffers/magic.kt`: DSL for declaring buffer parameters (usage, memory, addressability, per-frame, etc.) and linking to VulkanBuffer/VMA allocations.
 - `afield/four/buffers/vma.kt`: Central VMA allocator setup/teardown hooks used by buffers.
+
+The intended structured-memory direction is **schema + allocation + address**, not a distinct Kotlin type for every Vulkan placement. A `GpuSchema<T>` owns layout and serialization; `VulkanBuffer`/`FrameBufferGroup` own memory and lifetime; reflected physical-pointer members move device addresses through push constants. GLSL currently receives typed `buffer_reference` declarations from the schema because that is the ergonomic source-language form available today. The Kotlin ABI deliberately does not bake in typed-pointer identity, leaving the backend free to lower the same schema/address model to `SPV_KHR_untyped_pointers` and later descriptor-heap/device-generated-command machinery.
 
 ## Modules, Pipelines & Mesh Work
 - `afield/four/modules/Module.kt`: Core graphics pipeline builder (vertex/fragment/task/mesh), shader introspection-driven descriptor + push-constant wiring, mesh registry, and hot-reloadable `ModulePointer`.
@@ -79,8 +82,8 @@ This guide summarizes the layout and responsibilities of the afield.four Vulkan 
 - `afield/four/util/Projection.kt`: Projection matrix utilities (perspective/orthographic) using Options defaults.
 - `afield/four/util/MapOfSequences.kt`: Small scheduler/sequence helper used for per-frame callbacks and update hooks.
 - `afield/four/util/AutoDisposer.kt`: Deferred cleanup queue that lets resources register cleanup actions drained on the render thread.
-- `afield/four/util/templating.kt`: Lightweight templating engine used to preprocess shader/live-coding code with resolvers and macro expansion.
-- `afield/four/util/superpc.kt`: Push-constant DSL + GLSL generator that reflects Kotlin PC classes into explicit offset blocks and accessors.
+- `afield/four/util/templating.kt`: Lightweight templating engine used to preprocess shader/live-coding code with resolvers and macro expansion. `GpuSchema.template` is designed to be published directly into a box's `shaderTemplate` map so `{{ Particle.all }}` can carry Kotlin layout declarations into GLSL in the same live-coding unit.
+- `afield/four/util/superpc.kt`: Earlier push-constant-specific reflection experiment. Useful precedent, but `GpuSchema` is the general structured-memory direction: it is placement-independent and handles arbitrary addressable buffers as well as push-constant serialization.
 - `afield/four/util/16bits.kt`: Helpers for working with 16-bit/half precision packing/unpacking.
 - `afield/four/util/util.kt`: OS detection, memory type selection, math helpers, and generic utility functions.
 
@@ -89,8 +92,10 @@ This guide summarizes the layout and responsibilities of the afield.four Vulkan 
 - `afield/four/examples/NewMain7_dynamicNumberOfVerts.kt`: Example of dynamically sized vertex data and rendering.
 - `afield/four/examples/NewMain7_errorChecking.kt`: Demonstrates error handling/reload paths for modules/shaders.
 - `afield/four/examples/NewMain8_writeToImage.kt`: Shows writing to images/offscreen targets and sampling results.
+- `public/docs/gpu_schema.md`: Worked `@GpuStruct` examples covering nested schemas, template expansion, addressable arrays, push-constant binding, ABI hashes, and the roadmap to untyped pointers.
+- `public/docs/assets/canonical_graphics/42056e8d-ec8b-4bf8-b84a-1cd1d8524510_*`: Canonical graphics lesson updated from the old `PushConstants<T>` experiment to a `GpuSchema<Particle>` array stored in an addressable Field buffer and reached through a reflected physical pointer.
 
 ## Live-Coding Stdlib
 - `afield/stdlib/shaders.kt`: Live-coding glue that preprocesses/compiles shaders, wires macro-expanded module constructors (`moduleHere`, etc.), manages shader reloads, error surfacing, and generates inserts/bindings for uniforms/push constants within the hot-reload loop.
 
-How it hangs together: `Renderer` owns the device/swapchain/queues and calls into `RenderTarget`/`ComputeTarget` each frame; those targets invoke `Module`/`MeshModule`/`ComputeModule` instances built via shader `Introspection` and buffer/memory helpers. Device wrappers handle lifecycle and sync, buffers feed data (UBO/SSBO/vertices), targets orchestrate image transitions and outputs (swapchain, offscreen, XR), textures/video provide sampled resources, and utilities manage input, templating, push constants, and configuration.
+How it hangs together: `Renderer` owns the device/swapchain/queues and calls into `RenderTarget`/`ComputeTarget` each frame; those targets invoke `Module`/`MeshModule`/`ComputeModule` instances built via shader `Introspection` and buffer/memory helpers. Device wrappers handle lifecycle and sync, buffers feed data (UBO/SSBO/vertices), targets orchestrate image transitions and outputs (swapchain, offscreen, XR), textures/video provide sampled resources, and utilities manage input, templating, push constants, structured GPU schemas, and configuration.
