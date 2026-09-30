@@ -14,6 +14,7 @@ import afield.macros.checkIntroductionAndExecute
 import afield.macros.checkPreambleAndExecute
 import afield.macros.gatherPreambleUpwards
 import afield.macros.standardExecutionPractice
+import afield.macros.rebaseFragmentDiagnostics
 import afield.stdlib.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.async
@@ -1492,7 +1493,8 @@ class KotlinExecution : BoxExecution {
                     val results = mutableListOf<ResultValue?>()
 
                     for (breakIndex in breaks) {
-                        val source = lines.subList(at, breakIndex).joinToString("\n")
+                        val fragmentStart = at
+                        val source = lines.subList(fragmentStart, breakIndex).joinToString("\n")
                         at = breakIndex
 
                         // 1) macro-expand this fragment (off the main thread), rewriting __line__ markers with a
@@ -1525,7 +1527,7 @@ class KotlinExecution : BoxExecution {
                                         reply = trace.reply,
                                         originSession = request.originSession,
                                         code = request.normalizedCode,
-                                        diagnostics = diagnostics,
+                                        diagnostics = rebaseFragmentDiagnostics(diagnostics, fragmentStart),
                                         fallbackLine = request.exec.line + request.normalizedCode.lines().size,
                                         property = request.exec.property
                                     )
@@ -1559,7 +1561,7 @@ class KotlinExecution : BoxExecution {
                                         box,
                                         reply,
                                         request.originSession,
-                                        diagnostics,
+                                        rebaseFragmentDiagnostics(diagnostics, fragmentStart),
                                         request.exec.line,
                                         request.exec.property
                                     )

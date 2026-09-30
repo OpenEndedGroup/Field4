@@ -7,6 +7,17 @@ import kotlinx.coroutines.withContext
 import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
+/** Compiler locations are relative to the snippet after a `//%-` break. Editor locations are
+ * relative to the whole box. Discard the snippet's absolute position, which may also have changed
+ * during macro expansion; line and column remain useful in the original source. */
+fun rebaseFragmentDiagnostics(diagnostics: List<ScriptDiagnostic>, lineOffset: Int): List<ScriptDiagnostic> =
+    if (lineOffset == 0) diagnostics else diagnostics.map { diagnostic ->
+        val location = diagnostic.location ?: return@map diagnostic
+        fun shift(position: kotlin.script.experimental.api.SourceCode.Position) =
+            position.copy(line = position.line + lineOffset, absolutePos = null)
+        diagnostic.copy(location = location.copy(start = shift(location.start), end = location.end?.let(::shift)))
+    }
+
 
 suspend fun standardExecutionPractice(
     ki: KotlinScriptEngine,
@@ -34,7 +45,8 @@ suspend fun standardExecutionPractice(
     var ll = 0
     var result = mutableListOf<ResultValue?>()
     breaks.forEach {
-        val code = lines.subList(at, it).joinToString("\n")
+        val fragmentStart = at
+        val code = lines.subList(fragmentStart, it).joinToString("\n")
         // Offload macro expansion (PSI parsing + AST rewriting) off the Framer
         val code2 = if (KotlinEngineConfig.offloadCompilation) {
             withContext(ki.compilationDispatcher) { ki.applyMacros(implicits[0] as Box, code) }
@@ -85,7 +97,13 @@ suspend fun standardExecutionPractice(
             runSetupBlock("attic") { c, e, x -> checkAtticAndExecute(box, c, e, x) }
             if (setupFailed) return result
         }
-        val ret = ki.exec(code3, onCompileError, onEvalError, onEvalException, implicits)
+        val ret = ki.exec(
+            code3,
+            { onCompileError(rebaseFragmentDiagnostics(it, fragmentStart)) },
+            { onEvalError(rebaseFragmentDiagnostics(it, fragmentStart)) },
+            onEvalException,
+            implicits
+        )
         at = it
         result.add(ret)
         if (ret is ResultValue.Error) {
