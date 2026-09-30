@@ -65,6 +65,8 @@ data class DocsPassAction(
     val state: String = "done",
     val text: String = "",
     val abandon: Boolean = false,
+    /** A handoff batch: `decisions`, `navigation`, `captures`, `site` or `code`. */
+    val batch: String = "",
 )
 
 @Serializable
@@ -103,7 +105,10 @@ data class DocsPassQuickResult(val exitCode: Int, val output: String)
 private val docsPassJson = Json { encodeDefaults = true; explicitNulls = true }
 
 /** The actions that answer at once, and may run while a job does (stopping one, most of all). */
-private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "cancel-job")
+private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "cancel-job", "group-handoffs", "set-batch")
+
+/** The batches `tools/docs_notes.py` knows, in the order they are worked through. */
+private val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code")
 
 private val docsPassTag = Regex("[a-z][a-z0-9_-]{0,63}")
 private val docsPassPage = Regex("[A-Za-z0-9_./-]{1,200}")
@@ -142,6 +147,14 @@ internal fun docsPassArguments(request: DocsPassAction): List<String>? {
             listOf("handoff-close", "--state", request.state, "--", request.id, text)
         }
         "cancel-job" -> emptyList()
+        "group-handoffs" -> listOf("handoff-group")
+        "set-batch" -> if (docsPassHandoffId.matches(request.id) && request.batch in docsPassBatches) {
+            listOf("handoff-set-batch", "--", request.id, request.batch)
+        } else null
+        "start-session" -> if (request.batch in docsPassBatches) listOf("handoff-session", request.batch) else null
+        "end-session" -> if (request.batch in docsPassBatches) {
+            listOf("handoff-session-end", request.batch) + if (request.abandon) listOf("--abandon") else emptyList()
+        } else null
         else -> null
     }
 }
