@@ -1,44 +1,33 @@
-import afield.four.buffers.*
 import afield.four.util.*
-import afield.stdlib.linalg.*
 
-@GpuStruct
-data class Particle(
-    val position: Vector3f,
-    val color: Vector4f
-)
+class MyPC(
+    var a : Vec4,
+    var b : Vec4,
+    var c : Vec4
+) : PushConstants<MyPC>()
 
-val particleSchema = gpuSchema<Particle>()
-val particles = listOf(
-    Particle(vec(-0.8f, -0.6f, 0f), vec(1f, 0.15f, 0.1f, 1f)),
-    Particle(vec( 0.8f, -0.6f, 0f), vec(0.1f, 0.9f, 0.3f, 1f)),
-    Particle(vec( 0.0f,  0.7f, 0f), vec(0.2f, 0.4f, 1.0f, 1f))
-)
+var pc = MyPC(vec(1,0,0,1),vec(1,2,3,4),vec(1,2,3,4))
 
-// The Kotlin declaration is the one ABI description. The shader in this box expands
-// {{ Particle.all }} into the matching struct + buffer-reference declarations.
-shaderTemplate["Particle"] = particleSchema.template
+shaderTemplate["pc"] = mapOf("dec" to Resolver { pc.glsl() })
 
-val particleData = defaultBuffer {
-    size = (particles.size * particleSchema.strideBytes).bytes
-}.buffer
+pc.a.x=0.3f
+pc.otherDeclarations = "layout(offset=${pc.nextFreeOffset(16)}) uint foo;"
 
-particleData.mapAndWrite_bytes {
-    particleSchema.writeArray(particles, this)
-}
-
-//%-
+// then there's an exection break here
+//%- 
 var module = moduleHere {
-    primitiveType = triangles
+    primitiveType = triangle_strip
 }
 
-var m = Mesh()
-module += m named "gpu-schema triangle"
+var m  = Mesh()
+
+module += m named "my mesh"
 renderer += module
 
-// `particles` is reflected as a physical pointer, so assigning a Field buffer here writes
-// its device address into the push constant. The struct array itself remains in the buffer.
-m.particles = { particleData }
-m.count = { particles.size.toUInt() }
+m.push.bindAll { pc }
+m.foo = { 10u }
 
-m.resize(particles.size)
+m.set(3, 3) {
+    pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
+    tri.add(0,1,2)
+}
