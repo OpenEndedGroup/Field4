@@ -59,13 +59,15 @@ import json
 import os
 import re
 import shlex
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import threading
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator
 from urllib.parse import unquote, urlsplit
@@ -1458,14 +1460,24 @@ class AgentSpec:
     argv: Callable[[str, Path, "Partition", str], list[str]]
 
 
+def find_executable(name: str) -> str:
+    """*name* on PATH, or in the usual install places: a Field started from the Dock has a PATH
+    without ~/.local/bin (claude) or /opt/homebrew/bin (codex, uv)."""
+    for candidate in (shutil.which(name), str(Path.home() / ".local" / "bin" / name), f"/opt/homebrew/bin/{name}",
+                      f"/usr/local/bin/{name}"):
+        if candidate and Path(candidate).is_file() and os.access(candidate, os.X_OK):
+            return candidate
+    return name
+
+
 def _claude_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list[str]:
     allowed = ["Read", "Edit", "Write", "Glob", "Grep", f"Bash({cli}:*)", "Bash(git diff:*)", "Bash(git log:*)",
                "Bash(git blame:*)", "Bash(git show:*)", "Bash(git grep:*)", "Bash(rg:*)", "Bash(grep:*)"]
-    return ["claude", "-p", prompt, "--permission-mode", "acceptEdits", "--allowedTools", ",".join(allowed)]
+    return [find_executable("claude"), "-p", prompt, "--permission-mode", "acceptEdits", "--allowedTools", ",".join(allowed)]
 
 
 def _codex_argv(prompt: str, root: Path, partition: Partition, cli: str) -> list[str]:
-    return ["codex", "exec", "--sandbox", "workspace-write", prompt]
+    return [find_executable("codex"), "exec", "--sandbox", "workspace-write", prompt]
 
 
 AGENTS = {"claude": AgentSpec("claude", _claude_argv), "codex": AgentSpec("codex", _codex_argv)}
@@ -1490,6 +1502,83 @@ class RunResult:
     rejected: list[str]
     log_path: Path
     seconds: float
+    interrupted: bool = False
+
+
+class RunControl:
+    """Stopping a run, two ways.
+
+    *Stop after current pages*: a `STOP` file in the checkout's `.field-backdoor/docs-notes/`
+    (written by `stop`, or by the /docs-pass.html page); no new page is started, and pages already
+    running finish normally. *Stop now*: `kill()` (SIGTERM or SIGINT to the harness, or
+    `stop --now`) terminates every running agent's whole process group. Either way the harness
+    then applies whatever each agent had already journaled, so no recorded outcome is lost, and
+    notes nobody got to stay open.
+    """
+
+    def __init__(self, stop_file: Path):
+        self.stop_file = stop_file
+        self.killed = False
+        self._processes: set[subprocess.Popen] = set()
+        self._lock = threading.Lock()
+
+    def stop_requested(self) -> bool:
+        return self.killed or self.stop_file.exists()
+
+    def register(self, process: subprocess.Popen) -> None:
+        with self._lock:
+            self._processes.add(process)
+            if self.killed:
+                _terminate_group(process)
+
+    def unregister(self, process: subprocess.Popen) -> None:
+        with self._lock:
+            self._processes.discard(process)
+
+    def kill(self) -> None:
+        with self._lock:
+            self.killed = True
+            for process in list(self._processes):
+                _terminate_group(process)
+
+
+def _terminate_group(process: subprocess.Popen) -> None:
+    with contextlib.suppress(ProcessLookupError, PermissionError, OSError):
+        os.killpg(process.pid, signal.SIGTERM)
+
+
+def notes_state_dir(root: Path) -> Path:
+    return root / ".field-backdoor" / "docs-notes"
+
+
+class Progress:
+    """`progress.json` in the run directory, rewritten on every change, for anything watching."""
+
+    def __init__(self, run_dir: Path, run_id: str, agent: str, jobs: int, partitions: list["Partition"]):
+        self.path = run_dir / "progress.json"
+        self._lock = threading.Lock()
+        self.data: dict[str, Any] = {
+            "runId": run_id, "pid": os.getpid(), "agent": agent, "jobs": jobs, "state": "running",
+            "startedAtEpochMs": now_ms(), "partitions": [
+                {"key": p.key, "slug": p.slug, "pages": p.pages, "notes": len(p.notes), "state": "pending"}
+                for p in partitions]}
+        self._write()
+
+    def update(self, slug: str | None = None, **fields: Any) -> None:
+        with self._lock:
+            if slug is None:
+                self.data.update(fields)
+            else:
+                for item in self.data["partitions"]:
+                    if item["slug"] == slug:
+                        item.update(fields)
+            self.data["updatedAtEpochMs"] = now_ms()
+            self._write()
+
+    def _write(self) -> None:
+        temp = self.path.with_suffix(".tmp")
+        temp.write_text(json.dumps(self.data, indent=2, ensure_ascii=False), encoding="utf-8")
+        os.replace(temp, self.path)
 
 
 def file_digest(path: Path) -> str | None:
@@ -1497,7 +1586,7 @@ def file_digest(path: Path) -> str | None:
 
 
 def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, store: Store, all_notes: list[dict[str, Any]],
-                  git: Git, timeout: int, cli: str) -> RunResult:
+                  git: Git, timeout: int, cli: str, control: RunControl | None = None) -> RunResult:
     brief = render_brief(partition, all_notes, git)
     owned = "\n".join(f"  - {f}" for f in partition.files) or "  - (none located: find the source for the pages below; edit only that)"
     draft_dir = run_dir / f"{partition.slug}.handoffs"
@@ -1516,16 +1605,29 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     with open(log_path, "w", encoding="utf-8") as log:
         log.write(f"$ {agent.name} (partition {partition.key}, {len(partition.notes)} notes)\n")
         log.flush()
+        # Its own session, so stopping kills the agent's whole process tree, not just its launcher.
         try:
-            process = subprocess.run(agent.argv(prompt, git.root, partition, cli), cwd=git.root, env=env,
-                                     stdout=log, stderr=subprocess.STDOUT, timeout=timeout, check=False)
-            exit_code = process.returncode
-        except subprocess.TimeoutExpired:
-            log.write(f"\n[docs_notes] timed out after {timeout}s\n")
-            exit_code = 124
+            process = subprocess.Popen(agent.argv(prompt, git.root, partition, cli), cwd=git.root, env=env,
+                                       stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         except FileNotFoundError as error:
             log.write(f"\n[docs_notes] could not start the agent: {error}\n")
+            process = None
             exit_code = 127
+        if process is not None:
+            if control:
+                control.register(process)
+            try:
+                exit_code = process.wait(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                _terminate_group(process)
+                process.wait()
+                log.write(f"\n[docs_notes] timed out after {timeout}s\n")
+                exit_code = 124
+            finally:
+                if control:
+                    control.unregister(process)
+            if control and control.killed:
+                log.write("\n[docs_notes] stopped by request\n")
     changed = [f for f in partition.files if file_digest(git.root / f) != before[f]]
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
@@ -1538,7 +1640,8 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
             ops.append(op)
         else:
             rejected.append(f"{op.get('op')} on {op.get('id')} (not in this partition)")
-    return RunResult(partition, exit_code, changed, ops, rejected, log_path, time.monotonic() - started)
+    return RunResult(partition, exit_code, changed, ops, rejected, log_path, time.monotonic() - started,
+                     interrupted=bool(control and control.killed))
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
@@ -1551,8 +1654,10 @@ def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> 
             apply_op(notes, {**op, "runId": run_id, "changedFiles": result.changed if op.get("op") == "resolve" else None})
         for note in result.partition.notes:
             if note["id"] not in touched and not blocking:
+                why = "was stopped before recording an outcome" if result.interrupted else \
+                    f"left no outcome (exit {result.exit_code})"
                 apply_op(notes, {"op": "run", "id": note["id"], "author": "harness", "runId": run_id,
-                                 "text": f"{agent_name} left no outcome (exit {result.exit_code}); still open",
+                                 "text": f"{agent_name} {why}; still open",
                                  "changedFiles": result.changed})
 
     store.mutate(change)
@@ -1574,8 +1679,8 @@ def commit_partition(git: Git, result: RunResult, run_id: str) -> str | None:
     return git.head()
 
 
-def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
-    log = print
+def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl | None = None) -> int:
+    log = lambda message: print(message, flush=True)  # noqa: E731 — a watcher reads this live
     if not args.no_sync:
         log("sync: associating notes with source …")
         sync_store(store, git, log=(lambda m: log("  " + m)) if args.verbose else (lambda _m: None))
@@ -1621,23 +1726,60 @@ def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
         raise SystemExit("These files already have uncommitted changes; commit them or pass --allow-dirty:\n  " + "\n  ".join(busy))
     log(f"run {run_id}: logs in {run_dir.relative_to(git.root)}")
 
+    state_dir = notes_state_dir(git.root)
+    control = control or RunControl(state_dir / "STOP")
+    with contextlib.suppress(FileNotFoundError):
+        control.stop_file.unlink()  # a STOP left over from an earlier run is not a request to stop this one
+    (state_dir / "latest-run").write_text(run_id, encoding="utf-8")
+    pid_file = state_dir / "revise.pid"
+    pid_file.write_text(str(os.getpid()), encoding="utf-8")
+    progress = Progress(run_dir, run_id, agent.name, args.jobs, partitions)
+    previous_handlers = _install_stop_signals(control)
+
     results: list[RunResult] = []
-    with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
-        futures = {pool.submit(run_partition, p, agent=agent, run_dir=run_dir, store=store, all_notes=notes, git=git,
-                               timeout=args.timeout, cli=cli): p for p in partitions}
-        for future in as_completed(futures):
-            result = future.result()
-            apply_run(store, result, run_id, agent.name)
-            results.append(result)
-            resolved = sum(1 for op in result.ops if op.get("op") == "resolve")
-            asked = sum(1 for op in result.ops if op.get("op") == "question")
-            log(f"  done {result.partition.key}: exit {result.exit_code}, {resolved}/{len(result.partition.notes)} resolved, "
-                f"{asked} question(s), {len(result.changed)} file(s) changed, {result.seconds:.0f}s")
-            for problem in result.rejected:
-                log(f"    rejected journal entry: {problem}")
-            for op in result.ops:
-                if op.get("op") == "handoff":
-                    log(f"    handoff ({op.get('scope')}{', blocking' if op.get('blocking') else ''}): {op.get('title')} → {op.get('path')}")
+    pending = list(partitions)
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
+            running: dict[Any, Partition] = {}
+            while pending or running:
+                while pending and len(running) < max(1, args.jobs) and not control.stop_requested():
+                    partition = pending.pop(0)
+                    progress.update(partition.slug, state="running", startedAtEpochMs=now_ms())
+                    running[pool.submit(run_partition, partition, agent=agent, run_dir=run_dir, store=store,
+                                        all_notes=notes, git=git, timeout=args.timeout, cli=cli, control=control)] = partition
+                if control.stop_requested() and progress.data["state"] == "running":
+                    progress.update(state="stopping")
+                    log(f"stop requested: {len(running)} page(s) finishing, {len(pending)} not started")
+                if not running:
+                    break
+                done, _ = wait(list(running), timeout=1.0, return_when=FIRST_COMPLETED)
+                for future in done:
+                    partition = running.pop(future)
+                    result = future.result()
+                    apply_run(store, result, run_id, agent.name)
+                    results.append(result)
+                    resolved = sum(1 for op in result.ops if op.get("op") == "resolve")
+                    asked = sum(1 for op in result.ops if op.get("op") == "question")
+                    handed = sum(1 for op in result.ops if op.get("op") == "handoff")
+                    progress.update(partition.slug, state="interrupted" if result.interrupted else "done",
+                                    exit=result.exit_code, resolved=resolved, questions=asked, handoffs=handed,
+                                    changed=result.changed, seconds=round(result.seconds), log=str(result.log_path))
+                    log(f"  done {result.partition.key}: exit {result.exit_code}, {resolved}/{len(result.partition.notes)} resolved, "
+                        f"{asked} question(s), {handed} handoff(s), {len(result.changed)} file(s) changed, {result.seconds:.0f}s"
+                        + (" (stopped)" if result.interrupted else ""))
+                    for problem in result.rejected:
+                        log(f"    rejected journal entry: {problem}")
+                    for op in result.ops:
+                        if op.get("op") == "handoff":
+                            log(f"    handoff ({op.get('scope')}{', blocking' if op.get('blocking') else ''}): {op.get('title')} → {op.get('path')}")
+    finally:
+        _restore_stop_signals(previous_handlers)
+        with contextlib.suppress(FileNotFoundError):
+            pid_file.unlink()
+    for partition in pending:
+        progress.update(partition.slug, state="not started")
+    if pending:
+        log(f"{len(pending)} page(s) not started; their notes stay in the queue")
 
     git.forget()
     dirty_after = git.status_paths()
@@ -1672,7 +1814,27 @@ def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
         {"key": r.partition.key, "exit": r.exit_code, "changed": r.changed, "log": str(r.log_path),
          "ops": [{k: op.get(k) for k in ("op", "id", "text")} for op in r.ops]} for r in results]}
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    progress.update(state="killed" if control.killed else "stopped" if pending else "finished", finishedAtEpochMs=now_ms())
+    with contextlib.suppress(FileNotFoundError):
+        control.stop_file.unlink()
+    if control.killed or pending:
+        return 3
     return 0 if all(r.exit_code == 0 for r in results) else 1
+
+
+def _install_stop_signals(control: RunControl) -> dict[int, Any]:
+    """SIGTERM/SIGINT mean *stop now*; only possible from the main thread, which is where the CLI runs."""
+    if threading.current_thread() is not threading.main_thread():
+        return {}
+    previous = {}
+    for number in (signal.SIGTERM, signal.SIGINT):
+        previous[number] = signal.signal(number, lambda *_: control.kill())
+    return previous
+
+
+def _restore_stop_signals(previous: dict[int, Any]) -> None:
+    for number, handler in previous.items():
+        signal.signal(number, handler)
 
 
 def _matches_page(note: dict[str, Any], pages: list[str] | None) -> bool:
@@ -1686,6 +1848,18 @@ def _matches_page(note: dict[str, Any], pages: list[str] | None) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def _stop_here(root: Path, now: bool) -> None:
+    """`stop` for a revise running in this checkout itself (not a pass worktree)."""
+    state_dir = notes_state_dir(root)
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / "STOP").write_text(str(now_ms()), encoding="utf-8")
+    print("stop requested: no new page will start", flush=True)
+    pid_file = state_dir / "revise.pid"
+    if now and pid_file.is_file() and _pid_alive(int(pid_file.read_text().strip() or 0)):
+        os.kill(int(pid_file.read_text().strip()), signal.SIGTERM)
+        print("sent SIGTERM to the harness; running agents are being stopped", flush=True)
 
 
 def cmd_handoff(args: argparse.Namespace, store: Store, git: Git) -> int:
@@ -1735,6 +1909,440 @@ def page_url_for(spec: str, git: Git) -> str:
         rel = rel[:-3]
         rel = "index.html" if rel == "index" else (rel.removesuffix("/index") + "/")
     return DOCS_ORIGIN + DOCS_ROOT + rel
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# A revision pass: a worktree, drained, reviewed, rebuilt, committed and landed
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# `pass …` is the lifecycle /docs-pass.html drives, and it works the same from a terminal. The
+# pass lives in its own worktree on its own branch, so agents editing for an hour never share a
+# working tree with anything else that lands on main. Its state is one JSON file in the *primary*
+# checkout (the one --repo names), so the page can find the pass again after a restart.
+
+
+def pass_state_path(root: Path) -> Path:
+    return root / ".field-backdoor" / "docs-pass" / "current.json"
+
+
+def load_pass(root: Path) -> dict[str, Any] | None:
+    path = pass_state_path(root)
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+
+
+def save_pass(root: Path, state: dict[str, Any] | None) -> None:
+    path = pass_state_path(root)
+    if state is None:
+        with contextlib.suppress(FileNotFoundError):
+            path.unlink()
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(".tmp")
+    temp.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    os.replace(temp, path)
+
+
+def require_pass(root: Path) -> dict[str, Any]:
+    state = load_pass(root)
+    if not state:
+        raise SystemExit("There is no revision pass; start one with `pass create`.")
+    if not Path(state["worktree"]).is_dir():
+        raise SystemExit(f"The pass's worktree {state['worktree']} is gone; `pass finish --abandon` clears it.")
+    return state
+
+
+def default_pass_path(root: Path, stamp: str) -> Path:
+    siblings = root.parent / f"{root.name}-worktrees"
+    if siblings.is_dir():
+        return siblings / f"docs-pass-{stamp}"
+    return root.parent / f"{root.name}-docs-pass-{stamp}"
+
+
+def pass_create(git: Git, *, base: str, path: str | None) -> dict[str, Any]:
+    existing = load_pass(git.root)
+    if existing and Path(existing["worktree"]).is_dir():
+        raise SystemExit(f"A pass is already open in {existing['worktree']} ({existing['branch']}).")
+    stamp = time.strftime("%Y%m%d-%H%M")
+    branch = f"docs-pass/{stamp}"
+    worktree = Path(path).expanduser().resolve() if path else default_pass_path(git.root, stamp)
+    base_commit = git.run("rev-parse", base).strip()
+    print(f"creating {worktree} on {branch} from {base} ({base_commit[:10]})", flush=True)
+    git.run("worktree", "add", "-b", branch, str(worktree), base_commit)
+    # Two things a fresh worktree of this repo lacks and a docs build or commit guard needs: the
+    # LFS jars (checked out as pointers) and kotlin-js-store/yarn.lock (ignored, so never checked
+    # out). Neither is needed to revise, and both failures are reported rather than fatal.
+    lfs = subprocess.run(["git", "lfs", "checkout"], cwd=worktree, capture_output=True, text=True, check=False)
+    print("git lfs checkout: " + ("ok" if lfs.returncode == 0 else (lfs.stderr.strip() or "unavailable")), flush=True)
+    lock = git.root / "kotlin-js-store" / "yarn.lock"
+    if lock.is_file() and not (worktree / "kotlin-js-store" / "yarn.lock").exists():
+        (worktree / "kotlin-js-store").mkdir(exist_ok=True)
+        shutil.copy2(lock, worktree / "kotlin-js-store" / "yarn.lock")
+        print("copied kotlin-js-store/yarn.lock", flush=True)
+    state = {"worktree": str(worktree), "branch": branch, "base": base, "baseCommit": base_commit,
+             "primary": str(git.root), "createdAtEpochMs": now_ms(), "runs": []}
+    save_pass(git.root, state)
+    print(f"pass open: {worktree}", flush=True)
+    return state
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except (ProcessLookupError, PermissionError):
+        return False
+    except OSError:
+        return False
+    return True
+
+
+def latest_progress(worktree: Path) -> dict[str, Any] | None:
+    state_dir = notes_state_dir(worktree)
+    latest = state_dir / "latest-run"
+    if not latest.is_file():
+        return None
+    path = state_dir / "runs" / latest.read_text(encoding="utf-8").strip() / "progress.json"
+    if not path.is_file():
+        return None
+    progress = json.loads(path.read_text(encoding="utf-8"))
+    pid_file = state_dir / "revise.pid"
+    alive = pid_file.is_file() and _pid_alive(int(pid_file.read_text().strip() or 0))
+    if progress.get("state") in ("running", "stopping") and not alive:
+        progress["state"] = "died"  # the harness is gone without writing its own ending
+    progress["alive"] = alive
+    progress["stopRequested"] = (state_dir / "STOP").exists()
+    return progress
+
+
+def changed_files(wt: Git, base_commit: str) -> list[dict[str, Any]]:
+    """Everything that differs from the pass's base, committed on the branch or not, untracked too."""
+    files: dict[str, dict[str, Any]] = {}
+    for line in wt.run("diff", "--numstat", base_commit, check=False).splitlines():
+        added, removed, path = line.split("\t", 2)
+        files[path] = {"path": path, "status": "modified", "added": _int(added), "removed": _int(removed)}
+    for line in wt.run("diff", "--name-status", base_commit, check=False).splitlines():
+        code, _, path = line.partition("\t")
+        if path in files:
+            files[path]["status"] = {"A": "added", "D": "deleted"}.get(code[:1], "modified")
+    for path, code in wt.status_paths().items():
+        if code == "??" and path not in files and not path.startswith(".field-backdoor/"):
+            text = (wt.root / path).read_text(encoding="utf-8", errors="replace") if (wt.root / path).is_file() else ""
+            files[path] = {"path": path, "status": "untracked", "added": text.count("\n") + (1 if text and not text.endswith("\n") else 0), "removed": 0}
+    return sorted(files.values(), key=lambda f: f["path"])
+
+
+def _int(value: str) -> int:
+    return int(value) if value.isdigit() else 0
+
+
+def pass_status(git: Git, store: Store) -> dict[str, Any]:
+    notes = store.notes()
+    counts: dict[str, int] = {}
+    for note in notes:
+        state = note_state(note)
+        counts[state] = counts.get(state, 0) + 1
+    handoffs = []
+    for item in notes:
+        if item.get("kind") != "handoff":
+            continue
+        info = item.get("handoff") or {}
+        handoffs.append({"id": item["id"], "title": item.get("note", ""), "scope": info.get("scope"),
+                         "blocking": bool(info.get("blocking")), "state": info.get("state", "open"),
+                         "path": info.get("path"), "page": info.get("page") or item.get("pageUrl"),
+                         "resolution": item.get("resolution", ""), "createdAtEpochMs": item.get("createdAtEpochMs"),
+                         "waiting": sum(1 for n in notes if blocked_by(n) == item["id"])})
+    result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs,
+                              "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
+                              "pass": load_pass(git.root)}
+    state = result["pass"]
+    if state and Path(state["worktree"]).is_dir():
+        wt = Git(Path(state["worktree"]))
+        base = state["base"]
+        result["worktree"] = {
+            "exists": True, "head": wt.head(),
+            "ahead": _int(wt.run("rev-list", "--count", f"{state['baseCommit']}..HEAD", check=False).strip()),
+            "baseAdvanced": _int(git.run("rev-list", "--count", f"{state['baseCommit']}..{base}", check=False).strip()),
+            "landed": subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", base], cwd=wt.root).returncode == 0
+                      and wt.head() != state["baseCommit"],
+            "changed": changed_files(wt, state["baseCommit"]),
+            "uncommitted": len([p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]),
+            "handoffDocuments": sorted(p.relative_to(wt.root).as_posix() for p in (wt.root / HANDOFF_DIR).glob("*.md")
+                                       if p.name != "README.md") if (wt.root / HANDOFF_DIR).is_dir() else [],
+        }
+        result["progress"] = latest_progress(wt.root)
+    elif state:
+        result["worktree"] = {"exists": False}
+    return result
+
+
+def safe_relative(path: str) -> str:
+    candidate = Path(path)
+    if candidate.is_absolute() or ".." in candidate.parts or not path.strip():
+        raise SystemExit(f"not a path inside the checkout: {path!r}")
+    return candidate.as_posix()
+
+
+def pass_diff(git: Git, path: str | None) -> list[dict[str, Any]]:
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    files = changed_files(wt, state["baseCommit"])
+    if path:
+        path = safe_relative(path)
+        files = [f for f in files if f["path"] == path]
+    for item in files:
+        if item["status"] == "untracked":
+            text = (wt.root / item["path"]).read_text(encoding="utf-8", errors="replace")
+            item["patch"] = f"--- /dev/null\n+++ b/{item['path']}\n" + "".join(f"+{line}\n" for line in text.split("\n"))
+        else:
+            item["patch"] = wt.run("diff", state["baseCommit"], "--", item["path"], check=False)
+        if len(item["patch"]) > 400_000:
+            item["patch"] = item["patch"][:400_000] + "\n… (truncated; see git diff in the worktree)\n"
+    return files
+
+
+def pass_discard(git: Git, store: Store, path: str) -> None:
+    """Throw one file's changes away, and put back in the queue what they claimed to resolve."""
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    path = safe_relative(path)
+    tracked_at_base = bool(wt.run("ls-tree", "--name-only", state["baseCommit"], "--", path, check=False).strip())
+    if tracked_at_base:
+        wt.run("restore", f"--source={state['baseCommit']}", "--staged", "--worktree", "--", path)
+    else:
+        with contextlib.suppress(FileNotFoundError):
+            (wt.root / path).unlink()
+        wt.run("rm", "--cached", "--quiet", "--ignore-unmatch", "--", path, check=False)
+    runs = set(state.get("runs", []))
+
+    def reopen(notes: list[dict[str, Any]]) -> int:
+        count = 0
+        for note in notes:
+            if note.get("kind") == "handoff" and (note.get("handoff") or {}).get("path") == path \
+                    and (note.get("handoff") or {}).get("state", "open") in ("open", "taken"):
+                _close_handoff(notes, {"id": note["id"], "state": "dropped"}, "human", "handoff document discarded in the pass")
+                count += 1
+                continue
+            if not is_resolved(note):
+                continue
+            last = next((e for e in reversed(note.get("thread", [])) if e.get("kind") == "resolution"), None)
+            if last and last.get("runId") in runs and path in (last.get("changedFiles") or []):
+                apply_op(notes, {"op": "reopen", "id": note["id"], "author": "human",
+                                 "text": f"its edit to {path} was discarded in the docs pass"})
+                count += 1
+        return count
+
+    count = store.mutate(reopen)
+    print(f"discarded {path}; {count} note(s) or handoff(s) back in the queue", flush=True)
+
+
+def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    state_dir = notes_state_dir(wt.root)
+    state_dir.mkdir(parents=True, exist_ok=True)
+    before = (state_dir / "latest-run").read_text().strip() if (state_dir / "latest-run").is_file() else ""
+    try:
+        return revise(args, store, wt)
+    finally:
+        after = (state_dir / "latest-run").read_text().strip() if (state_dir / "latest-run").is_file() else ""
+        if after and after != before:
+            current = load_pass(git.root) or state
+            current.setdefault("runs", []).append(after)
+            save_pass(git.root, current)
+
+
+def pass_stop(root: Path, now: bool) -> None:
+    state = load_pass(root)
+    _stop_here(Path(state["worktree"]) if state else root, now)
+
+
+def uv_command() -> list[str]:
+    uv = find_executable("uv")
+    if not Path(uv).is_file():
+        raise SystemExit("uv not found; the docs build runs through it (see AGENTS.md section 3)")
+    return [uv]
+
+
+def pass_rebuild(git: Git, mode: str, all_pages: bool) -> int:
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    pages = sorted({f["path"][len(DOCS_SOURCE_DIR) + 1:] for f in changed_files(wt, state["baseCommit"])
+                    if f["path"].startswith(DOCS_SOURCE_DIR + "/") and f["path"].endswith(".md") and f["status"] != "deleted"})
+    command = uv_command() + ["run", "--project", str(wt.root), "--group", "docs", "python", "tools/build_zensical_docs.py",
+                              "--no-source-pages"]
+    if pages and not all_pages and mode != "never":
+        for page in pages:
+            command += ["--page", page]
+    print(f"$ FIELD_DOCS_RUNNER_MODE={mode} {' '.join(shlex.quote(c) for c in command)}", flush=True)
+    print(f"changed pages: {', '.join(pages) or '(none)'}", flush=True)
+    result = subprocess.run(command, cwd=wt.root, env={**os.environ, "FIELD_DOCS_RUNNER_MODE": mode}, check=False)
+    print(f"docs build exited {result.returncode}; the site is in {wt.root / 'public' / 'field4'}", flush=True)
+    return result.returncode
+
+
+def pass_commit_message(state: dict[str, Any], notes: list[dict[str, Any]], files: list[dict[str, Any]]) -> str:
+    runs = set(state.get("runs", []))
+    resolved: dict[str, list[dict[str, Any]]] = {}
+    for note in notes:
+        if not is_resolved(note) or note.get("kind") != "note":
+            continue
+        last = next((e for e in reversed(note.get("thread", [])) if e.get("kind") == "resolution"), None)
+        if last and last.get("runId") in runs:
+            resolved.setdefault(_page_key(note), []).append(note)
+    handoffs = [n for n in notes if n.get("kind") == "handoff" and (n.get("handoff") or {}).get("runId") in runs]
+    total = sum(len(v) for v in resolved.values())
+    lines = [f"docs: revision pass {state['branch'].split('/')[-1]}: {total} note(s) on {len(resolved)} page(s)"
+             + (f", {len(handoffs)} handoff(s)" if handoffs else ""), ""]
+    for page in sorted(resolved):
+        lines.append(f"{page}:")
+        for note in resolved[page]:
+            lines.append(f"- {note.get('resolution', '').strip()}")
+        lines.append("")
+    for item in handoffs:
+        info = item.get("handoff") or {}
+        lines.append(f"handoff ({info.get('scope')}{', blocking' if info.get('blocking') else ''}): {item.get('note')} → {info.get('path')}")
+    if handoffs:
+        lines.append("")
+    lines.append(f"{len(files)} file(s) changed. Written by tools/docs_notes.py revise, reviewed in /docs-pass.html.")
+    lines.append("")
+    lines += [f"Docs-Note: {n['id']}" for page in sorted(resolved) for n in resolved[page]]
+    lines += [f"Docs-Handoff: {n['id']}" for n in handoffs]
+    lines += [f"Docs-Notes-Run: {r}" for r in state.get("runs", [])]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def pass_commit(git: Git, store: Store) -> int:
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    progress = latest_progress(wt.root)
+    if progress and progress.get("alive"):
+        raise SystemExit("Agents are still running in the pass; stop or wait for them before committing.")
+    uncommitted = [p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]
+    if not uncommitted:
+        print("nothing to commit", flush=True)
+        return 0
+    wt.run("add", "-A")  # .field-backdoor/ (run logs) is gitignored
+    message = pass_commit_message(state, store.notes(), changed_files(wt, state["baseCommit"]))
+    print(message, flush=True)
+    print("committing; the pre-commit guard runs Gradle and takes a few minutes …", flush=True)
+    result = subprocess.run(["git", "commit", "-F", "-"], cwd=wt.root, input=message, text=True, check=False)
+    if result.returncode != 0:
+        print("commit refused (see the guard's output above); the changes are still staged in the worktree", flush=True)
+        return result.returncode
+    sha = Git(wt.root).head()
+    runs = set(state.get("runs", []))
+
+    def stamp(notes: list[dict[str, Any]]) -> None:
+        for note in notes:
+            for entry in note.get("thread", []):
+                if entry.get("kind") == "resolution" and entry.get("runId") in runs and not entry.get("commit"):
+                    entry["commit"] = sha
+
+    store.mutate(stamp)
+    print(f"committed {sha[:10]} on {state['branch']}", flush=True)
+    return 0
+
+
+def pass_land(git: Git) -> int:
+    """Merge the base into the pass branch (in the worktree), then fast-forward the base to it."""
+    state = require_pass(git.root)
+    wt = Git(Path(state["worktree"]))
+    base, branch = state["base"], state["branch"]
+    if [p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]:
+        raise SystemExit("The worktree has uncommitted changes; commit them first.")
+    if git.run("branch", "--show-current", check=False).strip() != base:
+        raise SystemExit(f"{git.root} is not on {base}; landing fast-forwards {base} there.")
+    if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=wt.root).returncode != 0:
+        print(f"{base} has moved on; merging it into {branch} first (in the worktree) …", flush=True)
+        merge = subprocess.run(["git", "merge", "--no-ff", "--no-edit", base], cwd=wt.root, check=False)
+        if merge.returncode != 0:
+            conflicts = wt.run("diff", "--name-only", "--diff-filter=U", check=False).split()
+            subprocess.run(["git", "merge", "--abort"], cwd=wt.root, check=False)
+            print(f"merge failed and was aborted; conflicts in: {', '.join(conflicts) or '(see above)'}", flush=True)
+            return 1
+    result = subprocess.run(["git", "merge", "--ff-only", branch], cwd=git.root, check=False)
+    if result.returncode != 0:
+        print(f"fast-forward of {base} failed (see above); nothing was changed in {git.root}", flush=True)
+        return result.returncode
+    print(f"{base} is now {git.head()[:10]} in {git.root}. Not pushed.", flush=True)
+    return 0
+
+
+def pass_finish(git: Git, abandon: bool) -> int:
+    state = load_pass(git.root)
+    if not state:
+        print("no pass open", flush=True)
+        return 0
+    worktree, branch = Path(state["worktree"]), state["branch"]
+    landed = subprocess.run(["git", "merge-base", "--is-ancestor", branch, state["base"]], cwd=git.root).returncode == 0
+    dirty = worktree.is_dir() and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
+    if (not landed or dirty) and not abandon:
+        why = "has uncommitted changes" if landed else f"has not landed on {state['base']}"
+        raise SystemExit(f"The pass {why}; commit and land it first, or finish with --abandon to throw it away.")
+    if worktree.is_dir():
+        remove = ["worktree", "remove"] + (["--force"] if abandon else []) + [str(worktree)]
+        git.run(*remove)
+    git.run("worktree", "prune", check=False)
+    git.run("branch", "-D" if abandon else "-d", branch, check=False)
+    save_pass(git.root, None)
+    print(f"pass closed: removed {worktree} and {branch}" + (" (abandoned)" if abandon else ""), flush=True)
+    return 0
+
+
+def run_pass(args: argparse.Namespace, store: Store, git: Git) -> int:
+    action = args.pass_command
+    if action == "create":
+        pass_create(git, base=args.base, path=args.path)
+        return 0
+    if action == "status":
+        print(json.dumps(pass_status(git, store), indent=2, ensure_ascii=False))
+        return 0
+    if action == "diff":
+        print(json.dumps(pass_diff(git, args.path), ensure_ascii=False))
+        return 0
+    if action == "discard":
+        pass_discard(git, store, args.path)
+        return 0
+    if action == "handoff-text":
+        item = find_note([n for n in store.notes() if n.get("kind") == "handoff"], args.id)
+        info = item.get("handoff") or {}
+        state = load_pass(git.root)
+        roots = [Path(state["worktree"])] if state else []
+        roots.append(git.root)
+        path = next((r / info.get("path", "") for r in roots if (r / info.get("path", "")).is_file()), None)
+        print(json.dumps({"id": item["id"], "title": item.get("note"), "handoff": info,
+                          "text": path.read_text(encoding="utf-8") if path else "(the document is not in this checkout or the pass worktree)",
+                          "file": str(path) if path else ""}, ensure_ascii=False))
+        return 0
+    if action == "revise":
+        return pass_revise(args, git, store)
+    if action == "stop":
+        pass_stop(git.root, args.now)
+        return 0
+    if action == "rebuild":
+        return pass_rebuild(git, args.mode, args.all)
+    if action == "commit":
+        return pass_commit(git, store)
+    if action == "land":
+        return pass_land(git)
+    if action == "finish":
+        return pass_finish(git, args.abandon)
+    return 2
+
+
+def add_revise_arguments(p: argparse.ArgumentParser) -> None:
+    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
+    p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
+    p.add_argument("--jobs", "-j", type=int, default=4)
+    p.add_argument("--tag", action="append", default=[])
+    p.add_argument("--page", action="append", default=[])
+    p.add_argument("--max-pages", type=int, default=0)
+    p.add_argument("--timeout", type=int, default=1800, help="seconds per agent")
+    p.add_argument("--commit", action="store_true", help="one commit per page after every agent has finished")
+    p.add_argument("--allow-dirty", action="store_true", help="run even if an owned file has uncommitted changes")
+    p.add_argument("--dry-run", action="store_true", help="show the partition plan and stop")
+    p.add_argument("--no-sync", action="store_true")
+    p.add_argument("--verbose", "-v", action="store_true")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1799,18 +2407,35 @@ def build_parser() -> argparse.ArgumentParser:
                    help="taken: someone is working on it (still blocks); dropped: abandoned (releases the notes)")
 
     p = sub.add_parser("revise", help="run one agent per page over the queue, in parallel")
-    p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
-    p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
-    p.add_argument("--jobs", "-j", type=int, default=4)
-    p.add_argument("--tag", action="append", default=[])
-    p.add_argument("--page", action="append", default=[])
-    p.add_argument("--max-pages", type=int, default=0)
-    p.add_argument("--timeout", type=int, default=1800, help="seconds per agent")
-    p.add_argument("--commit", action="store_true", help="one commit per page after every agent has finished")
-    p.add_argument("--allow-dirty", action="store_true", help="run even if an owned file has uncommitted changes")
-    p.add_argument("--dry-run", action="store_true", help="show the partition plan and stop")
-    p.add_argument("--no-sync", action="store_true")
-    p.add_argument("--verbose", "-v", action="store_true")
+    add_revise_arguments(p)
+
+    p = sub.add_parser("stop", help="stop a running revise: after the current pages, or --now")
+    p.add_argument("--now", action="store_true", help="terminate the running agents too")
+
+    passes = sub.add_parser("pass", help="a revision pass in its own worktree: create, revise, review, rebuild, commit, land")
+    pass_sub = passes.add_subparsers(dest="pass_command", required=True)
+    q = pass_sub.add_parser("create", help="a new worktree and branch from --base")
+    q.add_argument("--base", default="main")
+    q.add_argument("--path", help="where to put the worktree")
+    pass_sub.add_parser("status", help="the pass, its changes, the queue and handoffs, as JSON")
+    q = pass_sub.add_parser("diff", help="changes against the pass's base, as JSON")
+    q.add_argument("--path")
+    q = pass_sub.add_parser("discard", help="throw away one file's changes and reopen what they resolved")
+    q.add_argument("path")
+    q = pass_sub.add_parser("handoff-text", help="a handoff's document, as JSON")
+    q.add_argument("id")
+    q = pass_sub.add_parser("revise", help="drain the queue in the pass's worktree")
+    add_revise_arguments(q)
+    q = pass_sub.add_parser("stop", help="stop the pass's revise: after the current pages, or --now")
+    q.add_argument("--now", action="store_true")
+    q = pass_sub.add_parser("rebuild", help="build the docs in the worktree")
+    q.add_argument("--mode", choices=("never", "incremental", "strict", "always"), default="never",
+                   help="FIELD_DOCS_RUNNER_MODE; `never` builds HTML without re-running any capture")
+    q.add_argument("--all", action="store_true", help="run captures on every page, not only changed ones")
+    pass_sub.add_parser("commit", help="commit the worktree, with the resolved notes in the message")
+    pass_sub.add_parser("land", help="merge the base in, then fast-forward the base in the primary checkout")
+    q = pass_sub.add_parser("finish", help="remove the worktree and branch once landed")
+    q.add_argument("--abandon", action="store_true", help="remove them even though they never landed")
     return parser
 
 
@@ -1917,6 +2542,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "revise":
         return revise(args, store, git)
+    if args.command == "stop":
+        _stop_here(git.root, args.now)
+        return 0
+    if args.command == "pass":
+        return run_pass(args, store, git)
     return 2
 
 

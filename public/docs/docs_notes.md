@@ -68,6 +68,28 @@ starts coding agents with write access to your checkout.
 A run keeps each agent's prompt, complete log and recorded outcomes in
 `.field-backdoor/docs-notes/runs/<run>/`.
 
+### From the welcome page
+
+**docs revision pass** on `/welcome` opens `/docs-pass.html`, which runs a whole pass without a
+terminal:
+
+1. **Start a pass** makes a worktree on a new `docs-pass/…` branch from `main`. Agents edit there,
+   never in the checkout you work in.
+2. **Drain the queue** runs one agent per page. **Stop after current pages** lets the running
+   agents finish and starts no more. **Stop now** ends them. Either way, whatever they had recorded
+   is kept, and every other note stays in the queue for the next drain.
+3. **Handoffs** lists what the agents filed, and each document can be read in place and marked
+   taken, done or dropped.
+4. **Changes** shows every file's diff against where the pass started. **Discard** throws one
+   file's edit away and puts the notes it resolved back in the queue.
+5. **Rebuild docs** builds the site in the worktree and links each changed page to its rebuilt copy.
+   **Commit** makes one commit listing every resolved note. **Land on main** merges `main` in if it
+   has moved on, then fast-forwards `main`. **Finish** removes the worktree.
+
+Everything on the page is also `docs_notes.py pass …` (`create`, `revise`, `stop`, `diff`,
+`discard`, `rebuild`, `commit`, `land`, `finish`). The page's actions need Field started with
+`AFIELD_DOCS_IMPROVEMENT=1`, and the token Field prints at startup.
+
 ## What an agent is given
 
 Each agent is given one page, or several pages when they would have to edit the same file,

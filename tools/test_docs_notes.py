@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import textwrap
+import time
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -491,6 +492,159 @@ class HandoffTest(unittest.TestCase):
         ops = dn.read_journal(journal)
         self.assertEqual([op["notes"] for op in ops], [["aaaa0001"]])
         self.assertNotIn("handoff", {n.get("kind") for n in self.notes().values()}, "journaled, not applied")
+
+
+SLEEPY_AGENT = textwrap.dedent("""\
+    import sys, time
+    time.sleep(float(sys.argv[2]))
+    """)
+
+
+class PassTest(unittest.TestCase):
+    """The lifecycle /docs-pass.html drives, end to end in throwaway repositories."""
+
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write("public/docs/guide.md", GUIDE)
+        self.repo.write("public/docs/other.md", "# Other\n\nA second page with a sentence.\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+        self.repo.write("agent.py", FAKE_AGENT)
+        self.repo.write("sleepy.py", SLEEPY_AGENT)
+        self.repo.commit("docs")
+        self.store_path = self.repo.root / "store.json"
+        other = "https://openendedgroup.com/field4/other/"
+        self.store_path.write_text(json.dumps({"version": 1, "annotations": [
+            {"id": "11111111-a", "pageUrl": PAGE, "note": "reword", "anchor": {"exact": "then continue to the next step"}},
+            {"id": "33333333-c", "pageUrl": other, "note": "fine?", "anchor": {"exact": "A second page"}}]}))
+        self.worktree = Path(self.repo._dir.name + "-wt")
+
+    def tearDown(self) -> None:
+        subprocess.run(["rm", "-rf", str(self.worktree)], check=False)
+        self.repo.close()
+
+    def cli(self, *args: str) -> int:
+        with mock.patch("builtins.print"):
+            return dn.main(["--store", str(self.store_path), "--repo", str(self.repo.root), *args])
+
+    def status(self) -> dict:
+        return dn.pass_status(dn.Git(self.repo.root), dn.Store(self.store_path))
+
+    def test_create_revise_review_commit_land_finish(self) -> None:
+        self.assertEqual(self.cli("pass", "create", "--path", str(self.worktree)), 0)
+        self.assertTrue(self.worktree.is_dir())
+        self.assertEqual(self.status()["worktree"]["ahead"], 0)
+        with self.assertRaises(SystemExit):
+            self.cli("pass", "create", "--path", str(self.worktree) + "-2")  # one pass at a time
+
+        agent = f"{sys.executable} {self.worktree / 'agent.py'} {{prompt_file}}"
+        self.assertEqual(self.cli("pass", "revise", "--jobs", "2", "--agent-command", agent), 0)
+        self.assertEqual(self.repo.git("status", "--porcelain").strip(), "", "the primary checkout was not touched")
+        status = self.status()
+        paths = {f["path"]: f for f in status["worktree"]["changed"]}
+        self.assertEqual(paths["public/docs/guide.md"]["status"], "modified")
+        handoff_doc = next(p for p in paths if p.startswith("dev_docs/handoffs/"))
+        self.assertEqual(paths[handoff_doc]["status"], "untracked")
+        self.assertEqual(status["progress"]["state"], "finished")
+        self.assertEqual({p["state"] for p in status["progress"]["partitions"]}, {"done"})
+        self.assertEqual(len(status["pass"]["runs"]), 1)
+
+        patch = dn.pass_diff(dn.Git(self.repo.root), "public/docs/guide.md")[0]["patch"]
+        self.assertIn("+Install the thing, then go on to the next step.", patch)
+
+        # Discarding the handoff document drops the handoff and releases the note it held.
+        self.cli("pass", "discard", handoff_doc)
+        notes = {n["id"]: n for n in json.loads(self.store_path.read_text())["annotations"]}
+        self.assertEqual(dn.note_state(notes["33333333-c"]), "open")
+        self.assertFalse((self.worktree / handoff_doc).exists())
+
+        # main moves on while the pass is open; landing merges it in first.
+        self.repo.write("public/docs/unrelated.md", "# Elsewhere\n")
+        self.repo.commit("meanwhile on main")
+
+        self.assertEqual(self.cli("pass", "commit"), 0)
+        message = subprocess.run(["git", "log", "-1", "--format=%B"], cwd=self.worktree, capture_output=True, text=True).stdout
+        self.assertIn("Docs-Note: 11111111-a", message)
+        self.assertIn("reworded the step", message)
+        self.assertEqual(self.cli("pass", "land"), 0)
+        self.assertIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
+        self.assertTrue((self.repo.root / "public/docs/unrelated.md").is_file())
+        self.assertTrue(self.status()["worktree"]["landed"])
+
+        self.assertEqual(self.cli("pass", "finish"), 0)
+        self.assertFalse(self.worktree.exists())
+        self.assertIsNone(dn.load_pass(self.repo.root))
+
+    def test_discarding_an_edit_reopens_what_it_resolved(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        self.cli("pass", "revise", "--page", "guide.md", "--agent-command", f"{sys.executable} {self.worktree / 'agent.py'} {{prompt_file}}")
+        self.cli("pass", "discard", "public/docs/guide.md")
+        notes = {n["id"]: n for n in json.loads(self.store_path.read_text())["annotations"]}
+        self.assertEqual(dn.note_state(notes["11111111-a"]), "open")
+        self.assertIn("discarded", notes["11111111-a"]["thread"][-1]["text"])
+        self.assertEqual(self.status()["worktree"]["changed"], [])
+
+    def test_finish_refuses_an_unlanded_pass_unless_abandoned(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        (self.worktree / "public/docs/guide.md").write_text("changed\n")
+        with self.assertRaises(SystemExit):
+            self.cli("pass", "finish")
+        self.assertEqual(self.cli("pass", "finish", "--abandon"), 0)
+        self.assertFalse(self.worktree.exists())
+
+    def test_paths_outside_the_checkout_are_refused(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        for bad in ("../x", "/etc/passwd", ""):
+            with self.assertRaises(SystemExit):
+                self.cli("pass", "discard", bad)
+
+    def _revise_in_thread(self, seconds: float, control: "dn.RunControl") -> dict:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        args = dn.build_parser().parse_args(["revise", "--jobs", "1", "--agent-command",
+                                             f"{sys.executable} {self.worktree / 'sleepy.py'} {{prompt_file}} {seconds}"])
+        outcome: dict = {}
+        wt = dn.Git(self.worktree)
+
+        def go() -> None:
+            with mock.patch("builtins.print"):
+                outcome["code"] = dn.revise(args, dn.Store(self.store_path), wt, control=control)
+
+        import threading
+        thread = threading.Thread(target=go)
+        thread.start()
+        outcome["thread"] = thread
+        deadline = time.time() + 20
+        while time.time() < deadline:
+            progress = dn.latest_progress(self.worktree)
+            if progress and any(p["state"] == "running" for p in progress["partitions"]):
+                break
+            time.sleep(0.05)
+        return outcome
+
+    def test_stop_after_current_pages_finishes_the_running_page_and_starts_no_more(self) -> None:
+        control = dn.RunControl(dn.notes_state_dir(self.worktree) / "STOP")
+        outcome = self._revise_in_thread(1.0, control)
+        dn.pass_stop(self.repo.root, now=False)
+        outcome["thread"].join(30)
+        progress = dn.latest_progress(self.worktree)
+        self.assertEqual(sorted(p["state"] for p in progress["partitions"]), ["done", "not started"])
+        self.assertEqual(progress["state"], "stopped")
+        self.assertEqual(outcome["code"], 3)
+        self.assertFalse(control.stop_file.exists(), "the STOP request is consumed")
+
+    def test_stop_now_terminates_the_agents_and_keeps_the_notes_open(self) -> None:
+        control = dn.RunControl(dn.notes_state_dir(self.worktree) / "STOP")
+        started = time.time()
+        outcome = self._revise_in_thread(120.0, control)
+        control.kill()
+        outcome["thread"].join(30)
+        self.assertLess(time.time() - started, 25, "a sleeping agent was terminated, not waited for")
+        progress = dn.latest_progress(self.worktree)
+        self.assertEqual(progress["state"], "killed")
+        self.assertIn("interrupted", {p["state"] for p in progress["partitions"]})
+        notes = json.loads(self.store_path.read_text())["annotations"]
+        self.assertTrue(all(dn.note_state(n) == "open" for n in notes))
+        stopped = [e for n in notes for e in n.get("thread", []) if e.get("kind") == "run"]
+        self.assertTrue(any("stopped before recording an outcome" in e["text"] for e in stopped))
 
 
 class KotlinSchemaTest(unittest.TestCase):

@@ -886,6 +886,12 @@ private val docsImprovementDirectory: DocsImprovementDirectory by lazy {
     resolveDocsImprovementDirectory(System.getenv(DOCS_IMPROVEMENT_DIRECTORY_ENV), Paths.get("."))
 }
 
+/** The checkout the agents and the revision pass work from, or `null` when it did not resolve. */
+internal fun docsImprovementCheckout(): Path? = docsImprovementDirectory.path
+
+/** The annotation notebook this JVM reads and writes, for `tools/docs_notes.py --store`. */
+internal fun docsAnnotationStorePath(): Path = DocsAnnotationStore.path
+
 /**
  * Where `/field-docs/…` reads from, as a value for the same reason [DocsAccessPolicy] is
  * one: "serves the local build", "serves the published site" and "has no local build" are
@@ -1059,6 +1065,7 @@ internal fun Route.installDocsAnnotationRoutes(
         }
         call.respond(DocsImprovementTask.start(call.receive<DocsImprovementLaunchRequest>().tags.map(String::lowercase)))
     }
+    installDocsPassRoutes(policy)
     // Gated like the annotations, and the reason is not the one you would guess.
     //
     // The content is a public website — or this checkout's own build of it — so nothing

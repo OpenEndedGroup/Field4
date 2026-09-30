@@ -559,6 +559,9 @@ class FieldApiCorsExposureTest {
             "POST /api/completion-doc-polish" to "none",
             "POST /api/docs-annotations" to "loopback + same-site",
             "POST /api/docs-improvement" to "loopback + same-site + enabled+token",
+            // /docs-pass.html (docsPass.kt): the same agents as the route above, plus commit and a
+            // fast-forward of main in this checkout, so the same four checks and nothing less.
+            "POST /api/docs-improvement/pass" to "loopback + same-site + enabled+token",
             "POST /api/duplicate-document" to "none",
             // The one route whose openness is a feature: the offline viewer POSTs here from
             // whatever origin its bundle was served from, which is why anyHost() stands.
