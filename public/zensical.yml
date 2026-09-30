@@ -269,6 +269,9 @@ nav:
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    # After the four conversations rather than before them: those pages show a study being worked on,
+    # and this one is the layer they share, which reads best once you have seen one.
+    - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a

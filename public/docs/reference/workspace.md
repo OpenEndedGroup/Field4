@@ -200,6 +200,8 @@ What a box's program shows at one of its lines — a sentence, and a picture whe
 
 `src/jvmMain/kotlin/afield/stdlib/LiveStudy.kt` — [read the source](source/jvmMain/afield/stdlib/LiveStudy/)
 
+**Used in:** [Studies](../studies.md)
+
 ### Top-level functions { #livestudy-kt-functions }
 
 | Declaration | Summary |
@@ -302,6 +304,8 @@ The requests a document's study tools (`Box.registerStudyTools`) hand their [`Li
 
 `src/jvmMain/kotlin/afield/stdlib/SourceFramesStudy.kt` — [read the source](source/jvmMain/afield/stdlib/SourceFramesStudy/)
 
+**Used in:** [Studies](../studies.md)
+
 ### Top-level functions { #sourceframesstudy-kt-functions }
 
 | Declaration | Summary |
@@ -374,6 +378,8 @@ This is trusted local code, not a sandbox: `admit` runs whatever the adapter run
 (`cancel`) stops a pending publication, not a computation that never checks for it.
 
 `src/jvmMain/kotlin/afield/stdlib/SourceStudy.kt` — [read the source](source/jvmMain/afield/stdlib/SourceStudy/)
+
+**Used in:** [Studies](../studies.md)
 
 ### StudyRejection { #sourcestudy-kt-studyrejection }
 
@@ -605,6 +611,8 @@ What every study tool answers with: the revision it is about, the facts it measu
 ## StudyVariants.kt { #studyvariants-kt }
 
 `src/jvmMain/kotlin/afield/stdlib/StudyVariants.kt` — [read the source](source/jvmMain/afield/stdlib/StudyVariants/)
+
+**Used in:** [Studies](../studies.md)
 
 ### StudyVariants { #studyvariants-kt-studyvariants }
 
