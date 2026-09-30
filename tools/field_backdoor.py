@@ -279,6 +279,11 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
         return {"kind": kind, "parent": parent, "child": child}
     if kind == "output-picture":
         return {"kind": kind, "box": rest}
+    if kind == "output-rising":
+        parts = rest.split(":")
+        if len(parts) != 3:
+            raise BackdoorError(f"output-rising needs <box>:#c1,#c2:<minBars>, got {spec!r}")
+        return {"kind": kind, "box": parts[0], "text": parts[1], "fraction": float(parts[2])}
     if kind == "output-colour":
         parts = rest.split(":")
         if len(parts) != 3:

@@ -110,6 +110,43 @@ data class PictureStats(
             return if (total == 0L) 0.0 else hit.toDouble() / total
         }
 
+        /** One bar found by [bars]: its columns, its height in pixels, and which of the colours fills most of it. */
+        data class Bar(val x0: Int, val x1: Int, val height: Int, val colour: Int)
+
+        /**
+         * Vertical bars drawn in any of [hexes]: runs of adjacent columns holding at least 3 pixels of
+         * those colours. A bar's height is its tallest column; its colour is the index into [hexes]
+         * with the most pixels in it. Left to right.
+         */
+        fun bars(image: BufferedImage, hexes: List<String>, tolerance: Int = 48): List<Bar> {
+            val targets = hexes.map(::parseHex)
+            val out = mutableListOf<Bar>()
+            var start = -1; var height = 0; val counts = IntArray(targets.size)
+            fun close(x: Int) {
+                if (start >= 0) out += Bar(start, x - 1, height, counts.indices.maxByOrNull { counts[it] } ?: 0)
+                start = -1; height = 0; counts.fill(0)
+            }
+            for (x in 0 until image.width) {
+                var column = 0
+                val here = IntArray(targets.size)
+                for (y in 0 until image.height) {
+                    val rgb = image.getRGB(x, y)
+                    val r = (rgb shr 16) and 0xff; val g = (rgb shr 8) and 0xff; val b = rgb and 0xff
+                    val hit = targets.indexOfFirst { t ->
+                        kotlin.math.abs(r - t[0]) <= tolerance && kotlin.math.abs(g - t[1]) <= tolerance && kotlin.math.abs(b - t[2]) <= tolerance
+                    }
+                    if (hit >= 0) { column++; here[hit]++ }
+                }
+                if (column >= 3) {
+                    if (start < 0) start = x
+                    height = maxOf(height, column)
+                    for (i in here.indices) counts[i] += here[i]
+                } else close(x)
+            }
+            close(image.width)
+            return out
+        }
+
         fun parseHex(hex: String): IntArray {
             val h = hex.trim().removePrefix("#")
             require(h.length == 6 && h.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) { "colour must be #rrggbb, not '$hex'" }

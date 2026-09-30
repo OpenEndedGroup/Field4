@@ -1,6 +1,6 @@
 name: ai4_sees_its_output_demo
 description: >
-  AI4 looking at what a box shows, and using what it saw. Five boxes; replay into a fresh document,
+  AI4 looking at what a box shows, and using what it saw. Seven boxes; replay into a fresh document,
   then run them left to right, one at a time. The three "AI4 ..." boxes return at once; each one's
   AI4 chat panel (the "ai-chat" output under it) fills in when its turn finishes, with the tool
   calls, the picture AI4 was shown (ViewBoxOutputRequest attaches it to the conversation, and the
@@ -19,6 +19,11 @@ description: >
     5. AI4 fixes what it sees (live) — asks the model to make Bars visible and check. It should look,
        see the blank strip, change the heights, run Bars, and look again. The checks measure the
        share of Bars' picture that is the bars' blue.
+
+    6. Row — run it after the others. Five 28 px bars in one row.
+    7. AI4 look, revise, look (live) — asks for five more bars in the same row. Ten wrap onto a
+       second row at this panel's width, which nothing in the code says; the model has to see it,
+       revise, and look again. The checks count the bars in the picture and want ten, rising.
 
   Carry on the conversation in any panel afterwards, as with any AI4 turn; ask what it saw. See
   dev_docs/ai/AI4_SEES_ITS_OUTPUT.md for the tool, the checks, and the measurements.
@@ -80,5 +85,28 @@ operations:
                   "them. Look at what it shows, fix Bars so that the five bars are visible at those heights, run it, and " +
                   "look again to check.",
               checks = listOf("last-run-ok:Bars", "output-picture:Bars", "output-colour:Bars:#1f77b4:0.02"),
+              mode = "live",
+          )
+  - create:
+      box: ai4_sees_row
+      name: Row
+      frame: { x: 80.0, y: 760.0, w: 300.0, h: 60.0 }
+      properties:
+        code: |
+          val values = listOf(20, 30, 40, 50, 60)
+          val bars = values.joinToString("") { v -> "<div style='display:inline-block; vertical-align:bottom; width:28px; margin:3px; background:#1f77b4; height:${v}px'></div>" }
+          display("main", "<div style='background:white; padding:8px'>$bars</div>")
+  - create:
+      box: ai4_sees_live_row
+      name: AI4 look, revise, look (live)
+      frame: { x: 3000.0, y: 80.0, w: 340.0, h: 60.0 }
+      properties:
+        code: |
+          // output-rising:B:#hex:N counts the bars in B's picture: at least N, rising left to right.
+          askFieldAgent(
+              goal = "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
+                  "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
+                  "right. Run it and check what it shows; keep going until it looks right.",
+              checks = listOf("last-run-ok:Row", "output-rising:Row:#1f77b4:10"),
               mode = "live",
           )

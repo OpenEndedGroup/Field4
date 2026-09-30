@@ -72,6 +72,8 @@ data class AgentTaskRequest(
  * - `running` / `not-running` [box]
  * - `output-picture` [box] — a capture of its output area succeeds and is not blank (≥ 1% of pixels are not background)
  * - `output-colour` [box] [text] = `#rrggbb` [fraction] — at least that share of the capture is within 48 of that colour
+ * - `output-rising` [box] [text] = `#c1,#c2,…` [fraction] = minimum bar count — the bars drawn in those colours
+ *   rise strictly left to right, and (with more than one colour) the last, tallest bar is mostly the last colour
  */
 @Serializable
 data class AgentCheck(
@@ -109,6 +111,12 @@ data class AgentCheck(
                     val parts = rest.split(':')
                     require(parts.size == 3) { "output-colour:<box>:#rrggbb:<fraction>" }
                     PictureStats.parseHex(parts[1])
+                    AgentCheck(kind, box = parts[0], text = parts[1], fraction = parts[2].toDouble())
+                }
+                "output-rising" -> {
+                    val parts = rest.split(':')
+                    require(parts.size == 3) { "output-rising:<box>:#c1,#c2:<minBars>" }
+                    parts[1].split(',').forEach { PictureStats.parseHex(it) }
                     AgentCheck(kind, box = parts[0], text = parts[1], fraction = parts[2].toDouble())
                 }
                 else -> throw IllegalArgumentException("Unknown check kind '$kind'")
@@ -491,6 +499,20 @@ object AgentTaskRunner {
                 val detail = "${"%.3f".format(share)} of ${image.width}x${image.height} is ${check.text} (need ${check.fraction}); " +
                     PictureStats.of(image).describeDominant()
                 if (share >= check.fraction) pass(detail) else fail(detail)
+            }
+            "output-rising" -> {
+                val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
+                val s = shot(b)
+                val image = s.image ?: return fail("no picture: ${s.message}")
+                val colours = check.text.split(',').map { it.trim() }
+                val bars = PictureStats.bars(image, colours)
+                val detail = "${bars.size} bar(s), heights ${bars.map { it.height }}, colours ${bars.map { colours[it.colour] }}"
+                when {
+                    bars.size < check.fraction.toInt() -> fail("need ${check.fraction.toInt()} bars: $detail")
+                    bars.zipWithNext().any { (l, r) -> r.height <= l.height } -> fail("not rising left to right: $detail")
+                    colours.size > 1 && bars.last().colour != colours.lastIndex -> fail("the tallest bar is not ${colours.last()}: $detail")
+                    else -> pass(detail)
+                }
             }
             else -> fail("unknown check kind '${check.kind}'")
         }

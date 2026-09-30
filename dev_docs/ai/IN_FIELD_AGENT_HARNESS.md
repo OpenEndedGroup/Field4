@@ -178,7 +178,7 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 
 ## Eval suite
 
-`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), ten tasks (the last three, added
+`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), twelve tasks (the last five, added
 2026-09-30, are graded by pixels):
 
 | id | goal (short) | starts from |
@@ -193,6 +193,8 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 | swatch-colour | name the colour a CSS-cascade swatch *shows* (blue; the source reads red) | displaying box |
 | draw-sun | an SVG sun on a night sky, graded by colour shares | empty |
 | bars-visible | percent-height bars that render 0 px tall → visible | displaying box |
+| bars-sorted-red | bars sorted as *displayed* (another box's stylesheet reverses them), tallest red | two boxes |
+| bars-one-row | ten 28 px bars in one row (they wrap at the panel's width) | displaying box |
 
 Each task has a scripted solution in real Kotlin. The first scripted run against real Field caught
 an error in the harness's own instructions: a child does **not** see a parent's plain `val`
@@ -212,7 +214,9 @@ they compare is cost. Full tables and population notes are in
 | C | lessons off, CompileKotlin description + resolver fixed | 33 | 348,537 | 2 |
 | D | lessons on (distilled from C), tools fixed | 31 | 332,607 | 1 |
 
-Scripted, live Field over HTTP: 10/10 in 21 s, with 0 documents and 0 capture pages left open.
+Scripted, live Field over HTTP: 12/12 in 28 s, with 0 documents and 0 capture pages left open.
+Measured on held-out tasks (two runs per setup), the lessons cut misuse 4 → 1 per run with the base
+tools and did nothing once the tool was fixed; see AI4_SEES_ITS_OUTPUT.md ("Held out").
 
 ### Results (2026-09-29)
 

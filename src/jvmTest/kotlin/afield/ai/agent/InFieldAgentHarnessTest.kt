@@ -106,8 +106,25 @@ class InFieldAgentHarnessTest {
             image
         }
 
+        /** Bars of [heights] left to right, 24 px wide, on white; the one at [redAt] red. */
+        fun chart(heights: List<Int>, redAt: Int = -1) = picture(160, 130, "#ffffff",
+            rects = heights.mapIndexed { i, h -> listOf(10 + i * 30, 118 - h, 24, h, if (i == redAt) "#d62728" else "#1f77b4") })
+
         /** What the visual tasks' code looks like in real Field — recorded here, captured live elsewhere. */
         val visualTable: Map<String, Fake> = mapOf(
+            InFieldAgentEvals.ROW_CODE to Fake(display = mapOf("main" to "<div></div>"), picture = chart(listOf(20, 30, 40, 50, 60))),
+            // Wrapped: the second row sits under the first, so the columns hold both rows' bars.
+            InFieldAgentEvals.ROW_FIRST_TRY to Fake(display = mapOf("main" to "<div></div>"),
+                picture = picture(170, 260, "#ffffff", rects = (0 until 5).flatMap { i -> listOf(
+                    listOf(10 + i * 30, 100 - (20 + i * 10), 24, 20 + i * 10, "#1f77b4"),
+                    listOf(10 + i * 30, 250 - (70 + i * 10), 24, 70 + i * 10, "#1f77b4")) })),
+            InFieldAgentEvals.ROW_FIXED to Fake(display = mapOf("main" to "<div></div>"),
+                picture = picture(320, 130, "#ffffff", rects = (0 until 10).map { i -> listOf(10 + i * 30, 118 - (20 + i * 10), 24, 20 + i * 10, "#1f77b4") })),
+            InFieldAgentEvals.THEME_CODE to Fake(display = mapOf("main" to "<style></style>")),
+            // Theme's row-reverse draws the list back to front.
+            InFieldAgentEvals.CHART_CODE to Fake(display = mapOf("main" to "<div></div>"), picture = chart(listOf(70, 40, 90, 25, 55))),
+            InFieldAgentEvals.CHART_FIRST_TRY to Fake(display = mapOf("main" to "<div></div>"), picture = chart(listOf(90, 70, 55, 40, 25), redAt = 0)),
+            InFieldAgentEvals.CHART_FIXED to Fake(display = mapOf("main" to "<div></div>"), picture = chart(listOf(25, 40, 55, 70, 90), redAt = 4)),
             InFieldAgentEvals.SWATCH_CODE to Fake(display = mapOf("main" to "<div id=sw></div>"),
                 picture = picture(264, 144, "#ffffff", rects = listOf(listOf(12, 12, 240, 120, "#1f77b4")))),
             InFieldAgentEvals.ANSWER_CODE to Fake(out = listOf("blue")),

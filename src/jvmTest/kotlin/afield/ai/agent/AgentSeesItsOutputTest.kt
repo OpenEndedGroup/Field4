@@ -127,7 +127,40 @@ class AgentSeesItsOutputTest {
     }
 
     @Test
+    fun lookReviseLookCatchesTheFirstTry() {
+        val task = InFieldAgentEvals.byId("bars-sorted-red")
+        val solved = runTask(task.request.copy(mode = "scripted", script = task.solution))
+        assertEquals("pass", solved.verdict, solved.checks.joinToString { "${it.check.kind}=${it.detail}" })
+        assertEquals(3, solved.imagesSeen, "look, look after the first try, look after the fix")
+        // Counterfactual: stopping after the obvious first try — sorted ascending — fails, because
+        // row-reverse draws it tallest-first. Only the rising check (the pixels) sees that.
+        val firstTryOnly = runTask(task.request.copy(mode = "scripted", script = InFieldAgentEvals.steps(
+            InFieldAgentEvals.call("SetBoxPropertyRequest", "box" to "Chart", "value" to InFieldAgentEvals.CHART_FIRST_TRY),
+            InFieldAgentEvals.call("RunBoxRequest", "box" to "Chart"), "done")))
+        assertEquals("fail", firstTryOnly.verdict)
+        val failed = firstTryOnly.checks.filter { !it.passed }
+        assertEquals(listOf("output-rising"), failed.map { it.check.kind }, failed.joinToString { it.detail })
+        val bars = PictureStats.bars(InFieldAgentHarnessTest.chart(listOf(25, 40, 55, 70, 90), redAt = 4)(), listOf("#1f77b4", "#d62728"))
+        assertEquals(listOf(25, 40, 55, 70, 90), bars.map { it.height })
+        assertEquals(1, bars.last().colour)
+    }
+
+    @Test
+    fun tenBarsThatWrapAreCaughtByThePicture() {
+        val task = InFieldAgentEvals.byId("bars-one-row")
+        val solved = runTask(task.request.copy(mode = "scripted", script = task.solution))
+        assertEquals("pass", solved.verdict, solved.checks.joinToString { "${it.check.kind}=${it.detail}" })
+        assertEquals(2, solved.imagesSeen)
+        val firstTryOnly = runTask(task.request.copy(mode = "scripted", script = InFieldAgentEvals.steps(
+            InFieldAgentEvals.call("SetBoxPropertyRequest", "box" to "Row", "value" to InFieldAgentEvals.ROW_FIRST_TRY),
+            InFieldAgentEvals.call("RunBoxRequest", "box" to "Row"), "done")))
+        assertEquals("fail", firstTryOnly.verdict)
+        assertTrue(firstTryOnly.checks.single { !it.passed }.detail.startsWith("need 10 bars"))
+    }
+
+    @Test
     fun pictureChecksParse() {
+        assertEquals(AgentCheck("output-rising", box = "C", text = "#1f77b4,#d62728", fraction = 5.0), AgentCheck.parse("output-rising:C:#1f77b4,#d62728:5"))
         assertEquals(AgentCheck("output-colour", box = "Sun", text = "#ffe000", fraction = 0.01), AgentCheck.parse("output-colour:Sun:#ffe000:0.01"))
         assertEquals(AgentCheck("output-picture", box = "Sun"), AgentCheck.parse("output-picture:Sun"))
         assertTrue(runCatching { AgentCheck.parse("output-colour:Sun:yellow:0.1") }.isFailure)
@@ -307,6 +340,32 @@ class AgentSeesItsOutputTest {
         assertEquals(2, blind.size)
         assertEquals(1, blind.count { it.get("verdict").asText() == "pass" })
         assertTrue(blind.all { it.get("imagesSeen").asInt() == 0 && it.get("rounds").asInt() >= 13 })
+
+        // Held out: six tasks the lessons were not distilled from, two runs per setup (12 task runs).
+        val held = listOf("held-B-off", "held-B-on", "held-F-off", "held-F-on")
+        for (k in held) {
+            assertEquals(12, run(k).get("population").asInt(), k)
+            assertEquals(12, run(k).get("passed").asInt(), k)
+        }
+        fun half(k: String, i: Int, field: String) = run(k).get("tasks").toList().subList(i * 6, i * 6 + 6).sumOf { it.get(field).asInt() }
+        // Base tools: the training-set lessons cut held-out misuse 4 -> 1 in each run, and CompileKotlin
+        // calls; rounds moved by 1-3 per run, inside the spread you would guess from one run.
+        for (i in 0..1) {
+            assertTrue(half("held-B-off", i, "misuseCalls") >= 4, "B-off run $i")
+            assertTrue(half("held-B-on", i, "misuseCalls") <= 1, "B-on run $i")
+            assertTrue(half("held-B-on", i, "rounds") < half("held-B-off", i, "rounds"))
+        }
+        // Tools fixed: held-out rounds 21/22 and CompileKotlin 0 without lessons; with them, no better.
+        for (i in 0..1) {
+            assertEquals(0, half("held-F-off", i, "compileKotlinCalls"))
+            assertTrue(half("held-F-off", i, "rounds") <= 22)
+            assertTrue(half("held-F-on", i, "rounds") >= half("held-F-off", 0, "rounds"), "lessons did not help once the tool was fixed")
+        }
+        // Look, revise, look: bars-one-row passed 3/3, and one run looked a third time after revising.
+        val row = run("row")
+        assertEquals(3, row.get("passed").asInt())
+        assertTrue(row.get("tasks").any { t -> t.get("imagesSeen").asInt() >= 3 &&
+            t.get("tools").map { it.asText() }.let { tools -> tools.indexOf("ViewBoxOutputRequest") < tools.indexOf("PatchBoxTextRequest") } })
     }
 
     /** [AgentLessons.sourceFile] reads `AFIELD_AI4_LESSONS_FILE`; a test cannot set env, so it swaps the hook. */

@@ -4348,6 +4348,8 @@ class Server {
                                 val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })
                                 json.encodeToString(withContext(Dispatchers.IO) { runAgentEvalHeadless(request) })
                             } catch (e: Exception) {
+                                // A 400 with only the message hid where an eval broke; keep the trace in the log.
+                                lprintln("warning,ai4", "agent-eval failed: ${e.stackTraceToString().take(3000)}")
                                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
                                 return@post
                             }

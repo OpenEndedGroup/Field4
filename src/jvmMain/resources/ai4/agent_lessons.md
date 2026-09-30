@@ -5,11 +5,11 @@ every agent task), capped at 2400 chars, curated bullets first. Kill switch: AFI
 that run's tool calls (AgentLessons.distil); review it with git diff like any other change.
 -->
 
-version: 2
-distilled: 2026-09-30T02:56:18.629549Z from agent-eval mode=live openai gpt-6-astra, 10 task(s): primes,fix-compile-error,parent-variable,html-table,stop-ticker,wire-two,fix-runtime-error,swatch-colour,draw-sun,bars-visible; 2 misuse call(s)
+version: 5
+distilled: 2026-09-30T04:07:36.258513Z from agent-eval mode=live openai gpt-6-astra, 47 task(s): primes,fix-compile-error,parent-variable,html-table,stop-ticker,wire-two,fix-runtime-error,swatch-colour,draw-sun,bars-visible,primes,fix-compile-error,parent-variable,html-table,stop-ticker,wire-two,fix-runtime-error,swatch-colour,draw-sun,bars-visible,stop-ticker,wire-two,fix-runtime-error,draw-sun,bars-visible,bars-sorted-red,stop-ticker,wire-two,fix-runtime-error,draw-sun,bars-visible,bars-sorted-red,stop-ticker,wire-two,fix-runtime-error,draw-sun,bars-visible,bars-sorted-red,stop-ticker,wire-two,fix-runtime-error,draw-sun,bars-visible,bars-sorted-red,bars-one-row,bars-one-row,bars-one-row; 8 misuse call(s)
 
 ## Curated
 
 ## Distilled
 
-- `CaptureRenderWindowRequest` failed 2 times in 2 tasks (html-table, draw-sun) answering "No capturable afield.four Window is visible from this box.". No later call of it in those tasks worked.
+- `CaptureRenderWindowRequest` failed 8 times in 3 tasks (html-table, draw-sun, bars-sorted-red) answering "No capturable afield.four Window is visible from this box.". No later call of it in those tasks worked.

@@ -52,6 +52,12 @@ are one more block in `buildDynamicInstructions`.
   | `swatch-colour` | Name the colour of a rectangle. The stylesheet says `!important` red, a more specific rule says green, the inline style says purple, and a script then sets an inline `!important` blue. The source invites "red"; the picture is blue |
   | `draw-sun` | A 300×200 SVG of a yellow sun on a dark-blue sky, graded by the share of each colour |
   | `bars-visible` | Five bars with percent heights inside a parent of auto height. Each computes to 0 px, so the panel is an empty white strip |
+  | `bars-sorted-red` | Sort five bars as displayed and make the tallest red. Another box, Theme, displays a stylesheet that makes Chart's container `row-reverse`: output panels share one page, so sorting the list ascending draws the bars tallest-first. Graded by `output-rising` |
+  | `bars-one-row` | Add five 28 px bars to a row of five so that all ten sit in one row. At the panel's width, which no code states, ten wrap. Graded by `output-rising:Row:#1f77b4:10` |
+
+  `output-rising:B:#c1,#c2:N` finds the vertical bars drawn in those colours (runs of columns).
+  It passes when there are at least N bars, they rise strictly from left to right, and, when more
+  than one colour is given, the tallest bar is mostly the last colour.
 
   Each task has a scripted solution that looks. The fake-host tests carry recorded pictures, and the
   counterfactuals fail: looking without fixing leaves `bars-visible` at a blue share of 0.000, and
@@ -67,6 +73,27 @@ are one more block in `buildDynamicInstructions`.
 
   Sight decides one of the three tasks. For the other two it is verification. The blind runs cost
   3.07M input tokens, most of this night's spend.
+
+## Look, revise, look
+
+The human wanted AI4 to be able to catch its own mistakes unattended. Both new bar tasks have
+scripted solutions that make the obvious first move, look, see that it is wrong, fix it, and look
+again, and the fake-host tests fail the first move alone. Live, the model was harder to trap than
+planned:
+
+- `bars-sorted-red`, first version (`row-reverse` in Chart's own code), 2 runs: the model read the
+  code and rewrote the container on its first try. Second version (the reversal lives in Theme),
+  4 runs: it called `ListContents` first, saw Theme's stylesheet, and put `flex-direction: row`
+  inline on its first try. 4/4 passed; the looks were checks, not corrections.
+- `bars-one-row`, 3 runs plus the demo box, all passed. Every run looked at the starting panel
+  first ("output width") and added `white-space: nowrap` before the wrap could happen, so the
+  trap never fired.
+  - In **2 of the 4** (eval run 1 and the demo box) the model made a different mistake: it gave the
+    container `width: 340px`, which clips the tenth bar against the white edge. It saw that in its
+    second capture, patched `box-sizing`, ran, and looked a third time. Transcript:
+    ViewBox → Run(first try) → ViewBox → **PatchBoxText** → Run → ViewBox, and the reply says "fit
+    fully inside white background". That is the loop the human asked for, caught on a flaw nobody
+    planted.
 
 ## Learning: `AgentLessons`
 
@@ -129,6 +156,34 @@ Per task, as rounds / input tokens / misuse:
 - D (lessons v2 against the fixed tools, one lesson left, about `CaptureRenderWindowRequest`)
   against C is within noise: 33 → 31 rounds, 2 → 1 misuse.
 
+## Held out: lessons on tasks they were not distilled from
+
+Split: the lessons came only from the **training** tasks (primes, fix-compile-error,
+parent-variable, html-table, swatch-colour) of runs A and A2 (10 task runs, 18 misuse calls). That
+gave lessons v4: three `CompileKotlinRequest` fileRef bullets. They were measured on the **held-out**
+tasks (stop-ticker, wire-two, fix-runtime-error, draw-sun, bars-visible, bars-sorted-red), with two
+live runs per setup (12 task runs each), openai gpt-6-astra. Every setup passed 12/12.
+
+| setup | tools | lessons | rounds (run 1 / run 2) | input tokens | misuse | CompileKotlin calls |
+| --- | --- | --- | --- | --- | --- | --- |
+| held-B-off | base | off | 30 / 31 | 300k / 310k | 4 / 4 | 7 / 6 |
+| held-B-on | base | v4 (training set) | 28 / 29 | 298k / 311k | **1 / 1** | 4 / 4 |
+| held-F-off | fixed | off | 21 / 22 | 224k / 235k | 2 / 1 | 0 / 0 |
+| held-F-on (combined) | fixed | v4 (training set) | 22 / 22 | 240k / 239k | 1 / 1 | 0 / 0 |
+
+- **Held out, the lessons still remove the misuse they describe**: 4 → 1 failing calls per run with
+  the base tools. Every CompileKotlin guess went. The one left is `CaptureRenderWindowRequest`,
+  which no v4 lesson mentions. Rounds fell by 2 per run and input tokens did not move, so the
+  saving is smaller than the run-to-run spread in tokens.
+- **Combined with the tool fix, the lessons do nothing useful.** Rounds are 22/22 against 21/22,
+  and input tokens rise by ~10k per run, the cost of reading lessons about a failure that can no
+  longer happen. Distilling from the fixed-tool training runs (C, D) produced **no lessons at all**:
+  nothing recurred.
+- The tool lever again dominates: held-out rounds 30–31 → 21–22 and input tokens −25%.
+- Committed lessons (v5) were distilled from every fixed-tool run tonight (47 task runs). They hold
+  one bullet, about `CaptureRenderWindowRequest` on boxes with no render window, the one misuse that
+  still recurs.
+
 ## Traps found tonight
 
 - **The first distil called the right spelling wrong.** A headless task document is *named*
@@ -142,5 +197,8 @@ Per task, as rounds / input tokens / misuse:
 - **The model reaches for `CaptureRenderWindowRequest` first on "visual" tasks** with no render
   window (2 of 10 tasks even after the fix). Distilled lesson v2 names it. A description change
   like CompileKotlin's is the likely stronger lever and was not tried.
+- **An `agent-eval` over HTTP once answered `{"error":"Index 0 out of bounds for length 0"}`** with
+  no trace (bars-sorted-red, scripted, on a freshly started server). It did not reproduce in 3
+  later runs. The route now logs the stack trace (`warning,ai-agent`). The cause is unknown.
 - **Rebuilding under a running Field.** `jvmTest` recompiles `jvmMain`, so the server was
   restarted after every test run before any live measurement.

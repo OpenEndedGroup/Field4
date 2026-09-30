@@ -64,6 +64,45 @@ object InFieldAgentEvals {
         "display(\"main\", \"<div style='background:white; padding:8px'>\$bars</div>\")"
     val BARS_FIXED = BARS_CODE.replace("height:\${v}%", "height:\${v}px")
 
+    /**
+     * Look → revise → look. Chart's container has class `bars`, and *another* box, Theme, displays a
+     * stylesheet that makes `.bars` `flex-direction: row-reverse` — output panels share one page, so a
+     * style in one panel reaches every other. The bars therefore appear in the reverse of the list's
+     * order, and sorting the list ascending, the obvious first move, draws them tallest-first. Chart's
+     * own code does not say so; the picture does. (The first version put row-reverse in Chart's own
+     * code; the live model read it and got it right first time, twice, so it tested nothing.) The
+     * scripted solution makes the mistake on purpose, sees it, and fixes it.
+     */
+    val THEME_CODE = "display(\"main\", \"<style>.bars { flex-direction: row-reverse; justify-content: flex-end; }</style>" +
+        "<div style='font: 12px monospace'>theme loaded</div>\")"
+    private fun chartCode(values: String, tallestRed: Boolean): String =
+        "val values = $values\n" +
+            "val top = values.maxOrNull()\n" +
+            "val bars = values.joinToString(\"\") { v -> \"<div style='width:24px; margin:3px; height:\${v}px; background:\" + " +
+            (if (tallestRed) "(if (v == top) \"#d62728\" else \"#1f77b4\")" else "\"#1f77b4\"") + " + \"'></div>\" }\n" +
+            "display(\"main\", \"<div class='bars' style='display:flex; align-items:flex-end; " +
+            "background:white; padding:8px; height:110px'>\$bars</div>\")"
+    /**
+     * Look → revise → look, with a trap no source states: the output panel's width. Five 28 px bars
+     * fit; ten wrap onto a second row, which the picture shows and the code cannot (the panel is as
+     * wide as the box, and a new box's frame is chosen by Field). `bars-sorted-red` turned out not to
+     * force a revision: the live model read the stylesheet in the other box through ListContents and
+     * pre-empted it in all four runs.
+     */
+    private fun rowCode(values: String, nowrap: Boolean): String =
+        "val values = $values\n" +
+            "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:28px; " +
+            "margin:3px; background:#1f77b4; height:\${v}px'></div>\" }\n" +
+            "display(\"main\", \"<div style='background:white; padding:8px" + (if (nowrap) "; white-space:nowrap" else "") + "'>\$bars</div>\")"
+    val ROW_CODE = rowCode("listOf(20, 30, 40, 50, 60)", nowrap = false)
+    val ROW_FIRST_TRY = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = false)
+    val ROW_FIXED = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = true)
+
+    val CHART_CODE = chartCode("listOf(55, 25, 90, 40, 70)", tallestRed = false)
+    /** The first try: sorted ascending, tallest red — drawn tallest-first because of row-reverse. */
+    val CHART_FIRST_TRY = chartCode("listOf(55, 25, 90, 40, 70).sorted()", tallestRed = true)
+    val CHART_FIXED = chartCode("listOf(55, 25, 90, 40, 70).sortedDescending()", tallestRed = true)
+
     val tasks: List<EvalTask> = listOf(
         EvalTask(
             "primes",
@@ -199,10 +238,49 @@ object InFieldAgentEvals {
                 call("ViewBoxOutputRequest", "box" to "Bars", "note" to "five blue bars of increasing height"),
                 "Percent heights had no definite parent height to resolve against, so every bar was 0 px tall; they are px now.")
         ),
+        EvalTask(
+            "bars-sorted-red",
+            AgentTaskRequest(
+                goal = "The box Chart shows five bars. Change it so that, as displayed, the bars are sorted by height — " +
+                    "shortest on the left, tallest on the right — and the tallest bar is red (#d62728) while the others " +
+                    "stay blue. Run it and check what it shows; keep going until it looks right.",
+                setup = steps(call("NewBoxRequest", "name" to "Theme", "code" to THEME_CODE), call("RunBoxRequest", "box" to "Theme"),
+                    call("NewBoxRequest", "name" to "Chart", "code" to CHART_CODE), call("RunBoxRequest", "box" to "Chart")),
+                checks = listOf(check("last-run-ok:Chart"), check("output-colour:Chart:#d62728:0.01"),
+                    check("output-rising:Chart:#1f77b4,#d62728:5")),
+                taskId = "bars-sorted-red"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Chart", "note" to "the starting order"),
+                call("SetBoxPropertyRequest", "box" to "Chart", "value" to CHART_FIRST_TRY),
+                call("RunBoxRequest", "box" to "Chart"),
+                call("ViewBoxOutputRequest", "box" to "Chart", "note" to "sorted shortest-to-tallest, tallest red?"),
+                call("SetBoxPropertyRequest", "box" to "Chart", "value" to CHART_FIXED),
+                call("RunBoxRequest", "box" to "Chart"),
+                call("ViewBoxOutputRequest", "box" to "Chart", "note" to "rising left to right, the rightmost red"),
+                "Something outside Chart reverses its bars (they drew tallest-first after sorting ascending); sorted descending they rise, the tallest red.")
+        ),
+        EvalTask(
+            "bars-one-row",
+            AgentTaskRequest(
+                goal = "The box Row shows five blue bars. Add five more after them, 70, 80, 90, 100 and 110 pixels tall, " +
+                    "keeping every bar 28 pixels wide, so that all ten stand side by side in a single row rising left to " +
+                    "right. Run it and check what it shows; keep going until it looks right.",
+                setup = steps(call("NewBoxRequest", "name" to "Row", "code" to ROW_CODE), call("RunBoxRequest", "box" to "Row")),
+                checks = listOf(check("last-run-ok:Row"), check("output-rising:Row:#1f77b4:10")),
+                taskId = "bars-one-row"
+            ),
+            steps(call("SetBoxPropertyRequest", "box" to "Row", "value" to ROW_FIRST_TRY),
+                call("RunBoxRequest", "box" to "Row"),
+                call("ViewBoxOutputRequest", "box" to "Row", "note" to "ten bars in one row?"),
+                call("SetBoxPropertyRequest", "box" to "Row", "value" to ROW_FIXED),
+                call("RunBoxRequest", "box" to "Row"),
+                call("ViewBoxOutputRequest", "box" to "Row", "note" to "ten bars in one row, rising"),
+                "Ten bars wrapped onto two rows in the panel's width; white-space:nowrap keeps them in one.")
+        ),
     )
 
     /** Tasks whose checks read pixels; they need a Field that can capture box output. */
-    val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible")
+    val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible", "bars-sorted-red", "bars-one-row")
 
     fun byId(id: String): EvalTask = tasks.firstOrNull { it.id == id }
         ?: throw IllegalArgumentException("No eval task '$id'. Known: ${tasks.joinToString { it.id }}")
