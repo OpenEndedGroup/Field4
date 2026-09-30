@@ -445,7 +445,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [standardRenderer.kt](renderers.md#standardrenderer-kt) | Renderers | 10 | 4 | The deferred renderer the rest of Fabricate is arranged around: the pass bundle, its shaders, and the configuration that sizes them. |  |
 | [standardShapes.kt](renderers.md#standardshapes-kt) | Renderers | 13 | 1 | Ten par_shapes primitives, written straight into vertex-pulling buffers as triangle soup. |  |
 | [stats.kt](math.md#stats-kt) | Math | 176 | 23 | Descriptive statistics, and the SVG/HTML renderings Field uses to put them in a box output. | [Measuring dependence between two signals](../statistics_examples.md) |
-| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
+| [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md), [Why does this value resolve here?](../why.md) |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
 | [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 38 | 25 |  |  |
 | [StudyFrames.kt](workspace.md#studyframes-kt) | Workspace | 5 | 5 |  |  |
