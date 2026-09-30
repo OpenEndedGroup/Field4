@@ -19,9 +19,9 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
+- **state-changing HTTP routes** — 57 of them, 44 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 56**). This
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 57**). This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -92,6 +92,9 @@ mutation; it is a different one.
 | `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement` | `docsAnnotations.kt` | loopback + same-site |
+| `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
+| `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
+| `GET /api/docs-improvement/pass/handoff` | `docsPass.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |
@@ -111,6 +114,7 @@ mutation; it is a different one.
 | `GET /controllers` | `controllers.kt` | none |
 | `GET /controllers/controls` | `controllers.kt` | none |
 | `GET /controllers/outputs` | `controllers.kt` | none |
+| `GET /docs-pass-site/{...}` | `docsPass.kt` | loopback + same-site |
 | `GET /field-audio/{...}` | `fieldAudioProxy.kt` | none |
 | `GET /field-docs/{...}` | `docsAnnotations.kt` | loopback |
 | `GET /health` | `Server.kt` | none |
@@ -219,7 +223,7 @@ it is also the only member of this table that does anything with its input.
 
 **Open question for the human, not for a nightly agent:** should these thirteen be `get { }`?
 Writing them as `get { }` would cost nothing — no client sends anything but `GET` — and would
-take thirteen rows off the state-changing census, which would then read 43 rather than 56. The
+take thirteen rows off the state-changing census, which would then read 44 rather than 57. The
 reason this branch did not do it: it is a change to `Server.kt`'s behaviour rather than to a
 test's accuracy, the `/vision` block's sibling `POST /vision/stream` shows the prefix is used
 for more than pages, and nothing in the repository records whether any of these was ever

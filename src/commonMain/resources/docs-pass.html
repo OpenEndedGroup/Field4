@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="color-scheme" content="dark">
+    <title>Documentation Revision Pass</title>
+    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/iosevka.css">
+    <style>
+        :root {
+            --bg: rgb(12, 12, 12);
+            --panel: rgb(25, 25, 25);
+            --panel-2: rgb(19, 19, 19);
+            --border: rgba(230, 240, 245, 0.14);
+            --border-strong: rgba(230, 240, 245, 0.32);
+            --text: rgba(235, 242, 246, 0.95);
+            --soft: rgba(168, 183, 192, 0.95);
+            --accent: rgb(224, 241, 249);
+            --warn: rgb(255, 241, 118);
+            --danger: rgb(255, 120, 120);
+            --ok: rgb(174, 240, 198);
+            --cyan: rgb(72, 201, 255);
+        }
+        * { box-sizing: border-box; }
+        html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Iosevka Web", ui-monospace, monospace; font-weight: 300; font-size: 13px; }
+        main { width: min(1180px, calc(100vw - 40px)); margin: 20px auto 60px; display: grid; gap: 12px; }
+        header, section { border: 1px solid var(--border); background: var(--panel); border-radius: 8px; padding: 14px; }
+        header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+        h1, h2 { margin: 0; font-weight: 400; }
+        h1 { font-size: 20px; }
+        h2 { font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); margin-bottom: 10px; display: flex; gap: 10px; align-items: baseline; }
+        h2 .count { color: var(--text); text-transform: none; letter-spacing: 0; }
+        p { margin: 6px 0; color: var(--soft); line-height: 1.5; }
+        a { color: var(--cyan); }
+        code { color: var(--accent); }
+        button, select, input { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 10px; }
+        button { cursor: pointer; }
+        button:hover:not(:disabled) { border-color: var(--accent); }
+        button:disabled { opacity: .35; cursor: default; }
+        button.danger { border-color: rgba(255, 120, 120, .5); color: var(--danger); }
+        button.primary { border-color: var(--cyan); }
+        input[type=number] { width: 5em; }
+        .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+        .row label { color: var(--soft); display: flex; gap: 6px; align-items: center; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--soft); }
+        .chip b { color: var(--text); font-weight: 400; }
+        .notice { border: 1px solid rgba(255, 241, 118, .4); color: var(--warn); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+        .notice.bad { border-color: rgba(255, 120, 120, .5); color: var(--danger); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 5px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+        th { color: var(--soft); font-weight: 300; border-top: none; }
+        td.num { text-align: right; white-space: nowrap; }
+        .state-running, .state-stopping { color: var(--cyan); }
+        .state-done, .state-finished { color: var(--ok); }
+        .state-interrupted, .state-killed, .state-died { color: var(--danger); }
+        .state-pending, .state-not-started, .state-stopped { color: var(--soft); }
+        .badge { font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; color: var(--soft); white-space: nowrap; }
+        .badge.blocking { border-color: var(--warn); color: var(--warn); }
+        .badge.crosscutting { color: var(--cyan); }
+        .expand { background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin: 6px 0 4px; }
+        pre { margin: 0; white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.45; }
+        pre.patch { white-space: pre; overflow-x: auto; max-height: 70vh; }
+        pre.patch .add { color: var(--ok); } pre.patch .del { color: var(--danger); } pre.patch .hunk { color: var(--cyan); } pre.patch .meta { color: var(--soft); }
+        pre.log { max-height: 50vh; overflow: auto; color: var(--soft); }
+        .muted { color: var(--soft); }
+        .add-count { color: var(--ok); } .del-count { color: var(--danger); }
+        #changes td:first-child, #handoffs td:nth-child(2) { max-width: 0; width: 100%; }
+        .expand { overflow-x: auto; }
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <div>
+            <h1>Documentation revision pass</h1>
+            <p id="posture">Loading…</p>
+        </div>
+        <div class="row">
+            <a href="/field-docs/" target="_blank" rel="noopener">docs + notes</a>
+            <a href="/welcome">welcome</a>
+            <button id="forget-token" type="button" title="Forget the cached token">token…</button>
+        </div>
+    </header>
+
+    <section>
+        <h2>1 · Worktree</h2>
+        <div id="pass-summary"><p>…</p></div>
+        <div class="row">
+            <button id="create" type="button" class="primary">Start a pass</button>
+            <button id="finish" type="button">Finish (remove worktree)</button>
+            <button id="abandon" type="button" class="danger">Abandon pass</button>
+        </div>
+    </section>
+
+    <section>
+        <h2>2 · Drain the queue <span class="count" id="queue-count"></span></h2>
+        <div class="chips" id="counts"></div>
+        <div class="row">
+            <label>agent <select id="agent"><option value="claude">claude</option><option value="codex">codex</option></select></label>
+            <label>at a time <input id="jobs" type="number" min="1" max="12" value="4"></label>
+            <label>tags <input id="tags" placeholder="@voice @accuracy" size="18"></label>
+            <label>pages <input id="pages" placeholder="sound.md index.md" size="22"></label>
+        </div>
+        <div class="row">
+            <button id="revise" type="button" class="primary">Drain the queue</button>
+            <button id="stop" type="button">Stop after current pages</button>
+            <button id="stop-now" type="button" class="danger">Stop now</button>
+        </div>
+        <p class="muted">One agent per page, in the pass's worktree. <em>Stop after current pages</em> lets running agents finish and starts no more; <em>Stop now</em> ends them. Either way, whatever they recorded is kept and every other note stays in the queue.</p>
+        <div id="progress"></div>
+    </section>
+
+    <section>
+        <h2>3 · Handoffs <span class="count" id="handoff-count"></span></h2>
+        <p class="muted">Work an agent judged too big for a page: code (<em>project</em>) or across pages (<em>crosscutting</em>). A blocking handoff holds its page's notes until it is closed. Work through these separately, with a person: open the document in an interactive session.</p>
+        <div id="handoffs"></div>
+    </section>
+
+    <section>
+        <h2>4 · Changes <span class="count" id="change-count"></span></h2>
+        <p class="muted">Against the commit the pass started from. Discarding a file also puts back in the queue every note its edit claimed to resolve.</p>
+        <div id="changes"></div>
+    </section>
+
+    <section>
+        <h2>5 · Rebuild, commit, land</h2>
+        <div class="row">
+            <label>captures <select id="mode">
+                <option value="never">never — HTML only, fast</option>
+                <option value="incremental">incremental — re-run stale captures on changed pages</option>
+                <option value="strict">strict</option>
+            </select></label>
+            <button id="rebuild" type="button">Rebuild docs</button>
+        </div>
+        <div class="row" id="built-links"></div>
+        <div class="row">
+            <button id="commit" type="button" class="primary">Commit the worktree</button>
+            <button id="land" type="button" class="primary">Land on main</button>
+        </div>
+        <p class="muted">Commit runs the repository's pre-commit guard (several minutes). Land merges <code>main</code> into the pass branch if it has moved on, then fast-forwards <code>main</code> in this checkout. Nothing is pushed.</p>
+    </section>
+
+    <section>
+        <h2>Job <span class="count" id="job-title"></span></h2>
+        <div class="row"><button id="cancel-job" type="button" class="danger">Cancel job</button><span class="muted" id="job-file"></span></div>
+        <pre class="log" id="job-log"></pre>
+    </section>
+</main>
+<script>
+(() => {
+    const TOKEN_KEY = "field.docsImprovementToken";  // shared with /welcome's "Improve annotated docs"
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const view = { status: null, job: null, enabled: false, openDiffs: new Map(), openHandoffs: new Map() };
+
+    const token = (reason) => {
+        let value = "";
+        try { value = localStorage.getItem(TOKEN_KEY) || ""; } catch (_) {}
+        if (value && !reason) return value;
+        value = (window.prompt((reason ? reason + "\n\n" : "") + "Field's documentation-improvement token (printed in Field's log at startup, or AFIELD_DOCS_IMPROVEMENT_TOKEN):", "") || "").trim();
+        if (value) try { localStorage.setItem(TOKEN_KEY, value); } catch (_) {}
+        return value;
+    };
+
+    const act = async (action, extra = {}) => {
+        let secret = token();
+        if (!secret) return null;
+        const send = value => fetch("/api/docs-improvement/pass", { method: "POST", headers: { "Content-Type": "application/json", "X-Field-Docs-Improvement-Token": value }, body: JSON.stringify({ action, ...extra }) });
+        let response = await send(secret);
+        if (response.status === 401) {
+            try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+            secret = token("That token was not accepted.");
+            if (!secret) return null;
+            response = await send(secret);
+        }
+        const text = await response.text();
+        if (!response.ok) { window.alert(text || `HTTP ${response.status}`); return null; }
+        try { return JSON.parse(text); } catch (_) { return text; }
+        finally { refresh(); }
+    };
+
+    const words = value => value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+
+    const renderPosture = (body) => {
+        const status = body.status || {};
+        const lines = [`Checkout <code>${esc(body.workingDirectory || "?")}</code>${status.primaryBranch ? ` on <code>${esc(status.primaryBranch)}</code>` : ""}.`];
+        if (!body.enabled) lines.push(`<div class="notice">Actions are off: this Field was started without <code>AFIELD_DOCS_IMPROVEMENT=1</code>. They start coding agents with write access, commit, and move <code>main</code>, so they are opt-in. You can still look.</div>`);
+        if (body.statusError) lines.push(`<div class="notice bad">${esc(body.statusError)}</div>`);
+        $("posture").innerHTML = lines.join(" ");
+    };
+
+    const renderPass = (status) => {
+        const pass = status.pass, wt = status.worktree;
+        if (!pass) { $("pass-summary").innerHTML = `<p>No pass is open. Starting one makes a worktree on a new <code>docs-pass/…</code> branch from <code>main</code>, so agents never edit this checkout.</p>`; return; }
+        if (!wt || !wt.exists) { $("pass-summary").innerHTML = `<div class="notice bad">The pass's worktree <code>${esc(pass.worktree)}</code> is gone. Abandon the pass to clear it.</div>`; return; }
+        const bits = [
+            `<code>${esc(pass.worktree)}</code> on <code>${esc(pass.branch)}</code>, from <code>${esc(pass.base)}</code> at <code>${esc(pass.baseCommit.slice(0, 10))}</code>`,
+            `${wt.ahead} commit(s) on the branch, ${wt.uncommitted} uncommitted file(s)`,
+            wt.baseAdvanced ? `<span class="muted">${esc(pass.base)} has moved on by ${wt.baseAdvanced} commit(s); landing merges it in first</span>` : "",
+            wt.landed ? `<b class="state-done">landed on ${esc(pass.base)}</b>` : "",
+            `${(pass.runs || []).length} run(s)`,
+        ].filter(Boolean);
+        $("pass-summary").innerHTML = `<p>${bits.join(" · ")}</p>`;
+    };
+
+    const renderCounts = (status) => {
+        const counts = status.notes || {};
+        const order = [["open", "open"], ["question", "agent asks"], ["blocked", "waiting on a handoff"], ["resolved", "resolved"], ["memory", "memories"], ["handoff-open", "handoffs open"], ["handoff-taken", "handoffs taken"]];
+        $("counts").innerHTML = order.filter(([key]) => counts[key]).map(([key, label]) => `<span class="chip"><b>${counts[key]}</b> ${label}</span>`).join("") || `<span class="muted">no notes</span>`;
+        $("queue-count").textContent = counts.open ? `${counts.open} open` : "";
+    };
+
+    const renderProgress = (progress) => {
+        if (!progress) { $("progress").innerHTML = ""; return; }
+        const parts = progress.partitions || [];
+        const done = parts.filter(p => p.state === "done").length;
+        const head = `<p>Run <code>${esc(progress.runId)}</code> · <span class="state-${esc(progress.state)}">${esc(progress.state)}</span>${progress.stopRequested ? " · stop requested" : ""} · ${done}/${parts.length} page(s) done · ${esc(progress.agent)}, ${progress.jobs} at a time</p>`;
+        const rows = parts.map(p => `<tr><td>${esc(p.pages.join(", "))}</td><td class="num">${p.notes}</td><td class="state-${esc(String(p.state).replace(" ", "-"))}">${esc(p.state)}</td>`
+            + `<td class="num">${p.resolved ?? ""}</td><td class="num">${p.questions ?? ""}</td><td class="num">${p.handoffs ?? ""}</td><td class="num">${p.changed ? p.changed.length : ""}</td><td class="num">${p.seconds != null ? p.seconds + "s" : ""}</td></tr>`).join("");
+        $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;
+    };
+
+    const renderHandoffs = (status) => {
+        const items = (status.handoffs || []).filter(h => h.state === "open" || h.state === "taken" || view.openHandoffs.has(h.id));
+        $("handoff-count").textContent = items.length ? `${items.length} open` : "";
+        if (!items.length) { $("handoffs").innerHTML = `<p class="muted">None open.</p>`; return; }
+        $("handoffs").innerHTML = `<table>${items.map(h => {
+            const open = view.openHandoffs.get(h.id);
+            return `<tr data-handoff="${esc(h.id)}"><td>${h.blocking ? `<span class="badge blocking">blocking ${h.waiting}</span> ` : ""}<span class="badge ${esc(h.scope)}">${esc(h.scope)}</span> <span class="badge">${esc(h.state)}</span></td>`
+                + `<td>${esc(h.title)}<div class="muted">${esc(h.page || "")} · <code>${esc(h.path || "")}</code></div>`
+                + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p></div>` : "") + `</td>`
+                + `<td class="num"><button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
+        }).join("")}</table>`;
+    };
+
+    const colourPatch = patch => esc(patch).split("\n").map(line =>
+        line.startsWith("+++") || line.startsWith("---") || line.startsWith("diff ") || line.startsWith("index ") ? `<span class="meta">${line}</span>`
+        : line.startsWith("@@") ? `<span class="hunk">${line}</span>` : line.startsWith("+") ? `<span class="add">${line}</span>`
+        : line.startsWith("-") ? `<span class="del">${line}</span>` : line).join("\n");
+
+    const renderChanges = (status) => {
+        const files = (status.worktree && status.worktree.changed) || [];
+        $("change-count").textContent = files.length ? `${files.length} file(s)` : "";
+        if (!files.length) { $("changes").innerHTML = `<p class="muted">No changes yet.</p>`; return; }
+        $("changes").innerHTML = `<table>${files.map(f => {
+            const open = view.openDiffs.get(f.path);
+            return `<tr data-path="${esc(f.path)}"><td><code>${esc(f.path)}</code> <span class="badge">${esc(f.status)}</span>`
+                + (open ? `<div class="expand"><pre class="patch">${colourPatch(open)}</pre></div>` : "") + `</td>`
+                + `<td class="num"><span class="add-count">+${f.added}</span> <span class="del-count">−${f.removed}</span></td>`
+                + `<td class="num"><button data-act="diff">${open ? "hide" : "diff"}</button> <button data-act="discard" class="danger">discard…</button></td></tr>`;
+        }).join("")}</table>`;
+    };
+
+    // Changed Markdown pages, linked to their rebuilt copies in the pass worktree's site.
+    const renderBuiltLinks = (status) => {
+        const files = ((status.worktree && status.worktree.changed) || []).map(f => f.path)
+            .filter(p => p.startsWith("public/docs/") && p.endsWith(".md") && !p.includes("/assets/"));
+        const rebuilt = view.job && view.job.name === "rebuild" && view.job.exitCode === 0;
+        if (!status.pass || !files.length) { $("built-links").innerHTML = ""; return; }
+        const href = p => { const rel = p.slice("public/docs/".length, -3); return `/docs-pass-site/${rel === "index" ? "index.html" : rel.replace(/\/index$/, "") + "/"}`; };
+        $("built-links").innerHTML = `<span class="muted">${rebuilt ? "rebuilt:" : "after a rebuild:"}</span> `
+            + files.map(p => `<a href="${href(p)}" target="_blank" rel="noopener">${esc(p.slice("public/docs/".length))}</a>`).join(" ");
+    };
+
+    const renderJob = (job) => {
+        const log = $("job-log");
+        const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+        $("job-title").textContent = job && job.name ? `${job.name} · ${job.running ? "running" : "exit " + job.exitCode}` : "none yet";
+        $("job-file").textContent = job && job.logFile ? job.logFile : "";
+        log.textContent = (job && job.logTail) || "";
+        if (atBottom) log.scrollTop = log.scrollHeight;
+    };
+
+    const setButtons = () => {
+        const status = view.status || {}, pass = status.pass, wt = status.worktree || {};
+        const busy = !!(view.job && view.job.running), draining = !!(status.progress && status.progress.alive);
+        const can = view.enabled;
+        const set = (id, on) => { $(id).disabled = !can || !on; };
+        set("create", !pass && !busy);
+        set("finish", !!pass && wt.landed && !busy && !draining);
+        set("abandon", !!pass && !busy && !draining);
+        set("revise", !!pass && wt.exists && !busy && !draining);
+        set("stop", draining);
+        set("stop-now", draining);
+        set("rebuild", !!pass && wt.exists && !busy && !draining);
+        set("commit", !!pass && wt.exists && wt.uncommitted > 0 && !busy && !draining);
+        set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !busy && !draining);
+        set("cancel-job", busy);
+        document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = !can || busy || draining; });
+        document.querySelectorAll('#handoffs button:not([data-act="read"])').forEach(b => { b.disabled = !can; });
+    };
+
+    let refreshing = false;
+    const refresh = async () => {
+        if (refreshing) return;
+        refreshing = true;
+        try {
+            const response = await fetch("/api/docs-improvement/pass", { cache: "no-store" });
+            if (!response.ok) { $("posture").innerHTML = `<div class="notice bad">${esc(await response.text())}</div>`; return; }
+            const body = await response.json();
+            view.status = body.status || {}; view.job = body.job; view.enabled = !!body.enabled;
+            renderPosture(body); renderPass(view.status); renderCounts(view.status); renderProgress(view.status.progress);
+            renderHandoffs(view.status); renderChanges(view.status); renderBuiltLinks(view.status); renderJob(view.job); setButtons();
+        } catch (error) {
+            $("posture").innerHTML = `<div class="notice bad">${esc(error.message)}</div>`;
+        } finally { refreshing = false; }
+    };
+
+    $("create").onclick = () => act("create");
+    $("finish").onclick = () => confirm("Remove the pass's worktree and branch? The work is already on main.") && act("finish");
+    $("abandon").onclick = () => confirm("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
+    $("revise").onclick = () => act("revise", { agent: $("agent").value, jobs: Number($("jobs").value) || 4, tags: words($("tags").value), pages: words($("pages").value) });
+    $("stop").onclick = () => act("stop");
+    $("stop-now").onclick = () => confirm("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
+    $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
+    $("commit").onclick = () => confirm("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
+    $("land").onclick = () => confirm("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
+    $("cancel-job").onclick = () => confirm("Kill the running job and everything it started?") && act("cancel-job");
+    $("forget-token").onclick = () => { try { localStorage.removeItem(TOKEN_KEY); } catch (_) {} token("Enter a new token."); };
+
+    $("changes").addEventListener("click", async event => {
+        const button = event.target.closest("button"); if (!button) return;
+        const path = button.closest("[data-path]").dataset.path;
+        if (button.dataset.act === "diff") {
+            if (view.openDiffs.has(path)) { view.openDiffs.delete(path); renderChanges(view.status); setButtons(); return; }
+            const response = await fetch(`/api/docs-improvement/pass/diff?path=${encodeURIComponent(path)}`, { cache: "no-store" });
+            const files = response.ok ? await response.json() : [];
+            view.openDiffs.set(path, files[0] ? files[0].patch : await response.text());
+            renderChanges(view.status); setButtons();
+        } else if (button.dataset.act === "discard" && confirm(`Discard every change to ${path}? Notes its edit resolved go back in the queue.`)) {
+            view.openDiffs.delete(path);
+            await act("discard", { path });
+        }
+    });
+
+    $("handoffs").addEventListener("click", async event => {
+        const button = event.target.closest("button"); if (!button) return;
+        const id = button.closest("[data-handoff]").dataset.handoff;
+        const kind = button.dataset.act;
+        if (kind === "read") {
+            if (view.openHandoffs.has(id)) { view.openHandoffs.delete(id); renderHandoffs(view.status); setButtons(); return; }
+            const response = await fetch(`/api/docs-improvement/pass/handoff?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+            view.openHandoffs.set(id, response.ok ? await response.json() : { text: await response.text(), file: "" });
+            renderHandoffs(view.status); setButtons();
+            return;
+        }
+        const prompts = { taken: "Who has it, or where is it happening? (optional)", done: "What happened? This sentence goes into the page's brief when its notes come back.", dropped: "Why is it being dropped?" };
+        const text = window.prompt(prompts[kind], "");
+        if (text === null || (kind !== "taken" && !text.trim())) return;
+        await act("close-handoff", { id, state: kind, text });
+    });
+
+    refresh();
+    setInterval(() => { if (!document.hidden) refresh(); }, 2500);
+})();
+</script>
+</body>
+</html>
