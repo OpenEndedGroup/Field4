@@ -103,6 +103,47 @@ checked, census `liveRunning 2` → `0` on stop), line notes (hello's recorded n
 `DemoTranscriptExecSmokeTest` filtered to `lua_demo`: PASS, applied=26. The docs page's ten captures came
 from `FIELD_DOCS_RUNNER_MODE=always|incremental --page lua.md`, each opened.
 
+## Editor captures: pane height and the caret (fixed 2026-09-30, found by the human)
+
+lua.md's first editor figures were a whole pane tall (box.png, error.png, spawn.png: 2440 device px
+for 4–8 lines) and lost their first letter (`box` read `ox`). Both were general, not Lua's:
+
+- A line note is drawn at the foot of the editor pane, screenshot prep makes the pane 840–1200 CSS px,
+  and the clip keeps the note (a note is part of what the editor shows). Every Lua run leaves a note,
+  so every Lua editor figure was pane-sized; any language whose runs leave notes would be. Fix:
+  `fitEditorPaneToContentAndNote` in `src/jsMain/kotlin/afield/Main.kt`, on the `editorOnly` capture
+  path only and only when a note is visible, shortens the pane to text + output zones + note + 36 px and
+  relayouts Monaco before clipping — `ui.editorHeight(px)` done automatically. Live: pane 1200 → 327
+  CSS px, figure 2440 → 702 px. `EditorCaptureHeightTest` holds every committed editor figure to
+  600 + 120 px per fence line (with a negative control on the 2440/4 case).
+- Field's caret is a red block, and a capture holds it solid (1617a1e95, 09-28); after a run it sits at
+  line 1, column 1 and covered that glyph. The capture now also draws the caret `line-thin` and restores
+  the editor's own style afterwards. Pd's `typo.png` (09-28) shows the same covered first glyph; it and
+  any editor figure captured since 09-28 would change on recapture.
+- A trap on the way: after editing Main.kt, `compileKotlinJs` failed with the K2 JS backend's
+  "IrClassSymbolImpl is unbound. Signature: kotlin/Unit" — an incremental-cache fault, not the code:
+  `./gradlew compileKotlinJs --rerun` built it cleanly.
+
+### Pending: the recapture and the completion figure (blocked by the power gate)
+
+The fix above is committed and verified through the backdoor, but lua.md's six editor figures are still
+the pre-fix captures, and the completion figure the human asked for does not exist yet: the docs runner
+refuses a capture unless the machine is on AC or at ≥ 80% battery (`tools/verification_environment.py`),
+and it was on battery (78% → 56%) for the whole of this pass. No capture was faked. To finish, on AC:
+
+```diffstatic {data-lang=bash}
+git apply dev_docs/lua/pending_completion_capture.patch        # the completion fence, into lua.md
+rm public/docs/assets/lua/{hello,box,spawn,error,runaway,jit}.png
+FIELD_DOCS_RUNNER_PORT=9721 FIELD_DOCS_RUNNER_MODE=incremental \
+  uv run --project . --group docs python tools/build_zensical_docs.py --page lua.md
+```
+
+then open every PNG (editor figures should be a few hundred px, caret a thin line; completion.png the
+popup at `p` with pairs/pcall/play/print and the doc panel, 2×), run `EditorCaptureHeightTest`, and
+commit the patch's lua.md change with the new assets. The setup transcript the fence uses is committed
+at `public/docs/assets/transcripts/lua_completion_setup.yaml`; the popup it produces was checked live
+(`field.` prefix: rows with catalogue signatures, the doc panel beside).
+
 ## Not done
 
 - Lua reaches sound only through the pattern voice (no DSP graph, no Pd bridge from Lua), and nothing uses LuaJIT's `ffi`.
