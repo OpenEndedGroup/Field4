@@ -9,15 +9,19 @@ press `Ctrl+Shift+A`, type a note, and it is stored in `~/.afield/docs-annotatio
 by default (or the file selected by `AFIELD_DOCS_ANNOTATIONS_STORE`), with an anchor good
 enough to find the sentence again after the page is rebuilt.
 
-The second is not benign. `POST /api/docs-improvement` takes the unresolved notes, turns
-them into a prompt, and runs
+The second is not benign. `POST /api/docs-improvement` takes the queued notes and runs
+the revision harness,
 
 ```
-codex exec --sandbox workspace-write "<the prompt>"
+tools/docs_notes.py revise --agent codex
 ```
 
-in a source checkout. It is an autonomous coding agent, with write access, steered by
-text that arrived over HTTP.
+in a source checkout, which starts one `codex exec --sandbox workspace-write` (or
+`claude -p`, with `AFIELD_DOCS_IMPROVEMENT_AGENT=claude`) *per documentation page*, in
+parallel. Each is an autonomous coding agent, with write access, steered by text that
+arrived over HTTP. (Until 2026-09-30 it was one `codex exec` over every note, told to edit
+the annotation store itself; how the harness partitions, anchors and records is
+[`DOCS_NOTES_REVISION.md`](DOCS_NOTES_REVISION.md).)
 
 This page is about the second one: what it can do, what stops it, and how to turn it on.
 
@@ -182,6 +186,8 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_IMPROVEMENT` | unset | the same switch, from the environment. `1`, `true`, `yes`, `on`; anything else — **including the empty string** — is off. |
 | `AFIELD_DOCS_IMPROVEMENT_TOKEN` | a fresh random 24-byte hex value, printed once | the value of `X-Field-Docs-Improvement-Token`. Compared with `MessageDigest.isEqual`. |
 | `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
+| `AFIELD_DOCS_IMPROVEMENT_AGENT` | `codex` | the agent the harness runs per page: `codex` or `claude`. Anything else is `codex`. |
+| `AFIELD_DOCS_NOTES_PYTHON` | unset → `uv run --no-project python`, else `python3` | the interpreter the route runs `tools/docs_notes.py` with. The tool is stdlib-only. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
@@ -323,9 +329,10 @@ faithfully follow.
   shared by the main tree, every worktree and every window so this change does not silently
   orphan existing notes. Automation and worktrees can instead set
   `AFIELD_DOCS_ANNOTATIONS_STORE=.field-backdoor/docs-annotations.json`; Field resolves it
-  against that checkout and prints the resulting path at startup. Two JVMs pointed at the
-  same file can still lose a note because the lock is per-JVM, so use distinct paths when
-  they may write concurrently. `recordedInCheckout` remains attribution, not locking.
+  against that checkout and prints the resulting path at startup. Since 2026-09-30 every
+  read-modify-write also takes a POSIX record lock on `<store>.lock`, which
+  `tools/docs_notes.py` takes too, so two JVMs, or a JVM and the harness, no longer lose each
+  other's notes. `recordedInCheckout` remains attribution, not locking.
 - **Prompt injection is mitigated, not removed.** With the endpoint gated, an attacker
   can no longer both plant the text and pull the trigger. A note you did not write can
   still end up in a run you did launch — the notes are yours, so this is mostly a

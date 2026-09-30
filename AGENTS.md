@@ -461,6 +461,10 @@ Renderer access is graph topology. For automation: run
   otherwise (`AFIELD_DOCS_MIRROR_SOURCE=local|upstream`, `AFIELD_DOCS_MIRROR_DIR`;
   `afield/server/docsAnnotations.kt`; `dev_docs/DOCS_IFRAME_MODE.md`); both inject the annotation
   panel. Docs pages drive Field through `window.FieldAPI` (`docsIframeApi.js`).
+- Human notes on the docs are a revision queue: `tools/docs_notes.py` (stdlib; `queue`, `brief
+  <page>`, `sync`, `resolve`/`question`/`memory`, and `revise`, which runs one agent per page in
+  parallel). Each note is anchored to its Markdown or KDoc lines by `git blame` origin, so line
+  numbers stay right after other edits. See `dev_docs/DOCS_NOTES_REVISION.md`.
 - `exportToDocumentation(...)` (`afield/docs/doc.kt`) turns boxes with metadata into docs-ready
   Markdown plus captured assets.
 - Read-only offline viewer: `offline.html`, `offline-viewer.js`, `edn-parser.js` in
