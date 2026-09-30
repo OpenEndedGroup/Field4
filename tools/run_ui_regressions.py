@@ -3650,6 +3650,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
     timeout_text = str(timeout)
     return [
         UiRegression(
+            id="three-idle-rendering",
+            description="Static geometry sleeps and redraws for visibility, lighting, section, insertion, camera and resize.",
+            commands=[
+                "new-box --name IdleRenderingRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-rendering.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-rendering.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-idle-animation",
+            description="Incoming geometry continues redrawing through the event-driven viewer scheduler.",
+            commands=[
+                "new-box --name IdleRenderingRegression",
+                shell_join(["launch", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-animation.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-idle-animation.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-tools",
             description="Optional viewer tools load from Field, restore state and dispose without an idle loop.",
             commands=[
