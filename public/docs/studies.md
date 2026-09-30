@@ -86,9 +86,8 @@ val empty = rings.inspect(StudyCall.Inspect())
 val first = rings.edit(StudyCall.Edit("empty", empty.facts["liveSourceHash"] as String, "7 rings 0.05 ink 0.8 warmth", "seven warm rings"))
 val seen = rings.observe(StudyCall.Observe(seconds = listOf(0.0, 0.5, 1.0)))
 
-display("main", "<pre>" + tools.values.joinToString("\n") { it.name } + "</pre>" +
-    "<pre>${first.revision}: ${first.facts["message"]}</pre>" +
-    "<img src='${seen.toolImages.single().dataUrl}' style='width:720px'/>")
+markdown("main", tools.values.joinToString(" · ") { "`${it.name}`" } +
+    "\n\n`${first.revision}`: ${first.facts["message"]}\n\n" + seen.h)
 ```
 
 The revision is named `r1-` and the first twelve hex digits of its source's hash, so the same source
@@ -122,7 +121,7 @@ expect:
   outputContains:
     - "7 rings 0.05 ink 0.2 warmth"
     - "Conflict"
-    - "luma preserved: false"
+    - "Luma preserved: false"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/change.png" alt="the main output channel: 'box now holds: 7 rings 0.05 ink 0.2 warmth', the stale edit refused with 'Conflict: the revision or the live source changed since you read them', 'luma preserved: false', and below it a sheet headed 'cooler rings' with the new blue rings on top, the orange parent beneath, and their difference map" wait="1.5" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="120" name="studies-change" w="760" h="260"}
 :::static
@@ -147,10 +146,8 @@ val cooler = rings.setNumbers(StudyCall.SetNumbers(first.revision, hash, listOf(
 val late = runCatching { rings.edit(StudyCall.Edit(first.revision, hash, "3 rings 0.5 ink 0.5 warmth", "an edit from a stale read")) }
 val kept = rings.compare(StudyCall.Compare(first.revision, cooler.revision, mode = "luma"))
 
-display("main", "<pre>box now holds: ${thisBox.getPropertyRaw("rings", "")}\n" +
-    "stale edit: ${late.exceptionOrNull()?.message}\n" +
-    "luma preserved: ${kept.facts["preservedOutsideRegion"]}</pre>" +
-    "<img src='${cooler.toolImages.single().dataUrl}' style='width:340px'/>")
+markdown("main", "The box holds `${thisBox.getPropertyRaw("rings", "")}`. The stale edit: ${late.exceptionOrNull()?.message} " +
+    "Luma preserved: ${kept.facts["preservedOutsideRegion"]}.\n\n" + cooler.h)
 ```
 
 Knob 2 is the third number, `0.8`, and the box's property now reads `0.2` in its place. The stale
@@ -205,10 +202,8 @@ val tried = rings.tryVariants(StudyCall.TryVariants(listOf(
 val now = rings.inspect(StudyCall.Inspect())
 val adopted = rings.adoptVariant(StudyCall.Adopt(now.revision, now.facts["liveSourceHash"] as String, "cold"))
 
-display("main", "<pre>" + (tried.facts["variants"] as List<*>).joinToString("\n") + "\n" +
-    "adopted ${adopted.revision}; box now holds: ${thisBox.getPropertyRaw("rings", "")}</pre>" +
-    "<img src='${swept.toolImages.single().dataUrl}' style='width:720px'/>" +
-    "<img src='${tried.toolImages.single().dataUrl}' style='width:340px'/>")
+markdown("main", (tried.facts["variants"] as List<*>).joinToString("\n") { "- $it" } +
+    "\n\nAdopted `${adopted.revision}`; the box holds `${thisBox.getPropertyRaw("rings", "")}`.\n\n" + swept.h + "\n\n" + tried.h)
 ```
 
 A refused candidate still has a row on the sheet, with the reason in place of a frame, so a model
@@ -229,7 +224,7 @@ timeoutSec: 90
 waitSec: 1.0
 expect:
   outputContains:
-    - "InspectLookStudy, ObserveLookStudy"
+    - "ObserveLookStudy"
     - "This study does not offer Observe"
 -->
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/studies/refuse.png" alt="the main output channel: 'tools: InspectLookStudy, ObserveLookStudy', 'inspect: source=nothing to edit here' in braces, and 'observe: This study does not offer Observe'" wait="1.0" wait-output=true wait-output-kind=display wait-output-channel="main" capture="box" embed=true timeout="90" name="studies-refuse" w="760" h="120"}
@@ -242,9 +237,8 @@ val tools = registerStudyTools("Look", lookOnly, verbs = setOf(StudyVerb.INSPECT
 val read = lookOnly.inspect(StudyCall.Inspect())
 val look = runCatching { lookOnly.observe(StudyCall.Observe(seconds = listOf(0.0))) }
 
-display("main", "<pre>tools: ${tools.values.joinToString { it.name }}\n" +
-    "inspect: ${read.facts}\n" +
-    "observe: ${look.exceptionOrNull()?.message}</pre>")
+markdown("main", "Tools: ${tools.values.joinToString { "`${it.name}`" }}. Inspect: ${read.facts}. " +
+    "Observe: ${look.exceptionOrNull()?.message}.")
 ```
 
 The refusal is a `StudyRejection` (an `IllegalArgumentException`), thrown by `LiveStudy`'s default
