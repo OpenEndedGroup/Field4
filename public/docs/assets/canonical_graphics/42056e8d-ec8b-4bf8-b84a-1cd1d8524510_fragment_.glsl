@@ -1,9 +1,11 @@
-#version 460
-
-layout(location = 0) in vec4 fcol;
+#version 450
 layout(location = 0) out vec4 uFragColor;
+layout(location = 0) in vec4 fcol;
 
+{{ pc.dec }}
 void main()
 {
-    uFragColor = fcol;
+    loadRegs();
+    
+    uFragColor = vec4(a());
 }
