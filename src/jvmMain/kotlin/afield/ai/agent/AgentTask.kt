@@ -55,6 +55,8 @@ data class AgentTaskRequest(
     val chatBox: String = "",
     /** `on` / `off` pins the eval-distilled lessons in the instructions ([AgentLessons]); blank = default. */
     val lessons: String = "",
+    /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
+    val blind: Boolean = false,
 )
 
 /**
@@ -158,6 +160,8 @@ data class AgentTaskResult(
     val imagesSeen: Int = 0,
     /** Whether the eval-distilled lessons were in this turn's instructions. */
     val lessons: Boolean = false,
+    /** The document as file refs spell it (`afield://<documentRef>/<uid>/code`): its directory's name. */
+    val documentRef: String = "",
 )
 
 /**
@@ -192,7 +196,7 @@ object AgentTaskRunner {
     ): AgentTaskResult {
         val taskId = request.taskId.ifBlank { "task-" + UUID.randomUUID().toString().take(8) }
         val started = System.nanoTime()
-        val graph = FieldGraphTools(info, host, lessons = AgentLessons.resolve(request.lessons))
+        val graph = FieldGraphTools(info, host, lessons = AgentLessons.resolve(request.lessons), seesOutput = !request.blind)
         val budget = request.maxToolRounds.coerceIn(1, 64)
         var bridge: LlmBridge? = null
         var setupLog = emptyList<AgentToolCallRecord>()
@@ -265,6 +269,7 @@ object AgentTaskRunner {
                 misuseCalls = calls.count(AgentLessons::isMisuse),
                 imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },
                 lessons = graph.lessons,
+                documentRef = java.io.File(info.filename).name,
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")

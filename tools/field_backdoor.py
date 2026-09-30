@@ -2113,8 +2113,11 @@ class FieldBackdoor:
             if not context["playwrightAttached"]:
                 warnings.append(
                     f"box {target} was `{context['command']}` before Playwright attached to this "
-                    "document, so output DOM that run created never existed in the captured page. "
-                    "Pass --with-playwright (or run playwright-open) before the run."
+                    "document. Its retained output panels are replayed to a page that attaches "
+                    "later (OutputAreaReplay), so display(...) output is in the capture; DOM that "
+                    "is not a retained panel (transient notifications, state a panel script built "
+                    "from earlier messages) never existed in the captured page. Pass "
+                    "--with-playwright (or run playwright-open) before the run if you need that."
                 )
             if editor and not context["editorOpen"]:
                 warnings.append(
@@ -3651,6 +3654,8 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="Pin the distilled AI4 lessons on or off for every task (default: Field's setting)")
     agent_eval_parser.add_argument("--distil", action="store_true",
                                    help="After the run, rewrite the Distilled section of AI4's lessons file from its tool misuse")
+    agent_eval_parser.add_argument("--blind", action="store_true",
+                                   help="Withhold ViewBoxOutputRequest from every task (the visual tasks' counterfactual)")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
@@ -4676,6 +4681,7 @@ async def dispatch_command(
             "model": args.model,
             "lessons": args.lessons,
             "distil": bool(args.distil),
+            "blind": bool(args.blind),
         }
         timeout = args.timeout or max(client.default_timeout, 3600.0)
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)

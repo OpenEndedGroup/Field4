@@ -123,10 +123,21 @@ object AgentLessons {
 
     private val uuid = Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", RegexOption.IGNORE_CASE)
 
-    /** Replace what differs between runs (the scratch document's name, uids, long text) by placeholders. */
-    fun normalize(text: String, documentName: String): String {
+    private val threePartRef = Regex("afield://([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/(?=[^/\\s'\"`]+/)", RegexOption.IGNORE_CASE)
+
+    /**
+     * Replace what differs between runs by placeholders: the document's name *as file refs spell it*
+     * ([documentRef], the scratch directory's uuid) becomes `<document>`, other uuids `<uid>`.
+     *
+     * Not `documentName`: a headless task document is *named* `scratch`, and substituting that turned
+     * the model's wrong guess `afield://scratch/<uid>/code` into the lesson "`afield://<document>/…`
+     * fails" — the right spelling reported as the wrong one (the first distil, 2026-09-30). Without a
+     * [documentRef] (reports from before it existed) the first segment of a three-part ref whose first
+     * segment is a uuid is taken to be the document, which is what a three-part ref means.
+     */
+    fun normalize(text: String, documentRef: String): String {
         var t = text
-        if (documentName.isNotBlank()) t = t.replace(documentName, "<document>")
+        t = if (documentRef.isNotBlank()) t.replace(documentRef, "<document>") else threePartRef.replace(t, "afield://<document>/")
         t = uuid.replace(t, "<uid>")
         return t
     }
@@ -176,9 +187,9 @@ object AgentLessons {
             calls.forEachIndexed { i, call ->
                 if (!isMisuse(call)) return@forEachIndexed
                 val later = calls.drop(i + 1).firstOrNull { it.tool == call.tool && it.ok }
-                val change = later?.let { argumentChange(call, it, result.documentName) }.orEmpty()
+                val change = later?.let { argumentChange(call, it, result.documentRef) }.orEmpty()
                 val repeat = i > 0 && calls[i - 1].tool == call.tool && calls[i - 1].arguments == call.arguments && !calls[i - 1].ok
-                val key = call.tool to normalize(message(call), result.documentName)
+                val key = call.tool to normalize(message(call), result.documentRef)
                 byKey.getOrPut(key) { mutableListOf() } += Hit(result.taskId.ifBlank { "task" }, call, change, repeat)
             }
         }
@@ -233,6 +244,10 @@ that run's tool calls (AgentLessons.distil); review it with git diff like any ot
 -->"""
 
     data class DistilOutcome(val written: Boolean, val path: String, val version: Int, val lessons: List<Lesson>, val message: String)
+
+    /** A saved [AgentEvalReport] (the JSON `agent-eval` returned), for re-distilling without re-running. */
+    fun readReport(path: String): AgentEvalReport =
+        kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString(AgentEvalReport.serializer(), File(path).readText())
 
     /** Distil [report] and write the file. Refuses when there is no writable source file. */
     fun distilAndWrite(report: AgentEvalReport): DistilOutcome {

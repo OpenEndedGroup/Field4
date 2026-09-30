@@ -272,6 +272,18 @@ internal fun runAgentTaskHeadless(
     }
 }
 
+/**
+ * The eval suite, one task per fresh headless scratch document, with the leak evidence filled in:
+ * documents open before and after, and AI4 capture pages still open after (both should return to
+ * where they started — every task document is closed, and its capture page with it).
+ */
+internal fun runAgentEvalHeadless(request: afield.ai.agent.AgentEvalRequest): afield.ai.agent.AgentEvalReport {
+    val before = documents.size
+    val report = afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+    return report.copy(documentsBefore = before, documentsAfter = documents.size,
+        capturePagesOpenAfter = runCatching { afield.ai.agent.BoxOutputCapture.openPages() }.getOrDefault(-1))
+}
+
 internal fun attachDocumentSession(
     session: WebSocketSession,
     documentName: String?,
@@ -1488,7 +1500,7 @@ fun installAgentBackdoorHandlers() {
         val request = Json.decodeFromJsonElement<afield.ai.agent.AgentEvalRequest>(message.payload!!)
         agentBackdoorScope.launch {
             val report = runCatching {
-                afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
+                runAgentEvalHeadless(request)
             }.getOrElse { t ->
                 afield.ai.agent.AgentEvalReport(request.mode, "", request.model, 0, 0, emptyList(), 0, null, null,
                     error = "${t.javaClass.simpleName}: ${t.message}")

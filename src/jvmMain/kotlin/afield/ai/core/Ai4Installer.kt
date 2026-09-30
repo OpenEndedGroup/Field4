@@ -377,7 +377,8 @@ class Ai4CodeToolProviders(
             return@compileKotlin CompileKotlinResult(
                 success = false,
                 file = req.file,
-                message = "Unknown document '${ref.document}'."
+                message = "Unknown document '${ref.document}'. Name the box instead (its name or uid), or use " +
+                    "this document's ref form afield://$docName/<box uid>/code."
             )
         }
         if (ref.property != "code") {
@@ -391,7 +392,7 @@ class Ai4CodeToolProviders(
             ?: return@compileKotlin CompileKotlinResult(
                 success = false,
                 file = fileRefFor(docName, ref.uid, ref.property),
-                message = "Unknown box '${ref.uid}'."
+                message = "Unknown box '${ref.uid}'. Give `file` as the box's name or uid, or as afield://$docName/<box uid>/code."
             )
         val source = stagedOrCurrentSource(target, ref.property, req.source)
             ?: return@compileKotlin CompileKotlinResult(

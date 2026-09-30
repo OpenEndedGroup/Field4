@@ -283,6 +283,11 @@ class FieldGraphTools(
      * on unless `AFIELD_AI4_LESSONS=off`; an eval can pin it per task to measure it.
      */
     val lessons: Boolean = AgentLessons.enabledByDefault(),
+    /**
+     * Whether [ViewBoxOutputRequest] is offered. Only an eval's counterfactual turns it off (`blind`):
+     * the same visual task with the model unable to look.
+     */
+    val seesOutput: Boolean = true,
 ) {
     companion object {
         /**
@@ -646,7 +651,7 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(LaunchBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.launch(req) }
     tools.register(StopBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.stop(req) }
     tools.register(ReadBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.readOutput(req) }
-    tools.register(ViewBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
+    tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
 }
 
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */

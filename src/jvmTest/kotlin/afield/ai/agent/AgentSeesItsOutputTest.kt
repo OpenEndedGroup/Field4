@@ -133,6 +133,31 @@ class AgentSeesItsOutputTest {
         assertTrue(runCatching { AgentCheck.parse("output-colour:Sun:yellow:0.1") }.isFailure)
     }
 
+    // ---- the fileRef lever -----------------------------------------------------------------
+
+    @Test
+    fun everyFileRefSpellingTheLiveModelGuessedReachesTheBox() {
+        // As a headless task document is: *named* agent-task, stored (and referred to) by a uuid directory.
+        val docRef = "5d6f0c1e-7a2b-4c3d-9e8f-0a1b2c3d4e5f"
+        val dir = Files.createTempDirectory("ai4-ref-").toFile().apply { deleteOnExit() }
+        val root = Box("root").also { it.name = "root" }
+        val info = SessionInformation(filename = dir.resolve(docRef).absolutePath, documentName = "agent-task", root = root, ephemeral = true)
+        root.inside = info
+        val tools = FieldGraphTools(info, host)
+        val uid = tools.newBox(NewBoxRequest("Answer", code = "println(1)")).uid
+        fun resolve(raw: String) = afield.ai.core.resolveBackdoorFileRef(info, docRef, raw, "code")
+        val canonical = afield.ai.core.FileRef(docRef, uid, "code")
+        // Premise: the canonical spelling resolved before this change too.
+        assertEquals(canonical, resolve("afield://$docRef/$uid/code"))
+        // The guesses from the 2026-09-29/30 tool logs, every one of which used to fail.
+        for (guess in listOf("afield://$uid/code", "afield://agent-task/$uid/code", "afield://scratch/$uid/code",
+                "afield://$docRef/Answer/code", "afield://Answer/code", "Answer", uid)) {
+            assertEquals(canonical, resolve(guess), guess)
+        }
+        // A box that is not here still fails, and names the document it looked in.
+        assertEquals("elsewhere", resolve("afield://elsewhere/nobody/code").document)
+    }
+
     // ---- lessons ---------------------------------------------------------------------------
 
     private val doc = "3f1c2b9a-1111-4222-8333-944455556666"
@@ -143,7 +168,7 @@ class AgentSeesItsOutputTest {
     private fun result(id: String, calls: List<AgentToolCallRecord>) = AgentTaskResult(
         taskId = id, goal = "g", mode = "live", provider = "openai", model = "m", verdict = "pass", checks = emptyList(),
         toolCalls = calls, finalText = "", rounds = calls.size, maxToolRounds = 24, hitToolRoundCap = false, elapsedMs = 1,
-        documentName = doc)
+        documentName = "scratch", documentRef = doc)
 
     /** The fileRef guess the live model made in every run on 2026-09-29, as the tool log recorded it. */
     private fun fileRefGuesses(id: String, box: String = box1) = result(id, listOf(
@@ -182,6 +207,21 @@ class AgentSeesItsOutputTest {
         assertTrue(unknownUid.bullet().startsWith("- `CompileKotlinRequest` failed 2 times in 2 tasks"))
         // A misuse seen once is not yet a lesson.
         assertTrue(AgentLessons.distil(listOf(fileRefGuesses("primes"))).isEmpty())
+    }
+
+    @Test
+    fun theDocumentsNameIsNotMistakenForItsRef() {
+        // A headless task document is *named* "scratch"; the model's guess afield://scratch/<uid>/code
+        // is wrong and must stay literal. The first live distil substituted the name and reported the
+        // right spelling as the failing one.
+        val second = "b1b1b1b1-2222-4333-8444-955566667777"
+        val lessons = AgentLessons.distil(listOf(fileRefGuesses("primes"), fileRefGuesses("html-table", second)))
+        val scratchGuess = lessons.single { it.message == "Unknown document 'scratch'." }
+        assertEquals("file `afield://scratch/<uid>/code` → `afield://<document>/<uid>/code`", scratchGuess.change)
+        // An old report with no documentRef: a three-part ref's uuid first segment is the document.
+        val old = listOf(fileRefGuesses("a"), fileRefGuesses("b", second)).map { it.copy(documentRef = "") }
+        assertEquals("file `afield://<uid>/code` → `afield://<document>/<uid>/code`",
+            AgentLessons.distil(old).single { it.message == "Unknown document '<uid>'." }.change)
     }
 
     @Test

@@ -4346,9 +4346,7 @@ class Server {
                             val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
                             val response = try {
                                 val request = json.decodeFromString<afield.ai.agent.AgentEvalRequest>(call.receiveText().ifBlank { "{}" })
-                                json.encodeToString(withContext(Dispatchers.IO) {
-                                    afield.ai.agent.AgentEvalRunner.run(request) { task -> runAgentTaskHeadless(task) }
-                                })
+                                json.encodeToString(withContext(Dispatchers.IO) { runAgentEvalHeadless(request) })
                             } catch (e: Exception) {
                                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to (e.message ?: e.javaClass.simpleName)))
                                 return@post

@@ -60,7 +60,7 @@ object InFieldAgentEvals {
 
     /** Percent heights inside a parent of auto height compute to auto: five empty bars, zero pixels tall. */
     val BARS_CODE = "val values = listOf(20, 40, 60, 80, 100)\n" +
-        "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:30px; margin:4px; background:#1f77b4; height:\${v}%'></div>\" }\n" +
+        "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:20px; margin:3px; background:#1f77b4; height:\${v}%'></div>\" }\n" +
         "display(\"main\", \"<div style='background:white; padding:8px'>\$bars</div>\")"
     val BARS_FIXED = BARS_CODE.replace("height:\${v}%", "height:\${v}px")
 
@@ -219,6 +219,13 @@ data class AgentEvalRequest(
     val lessons: String = "",
     /** After the run, distil its tool misuse into the lessons file ([AgentLessons.distilAndWrite]). */
     val distil: Boolean = false,
+    /**
+     * Path to a saved [AgentEvalReport]: run nothing, distil that report instead (implies [distil]).
+     * How a change to [AgentLessons.distil] is applied to a run already paid for.
+     */
+    val distilFrom: String = "",
+    /** Withhold ViewBoxOutputRequest from every task (the counterfactual for the visual tasks). */
+    val blind: Boolean = false,
 )
 
 @Serializable
@@ -244,6 +251,13 @@ data class AgentEvalReport(
     /** Set when the request asked to distil: what was written. */
     val distilled: List<String> = emptyList(),
     val distilMessage: String = "",
+    /**
+     * Leak evidence, filled by the server's entry points ([afield.runAgentEvalHeadless]): open documents
+     * before and after the run, and AI4 capture pages still open after it. -1 = not measured.
+     */
+    val documentsBefore: Int = -1,
+    val documentsAfter: Int = -1,
+    val capturePagesOpenAfter: Int = -1,
 )
 
 object AgentEvalRunner {
@@ -256,6 +270,11 @@ object AgentEvalRunner {
      * its result; the server passes one that opens a headless scratch document per task.
      */
     fun run(request: AgentEvalRequest, runTask: (AgentTaskRequest) -> AgentTaskResult): AgentEvalReport {
+        if (request.distilFrom.isNotBlank()) {
+            val saved = AgentLessons.readReport(request.distilFrom)
+            val outcome = AgentLessons.distilAndWrite(saved)
+            return saved.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
+        }
         val started = System.nanoTime()
         val chosen = if (request.ids.isEmpty()) InFieldAgentEvals.tasks else request.ids.map(InFieldAgentEvals::byId)
         val live = request.mode == "live"
@@ -271,6 +290,7 @@ object AgentEvalRunner {
                 maxToolRounds = rounds,
                 script = if (live) "" else task.solution,
                 lessons = lessonsPin,
+                blind = request.blind,
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
