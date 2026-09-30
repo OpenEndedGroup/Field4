@@ -48,8 +48,15 @@ class WhyAnswer(val json: kotlinx.serialization.json.JsonObject) : ToHTML {
                 | competing | ${cell(competing)} |
                 | shadowed | ${cell(shadowed)} |
             """.trimIndent() + "\n"
-            return "| why `${query.md}` | |\n| --- | --- |\n" + rows + "\n" + summary.md
+            return "| why `${query.md}` | |\n| --- | --- |\n" + rows + "\n" + summaryMarkdown
         }
+
+    /**
+     * [summary] as Markdown: the sentence already writes names and code between backticks, so those
+     * spans are kept as inline code and only the text between them is escaped.
+     */
+    val summaryMarkdown: String
+        get() = summary.split('`').mapIndexed { i, part -> if (i % 2 == 1) "`$part`" else part.md }.joinToString("")
 
     /** The fields [markdown] shows, for `.h2` to page through; the whole answer is under `json`. */
     val fields: Map<String, Any?>

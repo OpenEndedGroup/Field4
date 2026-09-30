@@ -84,11 +84,14 @@ class WhyAccessorTest {
         assertTrue(md.startsWith("| why `speed` | |\n| --- | --- |\n"), md)
         assertTrue("| supplier | a (property) = 1\\.0 |" in md, md)
         assertTrue("| competing | b |" in md, md)
-        assertTrue(md.trimEnd().endsWith(afield.mdEscape(answer.summary)), md)
+        assertTrue(md.trimEnd().endsWith(answer.summaryMarkdown), md)
+        assertTrue("`speed`" in answer.summaryMarkdown, "the sentence's code spans stay code: " + answer.summaryMarkdown)
+        assertFalse("\\`" in answer.summaryMarkdown, answer.summaryMarkdown)
         val html = answer.h
         assertTrue("class=\"field-md\"" in html && "<table" in html, html)
         assertFalse("<pre" in html, "rendered from Markdown, not a hand-built <pre>")
         assertTrue("grand" in html)
+        assertTrue("<code>speed</code>" in html, "backticks in the summary render as inline code")
     }
 
     @Test
