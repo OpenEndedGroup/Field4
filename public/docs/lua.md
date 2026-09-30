@@ -209,9 +209,30 @@ it off.
 
 Completion offers Lua's keywords and the globals the box's Lua has defined, the members of a table
 after `name.` (so `string.` lists the string library and `field.` Field's own), a line's methods, and
-after `box.` the box's properties. A library function comes with its signature and a line on what it
-does — `string.format(fmt, ...)`, `play(sequence, [options])` — from a catalogue of the 146 functions
-of Lua 5.1 and LuaJIT and the 34 Field adds, which a test holds to a live LuaJIT in both directions.
+after `box.` the box's properties. A library function comes with its signature under its name and a
+line on what it does in the panel beside — from a catalogue of the 146 functions of Lua 5.1 and
+LuaJIT and the 34 Field adds, which a test holds to a live LuaJIT in both directions. Here the popup
+is open on `p` inside a loop, where Field's `play` sits beside Lua's own `pairs`, `pcall` and `print`:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/lua/completion.png" transcript="assets/transcripts/lua_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="lua-completion" alt="Field's completion popup in a Lua box at the prefix p. Under FUNCTIONS: play, pairs, pcall and print, each with its signature in grey underneath — play(sequence, [options]), pairs(t), pcall(f, ...), print(...) — and under OTHER the package table. The panel to the right reads: play(sequence, [options]) — loops a sequence through Field's pattern voice until the box stops: {cps=, wave=, decay=, sustain=, gain=}."}
+// The setup transcript runs the Lua box once, because completion reads the box's live lua_State.
+ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
+ui.openEditor("lua_completion")
+ui.pause(900)
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.clickSelector(".monaco-editor")
+ui.pause(300)
+ui.press("Control+A")
+ui.type("local notes = {60, 64, 67}\nfor i, n in ipairs(notes) do p")
+ui.pause(400)
+// Escape first: typing does not open the popup, and opening it once on the finished text is the
+// only way to be sure the request the figure shows is the one for the caret the figure shows.
+ui.press("Escape")
+ui.pause(200)
+ui.press("Control+Space")
+ui.waitForSelector(".afield-suggest-row", 20000.0)
+ui.pause(1400)
+```
 
 ## The demo scene
 

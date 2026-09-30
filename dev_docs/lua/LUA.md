@@ -124,25 +124,18 @@ for 4–8 lines) and lost their first letter (`box` read `ox`). Both were genera
   "IrClassSymbolImpl is unbound. Signature: kotlin/Unit" — an incremental-cache fault, not the code:
   `./gradlew compileKotlinJs --rerun` built it cleanly.
 
-### Pending: the recapture and the completion figure (blocked by the power gate)
+### Recaptured on AC, 2026-09-30
 
-The fix above is committed and verified through the backdoor, but lua.md's six editor figures are still
-the pre-fix captures, and the completion figure the human asked for does not exist yet: the docs runner
-refuses a capture unless the machine is on AC or at ≥ 80% battery (`tools/verification_environment.py`),
-and it was on battery (78% → 56%) for the whole of this pass. No capture was faked. To finish, on AC:
-
-```diffstatic {data-lang=bash}
-git apply dev_docs/lua/pending_completion_capture.patch        # the completion fence, into lua.md
-rm public/docs/assets/lua/{hello,box,spawn,error,runaway,jit}.png
-FIELD_DOCS_RUNNER_PORT=9721 FIELD_DOCS_RUNNER_MODE=incremental \
-  uv run --project . --group docs python tools/build_zensical_docs.py --page lua.md
-```
-
-then open every PNG (editor figures should be a few hundred px, caret a thin line; completion.png the
-popup at `p` with pairs/pcall/play/print and the doc panel, 2×), run `EditorCaptureHeightTest`, and
-commit the patch's lua.md change with the new assets. The setup transcript the fence uses is committed
-at `public/docs/assets/transcripts/lua_completion_setup.yaml`; the popup it produces was checked live
-(`field.` prefix: rows with catalogue signatures, the doc panel beside).
+The docs runner refused every capture while the machine was on battery (the power gate in
+`tools/verification_environment.py`); on AC, `FIELD_DOCS_RUNNER_MODE=incremental --page lua.md` with the
+six editor PNGs deleted regenerated them and the new `completion.png` (regenerated=7, failures=0).
+Device-pixel heights, before → after: box 2440 → 478, error 2440 → 722, spawn 2440 → 824, hello 440 → 440,
+runaway 394 → 394, jit 532 → 532 (those three showed no note, so were never pane-tall). Every one now has
+a thin caret and its first glyph visible. `completion.png` is 1544×504 (2×): play, pairs, pcall, print
+with their signatures, the package table under OTHER, and play's help in the panel.
+`EditorCaptureHeightTest` now checks 18 figures (the six Lua ones were absent from its first run's 12
+only because they had been deleted for this recapture; the old pane-tall ones, 2440 px against an
+allowance of 1080–1440, would have failed it).
 
 ## Not done
 

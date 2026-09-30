@@ -43,7 +43,7 @@ class EditorCaptureHeightTest {
             }
         }
         println("editor captures checked: ${checked.size}\n  " + checked.joinToString("\n  "))
-        assertTrue(checked.size >= 10, "the fence scan looks broken: found only $checked")
+        assertTrue(checked.size >= 18, "the fence scan looks broken: found only $checked")
         assertTrue(tooTall.isEmpty(), "editor captures a whole pane tall — is a line note pushing the clip to the pane's foot?\n" + tooTall.joinToString("\n"))
     }
 
