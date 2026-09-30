@@ -55,6 +55,8 @@
         .state-done, .state-finished { color: var(--ok); }
         .state-interrupted, .state-killed, .state-died { color: var(--danger); }
         .state-pending, .state-not-started, .state-stopped { color: var(--soft); }
+        .state-waiting, .state-rate-limited { color: var(--warn); }
+        .state-failed { color: var(--danger); }
         .badge { font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; color: var(--soft); white-space: nowrap; }
         .badge.blocking { border-color: var(--warn); color: var(--warn); }
         .badge.crosscutting { color: var(--cyan); }
@@ -233,7 +235,13 @@
         if (!progress) { $("progress").innerHTML = ""; return; }
         const parts = progress.partitions || [];
         const done = parts.filter(p => p.state === "done").length;
-        const head = `<p>Run <code>${esc(progress.runId)}</code> · <span class="state-${esc(progress.state)}">${esc(progress.state)}</span>${progress.stopRequested ? " · stop requested" : ""} · ${done}/${parts.length} page(s) done · ${esc(progress.agent)}, ${progress.jobs} at a time</p>`;
+        const limited = parts.filter(p => p.state === "rate-limited").length;
+        const failed = parts.filter(p => p.state === "failed").length;
+        const until = progress.resumeAtEpochMs ? new Date(progress.resumeAtEpochMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+        const head = `<p>Run <code>${esc(progress.runId)}</code> · <span class="state-${esc(progress.state)}">${esc(progress.state)}${progress.state === "waiting" && until ? ` for the usage limit, until ${esc(until)}` : ""}</span>`
+            + `${progress.stopRequested ? " · stop requested" : ""} · ${done}/${parts.length} page(s) done`
+            + `${limited ? ` · ${limited} queued again after the limit` : ""}${failed ? ` · <span class="state-failed">${failed} failed</span>` : ""} · ${esc(progress.agent)}, ${progress.jobs} at a time</p>`
+            + (progress.state === "waiting" && progress.limit ? `<p class="muted">The agent said: <code>${esc(progress.limit)}</code>. Nothing is lost: the pages it did not finish start again when the limit resets. Stop works while waiting.</p>` : "");
         const rows = parts.map(p => `<tr><td>${esc(p.pages.join(", "))}</td><td class="num">${p.notes}</td><td class="state-${esc(String(p.state).replace(" ", "-"))}">${esc(p.state)}</td>`
             + `<td class="num">${p.resolved ?? ""}</td><td class="num">${p.questions ?? ""}</td><td class="num">${p.handoffs ?? ""}</td><td class="num">${p.changed ? p.changed.length : ""}</td><td class="num">${p.seconds != null ? p.seconds + "s" : ""}</td></tr>`).join("");
         $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;

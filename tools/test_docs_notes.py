@@ -647,6 +647,80 @@ class PassTest(unittest.TestCase):
         self.assertTrue(any("stopped before recording an outcome" in e["text"] for e in stopped))
 
 
+LIMITED_AGENT = textwrap.dedent("""\
+    import os, re, subprocess, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    cli = re.search(r"^  (.+?) resolve <note-id>", prompt, re.M).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    marker = sys.argv[2]
+    if not os.path.exists(marker):
+        open(marker, "w").write("1")
+        subprocess.run(cli + f" resolve {ids[0]} 'first, before the limit'", shell=True, check=True)
+        print("working...")
+        print("You've hit your session limit · resets 7:30pm (Europe/Paris)")
+        sys.exit(1)
+    for note_id in ids:
+        subprocess.run(cli + f" resolve {note_id} 'after the reset'", shell=True, check=True)
+    """)
+
+
+class UsageLimitTest(unittest.TestCase):
+    MESSAGE = "You've hit your session limit · resets 7:30pm (Europe/Paris)"
+
+    def test_the_reset_time_is_read_in_its_own_zone(self) -> None:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        paris = ZoneInfo("Europe/Paris")
+        now = datetime(2026, 9, 30, 18, 15, tzinfo=paris).timestamp()
+        self.assertEqual(datetime.fromtimestamp(dn.limit_resets_at(self.MESSAGE, now), paris).strftime("%d %H:%M"), "30 19:31")
+        later = datetime(2026, 9, 30, 20, 0, tzinfo=paris).timestamp()
+        self.assertEqual(datetime.fromtimestamp(dn.limit_resets_at(self.MESSAGE, later), paris).strftime("%d %H:%M"), "01 19:31")
+
+    def test_an_unparseable_limit_waits_the_fallback(self) -> None:
+        with mock.patch.dict(os.environ, {dn.LIMIT_FALLBACK_ENV: "600"}):
+            self.assertAlmostEqual(dn.limit_resets_at("rate limit exceeded", 1000.0), 1600.0)
+
+    def test_the_limit_line_is_found_at_the_end_of_the_log(self) -> None:
+        with TemporaryDirectory() as tmp:
+            log = Path(tmp) / "a.log"
+            log.write_text("$ claude\nWarning: no stdin data received in 3s\n" + self.MESSAGE + "\n")
+            self.assertEqual(dn.limit_message(log), self.MESSAGE)
+            log.write_text("$ claude\nI changed the rate limit section of the page.\nDone.\n" * 1)
+            self.assertEqual(dn.limit_message(log), "", "prose that mentions rate limits is not a limit")
+
+    def test_a_limited_page_waits_and_is_retried_and_nothing_is_recorded_twice(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", LIMITED_AGENT)
+            repo.commit("docs")
+            store_path = repo.root / "store.json"
+            store_path.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "one", "anchor": {"exact": "says hello"}},
+                {"id": "22222222-b", "pageUrl": PAGE, "note": "two", "anchor": {"exact": "Install the thing"}}]}))
+            marker = repo.root / "limited-once"
+            # The fake reset time is hours away; the wait is what is under test, not its length.
+            with mock.patch.object(dn, "limit_resets_at", lambda message, now=None: time.time() + 1.0), \
+                    mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store_path), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}} {marker}"])
+            self.assertEqual(code, 0)
+            notes = {n["id"]: n for n in json.loads(store_path.read_text())["annotations"]}
+            for note in notes.values():
+                self.assertEqual(dn.note_state(note), "resolved")
+                self.assertEqual(sum(1 for e in note["thread"] if e["kind"] == "resolution"), 1, note["thread"])
+                self.assertFalse([e for e in note["thread"] if e["kind"] == "run"], "no 'left no outcome' noise")
+            self.assertEqual({n["resolution"] for n in notes.values()}, {"first, before the limit", "after the reset"})
+            progress = dn.latest_progress(repo.root)
+            self.assertEqual(progress["state"], "finished")
+            run_dir = next((repo.root / ".field-backdoor/docs-notes/runs").iterdir())
+            self.assertTrue(list(run_dir.glob("*.attempt-1.log")), "the limited attempt's log is kept")
+            self.assertIn("session limit", next(run_dir.glob("*.attempt-1.log")).read_text())
+        finally:
+            repo.close()
+
+
 class KotlinSchemaTest(unittest.TestCase):
     """Every key this tool writes must exist on the Kotlin side, or the server's next write drops it."""
 

@@ -1503,6 +1503,7 @@ class RunResult:
     log_path: Path
     seconds: float
     interrupted: bool = False
+    limited: str = ""  # the agent's own words when it stopped on a usage limit, else ""
 
 
 class RunControl:
@@ -1581,6 +1582,63 @@ class Progress:
         os.replace(temp, self.path)
 
 
+# What the agent CLIs print when a plan or API limit stops them. Matched on the *end* of the log,
+# because an agent that hit the limit after three minutes of work has written plenty before it.
+LIMIT_PATTERN = re.compile(r"(hit your (session |usage |weekly |daily )?limit|usage limit (reached|exceeded)|"
+                           r"rate[ _-]?limit(ed| exceeded| reached)|too many requests|\b429\b|quota exceeded)", re.I)
+RESET_PATTERN = re.compile(r"resets? (?:at )?(\d{1,2})(?::(\d{2}))?\s*([ap]m)?\s*(?:\(([^)]+)\))?", re.I)
+LIMIT_FALLBACK_ENV = "DOCS_NOTES_LIMIT_WAIT_SECONDS"
+
+
+def limit_message(log_path: Path) -> str:
+    """The usage-limit line an agent ended on, or "" if it did not stop on one."""
+    try:
+        with open(log_path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            handle.seek(max(0, handle.tell() - 4000))
+            tail = handle.read().decode("utf-8", "replace")
+    except OSError:
+        return ""
+    for line in reversed(tail.strip().splitlines()[-12:]):
+        if LIMIT_PATTERN.search(line):
+            return line.strip()
+    return ""
+
+
+def limit_resets_at(message: str, now: float | None = None) -> float:
+    """When a limit message says it resets, as an epoch second; a fallback wait when it does not say.
+
+    `resets 7:30pm (Europe/Paris)` is what `claude -p` prints. The time is the next one to come in
+    that zone; one extra minute of margin, since a request at the stroke of the reset can still
+    be refused. Anything unparseable waits DOCS_NOTES_LIMIT_WAIT_SECONDS (default 15 minutes)
+    and tries again, which is safe: a page that is still limited is simply queued once more.
+    """
+    now = time.time() if now is None else now
+    fallback = now + float(os.environ.get(LIMIT_FALLBACK_ENV, "900"))
+    match = RESET_PATTERN.search(message or "")
+    if not match:
+        return fallback
+    hour, minute = int(match.group(1)), int(match.group(2) or 0)
+    meridiem = (match.group(3) or "").lower()
+    if meridiem == "pm" and hour < 12:
+        hour += 12
+    elif meridiem == "am" and hour == 12:
+        hour = 0
+    if hour > 23 or minute > 59:
+        return fallback
+    import datetime
+    try:
+        from zoneinfo import ZoneInfo
+        zone = ZoneInfo(match.group(4).strip()) if match.group(4) else None
+    except Exception:
+        zone = None
+    current = datetime.datetime.fromtimestamp(now, zone) if zone else datetime.datetime.fromtimestamp(now)
+    target = current.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if target <= current:
+        target += datetime.timedelta(days=1)
+    return target.timestamp() + 60
+
+
 def file_digest(path: Path) -> str | None:
     return hashlib.sha1(path.read_bytes()).hexdigest() if path.is_file() else None
 
@@ -1589,11 +1647,28 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
                   git: Git, timeout: int, cli: str, control: RunControl | None = None) -> RunResult:
     brief = render_brief(partition, all_notes, git)
     owned = "\n".join(f"  - {f}" for f in partition.files) or "  - (none located: find the source for the pages below; edit only that)"
+    # A page an earlier agent was cut off on (a usage limit, a stop) arrives with its edits still in
+    # the working tree and every note still open. Say so, rather than let the next agent redo them.
+    unfinished = [f for f in partition.files if git.status_paths().get(f)]
+    if unfinished:
+        owned += ("\n\nNOTE: " + ", ".join(unfinished) + " already has uncommitted edits, probably from an agent that "
+                  "was stopped on this page before it recorded its outcomes. Read `git diff -- <file>` first: keep what "
+                  "is right, finish what is half done, and record an outcome for every note, including those the "
+                  "earlier edits already address.")
     draft_dir = run_dir / f"{partition.slug}.handoffs"
     prompt = AGENT_PROMPT.format(root=git.root, owned=owned, cli=cli, brief=brief, draft_dir=draft_dir,
                                  page_url=partition.notes[0].get("pageUrl", ""))
     journal = run_dir / f"{partition.slug}.journal.jsonl"
     log_path = run_dir / f"{partition.slug}.log"
+    # A page queued again after a usage limit: keep the earlier attempt's log and journal under
+    # their own names (its outcomes were applied already, and must not be read twice).
+    if log_path.exists():
+        attempt = 1
+        while (run_dir / f"{partition.slug}.attempt-{attempt}.log").exists():
+            attempt += 1
+        log_path.rename(run_dir / f"{partition.slug}.attempt-{attempt}.log")
+        if journal.exists():
+            journal.rename(run_dir / f"{partition.slug}.attempt-{attempt}.journal.jsonl")
     (run_dir / f"{partition.slug}.prompt.md").write_text(prompt, encoding="utf-8")
     before = {f: file_digest(git.root / f) for f in partition.files}
     env = {**os.environ, JOURNAL_ENV: str(journal), PARTITION_ENV: ",".join(n["id"] for n in partition.notes),
@@ -1608,7 +1683,8 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
         # Its own session, so stopping kills the agent's whole process tree, not just its launcher.
         try:
             process = subprocess.Popen(agent.argv(prompt, git.root, partition, cli), cwd=git.root, env=env,
-                                       stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+                                       stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                       start_new_session=True)
         except FileNotFoundError as error:
             log.write(f"\n[docs_notes] could not start the agent: {error}\n")
             process = None
@@ -1640,8 +1716,15 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
             ops.append(op)
         else:
             rejected.append(f"{op.get('op')} on {op.get('id')} (not in this partition)")
+    killed = bool(control and control.killed)
     return RunResult(partition, exit_code, changed, ops, rejected, log_path, time.monotonic() - started,
-                     interrupted=bool(control and control.killed))
+                     interrupted=killed, limited="" if killed or exit_code == 0 and ops else limit_message(log_path))
+
+
+def untouched_notes(result: RunResult) -> list[dict[str, Any]]:
+    touched = {op.get("id") for op in result.ops if op.get("id")}
+    touched |= {i for op in result.ops if op.get("op") == "handoff" for i in op.get("notes", [])}
+    return [n for n in result.partition.notes if n["id"] not in touched]
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
@@ -1654,6 +1737,8 @@ def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> 
             apply_op(notes, {**op, "runId": run_id, "changedFiles": result.changed if op.get("op") == "resolve" else None})
         for note in result.partition.notes:
             if note["id"] not in touched and not blocking:
+                if result.limited:
+                    continue  # queued again for after the limit resets; an entry now would only be noise
                 why = "was stopped before recording an outcome" if result.interrupted else \
                     f"left no outcome (exit {result.exit_code})"
                 apply_op(notes, {"op": "run", "id": note["id"], "author": "harness", "runId": run_id,
@@ -1738,11 +1823,29 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
 
     results: list[RunResult] = []
     pending = list(partitions)
+    resume_at = 0.0  # while an agent reports a usage limit: when to try again
+    limit_seen = ""
+    wait_on_limit = getattr(args, "wait_on_limit", True)
     try:
         with ThreadPoolExecutor(max_workers=max(1, args.jobs)) as pool:
             running: dict[Any, Partition] = {}
             while pending or running:
-                while pending and len(running) < max(1, args.jobs) and not control.stop_requested():
+                if resume_at and not running:
+                    if not wait_on_limit:
+                        log("usage limit: not waiting (--no-wait-on-limit); the remaining pages stay queued")
+                        break
+                    # Everything in flight has come back. Wait out the limit, still answering Stop.
+                    progress.update(state="waiting", resumeAtEpochMs=int(resume_at * 1000), limit=limit_seen)
+                    log(f"usage limit: {limit_seen!r}; {len(pending)} page(s) wait until "
+                        f"{time.strftime('%H:%M', time.localtime(resume_at))}")
+                    while time.time() < resume_at and not control.stop_requested():
+                        time.sleep(2.0)
+                    if control.stop_requested():
+                        break
+                    resume_at, limit_seen = 0.0, ""
+                    progress.update(state="running", resumeAtEpochMs=None, limit=None)
+                    log("usage limit: resuming")
+                while pending and len(running) < max(1, args.jobs) and not control.stop_requested() and not resume_at:
                     partition = pending.pop(0)
                     progress.update(partition.slug, state="running", startedAtEpochMs=now_ms())
                     running[pool.submit(run_partition, partition, agent=agent, run_dir=run_dir, store=store,
@@ -1750,18 +1853,35 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
                 if control.stop_requested() and progress.data["state"] == "running":
                     progress.update(state="stopping")
                     log(f"stop requested: {len(running)} page(s) finishing, {len(pending)} not started")
-                if not running:
+                if not running and not resume_at:
                     break
+                if not running:
+                    continue
                 done, _ = wait(list(running), timeout=1.0, return_when=FIRST_COMPLETED)
                 for future in done:
                     partition = running.pop(future)
                     result = future.result()
                     apply_run(store, result, run_id, agent.name)
+                    remaining = untouched_notes(result) if result.limited else []
+                    if result.limited and remaining and not any(op.get("op") == "handoff" and op.get("blocking") for op in result.ops):
+                        # What it recorded is applied; the notes it did not reach go back to the front
+                        # of the queue, and no new page starts until the limit resets. Its edits stay
+                        # in the tree for the retry, whose prompt says so.
+                        resume_at = max(resume_at, limit_resets_at(result.limited))
+                        limit_seen = result.limited
+                        pending.insert(0, dataclasses.replace(partition, notes=remaining))
+                        if result.ops:
+                            results.append(result)
+                        progress.update(partition.slug, state="rate-limited", exit=result.exit_code, notes=len(remaining),
+                                        changed=result.changed, seconds=round(result.seconds), log=str(result.log_path))
+                        log(f"  limited {result.partition.key}: {result.limited} ({len(remaining)} note(s) queued again)")
+                        continue
                     results.append(result)
                     resolved = sum(1 for op in result.ops if op.get("op") == "resolve")
                     asked = sum(1 for op in result.ops if op.get("op") == "question")
                     handed = sum(1 for op in result.ops if op.get("op") == "handoff")
-                    progress.update(partition.slug, state="interrupted" if result.interrupted else "done",
+                    progress.update(partition.slug, state="interrupted" if result.interrupted else
+                                    "done" if result.exit_code == 0 else "failed",
                                     exit=result.exit_code, resolved=resolved, questions=asked, handoffs=handed,
                                     changed=result.changed, seconds=round(result.seconds), log=str(result.log_path))
                     log(f"  done {result.partition.key}: exit {result.exit_code}, {resolved}/{len(result.partition.notes)} resolved, "
@@ -1814,12 +1934,14 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
         {"key": r.partition.key, "exit": r.exit_code, "changed": r.changed, "log": str(r.log_path),
          "ops": [{k: op.get(k) for k in ("op", "id", "text")} for op in r.ops]} for r in results]}
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    progress.update(state="killed" if control.killed else "stopped" if pending else "finished", finishedAtEpochMs=now_ms())
+    progress.update(state="killed" if control.killed else "stopped" if pending else "finished", finishedAtEpochMs=now_ms(),
+                    resumeAtEpochMs=None)
     with contextlib.suppress(FileNotFoundError):
         control.stop_file.unlink()
     if control.killed or pending:
         return 3
-    return 0 if all(r.exit_code == 0 for r in results) else 1
+    # An attempt that stopped on a usage limit and was queued again is not the page's verdict.
+    return 0 if all(r.exit_code == 0 for r in results if not r.limited) else 1
 
 
 def _install_stop_signals(control: RunControl) -> dict[int, Any]:
@@ -2007,7 +2129,7 @@ def latest_progress(worktree: Path) -> dict[str, Any] | None:
     progress = json.loads(path.read_text(encoding="utf-8"))
     pid_file = state_dir / "revise.pid"
     alive = pid_file.is_file() and _pid_alive(int(pid_file.read_text().strip() or 0))
-    if progress.get("state") in ("running", "stopping") and not alive:
+    if progress.get("state") in ("running", "stopping", "waiting") and not alive:
         progress["state"] = "died"  # the harness is gone without writing its own ending
     progress["alive"] = alive
     progress["stopRequested"] = (state_dir / "STOP").exists()
@@ -2141,6 +2263,8 @@ def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
     state_dir = notes_state_dir(wt.root)
     state_dir.mkdir(parents=True, exist_ok=True)
     before = (state_dir / "latest-run").read_text().strip() if (state_dir / "latest-run").is_file() else ""
+    # Uncommitted edits in the pass's own worktree are the pass's work so far, not someone else's.
+    args.allow_dirty = True
     try:
         return revise(args, store, wt)
     finally:
@@ -2343,6 +2467,8 @@ def add_revise_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--dry-run", action="store_true", help="show the partition plan and stop")
     p.add_argument("--no-sync", action="store_true")
     p.add_argument("--verbose", "-v", action="store_true")
+    p.add_argument("--no-wait-on-limit", dest="wait_on_limit", action="store_false",
+                   help="when an agent reports a usage limit, stop instead of waiting for it to reset")
 
 
 def build_parser() -> argparse.ArgumentParser:
