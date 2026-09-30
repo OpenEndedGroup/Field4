@@ -21,7 +21,7 @@ in a source checkout, which starts one `codex exec --sandbox workspace-write` (o
 parallel. Each is an autonomous coding agent, with write access, steered by text that
 arrived over HTTP. (Until 2026-09-30 it was one `codex exec` over every note, told to edit
 the annotation store itself; how the harness partitions, anchors and records is
-[`DOCS_NOTES_REVISION.md`](DOCS_NOTES_REVISION.md).)
+[`docs_notes.md`](../public/docs/docs_notes.md).)
 
 This page is about the second one: what it can do, what stops it, and how to turn it on.
 

@@ -271,6 +271,7 @@ nav:
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
+    - Notes on the Documentation: docs_notes.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md

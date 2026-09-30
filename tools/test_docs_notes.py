@@ -344,7 +344,16 @@ FAKE_AGENT = textwrap.dedent("""\
     path = owned[0]
     text = open(path, encoding="utf-8").read().replace("continue to the next step", "go on to the next step")
     open(path, "w", encoding="utf-8").write(text)
+    draft_dir = re.search(r"Write tool under (\\S+)/ ", prompt).group(1)
     for note_id, body in blocks:
+        if "A second page" in body:
+            import os
+            os.makedirs(draft_dir, exist_ok=True)
+            draft = os.path.join(draft_dir, "merge.md")
+            open(draft, "w", encoding="utf-8").write("## Proposal\\n\\nFold other.md into guide.md.\\n")
+            subprocess.run(cli + f" handoff 'Merge other into guide' --scope crosscutting --blocking "
+                           f"--note {note_id} --page guide.md --body-file {draft}", shell=True, check=True)
+            continue
         if "hello" in body:
             subprocess.run(cli + f" question {note_id} 'which one did you mean?'", shell=True, check=True)
         else:
@@ -388,10 +397,100 @@ class HarnessTest(unittest.TestCase):
             log = repo.git("log", "--format=%B", "-n", "5")
             self.assertIn("Docs-Note: 11111111-a", log)
             self.assertIn("docs: revise", log)
-            # The other page was its own partition; its agent reworded nothing there but still ran.
-            self.assertIn("33333333-c", {n["id"] for n in notes.values()})
+            # The other page was its own partition, and its agent filed a blocking handoff instead.
+            handoff = next(n for n in notes.values() if n.get("kind") == "handoff")
+            self.assertEqual(handoff["handoff"]["scope"], "crosscutting")
+            self.assertTrue(handoff["handoff"]["blocking"])
+            self.assertEqual(handoff["handoff"]["pages"], ["guide.md"])
+            document = (repo.root / handoff["handoff"]["path"]).read_text()
+            self.assertIn("Fold other.md into guide.md.", document)
+            self.assertIn("A second page", document)  # the note and its quote travel with it
+            self.assertEqual(dn.note_state(notes["33333333-c"]), "blocked", "a handed-off note waits on its handoff")
+            self.assertIn(f"Docs-Handoff: {handoff['id']}", log)
+            self.assertIn(handoff["handoff"]["path"], repo.git("show", "--name-only", "--format=", "HEAD"))
         finally:
             repo.close()
+
+
+class HandoffTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write("public/docs/guide.md", GUIDE)
+        self.repo.commit("docs")
+        self.store_path = self.repo.root / "store.json"
+        self.store_path.write_text(json.dumps({"version": 1, "annotations": [
+            {"id": "aaaa0001", "pageUrl": PAGE, "note": "this page should merge into another",
+             "anchor": {"exact": "says hello to the reader"}},
+            {"id": "bbbb0002", "pageUrl": PAGE, "note": "typo", "anchor": {"exact": "Install the thing"}}]}))
+        self.body = self.repo.root / "body.md"
+        self.body.write_text("# An agent's own title\n\nWhy: the two pages say the same thing.\n")
+
+    def tearDown(self) -> None:
+        self.repo.close()
+
+    def cli(self, *args: str) -> int:
+        return dn.main(["--store", str(self.store_path), "--repo", str(self.repo.root), *args])
+
+    def notes(self) -> dict:
+        return {n["id"]: n for n in json.loads(self.store_path.read_text())["annotations"]}
+
+    def test_a_blocking_handoff_holds_the_page_until_it_is_closed(self) -> None:
+        self.cli("sync")
+        self.assertEqual(self.cli("handoff", "Merge guide into the tour", "--scope", "crosscutting", "--blocking",
+                                  "--note", "aaaa", "--body-file", str(self.body)), 0)
+        notes = self.notes()
+        handoff = next(n for n in notes.values() if n["kind"] == "handoff")
+        self.assertTrue((self.repo.root / handoff["handoff"]["path"]).is_file())
+        self.assertTrue(handoff["handoff"]["path"].startswith("dev_docs/handoffs/"))
+        document = (self.repo.root / handoff["handoff"]["path"]).read_text()
+        self.assertEqual(document.count("\n# "), 0, "one title, the header's")
+        self.assertTrue(document.startswith("# Merge guide into the tour\n"))
+        self.assertIn("Why: the two pages say the same thing.", document)
+        self.assertEqual(dn.note_state(notes["bbbb0002"]), "blocked", "the page's other notes wait too")
+        self.assertEqual(dn.blocked_by(notes["bbbb0002"]), handoff["id"])
+        self.assertFalse(dn.in_queue(notes["bbbb0002"]))
+
+        # A note written after the handoff was filed also waits.
+        data = json.loads(self.store_path.read_text())
+        data["annotations"].append({"id": "cccc0003", "pageUrl": PAGE, "note": "later", "anchor": {"exact": "Run"}})
+        self.store_path.write_text(json.dumps(data))
+        with mock.patch("builtins.print") as printed:
+            self.cli("revise", "--dry-run")
+        output = "\n".join(" ".join(map(str, c.args)) for c in printed.call_args_list)
+        self.assertIn("wait on blocking handoffs", output)
+        self.assertIn("Nothing in the queue", output)
+
+        self.assertEqual(self.cli("handoff-close", handoff["id"][:8], "merged in 1234abc"), 0)
+        notes = self.notes()
+        self.assertEqual(notes[handoff["id"]]["handoff"]["state"], "done")
+        self.assertEqual(dn.note_state(notes["bbbb0002"]), "open")
+
+    def test_a_non_blocking_handoff_leaves_the_page_in_the_queue(self) -> None:
+        self.cli("handoff", "Add a helper for this", "--note", "aaaa0001", "--body-file", str(self.body))
+        notes = self.notes()
+        self.assertEqual(dn.note_state(notes["bbbb0002"]), "open", "the rest of the page carries on")
+        self.assertEqual(dn.note_state(notes["aaaa0001"]), "blocked", "the handed-off note waits on its handoff")
+        self.assertEqual([e["kind"] for e in notes["aaaa0001"]["thread"]][-2:], ["handoff", "blocked"])
+
+    def test_a_deleted_handoff_releases_what_it_held(self) -> None:
+        self.cli("handoff", "Big thing", "--blocking", "--note", "aaaa0001", "--body-file", str(self.body))
+        data = json.loads(self.store_path.read_text())
+        data["annotations"] = [n for n in data["annotations"] if n.get("kind") != "handoff"]
+        self.store_path.write_text(json.dumps(data))
+        store = dn.Store(self.store_path)
+        self.assertEqual(store.mutate(dn.release_stale_blocks), 2)
+        self.assertTrue(all(dn.note_state(n) == "open" for n in self.notes().values()))
+
+    def test_inside_a_run_a_handoff_may_only_name_the_partitions_notes(self) -> None:
+        journal = self.repo.root / "j.jsonl"
+        env = {dn.JOURNAL_ENV: str(journal), dn.PARTITION_ENV: "aaaa0001", dn.PAGE_URL_ENV: PAGE}
+        with mock.patch.dict(os.environ, env):
+            with self.assertRaises(SystemExit):
+                self.cli("handoff", "Not mine", "--note", "bbbb0002", "--body-file", str(self.body))
+            self.cli("handoff", "Mine", "--note", "aaaa", "--body-file", str(self.body))
+        ops = dn.read_journal(journal)
+        self.assertEqual([op["notes"] for op in ops], [["aaaa0001"]])
+        self.assertNotIn("handoff", {n.get("kind") for n in self.notes().values()}, "journaled, not applied")
 
 
 class KotlinSchemaTest(unittest.TestCase):
@@ -411,7 +510,7 @@ class KotlinSchemaTest(unittest.TestCase):
 
     def test_entry_keys(self) -> None:
         item = dn.normalize_note({"id": "a", "pageUrl": PAGE, "note": "x"})
-        entry = dn.add_entry(item, "resolution", "t", "agent:x", runId="r", changedFiles=["f"], commit="c")
+        entry = dn.add_entry(item, "blocked", "t", "agent:x", runId="r", changedFiles=["f"], commit="c", handoff="h")
         missing = set(entry) - self.properties("DocsAnnotationEntry")
         self.assertFalse(missing, f"thread entries carry {sorted(missing)} that DocsAnnotationEntry lacks")
         self.assertEqual(set(dn.ENTRY_KINDS), set(re.findall(r"`(\w+)`", re.search(

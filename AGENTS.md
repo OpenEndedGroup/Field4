@@ -464,7 +464,7 @@ Renderer access is graph topology. For automation: run
 - Human notes on the docs are a revision queue: `tools/docs_notes.py` (stdlib; `queue`, `brief
   <page>`, `sync`, `resolve`/`question`/`memory`, and `revise`, which runs one agent per page in
   parallel). Each note is anchored to its Markdown or KDoc lines by `git blame` origin, so line
-  numbers stay right after other edits. See `dev_docs/DOCS_NOTES_REVISION.md`.
+  numbers stay right after other edits. See `public/docs/docs_notes.md`.
 - `exportToDocumentation(...)` (`afield/docs/doc.kt`) turns boxes with metadata into docs-ready
   Markdown plus captured assets.
 - Read-only offline viewer: `offline.html`, `offline-viewer.js`, `edn-parser.js` in
