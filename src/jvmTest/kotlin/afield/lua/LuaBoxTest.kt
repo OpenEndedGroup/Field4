@@ -1,0 +1,257 @@
+package afield.lua
+
+import afield.Box
+import afield.Rect
+import afield.four.synth.PatSoundDocs
+import afield.stdlib.LastRunNotes
+import afield.stdlib.filled
+import afield.stdlib.thickness
+import org.junit.Assume
+import kotlin.test.AfterTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+/**
+ * What a Lua box's code can reach — `print`, `display`, `box`, `field.named`, `lines` — run through the
+ * same handlers [LuaExecution] gives a box, against a real LuaJIT state, on boxes made outside a
+ * document. The live path (editor marks, launch, the frame loop) is exercised through the backdoor;
+ * see `dev_docs/lua/LUA.md`.
+ *
+ * The tests that need LuaJIT are `Assume`s: without it they are skipped, not passed. [assignedNames]
+ * needs no native library and always runs.
+ */
+class LuaBoxTest {
+
+    private val opened = ArrayList<LuaState>()
+
+    @AfterTest
+    fun closeAll() = opened.forEach { it.close() }
+
+    private fun needsLuaJIT() = Assume.assumeTrue("LuaJIT is not installed: ${LuaLibrary.describe()}", LuaLibrary.isAvailable)
+
+    private class Captured(val printed: MutableList<String> = ArrayList(), val shown: MutableList<Pair<String, String>> = ArrayList())
+
+    private fun boxWithLua(id: String): Triple<Box, LuaState, Captured> {
+        needsLuaJIT()
+        val box = Box(id)
+        val captured = Captured()
+        box.output.proxy = { m, _, _ -> captured.printed += m.toString() }
+        box.output.displayProxy = { channel, m -> captured.shown += channel to m.toString() }
+        val lua = LuaState(luaHandlersFor(box)).also { opened += it }
+        return Triple(box, lua, captured)
+    }
+
+    /** `connect` needs a document session; outside one, the two sets are the whole of it. */
+    private fun link(parent: Box, child: Box) {
+        parent.children.add(child)
+        child.parents.add(parent)
+    }
+
+    private fun ok(r: LuaState.Result): List<Any?> = assertIs<LuaState.Result.Ok>(r, "expected success, got $r").values
+
+    @Test
+    fun printJoinsWithTabsAndDisplayTakesAChannel() {
+        val (_, lua, out) = boxWithLua("lua-print")
+        ok(lua.run("print('a', 1, nil, true)\ndisplay('main', '<b>hi</b>')\ndisplay('<i>plain</i>')"))
+        assertEquals(listOf("a\t1\tnil\ttrue"), out.printed)
+        assertEquals(listOf("main" to "<b>hi</b>", "output" to "<i>plain</i>"), out.shown)
+    }
+
+    @Test
+    fun boxPropertiesReadWriteAndInherit() {
+        val (box, lua, _) = boxWithLua("lua-props")
+        box.name = "me"
+        val parent = Box("lua-props-parent").also { it.name = "parent" }
+        link(parent, box)
+        parent.setPropertyRaw("tempo", 120.0, false)
+        box.setPropertyRaw("frame", Rect(10.0, 20.0, 300.0, 40.0), false)
+        val values = ok(lua.run("box.speed = 2.5\nreturn box.name, box.speed, box.tempo, box.frame.w, box.parents[1].name, tostring(box)"))
+        assertEquals(listOf("me", 2.5, 120.0, 300.0, "parent", "box 'me'"), values)
+        assertEquals(2.5, box.getPropertyRaw("speed"), "a write from Lua is the box's property")
+        ok(lua.run("box.frame = {x = 1, y = 2, w = 3, h = 4}"))
+        assertEquals(Rect(1.0, 2.0, 3.0, 4.0), box.getPropertyRaw("frame"), "a frame table becomes a Rect")
+        ok(lua.run("box.speed = nil"))
+        assertEquals(null, box.getPropertyRaw("speed"), "nil removes the property")
+    }
+
+    @Test
+    fun childrenAreBoxesAndNamedFindsOne() {
+        val (box, lua, _) = boxWithLua("lua-kids")
+        val a = Box("lua-kid-a").also { it.name = "a" }
+        val b = Box("lua-kid-b").also { it.name = "b" }
+        link(box, a); link(box, b)
+        val names = ok(lua.run("local out = {}\nfor i, c in ipairs(box.children) do out[i] = c.name end\ntable.sort(out)\nreturn out"))[0]
+        assertEquals(listOf("a", "b"), names)
+        assertEquals(listOf("lua-kid-b", true), ok(lua.run("local b = field.named('b')\nreturn b.id, field.named('nobody') == nil")))
+        // A proxy stored into a property crosses as the box itself.
+        ok(lua.run("box.friend = field.named('a')"))
+        assertEquals(a, box.getPropertyRaw("friend"))
+    }
+
+    @Test
+    fun aReadOnlyPropertyIsALuaErrorOnTheLineThatWroteIt() {
+        val (_, lua, _) = boxWithLua("lua-readonly")
+        val err = assertIs<LuaState.Result.Err>(lua.run("local x = 1\nbox.children = {}\n"))
+        assertEquals(2, err.line, "$err")
+        assertTrue("can't be set from Lua" in err.message, err.message)
+    }
+
+    @Test
+    fun linesDrawSvgIntoTheLinesPanel() {
+        val (_, lua, out) = boxWithLua("lua-lines")
+        val drawn = ok(lua.run("""
+            local l = line():moveTo(0, 0):lineTo(100, 50):color(1, 0, 0):width(3)
+            local c = line():circle(50, 50, 20):fill()
+            local p = line{{0, 0}, {10, 10}, {20, 0}}
+            return lines(l, c, p, {w = 200, h = 100})
+        """.trimIndent()))
+        assertEquals(listOf(3.0), drawn)
+        val (channel, html) = out.shown.single()
+        assertEquals("lines", channel)
+        assertTrue("<svg" in html, html.take(300))
+    }
+
+    @Test
+    fun aSliderIsMadeInTheControlsPanelWithItsCallbackRegistered() {
+        val (_, lua, out) = boxWithLua("lua-slider")
+        assertEquals(listOf(0.25), ok(lua.run("return slider('gain', 0, 1, 0.25, function(v) gain = v end)")))
+        val (channel, html) = out.shown.single()
+        assertEquals("controls", channel)
+        val id = assertNotNull(Regex("""id="(slider-[0-9a-f-]+)"""").find(html)?.groupValues?.get(1), html.take(400))
+        assertNotNull(afield.getSliderCallback(id), "the Lua function is behind a registered slider callback")
+        val err = assertIs<LuaState.Result.Err>(lua.run("slider('x', 0, 1)"))
+        assertTrue("needs a function" in err.message, err.message)
+    }
+
+    /**
+     * A sequence built in Lua, heard through Field's pattern voice: the realtime bank rendered offline
+     * block by block. Each quarter of the render is measured by autocorrelation and must be the MIDI
+     * note Lua put there, which is the claim "Lua makes the notes" reduced to numbers.
+     */
+    @Test
+    fun aSequenceBuiltInLuaIsHeardAtThePitchesItNamed() {
+        val (_, lua, out) = boxWithLua("lua-sound")
+        val mini = ok(lua.run("""
+            local notes = {}
+            for i, step in ipairs({0, 4, 7, 12}) do notes[i] = 60 + step end
+            return field.mini(notes), field.mini({60, {64, 67}, false, "~"})
+        """.trimIndent()))
+        assertEquals(listOf("60 64 67 72", "60 [64 67] ~ ~"), mini)
+        val rendered = luaRender(mini[0] as String, cycles = 1, cps = 0.5, voice = luaVoice(mapOf("decay" to 0.15)))
+        assertEquals(PatSoundDocs.SR * 2, rendered.mono.size, "one cycle at 0.5 cps is two seconds")
+        val quarter = rendered.mono.size / 4
+        val expected = listOf(60, 64, 67, 72).map { 440.0 * Math.pow(2.0, (it - 69) / 12.0) }
+        expected.forEachIndexed { i, hz ->
+            // A sine voice: upward zero crossings per second over the note's first 0.2 s (after the attack)
+            // are its pitch. The decay is short so the previous note has died away by then.
+            val from = i * quarter + quarter / 20
+            val to = from + quarter * 2 / 5
+            var crossings = 0
+            for (k in from + 1 until to) if (rendered.mono[k - 1] < 0f && rendered.mono[k] >= 0f) crossings++
+            val heard = crossings * PatSoundDocs.SR.toDouble() / (to - from)
+            println("note ${i + 1}: expected %.1f Hz, heard %.1f Hz".format(hz, heard))
+            assertEquals(hz, heard, hz * 0.02, "note ${i + 1}")
+        }
+        assertTrue(rendered.rms > 0.01 && rendered.peak <= 1.0, "rms ${rendered.rms}, peak ${rendered.peak}")
+
+        // And through the Lua call itself, which also writes a .wav and shows a player.
+        val wav = kotlin.io.path.createTempFile("lua-render", ".wav").toFile()
+        try {
+            val stats = ok(lua.run("return field.render({69}, {cycles = 1, decay = 2, wav = '${wav.absolutePath}'})"))[0] as Map<*, *>
+            println("field.render{69}: $stats")
+            // One held note from onset to end: its crossings a second are its pitch, less its silent tail.
+            assertEquals(440.0, stats["crossings"] as Double, 440.0 * 0.03)
+            assertEquals(PatSoundDocs.SR.toDouble(), stats["frames"])
+            assertTrue(wav.length() > 44 + PatSoundDocs.SR * 4 - 1, "a stereo 16-bit second: ${wav.length()} bytes")
+            val (channel, html) = out.shown.single()
+            assertEquals("sound", channel)
+            assertTrue("data:audio/wav;base64," in html)
+        } finally {
+            wav.delete()
+        }
+    }
+
+    @Test
+    fun luaLinesBecomeFLinesWithTheirStyle() {
+        val f = luaLineToFLine(mapOf(
+            "ops" to listOf(listOf("m", 0.0, 0.0), listOf("l", 10.0, 0.0), listOf("c", 10.0, 5.0, 5.0, 10.0, 0.0, 10.0), listOf("z")),
+            "rgba" to listOf(0.0, 0.5, 1.0), "thickness" to 2.0, "filled" to true,
+        ))
+        assertEquals(4, f.nodes.size)
+        assertEquals(2.0, f.thickness)
+        assertTrue(f.filled)
+    }
+
+    @Test
+    fun assignedNamesReadsPlainAssignmentsOnly() {
+        val code = """
+            local x = 1
+            y, z = 2, 3
+            t.field = 4
+            function f(a) return a end
+            local function g() end
+            if x == 1 then end
+            local a, b
+        """.trimIndent()
+        assertEquals(
+            mapOf(1 to listOf("x"), 2 to listOf("y", "z"), 4 to listOf("f"), 5 to listOf("g"), 7 to listOf("a", "b")),
+            assignedNames(code),
+        )
+    }
+
+    @Test
+    fun aRunsLineNotesSayWhatEachLineCameTo() {
+        val (box, lua, _) = boxWithLua("lua-notes")
+        val code = "local x = 6 * 7\nfunction twice(v) return v * 2 end\nfor i = 1, 3 do\n  x = twice(x)\nend\nprint(x)\nlocal missing = nil\nlocal boom = missing.field\nlocal after = 1"
+        val outcome = lua.runGuarded(code, assignedNames(code))
+        assertIs<LuaState.Result.Err>(outcome.result)
+        recordNotes(box, code, 0, outcome)
+        fun note(line: Int) = assertNotNull(LastRunNotes.note(box, "code", code, line), "no note on line $line").caption
+        assertTrue("x = 42" in note(1), note(1))
+        assertTrue("defined twice" in note(2), note(2))
+        assertTrue("x = 336" in note(4) && "ran 3×" in note(4), note(4))
+        assertTrue("stopped here" in note(8) && "attempt to index" in note(8), note(8))
+        assertTrue("not reached" in note(9), note(9))
+        LastRunNotes.forget(box)
+    }
+
+    @Test
+    fun completionReadsTheLiveState() {
+        needsLuaJIT()
+        val box = Box("lua-complete")
+        box.setPropertyRaw("tempo", 120.0, false)
+        val execution = LuaExecution(box)
+        box.ke = execution
+        try {
+            val lua = execution.luaState()
+            assertIs<LuaState.Result.Ok>(lua.run("myTable = {alpha = 1, beta = 2}"))
+            fun names(path: String, prefix: String) = execution.luaCompletions(path, prefix).map { it.first }
+            assertTrue("format" in names("string", "fo"), "${names("string", "fo")}")
+            assertEquals(listOf("alpha"), names("myTable", "a"))
+            assertTrue("myTable" in names("", "my") && "local" in names("", "lo"), "globals and keywords")
+            assertTrue("moveTo" in names("field.Line", "mo"), "methods of a line")
+            assertTrue("tempo" in names("box", "te") && "children" in names("box", "ch"), "a box proxy offers its properties: ${names("box", "")}")
+        } finally {
+            execution.close()
+        }
+    }
+
+    @Test
+    fun theBoxsStateClosesWhenTheBoxRetiresAndNotOnStop() {
+        needsLuaJIT()
+        val box = Box("lua-lifecycle")
+        val execution = LuaExecution(box)
+        box.ke = execution
+        val before = LuaState.openStates.get()
+        execution.luaState()
+        assertEquals(before + 1, LuaState.openStates.get())
+        execution.stop(box)
+        assertTrue(execution.hasState, "stop leaves the state, so the box keeps its globals")
+        box.runScopes.closeAll()
+        assertEquals(before, LuaState.openStates.get(), "retiring the box closes its Lua")
+        assertTrue(!execution.hasState)
+    }
+}

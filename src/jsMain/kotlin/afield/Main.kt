@@ -1446,6 +1446,45 @@ private fun clipForWindowEditorCapture(box: HTMLElement, padding: Double): Rect?
     return clipForPageRect(union.expand(max(0.0, padding)))
 }
 
+/**
+ * An editor-only capture with a line note showing: shorten the pane so the note sits under the text.
+ *
+ * Screenshot prep sizes the pane for a window capture (840–1200 CSS px, [prepareMonacoForScreenshotLayout]),
+ * and a line note is drawn in the left overlay at the pane's *foot*. [clipForRenderedEditorContent] keeps
+ * the note in the clip, because it is part of what the editor shows, so a four-line box with a note was a
+ * whole pane tall — code at the top, the note 2000 device pixels below it, nothing between (lua.md's
+ * captures, 2026-09-30; every language whose runs leave a note is the same). This is what
+ * `ui.editorHeight(px)` does by hand in scripted capture="ui" fences, done here for every editor-only
+ * capture: pane height = the rendered text and its inline output zones + the note's own height + a
+ * margin, never taller than prep made it, then Monaco is laid out again before the clip is measured.
+ *
+ * Only `editorOnly` captures call this, and only when a note is visible; a window capture with the editor
+ * open keeps the pane prep gave it, and so does an editor capture without a note. The pane stays this size
+ * until the next screenshot prep re-sizes it, which every capture does first.
+ */
+private fun fitEditorPaneToContentAndNote(container: HTMLElement) {
+    val overlay = (container.querySelector(".hoverlay-left") as? HTMLElement)
+        ?.takeIf { it.querySelector(".afield-line-note") != null && isOverlayVisible(it) } ?: return
+    val editor = window.asDynamic().globalEditor ?: return
+    val containerRect = container.getBoundingClientRect()
+    val headerHeight = runCatching {
+        (container.querySelector(".hoverlay") as? HTMLElement)?.getBoundingClientRect()?.height ?: 0.0
+    }.getOrDefault(0.0)
+    val contentHeight = runCatching { (editor.getContentHeight?.invoke() as? Number)?.toDouble() ?: 0.0 }.getOrDefault(0.0)
+    val textBottom = container.querySelectorAll(
+        ".view-lines > div, .view-zones > div, .margin-view-zones > div, .execution_output"
+    ).asList().mapNotNull {
+        val element = it as? HTMLElement ?: return@mapNotNull null
+        if (!isOverlayVisible(element)) return@mapNotNull null
+        element.getBoundingClientRect().bottom - containerRect.top
+    }.maxOrNull() ?: 0.0
+    val noteHeight = overlay.getBoundingClientRect().height
+    val wanted = max(textBottom, headerHeight + contentHeight) + noteHeight + 36.0
+    if (wanted >= containerRect.height) return
+    container.style.height = "${wanted}px"
+    layoutGlobalEditor()
+}
+
 private fun clipForRenderedEditorContent(padding: Double): Rect? {
     val container = visibleMonacoContainer() ?: return null
     val editor = window.asDynamic().globalEditor ?: return clipForVisibleElement(container, padding)
@@ -1841,6 +1880,11 @@ private fun layoutGlobalEditor() {
  * `cursorBlinking: "blink"`), which it did about half the time: hold the caret solid while a capture is
  * prepared and taken, and put the editor's own setting back afterwards ([restoreCaptureCursorBlinking],
  * which the JVM calls once the screenshot is written). Only the capture page's editor is touched.
+ *
+ * Held solid, Field's caret — a red *block* (`cursorStyle: "block"` in BootstrapMonacoInit) — covered the
+ * character under it in every capture, and after a run the caret sits at line 1, column 1, so a figure's
+ * first word lost its first letter (`box` read `ox`, `spawn` `pawn`, lua.md 2026-09-30). So a capture
+ * also draws the caret as a thin line, which marks the line a note is about and hides nothing.
  */
 private fun holdCaretSolidForCapture() {
     val w = window.asDynamic()
@@ -1848,8 +1892,10 @@ private fun holdCaretSolidForCapture() {
     if (w.__afieldCaptureCursorBlinking == undefined) {
         val current = runCatching { editor.getRawOptions().cursorBlinking as? String }.getOrNull()
         w.__afieldCaptureCursorBlinking = current ?: "blink"
+        val style = runCatching { editor.getRawOptions().cursorStyle as? String }.getOrNull()
+        w.__afieldCaptureCursorStyle = style ?: "block"
     }
-    runCatching { editor.updateOptions(js("({ cursorBlinking: 'solid' })")) }
+    runCatching { editor.updateOptions(js("({ cursorBlinking: 'solid', cursorStyle: 'line-thin' })")) }
 }
 
 @OptIn(ExperimentalJsExport::class)
@@ -1861,9 +1907,11 @@ fun restoreCaptureCursorBlinking() {
     if (editor != null) {
         val options = js("({})")
         options.cursorBlinking = previous
+        options.cursorStyle = (w.__afieldCaptureCursorStyle as? String) ?: "block"
         runCatching { editor.updateOptions(options) }
     }
     w.__afieldCaptureCursorBlinking = undefined
+    w.__afieldCaptureCursorStyle = undefined
 }
 
 @Suppress("unused")
@@ -2509,6 +2557,7 @@ private fun prepareWindowScreenshot(req: WindowScreenshotRequest): WindowScreens
     if (req.editorOnly) {
         val editor = visibleMonacoContainer()
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "editor not visible yet")
+        fitEditorPaneToContentAndNote(editor)
         val clip = clipForRenderedEditorContent(req.padding)
             ?: return WindowScreenshotResponse(uid = req.uid, success = false, message = "invalid editor clip")
         return WindowScreenshotResponse(

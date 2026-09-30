@@ -1,0 +1,22 @@
+name: lua_completion_setup
+description: >
+  Setup for the lua.md completion capture: a Lua root and one Lua box to type into, run once so the
+  box has its lua_State (completion reads the live state). A capture=ui fence drives the live editor
+  and creates no boxes of its own, so the language root has to be built here.
+operations:
+  - create:
+      box: lua_completion_root
+      name: lua
+      frame: { x: 80, y: 60, w: 120, h: 80 }
+      properties: { mainLanguage: lua }
+  - create:
+      box: lua_completion
+      name: completion
+      frame: { x: 80, y: 200, w: 640, h: 220 }
+      properties:
+        code_language: Lua
+        code: |
+          local notes = {60, 64, 67}
+  - connect: { parent: lua_completion_root, child: lua_completion }
+  - execute: { box: lua_completion, property: code }
+  - await: {}
