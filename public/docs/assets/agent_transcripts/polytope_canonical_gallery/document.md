@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="polytope_canonical_gallery" index="0" -->
 
 ```edn [field-box id="polytope_canonical_gallery" role="properties"]
-{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 87 "characters" 3737 "sha256" "21c6cfe6f0010bb30a53ed281d5bddb5b72dac8b6257450556805b146e0bc12c"}]}
+{"id" "polytope_canonical_gallery" "index" 0 "name" "Polytope — Conway expression gallery, canonicalized" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Polytope — Conway expression gallery, canonicalized" "_tombstone" false "frame" #afield/rect [80.0 80.0 450.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_canonical_gallery_code_.kt" "lines" 87 "characters" 3735 "sha256" "8ec20b65c0807c99132c61ea940e6f1a1487aee30a938e4322257a79ae893c2e"}]}
 ```
 
 ```kotlin [field-property box="polytope_canonical_gallery" name="code" path="polytope_canonical_gallery_code_.kt"]
@@ -64,7 +64,7 @@ fun PolyhedralObject.panel(label: String, dx: Float, alpha: Double) =
         val hue = hues[degree] ?: vec(0.70, 0.74, 0.80)
         val orbit = orbits.faceClasses.indexOfFirst { face.id in it }
         val normal = faceNormal(face.id)
-        val centre = faceCentroids()[topology.elements(2).indexOfFirst { it.id == face.id }]
+        val centre = faceCentroids[topology.elements(2).indexOfFirst { it.id == face.id }]
         val depth = (centre.x * normal.x + centre.y * normal.y + centre.z * normal.z).toDouble()
 
         line.filled = true

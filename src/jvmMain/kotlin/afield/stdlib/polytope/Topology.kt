@@ -370,6 +370,18 @@ class PolytopeTopology internal constructor(
      */
     fun elements(rank: Int): List<Element> = elementsByRank.getOrElse(rank) { emptyList() }
 
+    /** The rank-2 elements, `elements(2)`: what [faceCycle], `faceNormal` and `faceCentroids` are asked about. */
+    val faces: List<Element> get() = elements(2)
+
+    /**
+     * Raw vertex id value → its index in `elements(0)`, which is also its index into
+     * `Realization3.vertexCoordinates`. Keyed by the raw value because that is what [faceCycle] hands
+     * back, so `faceCycle(f).map { coordinates[vertexMap.getValue(it)] }` is a face's realized ring.
+     */
+    val vertexMap: Map<Int, Int> by lazy {
+        elements(0).withIndex().associate { (index, vertex) -> vertex.id.value to index }
+    }
+
     /** The element with this id, or null if it belongs to some other topology. The way to learn an id's rank. */
     fun element(id: ElementId): Element? = elementById[id]
 

@@ -375,7 +375,7 @@
   {"doc": "pitch_transcription_roundtrip", "box": "pitch_roundtrip_legato", "codeSha256": "8dfda5a0f1b1d763", "codeLines": 48, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pitch_transcription_roundtrip", "box": "pitch_roundtrip_refusal", "codeSha256": "1536440c03dad91e", "codeLines": 33, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "pitch_transcription_roundtrip", "box": "pitch_roundtrip_register", "codeSha256": "9779aaad7eace981", "codeLines": 44, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "polytope_canonical_gallery", "box": "polytope_canonical_gallery", "codeSha256": "e24cdf5070741a0e", "codeLines": 87, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "polytope_canonical_gallery", "box": "polytope_canonical_gallery", "codeSha256": "a196f9670bcc8038", "codeLines": 87, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "polytope_conway_demo", "box": "polytope_selective_kis", "codeSha256": "1db8eee81a7529e8", "codeLines": 84, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "polytope_conway_gallery", "box": "polytope_abstract_dual", "codeSha256": "a5c88544e91d31d7", "codeLines": 36, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "polytope_conway_gallery", "box": "polytope_expression_gallery", "codeSha256": "4ece8fd29bc0b812", "codeLines": 36, "receivers": ["afield.Box"], "preamble": ""},
