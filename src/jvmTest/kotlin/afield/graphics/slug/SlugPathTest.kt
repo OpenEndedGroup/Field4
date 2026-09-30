@@ -67,6 +67,43 @@ class SlugPathTest {
         assertEquals(java.io.File("dev_docs/graphics/slug-prototype/code.kt").readText(),
             java.io.File(root, "${uid}_code_.kt").readText())
     }
+    @Test fun metadataOnlyImportRetainsNewLessonCodeAndShaders() {
+        val corpus = java.io.File("public/docs/assets/canonical_graphics")
+        val directory = java.nio.file.Files.createTempDirectory("canonical-import-").toFile()
+        val previous = afield.thisSessionInfo.get()
+        val root = afield.Box("root")
+        val session = afield.SessionInformation(filename = directory.absolutePath,
+            documentName = "import-regression", root = root, ephemeral = true)
+        root.inside = session
+        session.boxes[root.id] = root
+        session.loading = false
+        afield.thisSessionInfo.set(session)
+        try {
+            // Browser import sends only EDN text and remaps IDs into a different document.
+            for (source in listOf(java.io.File(corpus, "metadata.edn"),
+                java.io.File("public/docs/assets/slug_starter.edn"))) {
+                val loaded = afield.SavingContext().loadFromEdnText(
+                    source.readText(), directory.absolutePath,
+                    { if (it == "root") it else "${source.name}-$it" }, initIfCreated = false
+                ).associateBy { it.id }
+                for (uid in listOf("b42d7b13-680e-4f9b-b789-8e6e7d8c4a21",
+                    "628f3f96-42d0-48dd-93ea-ea4d9f03b865")) {
+                    if (source.name == "slug_starter.edn" && uid.startsWith("b42")) continue
+                    val lesson = loaded.getValue("${source.name}-$uid")
+                    for ((property, extension) in listOf("code" to "kt", "vertex" to "glsl", "fragment" to "glsl")) {
+                        assertEquals(java.io.File(corpus, "${uid}_${property}_.$extension").readText(),
+                            lesson.getPropertyRaw(property), "$uid $property must survive metadata-only import")
+                    }
+                    assertTrue(lesson.parents.any { it.id == "${source.name}-611072da-1af6-4d2d-85bf-07a9ba191aca" })
+                }
+            }
+        } finally {
+            val mine = session.boxes.values.toSet()
+            afield.needsResync.removeAll { (box, _) -> box in mine }
+            if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
+            directory.deleteRecursively()
+        }
+    }
     @Test fun shadersCompileWithMatchingPortablePushConstants() {
         for ((source, kind) in listOf(SlugShaders.vertex to ShaderKind.VERTEX_SHADER,
             SlugShaders.fragment to ShaderKind.FRAGMENT_SHADER)) {
