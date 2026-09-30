@@ -1,7 +1,7 @@
 # Lua (LuaJIT) in Field — mechanics, measurements, traps
 
-Added 2026-09-30. User-facing page: `public/docs/lua.md`. Loadable scene: `dev_docs/lua/lua_demo.yaml`
-(backdoor: `macro write lua_demo --file dev_docs/lua/lua_demo.yaml`, then `macro run lua_demo`). It is
+Added 2026-09-30. User-facing page: `public/docs/lua.md`. Loadable scene: `dev_docs/agents/transcripts/lua_demo.yaml`
+(backdoor: `macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml`, then `macro run lua_demo`). It is
 deliberately *not* in `dev_docs/agents/transcripts/`, so the transcript-corpus guards (index, layouts,
 completion-corpus manifest, `DemoTranscriptExecSmokeTest`) do not yet know it; adding it there is a
 follow-up that has to satisfy `AgentTranscriptIndexGuard`.

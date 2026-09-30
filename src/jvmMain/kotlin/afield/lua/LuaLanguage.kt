@@ -22,6 +22,17 @@ import afield.dispatchExecutionOutput
 import afield.early
 import afield.graphics.FLine
 import afield.graphics.lines
+import afield.four.audio.WavFloatArrayWriter
+import afield.four.synth.FieldAudioEngine
+import afield.four.synth.PatSoundDocs
+import afield.four.synth.PatWave
+import afield.four.synth.PatVoiceSpec
+import afield.four.synth.audio
+import afield.four.synth.pat
+import afield.four.synth.patSynth
+import afield.four.synth.patSynthRenderStereo
+import afield.four.synth.patVoice
+import afield.stdlib.AudioVisualizer
 import afield.slider
 import afield.checkbox
 import afield.inMain
@@ -440,8 +451,49 @@ internal fun luaLineToFLine(t: Map<*, *>): FLine {
     return f
 }
 
+/** A pattern voice from a Lua options table: `wave`, `decay`, `sustain`, `attack`, `base`. */
+internal fun luaVoice(options: Map<*, *>): PatVoiceSpec {
+    val wave = options["wave"]?.toString()?.uppercase()?.let { w ->
+        PatWave.entries.firstOrNull { it.name == w } ?: throw IllegalArgumentException("wave should be one of ${PatWave.entries.joinToString { it.name.lowercase() }}, not '$w'")
+    } ?: PatWave.SINE
+    return patVoice(
+        wave = wave,
+        baseHz = (options["base"] as? Number)?.toDouble() ?: 220.0,
+        decay = (options["decay"] as? Number)?.toDouble() ?: 0.08,
+        sustain = (options["sustain"] as? Number)?.toDouble() ?: 1.0,
+        attack = (options["attack"] as? Number)?.toDouble() ?: 0.003,
+    )
+}
+
+/** What [luaRender] measured in a rendered pattern: the numbers a Lua box gets back from `field.render`. */
+internal class LuaRendered(val stereo: PatSoundDocs.Stereo, val sampleRate: Int) {
+    val mono: FloatArray = stereo.mono
+    val peak: Double = mono.maxOfOrNull { kotlin.math.abs(it.toDouble()) } ?: 0.0
+    val rms: Double = if (mono.isEmpty()) 0.0 else kotlin.math.sqrt(mono.sumOf { it.toDouble() * it } / mono.size)
+    /** Upward zero crossings per second of the whole render. */
+    val crossingsPerSecond: Double = run {
+        var n = 0
+        for (i in 1 until mono.size) if (mono[i - 1] < 0f && mono[i] >= 0f) n++
+        if (mono.isEmpty()) 0.0 else n * sampleRate.toDouble() / mono.size
+    }
+    fun summary(): Map<String, Any> = linkedMapOf(
+        "frames" to mono.size, "seconds" to mono.size.toDouble() / sampleRate, "sampleRate" to sampleRate,
+        "peak" to peak, "rms" to rms, "crossings" to crossingsPerSecond,
+    )
+}
+
+/**
+ * Render [mini] (mini-notation, as `pat` reads it) offline through the realtime pattern voice's own
+ * bank — [patSynthRenderStereo], block by block as the audio engine would — for [cycles] cycles.
+ */
+internal fun luaRender(mini: String, cycles: Int, cps: Double, voice: PatVoiceSpec, gain: Double = LUA_GAIN): LuaRendered =
+    LuaRendered(patSynthRenderStereo(pat(mini), cycles = cycles, cps = cps, voice = voice, gain = gain), PatSoundDocs.SR)
+
+/** What `play` and `field.render` multiply every note by unless told otherwise: a chord of four stays under 1. */
+internal const val LUA_GAIN = 0.3
+
 /** The raw Kotlin functions the prelude wraps into a box's `print`, `display`, `box`, `lines`, …. */
-internal fun luaHandlersFor(box: Box): Map<String, LuaState.Handler> = mapOf(
+internal fun luaHandlersFor(box: Box): Map<String, LuaState.Handler> = soundHandlersFor(box) + mapOf(
     "print" to LuaState.Handler { _, args -> box.println(args.firstOrNull()?.toString() ?: ""); emptyList() },
     "display" to LuaState.Handler { _, args ->
         when (args.size) {
@@ -518,6 +570,53 @@ private fun callBack(box: Box, fn: LuaState.LuaFunction, value: Any?) {
         val r = RunScope.withCurrent(box.runScopes.ambient()) { fn.state.callGuarded(fn, value) }
         if (r is LuaState.Result.Err) box.error(r.message, "code", r.line ?: -1)
     }
+}
+
+/**
+ * `play`, `hush` and `field.render`: a Lua box sequences, and Field's own pattern voice sounds it.
+ *
+ * Lua never touches audio. `play` turns what the box built into mini-notation and hands it to
+ * [patSynth], whose feeder schedules the notes ahead of [FieldAudioEngine]'s thread and whose bank that
+ * thread renders — the same path a Kotlin box's `patSynth(pat(…))` takes. The engine's registration is
+ * owned by the executing run, so stopping the box silences it; playing again replaces what this box was
+ * playing. `field.render` is the offline twin, for hearing a sequence as a player in the output and for
+ * measuring it.
+ */
+private fun soundHandlersFor(box: Box): Map<String, LuaState.Handler> {
+    var playing: AutoCloseable? = null
+    fun hush() { playing?.let { runCatching { it.close() } }; playing = null }
+    return mapOf(
+        "play" to LuaState.Handler { _, args ->
+            val mini = args.getOrNull(0)?.toString() ?: throw IllegalArgumentException("play(sequence, options)")
+            val options = args.getOrNull(1) as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val pattern = pat(mini)
+            hush()
+            val launch = patSynth(pattern, cps = (options["cps"] as? Number)?.toDouble() ?: 1.0, voice = luaVoice(options),
+                gain = (options["gain"] as? Number)?.toDouble() ?: LUA_GAIN)
+            val handle = try { FieldAudioEngine.shared().register(audio(launch, gain = 1f)) } catch (t: Throwable) { launch.close(); throw t }
+            val both = AutoCloseable { runCatching { handle.close() }; launch.close() }
+            playing = both
+            RunScope.current()?.own(both, ReleasePolicy.RUNNING)
+            listOf(FieldAudioEngine.shared().outputActive)
+        },
+        "hush" to LuaState.Handler { _, _ -> hush(); emptyList() },
+        "render" to LuaState.Handler { _, args ->
+            val mini = args.getOrNull(0)?.toString() ?: throw IllegalArgumentException("field.render(sequence, options)")
+            val options = args.getOrNull(1) as? Map<*, *> ?: emptyMap<Any?, Any?>()
+            val cycles = (options["cycles"] as? Number)?.toInt() ?: 1
+            require(cycles in 1..64) { "cycles should be between 1 and 64, not $cycles" }
+            val rendered = luaRender(mini, cycles, (options["cps"] as? Number)?.toDouble() ?: 1.0, luaVoice(options),
+                gain = (options["gain"] as? Number)?.toDouble() ?: LUA_GAIN)
+            options["wav"]?.toString()?.let { path ->
+                WavFloatArrayWriter.writeStereo16(path, rendered.stereo.left, rendered.stereo.right, rendered.sampleRate)
+            }
+            if (options["show"] != false) {
+                box.display(options["channel"]?.toString() ?: "sound",
+                    AudioVisualizer.renderSamplesHtml(rendered.mono, rendered.sampleRate, label = mini.take(60)))
+            }
+            listOf(rendered.summary())
+        },
+    )
 }
 
 private val READ_ONLY = setOf("children", "parents", "id", "code_language", "_tombstone")

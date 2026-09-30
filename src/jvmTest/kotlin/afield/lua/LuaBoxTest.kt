@@ -2,6 +2,7 @@ package afield.lua
 
 import afield.Box
 import afield.Rect
+import afield.four.synth.PatSoundDocs
 import afield.stdlib.LastRunNotes
 import afield.stdlib.filled
 import afield.stdlib.thickness
@@ -123,6 +124,54 @@ class LuaBoxTest {
         assertNotNull(afield.getSliderCallback(id), "the Lua function is behind a registered slider callback")
         val err = assertIs<LuaState.Result.Err>(lua.run("slider('x', 0, 1)"))
         assertTrue("needs a function" in err.message, err.message)
+    }
+
+    /**
+     * A sequence built in Lua, heard through Field's pattern voice: the realtime bank rendered offline
+     * block by block. Each quarter of the render is measured by autocorrelation and must be the MIDI
+     * note Lua put there, which is the claim "Lua makes the notes" reduced to numbers.
+     */
+    @Test
+    fun aSequenceBuiltInLuaIsHeardAtThePitchesItNamed() {
+        val (_, lua, out) = boxWithLua("lua-sound")
+        val mini = ok(lua.run("""
+            local notes = {}
+            for i, step in ipairs({0, 4, 7, 12}) do notes[i] = 60 + step end
+            return field.mini(notes), field.mini({60, {64, 67}, false, "~"})
+        """.trimIndent()))
+        assertEquals(listOf("60 64 67 72", "60 [64 67] ~ ~"), mini)
+        val rendered = luaRender(mini[0] as String, cycles = 1, cps = 0.5, voice = luaVoice(mapOf("decay" to 0.15)))
+        assertEquals(PatSoundDocs.SR * 2, rendered.mono.size, "one cycle at 0.5 cps is two seconds")
+        val quarter = rendered.mono.size / 4
+        val expected = listOf(60, 64, 67, 72).map { 440.0 * Math.pow(2.0, (it - 69) / 12.0) }
+        expected.forEachIndexed { i, hz ->
+            // A sine voice: upward zero crossings per second over the note's first 0.2 s (after the attack)
+            // are its pitch. The decay is short so the previous note has died away by then.
+            val from = i * quarter + quarter / 20
+            val to = from + quarter * 2 / 5
+            var crossings = 0
+            for (k in from + 1 until to) if (rendered.mono[k - 1] < 0f && rendered.mono[k] >= 0f) crossings++
+            val heard = crossings * PatSoundDocs.SR.toDouble() / (to - from)
+            println("note ${i + 1}: expected %.1f Hz, heard %.1f Hz".format(hz, heard))
+            assertEquals(hz, heard, hz * 0.02, "note ${i + 1}")
+        }
+        assertTrue(rendered.rms > 0.01 && rendered.peak <= 1.0, "rms ${rendered.rms}, peak ${rendered.peak}")
+
+        // And through the Lua call itself, which also writes a .wav and shows a player.
+        val wav = kotlin.io.path.createTempFile("lua-render", ".wav").toFile()
+        try {
+            val stats = ok(lua.run("return field.render({69}, {cycles = 1, decay = 2, wav = '${wav.absolutePath}'})"))[0] as Map<*, *>
+            println("field.render{69}: $stats")
+            // One held note from onset to end: its crossings a second are its pitch, less its silent tail.
+            assertEquals(440.0, stats["crossings"] as Double, 440.0 * 0.03)
+            assertEquals(PatSoundDocs.SR.toDouble(), stats["frames"])
+            assertTrue(wav.length() > 44 + PatSoundDocs.SR * 4 - 1, "a stereo 16-bit second: ${wav.length()} bytes")
+            val (channel, html) = out.shown.single()
+            assertEquals("sound", channel)
+            assertTrue("data:audio/wav;base64," in html)
+        } finally {
+            wav.delete()
+        }
     }
 
     @Test

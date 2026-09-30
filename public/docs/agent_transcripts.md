@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 164 transcripts on every build, at three
-depths. 84 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 165 transcripts on every build, at three
+depths. 85 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -168,6 +168,22 @@ after `score` again. The replay runs all five headless: the drawing is data on t
 audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
+
+### lua_demo
+
+**Lua inside Field, over LuaJIT.** A Kotlin root whose `mainLanguage` makes eleven boxes under it
+Lua, and a Kotlin box that reads their line notes. **hello** prints `hello from LuaJIT 2.1…` and
+`x is 42`; **this box** counts its own runs in `box.counter`; **drawing** makes twenty-six FLines from
+Lua; **wave** (launch) redraws a sine wave in `update(dt)` every frame; **spawned** (launch) prints
+four ticks half a second apart from a coroutine; **an error** is marked on line 3; **runaway**, a
+`while true do end`, is stopped after one second on line 4; **jit** times the same loop interpreted
+and compiled (about 5× apart); **controls** redraws a circle from a Lua slider; **sequencer** picks
+eight notes from a scale in Lua, measures them with `field.render` and loops them through Field's
+pattern voice with `play`. Needs `brew install luajit`. CI replays the graph and runs the Kotlin root,
+which needs no LuaJIT; the Lua boxes are a guest language, and `LuaStateTest`/`LuaBoxTest` run Lua
+against a real `lua_State`; every box was run by hand on 2026-09-30. See [Lua in a Box](lua.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
 ### hello_display_capture
 

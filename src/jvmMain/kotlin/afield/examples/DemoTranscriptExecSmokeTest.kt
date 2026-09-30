@@ -105,6 +105,10 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Lua over LuaJIT: the transcript executes only its Kotlin root, which prints where LuaJIT was
+        // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
+        // guest language; afield.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
+        "lua_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",

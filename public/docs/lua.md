@@ -133,6 +133,31 @@ end
 draw(slider("radius", 5, 90, 40, draw))
 ```
 
+## Sound
+
+A Lua box does not make audio itself; it decides the notes, and Field's own pattern voice plays them,
+as a norns script decides notes for its engine. A sequence is a list: a number is a MIDI note, `false`
+or `"~"` a rest, and a nested list a step divided (`{60, {64, 67}, false, 72}`). A string is taken as
+[mini-notation](pattern_language.md) as it stands.
+
+`play(sequence, options)` loops it through the same voice a Kotlin box's `patSynth(pat(…))` uses,
+until the box stops or plays something else; `hush()` stops it. `field.render(sequence, options)`
+renders the same voice offline, shows it as a player in the box's `sound` panel, and returns what it
+measured: `frames`, `seconds`, `peak`, `rms`, and `crossings`, the upward zero crossings a second.
+Both take `cps` (cycles a second, 1 unless given), `wave` (`sine`, `saw`, `square`, `triangle`,
+`noise`), `decay`, `sustain` and `gain`, and `field.render` also `cycles` and a `wav` path to write.
+
+```diffstatic_runner {data-lang=lua screenshot="assets/lua/sound.png" capture="box" open-outputs=true trim=true requires="luajit" wait="3" wait-output=true wait-output-kind="display" timeout="180" embed=true name="lua-sound" w="820" h="80" alt="The sound panel of a Lua box: an audio player labelled 64 60 67 74 57 64 60 79, the sequence the Lua made, over a two-second waveform whose texture changes at each quarter-second step, with play controls beneath."}
+local scale = {0, 3, 5, 7, 10}
+local notes = {}
+for i = 1, 8 do notes[i] = 57 + scale[(i * 3) % #scale + 1] + (i % 4 == 0 and 12 or 0) end
+local heard = field.render(notes, {cps = 0.5, wave = "triangle", decay = 0.3})
+print(string.format("%s: %.0f s, peak %.2f, rms %.3f", field.mini(notes), heard.seconds, heard.peak, heard.rms))
+```
+
+`LuaBoxTest` holds the pitches to what Lua asked for: `{60, 64, 67, 72}` rendered at half a cycle a
+second is heard, by zero crossings, at 260, 330, 395 and 525 Hz against 261.6, 329.6, 392.0 and 523.3.
+
 ## Errors
 
 An error is marked on the line it happened on, after whatever the run printed first:
@@ -188,13 +213,24 @@ after `box.` the box's properties.
 
 ## The demo scene
 
-`dev_docs/lua/lua_demo.yaml` builds all of this in one document: a Kotlin root, ten Lua boxes, and a
-Kotlin box that reads the Lua boxes' line notes. Replay it with the backdoor:
-`macro write lua_demo --file dev_docs/lua/lua_demo.yaml`, then `macro run lua_demo`.
+Everything on this page is also in one Field document: a Kotlin root, eleven Lua boxes and a Kotlin box
+that reads their line notes. Browse it here, read-only, box by box. To run it, open **lua_demo** from
+the welcome screen's starting points, or replay `dev_docs/agents/transcripts/lua_demo.yaml` with the
+backdoor (`macro write lua_demo --file dev_docs/agents/transcripts/lua_demo.yaml`, then
+`macro run lua_demo`).
+
+<iframe
+  src="offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn"
+  title="Lua demo, offline viewer"
+  style="width:100%; height:640px; border:1px solid #444; border-radius:8px; background:#111;"
+  loading="lazy"></iframe>
+
+[Open ↗](offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn)
 
 ??? aside "How this is built, and what it leaves out"
     The binding is Java's foreign-function API against the Lua 5.1 C API LuaJIT exports, with no
     wrapper library of Field's own; the mechanics, the measurements and the traps are in
     `dev_docs/lua/LUA.md`. Two limits: LuaJIT's own `ffi` library is present but nothing here is
-    built on it, and Lua cannot yet reach Field's audio or pattern layers — only what the prelude in
-    `src/jvmMain/resources/afield/lua/prelude.lua` defines.
+    built on it, and a Lua box reaches only what the prelude in
+    `src/jvmMain/resources/afield/lua/prelude.lua` defines, so its sound goes through the pattern voice
+    rather than a DSP graph of its own.

@@ -159,6 +159,40 @@ if raw.checkbox then
   field.checkbox = checkbox
 end
 
+-- ── sound: Lua sequences, Field's pattern voice plays ───────────────────────────────────────────
+
+--- A sequence as mini-notation: a string is used as it is; a list is its items in turn, a number a
+--- MIDI note, false or "~" a rest, a nested list one step subdivided — {60, {64, 67}, false, 72}.
+local function mini(seq)
+  if type(seq) == "string" then return seq end
+  if type(seq) ~= "table" then error("a sequence is a string or a list, not " .. describe(seq), 3) end
+  local parts = {}
+  for i, v in ipairs(seq) do
+    if type(v) == "table" then parts[i] = "[" .. mini(v) .. "]"
+    elseif v == false or v == "~" then parts[i] = "~"
+    else parts[i] = tostring(v) end
+  end
+  return concat(parts, " ")
+end
+field.mini = mini
+
+if raw.play then
+  local p, h = checked(raw.play), checked(raw.hush)
+  --- play(sequence, {cps=, wave=, decay=, sustain=, gain=}): loop it through Field's pattern voice until
+  --- the box stops or plays something else. Returns whether an audio device is open.
+  function play(seq, options) return p(mini(seq), options or {}) end
+  --- Stop what this box is playing.
+  function hush() return h() end
+  field.play, field.hush = play, hush
+end
+
+if raw.render then
+  local r = checked(raw.render)
+  --- field.render(sequence, {cycles=, cps=, wave=, …, wav=path, show=false}): the same voice offline,
+  --- shown as a player in the `sound` panel; returns {frames, seconds, sampleRate, peak, rms, crossings} (upward zero crossings a second).
+  function field.render(seq, options) return r(mini(seq), options or {}) end
+end
+
 -- ── lines ───────────────────────────────────────────────────────────────────────────────────────
 
 local Line = {}
