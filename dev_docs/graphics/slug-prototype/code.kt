@@ -1,7 +1,6 @@
 import afield.RunScope
 import afield.ReleasePolicy
 import afield.four.Renderer
-import afield.four.buffers.bindPushConstant
 import afield.four.modules.*
 import afield.graphics.FLine
 import afield.graphics.slug.*
@@ -30,22 +29,23 @@ module += "slug" to mesh
 renderer += module
 mesh.resize(6)
 val data = SlugBuffer(renderer, prepared)
+
 RunScope.current()!!.own(policy = ReleasePolicy.RUNNING) {
     if (module.current.meshes["slug"] === mesh) module.current.meshes.remove("slug")
     data.close()
 }
-mesh.push.bindPushConstant("slugData", { data }) { throw IllegalStateException("Missing slugData") }
+
+mesh.slugData = { data }
 val camera = Camera()
 camera.at = vec(0, 0, -4)
-mesh.push.bindPushConstant("mvp", {
-    Matrix4f(camera.p.evaluateUniform()).mul(camera.modelView())
-}) { throw IllegalStateException("Missing mvp") }
-mesh.push.bindPushConstant("viewport", {
+
+mesh.mvp = { Matrix4f(camera.p.evaluateUniform()).mul(camera.modelView()) }
+mesh.viewport = {
     val extent = renderer.swapChain.swapChainExtent
     vec(extent.width(), extent.height())
-}) { throw IllegalStateException("Missing viewport") }
+}
 var tint = vec(0.9, 0.9, 0.9, 0.8)
-mesh.push.bindPushConstant("tint", { tint }) { throw IllegalStateException("Missing tint") }
+mesh.tint = { tint }
 
 // Focus the renderer window: WASD/arrows move, E/C rise/fall, R resets.
 var kc by keyCamera(camera = camera)
