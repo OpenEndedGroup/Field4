@@ -88,7 +88,7 @@ val seen = rings.observe(StudyCall.Observe(seconds = listOf(0.0, 0.5, 1.0)))
 
 display("main", "<pre>" + tools.values.joinToString("\n") { it.name } + "</pre>" +
     "<pre>${first.revision}: ${first.facts["message"]}</pre>" +
-    "<img src='${seen.toolImages.single().dataUrl}' style='width:100%'/>")
+    "<img src='${seen.toolImages.single().dataUrl}' style='width:720px'/>")
 ```
 
 The revision is named `r1-` and the first twelve hex digits of its source's hash, so the same source
@@ -207,7 +207,7 @@ val adopted = rings.adoptVariant(StudyCall.Adopt(now.revision, now.facts["liveSo
 
 display("main", "<pre>" + (tried.facts["variants"] as List<*>).joinToString("\n") + "\n" +
     "adopted ${adopted.revision}; box now holds: ${thisBox.getPropertyRaw("rings", "")}</pre>" +
-    "<img src='${swept.toolImages.single().dataUrl}' style='width:100%'/>" +
+    "<img src='${swept.toolImages.single().dataUrl}' style='width:720px'/>" +
     "<img src='${tried.toolImages.single().dataUrl}' style='width:340px'/>")
 ```
 
