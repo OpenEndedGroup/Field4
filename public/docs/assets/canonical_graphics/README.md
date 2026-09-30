@@ -15,6 +15,10 @@ entry points:
   that demonstrate it. Generated, so it cannot drift from the boxes.
 - **[afield.four Graphics](../../afield_four_graphics.md)** — the prose walkthrough of the same
   lessons, with captured native-window images.
+- **[GPU schemas](../../gpu_schema.md)** — the new structured-memory starting point: annotated
+  Kotlin data classes become one CPU/GPU ABI, are packed into arbitrary addressable buffers, and
+  generate GLSL `struct` / `buffer_reference` declarations through the same box template system.
+  This is the general direction beyond the older push-constant-specific `PushConstants<T>` lesson.
 
 Every file here is named by box uid, which is why the index exists: `grep RenderToTexture` in
 this directory alone lands you in shader source with no idea which lesson it belongs to.
