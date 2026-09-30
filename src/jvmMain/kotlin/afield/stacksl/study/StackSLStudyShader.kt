@@ -144,7 +144,9 @@ object StackSLStudyShader {
     fun webgl2(program: String): WebGl2Program {
         val wired = StackSLWires.lift(program)
         val declaration = Regex("""^float (program_wire_\d+);$""", RegexOption.MULTILINE)
+        // `precise` (which pins the noise helpers' arithmetic on NVIDIA) is GLSL 4.00 / ES 3.20; ES 3.00 has no such qualifier.
         val body = declaration.replace(wired.glsl) { "uniform float ${it.groupValues[1]};" }
+            .replace(Regex("""\bprecise\s+"""), "")
         val fragment = buildString {
             appendLine("#version 300 es")
             appendLine("precision highp float;")

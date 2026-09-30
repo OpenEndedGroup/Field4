@@ -215,6 +215,7 @@ class StackSLStudyTest {
         assertTrue(gl.fragment.startsWith("#version 300 es"))
         assertFalse(gl.fragment.contains("push_constant"))
         assertFalse(gl.fragment.contains("{{"))
+        assertFalse(Regex("""\bprecise\b""").containsMatchIn(gl.fragment), "GLSL ES 3.00 has no `precise` qualifier")
         assertContains(gl.fragment, "uniform float u_time;")
         assertContains(gl.fragment, "vec4 stackInput = vec4(uv, gallery_hash12(uv), u_time);")
         assertTrue(gl.wires.isNotEmpty())
