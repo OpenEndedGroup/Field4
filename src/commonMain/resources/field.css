@@ -4182,7 +4182,7 @@ kbd {
     border: 1px solid rgba(var(--field-accent-rgb), 0.26);
     border-radius: 6px;
     /* The same black as the drawing layer's Excalidraw islands (see "Excalidraw, dressed as Field"). */
-    background: rgba(0, 0, 0, 0.92);
+    background: rgba(0, 0, 0, 0.98);
     color: var(--field-fg);
     font-family: var(--field-font-system);
     font-size: 12px;
