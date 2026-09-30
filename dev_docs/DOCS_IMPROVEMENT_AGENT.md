@@ -336,7 +336,7 @@ faithfully follow.
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
 - **The rest of the API is still unauthenticated, and that is the largest thing on this
-  page.** 49 of 54 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
+  page.** 49 of 56 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
   CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
   host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
   asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
@@ -360,7 +360,7 @@ worklog decays and this one should not:
 added, when one is removed, and — the case a count could never see — when one quietly
 loses its guard.
 
-**49 of 54 state-changing HTTP routes have no route-specific access control**, and there is no
+**49 of 56 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
 That was 36 of 40 until 2026-08-22, and the difference is not thirteen new routes — it is
@@ -403,7 +403,7 @@ install(CORS) {
 ```
 
 `anyHost()` means *any website you have open in any tab* may call Field. The surface is
-**54 state-changing HTTP routes**: 39 named method routes (34 POST, 3 DELETE, 2 PUT), the
+**56 state-changing HTTP routes**: 41 named method routes (36 POST, 3 DELETE, 2 PUT), the
 wildcard `POST /field-audio/{...}` and `PUT /field-audio/{...}` routes that the old
 literal-only census missed, and — since 2026-08-22 — the 13 verbless
 `route(…) { handle { … } }` routes that answer every method without naming one.
@@ -412,7 +412,8 @@ allow-listed — which is configuration, not a guard, and is not what `PUT …/r
 on any more. The application-wide same-site switch covers both Field Audio writes because
 its interceptor is not restricted to `/api`; it remains off by default.
 
-Five of the 54 are guarded: four in `docsAnnotations.kt` and the geometry review update in `Server.kt`, and the table that says so
+Seven of the 56 are guarded: four in `docsAnnotations.kt`, the geometry review update in `Server.kt`, and
+the in-Field agent harness's two routes (2026-09-29, `agentRouteAccess.kt`), and the table that says so
 is asserted in `FieldApiCorsExposureTest`:
 
 | route | guard |
@@ -422,6 +423,8 @@ is asserted in `FieldApiCorsExposureTest`:
 | `DELETE /api/docs-annotations/{id}` | loopback + same-site |
 | `POST /api/docs-improvement` | loopback + same-site + enabled&token |
 | `POST /three-review-note` | loopback + same-site |
+| `POST /api/agent-task` | loopback + localhost Host + same-site |
+| `POST /api/agent-eval` | loopback + localhost Host + same-site |
 | `POST /field-audio/{...}` | none (covered only when the application switch is on) |
 | `PUT /field-audio/{...}` | none (covered only when the application switch is on; also absent from CORS) |
 | **the other 34** | **none** |

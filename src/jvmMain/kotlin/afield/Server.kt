@@ -5776,7 +5776,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 54
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 56
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5802,7 +5802,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 54 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 49 of its 56 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
