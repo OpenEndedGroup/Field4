@@ -166,11 +166,16 @@ var MeshModulePointer.force: String
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /**/
 val Once.gsStateA by Onceing<FrameBufferGroup>() /**/
+val Why.gsStateA by Whying() /**/
 var Box.gsStateB by Inheritance<FrameBufferGroup>() /**/
 val Once.gsStateB by Onceing<FrameBufferGroup>() /**/
+val Why.gsStateB by Whying() /**/
 var Box.gsHeat by Inheritance<FrameBufferGroup>() /**/
 val Once.gsHeat by Onceing<FrameBufferGroup>() /**/
+val Why.gsHeat by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:gs_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:gs_renderer*/ /**/
+val Why.window by Whying() /*from:gs_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:gs_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:gs_renderer*/ /**/
+val Why.renderer by Whying() /*from:gs_renderer*/ /**/

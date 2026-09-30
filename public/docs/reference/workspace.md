@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-19 source file(s), 322 public symbol(s), 228 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+21 source file(s), 331 public symbol(s), 236 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -608,6 +608,28 @@ What every study tool answers with: the revision it is about, the facts it measu
 | <code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">toolImages</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ToolImage</span><span class="p">&gt;</span></code> |  |
 | [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toolLogSummary</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StudyReport/#L19) |  |
 
+## StudyReportView.kt { #studyreportview-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/StudyReportView.kt` — [read the source](source/jvmMain/afield/stdlib/StudyReportView/)
+
+### Top-level functions { #studyreportview-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">registerStudyReportView</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StudyReportView/#L46) | Registers [`StudyReportView`](workspace.md#studyreportview-kt-studyreportview) as `.h` for every [`StudyReport`](workspace.md#studyreport-kt-studyreport). |
+
+### StudyReportView { #studyreportview-kt-studyreportview }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StudyReportView</span></code>](source/jvmMain/afield/stdlib/StudyReportView/#L20)
+
+`report.h`: a [`StudyReport`](workspace.md#studyreport-kt-studyreport) as a card — its revision, its message if it has one, and its pictures at their own pixel size (at most `MAX_WIDTH` CSS px), so a box shows what the model was shown with `display("main", report.h)` rather than an `<img>` it builds itself.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">MAX&#95;WIDTH</span></code>](source/jvmMain/afield/stdlib/StudyReportView/#L22) | Widest a picture is drawn, in CSS px. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">pngWidth</span><span class="p">(</span><span class="n">dataUrl</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/StudyReportView/#L25) | The width a `data:image/png;base64,` URL's image is, read from its IHDR, or null if it is not one. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">html</span><span class="p">(</span><span class="n">report</span><span class="p">:</span> <span class="nc">StudyReport</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StudyReportView/#L34) | The card: `revision · message`, then each picture. |
+
 ## StudyVariants.kt { #studyvariants-kt }
 
 `src/jvmMain/kotlin/afield/stdlib/StudyVariants.kt` — [read the source](source/jvmMain/afield/stdlib/StudyVariants/)
@@ -654,7 +676,8 @@ is meant to run, and calling one throws `MacroRegistry.MacroNotExpandedException
 happens at expansion time in `macro_prop` and `macro_root_prop`, which are handed the type
 argument and the name, and return an `Insert` that rewrites the call site to the bare name (or
 `root.name`) and pushes two declarations into the box's preamble: a
-`var Box.<name> by Inheritance<T>()` and a `val Once.<name> by Onceing<T>()`. Both generated
+`var Box.<name> by Inheritance<T>()`, a `val Once.<name> by Onceing<T>()` and a
+`val Why.<name> by Whying()` (so `why.<name>` explains where the value comes from). All three generated
 lines carry the trailing empty-comment marker that makes the preamble gather copy them down into
 child boxes, and an import for `T` is added via `kotlinImportStatementFor`. `macro_root_prop`
 differs only in targeting `this.root`, so the accessors land on the document root rather than
@@ -666,10 +689,10 @@ on the calling box.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">prop</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/props/#L38) | Declares a typed, inheritable property on this box: `prop<Double>(speed)` and thereafter `speed` is a variable that children inherit and the property inspector can see. |
-| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rootProp</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/props/#L51) | `prop`, but the accessors land on the **document root** rather than on this box — so every box in the document shares the one slot, wherever it is read from. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L66) | Macro expansion for `prop<T>(name)`: rewrites the call to the bare name and pushes the delegate declarations into the box's preamble. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;root&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L86) | Macro expansion for `rootProp<T>(name)` — the same declarations as `macro_prop`, but the `Insert` targets `this.root` and the call site becomes `root.<name>`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">prop</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/props/#L39) | Declares a typed, inheritable property on this box: `prop<Double>(speed)` and thereafter `speed` is a variable that children inherit and the property inspector can see. |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rootProp</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/props/#L52) | `prop`, but the accessors land on the **document root** rather than on this box — so every box in the document shares the one slot, wherever it is read from. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L67) | Macro expansion for `prop<T>(name)`: rewrites the call to the bare name and pushes the delegate declarations into the box's preamble. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;root&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L88) | Macro expansion for `rootProp<T>(name)` — the same declarations as `macro_prop`, but the `Insert` targets `this.root` and the call site becomes `root.<name>`. |
 
 ## stdlib.kt { #stdlib-kt }
 
@@ -696,7 +719,7 @@ connect/disconnect, `__m` markers); execution control (`begin`, `end`, `start`, 
 
 `src/jvmMain/kotlin/afield/stdlib/stdlib.kt` — [read the source](source/jvmMain/afield/stdlib/stdlib/)
 
-**Used in:** [Running code in a box](../running_code.md), [Why does this value resolve here?](../why.md)
+**Used in:** [Running code in a box](../running_code.md)
 
 ### Top-level functions { #stdlib-kt-functions }
 
@@ -842,5 +865,31 @@ Three 16-bit half floats — the packed transit form of a `Vec3` for GPU buffers
 [<code class="highlight"><span class="k">typealias</span> <span class="nc">Vec4h</span> <span class="o">=</span> <span class="n">afield</span><span class="p">.</span><span class="n">four</span><span class="p">.</span><span class="n">util</span><span class="p">.</span><span class="nc">Vec4h</span></code>](source/jvmMain/afield/stdlib/stdlib/#L911)
 
 Four 16-bit half floats — the packed transit form of a [`Vec4`](math.md#linalg-kt-vec4), and enough precision for a colour.
+
+## why.kt { #why-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/why.kt` — [read the source](source/jvmMain/afield/stdlib/why/)
+
+### Top-level values { #why-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">Box</span><span class="p">.</span><span class="n">why</span><span class="p">:</span> <span class="nc">Why</span></code>](source/jvmMain/afield/stdlib/why/#L20) | `why.speed`: where this box's `speed` comes from, as `ContextResolution.explain` answers it. |
+
+### Why { #why-kt-why }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">Why</span><span class="p">(</span><span class="k">val</span> <span class="n">inside</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/why/#L24)
+
+The namespace behind `Box.why`; its members are the `val Why.<name> by Whying()` lines `prop` writes.
+
+### Whying { #why-kt-whying }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">Whying</span></code>](source/jvmMain/afield/stdlib/why/#L27)
+
+The delegate `prop` generates for [`Why`](workspace.md#why-kt-why): the property's own name is the question.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">operator</span> <span class="k">fun</span> <span class="nf">getValue</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="nc">Why</span><span class="p">,</span> <span class="n">property</span><span class="p">:</span> <span class="nc">KProperty</span><span class="p">&lt;</span><span class="o">&#42;</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">WhyAnswer</span></code>](source/jvmMain/afield/stdlib/why/#L28) |  |
 
 </div>

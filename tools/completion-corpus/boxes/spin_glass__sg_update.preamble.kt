@@ -7,24 +7,34 @@ import afield.four.buffers.*
 import afield.four.buffers.FrameBufferGroup
 var Box.sgL by Inheritance<Int>() /**/
 val Once.sgL by Onceing<Int>() /**/
+val Why.sgL by Whying() /**/
 var Box.sgTemperature by Inheritance<Double>() /**/
 val Once.sgTemperature by Onceing<Double>() /**/
+val Why.sgTemperature by Whying() /**/
 var Box.sgField by Inheritance<Double>() /**/
 val Once.sgField by Onceing<Double>() /**/
+val Why.sgField by Whying() /**/
 var Box.sgMode by Inheritance<Int>() /**/
 val Once.sgMode by Onceing<Int>() /**/
+val Why.sgMode by Whying() /**/
 var Box.sgModel by Inheritance<Int>() /**/
 val Once.sgModel by Onceing<Int>() /**/
+val Why.sgModel by Whying() /**/
 var Box.sgSweeps by Inheritance<Int>() /**/
 val Once.sgSweeps by Onceing<Int>() /**/
+val Why.sgSweeps by Whying() /**/
 var Box.sgAnneal by Inheritance<Boolean>() /**/
 val Once.sgAnneal by Onceing<Boolean>() /**/
+val Why.sgAnneal by Whying() /**/
 var Box.sgSpins by Inheritance<FrameBufferGroup>() /**/
 val Once.sgSpins by Onceing<FrameBufferGroup>() /**/
+val Why.sgSpins by Whying() /**/
 var Box.sgJRight by Inheritance<FrameBufferGroup>() /**/
 val Once.sgJRight by Onceing<FrameBufferGroup>() /**/
+val Why.sgJRight by Whying() /**/
 var Box.sgJDown by Inheritance<FrameBufferGroup>() /**/
 val Once.sgJDown by Onceing<FrameBufferGroup>() /**/
+val Why.sgJDown by Whying() /**/
 /*start*/
 /*compute-structure-type:Spins:Spins*/
 class Spins(
@@ -96,5 +106,7 @@ fun BufferParameters.asBonds(): Bonds =
 /*compute-pc-binding-group:field*/ var ComputeMeshGroup.field by ComputeMeshGroup.BoundFromStructure<Float>()
 var Box.window by Inheritance<Window>() /*from:sg_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:sg_renderer*/ /**/
+val Why.window by Whying() /*from:sg_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:sg_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:sg_renderer*/ /**/
+val Why.renderer by Whying() /*from:sg_renderer*/ /**/

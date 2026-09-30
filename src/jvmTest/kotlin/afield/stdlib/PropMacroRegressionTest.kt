@@ -30,6 +30,7 @@ class PropMacroRegressionTest {
             """
             var Box.count by Inheritance<Int>() /**/
             val Once.count by Onceing<Int>() /**/
+            val Why.count by Whying() /**/
             """.trimIndent(),
             insert.preambleAfterImports
         )
