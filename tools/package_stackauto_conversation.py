@@ -180,8 +180,8 @@ def source_blocks() -> dict[str, str]:
         "decay-burn": folded("face_decay after decay-02 · small round holes", revision("face_decay", "r3")),
         "decay-host": edit(excerpt(starter_fragment, "// face_decay(vec4", "discard;"),
                            excerpt(final_fragment, "// face_decay(vec4", "discard;"), "glsl"),
-        "decay-mesh": folded("The mesh the model rebuilt, in the box's Kotlin",
-                             excerpt(code, "// Cancel internal triangulation", "\n// Time,").removesuffix("\n// Time,"), "kotlin"),
+        "decay-mesh": folded("The mesh the model rebuilt, in the box's Kotlin — since shortened with faces, vertexMap and faceCentroids",
+                             excerpt(code, "val solid = canonicalConway", "\n// Time,").removesuffix("\n// Time,"), "kotlin"),
         "decay-final": fence(head("face_decay")),
     }
 

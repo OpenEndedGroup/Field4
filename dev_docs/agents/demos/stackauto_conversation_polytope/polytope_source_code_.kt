@@ -15,46 +15,24 @@ camera.target = vec(0, 0, 0)
 m.p = camera.p
 m.m = camera.m
 
-val solid = canonicalConway("sD").polyhedron.triangulate(normals = NormalPolicy.Flat)
-val mesh = solid.mesh
-val P = mesh.positions; val N = mesh.normals!!; val I = mesh.indices
-val centres = HashMap<Int, FloatArray>()
-// Cancel internal triangulation edges; keep each original polygon's perimeter.
-val boundaries = LinkedHashMap<Int, LinkedHashMap<String, Pair<Int, Int>>>()
-fun pointKey(i: Int) = "${P[3*i]},${P[3*i+1]},${P[3*i+2]}"
-for (t in 0 until mesh.triangleCount) {
-    val face = solid.sourceFace(t).value
-    val c = centres.getOrPut(face) { FloatArray(4) }
-    val edges = boundaries.getOrPut(face) { LinkedHashMap() }
-    for (k in 0..2) {
-        val i = I[3 * t + k]
-        c[0] += P[3 * i]; c[1] += P[3 * i + 1]; c[2] += P[3 * i + 2]; c[3] += 1f
-        val j = I[3 * t + (k + 1) % 3]
-        val a = pointKey(i); val b = pointKey(j)
-        val key = if (a < b) "$a|$b" else "$b|$a"
-        if (edges.containsKey(key)) edges.remove(key) else edges[key] = Pair(i, j)
-    }
-}
+val solid = canonicalConway("sD").polyhedron
+val topology = solid.topology
+val xyz = solid.realization!!.vertexCoordinates
+val centres = solid.faceCentroids
 // Centre-to-perimeter fans give a polygon radius, not a circular mask.
-val fanCount = boundaries.values.sumOf { it.size }
+val fanCount = topology.faces.sumOf { topology.faceCycle(it.id).size }
 m.set(3 * fanCount, fanCount) {
     var t = 0
-    for ((face, edges) in boundaries) {
-        val c = centres.getValue(face)
-        val cx = c[0] / c[3]; val cy = c[1] / c[3]; val cz = c[2] / c[3]
-        for ((a, b) in edges.values) {
-            for (k in 0..2) {
-                if (k == 0) pos.add(cx, cy, cz) else {
-                    val i = if (k == 1) a else b
-                    pos.add(P[3*i], P[3*i+1], P[3*i+2])
-                }
-                nrm.add(N[3*a], N[3*a+1], N[3*a+2])
-                cen.add(cx, cy, cz)
-                fid.add(face.toFloat())
-                faceRadius.add(if (k == 0) 0f else 1f)
+    topology.faces.forEachIndexed { f, face ->
+        val c = centres[f]
+        val n = solid.faceNormal(face.id)
+        val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
+        for (k in ring.indices) {
+            for ((p, r) in listOf(c to 0f, ring[k] to 1f, ring[(k + 1) % ring.size] to 1f)) {
+                pos.add(p.x, p.y, p.z); nrm.add(n.x, n.y, n.z); cen.add(c.x, c.y, c.z)
+                fid.add(face.id.value.toFloat()); faceRadius.add(r)
             }
-            tri.add(3*t, 3*t+1, 3*t+2)
-            t++
+            tri.add(3 * t, 3 * t + 1, 3 * t + 2); t++
         }
     }
 }

@@ -39,6 +39,13 @@ for(let i=0;i<100;i++) {
         }
         if(!card)return {ok:false,reason:'Notes panel did not load'};
         card.open=true;
+        const previews=[...card.querySelectorAll('.review-evidence-link img')];
+        if(previews.length!==2)return {ok:false,reason:'Missing context and crop previews'};
+        await Promise.all(previews.map(image=>image.decode()));
+        if(previews.some(image=>!image.naturalWidth||w.getComputedStyle(image).objectFit!=='contain'))return {ok:false,reason:'Evidence preview is missing or cropped'};
+        const links=[...card.querySelectorAll('.review-evidence-link')];
+        if(links.some(link=>link.target!=='_blank'||w.getComputedStyle(link).padding!=='10px'))return {ok:false,reason:'Evidence link spacing or full-size target differs'};
+
         if(!card.textContent.includes(agentText)||card.querySelector('em'))return {ok:false,reason:'Agent reply missing or rendered as unsafe HTML'};
         if(w.getComputedStyle(card.querySelector('.review-copy')).userSelect!=='text'||w.getComputedStyle(card.querySelector('summary')).userSelect!=='none')return {ok:false,reason:'Thread text selection differs'};
         const draft=card.querySelector('textarea');draft.value='Second finding, recorded from the viewer.';draft.dispatchEvent(new w.Event('input'));

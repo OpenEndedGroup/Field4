@@ -89,6 +89,10 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
 
 ## Current Implemented Coverage
 
+- `three-parts`
+  - Covers hierarchical Parts, shared drawable buffers, mixed-state folders, Select all,
+    reversible Shift-click solo, saved/API visibility, consistent toolbar type and narrow layouts.
+
 - `command-palette-action-this-binding`
   - Protects Monaco action invocation from losing its original `this` binding.
 - `command-palette-smoke-sweep`

@@ -58,6 +58,22 @@ class PolytopeCoreTest {
     }
 
     @Test
+    fun facesAndVertexMapIndexTheRealization() {
+        for (case in solids()) {
+            val topology = case.object3.topology
+            assertEquals(topology.elements(2), topology.faces, case.name)
+            val xyz = case.object3.realization!!.vertexCoordinates
+            topology.elements(0).forEachIndexed { index, vertex ->
+                assertEquals(index, topology.vertexMap.getValue(vertex.id.value), "${case.name} vertex ${vertex.id.value}")
+            }
+            for (face in topology.faces) {
+                val ring = topology.faceCycle(face.id).map { xyz[topology.vertexMap.getValue(it)] }
+                assertEquals(topology.faceCycle(face.id).size, ring.size)
+            }
+        }
+    }
+
+    @Test
     fun builtInFaceWindingIsOutward() {
         for (case in solids()) {
             val polyhedron = case.object3

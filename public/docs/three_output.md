@@ -556,10 +556,39 @@ radius of 0.14 of that triangle's own longest edge, and a corner is tested befor
 **a sliver has no clickable interior**: every point of a triangle ten long and half a unit tall
 falls inside its own snap radius of an edge or a corner.
 
-The section plane cuts a mesh, wireframe overlay included. The explode scrubber does not:
-`inspectorMovableSlots` returns the three batched FLine buffers and nothing else, so an explode moves
-the annotations and leaves the solid where it is. Put the solid through `toFLines(...)` if you need it
-to come apart.
+The section plane cuts a mesh, wireframe overlay included. The explode scrubber moves
+meshes and their outlines by inspection group, along with grouped FLine geometry.
+Give related objects the same group to keep them together; `solidParts` sets this up
+for native solids. X-ray can be combined with either control.
+
+## Show a part or a group
+
+Open **Parts** to browse the scene as a tree. A mesh and its outline share one checkbox
+when they have the same assembly group or drawable ID. Folder checkboxes show a dash when
+only some children are visible. **Select all** shows or hides the entire scene.
+
+**Shift-click** a part or folder checkbox to solo it. Shift-click it again to restore the
+previous visibility; shift-click a different part to move the solo without losing that
+previous view. An ordinary click ends solo mode and edits the current visibility.
+
+Use `inspect(partPaths = …)` to organise a large scene. Keys are stable mesh IDs, assembly
+group names, or review feature IDs; values are lists of folder names. The final row retains
+its part name. Folder labels do not change geometry IDs or invalidate annotations.
+
+```diffstatic {data-lang=kotlin}
+three(name = "vehicle") {
+    mesh(boxMesh(120, 60, 40), id = "body", wireframe = false)
+    mesh(boxMesh(20, 20, 20), id = "wheel", wireframe = false)
+    inspect(partPaths = mapOf(
+        "body" to listOf("Vehicle", "Bodywork"),
+        "wheel" to listOf("Vehicle", "Running gear")
+    ))
+}
+```
+
+Uncategorised meshes, interactive FLines, and batched guides have their own folders.
+A batched guide buffer is one selectable entry: it does not claim per-line visibility.
+Hidden geometry is excluded from picking and visible-scene exports, including X-ray views.
 
 ## Editing a curve before an expensive operation
 

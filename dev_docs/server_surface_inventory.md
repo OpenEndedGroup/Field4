@@ -19,9 +19,9 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 53 of them, 40 with a named verb and 13 that name no verb
+- **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 54**). This
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 56**). This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -219,7 +219,7 @@ it is also the only member of this table that does anything with its input.
 
 **Open question for the human, not for a nightly agent:** should these thirteen be `get { }`?
 Writing them as `get { }` would cost nothing — no client sends anything but `GET` — and would
-take thirteen rows off the state-changing census, which would then read 40 rather than 53. The
+take thirteen rows off the state-changing census, which would then read 43 rather than 56. The
 reason this branch did not do it: it is a change to `Server.kt`'s behaviour rather than to a
 test's accuracy, the `/vision` block's sibling `POST /vision/stream` shows the prefix is used
 for more than pages, and nothing in the repository records whether any of these was ever
@@ -317,7 +317,10 @@ no sandbox between a `/ws` frame and that.
 mode they call the configured AI provider, so a frame can also spend the machine's model tokens.
 The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
 (`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
-docs-annotation opt-ins do not loosen.
+docs-annotation opt-ins do not loosen. The census pins both as
+`loopback + localhost-host + same-site`; neither has docs-improvement's enabled+token gate, because
+the callers are curl, the backdoor and `field_mcp` on this machine, whose user is already the
+boundary, and the in-route same-site check is what the token was standing in for there.
 
 | command | declared in |
 | --- | --- |
