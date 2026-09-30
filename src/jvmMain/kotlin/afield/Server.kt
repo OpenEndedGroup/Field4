@@ -1794,11 +1794,13 @@ private fun loopbackHttpPortFor(httpsPort: Int): Int? {
     return (httpsPort + 10_000).takeIf { it <= 65535 }
 }
 
-private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
+/**
+ * The one server-owned Chromium, launched on first use. The global backdoor/docs page and AI4's
+ * box-output capture page ([afield.ai.agent.BoxOutputCapture]) each open their own context in it.
+ * Returns the browser and whether this call launched it. Call on the Playwright thread.
+ */
+internal fun ensureSharedPlaywrightBrowser(): Pair<Browser, Boolean> {
     var createdBrowser = false
-    var createdContext = false
-    var createdPage = false
-
     val browser = globalPlaywrightBrowser ?: run {
         val pw = globalPlaywright ?: Playwright.create().also { globalPlaywright = it }
         createdBrowser = true
@@ -1827,6 +1829,15 @@ private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
                 .setArgs(browserArgs)
         ).also { globalPlaywrightBrowser = it }
     }
+
+    return browser to createdBrowser
+}
+
+private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
+    var createdContext = false
+    var createdPage = false
+
+    val (browser, createdBrowser) = ensureSharedPlaywrightBrowser()
 
     val currentPage = globalPlaywriteContext?.takeIf { !it.isClosed() }
     if (currentPage != null && currentPage.url() == targetUrl) {
@@ -1875,7 +1886,7 @@ private fun ensurePlaywrightPage(targetUrl: String): PlaywrightPageHandle =
         ensurePlaywrightPageOnce(targetUrl)
     }
 
-private fun playwrightSessionReadyScript(info: SessionInformation) = """
+internal fun playwrightSessionReadyScript(info: SessionInformation) = """
     () => {
       const overlay = document.getElementById("overlaycanvas");
       const currentUrl = String(window.location && window.location.href ? window.location.href : "");

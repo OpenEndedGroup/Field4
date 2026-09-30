@@ -223,7 +223,11 @@ Guidance:
 $guidance
         """.trimIndent()
 
-    return "$core\n$toolsSection"
+    // What AI4's own evals taught it about these tools (AgentLessons; tracked, human-reviewed file).
+    val lessons = ctx.fieldGraph?.takeIf { it.lessons }?.let { afield.ai.agent.AgentLessons.instructionText() }
+        ?.let { "\n\n$it" }.orEmpty()
+
+    return "$core\n$toolsSection$lessons"
 }
 
 
@@ -240,6 +244,7 @@ fun fieldGraphToolGuidance(editorTurn: Boolean): String = buildString {
     appendLine("  - ListBoxesRequest, NewBoxRequest(name, code, parent), DeleteBoxRequest, ConnectBoxesRequest(parent, child), DisconnectBoxesRequest.")
     appendLine("  - GetBoxPropertyRequest / SetBoxPropertyRequest (whole text) / PatchBoxTextRequest (find+replace, or a line range) for a box's `code` or other text property.")
     appendLine("  - RunBoxRequest runs a box once and waits for ITS verdict; LaunchBoxRequest starts one that keeps running (`loop { }`, animation); StopBoxRequest stops it; ReadBoxOutputRequest reads what it printed or displayed since a marker, and can wait for text.")
+    appendLine("  - ViewBoxOutputRequest(box) captures what the box's output panels SHOW and attaches the picture, with its measured colours. After running a box that displays HTML, SVG, a table, a chart or a drawing, look at it before you say it is done, and fix what does not match the request: printed text and HTML source do not tell you what was drawn.")
     appendLine("  - Run/Launch compile the code themselves. `success: false` carries the compiler/runtime diagnostics in `error` and `errors`: fix and run again. Never claim a box works unless a Run/Launch result said success.")
     appendLine("  - Use these when the user asks to make, change, run or check boxes, or when running a box is the way to check an answer. Box code: the box is the implicit receiver; println(x); display(\"channel\", \"<html>\"); a parent shares a value with the boxes beneath it via `prop<Int>(level) = 3`, read in the child as `level` (plain `val`s stay local). Run the parent first.")
     if (editorTurn) {

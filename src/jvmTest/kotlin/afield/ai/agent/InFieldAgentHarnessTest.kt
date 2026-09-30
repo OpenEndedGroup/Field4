@@ -47,6 +47,8 @@ class InFieldAgentHarnessTest {
         val display: Map<String, String> = emptyMap(),
         val error: String? = null,
         val keepsRunning: Boolean = false,
+        /** What its output area looks like, for ViewBoxOutputRequest and the picture checks. */
+        val picture: (() -> java.awt.image.BufferedImage)? = null,
     )
 
     class FakeHost(private val table: Map<String, Fake>) : FieldGraphHost {
@@ -82,6 +84,41 @@ class InFieldAgentHarnessTest {
         override fun run(info: SessionInformation, box: Box, exec: Execute, reply: (Message) -> Unit) = execute(box, exec, reply, "run")
         override fun launch(info: SessionInformation, box: Box, exec: Execute, reply: (Message) -> Unit) = execute(box, exec, reply, "launch")
         override fun stop(info: SessionInformation, box: Box) = KotlinExecution().stop(box)
+
+        /** The picture recorded for the box's current code; none recorded = "no output panel". */
+        override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot {
+            val code = (box.getPropertyRaw("code") as? String).orEmpty().trim()
+            val picture = table[code]?.picture ?: return BoxOutputShot.failed("fake host: no picture recorded for '${box.name}'")
+            return BoxOutputShot(true, "captured", picture(), channels = listOf("main"))
+        }
+    }
+
+    companion object {
+        /** A [w]x[h] picture filled with [bg], with [rects] (x, y, w, h, #rrggbb) and [circles] (cx, cy, r, #rrggbb) drawn on it. */
+        fun picture(w: Int, h: Int, bg: String, rects: List<List<Any>> = emptyList(), circles: List<List<Any>> = emptyList()) = {
+            val image = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB)
+            val g = image.createGraphics()
+            fun colour(hex: String) = PictureStats.parseHex(hex).let { java.awt.Color(it[0], it[1], it[2]) }
+            g.color = colour(bg); g.fillRect(0, 0, w, h)
+            rects.forEach { (x, y, rw, rh, c) -> g.color = colour(c as String); g.fillRect(x as Int, y as Int, rw as Int, rh as Int) }
+            circles.forEach { (cx, cy, r, c) -> g.color = colour(c as String); g.fillOval((cx as Int) - (r as Int), (cy as Int) - r, 2 * r, 2 * r) }
+            g.dispose()
+            image
+        }
+
+        /** What the visual tasks' code looks like in real Field — recorded here, captured live elsewhere. */
+        val visualTable: Map<String, Fake> = mapOf(
+            InFieldAgentEvals.SWATCH_CODE to Fake(display = mapOf("main" to "<div id=sw></div>"),
+                picture = picture(264, 144, "#ffffff", rects = listOf(listOf(12, 12, 240, 120, "#1f77b4")))),
+            InFieldAgentEvals.ANSWER_CODE to Fake(out = listOf("blue")),
+            InFieldAgentEvals.SUN_CODE to Fake(display = mapOf("main" to "<svg></svg>"),
+                picture = picture(324, 224, "#f4f4f4", rects = listOf(listOf(12, 12, 300, 200, "#0b1a4a")),
+                    circles = listOf(listOf(162, 112, 50, "#ffd700")))),
+            // The broken bars are zero pixels tall: a white panel.
+            InFieldAgentEvals.BARS_CODE to Fake(display = mapOf("main" to "<div></div>"), picture = picture(220, 40, "#ffffff")),
+            InFieldAgentEvals.BARS_FIXED to Fake(display = mapOf("main" to "<div></div>"),
+                picture = picture(220, 140, "#ffffff", rects = (0 until 5).map { i -> listOf(12 + i * 38, 128 - (i + 1) * 20, 30, (i + 1) * 20, "#1f77b4") })),
+        )
     }
 
     /** What each eval solution's code prints in real Field — recorded here, checked live elsewhere. */
@@ -96,7 +133,7 @@ class InFieldAgentHarnessTest {
         InFieldAgentEvals.TICKER_CODE to Fake(keepsRunning = true),
         InFieldAgentEvals.DIVIDER_CODE to Fake(error = "java.util.NoSuchElementException: List is empty."),
         InFieldAgentEvals.DIVIDER_FIXED to Fake(out = listOf("empty")),
-    )
+    ) + visualTable
 
     private fun document(name: String = "harness-test"): SessionInformation {
         val dir = Files.createTempDirectory("in-field-agent-").toFile().apply { deleteOnExit() }

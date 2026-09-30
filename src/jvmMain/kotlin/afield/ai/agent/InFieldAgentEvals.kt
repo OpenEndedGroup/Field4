@@ -4,7 +4,7 @@ import afield.ai.core.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
- * A small eval suite for Field's own agent: seven tasks, each a goal, the setup it starts from,
+ * A small eval suite for Field's own agent: ten tasks (three of them graded by pixels), each a goal, the setup it starts from,
  * checks that decide it, and a scripted solution.
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
@@ -42,6 +42,27 @@ object InFieldAgentEvals {
     val TICKER_CODE = "var n = 0\nloop { n++ }"
     val DIVIDER_CODE = "val xs = listOf<Int>()\nprintln(\"first is \" + xs.first())"
     val DIVIDER_FIXED = "val xs = listOf<Int>()\nprintln(xs.firstOrNull()?.let { \"first is \$it\" } ?: \"empty\")"
+
+    // ---- visual tasks: the defect, or the answer, is in the pixels ----------------------------------
+
+    /**
+     * A swatch whose colour is decided by the cascade: a stylesheet `!important` red, a more specific
+     * green, an inline purple — and then a script that sets an inline `!important` blue, which beats
+     * them all. Reading the source invites "red"; the picture is blue.
+     */
+    val SWATCH_CODE = "display(\"main\", \"\"\"<style>#sw { background: #d62728 !important; } .x .y #sw { background: #2ca02c; }</style>" +
+        "<div class=\"x\"><div class=\"y\"><div id=\"sw\" style=\"background: #9467bd; width: 240px; height: 120px\"></div></div></div>" +
+        "<script>document.getElementById('sw').style.setProperty('background', '#1f77b4', 'important')</script>\"\"\")"
+    val ANSWER_CODE = "println(\"blue\")"
+
+    val SUN_CODE = "display(\"main\", \"\"\"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"200\">" +
+        "<rect width=\"300\" height=\"200\" fill=\"#0b1a4a\"/><circle cx=\"150\" cy=\"100\" r=\"50\" fill=\"#ffd700\"/></svg>\"\"\")"
+
+    /** Percent heights inside a parent of auto height compute to auto: five empty bars, zero pixels tall. */
+    val BARS_CODE = "val values = listOf(20, 40, 60, 80, 100)\n" +
+        "val bars = values.joinToString(\"\") { v -> \"<div style='display:inline-block; vertical-align:bottom; width:30px; margin:4px; background:#1f77b4; height:\${v}%'></div>\" }\n" +
+        "display(\"main\", \"<div style='background:white; padding:8px'>\$bars</div>\")"
+    val BARS_FIXED = BARS_CODE.replace("height:\${v}%", "height:\${v}px")
 
     val tasks: List<EvalTask> = listOf(
         EvalTask(
@@ -132,7 +153,56 @@ object InFieldAgentEvals {
                 call("RunBoxRequest", "box" to "Divider"),
                 "Divider now uses firstOrNull and prints empty.")
         ),
+        EvalTask(
+            "swatch-colour",
+            AgentTaskRequest(
+                goal = "The box Swatch displays a coloured rectangle. Make a box named Answer that prints just the name " +
+                    "of the colour the rectangle is shown in, as a person looking at it would say it (one of: red, green, " +
+                    "blue, purple, orange), and run Answer.",
+                setup = steps(call("NewBoxRequest", "name" to "Swatch", "code" to SWATCH_CODE), call("RunBoxRequest", "box" to "Swatch")),
+                checks = listOf(check("last-run-ok:Answer"), check("output-contains:Answer:blue"),
+                    check("property-lacks:Answer:code:red")),
+                taskId = "swatch-colour"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Swatch", "note" to "which colour the rectangle is"),
+                call("NewBoxRequest", "name" to "Answer", "code" to ANSWER_CODE),
+                call("RunBoxRequest", "box" to "Answer"),
+                "The rectangle is blue: the script's inline !important wins. Answer prints blue.")
+        ),
+        EvalTask(
+            "draw-sun",
+            AgentTaskRequest(
+                goal = "Make a box named Sun that uses display to show, in the output channel \"main\", a 300 by 200 SVG " +
+                    "picture: a dark blue night sky filling the whole picture, with a filled yellow circle (the sun) in it. " +
+                    "Run it and check that the picture looks right.",
+                checks = listOf(check("box-exists:Sun"), check("last-run-ok:Sun"), check("output-picture:Sun"),
+                    check("output-colour:Sun:#0a1850:0.15"), check("output-colour:Sun:#ffe000:0.01")),
+                taskId = "draw-sun"
+            ),
+            steps(call("NewBoxRequest", "name" to "Sun", "code" to SUN_CODE),
+                call("RunBoxRequest", "box" to "Sun"),
+                call("ViewBoxOutputRequest", "box" to "Sun", "note" to "a yellow sun on a dark blue sky"),
+                "Sun displays a yellow circle on a dark blue sky; the capture shows both.")
+        ),
+        EvalTask(
+            "bars-visible",
+            AgentTaskRequest(
+                goal = "The box Bars is meant to show five blue bars, 20, 40, 60, 80 and 100 pixels tall, but nobody can see " +
+                    "them. Fix Bars so that the five bars are visible at those heights, run it, and check what it shows.",
+                setup = steps(call("NewBoxRequest", "name" to "Bars", "code" to BARS_CODE), call("RunBoxRequest", "box" to "Bars")),
+                checks = listOf(check("last-run-ok:Bars"), check("output-colour:Bars:#1f77b4:0.02")),
+                taskId = "bars-visible"
+            ),
+            steps(call("ViewBoxOutputRequest", "box" to "Bars", "note" to "are the bars visible?"),
+                call("SetBoxPropertyRequest", "box" to "Bars", "value" to BARS_FIXED),
+                call("RunBoxRequest", "box" to "Bars"),
+                call("ViewBoxOutputRequest", "box" to "Bars", "note" to "five blue bars of increasing height"),
+                "Percent heights had no definite parent height to resolve against, so every bar was 0 px tall; they are px now.")
+        ),
     )
+
+    /** Tasks whose checks read pixels; they need a Field that can capture box output. */
+    val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible")
 
     fun byId(id: String): EvalTask = tasks.firstOrNull { it.id == id }
         ?: throw IllegalArgumentException("No eval task '$id'. Known: ${tasks.joinToString { it.id }}")
@@ -145,6 +215,10 @@ data class AgentEvalRequest(
     val mode: String = "scripted",
     val model: String = "",
     val maxToolRounds: Int = 24,
+    /** `on` / `off` pins the distilled lessons in every task's instructions; blank = default ([AgentLessons]). */
+    val lessons: String = "",
+    /** After the run, distil its tool misuse into the lessons file ([AgentLessons.distilAndWrite]). */
+    val distil: Boolean = false,
 )
 
 @Serializable
@@ -159,6 +233,17 @@ data class AgentEvalReport(
     val inputTokens: Long?,
     val outputTokens: Long?,
     val error: String = "",
+    /** Sum of [AgentTaskResult.misuseCalls]. */
+    val misuseCalls: Int = 0,
+    /** Sum of [AgentTaskResult.imagesSeen]. */
+    val imagesSeen: Int = 0,
+    val rounds: Int = 0,
+    /** Whether the lessons were on, and which version of the file was read. */
+    val lessons: Boolean = false,
+    val lessonsVersion: Int = 0,
+    /** Set when the request asked to distil: what was written. */
+    val distilled: List<String> = emptyList(),
+    val distilMessage: String = "",
 )
 
 object AgentEvalRunner {
@@ -176,16 +261,20 @@ object AgentEvalRunner {
         val live = request.mode == "live"
         require(!live || chosen.size <= MAX_LIVE_TASKS) { "A live eval is capped at $MAX_LIVE_TASKS tasks." }
         val rounds = if (live) request.maxToolRounds.coerceAtMost(MAX_LIVE_ROUNDS) else request.maxToolRounds
+        val lessonsOn = AgentLessons.resolve(request.lessons)
+        val lessonsPin = if (lessonsOn) "on" else "off"
+        val lessonsVersion = AgentLessons.rawText()?.let { AgentLessons.parse(it).version } ?: 0
         val results = chosen.map { task ->
             runTask(task.request.copy(
                 mode = request.mode,
                 model = request.model,
                 maxToolRounds = rounds,
-                script = if (live) "" else task.solution
+                script = if (live) "" else task.solution,
+                lessons = lessonsPin,
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
-        return AgentEvalReport(
+        val report = AgentEvalReport(
             mode = request.mode,
             provider = results.firstOrNull { it.provider.isNotBlank() }?.provider.orEmpty(),
             model = results.firstOrNull { it.model.isNotBlank() }?.model.orEmpty(),
@@ -195,6 +284,14 @@ object AgentEvalRunner {
             elapsedMs = (System.nanoTime() - started) / 1_000_000,
             inputTokens = sum { it.inputTokens },
             outputTokens = sum { it.outputTokens },
+            misuseCalls = results.sumOf { it.misuseCalls },
+            imagesSeen = results.sumOf { it.imagesSeen },
+            rounds = results.sumOf { it.rounds.coerceAtLeast(0) },
+            lessons = lessonsOn,
+            lessonsVersion = lessonsVersion,
         )
+        if (!request.distil) return report
+        val outcome = AgentLessons.distilAndWrite(report)
+        return report.copy(distilled = outcome.lessons.map { it.bullet() }, distilMessage = outcome.message)
     }
 }

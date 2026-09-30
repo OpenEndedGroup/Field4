@@ -25,6 +25,10 @@ internal class OutputAreaReplay(private val maxCharacters: Int = 8_000_000) {
         }
     }
 
+    /** Channels that currently hold a panel, in insertion order. */
+    @Synchronized
+    fun channels(): List<String> = panels.keys.toList()
+
     @Synchronized fun snapshot(uid: String): List<Message> = buildList {
         panels.forEach { (channel, panel) ->
             add(Message("set-output").payload(Set_output(uid, "outputarea", channel, panel.html)))

@@ -230,10 +230,25 @@ internal fun openHeadlessScratchDocument(name: String = "agent-task"): SessionIn
     return info
 }
 
-/** Stop everything in a headless document and forget it — unless a browser has since attached to it. */
+/**
+ * Stop everything in a headless document and forget it — unless a browser has since attached to it.
+ *
+ * AI4's own capture page ([afield.ai.agent.BoxOutputCapture]) is not "a browser that attached": it is
+ * released first, and its websocket's detach is waited for, or every task that looked at a box would
+ * leave its document (and everything its boxes launched) alive for good.
+ */
 internal fun closeHeadlessDocument(info: SessionInformation) {
+    val captured = runCatching { afield.ai.agent.BoxOutputCapture.isHeld(info) }.getOrDefault(false)
+    if (captured) {
+        info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+        runCatching { afield.ai.agent.BoxOutputCapture.release(info) }
+        val deadline = System.currentTimeMillis() + 5_000
+        while (info.sessions.isNotEmpty() && System.currentTimeMillis() < deadline) Thread.sleep(25)
+    }
     if (info.sessions.isNotEmpty()) return
-    info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+    if (!captured) info.boxes.values.forEach { box -> runCatching { Server.stop(box, entrypoint = "ai-agent.close-headless") } }
+    // The capture socket's detach may already have retired it (cleanupDetachedSession on the last client).
+    if (documents.values.none { it === info }) return
     cleanupDetachedSession(info)
 }
 

@@ -277,6 +277,13 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
     if kind == "connected":
         parent, _, child = rest.partition(":")
         return {"kind": kind, "parent": parent, "child": child}
+    if kind == "output-picture":
+        return {"kind": kind, "box": rest}
+    if kind == "output-colour":
+        parts = rest.split(":")
+        if len(parts) != 3:
+            raise BackdoorError(f"output-colour needs <box>:#rrggbb:<fraction>, got {spec!r}")
+        return {"kind": kind, "box": parts[0], "text": parts[1], "fraction": float(parts[2])}
     raise BackdoorError(f"unknown agent-task check kind {kind!r}")
 
 
@@ -3640,6 +3647,10 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_eval_parser.add_argument("--ids", default="", help="Comma-separated task ids; empty = all")
     agent_eval_parser.add_argument("--max-rounds", type=int, default=24)
     agent_eval_parser.add_argument("--model", default="")
+    agent_eval_parser.add_argument("--lessons", choices=("", "on", "off"), default="",
+                                   help="Pin the distilled AI4 lessons on or off for every task (default: Field's setting)")
+    agent_eval_parser.add_argument("--distil", action="store_true",
+                                   help="After the run, rewrite the Distilled section of AI4's lessons file from its tool misuse")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
@@ -4663,6 +4674,8 @@ async def dispatch_command(
             "mode": args.mode,
             "maxToolRounds": args.max_rounds,
             "model": args.model,
+            "lessons": args.lessons,
+            "distil": bool(args.distil),
         }
         timeout = args.timeout or max(client.default_timeout, 3600.0)
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)
