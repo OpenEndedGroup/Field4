@@ -88,8 +88,6 @@
         <div class="row">
             <a href="/field-docs/" target="_blank" rel="noopener">docs + notes</a>
             <a href="/welcome">welcome</a>
-            <input id="token" type="password" placeholder="token (from Field's startup log)" size="26" autocomplete="off">
-            <button id="save-token" type="button">save token</button>
         </div>
     </header>
 
@@ -160,10 +158,9 @@
 <div id="dialog" hidden><div class="box"><div class="message"></div><textarea hidden></textarea><div class="buttons"><button type="button" data-answer="cancel">Cancel</button><button type="button" data-answer="ok" class="primary">OK</button></div></div></div>
 <script>
 (() => {
-    const TOKEN_KEY = "field.docsImprovementToken";  // shared with /welcome's "Improve annotated docs"
     const $ = id => document.getElementById(id);
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-    const view = { status: null, job: null, enabled: false, openDiffs: new Map(), openHandoffs: new Map() };
+    const view = { status: null, job: null, openDiffs: new Map(), openHandoffs: new Map() };
 
     // No window.prompt/confirm/alert anywhere on this page: Field's Electron window does not
     // implement prompt(), which returned nothing and made every action silently do nothing.
@@ -188,30 +185,11 @@
     const confirmed = async (message, danger = false) => (await ask(message, { ok: "Yes", danger })) !== null;
     const tell = message => ask(message, { ok: "OK" });
 
-    const storedToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (_) { return ""; } };
-    const storeToken = value => { try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch (_) {} };
-    const showToken = () => { $("token").value = ""; $("token").placeholder = storedToken() ? "token saved (type to replace)" : "token (from Field's startup log)"; };
-    const token = async (reason) => {
-        const value = storedToken();
-        if (value && !reason) return value;
-        const typed = ((await ask((reason ? reason + "\n\n" : "") + "Field's documentation-improvement token: the value after X-Field-Docs-Improvement-Token in Field's startup log, or AFIELD_DOCS_IMPROVEMENT_TOKEN.", { input: true, placeholder: "token" })) || "").trim();
-        if (typed) storeToken(typed);
-        showToken();
-        return typed;
-    };
-
+    // No token: this route answers a browser on this machine, on Field's own pages, and nothing
+    // else (loopback + same-site; see docsPass.kt).
     const act = async (action, extra = {}) => {
-        let secret = await token();
-        if (!secret) return null;
-        const send = value => fetch("/api/docs-improvement/pass", { method: "POST", headers: { "Content-Type": "application/json", "X-Field-Docs-Improvement-Token": value }, body: JSON.stringify({ action, ...extra }) });
         try {
-            let response = await send(secret);
-            if (response.status === 401) {
-                storeToken("");
-                secret = await token("That token was not accepted. Field mints a new one at every start unless AFIELD_DOCS_IMPROVEMENT_TOKEN is set.");
-                if (!secret) return null;
-                response = await send(secret);
-            }
+            const response = await fetch("/api/docs-improvement/pass", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...extra }) });
             const text = await response.text();
             if (!response.ok) { await tell(text || `HTTP ${response.status}`); return null; }
             try { return JSON.parse(text); } catch (_) { return text; }
@@ -226,7 +204,6 @@
     const renderPosture = (body) => {
         const status = body.status || {};
         const lines = [`Checkout <code>${esc(body.workingDirectory || "?")}</code>${status.primaryBranch ? ` on <code>${esc(status.primaryBranch)}</code>` : ""}.`];
-        if (!body.enabled) lines.push(`<div class="notice">Actions are off: this Field was started without <code>AFIELD_DOCS_IMPROVEMENT=1</code>. They start coding agents with write access, commit, and move <code>main</code>, so they are opt-in. You can still look.</div>`);
         if (body.statusError) lines.push(`<div class="notice bad">${esc(body.statusError)}</div>`);
         $("posture").innerHTML = lines.join(" ");
     };
@@ -316,8 +293,7 @@
     const setButtons = () => {
         const status = view.status || {}, pass = status.pass, wt = status.worktree || {};
         const busy = !!(view.job && view.job.running), draining = !!(status.progress && status.progress.alive);
-        const can = view.enabled;
-        const set = (id, on) => { $(id).disabled = !can || !on; };
+        const set = (id, on) => { $(id).disabled = !on; };
         set("create", !pass && !busy);
         set("finish", !!pass && wt.landed && !busy && !draining);
         set("abandon", !!pass && !busy && !draining);
@@ -328,8 +304,7 @@
         set("commit", !!pass && wt.exists && wt.uncommitted > 0 && !busy && !draining);
         set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !busy && !draining);
         set("cancel-job", busy);
-        document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = !can || busy || draining; });
-        document.querySelectorAll('#handoffs button:not([data-act="read"])').forEach(b => { b.disabled = !can; });
+        document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = busy || draining; });
     };
 
     let refreshing = false;
@@ -340,7 +315,7 @@
             const response = await fetch("/api/docs-improvement/pass", { cache: "no-store" });
             if (!response.ok) { $("posture").innerHTML = `<div class="notice bad">${esc(await response.text())}</div>`; return; }
             const body = await response.json();
-            view.status = body.status || {}; view.job = body.job; view.enabled = !!body.enabled;
+            view.status = body.status || {}; view.job = body.job;
             renderPosture(body); renderPass(view.status); renderCounts(view.status); renderProgress(view.status.progress);
             renderHandoffs(view.status); renderChanges(view.status); renderBuiltLinks(view.status); renderJob(view.job); setButtons();
         } catch (error) {
@@ -358,8 +333,6 @@
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
     $("land").onclick = async () => await confirmed("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
     $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
-    $("save-token").onclick = () => { const value = $("token").value.trim(); if (value) storeToken(value); showToken(); };
-    $("token").addEventListener("keydown", event => { if (event.key === "Enter") $("save-token").click(); });
 
     $("changes").addEventListener("click", async event => {
         const button = event.target.closest("button"); if (!button) return;
@@ -393,7 +366,6 @@
         await act("close-handoff", { id, state: kind, text });
     });
 
-    showToken();
     refresh();
     setInterval(() => { if (!document.hidden) refresh(); }, 2500);
 })();

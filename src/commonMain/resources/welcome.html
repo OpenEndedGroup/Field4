@@ -5696,7 +5696,6 @@
             if (notes.question) parts.push(`${notes.question} asking`);
             if (handoffs) parts.push(`${handoffs} handoff${handoffs === 1 ? "" : "s"}`);
             if (body.status && body.status.pass) parts.push("pass open");
-            if (!body.enabled) parts.push("actions off");
             node.textContent = parts.join(" · ");
         } catch (ignored) { node.textContent = "unavailable"; }
     }

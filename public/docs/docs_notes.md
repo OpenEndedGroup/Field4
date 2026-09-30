@@ -87,8 +87,8 @@ terminal:
    has moved on, then fast-forwards `main`. **Finish** removes the worktree.
 
 Everything on the page is also `docs_notes.py pass …` (`create`, `revise`, `stop`, `diff`,
-`discard`, `rebuild`, `commit`, `land`, `finish`). The page's actions need Field started with
-`AFIELD_DOCS_IMPROVEMENT=1`, and the token Field prints at startup.
+`discard`, `rebuild`, `commit`, `land`, `finish`). The page accepts requests only from a browser on
+the machine Field is running on, and only from Field's own pages. It needs no switch or token.
 
 ## What an agent is given
 

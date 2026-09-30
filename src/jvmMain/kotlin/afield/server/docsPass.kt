@@ -37,9 +37,18 @@ import kotlin.concurrent.thread
 // commands for the page: one long job at a time, its complete output kept on disk, the last part
 // of it in memory for the page to poll.
 //
-// The one mutating route is guarded exactly as `POST /api/docs-improvement` is — loopback,
-// same-site, the feature switch and its token — because it starts the same coding agents with
-// write access, and then goes further: it commits, and fast-forwards main in this checkout.
+// Every route here is loopback + same-site and nothing else: a browser on this machine, on one of
+// Field's own pages. That is the boundary drawn in DOCS_IMPROVEMENT_AGENT.md ("this machine's own
+// user"), and it is what stops the two real attacks — another device on the network, and a web
+// page open in your browser. Unlike `POST /api/docs-improvement` there is no feature switch and no
+// token: both were dropped here on 2026-09-30, because the token scrolls out of the terminal it is
+// printed in, and the page is used from inside Field itself. What that gives up is the
+// backstop for a *future* change to the CORS or same-site code; the checks themselves are the
+// ones `DocsAnnotationRouteSecurityTest` pins.
+//
+// Both annotation hatches are forced shut for these routes (see [docsPassPolicy]). With only two
+// checks left, `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` — set for taking notes from a tablet — must
+// not turn out to let the tablet start agents, commit, and move main.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** One request from the page. Only the fields its [action] uses are read, and all of them are checked. */
@@ -69,13 +78,16 @@ data class DocsPassJob(
     val logFile: String = "",
 )
 
+/** [policy] with both annotation hatches shut: loopback and same-site, whatever the environment says. */
+internal fun docsPassPolicy(policy: DocsAccessPolicy): DocsAccessPolicy =
+    policy.copy(allowRemoteAnnotations = false, allowCrossSiteAnnotations = false)
+
 /**
  * What `GET /api/docs-improvement/pass` answers. Classes rather than `buildJsonObject`, whose
  * `put("…")` calls read as route declarations to `ServerSurfaceLedgerTest`'s discovery.
  */
 @Serializable
 data class DocsPassStatusResponse(
-    val enabled: Boolean,
     val workingDirectory: String,
     val job: DocsPassJob,
     /** `docs_notes.py pass status` as it printed it, or `null` when it failed. */
@@ -222,17 +234,16 @@ private fun parsedOrNull(output: String): JsonElement =
     runCatching { Json.parseToJsonElement(output) }.getOrElse { JsonNull }
 
 /**
- * The pass's routes. Reads are loopback + same-site, like `GET /api/docs-improvement`, since
- * they show source text and the checkout's path; the one write is guarded like the agent launch.
+ * The pass's routes, every one of them loopback + same-site with the annotation hatches shut:
+ * the reads show source text and the checkout's path, and the write starts agents and moves main.
  */
 internal fun Route.installDocsPassRoutes(policy: DocsAccessPolicy) {
     get("/api/docs-improvement/pass") {
-        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
+        if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@get
         val directory = docsImprovementCheckout()
         val (code, output) = if (directory == null) 1 to "" else
             withContext(Dispatchers.IO) { DocsPassJobs.query(listOf("pass", "status"), directory) }
         val body = DocsPassStatusResponse(
-            enabled = policy.improvementEnabled,
             workingDirectory = directory?.toString() ?: "",
             job = DocsPassJobs.snapshot(),
             status = if (code == 0) parsedOrNull(output) else JsonNull,
@@ -241,7 +252,7 @@ internal fun Route.installDocsPassRoutes(policy: DocsAccessPolicy) {
         call.respondText(docsPassJson.encodeToString(DocsPassStatusResponse.serializer(), body), ContentType.Application.Json)
     }
     get("/api/docs-improvement/pass/diff") {
-        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
+        if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@get
         val directory = docsImprovementCheckout() ?: return@get call.respond(HttpStatusCode.ServiceUnavailable, "no checkout")
         val path = call.request.queryParameters["path"].orEmpty()
         if (path.isNotEmpty() && docsPassArguments(DocsPassAction("discard", path = path)) == null) {
@@ -254,7 +265,7 @@ internal fun Route.installDocsPassRoutes(policy: DocsAccessPolicy) {
         call.respondText(output, ContentType.Application.Json)
     }
     get("/api/docs-improvement/pass/handoff") {
-        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
+        if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@get
         val directory = docsImprovementCheckout() ?: return@get call.respond(HttpStatusCode.ServiceUnavailable, "no checkout")
         val id = call.request.queryParameters["id"].orEmpty()
         if (!docsPassHandoffId.matches(id)) return@get call.respond(HttpStatusCode.BadRequest, "bad id")
@@ -267,7 +278,7 @@ internal fun Route.installDocsPassRoutes(policy: DocsAccessPolicy) {
     // panel: notes belong on the page as it is, not on a draft.
     route("/docs-pass-site") {
         get("{...}") {
-            if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
+            if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@get
             val worktree = docsImprovementCheckout()?.let(::docsPassWorktree)
                 ?: return@get call.respond(HttpStatusCode.NotFound, "No revision pass is open.")
             val site = worktree.resolve("public/field4").toAbsolutePath().normalize()
@@ -279,15 +290,7 @@ internal fun Route.installDocsPassRoutes(policy: DocsAccessPolicy) {
         }
     }
     post("/api/docs-improvement/pass") {
-        // As `POST /api/docs-improvement`: site first, with the annotation hatch forced shut, then
-        // the machine, the switch and the token.
-        if (call.refuseUnlessSameSiteDocsClient(policy.copy(allowCrossSiteAnnotations = false))) return@post
-        val refusal = refuseDocsImprovementLaunch(
-            policy,
-            call.request.local.remoteAddress,
-            call.request.headers[DOCS_IMPROVEMENT_TOKEN_HEADER],
-        )
-        if (refusal != null) return@post call.respond(refusal.status, refusal.reason)
+        if (call.refuseUnlessSameSiteDocsClient(docsPassPolicy(policy))) return@post
         val directory = docsImprovementCheckout()
             ?: return@post call.respond(HttpStatusCode.ServiceUnavailable, "The checkout is not usable; set $DOCS_IMPROVEMENT_DIRECTORY_ENV.")
         val request = call.receive<DocsPassAction>()

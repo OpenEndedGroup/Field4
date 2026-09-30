@@ -420,7 +420,8 @@ on any more. The application-wide same-site switch covers both Field Audio write
 its interceptor is not restricted to `/api`; it remains off by default.
 
 Eight of the 57 are guarded: four in `docsAnnotations.kt`, the revision pass's one in `docsPass.kt`
-(2026-09-30), the geometry review update in `Server.kt`, and the in-Field agent harness's two routes
+(2026-09-30; loopback + same-site only, by choice: the token printed at startup scrolls out of
+the terminal, and the page is used from inside Field), the geometry review update in `Server.kt`, and the in-Field agent harness's two routes
 (2026-09-29, `agentRouteAccess.kt`), and the table that says so
 is asserted in `FieldApiCorsExposureTest`:
 
@@ -430,7 +431,7 @@ is asserted in `FieldApiCorsExposureTest`:
 | `PUT /api/docs-annotations/{id}/resolve` | loopback + same-site |
 | `DELETE /api/docs-annotations/{id}` | loopback + same-site |
 | `POST /api/docs-improvement` | loopback + same-site + enabled&token |
-| `POST /api/docs-improvement/pass` | loopback + same-site + enabled&token |
+| `POST /api/docs-improvement/pass` | loopback + same-site, both annotation hatches forced shut; no switch or token |
 | `POST /three-review-note` | loopback + same-site |
 | `POST /api/agent-task` | loopback + localhost Host + same-site |
 | `POST /api/agent-eval` | loopback + localhost Host + same-site |
