@@ -97,6 +97,13 @@ rather than as text; the numbers beside it (mean luma, clipping, detail, palette
 frames) come back in the report's facts. The study keeps its revisions in the document, under
 `studies/<box id>/rings`, and the sheet is saved there too.
 
+!!! note "Saving the property"
+    A property is written to the document on save only if its name is in
+    `Box.ioPersistentProperties`, and a name you make up, such as `rings`, is not. The study's
+    revisions are files under `studies/` and survive, but the box's own text does not unless you add
+    the name: `Box.ioPersistentProperties.add("rings")`. The starting point below does this in its
+    first box.
+
 ## Changing it
 
 SetNumbers rewrites a knob in the box's own text and publishes the result, and its report carries a
@@ -273,6 +280,11 @@ standard tools. What is left in its `*StudyTools.kt` file is what only that lang
 stage traces and knob sensitivities, RectSL's timeline, the exports. The function study keeps its
 own Edit, Patch, Observe and Compare, because its frames are time windows of a signal rather than
 pictures.
+
+The starting point **studies_rings** (in the [agent transcript gallery](agent_transcripts.md#studies_rings), and
+on the welcome screen's starting points) is this page as a document: `rings` defines the study, and
+two boxes under it, `change it` and `try things`, drive its verbs. Open it and run the three boxes
+in order.
 
 `study.document.registrar` (`src/jvmMain/kotlin/afield/examples/ai/DocumentStudySmokeTest.kt`)
 drives all ten verbs on a document's study through the same tool registry an agent calls, with no
