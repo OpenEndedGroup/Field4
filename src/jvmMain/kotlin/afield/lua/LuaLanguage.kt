@@ -262,7 +262,10 @@ class LuaExecution(val inside: Box) : BoxExecution {
                 (listOf("id", "name", "frame", "children", "parents") + box.properties.keys.map { it.toString() })
                     .distinct().forEach { out += Triple(it, "property", "a property of ${box.name.ifEmpty { box.id }}") }
             } else {
-                out += Triple(name, pair.getOrNull(1)?.toString() ?: "value", "Lua ${pair.getOrNull(1)}")
+                val entry = LuaCatalog.lookup(path, name)
+                val type = pair.getOrNull(1)?.toString() ?: "value"
+                out += Triple(name, if (entry != null && type == "function") "function" else type,
+                    entry?.let { "${it.signature} — ${it.doc}" } ?: "Lua $type")
             }
         }
         return out.filter { it.first.startsWith(prefix) && it.first != prefix }.distinctBy { it.first }.sortedBy { it.first }

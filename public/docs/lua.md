@@ -209,7 +209,9 @@ it off.
 
 Completion offers Lua's keywords and the globals the box's Lua has defined, the members of a table
 after `name.` (so `string.` lists the string library and `field.` Field's own), a line's methods, and
-after `box.` the box's properties.
+after `box.` the box's properties. A library function comes with its signature and a line on what it
+does — `string.format(fmt, ...)`, `play(sequence, [options])` — from a catalogue of the 146 functions
+of Lua 5.1 and LuaJIT and the 34 Field adds, which a test holds to a live LuaJIT in both directions.
 
 ## The demo scene
 
