@@ -95,9 +95,9 @@ class LuaStateTest {
     @Test
     fun anInfiniteLoopIsStoppedByTheBudget() {
         val lua = state()
-        ok(lua.run("field.budget = 0.3"))
         val t0 = System.nanoTime()
-        val outcome = lua.runGuarded("local n = 0\nwhile true do n = n + 1 end\n", lineNames = null)
+        // The chunk sets its own budget: the guard reads field.budget as it goes, not when the run began.
+        val outcome = lua.runGuarded("field.budget = 0.3\nwhile true do end\n", lineNames = null)
         val seconds = (System.nanoTime() - t0) / 1e9
         val err = assertIs<LuaState.Result.Err>(outcome.result)
         assertTrue("without finishing" in err.message, err.message)
@@ -105,6 +105,34 @@ class LuaStateTest {
         assertTrue(seconds < 3.0, "stopped after $seconds s")
         // And the state is still usable afterwards.
         assertEquals(listOf(2.0), ok(lua.run("return 1 + 1")))
+    }
+
+    @Test
+    fun aTickRunsUpdateAndResumesSpawnedFunctionsWhenTheyAreDue() {
+        val lua = state()
+        ok(lua.run("""
+            log = {}
+            function update(dt) log[#log + 1] = "u" .. dt end
+            spawn(function() log[#log + 1] = "a"; wait(1); log[#log + 1] = "b" end)
+        """.trimIndent()))
+        fun log() = ok(lua.run("return table.concat(log, ' ')"))[0]
+        assertEquals(listOf(true), ok(lua.tick(10.0, 0.5)))
+        assertEquals("u0.5 a", log())
+        ok(lua.tick(10.5, 0.5))
+        assertEquals("u0.5 a u0.5", log(), "the task waits a second, so it is not due yet")
+        ok(lua.tick(11.0, 0.5))
+        assertEquals("u0.5 a u0.5 u0.5 b", log())
+        ok(lua.run("update = nil"))
+        assertEquals(listOf(false), ok(lua.tick(12.0, 1.0)), "nothing left to run")
+    }
+
+    @Test
+    fun anErrorInsideASpawnedFunctionCarriesItsLine() {
+        val lua = state()
+        ok(lua.run("spawn(function()\n  wait(0)\n  local t = nil\n  return t.x\nend)"))
+        ok(lua.tick(0.0, 0.0))
+        val err = assertIs<LuaState.Result.Err>(lua.tick(1.0, 1.0))
+        assertEquals(4, err.line, "$err")
     }
 
     @Test

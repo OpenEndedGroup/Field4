@@ -140,6 +140,29 @@ def libpd_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def luajit_library_path(repo_root: Path) -> Path:
+    """Where `afield.lua.LuaLibrary.resolvedPath` will look, from Python.
+
+    Manifold's shape: LuaJIT comes from a package manager (`brew install luajit`), so this walks
+    the same directories and file names `LuaLibrary` does and returns the first hit, falling back
+    to the first candidate so the "missing" message names a plausible place. Only the environment
+    override is honoured; `-Dafield.lua.library` is a JVM property this process cannot see.
+    """
+    override = os.environ.get("AFIELD_LUA_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        return Path("lua51.dll")
+    if sys.platform == "darwin":
+        names = ["libluajit-5.1.dylib", "libluajit-5.1.2.dylib"]
+        roots = ["/opt/homebrew/lib", "/usr/local/lib", "/opt/local/lib"]
+    else:
+        names = ["libluajit-5.1.so.2", "libluajit-5.1.so"]
+        roots = ["/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64", "/usr/lib", "/usr/local/lib"]
+    candidates = [Path(root) / name for root in roots for name in names]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
 def browser_bridge_library_path(repo_root: Path) -> Path:
     """Where `BrowserHandleTransport.forThisPlatform` will look, from Python.
 
@@ -299,6 +322,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
+    "luajit": (luajit_library_path, "brew install luajit (or apt install libluajit-5.1-2)"),
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
     "jep": (

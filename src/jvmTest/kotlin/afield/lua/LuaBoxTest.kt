@@ -158,6 +158,27 @@ class LuaBoxTest {
     }
 
     @Test
+    fun completionReadsTheLiveState() {
+        needsLuaJIT()
+        val box = Box("lua-complete")
+        box.setPropertyRaw("tempo", 120.0, false)
+        val execution = LuaExecution(box)
+        box.ke = execution
+        try {
+            val lua = execution.luaState()
+            assertIs<LuaState.Result.Ok>(lua.run("myTable = {alpha = 1, beta = 2}"))
+            fun names(path: String, prefix: String) = execution.luaCompletions(path, prefix).map { it.first }
+            assertTrue("format" in names("string", "fo"), "${names("string", "fo")}")
+            assertEquals(listOf("alpha"), names("myTable", "a"))
+            assertTrue("myTable" in names("", "my") && "local" in names("", "lo"), "globals and keywords")
+            assertTrue("moveTo" in names("field.Line", "mo"), "methods of a line")
+            assertTrue("tempo" in names("box", "te") && "children" in names("box", "ch"), "a box proxy offers its properties: ${names("box", "")}")
+        } finally {
+            execution.close()
+        }
+    }
+
+    @Test
     fun theBoxsStateClosesWhenTheBoxRetiresAndNotOnStop() {
         needsLuaJIT()
         val box = Box("lua-lifecycle")

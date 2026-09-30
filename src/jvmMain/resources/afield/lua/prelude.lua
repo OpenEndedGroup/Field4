@@ -263,7 +263,7 @@ function __field_halt() tasks = {} end
 -- top level costs a bounded amount and then runs unobserved.
 
 local COUNT, CAP = 100000, 50000
-local deadline, budget, rec, events, mainfn, prevline, names, truncated = 0, 5, nil, 0, nil, nil, nil, false
+local started, perframe, rec, events, mainfn, prevline, names, truncated = 0, false, nil, 0, nil, nil, nil, false
 local lastline = setmetatable({}, { __mode = "k" })
 local SOURCE = "=box"
 
@@ -289,9 +289,11 @@ end
 
 hook = function(ev, line)
   if ev == "count" then
-    if clock() > deadline then
+    -- The budget is read here, not when the run began, so a chunk can set field.budget for itself.
+    local limit = tonumber(perframe and field.frameBudget or field.budget) or 5
+    if clock() > started + limit then
       sethook()
-      error(format("ran for more than %g s without finishing, so it was stopped (a loop that never ends?)", budget), 2)
+      error(format("ran for more than %g s without finishing, so it was stopped (a loop that never ends?)", limit), 2)
     end
     return
   end
@@ -324,11 +326,10 @@ hook = function(ev, line)
   end
 end
 
---- Arm the guard for one run of fn (seconds from field.budget, or field.frameBudget for a frame) and,
+--- Arm the guard for one run of fn (field.budget seconds, or field.frameBudget for a frame) and,
 --- when `lineNames` is a table, record lines as well.
 function __field_begin(fn, lineNames, perFrame)
-  budget = tonumber(perFrame and field.frameBudget or field.budget) or 5
-  deadline = clock() + budget
+  started, perframe = clock(), perFrame and true or false
   mainfn, names, prevline, events, truncated = fn, lineNames, nil, 0, false
   lastline = setmetatable({}, { __mode = "k" })
   if lineNames then
