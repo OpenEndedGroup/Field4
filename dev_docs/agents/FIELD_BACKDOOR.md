@@ -443,10 +443,18 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   not a separate agent.
 - After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent
   made.
-- `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the seven-task
+- `agent-eval [--mode scripted|live] [--ids primes,wire-two] [--max-rounds N]` runs the ten-task
   suite, each task in its own headless scratch document. Live runs are capped at 12 tasks and 32
   rounds. The same two operations exist over HTTP as `POST /api/agent-task` and
   `POST /api/agent-eval` (loopback, same-site only).
+- `agent-eval --lessons on|off` pins AI4's eval-distilled lessons for every task, `--distil`
+  rewrites the lessons file from the run's tool misuse, and `--blind` withholds
+  `ViewBoxOutputRequest` (the visual tasks' counterfactual). Over HTTP, `distilFrom: <report.json>`
+  re-distils a saved report without running anything. The report carries `misuseCalls`,
+  `imagesSeen`, and leak evidence (`documentsBefore`/`documentsAfter`, `capturePagesOpenAfter`).
+- Picture checks: `output-picture:B` (a capture of B's output is not blank) and
+  `output-colour:B:#rrggbb:0.05` (at least that share of it is that colour). They open AI4's own
+  capture page if none is open; no `--with-playwright` is needed.
 
 Details, the tool list and measured results are in
 [`../ai/IN_FIELD_AGENT_HARNESS.md`](../ai/IN_FIELD_AGENT_HARNESS.md).

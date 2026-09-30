@@ -80,7 +80,10 @@ object AgentLessons {
             }
             return items.filter { it.isNotBlank() }
         }
-        val header = text.substringBefore("## Curated").trimEnd()
+        // The header comment itself mentions "## Curated", so it ends at the first *line* that starts
+        // a field or a section (substringBefore cut the comment in half in the second distil).
+        val headerEnd = Regex("(?m)^(version:|distilled:|## Curated\\s*$)").find(text)?.range?.first ?: text.length
+        val header = text.substring(0, headerEnd).trimEnd()
         return Parsed(version, header, bullets("Curated"), bullets("Distilled"), provenance)
     }
 

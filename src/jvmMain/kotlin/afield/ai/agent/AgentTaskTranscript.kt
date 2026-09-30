@@ -29,6 +29,7 @@ object AgentTaskTranscript {
         "output-contains" -> "$kind:$box:$text"
         "output-ints-include" -> "$kind:$box:${ints.joinToString(",")}"
         "property-contains", "property-lacks" -> "$kind:$box:$property:$text"
+        "output-colour" -> "$kind:$box:$text:$fraction"
         else -> "$kind:$box"
     }
 

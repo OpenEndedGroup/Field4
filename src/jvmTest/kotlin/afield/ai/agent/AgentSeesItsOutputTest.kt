@@ -245,6 +245,9 @@ class AgentSeesItsOutputTest {
         assertEquals(lessons.map { it.bullet() }, parsed.distilled)
         assertEquals("now", parsed.provenance)
         assertFalse(text.contains("old lesson"))
+        // The header comment survives, twice over (it mentions "## Curated" itself).
+        assertTrue(text.startsWith(AgentLessons.DEFAULT_HEADER), text.take(200))
+        assertTrue(AgentLessons.render(text, lessons, "again").startsWith(AgentLessons.DEFAULT_HEADER))
         // Rendering twice is stable apart from the version.
         assertEquals(parsed.distilled, AgentLessons.parse(AgentLessons.render(text, lessons, "now")).distilled)
     }
@@ -269,6 +272,41 @@ class AgentSeesItsOutputTest {
         assertTrue(instructions(false).contains("ViewBoxOutputRequest"))
         assertTrue(AgentLessons.resolve("off").not() && AgentLessons.resolve("on"))
         assertNull(AgentLessons.parse("no sections").curated.firstOrNull())
+    }
+
+    // ---- the live numbers the docs quote ---------------------------------------------------
+
+    @Test
+    fun liveEvidenceSummaryHoldsTheNumbersTheDocsQuote() {
+        val file = generateSequence(java.io.File("").absoluteFile) { it.parentFile }
+            .map { java.io.File(it, "dev_docs/ai/evidence/ai4_sees_its_output_2026-09-30.json") }.firstOrNull { it.isFile }
+        assertNotNull(file, "evidence summary")
+        val runs = afield.ai.core.aiToolMapper.readTree(file).get("runs")
+        fun run(k: String) = runs.get(k)
+        fun sum(k: String, field: String) = run(k).get("tasks").sumOf { it.get(field).asInt() }
+        // Premise: every ten-task condition passed everything, so the comparison is of cost, not of success.
+        for (k in listOf("A", "A2", "B", "C", "D")) {
+            assertEquals(10, run(k).get("population").asInt(), k)
+            assertEquals(10, run(k).get("passed").asInt(), k)
+            assertEquals(0, run(k).get("capturePagesOpenAfter").asInt(), "$k leaked a capture page")
+            assertEquals(run(k).get("documentsBefore").asInt(), run(k).get("documentsAfter").asInt(), "$k leaked a document")
+        }
+        // Lessons: misuse 13 and 12 without, 0 with; rounds 63/61 -> 50.
+        assertTrue(run("A").get("misuseCalls").asInt() >= 12 && run("A2").get("misuseCalls").asInt() >= 12)
+        assertEquals(0, run("B").get("misuseCalls").asInt())
+        assertTrue(run("B").get("rounds").asInt() <= 50 && run("A").get("rounds").asInt() >= 61)
+        // The tool description: CompileKotlin calls 20/19 -> 0, rounds -> 33, input tokens under 350k.
+        assertTrue(sum("A", "compileKotlinCalls") >= 19 && sum("A2", "compileKotlinCalls") >= 19)
+        assertEquals(0, sum("C", "compileKotlinCalls"))
+        assertTrue(run("C").get("rounds").asInt() <= 33)
+        assertTrue(run("C").get("inputTokens").asLong() < 350_000L)
+        // Sight: with it, swatch-colour passed in all five runs; withheld, one of two.
+        val sighted = listOf("A", "A2", "B", "C", "D").map { k -> run(k).get("tasks").single { it.get("id").asText() == "swatch-colour" } }
+        assertTrue(sighted.all { it.get("verdict").asText() == "pass" && it.get("imagesSeen").asInt() >= 1 })
+        val blind = run("blind").get("tasks").filter { it.get("id").asText() == "swatch-colour" }
+        assertEquals(2, blind.size)
+        assertEquals(1, blind.count { it.get("verdict").asText() == "pass" })
+        assertTrue(blind.all { it.get("imagesSeen").asInt() == 0 && it.get("rounds").asInt() >= 13 })
     }
 
     /** [AgentLessons.sourceFile] reads `AFIELD_AI4_LESSONS_FILE`; a test cannot set env, so it swaps the hook. */

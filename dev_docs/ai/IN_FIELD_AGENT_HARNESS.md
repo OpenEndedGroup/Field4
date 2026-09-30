@@ -140,15 +140,19 @@ unique name; an ambiguous name is refused, never guessed.
 | `LaunchBoxRequest(box, code?, timeoutSeconds, settleSeconds)` | `launchAllRequest`; waits for setup, reports `running` |
 | `StopBoxRequest(box)` | `stopBoxRequest`; waits up to 2 s for jobs to end, reports `running` |
 | `ReadBoxOutputRequest(box, since, contains, waitSeconds, maxEntries)` | log entries after a marker; optional bounded wait for text; returns the next marker |
+| `ViewBoxOutputRequest(box, settleMs, note)` | a picture of the box's output panels, attached as a tool image, with size, ink fraction and dominant colours as text (2026-09-30; see [AI4_SEES_ITS_OUTPUT.md](AI4_SEES_ITS_OUTPUT.md)) |
 
 A blank `code` means "not given". OpenAI's strict function schemas make every field required, so a
 model that means "run what is there" sends `code: ""`. The first live demo run showed that this
 used to erase the box's code and then fail with "no code" (regression test
 `blankCodeMeansRunWhatIsThereNotEraseIt`).
 
-**Box screenshots are not native yet.** Server-side capture of a box needs the server-owned
-Playwright page (`agent-box-screenshot`), which a headless task does not have. The existing
-`CaptureRenderWindowRequest` still covers native render windows.
+**Box screenshots are native (2026-09-30).** `ViewBoxOutputRequest` captures a box's output area
+through a server-owned Playwright page of its own (`BoxOutputCapture`), headless, with or without a
+browser attached. Panels a box displayed before any page existed are replayed to it. The page is
+released with its task document and when idle. `CaptureRenderWindowRequest` still covers native
+afield.four render windows. Details, the pixel checks and the measurements are in
+[AI4_SEES_ITS_OUTPUT.md](AI4_SEES_ITS_OUTPUT.md).
 
 ## Entry points
 
@@ -174,7 +178,8 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 
 ## Eval suite
 
-`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), seven tasks:
+`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), ten tasks (the last three, added
+2026-09-30, are graded by pixels):
 
 | id | goal (short) | starts from |
 | --- | --- | --- |
@@ -185,11 +190,29 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 | stop-ticker | stop a running `loop {}` box | launched box |
 | wire-two | Alpha→Beta | empty |
 | fix-runtime-error | empty list `.first()` → print `empty` | throwing box |
+| swatch-colour | name the colour a CSS-cascade swatch *shows* (blue; the source reads red) | displaying box |
+| draw-sun | an SVG sun on a night sky, graded by colour shares | empty |
+| bars-visible | percent-height bars that render 0 px tall → visible | displaying box |
 
 Each task has a scripted solution in real Kotlin. The first scripted run against real Field caught
 an error in the harness's own instructions: a child does **not** see a parent's plain `val`
 (`Unresolved reference 'secret'`). Values are shared with `prop<T>(name) = v`. The task and the
 agent instructions were corrected.
+
+### Results (2026-09-30): lessons and the tool fix
+
+Ten tasks, one live run per condition, openai gpt-6-astra. All five conditions passed 10/10, so what
+they compare is cost. Full tables and population notes are in
+[AI4_SEES_ITS_OUTPUT.md](AI4_SEES_ITS_OUTPUT.md) ("Before / after, live").
+
+| run | condition | rounds | input tokens | misuse calls |
+| --- | --- | --- | --- | --- |
+| A / A2 | lessons off, base tools | 63 / 61 | 620,187 / 593,022 | 13 / 12 |
+| B | lessons on (distilled from A) | 50 | 520,131 | 0 |
+| C | lessons off, CompileKotlin description + resolver fixed | 33 | 348,537 | 2 |
+| D | lessons on (distilled from C), tools fixed | 31 | 332,607 | 1 |
+
+Scripted, live Field over HTTP: 10/10 in 21 s, with 0 documents and 0 capture pages left open.
 
 ### Results (2026-09-29)
 
@@ -229,12 +252,12 @@ ran on port 9637 and over HTTP.
 
 ## What is not done
 
-- No native box screenshot tool (needs Playwright; see above).
+- ~~No native box screenshot tool~~: done 2026-09-30 (`ViewBoxOutputRequest`).
 - `RunBoxRequest` on code that never returns blocks the Runloop, just as a Run from the editor
   does. The tool times out and says so, but it cannot unstick Field.
-- `CompileKotlinRequest` fileRefs for scratch documents (the document name is a uuid) still cost the
-  live model rounds, including two in the last demo run. The instructions say RunBox compiles on
-  its own, but the fileRef resolver itself was not changed.
+- ~~`CompileKotlinRequest` fileRefs cost the live model rounds~~: fixed 2026-09-30. The tool's
+  description now says RunBox compiles by itself (live CompileKotlin calls 20 → 0), and the
+  backdoor resolver accepts every spelling the model guessed.
 - A `--chat-box` task returns no per-call tool log (the panel keeps it; the provider's tool-io
   log under `~/.afield/logs/ai4_tool_io/` has it). Its checks still decide the verdict.
 - The chat handlers still build their tool contexts inline (Ai4Installer, around 1000 lines of
