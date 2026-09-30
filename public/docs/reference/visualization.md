@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-18 source file(s), 552 public symbol(s), 486 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+18 source file(s), 553 public symbol(s), 487 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1383,14 +1383,15 @@ only ever rendered if someone asks for it.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">viz</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viz&quot;</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2644) | Extension function to visualize a value in a Box's display output |
-| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerValuePrinter</span><span class="p">(</span><span class="k">noinline</span> <span class="n">printer</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2654) | Register a custom printer for a type |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">viz</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;viz&quot;</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2649) | Extension function to visualize a value in a Box's display output |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nf">registerValuePrinter</span><span class="p">(</span><span class="k">noinline</span> <span class="n">printer</span><span class="p">:</span> <span class="p">(</span><span class="nc">T</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2659) | Register a custom printer for a type |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">jsonLeafValue</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="n">kotlinx</span><span class="p">.</span><span class="n">serialization</span><span class="p">.</span><span class="n">json</span><span class="p">.</span><span class="nc">JsonPrimitive</span><span class="p">)</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2667) | The Kotlin value a kotlinx JSON leaf holds: `null`, a `Boolean`, a `Long` or `Double`, or the string's content without its quotes. What `.h` and `.h2` show in place of the `JsonPrimitive` itself. |
 
 ### Top-level values { #valuevisualizer-kt-values }
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h</span> <span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2648) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">Any</span><span class="o">?</span><span class="p">.</span><span class="n">h</span> <span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/ValueVisualizer/#L2653) |  |
 
 ### ToHTML { #valuevisualizer-kt-tohtml }
 

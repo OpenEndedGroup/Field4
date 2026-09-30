@@ -105,6 +105,10 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
+        // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
+        // painter at 256 px at most; no Window, no Renderer.
+        "studies_rings",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",
@@ -747,7 +751,15 @@ object DemoTranscriptExecSmokeTest {
         File(macrosDir, "$name.yaml").writeText(yaml.readText())
 
         println("[execute] $name …")
-        val run = OperationTranscript.runMacro(document.absolutePath, name)
+        // Opened the way Field opens a document, so code that asks which open document a box is in
+        // (BoxStudies.documentOf, which a study's default revision directory needs) gets the answer
+        // it gets in Field rather than "not in an open document". Removed again after the replay.
+        afield.documents[document.absolutePath] = thisSessionInfo.get()
+        val run = try {
+            OperationTranscript.runMacro(document.absolutePath, name)
+        } finally {
+            afield.documents.remove(document.absolutePath)
+        }
         val errorLines = run.output.filter { it.kind == "error" || it.kind == "err" }
 
         when {

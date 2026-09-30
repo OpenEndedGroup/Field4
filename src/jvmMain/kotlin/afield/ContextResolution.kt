@@ -59,10 +59,11 @@ object ContextResolution {
      * "Why does [box] resolve [name] (or a value of [type]) where it does?" as JSON: the mechanism, the
      * supplier, the path of boxes, the match kind, the shadowed and competing candidates, and which
      * sourced preamble line — if any — declared the name. The entry point behind the backdoor's `why`,
-     * the MCP tool `field_why` and the AI tool `WhyDoesThisResolve`; see [ContextWhy].
+     * the MCP tool `field_why` and the AI tool `WhyDoesThisResolve`; see [ContextWhy]. Those three send
+     * [WhyAnswer.json] unchanged; in a box, `.h` renders it as a Markdown card and `.h2` explores it.
      */
-    fun explain(box: Box, name: String? = null, type: String? = null): kotlinx.serialization.json.JsonObject =
-        ContextWhy.explain(box, name, type)
+    fun explain(box: Box, name: String? = null, type: String? = null): WhyAnswer =
+        WhyAnswer(ContextWhy.explain(box, name, type))
 
     /** A walk's answer plus how many ancestors it examined — the count `Inheritance` reports. */
     class Search(val resolution: Resolution?, val ancestorsExamined: Int)

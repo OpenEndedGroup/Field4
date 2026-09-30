@@ -1,0 +1,1901 @@
+{
+ "note": "Derived from the live agent-eval reports of 2026-09-30 (openai gpt-6-astra, one run per condition, 10 tasks unless stated). Pinned by AgentSeesItsOutputTest.liveEvidenceSummaryHoldsTheNumbersTheDocsQuote; the full reports were kept out of git (absolute paths).",
+ "conditions": {
+  "A": "lessons off, base tools",
+  "A2": "lessons off, base tools (repeat)",
+  "B": "lessons on (v1, distilled from A), base tools",
+  "C": "lessons off, CompileKotlin description + resolver fixed",
+  "D": "lessons on (v2, distilled from C), tools fixed",
+  "blind": "ViewBoxOutputRequest withheld, lessons off, tools fixed; 3 visual tasks x 2",
+  "held-B-off": "HELD-OUT test set (stop-ticker, wire-two, fix-runtime-error, draw-sun, bars-visible, bars-sorted-red) x2 runs; base tools; lessons off",
+  "held-B-on": "held-out x2; base tools; lessons v4 distilled ONLY from the training set (primes, fix-compile-error, parent-variable, html-table, swatch-colour) of runs A and A2",
+  "held-F-off": "held-out x2; tools fixed; lessons off",
+  "held-F-on": "held-out x2; tools fixed; the same training-set lessons v4 (combined row). Lessons distilled from the fixed-tool training runs (C, D) were EMPTY: nothing recurred",
+  "row": "bars-one-row x3; tools fixed; lessons off"
+ },
+ "runs": {
+  "A": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 10,
+   "passed": 10,
+   "rounds": 63,
+   "inputTokens": 620187,
+   "outputTokens": 4249,
+   "misuseCalls": 13,
+   "imagesSeen": 5,
+   "lessons": false,
+   "lessonsVersion": 0,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "primes",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 66443,
+     "misuseCalls": 3,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 4,
+     "tools": [
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "DocumentSourceReadRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "fix-compile-error",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 56410,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "parent-variable",
+     "verdict": "pass",
+     "rounds": 10,
+     "inputTokens": 93049,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ConnectBoxesRequest",
+      "RunBoxRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest!",
+      "RunBoxRequest",
+      "CompileKotlinRequest"
+     ]
+    },
+    {
+     "id": "html-table",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 57860,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "LaunchBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23081,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31158,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 79516,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 8,
+     "inputTokens": 76482,
+     "misuseCalls": 3,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 4,
+     "tools": [
+      "ViewBoxOutputRequest",
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "DocumentSourceReadRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 67465,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 68723,
+     "misuseCalls": 1,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "CaptureRenderWindowRequest!",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "A2": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 10,
+   "passed": 10,
+   "rounds": 61,
+   "inputTokens": 593022,
+   "outputTokens": 3896,
+   "misuseCalls": 12,
+   "imagesSeen": 5,
+   "lessons": false,
+   "lessonsVersion": 1,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "primes",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 57586,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "fix-compile-error",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 56657,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "parent-variable",
+     "verdict": "pass",
+     "rounds": 10,
+     "inputTokens": 92408,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ConnectBoxesRequest",
+      "RunBoxRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "html-table",
+     "verdict": "pass",
+     "rounds": 8,
+     "inputTokens": 79909,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "WorkspaceSymbolSearch",
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "LaunchBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23081,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31163,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 56896,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 68125,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "ViewBoxOutputRequest",
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 66951,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 60246,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "B": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 10,
+   "passed": 10,
+   "rounds": 50,
+   "inputTokens": 520131,
+   "outputTokens": 3156,
+   "misuseCalls": 0,
+   "imagesSeen": 5,
+   "lessons": true,
+   "lessonsVersion": 1,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "primes",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 41409,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "NewBoxRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "fix-compile-error",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 41116,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "parent-variable",
+     "verdict": "pass",
+     "rounds": 9,
+     "inputTokens": 86918,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ConnectBoxesRequest",
+      "RunBoxRequest",
+      "SetBoxPropertyRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest!",
+      "RunBoxRequest",
+      "CompileKotlinRequest"
+     ]
+    },
+    {
+     "id": "html-table",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 60246,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "NewBoxRequest",
+      "DocumentSourceReadRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "LaunchBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23894,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32265,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 59142,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "CodeUseQueryRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 51806,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ViewBoxOutputRequest",
+      "NewBoxRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 61137,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "NewBoxRequest",
+      "DocumentSourceReadRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 62198,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "C": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 10,
+   "passed": 10,
+   "rounds": 33,
+   "inputTokens": 348537,
+   "outputTokens": 1981,
+   "misuseCalls": 2,
+   "imagesSeen": 5,
+   "lessons": false,
+   "lessonsVersion": 1,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "primes",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23464,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "fix-compile-error",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23356,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "parent-variable",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 48419,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ConnectBoxesRequest",
+      "RunBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "html-table",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 40134,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "LaunchBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23270,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31452,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 34318,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32508,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ViewBoxOutputRequest",
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 40550,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 51066,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "D": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 10,
+   "passed": 10,
+   "rounds": 31,
+   "inputTokens": 332607,
+   "outputTokens": 1836,
+   "misuseCalls": 1,
+   "imagesSeen": 5,
+   "lessons": true,
+   "lessonsVersion": 2,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "primes",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23678,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "fix-compile-error",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23596,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "parent-variable",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 48890,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ConnectBoxesRequest",
+      "RunBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "html-table",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32405,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "LaunchBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23501,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31726,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23689,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32794,
+     "misuseCalls": 0,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ViewBoxOutputRequest",
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 40959,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 51369,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "blind": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 6,
+   "passed": 5,
+   "rounds": 47,
+   "inputTokens": 3074202,
+   "outputTokens": 3319,
+   "misuseCalls": 10,
+   "imagesSeen": 0,
+   "lessons": false,
+   "lessonsVersion": 1,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "swatch-colour",
+     "verdict": "fail",
+     "rounds": 13,
+     "inputTokens": 2466822,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "ListBoxesRequest",
+      "GetBoxPropertyRequest",
+      "ReadBoxOutputRequest",
+      "SemanticRetrievalSearchRequest",
+      "WorkspaceSymbolSearch",
+      "ListKotlinContextVariablesRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 47379,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "CaptureRenderWindowRequest!",
+      "ReadBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 48109,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "CaptureRenderWindowRequest!",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "CaptureRenderWindowRequest!"
+     ]
+    },
+    {
+     "id": "swatch-colour",
+     "verdict": "pass",
+     "rounds": 14,
+     "inputTokens": 415983,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "ListContentsRequest",
+      "ReadBoxOutputRequest",
+      "WorkspaceSymbolSearch",
+      "SemanticRetrievalSearchRequest",
+      "WorkspaceSymbolSearch",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "EvaluateKotlinExpressionRequest",
+      "NewBoxRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 47847,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "CaptureRenderWindowRequest!",
+      "EvaluateKotlinExpressionRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 48062,
+     "misuseCalls": 2,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "CaptureRenderWindowRequest!",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "CaptureRenderWindowRequest!"
+     ]
+    }
+   ]
+  },
+  "held-B-off": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 12,
+   "passed": 12,
+   "rounds": 61,
+   "inputTokens": 610093,
+   "outputTokens": 4394,
+   "misuseCalls": 8,
+   "imagesSeen": 10,
+   "lessons": false,
+   "lessonsVersion": 4,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23081,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31171,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 56986,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 66893,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 3,
+     "tools": [
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 60136,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 61997,
+     "misuseCalls": 1,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "CaptureRenderWindowRequest!",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23063,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31147,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 57316,
+     "misuseCalls": 1,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 67387,
+     "misuseCalls": 2,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 2,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "CompileKotlinRequest!",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 60139,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 70777,
+     "misuseCalls": 1,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "CaptureRenderWindowRequest!",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "held-B-on": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 12,
+   "passed": 12,
+   "rounds": 57,
+   "inputTokens": 608992,
+   "outputTokens": 3884,
+   "misuseCalls": 2,
+   "imagesSeen": 10,
+   "lessons": true,
+   "lessonsVersion": 4,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23732,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32035,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 57800,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "CodeUseQueryRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 59758,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 61577,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 62841,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23735,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32029,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 61555,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "CodeUseQueryRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 69225,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "DocumentSourceReadRequest",
+      "ListContentsRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 61476,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 6,
+     "inputTokens": 63229,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 1,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "CompileKotlinRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "held-F-off": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 12,
+   "passed": 12,
+   "rounds": 43,
+   "inputTokens": 458556,
+   "outputTokens": 2961,
+   "misuseCalls": 3,
+   "imagesSeen": 10,
+   "lessons": false,
+   "lessonsVersion": 4,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23279,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31432,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 34246,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 40536,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 50996,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 43343,
+     "misuseCalls": 1,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "CaptureRenderWindowRequest!",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23249,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 31416,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 36182,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 40540,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 51207,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 52130,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "held-F-on": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 12,
+   "passed": 12,
+   "rounds": 44,
+   "inputTokens": 478861,
+   "outputTokens": 2909,
+   "misuseCalls": 2,
+   "imagesSeen": 10,
+   "lessons": true,
+   "lessonsVersion": 4,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23921,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32319,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 36506,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 41637,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 52286,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 53557,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "stop-ticker",
+     "verdict": "pass",
+     "rounds": 2,
+     "inputTokens": 23927,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "StopBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "wire-two",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 32275,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "NewBoxRequest",
+      "NewBoxRequest",
+      "ListBoxesRequest"
+     ]
+    },
+    {
+     "id": "fix-runtime-error",
+     "verdict": "pass",
+     "rounds": 3,
+     "inputTokens": 35098,
+     "misuseCalls": 0,
+     "imagesSeen": 0,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "GetBoxPropertyRequest",
+      "CodeUseQueryRequest",
+      "RunBoxRequest"
+     ]
+    },
+    {
+     "id": "draw-sun",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 41662,
+     "misuseCalls": 1,
+     "imagesSeen": 1,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "CaptureRenderWindowRequest!",
+      "NewBoxRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-visible",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 52341,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-sorted-red",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 53332,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  },
+  "row": {
+   "provider": "openai",
+   "model": "gpt-6-astra",
+   "population": 3,
+   "passed": 3,
+   "rounds": 16,
+   "inputTokens": 168887,
+   "outputTokens": 1466,
+   "misuseCalls": 0,
+   "imagesSeen": 7,
+   "lessons": false,
+   "lessonsVersion": 4,
+   "documentsBefore": 0,
+   "documentsAfter": 0,
+   "capturePagesOpenAfter": 0,
+   "tasks": [
+    {
+     "id": "bars-one-row",
+     "verdict": "pass",
+     "rounds": 7,
+     "inputTokens": 74333,
+     "misuseCalls": 0,
+     "imagesSeen": 3,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest",
+      "PatchBoxTextRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-one-row",
+     "verdict": "pass",
+     "rounds": 5,
+     "inputTokens": 51779,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "SetBoxPropertyRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    },
+    {
+     "id": "bars-one-row",
+     "verdict": "pass",
+     "rounds": 4,
+     "inputTokens": 42775,
+     "misuseCalls": 0,
+     "imagesSeen": 2,
+     "compileKotlinCalls": 0,
+     "tools": [
+      "ListContentsRequest",
+      "ViewBoxOutputRequest",
+      "RunBoxRequest",
+      "ViewBoxOutputRequest"
+     ]
+    }
+   ]
+  }
+ }
+}

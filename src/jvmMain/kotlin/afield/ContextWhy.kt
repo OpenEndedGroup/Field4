@@ -219,7 +219,7 @@ object ContextWhy {
         if (d != null) {
             append("; declared by `${d.text.removeSuffix("/**/").trim()}`")
             when {
-                d.suppliedBy != null && d.suppliedBy !== box -> append(" from ${label(d.suppliedBy)}'s preamble")
+                d.suppliedBy != null && d.suppliedBy !== box -> append(" from the preamble of ${label(d.suppliedBy)}")
                 d.inOwnPreamble -> append(" in this box's own preamble")
                 d.tag != null -> append(" (tagged from ${d.tag}, not an ancestor)")
             }

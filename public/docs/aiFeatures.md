@@ -384,6 +384,12 @@ The design notes — why the dependency points this way, what the two bridges do
 with your registration, and what is still not covered — are in
 `dev_docs/ai/AGENT_TOOL_EXTENSIONS.md`.
 
+A tool set that edits something which draws — a program, a scene, numbers in a
+property — does not have to be written from scratch. [Studies](studies.md) shows a
+box handing one of its own properties to `registerStudyTools`, which gives the
+chat ten tools for inspecting, editing, comparing and trying variants of it, each
+answering with pictures.
+
 ## Provider and key settings
 
 The simplest setup is the AI settings card on `/welcome`, where you can select

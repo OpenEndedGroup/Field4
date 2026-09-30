@@ -212,6 +212,75 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a block setter under a block getter stays inside its property`() {
+        // `four/buffers/Structure.kt`, 2026-09-30: with no initializer, the getter's `{` reads as the
+        // property's body, so its `}` ended the span and left `set(value) {` and its `}` unattributed,
+        // with the setter's `val r = …` read as a sibling declaration. The sibling after it must not be
+        // swallowed: a closed brace reopens the span only for an accessor.
+        val source = """
+            class Slots {
+                var dirty: Boolean
+                    get() {
+                        val r = 1
+                        return r > 0
+                    }
+                    set(value) {
+                        val r = 2
+                        println(value && r > 0)
+                    }
+
+                var count: Int
+                    get() {
+                        return 0
+                    }
+                    @Synchronized
+                    private set
+
+                val next: Int
+                    get() {
+                        return 1
+                    }
+                fun after() {
+                }
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, "println(value && r > 0)") + 1,
+            declaration(partition, "dirty").endLine,
+            "the block setter is part of the property above it",
+        )
+        assertEquals(
+            lineOf(source, "private set"),
+            declaration(partition, "count").endLine,
+            "an annotated bare setter after a block getter is part of the property",
+        )
+        assertEquals(
+            lineOf(source, "fun after"),
+            declaration(partition, "after").startLine,
+            "a function after a block getter is its own declaration",
+        )
+        assertEquals(
+            listOf("dirty", "count", "next", "after"),
+            partition.allSpans()
+                .filter { it.kind == KotlinSourcePartition.Kind.DECLARATION && it.declKind != "class" }
+                .map { it.name },
+            "the setters' locals are not siblings",
+        )
+        assertEquals(
+            emptyList(),
+            partition.allSpans()
+                .filter { it.kind == KotlinSourcePartition.Kind.FILLER }
+                .flatMap { span -> (span.startLine..span.endLine).map { partition.lines[it - 1] } }
+                .filter { it.isNotBlank() },
+            "no unattributed code should be left over",
+        )
+    }
+
+    @Test
     fun `an annotation run leading to a declaration still starts that declaration`() {
         // The refusal that makes the case above safe. Reading past an annotations-only run must stop
         // when the run leads to something that declares: `get`/`set` are not declaration keywords, so

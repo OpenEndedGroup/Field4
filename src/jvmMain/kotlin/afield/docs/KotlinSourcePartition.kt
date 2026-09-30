@@ -813,7 +813,25 @@ object KotlinSourcePartition {
                     at++
                 }
                 if (depth <= 0) {
-                    if (bodyOpen >= 0 && bodyClose >= 0) return Extent(line, bodyOpen, bodyClose)
+                    if (bodyOpen >= 0 && bodyClose >= 0) {
+                        // A property with no initializer and a block getter has its "body" closed by
+                        // the getter's `}`, and returning there cut off a block setter written under it:
+                        //
+                        //     var dirty: Boolean
+                        //         get() { … }
+                        //         set(value) { … }
+                        //
+                        // `set(value) {` and its closing `}` fell out as FILLER, and the setter's own
+                        // `val r = …` was read as a sibling declaration (`four/buffers/Structure.kt`,
+                        // 2026-09-30). Only an accessor may reopen the span, and only on a property;
+                        // the later `}` moves the recorded body close to the last accessor's.
+                        if (head.decl.kind in PROPERTY_KINDS && nextIsAccessor(line, hi)) {
+                            bodyClose = -1
+                            line++
+                            continue
+                        }
+                        return Extent(line, bodyOpen, bodyClose)
+                    }
                     if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
                 }
                 line++
@@ -880,6 +898,22 @@ object KotlinSourcePartition {
             // deliberately a second question rather than a change to the first: stripping up front would
             // erase the `@get:` that the first question matches on.
             return CONTINUES_BEFORE.containsMatchIn(stripModifiers(stripAnnotations(head)))
+        }
+
+        /**
+         * Whether the next code line after [line] is a property accessor (`get`/`set`, behind any
+         * modifiers or annotation-only lines), as opposed to anything else that could follow a closed
+         * brace.
+         */
+        fun nextIsAccessor(line: Int, hi: Int): Boolean {
+            var index = nextCodeLine(line + 1, hi) ?: return false
+            var budget = MAX_PREFIX_RUN
+            while (isPrefixOnlyLine(index)) {
+                if (budget-- <= 0) return false
+                index = nextCodeLine(index + 1, hi) ?: return false
+            }
+            val head = stripModifiers(stripAnnotations(stripModifiers(masked.code[index].trimStart())))
+            return ACCESSOR_HEAD.containsMatchIn(head)
         }
 
         /** The next line in `[from, hi)` carrying any code at all. */
@@ -1104,6 +1138,12 @@ object KotlinSourcePartition {
         Regex("""(?:[=+*/%&|^,.:\-]|->|\b(?:by|is|as|in|and|or|where|else)\b)\s*${'$'}""")
 
     private val IF_CONDITION = Regex("""(?<![\w`])if\s*\(""")
+
+    /** The declaration kinds that can own accessors. */
+    private val PROPERTY_KINDS = setOf("val", "var")
+
+    /** A line that begins a property accessor: `get()`, `set(value)`, a bare `private set`, `get() =`. */
+    private val ACCESSOR_HEAD = Regex("""^(?:get|set)\s*(?:\(|=|$)""")
 
     /**
      * A line whose code starts like this continues the line above. `}`, `)` and `]` are absent: bracket
