@@ -245,7 +245,11 @@ class LuaExecution(val inside: Box) : BoxExecution {
         val candidates = luaCompletions(path, prefix)
         if (candidates.isEmpty()) return
         reply(Message("complete").payload(Completion(boundsStart = start, boundsEnd = cursor,
-            metadata = candidates.map { (text, kind, doc) -> Metadata(icon = kind, tail = kind, documentation = doc, text = text, displayText = text) })))
+            metadata = candidates.map { (text, kind, doc) ->
+                // A catalogued function shows its signature under its name, as a Clojure row shows its argument vector.
+                val signature = LuaCatalog.lookup(path, text)?.signature
+                Metadata(icon = kind, tail = signature ?: kind, documentation = doc, text = text, displayText = text)
+            })))
     }
 
     /** Names to offer at [path] (`""` for the globals) that start with [prefix]: text, kind, documentation. */
