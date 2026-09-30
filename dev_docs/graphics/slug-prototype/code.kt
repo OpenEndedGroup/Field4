@@ -1,44 +1,57 @@
-import afield.graphics.FLine
-import afield.graphics.slug.SlugPath
+import afield.RunScope
+import afield.ReleasePolicy
+import afield.four.Renderer
 import afield.four.buffers.bindPushConstant
+import afield.four.modules.*
+import afield.graphics.FLine
+import afield.graphics.slug.*
+import afield.stdlib.linalg.*
+import org.lwjgl.vulkan.VK10.*
 import java.io.File
 
-// Put vertex.glsl / fragment.glsl in this box's vertex / fragment properties.
-// Run as a child of an existing renderer box, following the canonical lessons.
-val executable = File("native/field-slug/build/field-slug")
+name = "5e. Slug filled paths"
+// Build the optional helper once: bash native/field-slug/build.sh
+val renderer: Renderer = fromContext()
 val path = FLine().moveTo(-1, -1).lineTo(1, -1)
     .cubicTo(vec(1.4, 0, 0), vec(0.8, 1.3, 0), vec(0, 1, 0))
     .lineTo(-1, 1).close()
-// Reverse winding for the inner contour: a hole under the nonzero winding rule.
+// Clockwise inner contour cuts a hole in the counterclockwise outer contour.
 path.moveTo(-0.3, -0.3).lineTo(-0.3, 0.3).lineTo(0.3, 0.3).lineTo(0.3, -0.3).close()
-val slug = SlugPath.compile(path, executable, tolerance = 1e-4f)
+val prepared = SlugPath.compile(path, File("native/field-slug/build/field-slug"))
 
-val module = moduleHere { primitiveType = triangles }
+//%-
+val module = moduleHere {
+    primitiveType = triangles
+    srcAlpha = VK_BLEND_FACTOR_ONE
+    depthWrite = false
+}
 val mesh = Mesh()
-module += mesh named "slug"
+module += "slug" to mesh
 renderer += module
 mesh.resize(6)
-
-// Immutable data: no per-frame uploads for camera motion or a changing fill.
-val data = defaultBuffer { size = slug.byteSize }.buffer
-data.write { slug.words.forEach { putInt(it) } }
-mesh.push.bindPushConstant("slugData", { data }) { error("Missing slugData push constant") }
+val data = SlugBuffer(renderer, prepared)
+RunScope.current()!!.own(policy = ReleasePolicy.RUNNING) {
+    if (module.current.meshes["slug"] === mesh) module.current.meshes.remove("slug")
+    data.close()
+}
+mesh.push.bindPushConstant("slugData", { data }) { throw IllegalStateException("Missing slugData") }
 val camera = Camera()
-mesh.p = camera.p
-mesh.m = camera.m
+mesh.push.bindPushConstant("mvp", {
+    Matrix4f(camera.p.evaluateUniform()).mul(camera.modelView())
+}) { throw IllegalStateException("Missing mvp") }
 mesh.push.bindPushConstant("viewport", {
     val extent = renderer.swapChain.swapChainExtent
     vec(extent.width(), extent.height())
-}) { error("Missing viewport push constant") }
-mesh.push.bindPushConstant("tint", { vec(0.9, 0.6, 0.3, 1.0) }) { error("Missing tint push constant") }
+}) { throw IllegalStateException("Missing viewport") }
+var tint = vec(0.9, 0.9, 0.9, 0.8)
+mesh.push.bindPushConstant("tint", { tint }) { throw IllegalStateException("Missing tint") }
 
 var time = 0.0
 loop {
     time += 0.01
-    camera.at = vec(3 * Math.sin(time), 1, -3 - 2 * Math.cos(time))
+    camera.at = vec(2 * Math.sin(time), 0.5, -4)
     true
 }
-
-// Geometry edits: compile a NEW SlugPath, then publish it on the render thread.
-// For this first prototype, re-run this box (which replaces its named module).
-// A later SlugDrawable should manage page swaps and GPU-safe retirement explicitly.
+// Change tint or camera without preparing geometry again.
+// Geometry edits: prepare a new SlugPath, then data.replace(newPath) on the render thread.
+// Re-running/stopping this box removes its mesh before retiring the atlas.

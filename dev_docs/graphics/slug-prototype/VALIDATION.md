@@ -1,28 +1,50 @@
-# Prototype verification record
+# Slug validation
 
-Date: 2026-09-30. Slughorn: 409c4a2e68cafcb49e11ea0edd0145d4e255cbea.
+Verified on macOS / Apple silicon, 2026-09-30. Native source pinned to
+Slughorn `409c4a2e68cafcb49e11ea0edd0145d4e255cbea`.
 
-The original prototype session compiled main.cpp plus upstream slughorn.cpp with
-g++ -std=c++20 -O2 -Wall -Wextra and ran check_prepare.py against the resulting helper.
-Compilation succeeded without diagnostics and native preparation checks passed:
+## Automated checks
 
-- Canvas layer transform/color edits and composite registration leave curve/band bytes unchanged.
-- Adding Canvas geometry after Atlas::build() does not register the new shape.
-- Analytic CPU coverage samples distinguish a rectangle's interior and exterior.
-- Packed data preserves source-space bounds, closes open fill contours, includes
-  multiple contours, changes with edited geometry and is deterministic for identical input.
-- Explicit cubic tolerance changes the generated quadratic count.
-- Empty, malformed, nonfinite, negative-tolerance and incomplete-command inputs fail
-  without binary output.
+- `bash native/field-slug/build.sh /tmp/field4-pr96-slughorn` builds the helper
+  and runs its real Canvas lifecycle/coverage self-test.
+- `uv run python native/field-slug/tests/check_prepare.py native/field-slug/build/field-slug`
+  passes bounds, determinism, implicit closure, contour, tolerance and malformed-input checks.
+  Forty local two-contour preparations including process startup: median 3.21 ms,
+  maximum 5.33 ms. These are preparation timings, not a rendering benchmark.
+- `./gradlew jvmTest --tests 'afield.graphics.slug.SlugPathTest'` checks real
+  native output, defensive copies, invalid metrics and GPU addresses, FLine
+  serialization, actual shader compilation, 96-byte reflected push layout and
+  the persisted lesson's topology/source parity.
+- `uv run --project . --group backdoor python tools/run_field_tests.py --id four.slug.readback`
+  passes actual float render-target readback: nonzero-winding hole, fractional edge
+  coverage, straight-alpha RGB and alpha, changed transform scale, fresh atlas
+  replacement, deferred retirement and idempotent close. No Vulkan validation
+  errors were reported. The native helper must be built first; missing setup fails.
 
-A 40-run two-contour probe measured 4.39 ms median and 17.39 ms maximum INCLUDING
-process startup and capture. This is a small synthetic preparation workload,
-not a Field/GPU benchmark and not a claim about per-frame geometry throughput.
+## Repository and documentation gates
 
-The PR preparation turn had no execution environment. The earlier prototype sources
-were carried into repository paths, with documentation links adjusted and an ignore
-rule for the helper build directory. No fresh compile/test run occurred in that turn.
+Six focused JVM tests and 109 citation-contract tests pass, with no failures or
+skips. `checkTestTreeWrites` reports no test writes. `generateCodebaseReference`
+completed successfully without a generated diff. The HTML-only docs build passes
+its asset and local-link checks; existing captures were retained, not regenerated.
 
-Outstanding: Kotlin compilation, SPIR-V compilation, Field resource lifetime,
-blending setup, perspective edge quality, VR multiview and actual Vulkan rendering.
-No simulated GPU captures were produced. The CPU lifecycle check is not a render test.
+## Field box
+
+The documented box was launched with its actual shader properties under the
+backdoor graphics renderer. Its first launch and a second launch both rendered
+the curved outline and square hole, with the camera moving and tint alpha 0.8.
+Native screenshots `/tmp/pr96-slug-live.png` and `/tmp/pr96-slug-rerun.png` were
+visually inspected; stopping the box succeeded. These are local diagnostic
+artifacts, not committed documentation captures.
+
+This caught a real box-only issue: Field's output `error` helper returns Unit,
+so push-binding failure callbacks must explicitly throw IllegalStateException.
+The JVM smoke alone would not have caught that scripting-name resolution.
+
+## Remaining scope
+
+No certification of near-plane crossing, grazing-angle projection, VR multiview,
+all HDR composite arrangements, Windows native builds, glyph shaping or strokes.
+The automated coverage oracle currently uses rectangles with a hole; curved edges
+were inspected in the running example. There is no performance claim about the
+fragment shader or high-frequency preparation.

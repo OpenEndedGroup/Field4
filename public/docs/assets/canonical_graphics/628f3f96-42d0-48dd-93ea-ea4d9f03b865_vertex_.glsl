@@ -3,8 +3,7 @@
 // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
 layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData { uint words[]; };
 layout(push_constant) uniform SlugPC {
-    mat4 p;
-    mat4 m;
+    mat4 mvp;
     SlugData slugData;
     vec2 viewport;
     vec4 tint;
@@ -20,7 +19,7 @@ void main() {
     vec2 corner = corners[gl_VertexIndex % 6];
     vec2 q = mix(bounds.xy, bounds.zw, corner);
     vec2 normal = 2.0 * corner - 1.0;
-    mat4 matrix = pc.p * pc.m;
+    mat4 matrix = pc.mvp;
     vec4 position = matrix * vec4(q, 0.0, 1.0);
     // Lengyel's perspective-dependent dilation, expressed in homogeneous vectors.
     // normal is the corner bisector scaled so both incident sides expand equally.

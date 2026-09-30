@@ -3,8 +3,7 @@
 // Adapted Slug core: Copyright (c) 2026 AlphaPixel LLC. See LICENSE-slughorn.
 layout(std430, buffer_reference, buffer_reference_align = 4) readonly buffer SlugData { uint words[]; };
 layout(push_constant) uniform SlugPC {
-    mat4 p;
-    mat4 m;
+    mat4 mvp;
     SlugData slugData;
     vec2 viewport;
     vec4 tint;

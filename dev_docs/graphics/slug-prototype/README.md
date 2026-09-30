@@ -1,66 +1,31 @@
-# Slug FLine rendering prototype
+# Slug filled FLine prototype
 
-This draft integrates the earlier Slug prototype into Field's repository layout.
-It supplies a native path compiler, an FLine adapter, and a Vulkan shader pair.
-It is not yet a verified Field rendering integration.
+The user guide and persisted starter are in
+[Slug filled paths](../../../public/docs/slug_paths.md). The canonical lesson
+**5e. Slug filled paths** is connected beneath its renderer in `metadata.edn`.
+[code.kt](code.kt) mirrors that lesson for backdoor checks.
 
-## Try it
+The runtime shader sources live in
+[`src/jvmMain/resources/afield/slug`](../../../src/jvmMain/resources/afield/slug/).
+`SlugShaders` loads these resources; the canonical lesson stores matching shader
+sidecars for editing in Field. Shader-derived code retains the upstream
+[MIT license](LICENSE-slughorn).
 
-Build the helper using [its instructions](../../../native/field-slug/README.md)
-and compile Field. Create a new box beneath an existing renderer box, following
-`public/docs/assets/canonical_graphics/LESSONS.md`.
-Set the box's vertex and fragment properties to [vertex.glsl](vertex.glsl) and
-[fragment.glsl](fragment.glsl), and its code to [code.kt](code.kt). Launch it.
+## Integration decisions
 
-The script uploads the Slughorn curve/band data to one addressable buffer and
-draws six generated vertices. Camera motion and procedural fill changes leave
-the atlas data unchanged. Edit the FLine and re-run the box to prepare new geometry.
+- `SlugPath` compiles an XY FLine through the pinned native helper and validates
+  metrics, atlas dimensions, band lists and curve addresses before upload.
+  Its words are exposed as a defensive copy.
+- `SlugBuffer` owns one immutable upload, with replacement through a stable
+  buffer-address supplier. Replacement retires the old allocation through
+  Field's deferred GPU cleanup queue. Detach its mesh before closing.
+- The push block is 96 bytes (one combined matrix), within Vulkan's minimum
+  128-byte guarantee. Viewport size comes from the current target.
+- The box uses straight-alpha color blending, source alpha factor ONE, and
+  disabled depth writes. It releases its mesh and buffer through RunScope.
 
-The shader uses a 160-byte push block: two matrices, a data address, framebuffer
-dimensions and a tint. Bounds expand using the MVP and framebuffer size; curve
-coordinates interpolate with perspective correction. The separate shade()
-function is the intended attachment point for Field's shader DSL.
+The subprocess is appropriate for code edits, not per-frame deformation. Font
+shaping, strokes, JNI, shared atlas packing and VR multiview remain outside this
+slice. Near-plane crossings and grazing-angle behavior are not certified.
 
-Output uses straight alpha. Configure source-alpha / one-minus-source-alpha RGB
-blending, and one / one-minus-source-alpha alpha blending. For a premultiplied
-target, multiply RGB by output alpha and use the corresponding blend factors.
-The initial example uses an opaque tint. Multi-layer Porter-Duff compositing
-is a later step.
-
-## Scope
-
-Supported: filled XY FLine paths, multiple contours using nonzero winding, one
-shape per atlas, and 512-wide Slughorn atlases. Nonzero z coordinates are rejected
-rather than silently flattened; place the resulting plane in 3D through its
-model/view transform.
-
-The first slice uses a subprocess per preparation call. It is for code edits,
-not a per-frame geometry pipeline. FreeType glyph loading, shaping, strokes,
-composite rendering, direct Forth shader words, incremental atlas packing,
-JNI, automatic GPU-safe retirement, and VR multiview wiring remain future work.
-
-The example follows Field's module/mesh idiom, but resource ownership on re-run
-still needs a real runtime check. Do not treat its upload and camera script as
-evidence that the Vulkan integration has already run.
-
-## Before merging
-
-1. Run ./gradlew compileKotlinJvm, compile the shaders, and run the actual Vulkan box.
-2. Check holes, tight cubics, subpixel sizes, perspective, viewport resizing and alpha
-   over an HDR target. Near-plane and nearly edge-on behavior need particular attention.
-3. Establish resource cleanup on box re-run and GPU-safe retirement for atlas replacement.
-4. Add Kotlin coverage for FLine conversion and packed-data validation.
-
-A subsequent SlugDrawable should separate geometry and appearance revisions,
-prepare edits off the render thread, and publish them on the render thread.
-Do not rely solely on FLine.rev: direct control-point/vector mutations can bypass it.
-Keep reusable glyph atlases independent of edited paths and retain Field's existing
-text shaping/layout when adding FreeType.
-
-## Sources and verification
-
-- [Slughorn](https://github.com/AlphaPixel/slughorn), pinned to
-  409c4a2e68cafcb49e11ea0edd0145d4e255cbea.
-- [Lengyel's dynamic dilation description](https://terathon.com/blog/decade-slug.html).
-- Shader core adapted from Slughorn's GLFW example; [MIT notice](LICENSE-slughorn).
-- [Native preparation validation and outstanding checks](VALIDATION.md).
+See [VALIDATION.md](VALIDATION.md) for reproducible checks and their scope.

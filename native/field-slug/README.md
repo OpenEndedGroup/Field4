@@ -15,13 +15,13 @@ Linux/macOS. Windows binary stdout/build support is not part of this slice.
 From the Field repository root:
 
 ```bash
-git clone https://github.com/AlphaPixel/slughorn.git /tmp/slughorn
-git -C /tmp/slughorn checkout 409c4a2e68cafcb49e11ea0edd0145d4e255cbea
-bash native/field-slug/build.sh /tmp/slughorn
+bash native/field-slug/build.sh
 uv run python native/field-slug/tests/check_prepare.py native/field-slug/build/field-slug
 ./gradlew compileKotlinJvm
 ```
 
+With no argument, build.sh fetches the pinned source into its ignored build directory.
+An optional source checkout argument must be clean and at that exact revision.
 The helper has no graphics or font dependencies. To inspect it directly:
 
 ```bash
@@ -54,8 +54,6 @@ two-quadratic approximation; the name does not mean exact cubic rendering.
 
 ## Demo and status
 
-The box script, Vulkan shaders and next steps are in
-[dev_docs/graphics/slug-prototype](../../dev_docs/graphics/slug-prototype/README.md).
-Native preparation passed in the original prototype session. Kotlin and shader
-compilation and a real Field render remain outstanding. See the
-[validation record](../../dev_docs/graphics/slug-prototype/VALIDATION.md).
+The [public guide](../../public/docs/slug_paths.md) links the persisted starter.
+The [validation record](../../dev_docs/graphics/slug-prototype/VALIDATION.md)
+separates native preparation, decoder/shader tests and real GPU checks.
