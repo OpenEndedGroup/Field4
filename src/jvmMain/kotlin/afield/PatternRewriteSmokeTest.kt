@@ -3,7 +3,6 @@ package afield
 import afield.macros.PatternRewrite
 import afield.macros.resolvePatternRewriteAi
 import afield.macros.standardExecutionPractice
-import com.facebook.ktfmt.format.Parser
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.script.experimental.api.KotlinType
@@ -27,7 +26,7 @@ expect:
  * existing PSI macro pass.
  *
  * Most cases are pure and black-box: they feed a source string (rule + code) through
- * [PatternRewrite.expand] with the standalone ktfmt [Parser] as the PSI environment and assert on
+ * [PatternRewrite.expand] with the standalone [FieldKtParser] as the PSI environment and assert on
  * the emitted text — no REPL needed. One end-to-end case drives a real [KotlinInterface2] to prove
  * the rule blocks are deleted, the wiring in `applyMacros` fires, and the result actually compiles
  * and evaluates.
@@ -111,7 +110,7 @@ object PatternRewriteSmokeTest {
 
     // ---- helpers --------------------------------------------------------------------------------
 
-    private fun parse(code: String): KtFile = Parser.parse(code)
+    private fun parse(code: String): KtFile = FieldKtParser.parse(code)
 
     private data class Result(
         val text: String,

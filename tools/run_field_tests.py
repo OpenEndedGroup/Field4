@@ -26,6 +26,7 @@ ensure_repo_python(("websockets", "PIL"))
 
 from PIL import Image, ImageChops, ImageStat
 
+from completion_sidecar import SIDECAR_URL_ENV, SidecarLease
 from discover_field_tests import DEFAULT_ROOTS, discover
 from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
 from field_languages import needs_language_root
@@ -803,6 +804,7 @@ def ensure_persistent_field(
     workspace: str | None = None,
     boot_timeout: float = 180.0,
     check_environment: Any = None,
+    sidecar_url: str | None = None,
 ) -> subprocess.Popen[Any] | None:
     """Guarantee one warm, *responsive* Field for the whole run.
 
@@ -861,6 +863,9 @@ def ensure_persistent_field(
             # production docs runner leaves this unset and continues to own
             # public/docs/assets.
                 "AFIELD_GENERATED_DOC_ASSET_ROOT": str(GENERATED_DOC_ASSETS_ROOT),
+            # As field.sh does for a user: Field completes with the AA sidecar, and a
+            # jvm-main test (a subprocess of this JVM) inherits the same URL.
+                **({SIDECAR_URL_ENV: sidecar_url} if sidecar_url else {}),
             },
         ),
     }
@@ -2160,6 +2165,18 @@ def requires_native_display(test: dict[str, Any]) -> bool:
     return graphics_context_config(test) is not None or test.get("requiresDisplay") is True
 
 
+def requires_sidecar(test: dict[str, Any]) -> bool:
+    """A test that exercises the AA completion chain declares `requiresSidecar: true`.
+
+    Until 2026-09-30 such tests found no sidecar in the catalog, printed SKIP and exited 0, so the
+    smoke gate PASSED them without completing anything -- and passed straight through two days in
+    which the Kotlin 2.5 uplift had left the sidecar unable to serve a single AA completion. The
+    runner now provides one (see `completion_sidecar.SidecarLease`) and grades a test it cannot give
+    a working one as environment-incomplete: never run, never passed.
+    """
+    return test.get("requiresSidecar") is True
+
+
 def run(args: argparse.Namespace, environment: VerificationEnvironment | None = None) -> int:
     port_was_explicit = args.port is not None
     requested_port = args.port if port_was_explicit else DEFAULT_AUTOMATION_PORT
@@ -2322,6 +2339,26 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
     if tests:
         warn_if_node_too_old(progress)
 
+    # One completion sidecar for the run, when anything selected needs one. It is handed to the
+    # persistent Field below, so every test of such a run completes the way a user's Field does.
+    sidecar: SidecarLease | None = None
+    if any(requires_sidecar(test) for test in tests):
+        sidecar = SidecarLease(
+            REPO_ROOT,
+            REPO_ROOT / "build" / "code-use-semantic-sidecar" / "smoke-runner-sidecar.log",
+            log=lambda message: progress(f"Completion sidecar: {message}"),
+        )
+        sidecar.ensure()
+
+    def sidecar_problem() -> str | None:
+        if sidecar is None:
+            return "no completion sidecar was requested for this run"
+        if args.no_prewarm:
+            # The URL reaches a test only through the Field JVM it runs under, and this run did not
+            # start that JVM.
+            return "--no-prewarm: this run did not start Field, so it could not give Field the sidecar"
+        return sidecar.problem()
+
     field_proc: subprocess.Popen[Any] | None = None
     try:
         for index, test in enumerate(tests, start=1):
@@ -2335,14 +2372,30 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 if not args.no_prewarm and field_proc is None:
                     if not args.no_reap:
                         reap_stale_field_jvms(args.port)
-                    field_proc = ensure_persistent_field(args.port, workspace=args.workspace, check_environment=check_environment)
+                    field_proc = ensure_persistent_field(
+                        args.port, workspace=args.workspace, check_environment=check_environment,
+                        sidecar_url=sidecar.url if sidecar else None,
+                    )
                     progress(f"Started persistent Field on port {args.port} for this run")
                 check_environment()
-                started = True
-                result = run_one_test(
-                    test, port=args.port, workspace=args.workspace, progress=progress,
-                    heartbeat_interval=args.heartbeat_interval, check_environment=check_environment,
-                )
+                missing_sidecar = sidecar_problem() if requires_sidecar(test) else None
+                if missing_sidecar is not None:
+                    result = {"id": test["id"], "ok": False, "failureKind": "environment",
+                              "environmentStatus": "NOT RUN", "durationMs": None,
+                              "observedWallMs": round((time.time() - wall_started) * 1000),
+                              "failures": [f"requires a working completion sidecar: {missing_sidecar}"]}
+                else:
+                    started = True
+                    result = run_one_test(
+                        test, port=args.port, workspace=args.workspace, progress=progress,
+                        heartbeat_interval=args.heartbeat_interval, check_environment=check_environment,
+                    )
+                    if requires_sidecar(test) and not result["ok"]:
+                        # Say what state the backend was in; "sidecar broken" and "completion regressed"
+                        # read the same from the test's own output.
+                        after = sidecar_problem()
+                        if after is not None:
+                            result["failures"].append(f"completion sidecar after the test: {after}")
                 if environment:
                     environment.check(token, require_display=requires_native_display(test), force=True)
             except VerificationEnvironmentError as exc:
@@ -2388,8 +2441,15 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 field_proc = None  # Recheck prerequisites before booting the next test.
     finally:
         stop_persistent_field(field_proc, port=args.port)
+        if sidecar is not None:
+            sidecar.stop()
 
     report = {
+        "completionSidecar": None if sidecar is None else {
+            "url": sidecar.url,
+            "unavailable": sidecar.unavailable,
+            "startedByRun": sidecar.started_by_lease,
+        },
         "catalog": str(catalog_path),
         "automationPort": args.port,
         "automationPortExplicit": port_was_explicit,

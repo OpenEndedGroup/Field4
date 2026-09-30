@@ -136,7 +136,21 @@ data class CodeUseSemanticAnalyzeResult(
 data class HealthResult(
     val ok: Boolean,
     val backend: String,
-    val workspaceRoot: String
+    val workspaceRoot: String,
+    /** The AA completion sessions' state. `ok` only says the HTTP server is up: on 09-28..09-30 it
+     *  stayed true while every session build failed, so anything that needs completion must read this. */
+    val completion: CompletionHealth? = null,
+)
+
+@Serializable
+data class CompletionHealth(
+    /** `idle` (nothing requested yet), `building`, `ready` (a session exists), `failed` (no session
+     *  could be built), or `failing` (a session exists but the latest completion threw). */
+    val state: String,
+    val readySessions: Int,
+    val building: Int,
+    /** The most recent build failure, `Type: message`, kept until a build succeeds. */
+    val lastError: String? = null,
 )
 
 /** Stage C: /complete request. The live Field runtime (KI2) supplies the box's REPL context. */
@@ -227,10 +241,12 @@ fun main(args: Array<String>) {
     server.executor = Executors.newFixedThreadPool(config.threads) { task ->
         Thread(task, "code-use-semantic-sidecar").apply { isDaemon = true }
     }
-    server.createContext("/health") { exchange ->
-        exchange.respondJson(HealthResult(true, "k2-standalone", config.workspaceRoot.absolutePathString()))
-    }
     val completionAnalyzer = K2CompletionAnalyzer(config)
+    server.createContext("/health") { exchange ->
+        exchange.respondJson(
+            HealthResult(true, "k2-standalone", config.workspaceRoot.absolutePathString(), completionAnalyzer.health())
+        )
+    }
     server.createContext("/complete") { exchange ->
         if (exchange.requestMethod.uppercase() != "POST") {
             exchange.respondText(405, "POST required")
@@ -709,6 +725,43 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
     }
 
     /**
+     * The last failed build per classpath. Without it a failure was only a stderr line: the key left
+     * [building], the next request started the same doomed build, and `/complete` kept answering
+     * "session building (warming up; using K1 meanwhile)" — which is what the Kotlin 2.5 uplift's
+     * missing dependencies looked like, to Field, for two days.
+     */
+    private class BuildFailure(val message: String, val atMs: Long)
+    private val failures = ConcurrentHashMap<Key, BuildFailure>()
+
+    /** A failed classpath is rebuilt at most this often, rather than on every keystroke. */
+    private val retryAfterFailureMs = 30_000L
+
+    /**
+     * The most recent completion that threw, cleared by the next one that does not. A session can build
+     * and still fail every request: under 2.5 without kotlin-reflect each completion threw
+     * `KotlinReflectionNotSupportedError`, which is invisible to a build-only health check.
+     */
+    private class CompletionError(val message: String, val atMs: Long)
+    @Volatile private var lastCompletionError: CompletionError? = null
+
+    fun health(): CompletionHealth {
+        val completionError = lastCompletionError
+        val lastError = completionError?.message ?: failures.values.maxByOrNull { it.atMs }?.message
+        val state = when {
+            completionError != null -> "failing"
+            sessions.isNotEmpty() -> "ready"
+            building.isNotEmpty() -> "building"
+            failures.isNotEmpty() -> "failed"
+            else -> "idle"
+        }
+        return CompletionHealth(state, sessions.size, building.size, lastError)
+    }
+
+    private fun failureFor(roots: List<Path>): BuildFailure? = failures[keyOf(roots)]
+
+    private fun keyOf(roots: List<Path>) = Key(roots.map { it.toString() }.sorted())
+
+    /**
      * The scope a request is analysed under when it carries no [CompletionRequest.replImports], and what
      * the ASM index is seeded with at session build. NOT the source of truth for Field's REPL imports —
      * that is `afield.Boxes.intro`, which the live client sends per request. See [CompletionImports].
@@ -724,7 +777,11 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         // and return an empty result now — the client (AaCompletionClient) treats empty as "fall back to
         // K1", so the user gets K1 completions during the ~1-min warmup, then AA takes over transparently.
         val cached = cachedSession(roots)
-            ?: return CompletionResponse(true, "k2-aa", "session building (warming up; using K1 meanwhile)")
+            ?: return failureFor(roots)?.let {
+                // Not "warming up": this classpath's session could not be built, and saying so is the only
+                // way the client can tell a slow start from a broken backend.
+                CompletionResponse(false, "k2-aa", "AA session build failed: ${it.message}")
+            } ?: CompletionResponse(true, "k2-aa", "session building (warming up; using K1 meanwhile)")
         val result = cached.lock.withLock {
             cached.completer.complete(
                 snippet = req.snippet,
@@ -772,6 +829,12 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         else result.candidates.sortedByDescending { it.fitsExpected }
             .sortedByDescending { c -> c.name.startsWith(prefix, ignoreCase = true) }
             .sortedByDescending { c -> c.name.startsWith(prefix) }
+        result.error?.let {
+            lastCompletionError = CompletionError(it, System.currentTimeMillis())
+            System.err.println("[k2-completion] completion failed: $it")
+            return CompletionResponse(false, "k2-aa", "AA completion failed: $it")
+        }
+        lastCompletionError = null
         val candidates = ordered.take(req.limit.coerceIn(1, 2000)).map { it.toVariant() }
         return CompletionResponse(true, "k2-aa", result.note, candidates)
     }
@@ -820,9 +883,14 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
         if (req.snippet.isBlank()) return LoweringResponse(true, "empty snippet")
         val roots = req.classpathRoots.mapNotNull(::pathIfExists).distinct()
         if (roots.isEmpty()) return LoweringResponse(false, "no classpathRoots resolved on disk")
+        val waitStarted = System.currentTimeMillis()
         var cached = cachedSession(roots)
         var waited = 0L
         while (cached == null && waited < 240_000) {
+            // A build that failed after this request arrived will not be retried for a while: stop waiting.
+            failureFor(roots)?.takeIf { it.atMs >= waitStarted }?.let {
+                return LoweringResponse(false, "AA session build failed: ${it.message}")
+            }
             Thread.sleep(500); waited += 500
             cached = cachedSession(roots)
         }
@@ -854,8 +922,10 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
     /** Return the cached session for [roots], or null if it isn't built yet (build kicked off in the
      *  background, at most once per classpath). Never blocks the calling request on the ~1-min build. */
     private fun cachedSession(roots: List<Path>): Cached? {
-        val key = Key(roots.map { it.toString() }.sorted())
+        val key = keyOf(roots)
         sessions[key]?.let { return it }
+        val failed = failures[key]
+        if (failed != null && System.currentTimeMillis() - failed.atMs < retryAfterFailureMs) return null
         if (building.add(key)) {
             buildPool.submit {
                 val t0 = System.currentTimeMillis()
@@ -864,12 +934,16 @@ private class K2CompletionAnalyzer(private val config: SidecarConfig) {
                     val built = build(roots)
                     if (built != null) {
                         sessions[key] = built
+                        failures.remove(key)
                         System.err.println("[k2-completion] AA session ready in ${System.currentTimeMillis() - t0}ms (index: ${built.completer.indexSummary})")
                     } else {
+                        failures[key] = BuildFailure("AA session build returned null (no context file)", System.currentTimeMillis())
                         System.err.println("[k2-completion] AA session build returned null (no context file)")
                     }
                 } catch (t: Throwable) {
+                    failures[key] = BuildFailure("${t.javaClass.simpleName}: ${t.message}", System.currentTimeMillis())
                     System.err.println("[k2-completion] session build failed: ${t.javaClass.simpleName}: ${t.message}")
+                    t.printStackTrace()
                 } finally {
                     building.remove(key) // allow a later request to retry if the build failed
                 }

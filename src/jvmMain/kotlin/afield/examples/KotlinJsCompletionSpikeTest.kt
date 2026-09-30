@@ -20,6 +20,9 @@ runner: jvm-main
 entrypoint: afield.examples.KotlinJsCompletionSpikeTest
 tags: [remotejs, kotlinjs, completion]
 timeoutSec: 120
+# Provided by the runner; without one this is environment-incomplete, not a pass (it SKIPped and
+# passed until 2026-09-30).
+requiresSidecar: true
 expect:
   exitCode: 0
   stdoutContains:
@@ -39,7 +42,8 @@ expect:
  * nested namespace classifiers, constructed external types, their members, and callback parameter
  * types all complete without adding Field's JVM classes to the KotlinJS classpath.
  *
- * Requires the AA sidecar; SKIPs cleanly if none is reachable.
+ * Requires the AA sidecar, which the smoke runner provides (`requiresSidecar`); with none reachable it
+ * exits 3 rather than reporting `ok` for completions it never asked for.
  */
 object KotlinJsCompletionSpikeTest {
 
@@ -60,9 +64,8 @@ object KotlinJsCompletionSpikeTest {
         val cursorA = snippetA.indexOf("p.\n") + 2
         val candsA = completeWithRetry(snippetA, cursorA, roots)
         if (candsA == null) {
-            println("SKIP: no AA sidecar reachable at $url (set -Dafield.completion.sidecarUrl)")
-            println("KotlinJsCompletionSpikeTest ok")
-            return
+            println("NO SIDECAR: no AA sidecar reachable at $url (set -Dafield.completion.sidecarUrl); the AA chain was not exercised")
+            kotlin.system.exitProcess(3)
         }
         require(candsA.any { it.startsWith("len") } && candsA.any { it == "x" } && candsA.any { it == "y" }) {
             "expected the box's own P members (x/y/len), got: $candsA"
@@ -202,7 +205,7 @@ object KotlinJsCompletionSpikeTest {
         println("KotlinJsCompletionSpikeTest ok")
     }
 
-    /** Returns candidate texts, or null if the sidecar never answered (unreachable → SKIP). */
+    /** Returns candidate texts, or null if the sidecar never answered (unreachable → exit 3). */
     private fun completeWithRetry(
         snippet: String,
         cursor: Int,

@@ -1,7 +1,7 @@
 package afield.remotejs
 
+import afield.FieldKtParser
 import afield.logger.lprintln
-import com.facebook.ktfmt.format.Parser
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
@@ -198,7 +198,7 @@ object KotlinToJsCompiler {
 
         return try {
             val instrumentedSource = instrumentEditorPrints(source)
-            val file = Parser.parse(instrumentedSource)
+            val file = FieldKtParser.parse(instrumentedSource)
             val script = file.script ?: return PreparedSource.identity(source)
             val lineStarts = buildList {
                 add(0)
@@ -300,7 +300,7 @@ object KotlinToJsCompiler {
      * to render the output beside a real source line.
      */
     private fun instrumentEditorPrints(source: String): String {
-        val file = Parser.parse(source)
+        val file = FieldKtParser.parse(source)
         val shadowedNames = PsiTreeUtil.collectElementsOfType(file, KtNamedFunction::class.java)
             .mapNotNullTo(mutableSetOf()) { it.name }
         val lineStarts = buildList {

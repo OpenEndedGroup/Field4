@@ -171,6 +171,35 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a setter with a brace body after a getter with one stays inside its property`() {
+        // `Structure.kt`'s `dirty`: the getter's braces closed at depth zero and ended the scan, so
+        // the three lines of `set(value) { … }` came out as unattributed FILLER.
+        val source = """
+            class Flags {
+                private var bits = 0
+
+                var dirty: Boolean
+                    get() {
+                        return bits != 0
+                    }
+                    set(value) {
+                        bits = if (value) 1 else 0
+                    }
+
+                val clean: Boolean get() = bits == 0
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        val dirty = declaration(partition, "dirty")
+        assertEquals(lineOf(source, "get() {"), dirty.bodyOpenLine, "the getter's braces are the body")
+        assertEquals(lineOf(source, "bits = if (value) 1 else 0") + 1, dirty.endLine, "the setter is inside")
+        assertEquals(lineOf(source, "val clean: Boolean get() = bits == 0"), declaration(partition, "clean").startLine)
+    }
+
+    @Test
     fun `an accessor written with an annotation stays inside its property`() {
         // The annotation sibling of the case above, and the one the corpus actually had: an
         // annotations-only line normally opens the next declaration's head, so the scan stopped at

@@ -70,13 +70,11 @@ class RectSLParityTest {
     @Test
     fun traceProbesAWallPoint() {
         val s = study(scene)
-        @Suppress("UNCHECKED_CAST")
-        val probe = s.trace(probeX = 0.0, probeY = 2.0).facts["probe"] as Map<String, Any?>
-        val covering = probe["covering"] as List<Map<String, Any?>>
-        assertEquals("sun", covering.first()["id"])
-        assertEquals(4, covering.first()["line"], "the line that made it")
-        @Suppress("UNCHECKED_CAST")
-        val empty = s.trace(probeX = -7.5, probeY = -4.0).facts["probe"] as Map<String, Any?>
+        val probe = s.trace(probeX = 0.0, probeY = 2.0).facts["probe"] as Map<*, *>
+        val top = (probe["covering"] as List<*>).first() as Map<*, *>
+        assertEquals("sun", top["id"])
+        assertEquals(4, top["line"], "the line that made it")
+        val empty = s.trace(probeX = -7.5, probeY = -4.0).facts["probe"] as Map<*, *>
         assertTrue((empty["meaning"] as String).startsWith("nothing visible"))
     }
 

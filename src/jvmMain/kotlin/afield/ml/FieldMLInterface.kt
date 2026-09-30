@@ -255,9 +255,9 @@ class FieldMLExecution(private val owner: Box) : BoxExecution {
                     } finally {
                         recordFieldMLLineNotes(inside, execute, result.typed!!, bound)
                     }
-                    val typeText = afield.ml.type.TypePrinter().print(result.typed!!.type)
+                    val typeText = afield.ml.type.TypePrinter().print(result.typed.type)
                     val valueText = renderFieldMLValue(value)
-                    recordFieldMLLineNotes(inside, execute, result.typed!!, bound, valueText to typeText)
+                    recordFieldMLLineNotes(inside, execute, result.typed, bound, valueText to typeText)
                     if (!output.printed) {
                         dispatchExecutionOutput(
                             inside,

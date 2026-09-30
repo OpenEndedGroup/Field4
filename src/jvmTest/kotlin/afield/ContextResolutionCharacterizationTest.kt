@@ -448,8 +448,8 @@ class ContextResolutionCharacterizationTest {
         assertEquals("val", hover.keyword)
         assertEquals("(kotlin.Int) -> kotlin.Int", hover.declaredType)
         assertEquals(parent, hover.resolution!!.supplier, "the variable-first walk InheritanceFromContext does")
-        assertEquals(listOf(child, parent), hover.resolution!!.path)
-        assertEquals(listOf(grand), hover.resolution!!.shadowed.map { it.supplier })
+        assertEquals(listOf(child, parent), hover.resolution.path)
+        assertEquals(listOf(grand), hover.resolution.shadowed.map { it.supplier })
 
         val asProp = resolveInheritedDeclarationForHover(child, "_x", "var Box._x by Inheritance<Int>() /**/")!!
         assertEquals(grand, asProp.resolution!!.supplier, "Inheritance reads properties only")

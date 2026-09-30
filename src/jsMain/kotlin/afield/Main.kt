@@ -6847,8 +6847,8 @@ suspend fun main() {
         // Client deltas are screen pixels; frames are world units.
         val tdx = ((event.clientX - originatingMouseDown.clientX) as Number).toDouble() / mainZoom
         val tdy = ((event.clientY - originatingMouseDown.clientY) as Number).toDouble() / mainZoom
-        val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx.toDouble()
-        val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy.toDouble()
+        val odx = (target.originalFramePosition as List<Number>)[0].toDouble() + tdx
+        val ody = (target.originalFramePosition as List<Number>)[1].toDouble() + tdy
 
         var t = window.getComputedStyle(event.target).borderWidth.split("px")[0].toDouble() * 0.0
 

@@ -140,7 +140,7 @@ class RectSLStudyViewer(
                     // The card's columns are the checked scene's; while the editor holds an edit, only the line is sure.
                     val exact = knob != null && (owner.getPropertyRaw(RectSLPrograms.PROPERTY, null) as? String) == revision.source
                     afield.stdlib.BoxStudies.reveal(owner, RectSLPrograms.PROPERTY, line,
-                        if (exact) knob!!.column else -1, if (exact) knob!!.column + knob.text.length else -1)
+                        if (exact) knob.column else -1, if (exact) knob.column + knob.text.length else -1)
                     return knob?.let { "k${it.knob} is line ${it.line} of the scene" } ?: "line $line of the scene"
                 }
                 "keep" -> {
