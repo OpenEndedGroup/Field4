@@ -751,6 +751,12 @@
   border-bottom: none;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
+/* With no word's note above it, the rule and its gap separate the note from nothing. */
+.hoverlay-left .afield-line-note:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
 .hoverlay-left .afield-line-note img {
   max-height: 96px;
 }
