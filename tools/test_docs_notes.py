@@ -721,6 +721,41 @@ class UsageLimitTest(unittest.TestCase):
             repo.close()
 
 
+class DetachTest(unittest.TestCase):
+    """A drain started by Field must outlive Field: its own session, and no dependence on stdout."""
+
+    def test_a_drain_without_a_terminal_leaves_the_launchers_group_and_survives_a_closed_pipe(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", FAKE_AGENT)
+            repo.write("sleepy.py", SLEEPY_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "reword", "anchor": {"exact": "then continue to the next step"}}]}))
+            worktree = Path(repo._dir.name + "-wt")
+            base = [sys.executable, str(Path(dn.__file__)), "--store", str(store), "--repo", str(repo.root)]
+            subprocess.run(base + ["pass", "create", "--path", str(worktree)], check=True, capture_output=True)
+            agent = f"{sys.executable} {worktree / 'sleepy.py'} {{prompt_file}} 3"
+            process = subprocess.Popen(base + ["pass", "revise", "--jobs", "1", "--agent-command", agent],
+                                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            deadline = time.time() + 20
+            while time.time() < deadline and not dn.latest_progress(worktree):
+                time.sleep(0.1)
+            self.assertNotEqual(os.getpgid(process.pid), os.getpgid(0), "the drain is in its own process group")
+            process.stdout.close()  # Field quits: its end of the pipe is gone
+            self.assertEqual(process.wait(timeout=60), 0)
+            progress = dn.latest_progress(worktree)
+            self.assertEqual(progress["state"], "finished")
+            run_dir = next((worktree / ".field-backdoor/docs-notes/runs").iterdir())
+            self.assertIn("done public/docs/guide.md", (run_dir / "harness.log").read_text())
+        finally:
+            subprocess.run(["rm", "-rf", str(Path(repo._dir.name + "-wt"))], check=False)
+            repo.close()
+
+
 class KotlinSchemaTest(unittest.TestCase):
     """Every key this tool writes must exist on the Kotlin side, or the server's next write drops it."""
 

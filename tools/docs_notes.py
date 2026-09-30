@@ -1765,7 +1765,23 @@ def commit_partition(git: Git, result: RunResult, run_id: str) -> str | None:
 
 
 def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl | None = None) -> int:
-    log = lambda message: print(message, flush=True)  # noqa: E731 — a watcher reads this live
+    # Every line goes to stdout (a watcher reads it live) and, once the run has a directory, to
+    # `harness.log` in it. Stdout may be a pipe to a Field that has since quit; losing it must not
+    # end the run, so a failed write is dropped and the file carries on.
+    harness_log: list[Any] = []
+
+    def log(message: str) -> None:
+        try:
+            print(message, flush=True)
+        except (OSError, ValueError):
+            # The reader went away. Anything later (including Python's own flush at exit, which
+            # would otherwise turn a finished run into exit status 120) writes to nowhere instead.
+            with contextlib.suppress(OSError):
+                sys.stdout = open(os.devnull, "w")
+        for handle in harness_log:
+            with contextlib.suppress(OSError, ValueError):
+                handle.write(message + "\n")
+                handle.flush()
     if not args.no_sync:
         log("sync: associating notes with source …")
         sync_store(store, git, log=(lambda m: log("  " + m)) if args.verbose else (lambda _m: None))
@@ -1809,6 +1825,7 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
     busy = sorted(f for f in owned_all if f in dirty_before)
     if busy and not args.allow_dirty:
         raise SystemExit("These files already have uncommitted changes; commit them or pass --allow-dirty:\n  " + "\n  ".join(busy))
+    harness_log.append(open(run_dir / "harness.log", "a", encoding="utf-8"))
     log(f"run {run_id}: logs in {run_dir.relative_to(git.root)}")
 
     state_dir = notes_state_dir(git.root)
@@ -2265,6 +2282,7 @@ def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
     before = (state_dir / "latest-run").read_text().strip() if (state_dir / "latest-run").is_file() else ""
     # Uncommitted edits in the pass's own worktree are the pass's work so far, not someone else's.
     args.allow_dirty = True
+    detach_from_launcher()
     try:
         return revise(args, store, wt)
     finally:
@@ -2273,6 +2291,25 @@ def pass_revise(args: argparse.Namespace, git: Git, store: Store) -> int:
             current = load_pass(git.root) or state
             current.setdefault("runs", []).append(after)
             save_pass(git.root, current)
+
+
+def detach_from_launcher() -> None:
+    """Leave the launcher's process group when there is no terminal to answer to.
+
+    Started from /docs-pass.html, a drain is Field's child and shares its process group, so the
+    Ctrl-C that quits Field in its terminal reached the drain too: on 2026-09-30 one died that way
+    while waiting out a usage limit, and never resumed. In its own session it outlives Field;
+    /docs-pass.html picks it up again from progress.json, and Stop reaches it by pid. From a
+    terminal (stdin is a tty) it stays put, so Ctrl-C still means *stop now*.
+    """
+    if sys.stdin is not None and sys.stdin.isatty():
+        return
+    with contextlib.suppress(OSError, PermissionError):
+        os.setsid()
+    with contextlib.suppress(OSError, ValueError, AttributeError):
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    with contextlib.suppress(OSError, ValueError, AttributeError):
+        signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 
 
 def pass_stop(root: Path, now: bool) -> None:
