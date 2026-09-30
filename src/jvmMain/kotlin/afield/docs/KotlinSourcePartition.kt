@@ -813,10 +813,23 @@ object KotlinSourcePartition {
                     at++
                 }
                 if (depth <= 0) {
-                    // A property's `get() { … }` closes a brace body too, and returning on it cut
-                    // `set(value) { … }` below it loose — three lines of `Structure.kt`'s `dirty`. The
-                    // first accessor's braces stay the body; a following accessor only extends the end.
-                    if (bodyOpen >= 0 && bodyClose >= 0 && !accessorFollows(line, hi)) {
+                    if (bodyOpen >= 0 && bodyClose >= 0) {
+                        // A property with no initializer and a block getter has its "body" closed by
+                        // the getter's `}`, and returning there cut off a block setter written under it:
+                        //
+                        //     var dirty: Boolean
+                        //         get() { … }
+                        //         set(value) { … }
+                        //
+                        // `set(value) {` and its closing `}` fell out as FILLER, and the setter's own
+                        // `val r = …` was read as a sibling declaration (`four/buffers/Structure.kt`,
+                        // 2026-09-30). Only an accessor may reopen the span, and only on a property;
+                        // the later `}` moves the recorded body close to the last accessor's.
+                        if (head.decl.kind in PROPERTY_KINDS && nextIsAccessor(line, hi)) {
+                            bodyClose = -1
+                            line++
+                            continue
+                        }
                         return Extent(line, bodyOpen, bodyClose)
                     }
                     if (!needsBranch && !continues(line, hi, inEnum)) return Extent(line, bodyOpen, bodyClose)
@@ -888,20 +901,19 @@ object KotlinSourcePartition {
         }
 
         /**
-         * Whether the next code line after [line] — past an annotation/modifier run such as
-         * `@Synchronized` — is a property accessor, `get`/`set` with or without a use-site target.
+         * Whether the next code line after [line] is a property accessor (`get`/`set`, behind any
+         * modifiers or annotation-only lines), as opposed to anything else that could follow a closed
+         * brace.
          */
-        fun accessorFollows(line: Int, hi: Int): Boolean {
+        fun nextIsAccessor(line: Int, hi: Int): Boolean {
             var index = nextCodeLine(line + 1, hi) ?: return false
             var budget = MAX_PREFIX_RUN
             while (isPrefixOnlyLine(index)) {
                 if (budget-- <= 0) return false
                 index = nextCodeLine(index + 1, hi) ?: return false
             }
-            if (recognize(masked.code[index]) != null) return false
-            val head = masked.code[index].trimStart()
-            return ACCESSOR.containsMatchIn(stripModifiers(head)) ||
-                ACCESSOR.containsMatchIn(stripModifiers(stripAnnotations(head)))
+            val head = stripModifiers(stripAnnotations(stripModifiers(masked.code[index].trimStart())))
+            return ACCESSOR_HEAD.containsMatchIn(head)
         }
 
         /** The next line in `[from, hi)` carrying any code at all. */
@@ -1127,6 +1139,12 @@ object KotlinSourcePartition {
 
     private val IF_CONDITION = Regex("""(?<![\w`])if\s*\(""")
 
+    /** The declaration kinds that can own accessors. */
+    private val PROPERTY_KINDS = setOf("val", "var")
+
+    /** A line that begins a property accessor: `get()`, `set(value)`, a bare `private set`, `get() =`. */
+    private val ACCESSOR_HEAD = Regex("""^(?:get|set)\s*(?:\(|=|$)""")
+
     /**
      * A line whose code starts like this continues the line above. `}`, `)` and `]` are absent: bracket
      * depth already accounts for those, and listing them here let a declaration swallow the closing
@@ -1134,7 +1152,4 @@ object KotlinSourcePartition {
      */
     private val CONTINUES_BEFORE =
         Regex("""^(?:\?\.|\?:|::|&&|\|\||[.=,{]|[+*/%]|->|:|by\b|where\b|else\b|catch\b|finally\b|get\b|set\b|@get:|@set:)""")
-
-    /** A property accessor's first token: `get`/`set` as a word, or its `@get:`/`@set:` use-site target. */
-    private val ACCESSOR = Regex("""^(?:get\b|set\b|@get:|@set:)""")
 }

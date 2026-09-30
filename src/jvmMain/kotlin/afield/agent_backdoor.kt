@@ -1389,7 +1389,7 @@ fun installAgentBackdoorHandlers() {
         val payload = when {
             box == null -> failure("no box $uid in the attached document")
             field("name") == null && field("type") == null -> failure("why needs a name or a type")
-            else -> runCatching { ContextResolution.explain(box, field("name"), field("type")) }
+            else -> runCatching { ContextResolution.explain(box, field("name"), field("type")).json }
                 .getOrElse { failure(it.message ?: it.toString()) }
         }
         reply(Message("agent-why").payload(payload))

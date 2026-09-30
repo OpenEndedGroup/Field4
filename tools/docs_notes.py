@@ -14,6 +14,10 @@ half, for agents and for the human driving them:
   resolve / question / memory / reply / reopen
             record an outcome on a note (agents: inside a run these go to a journal the
             harness applies; humans: straight to the store)
+  handoff   queue a larger task — a code change, or a cross-cutting docs change such as
+            merging two pages — as a document in dev_docs/handoffs/, optionally blocking
+            the page until it is closed; `handoffs` lists them for a separate, interactive
+            pass, `handoff-close` finishes one
   revise    the harness: sync, partition the queue per page, run one agent per page in
             parallel, apply what they recorded, optionally commit one commit per page
 
@@ -82,9 +86,13 @@ HISTORY_LIMIT = 12
 # docsAnnotations.kt — see the module docstring and KotlinSchemaTest.
 WRITTEN_KEYS = frozenset({"id", "pageUrl", "note", "tags", "anchor", "kind", "thread", "source",
                           "resolvedAtEpochMs", "resolution", "updatedAtEpochMs", "createdAtEpochMs",
-                          "recordedInCheckout", "recordedAtCommit"})
+                          "recordedInCheckout", "recordedAtCommit", "handoff"})
 
-ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run")
+ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run", "handoff", "blocked", "unblocked")
+HANDOFF_DIR = "dev_docs/handoffs"
+HANDOFF_SCOPES = ("project", "crosscutting")
+PAGE_URL_ENV = "DOCS_NOTES_PAGE_URL"
+RUN_DIR_ENV = "DOCS_NOTES_RUN_DIR"
 
 
 def now_ms() -> int:
@@ -208,11 +216,26 @@ def awaiting_human(note: dict[str, Any]) -> bool:
     return pending
 
 
+def blocked_by(note: dict[str, Any]) -> str | None:
+    """The handoff this note is waiting on, if a blocking one was filed and not yet closed."""
+    handoff = None
+    for entry in note.get("thread", []):
+        if entry.get("kind") == "blocked":
+            handoff = entry.get("handoff") or "?"
+        elif entry.get("kind") in ("unblocked", "reopen"):
+            handoff = None
+    return handoff
+
+
 def note_state(note: dict[str, Any]) -> str:
     if note.get("kind") == "memory":
         return "memory"
+    if note.get("kind") == "handoff":
+        return "handoff-" + ((note.get("handoff") or {}).get("state") or "open")
     if is_resolved(note):
         return "resolved"
+    if blocked_by(note):
+        return "blocked"
     if awaiting_human(note):
         return "question"
     return "open"
@@ -1157,7 +1180,15 @@ def render_brief(partition: Partition, all_notes: list[dict[str, Any]], git: Git
     memories = page_memories(all_notes, partition.pages, partition.files)
     out.append("## Memories left on these pages\n")
     out.append("\n".join(memories) if memories else "(none yet)")
-    recent = [n for n in all_notes if is_resolved(n) and n.get("kind") != "memory"
+    handoffs = [n for n in all_notes if n.get("kind") == "handoff" and _handoff_touches(n, partition.pages)]
+    if handoffs:
+        out.append("\n## Handoffs already filed from these pages (do not file them again)\n")
+        for item in handoffs:
+            info = item.get("handoff") or {}
+            out.append(f"- [{info.get('state', 'open')}{', blocking' if info.get('blocking') else ''}] "
+                       f"{info.get('scope', 'project')}: {item.get('note', '').strip()} ({info.get('path', '')})"
+                       + (f"\n    → {item.get('resolution', '').strip()[:240]}" if item.get("resolution") else ""))
+    recent = [n for n in all_notes if is_resolved(n) and n.get("kind") not in ("memory", "handoff")
               and ((n.get("source") or {}).get("page") in partition.pages
                    or (n.get("source") or {}).get("path") in partition.files)]
     recent.sort(key=lambda n: n.get("resolvedAtEpochMs") or 0)
@@ -1188,6 +1219,14 @@ def record(store: Store, op: dict[str, Any]) -> dict[str, Any]:
             raise SystemExit(f"note {op['id']} is not in this partition; record outcomes only for the notes you were given")
         if op.get("id") and allowed:
             op["id"] = next(a for a in allowed if a == op["id"] or a.startswith(op["id"]))
+        if allowed and op.get("notes"):
+            expanded = []
+            for wanted in op["notes"]:
+                match = [a for a in allowed if a == wanted or a.startswith(wanted)]
+                if len(match) != 1:
+                    raise SystemExit(f"note {wanted} is not in this partition")
+                expanded.append(match[0])
+            op["notes"] = expanded
         with open(journal, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(op, ensure_ascii=False) + "\n")
         return {"journaled": journal, **op}
@@ -1208,6 +1247,10 @@ def apply_op(notes: list[dict[str, Any]], op: dict[str, Any]) -> dict[str, Any]:
         add_entry(note, "memory", text, author, **extra)
         notes.append(note)
         return note
+    if action == "handoff":
+        return _apply_handoff(notes, op, author, extra)
+    if action == "handoff-close":
+        return _close_handoff(notes, op, author, text)
     note = find_note(notes, op["id"])
     if action == "resolve":
         note["resolvedAtEpochMs"] = op.get("atEpochMs", now_ms())
@@ -1224,6 +1267,114 @@ def apply_op(notes: list[dict[str, Any]], op: dict[str, Any]) -> dict[str, Any]:
     else:
         raise ValueError(f"unknown op {action!r}")
     return note
+
+
+def _page_key(note: dict[str, Any]) -> str:
+    return (note.get("source") or {}).get("page") or note.get("pageUrl", "")
+
+
+def _handoff_touches(handoff: dict[str, Any], pages: Iterable[str]) -> bool:
+    info = handoff.get("handoff") or {}
+    wanted = set(pages)
+    return bool(wanted & ({info.get("page", "")} | set(info.get("pages", [])) | {handoff.get("pageUrl", "")}))
+
+
+def _apply_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str, extra: dict[str, Any]) -> dict[str, Any]:
+    """File a handoff: its own `kind: handoff` note, and a pointer and a `blocked` entry on each
+    note it came from — on every open note of its page, when blocking."""
+    created = now_ms()
+    page = op.get("page") or ""
+    handoff = normalize_note({
+        "id": op.get("handoffId") or str(uuid.uuid4()), "pageUrl": op["pageUrl"], "note": op["title"], "kind": "handoff",
+        "createdAtEpochMs": created, "updatedAtEpochMs": created, "recordedInCheckout": str(REPO_ROOT),
+        "handoff": {"path": op["path"], "scope": op.get("scope", "project"), "blocking": bool(op.get("blocking")),
+                    "state": "open", "page": page, "pages": op.get("pages", []), "fromNotes": op.get("notes", []),
+                    **({"runId": op["runId"]} if op.get("runId") else {})},
+    })
+    add_entry(handoff, "handoff", f"filed: {op['path']}", author, handoff=handoff["id"], **extra)
+    notes.append(handoff)
+    for note_id in op.get("notes", []):
+        add_entry(find_note(notes, note_id), "handoff", f"{op['title']} ({op['path']})", author, handoff=handoff["id"], **extra)
+    # The notes a handoff came from wait on it either way, and return to the queue when it closes
+    # so the page can follow whatever was done. A blocking handoff holds the rest of its page too.
+    for note in notes:
+        if note.get("kind") != "note" or note_state(note) not in ("open", "question"):
+            continue
+        on_page = bool(op.get("blocking")) and ((page and _page_key(note) == page) or note.get("pageUrl") == op["pageUrl"])
+        if note["id"] in op.get("notes", []) or on_page:
+            add_entry(note, "blocked", f"waiting on handoff: {op['title']}", author, handoff=handoff["id"], **extra)
+    return handoff
+
+
+def _close_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str, text: str) -> dict[str, Any]:
+    handoff = find_note(notes, op["id"])
+    if handoff.get("kind") != "handoff":
+        raise SystemExit(f"{handoff['id']} is a {handoff.get('kind')}, not a handoff")
+    handoff["handoff"] = {**(handoff.get("handoff") or {}), "state": op.get("state", "done")}
+    if op.get("state", "done") == "done":
+        handoff["resolvedAtEpochMs"] = now_ms()
+        handoff["resolution"] = text
+    add_entry(handoff, "resolution" if op.get("state", "done") == "done" else "comment", text or op.get("state", ""), author)
+    if op.get("state", "done") in ("done", "dropped"):
+        for note in notes:
+            if blocked_by(note) == handoff["id"]:
+                add_entry(note, "unblocked", f"handoff closed: {text}".strip(), author, handoff=handoff["id"])
+    return handoff
+
+
+def release_stale_blocks(notes: list[dict[str, Any]]) -> int:
+    """Unblock notes whose handoff was deleted, resolved from the panel, or closed by hand.
+
+    `handoff-close` releases its notes itself; this catches every other way a handoff can stop
+    being open, so no note waits on something that no longer exists.
+    """
+    open_ids = {n["id"] for n in notes if n.get("kind") == "handoff" and not is_resolved(n)
+                and (n.get("handoff") or {}).get("state", "open") in ("open", "taken")}
+    released = 0
+    for note in notes:
+        handoff = blocked_by(note)
+        if handoff and handoff not in open_ids:
+            add_entry(note, "unblocked", "the handoff it waited on is no longer open", "harness", handoff=handoff)
+            released += 1
+    return released
+
+
+def handoff_slug(title: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60] or "handoff"
+
+
+def write_handoff_document(root: Path, *, handoff_id: str, title: str, body: str, scope: str, blocking: bool,
+                           page_url: str, pages: list[str], notes: list[dict[str, Any]], author: str) -> str:
+    """The document the interactive pass starts from, in the checkout so it can be read, edited and committed."""
+    directory = root / HANDOFF_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    stem = f"{time.strftime('%Y-%m-%d')}-{handoff_slug(title)}"
+    path = directory / f"{stem}.md"
+    counter = 2
+    while path.exists():
+        path = directory / f"{stem}-{counter}.md"
+        counter += 1
+    rel = path.relative_to(root).as_posix()
+    lines = [f"# {title}", "",
+             f"- **Handoff:** `{handoff_id}` ({scope}{', blocking: notes on the page wait for this' if blocking else ''})",
+             f"- **Filed from:** {page_url}" + (f"; also affects {', '.join(pages)}" if pages else ""),
+             f"- **Filed by:** {author}, {time.strftime('%Y-%m-%d %H:%M')}",
+             f"- **Close with:** `python tools/docs_notes.py handoff-close {handoff_id[:8]} \"what happened\"`"]
+    if notes:
+        lines += ["", "## The notes that led here", ""]
+        for note in notes:
+            source = note.get("source") or {}
+            where = f"{source.get('path')}:{source.get('startLine')}" if source.get("startLine") else (source.get("page") or note.get("pageUrl"))
+            lines.append(f"- `{note['id'][:8]}` ({where}): {note.get('note', '').strip()}")
+            if (note.get("anchor") or {}).get("exact"):
+                lines.append(f"  > {note['anchor']['exact'].strip()}")
+    # The header above carries the title; an agent's own `# Title` would make a second one.
+    text = body.strip()
+    if text.startswith("# "):
+        text = text.split("\n", 1)[1].strip() if "\n" in text else ""
+    lines += ["", text, ""]
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return rel
 
 
 def read_journal(path: Path) -> list[dict[str, Any]]:
@@ -1269,6 +1420,28 @@ Record an outcome for EVERY note, with this command (it writes to your run journ
   {cli} question <note-id> "the specific thing you need the human to decide"
   {cli} memory <note-id> "something the next agent on this page should know"
   {cli} memory --page {page_url} "a page-wide fact worth remembering" [--line N]
+
+Some notes ask for more than an edit to your files. File a HANDOFF for those instead of doing
+them — a later, interactive pass with a human works through handoffs one at a time:
+- scope "project": a significant code change, a new feature or tool, a bug in Field itself, a
+  capture that needs the runtime fixed — anything that is real engineering rather than prose;
+- scope "crosscutting": anything that reaches past your files — merge, split, move or rename
+  pages, reorganise the navigation, a terminology or structure change across several pages,
+  a concern you see recurring on other pages.
+Write the handoff document with your Write tool under {draft_dir}/ (no title line; the
+command adds one). Say what was asked and why it is bigger than a docs edit; give the evidence,
+with file:line references; propose an approach and its alternatives; list the questions a human
+has to answer; and say what the page needs once it is done. Then file it:
+
+  {cli} handoff "short imperative title" --scope project|crosscutting --body-file {draft_dir}/<name>.md \\
+      --note <note-id> [--note <note-id> ...] [--page <other affected page> ...] [--blocking]
+
+Use --blocking when the rest of this page should not be revised until the handoff is done
+(for example: the page is about to be merged away, or its subject is about to change). After
+filing a blocking handoff, STOP: record nothing more and end your turn; the harness marks the
+page's remaining notes as waiting. A non-blocking handoff is filed and you carry on with the
+other notes. A note you handed off needs no other outcome: it waits on the handoff, and comes
+back to this page's queue when the handoff is closed.
 
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
@@ -1327,14 +1500,17 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
                   git: Git, timeout: int, cli: str) -> RunResult:
     brief = render_brief(partition, all_notes, git)
     owned = "\n".join(f"  - {f}" for f in partition.files) or "  - (none located: find the source for the pages below; edit only that)"
-    prompt = AGENT_PROMPT.format(root=git.root, owned=owned, cli=cli, brief=brief,
+    draft_dir = run_dir / f"{partition.slug}.handoffs"
+    prompt = AGENT_PROMPT.format(root=git.root, owned=owned, cli=cli, brief=brief, draft_dir=draft_dir,
                                  page_url=partition.notes[0].get("pageUrl", ""))
     journal = run_dir / f"{partition.slug}.journal.jsonl"
     log_path = run_dir / f"{partition.slug}.log"
     (run_dir / f"{partition.slug}.prompt.md").write_text(prompt, encoding="utf-8")
     before = {f: file_digest(git.root / f) for f in partition.files}
     env = {**os.environ, JOURNAL_ENV: str(journal), PARTITION_ENV: ",".join(n["id"] for n in partition.notes),
-           AUTHOR_ENV: f"agent:{agent.name}", STORE_ENV: str(store.path)}
+           AUTHOR_ENV: f"agent:{agent.name}", STORE_ENV: str(store.path),
+           PAGE_URL_ENV: partition.notes[0].get("pageUrl", ""), RUN_DIR_ENV: str(run_dir),
+           "DOCS_NOTES_PAGE": partition.pages[0]}
     started = time.monotonic()
     exit_code = -1
     with open(log_path, "w", encoding="utf-8") as log:
@@ -1354,7 +1530,11 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
     for op in read_journal(journal):
-        if op.get("op") == "page-memory" or op.get("id") in ids:
+        if op.get("op") == "handoff" and set(op.get("notes", [])) <= ids:
+            ops.append(op)
+            if op.get("path") and op["path"] not in changed:
+                changed.append(op["path"])
+        elif op.get("op") == "page-memory" or op.get("id") in ids:
             ops.append(op)
         else:
             rejected.append(f"{op.get('op')} on {op.get('id')} (not in this partition)")
@@ -1363,12 +1543,14 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
     touched = {op.get("id") for op in result.ops if op.get("id")}
+    touched |= {i for op in result.ops if op.get("op") == "handoff" for i in op.get("notes", [])}
+    blocking = any(op.get("op") == "handoff" and op.get("blocking") for op in result.ops)
 
     def change(notes: list[dict[str, Any]]) -> None:
         for op in result.ops:
             apply_op(notes, {**op, "runId": run_id, "changedFiles": result.changed if op.get("op") == "resolve" else None})
         for note in result.partition.notes:
-            if note["id"] not in touched:
+            if note["id"] not in touched and not blocking:
                 apply_op(notes, {"op": "run", "id": note["id"], "author": "harness", "runId": run_id,
                                  "text": f"{agent_name} left no outcome (exit {result.exit_code}); still open",
                                  "changedFiles": result.changed})
@@ -1382,7 +1564,11 @@ def commit_partition(git: Git, result: RunResult, run_id: str) -> str | None:
     resolved = [op["id"] for op in result.ops if op.get("op") == "resolve"]
     title = f"docs: revise {', '.join(result.partition.pages)[:60]} from {len(resolved)} note(s)"
     body = "\n".join(f"- {op['id'][:8]}: {op.get('text', '').strip()}" for op in result.ops if op.get("op") == "resolve")
-    trailers = "\n".join(f"Docs-Note: {i}" for i in resolved) + f"\nDocs-Notes-Run: {run_id}"
+    handoffs = [op for op in result.ops if op.get("op") == "handoff"]
+    body += "".join(f"\n- handoff ({op.get('scope')}{', blocking' if op.get('blocking') else ''}): {op.get('title')} "
+                    f"→ {op.get('path')}" for op in handoffs)
+    trailers = "\n".join([f"Docs-Note: {i}" for i in resolved] + [f"Docs-Handoff: {op['handoffId']}" for op in handoffs]) \
+        + f"\nDocs-Notes-Run: {run_id}"
     git.run("add", "--", *result.changed)
     git.run("commit", "-m", f"{title}\n\n{body}\n\n{trailers}".replace("\n\n\n", "\n\n"))
     return git.head()
@@ -1393,8 +1579,20 @@ def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
     if not args.no_sync:
         log("sync: associating notes with source …")
         sync_store(store, git, log=(lambda m: log("  " + m)) if args.verbose else (lambda _m: None))
+    released = store.mutate(release_stale_blocks)
+    if released:
+        log(f"released {released} note(s) whose handoff is no longer open")
     notes = store.notes()
+    # A page with an open blocking handoff waits, including notes written after it was filed.
+    held = [n for n in notes if n.get("kind") == "handoff" and (n.get("handoff") or {}).get("blocking")
+            and not is_resolved(n) and (n.get("handoff") or {}).get("state", "open") in ("open", "taken")]
+    held_pages = {(h.get("handoff") or {}).get("page") or h.get("pageUrl", "") for h in held} | {h.get("pageUrl", "") for h in held}
     queue = [n for n in notes if in_queue(n, args.tag) and _matches_page(n, args.page)]
+    waiting = [n for n in queue if _page_key(n) in held_pages or n.get("pageUrl") in held_pages]
+    queue = [n for n in queue if n not in waiting]
+    if waiting:
+        log(f"{len(waiting)} note(s) wait on blocking handoffs ({len(held)} open): "
+            + ", ".join(sorted({_page_key(n) for n in waiting})))
     partitions = partition_notes(queue)
     if args.max_pages:
         partitions = partitions[:args.max_pages]
@@ -1413,7 +1611,9 @@ def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:6]
     run_dir = git.root / ".field-backdoor" / "docs-notes" / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
-    cli = f"{shlex.quote(sys.executable)} {shlex.quote(str(Path(__file__).resolve()))}"
+    # --repo explicitly: an agent's own commands must resolve pages and write handoffs in the
+    # checkout being revised, whatever checkout this file happens to live in.
+    cli = f"{shlex.quote(sys.executable)} {shlex.quote(str(Path(__file__).resolve()))} --repo {shlex.quote(str(git.root))}"
     dirty_before = git.status_paths()
     owned_all = {f for p in partitions for f in p.files}
     busy = sorted(f for f in owned_all if f in dirty_before)
@@ -1435,11 +1635,14 @@ def revise(args: argparse.Namespace, store: Store, git: Git) -> int:
                 f"{asked} question(s), {len(result.changed)} file(s) changed, {result.seconds:.0f}s")
             for problem in result.rejected:
                 log(f"    rejected journal entry: {problem}")
+            for op in result.ops:
+                if op.get("op") == "handoff":
+                    log(f"    handoff ({op.get('scope')}{', blocking' if op.get('blocking') else ''}): {op.get('title')} → {op.get('path')}")
 
     git.forget()
     dirty_after = git.status_paths()
     stray = sorted(p for p in dirty_after if p not in dirty_before and p not in owned_all
-                   and not p.startswith(".field-backdoor/"))
+                   and not p.startswith(".field-backdoor/") and not p.startswith(HANDOFF_DIR + "/"))
     if stray:
         log("Changes outside every partition's files (not committed, review by hand):\n  " + "\n  ".join(stray))
 
@@ -1483,6 +1686,44 @@ def _matches_page(note: dict[str, Any], pages: list[str] | None) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────────────────────────────────────
+
+
+def cmd_handoff(args: argparse.Namespace, store: Store, git: Git) -> int:
+    body = (Path(args.body_file).read_text(encoding="utf-8") if args.body_file and args.body_file != "-"
+            else sys.stdin.read())
+    if not body.strip():
+        raise SystemExit("a handoff needs a document body (--body-file, or Markdown on stdin)")
+    in_run = bool(os.environ.get(JOURNAL_ENV))
+    notes = store.notes()
+    allowed = [i for i in os.environ.get(PARTITION_ENV, "").split(",") if i]
+    from_notes = []
+    for wanted in args.note:
+        pool = [n for n in notes if n["id"] in allowed] if in_run and allowed else notes
+        from_notes.append(find_note(pool, wanted))
+    if args.from_page:
+        page_url = page_url_for(args.from_page, git)
+    elif os.environ.get(PAGE_URL_ENV):
+        page_url = os.environ[PAGE_URL_ENV]
+    elif from_notes:
+        page_url = from_notes[0].get("pageUrl", "")
+    else:
+        raise SystemExit("say which page this comes from: --from-page, or --note")
+    page = resolve_page_source(page_url, git).relative
+    source_pages = {_page_key(n) for n in from_notes}
+    if from_notes and page not in source_pages:
+        page = next(iter(source_pages))
+    handoff_id = str(uuid.uuid4())
+    pages = [resolve_page_source(page_url_for(p, git), git).relative or p for p in args.page]
+    path = write_handoff_document(git.root, handoff_id=handoff_id, title=args.title.strip(), body=body,
+                                  scope=args.scope, blocking=args.blocking, page_url=page_url, pages=pages,
+                                  notes=from_notes, author=current_author())
+    result = record(store, {"op": "handoff", "handoffId": handoff_id, "title": args.title.strip(), "path": path,
+                            "scope": args.scope, "blocking": args.blocking, "notes": [n["id"] for n in from_notes],
+                            "pages": pages, "page": page, "pageUrl": page_url})
+    print(f"handoff {handoff_id[:8]} written to {path}" + (" (journaled)" if "journaled" in result else ""))
+    if args.blocking and in_run:
+        print("This handoff blocks the page. Stop now: record nothing further and end your turn.")
+    return 0
 
 
 def page_url_for(spec: str, git: Git) -> str:
@@ -1536,6 +1777,27 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--page", help="page URL, docs page or repo path, for a page-level memory")
     p.add_argument("--line", type=int, help="with --page: anchor the memory at this line of the page's source")
 
+    p = sub.add_parser("handoff", help="queue a larger task as a document in dev_docs/handoffs/")
+    p.add_argument("title", help="short imperative title")
+    p.add_argument("--scope", choices=HANDOFF_SCOPES, default="project",
+                   help="project: code or other engineering; crosscutting: merges, moves, changes across pages")
+    p.add_argument("--body-file", help="the document body (Markdown); '-' or omitted reads stdin")
+    p.add_argument("--note", action="append", default=[], help="a note this handoff comes from (repeatable)")
+    p.add_argument("--page", action="append", default=[], help="another page it affects (repeatable)")
+    p.add_argument("--from-page", help="the page it is filed from (default: the run's page, or the notes' page)")
+    p.add_argument("--blocking", action="store_true", help="the page's other notes wait until it is closed")
+
+    p = sub.add_parser("handoffs", help="the handoff queue, for the interactive pass")
+    p.add_argument("--all", action="store_true", help="include done and dropped handoffs")
+    p.add_argument("--scope", choices=HANDOFF_SCOPES)
+    p.add_argument("--json", action="store_true")
+
+    p = sub.add_parser("handoff-close", help="finish a handoff and release the notes it blocked")
+    p.add_argument("id")
+    p.add_argument("text", nargs="?", default="")
+    p.add_argument("--state", choices=("done", "dropped", "taken"), default="done",
+                   help="taken: someone is working on it (still blocks); dropped: abandoned (releases the notes)")
+
     p = sub.add_parser("revise", help="run one agent per page over the queue, in parallel")
     p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
     p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
@@ -1565,7 +1827,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "queue":
         notes = store.notes()
-        chosen = notes if args.all else [n for n in notes if in_queue(n, args.tag)]
+        chosen = [n for n in notes if n.get("kind") != "handoff"] if args.all else [n for n in notes if in_queue(n, args.tag)]
         chosen = [n for n in chosen if _matches_page(n, args.page)]
         if args.json:
             print(json.dumps([{**n, "state": note_state(n)} for n in chosen], indent=2, ensure_ascii=False))
@@ -1624,6 +1886,34 @@ def main(argv: list[str] | None = None) -> int:
                   "text": args.text}
             result = record(store, op)
         print("memory recorded" + (" (journaled)" if "journaled" in result else ""))
+        return 0
+    if args.command == "handoff":
+        return cmd_handoff(args, store, git)
+    if args.command == "handoffs":
+        items = [n for n in store.notes() if n.get("kind") == "handoff"]
+        if not args.all:
+            items = [n for n in items if (n.get("handoff") or {}).get("state", "open") in ("open", "taken")]
+        if args.scope:
+            items = [n for n in items if (n.get("handoff") or {}).get("scope") == args.scope]
+        items.sort(key=lambda n: (not (n.get("handoff") or {}).get("blocking"), n.get("createdAtEpochMs", 0)))
+        if args.json:
+            print(json.dumps(items, indent=2, ensure_ascii=False))
+            return 0
+        for item in items:
+            info = item.get("handoff") or {}
+            waiting = sum(1 for n in store.notes() if blocked_by(n) == item["id"]) if info.get("blocking") else 0
+            print(f"{item['id'][:8]}  {info.get('state', 'open'):7} {info.get('scope', ''):12} "
+                  f"{'BLOCKING ' + str(waiting) + ' note(s)' if info.get('blocking') else '':22} {item.get('note', '')}")
+            print(f"          {info.get('path', '')}   (from {info.get('page') or item.get('pageUrl')})")
+        if not items:
+            print("No open handoffs.")
+        return 0
+    if args.command == "handoff-close":
+        if args.state == "done" and not args.text.strip():
+            raise SystemExit("handoff-close needs a sentence saying what happened")
+        result = record(store, {"op": "handoff-close", "id": find_note(store.notes(), args.id)["id"],
+                                "text": args.text, "state": args.state})
+        print(f"handoff {result.get('id', '')[:8]}: {args.state}")
         return 0
     if args.command == "revise":
         return revise(args, store, git)

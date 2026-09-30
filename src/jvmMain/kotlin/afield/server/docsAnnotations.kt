@@ -465,7 +465,7 @@ data class DocsAnnotationAnchor(
 @Serializable
 data class DocsAnnotationEntry(
     val id: String = "",
-    /** `comment`, `memory`, `question`, `reply`, `resolution`, `reopen` or `run`. */
+    /** `comment`, `memory`, `question`, `reply`, `resolution`, `reopen`, `run`, `handoff`, `blocked` or `unblocked`. */
     val kind: String = "comment",
     /** `human`, `harness`, or `agent:<name>`. */
     val author: String = "human",
@@ -474,6 +474,8 @@ data class DocsAnnotationEntry(
     val runId: String = "",
     val commit: String = "",
     val changedFiles: List<String> = emptyList(),
+    /** For `handoff`, `blocked` and `unblocked`: the id of the handoff note concerned. */
+    val handoff: String = "",
 )
 
 /**
@@ -494,7 +496,10 @@ data class DocsAnnotation(
     val updatedAtEpochMs: Long = 0,
     val resolvedAtEpochMs: Long? = null,
     val resolution: String = "",
-    /** `note` — a request, in the revision queue — or `memory`, which an agent left and nobody works. */
+    /**
+     * `note` — a request, in the revision queue; `memory`, which an agent left and nobody works;
+     * or `handoff`, a larger task an agent queued as a document for a separate, interactive pass.
+     */
     val kind: String = "note",
     val thread: List<DocsAnnotationEntry> = emptyList(),
     /**
@@ -503,6 +508,12 @@ data class DocsAnnotation(
      * server only preserves it, and drops it when a human moves the note's anchor.
      */
     val source: JsonObject? = null,
+    /**
+     * For a `handoff`: its document (`path`, under `dev_docs/handoffs/`), `scope` (`project` or
+     * `crosscutting`), `blocking`, `state` (`open`, `taken`, `done`, `dropped`), the `page` it was
+     * filed from and the notes it came from. Owned by `tools/docs_notes.py`; preserved here.
+     */
+    val handoff: JsonObject? = null,
     /** `HEAD` of [recordedInCheckout] when the note was first saved; the fallback when [DocsAnnotationAnchor.sourceCommit] is empty. */
     val recordedAtCommit: String = "",
     /**
@@ -528,9 +539,10 @@ data class DocsAnnotation(
 data class DocsAnnotationUpsert(val annotation: DocsAnnotation, val reply: String = "")
 @Serializable data class DocsAnnotationResolve(val resolved: Boolean = true, val resolution: String = "")
 
-/** Whether a note is waiting for work: a request, unresolved, with no agent question pending. Mirrors `in_queue`. */
+/** Whether a note is waiting for work: a request, unresolved, not blocked by a handoff, with no agent question pending. Mirrors `in_queue`. */
 internal fun DocsAnnotation.isQueued(): Boolean {
-    if (kind == "memory" || resolvedAtEpochMs != null) return false
+    if (kind != "note" || resolvedAtEpochMs != null) return false
+    if (thread.lastOrNull { it.kind == "blocked" || it.kind == "unblocked" || it.kind == "reopen" }?.kind == "blocked") return false
     val lastTurn = thread.lastOrNull { it.kind == "question" || it.kind == "reply" || it.kind == "reopen" }
     return lastTurn?.kind != "question"
 }
@@ -632,6 +644,7 @@ private object DocsAnnotationStore {
             kind = existing?.kind ?: "note",
             thread = existing?.thread.orEmpty() + listOfNotNull(replyEntry),
             source = existing?.source?.takeIf { anchor == existing.anchor },
+            handoff = existing?.handoff,
             // An edit does not relocate a note: whoever first recorded it stays recorded.
             recordedInCheckout = existing?.recordedInCheckout?.ifBlank { null } ?: docsImprovementDirectory.display,
             recordedAtCommit = existing?.recordedAtCommit?.ifBlank { null } ?: docsCheckoutHead(),

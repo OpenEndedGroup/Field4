@@ -26,7 +26,7 @@
       .f4a-marker-position { width:7px; height:7px; border-radius:50%; background:var(--f4a-accent); box-shadow:0 0 0 3px rgba(255,241,118,.14); transform:translate(-50%,-50%); }
       #f4-annotations-launcher { position:fixed; z-index:2147483600; right:16px; bottom:16px; color:var(--f4a-fg); background:var(--f4a-bg); border:1px solid var(--f4a-line); padding:8px 11px; font:11px/1 Iosevka,monospace; cursor:pointer; letter-spacing:.04em; }
       #f4-annotations .f4a-state { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--f4a-dim); }
-      #f4-annotations .f4a-state[data-state="question"] { color:var(--f4a-accent); } #f4-annotations .f4a-state[data-state="memory"] { color:var(--f4a-cyan); }
+      #f4-annotations .f4a-state[data-state="question"], #f4-annotations .f4a-state[data-state="handoff"] { color:var(--f4a-accent); } #f4-annotations .f4a-state[data-state="memory"] { color:var(--f4a-cyan); }
       #f4-annotations .f4a-source { color:var(--f4a-cyan); font-size:10px; word-break:break-all; }
       #f4-annotations .f4a-thread { margin:6px 0 0; padding-left:8px; border-left:1px solid var(--f4a-line); }
       #f4-annotations .f4a-entry { font-size:11px; color:#bbb; margin-top:4px; } #f4-annotations .f4a-entry b { color:var(--f4a-dim); font-weight:normal; }
@@ -183,15 +183,25 @@
         noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; await load();
     };
     // Mirrors `note_state` in tools/docs_notes.py: an agent's question with no reply after it
-    // takes the note out of the revision queue until you answer it here.
+    // takes the note out of the revision queue until you answer it here, and a blocking handoff
+    // holds it until that handoff is closed (`docs_notes.py handoff-close`).
     const noteState = item => {
         if (item.kind === "memory") return "memory";
+        if (item.kind === "handoff") return "handoff";
         if (item.resolvedAtEpochMs != null) return "resolved";
-        let pending = false;
-        (item.thread || []).forEach(entry => { if (entry.kind === "question") pending = true; else if (entry.kind === "reply" || entry.kind === "reopen") pending = false; });
-        return pending ? "question" : "open";
+        let pending = false, blocked = false;
+        (item.thread || []).forEach(entry => {
+            if (entry.kind === "question") pending = true; else if (entry.kind === "reply" || entry.kind === "reopen") pending = false;
+            if (entry.kind === "blocked") blocked = true; else if (entry.kind === "unblocked" || entry.kind === "reopen") blocked = false;
+        });
+        return blocked ? "blocked" : pending ? "question" : "open";
     };
-    const stateLabel = { open:"open", question:"agent asks", resolved:"resolved", memory:"memory" };
+    const stateLabel = { open:"open", question:"agent asks", resolved:"resolved", memory:"memory", handoff:"handoff", blocked:"waits on a handoff" };
+    const renderHandoff = item => {
+        const info = item.handoff;
+        if (!info) return "";
+        return `<div class="f4a-source">${esc(info.scope || "project")}${info.blocking ? " · blocking" : ""} · ${esc(info.state || "open")} · ${esc(info.path || "")}</div>`;
+    };
     const renderThread = item => {
         const entries = (item.thread || []).filter(entry => entry.kind !== "run");
         if (!entries.length) return "";
@@ -239,10 +249,14 @@
         launcher.textContent = `notes · ${visible.length}`;
         panel.querySelector('[data-role="list"]').innerHTML = visible.map(item => {
             const itemState = noteState(item);
-            const actions = itemState === "resolved"
+            // A handoff is closed with `docs_notes.py handoff-close`, which also releases the notes
+            // it holds; resolving it here would leave them waiting.
+            const actions = itemState === "handoff"
+                ? `<span class="f4a-meta">close with docs_notes.py handoff-close ${esc(item.id.slice(0,8))}</span>`
+                : itemState === "resolved"
                 ? `<button data-act="reopen">reopen</button><button data-act="delete">delete</button>`
                 : `<button data-act="resolve">resolve</button><button data-act="delete">delete</button>`;
-            return `<article class="f4a-note" data-id="${esc(item.id)}" title="Show this annotation"><div class="f4a-state" data-state="${itemState}">${stateLabel[itemState]}</div><div>${esc(item.note)}</div>${item.anchor.exact ? `<div class="f4a-quote">${esc(item.anchor.exact)}</div>`:""}${renderSource(item)}<div class="f4a-meta">${new Date(item.createdAtEpochMs).toLocaleDateString()} ${item.tags.map(t=>"@"+esc(t)).join(" ")}</div>${renderThread(item)}${itemState === "memory" ? "" : `<textarea class="f4a-reply" data-role="reply" placeholder="${itemState === "question" ? "Answer the agent — Enter sends" : "Reply — Enter sends"}"></textarea>`}<div class="f4a-actions">${actions}</div></article>`;
+            return `<article class="f4a-note" data-id="${esc(item.id)}" title="Show this annotation"><div class="f4a-state" data-state="${itemState}">${stateLabel[itemState]}</div><div>${esc(item.note)}</div>${item.anchor.exact ? `<div class="f4a-quote">${esc(item.anchor.exact)}</div>`:""}${renderSource(item)}${renderHandoff(item)}<div class="f4a-meta">${new Date(item.createdAtEpochMs).toLocaleDateString()} ${item.tags.map(t=>"@"+esc(t)).join(" ")}</div>${renderThread(item)}${itemState === "memory" || itemState === "handoff" ? "" : `<textarea class="f4a-reply" data-role="reply" placeholder="${itemState === "question" ? "Answer the agent — Enter sends" : "Reply — Enter sends"}"></textarea>`}<div class="f4a-actions">${actions}</div></article>`;
         }).join("") || `<div class="f4a-meta">No notes on this page.</div>`;
         renderMarkers();
     };

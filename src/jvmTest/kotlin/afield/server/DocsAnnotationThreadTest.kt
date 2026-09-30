@@ -88,9 +88,14 @@ class DocsAnnotationThreadTest {
     }
 
     @Test
-    fun memoriesAreNeverQueued() {
+    fun memoriesHandoffsAndBlockedNotesAreNeverQueued() {
         assertFalse(DocsAnnotation(pageUrl = PAGE, note = "m", kind = "memory").isQueued())
+        assertFalse(DocsAnnotation(pageUrl = PAGE, note = "h", kind = "handoff").isQueued())
         assertTrue(DocsAnnotation(pageUrl = PAGE, note = "n").isQueued())
+        val blocked = DocsAnnotation(pageUrl = PAGE, note = "n", thread = listOf(DocsAnnotationEntry(kind = "blocked", handoff = "h1")))
+        assertFalse(blocked.isQueued(), "a note waiting on a handoff stays out of the queue")
+        val released = blocked.copy(thread = blocked.thread + DocsAnnotationEntry(kind = "unblocked", handoff = "h1"))
+        assertTrue(released.isQueued(), "closing the handoff puts it back")
     }
 
     private fun created(body: String): String =

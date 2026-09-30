@@ -65,6 +65,7 @@ Not here yet: a guide to the low-level Vulkan renderer internals, especially dev
 - [AI Overview](aiFeatures.md) is the one to read first: every AI feature works from where you already are, so the page is organised by what you are asking for — a conversation about a box, an edit at one spot, AI candidates mixed into `ctrl-space`, or a function body filled in from its signature.
 - [Agent Transcript Gallery](agent_transcripts.md) collects agent-built documents as reproducible starting points, each materialized from a recorded transcript and openable in your own workspace.
 - [AI Tool-Use History](ai_tool_use_history.md) is the structured trace of what a send actually did, for when a tool call goes wrong, and [AI Documentation Polish](ai_doc_polish.md) covers the generated documentation that fills in for a completion entry whose source carries no useful KDoc.
+- [Notes on the Documentation](docs_notes.md) turns notes you leave on these pages into a queue that agents work through, one agent per page, each note tracked to its lines in the Markdown.
 
 Two pages you might expect here are on the Tour instead, because both are about reaching a running document rather than about Field's own AI: [Automating Field](automating_field.md) — macros, the operation-transcript format, and the MCP bridge that let a script or an agent drive Field the way a person does — and [Field from your phone](mobile_controllers.md), which turns `/controllers` into a phone-sized remote for live controls, outputs, AI4 chat, Open Anything selection and Monaco editing.
 

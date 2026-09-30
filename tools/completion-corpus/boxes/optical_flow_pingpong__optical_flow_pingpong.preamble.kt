@@ -11,23 +11,32 @@ import afield.four.buffers.*
 import afield.four.targets.PingPongRenderToTexture
 var Box.flowSession by Inheritance<AutoCloseable>() /**/
 val Once.flowSession by Onceing<AutoCloseable>() /**/
+val Why.flowSession by Whying() /**/
 var Box.history by Inheritance<PingPongRenderToTexture>() /**/
 val Once.history by Onceing<PingPongRenderToTexture>() /**/
+val Why.history by Whying() /**/
 /*supermap*/ class MappedStructure {;     lateinit var tri : IntBuffer; ; }; fun Mesh.set(numVert : Int, numTriangle : Int = 0, builder : MappedStructure.() -> Unit = {}) {;     this.resize(numVert, numTriangle);     val mesh = this;     MappedStructure().apply {;          mesh.t?.mapAndWrite_ints { tri = this ; builder() } ;    }; }
 /*graphics-pc-structure:time*/ var Structure.time by Structure.FromStructure<Any>()
 /*graphics-pc-binding:time*/ var Mesh.time by Mesh.BoundFromStructure<Float>()
 /*graphics-pc-binding-group:time*/ var MeshGroup.time by MeshGroup.BoundFromStructure<Float>()
 var Box.previousImage by Inheritance<HasImageView>() /**/
 val Once.previousImage by Onceing<HasImageView>() /**/
+val Why.previousImage by Whying() /**/
 var Box.currentImage by Inheritance<HasImageView>() /**/
 val Once.currentImage by Onceing<HasImageView>() /**/
+val Why.currentImage by Whying() /**/
 var Box.flow by Inheritance<afield.four.vision.OpticalFlowOperation>() /**/
 val Once.flow by Onceing<afield.four.vision.OpticalFlowOperation>() /**/
+val Why.flow by Whying() /**/
 var Box.motion by Inheritance<RenderToTexture>() /**/
 val Once.motion by Onceing<RenderToTexture>() /**/
+val Why.motion by Whying() /**/
 var Box.expectedMotion by Inheritance<Vector2f>() /**/
 val Once.expectedMotion by Onceing<Vector2f>() /**/
+val Why.expectedMotion by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
 val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+val Why.window by Whying() /*from:agent_graphics_context*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/
+val Why.renderer by Whying() /*from:agent_graphics_context*/ /**/

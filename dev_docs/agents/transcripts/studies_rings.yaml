@@ -1,0 +1,88 @@
+name: studies_rings
+description: >
+  A study defined by one box and driven by two others. "rings" makes a SourceFramesStudy of
+  its own `rings` property (three numbers drawn as concentric rings by a CPU painter) and hands it
+  to registerStudyTools, so the document's AI4 chat gets the ten Rings tools. "change it", its
+  child, finds the study with fromContextWithNameOrNull, checks in the first revision and flips
+  warmth with SetNumbers on each run, showing the new revision over its parent and their
+  difference. "try things", also its child, sweeps the ring count and tries two candidates without
+  publishing. Companion to public/docs/studies.md. Pure CPU; no Window, no Renderer.
+operations:
+  - create:
+      box: rings_study
+      name: rings
+      frame: { x: 40.0, y: 40.0, w: 240.0, h: 70.0 }
+      properties:
+        code: |
+          // A study of this box's `rings` property: three numbers, a ring count, the brightness of
+          // the dark bands, and warmth 0..1. Run this box first. It gives the document's AI4 chat ten
+          // tools (InspectRingsStudy ... RestoreRingsRevision); the two boxes below drive the same verbs
+          // from code. See public/docs/studies.md.
+
+          // A property is saved with the document only if its name is in Box.ioPersistentProperties,
+          // and `rings` is not by default: add it, and give it its starting text the first time.
+          Box.ioPersistentProperties.add("rings")
+          if ((thisBox.getPropertyRaw("rings", "") as? String).isNullOrBlank()) thisBox.setPropertyRaw("rings", "7 rings 0.05 ink 0.8 warmth")
+
+          val rings = sourceFramesStudy("rings", studyFrames("rings, drawn on the CPU") { source: String, w: Int, h: Int, t: Double ->
+              val (count, ink, warmth) = StudyKnobs.plainNumbers(source).map { it.value.toFloat() }
+              val px = FloatArray(w * h * 4)
+              for (y in 0 until h) for (x in 0 until w) {
+                  val d = Math.hypot(x + 0.5 - w / 2.0, y + 0.5 - h / 2.0) / w
+                  val v = (0.5 + 0.5 * Math.cos(d * count * 12.0 - t * 2.0)).toFloat()
+                  val i = (y * w + x) * 4
+                  px[i] = v * warmth + ink * (1 - v); px[i + 1] = v * 0.5f + ink * (1 - v); px[i + 2] = v * (1 - warmth) + ink * (1 - v); px[i + 3] = 1f
+              }
+              afield.stacksl.cpu.CpuRaster(w, h, px)
+          })
+
+          registerStudyTools("Rings", rings, about = "The source is three numbers: ring count, ink brightness, warmth 0..1.")
+          println("rings study ready: " + rings.inspect(StudyCall.Inspect()).revision)
+  - create:
+      box: rings_change
+      name: change it
+      frame: { x: 40.0, y: 200.0, w: 240.0, h: 70.0 }
+      properties:
+        code: |
+          // Change the study: check the box's text in as the first revision if there is none yet,
+          // then flip warmth (knob 2) between warm and cool. Each run publishes one revision and shows
+          // it beside its parent with their difference. Run "rings" first.
+          val rings = fromContextWithNameOrNull<SourceFramesStudy>("rings")!!
+
+          var now = rings.inspect(StudyCall.Inspect())
+          if (now.revision == "empty") {
+              rings.edit(StudyCall.Edit("empty", now.facts["liveSourceHash"] as String, rings.revisions.liveSource(), "the starting rings"))
+              now = rings.inspect(StudyCall.Inspect())
+          }
+          val warmth = StudyKnobs.plainNumbers(now.facts["source"] as String)[2].value
+          val changed = rings.setNumbers(StudyCall.SetNumbers(now.revision, now.facts["liveSourceHash"] as String,
+              listOf(StudyCall.Number(2, if (warmth > 0.5) 0.2 else 0.8)), if (warmth > 0.5) "cooler" else "warmer"))
+
+          println(changed.revision + ": " + rings.revisions.liveSource())
+          display("main", "<img src='${changed.toolImages.single().dataUrl}' style='width:340px'/>")
+  - create:
+      box: rings_try
+      name: try things
+      frame: { x: 460.0, y: 200.0, w: 240.0, h: 70.0 }
+      properties:
+        code: |
+          // Speculate without publishing: sweep the ring count, and try two candidates beside the
+          // current revision. Nothing here changes the study; adopt a candidate from AI4 chat
+          // (AdoptRingsVariant) or with rings.adoptVariant(...). Run "rings" first.
+          val rings = fromContextWithNameOrNull<SourceFramesStudy>("rings")!!
+          if (rings.inspect(StudyCall.Inspect()).revision == "empty") println("no revision yet: run \"change it\" first") else {
+              val source = rings.revisions.liveSource()
+              val swept = rings.sweep(StudyCall.Sweep(knob = 0, values = listOf(3.0, 5.0, 7.0, 11.0, 15.0)))
+              val tried = rings.tryVariants(StudyCall.TryVariants(listOf(
+                  StudyCall.Variant("tight", source = StudyKnobs.withPlainNumbers(source, mapOf(0 to 15.0)), note = "15 rings"),
+                  StudyCall.Variant("bright", source = StudyKnobs.withPlainNumbers(source, mapOf(1 to 0.4)), note = "lighter dark bands"))))
+              println("held: " + tried.facts["held"])
+              display("main", "<img src='${swept.toolImages.single().dataUrl}' style='width:100%'/>" +
+                  "<img src='${tried.toolImages.single().dataUrl}' style='width:340px'/>")
+          }
+  - connect: { parent: rings_study, child: rings_change }
+  - connect: { parent: rings_study, child: rings_try }
+  - execute: { box: rings_study, property: code }
+  - execute: { box: rings_change, property: code }
+  - execute: { box: rings_try, property: code }
+  - await: {}

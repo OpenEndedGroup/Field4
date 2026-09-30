@@ -14,5 +14,7 @@ import afield.four.buffers.*
 /*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>()
 var Box.window by Inheritance<Window>() /*from:agent_graphics_context*/ /**/
 val Once.window by Onceing<Window>() /*from:agent_graphics_context*/ /**/
+val Why.window by Whying() /*from:agent_graphics_context*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:agent_graphics_context*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:agent_graphics_context*/ /**/
+val Why.renderer by Whying() /*from:agent_graphics_context*/ /**/

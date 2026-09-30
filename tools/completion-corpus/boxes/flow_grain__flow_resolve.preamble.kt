@@ -11,5 +11,7 @@ import afield.four.buffers.*
 /*graphics-pc-binding-group:look*/ var MeshGroup.look by MeshGroup.BoundFromStructure<afield.stdlib.linalg.Vector4f>() // w: 0 color; 3 previous UV; 4 displacement magnified.
 var Box.window by Inheritance<Window>() /*from:flow_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:flow_renderer*/ /**/
+val Why.window by Whying() /*from:flow_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:flow_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:flow_renderer*/ /**/
+val Why.renderer by Whying() /*from:flow_renderer*/ /**/

@@ -107,6 +107,11 @@ AdoptVariant, Restore — are wired once, in `src/jvmMain/kotlin/afield/stdlib/L
   the shared pieces. `study.document.registrar` (`examples/ai/DocumentStudySmokeTest.kt`) is the
   worked example, driven through all ten verbs.
 
+The public guide is `public/docs/studies.md` (nav: AI & Agents → Studies): a `SourceFramesStudy` of a
+box property defined, changed, swept and speculated on in running fences, and a study that
+implements only `inspect` refusing the rest. `tools/test_studies_page.py` pins its verb table to
+`LiveStudy` and `StudyVerb`.
+
 ## What a result should implement
 
 `SummarisesForToolLog` is close to mandatory in practice. Without it the tool I/O log records

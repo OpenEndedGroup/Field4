@@ -120,7 +120,10 @@ fun BufferParameters.asFieldProbeBuffer(): FieldProbeBuffer =
 /*compute-ssbo:FieldProbeBuffer*/ val ComputeModulePointer.FieldProbeBuffer by ComputeMesh.FromUniform()
 var Box.outputPositions by Inheritance<FrameBufferGroup>() /**/
 val Once.outputPositions by Onceing<FrameBufferGroup>() /**/
+val Why.outputPositions by Whying() /**/
 var Box.window by Inheritance<Window>() /*from:tb_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:tb_renderer*/ /**/
+val Why.window by Whying() /*from:tb_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:tb_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:tb_renderer*/ /**/
+val Why.renderer by Whying() /*from:tb_renderer*/ /**/
