@@ -97,4 +97,50 @@ class BoxOutputChannelGuardTest {
         assertEquals(1, problems.size, problems.toString())
         assertTrue(problems.single().contains("'legend'"), problems.single())
     }
+
+    /** A repo whose transcript corpus holds one Lua box, and no demo boxes. */
+    private fun repoWithLuaTranscriptBox(luaCode: String): File {
+        val repo = repoWithDemo("display(\"only\", one())")
+        val body = luaCode.lines().joinToString("\n") { "          $it" }
+        File(repo, "dev_docs/agents/transcripts/lua_fixture.yaml").writeText(
+            "- create:\n" +
+                "    box: lua_box\n" +
+                "    properties:\n" +
+                "      code_language: Lua\n" +
+                "      code: |\n" +
+                body + "\n"
+        )
+        return repo
+    }
+
+    /**
+     * 2026-09-30: `lua_demo`'s `-- lines(...) draws them in the box's output` comment was read as
+     * a second `lines()` call, because comments were masked only as Kotlin `//`. A Lua box's `--`
+     * comment names a helper without calling it.
+     */
+    @Test
+    fun aLuaCommentThatNamesAHelperIsNotACall() {
+        val repo = repoWithLuaTranscriptBox(
+            """
+            -- showThing(...) puts the value in the box's output.
+            showThing(1)
+            """.trimIndent()
+        )
+        assertEquals(emptyList(), BoxOutputChannelGuard.audit(repo).problems)
+    }
+
+    /** The counterfactual: masking Lua comments must not cost the guard a real Lua collision. */
+    @Test
+    fun twoRealLuaCallsOnOneChannelAreStillReported() {
+        val repo = repoWithLuaTranscriptBox(
+            """
+            showThing(1) -- the first figure
+            local s = "not -- a comment"
+            showThing(2)
+            """.trimIndent()
+        )
+        val problems = BoxOutputChannelGuard.audit(repo).problems
+        assertEquals(1, problems.size, problems.toString())
+        assertTrue(problems.single().contains("lua_fixture.yaml#lua_box") && problems.single().contains("'thing'"), problems.single())
+    }
 }
