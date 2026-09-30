@@ -1,24 +1,18 @@
-#version 460
+#version 450
+layout (location = 0) in vec3 pos;
 
-{{ Particle.all }}
+layout (location = 1) in vec4 col;
+layout (location = 0) out vec4 fcol;
 
-layout(push_constant) uniform Push {
-    ParticleArray particles;
-    uint count;
-} pc;
-
-layout(location = 0) out vec4 fcol;
+// layout(push_constant) uniform matrices {
+//     mat4 projectionMatrix;
+//     mat4 modelMatrix;
+// } push_constants;
 
 void main()
 {
-    uint i = uint(gl_VertexIndex);
-    if (i >= pc.count) {
-        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        fcol = vec4(0.0);
-        return;
-    }
+    // gl_Position = push_constants.projectionMatrix * push_constants.modelMatrix * vec4(pos, 1);
 
-    Particle p = pc.particles.values[i];
-    gl_Position = vec4(p.position, 1.0);
-    fcol = p.color;
+    fcol = col;
+    gl_Position = vec4(pos, 1);
 }
