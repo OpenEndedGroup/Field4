@@ -888,12 +888,22 @@ fun startingPointsDir(): File? {
     return null
 }
 
+/** The hand-authored graphics curriculum shares the Starting points entry path with transcripts. */
+private fun canonicalGraphicsStartingPoint(): File? = startingPointsDir()?.parentFile
+    ?.resolve("canonical_graphics")?.takeIf { File(it, SavingContext.METADATA_EDN).isFile }
+
 /** Welcome cards for the bundled starting points, tagged `kind = "starting-point"`. Empty when none. */
 fun startingPoints(): List<WelcomeEntry> {
     val dir = startingPointsDir() ?: return emptyList()
     val now = System.currentTimeMillis()
     val savingContext = SavingContext()
-    return welcomeDirCandidates(dir.absolutePath, emptyList())
+    val candidates = welcomeDirCandidates(dir.absolutePath, emptyList()).toMutableList()
+    canonicalGraphicsStartingPoint()?.let { graphics ->
+        val metadata = File(graphics, SavingContext.METADATA_EDN)
+        candidates.add(0, WelcomeDirCandidate(graphics.name, graphics, metadata,
+            metadata.lastModified(), metadata.length()))
+    }
+    return candidates.distinctBy { it.filename }
         .mapNotNull { summarizeWelcomeCandidate(it, now, savingContext) }
         .map { it.copy(kind = "starting-point") }
 }
@@ -959,13 +969,14 @@ fun searchStartingPoints(
 ): WorkspaceSearchResponse {
     val dir = startingPointsDir()
         ?: return WorkspaceSearchResponse(rawQuery.trim(), emptyList(), 0, 0, false)
-    val response = searchWorkspace(
+    val response = searchWorkspaceIncludingDocuments(
         base = dir.absolutePath,
         rawQuery = rawQuery,
         maxDocuments = maxDocuments,
         maxMatchesPerDocument = maxMatchesPerDocument,
         maxScanMillis = maxScanMillis,
-        cancellationCheck = cancellationCheck
+        cancellationCheck = cancellationCheck,
+        additionalDocuments = listOfNotNull(canonicalGraphicsStartingPoint())
     )
     return response.copy(documents = response.documents.map { it.copy(kind = "starting-point") })
 }
@@ -1219,6 +1230,19 @@ fun searchWorkspace(
     maxScanMillis: Long = 3_000L,
     cancellationCheck: () -> Unit = {}
 ): WorkspaceSearchResponse {
+    return searchWorkspaceIncludingDocuments(base, rawQuery, maxDocuments, maxMatchesPerDocument,
+        maxScanMillis, cancellationCheck, emptyList())
+}
+
+private fun searchWorkspaceIncludingDocuments(
+    base: String,
+    rawQuery: String,
+    maxDocuments: Int,
+    maxMatchesPerDocument: Int,
+    maxScanMillis: Long,
+    cancellationCheck: () -> Unit,
+    additionalDocuments: List<File>
+): WorkspaceSearchResponse {
     val query = rawQuery.trim()
     if (query.isBlank()) {
         return WorkspaceSearchResponse(
@@ -1262,12 +1286,13 @@ fun searchWorkspace(
         }
     }
 
-    val directories = baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }?.sortedByDescending {
+    val directories = (baseDir.listFiles()?.filter { it.isDirectory && it.name != PROJECTS_DIR }.orEmpty() +
+        additionalDocuments).distinctBy { it.canonicalPath }.sortedByDescending {
         max(
             File(it, SavingContext.METADATA_EDN).lastModified(),
             File(it, SavingContext.METADATA_JSON).lastModified()
         )
-    }.orEmpty()
+    }
 
     for (dir in directories) {
         checkSearchActive()
@@ -1534,18 +1559,19 @@ fun updateDocumentTags(base: String, filename: String, tags: List<String>): Docu
 }
 
 /**
- * Copy a bundled starting point (a materialized agent transcript, see [startingPointsDir]) into the
+ * Copy a bundled starting point (a transcript or the canonical graphics curriculum) into the
  * user's workspace under a fresh, non-colliding name and return it, so the welcome screen can offer
  * "open" on a read-only bundled scene without ever mutating the bundle. Reuses the same recursive
  * copy [duplicateWorkspaceDocument] uses (skipping `backups`/`.git`/`versions.edn`).
  */
 fun openStartingPointIntoWorkspace(base: String, name: String): DuplicateDocumentResponse {
     val cleanName = validateWorkspaceDocumentName(name)
-    // A starting point can live in either bundled root: the materialized agent transcripts or the
-    // document templates. Search both (transcripts first) for a matching, in-bounds document dir.
+    // The graphics curriculum is explicitly registered; other docs assets are not opening roots.
+    // Remaining starting points live in the transcript and template roots.
     val roots = listOfNotNull(startingPointsDir(), templatesStartingPointsDir())
     if (roots.isEmpty()) throw IllegalArgumentException("no starting points are available")
-    val sourceDir = roots.asSequence()
+    val sourceDir = canonicalGraphicsStartingPoint()?.takeIf { it.name == cleanName }
+        ?: roots.asSequence()
         .map { root -> root to File(root, cleanName).canonicalFile }
         .firstOrNull { (root, dir) ->
             dir.toPath().startsWith(root.canonicalFile.toPath()) && dir.isDirectory &&

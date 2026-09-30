@@ -21,7 +21,7 @@ For a small self-contained demo, drag [slug_starter.edn](assets/slug_starter.edn
 into Field, launch **Slug renderer**, then **5e. Slug filled paths**. It embeds the
 code and both shaders, so importing this single file needs no source sidecars.
 
-Alternatively, open a copy of the [canonical graphics document](assets/canonical_graphics/metadata.edn),
+For the full curriculum, open **Welcome → Starting points → canonical_graphics**,
 launch its **window** box, then **5e. Slug filled paths**. The lesson draws a curved
 outline with a square hole and moves the camera around it. The optional executable
 must be available relative to Field's working directory, or change its `File` path.

@@ -1,5 +1,11 @@
 # afield.four Graphics
 
+Open **Welcome → Starting points → canonical_graphics** to get an editable copy
+of this complete graphics curriculum, including its code and shader sidecars.
+Launch the **window** box first, then the lesson you want to explore. The bundled
+original stays unchanged, and opening it again makes another fresh copy.
+
+
 For the experimental raster-primary area lights, Vulkan ray-query shadows and optional RTXDI resampling, see the [Direct lighting](direct_lighting.md).
 
 `afield.four` is Field's direct Vulkan path. A graphics box usually has three parts:
