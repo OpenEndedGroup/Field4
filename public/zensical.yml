@@ -201,6 +201,7 @@ nav:
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
+      - GPU Schemas: gpu_schema.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
       # to one and the setup for the other: afield_four_graphics teaches the stateless compute
       # dispatch, this teaches what changes when the shader's input is its own last output, and

@@ -38,6 +38,7 @@ Boxes here are read-only reference. To *run* one, copy its Kotlin and shader pro
 | 5. vertex_included | `window` | — | `5f82cdbb-6f8a-4124-a8fe-4a80318594e2_vertex_.glsl`<br>`5f82cdbb-6f8a-4124-a8fe-4a80318594e2_fragment_.glsl` |
 | 5b. some templating | `window` | `1103f132-7484-4440-8102-5bd159a29fbf_code_.kt` | `1103f132-7484-4440-8102-5bd159a29fbf_vertex_.glsl`<br>`1103f132-7484-4440-8102-5bd159a29fbf_fragment_.glsl` |
 | 5c. some more templating | `window` | `42056e8d-ec8b-4bf8-b84a-1cd1d8524510_code_.kt` | `42056e8d-ec8b-4bf8-b84a-1cd1d8524510_vertex_.glsl`<br>`42056e8d-ec8b-4bf8-b84a-1cd1d8524510_fragment_.glsl` |
+| 5d. GPU schema | `window` | `b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_code_.kt` | `b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_vertex_.glsl`<br>`b42d7b13-680e-4f9b-b789-8e6e7d8c4a21_fragment_.glsl` |
 | 6. RTT - sending | `window` | `8323570b-87db-4623-95a2-bd61c7d0f6f7_code_.kt` | `8323570b-87db-4623-95a2-bd61c7d0f6f7_vertex_.glsl`<br>`8323570b-87db-4623-95a2-bd61c7d0f6f7_fragment_.glsl` |
 | 6. RTT- draw rtt | `window` → `6. RTT - sending` | `1ae1daed-12d3-4629-8f81-66194c5b924c_code_.kt` | `1ae1daed-12d3-4629-8f81-66194c5b924c_vertex_.glsl`<br>`1ae1daed-12d3-4629-8f81-66194c5b924c_fragment_.glsl` |
 | 6. debugging - Texture probe example | `window` | `e1d6dd17-1ebd-40e7-a0ef-309779c562ff_code_.kt` | `e1d6dd17-1ebd-40e7-a0ef-309779c562ff_vertex_.glsl`<br>`e1d6dd17-1ebd-40e7-a0ef-309779c562ff_fragment_.glsl` |
@@ -59,9 +60,10 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `ComputeMesh` — 3. compute shader, 3b. compute particles
 - `computeModuleHere` — 3. compute shader, 3b. compute particles
 - `debugPrintfEXT` — 6. debugging — printf
-- `defaultBuffer` — 1. hello triangle, 3b. compute particles, 6. debugging — printf, 7. slang — hello triangle
+- `defaultBuffer` — 1. hello triangle, 3b. compute particles, 5d. GPU schema, 6. debugging — printf, 7. slang — hello triangle
 - `FieldRTTStreamer` — 6. RTT - sending
 - `FrameBufferGroup` — 3b. compute particles
+- `fromContext` — 5d. GPU schema
 - `GpuRadixSort` — 6. radix sort
 - `HasImageView` — 5. PingPongTT, 5. draw blur, 5. draw pingpoing
 - `KeyCamera` — 4. gltf loading, 4. multi-textureing from a gltf, 5. included
@@ -69,12 +71,13 @@ Field API names and GLSL features scanned out of the sources above — the rever
 - `LoadedTexture` — 4. texturing, 4b. multi-texture, 6. debugging - Texture probe example, 6b. debugging / mapping - Texture probe example, 7b. slang — Texture
 - `mapAndRead` — 3. compute shader
 - `mapAndWrite` — 3. compute shader
-- `Mesh` — 0. traditional triangle, 1. hello triangle, 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. kernel, 5. lygia, 5b. some templating, 5c. some more templating, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture
-- `moduleHere` — 0. traditional triangle, 1. hello triangle, 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 3b. draw particles, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. kernel, 5. lygia, 5b. some templating, 5c. some more templating, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture
+- `Mesh` — 0. traditional triangle, 1. hello triangle, 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. kernel, 5. lygia, 5b. some templating, 5c. some more templating, 5d. GPU schema, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture
+- `moduleHere` — 0. traditional triangle, 1. hello triangle, 1b. hello triangle (UBO), 2. hello camera, 2. hello keyboard camera, 3b. draw particles, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. included, 5. kernel, 5. lygia, 5b. some templating, 5c. some more templating, 5d. GPU schema, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture
 - `MyPC` — 5c. some more templating
+- `Particle` — 5d. GPU schema
 - `PingPongRenderToTexture` — 5. PingPongTT
-- `push_constant` — 0. traditional triangle, 1. hello triangle, 2. hello camera, 2. hello keyboard camera, 3b. compute particles, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. kernel, 5. lygia, 5. vertex_included, 5b. some templating, 5c. some more templating, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture, 8. dla
-- `PushConstants` — 5c. some more templating
+- `push_constant` — 0. traditional triangle, 1. hello triangle, 2. hello camera, 2. hello keyboard camera, 3b. compute particles, 3b. draw particles, 4. gltf loading, 4. multi-textureing from a gltf, 4. texturing, 4b. multi-texture, 5. Bluring, 5. PingPongTT, 5. RTT, 5. draw blur, 5. draw pingpoing, 5. draw rtt, 5. kernel, 5. lygia, 5. vertex_included, 5b. some templating, 5c. some more templating, 5d. GPU schema, 6. RTT - sending, 6. RTT- draw rtt, 6. debugging - Texture probe example, 6. debugging — printf, 6b. debugging / mapping - Texture probe example, 7. slang — hello triangle, 7b. slang — Texture, 8. dla
+- `PushConstants` — 5c. some more templating, 5d. GPU schema
 - `QuantileWarpConfig` — 6b. debugging / mapping - Texture probe example
 - `registerLygiaIncludeRoot` — 5. lygia
 - `RenderToTexture` — 5. Bluring, 5. RTT, 5. draw blur, 5. draw rtt, 5. kernel, 6. RTT- draw rtt
