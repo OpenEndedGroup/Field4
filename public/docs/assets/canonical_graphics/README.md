@@ -15,6 +15,11 @@ entry points:
   that demonstrate it. Generated, so it cannot drift from the boxes.
 - **[afield.four Graphics](../../afield_four_graphics.md)** — the prose walkthrough of the same
   lessons, with captured native-window images.
+- **[GPU schemas](../../gpu_schema.md)** — an additional structured-memory path: annotated Kotlin
+  data classes become one CPU/GPU ABI, are packed into arbitrary addressable buffers, and generate
+  GLSL `struct` / `buffer_reference` declarations through the same box template system. The new
+  `5d. GPU schema` box sits alongside the existing `PushConstants<T>` templating example; neither
+  mechanism replaces the other.
 
 Every file here is named by box uid, which is why the index exists: `grep RenderToTexture` in
 this directory alone lands you in shader source with no idea which lesson it belongs to.

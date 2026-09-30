@@ -51,6 +51,9 @@ nav:
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
     - Where Field Looks for a File: files_and_paths.md
+    # Beside files_and_paths.md: that page answers "which file did this path mean", this one "which
+    # box did this value come from", and both are lookups a person otherwise reverse-engineers.
+    - Why Does This Value Resolve Here?: why.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
     # that explain what that past is; nothing about the split was deliberate.
@@ -178,6 +181,7 @@ nav:
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
+    - Lua in a Box: lua.md
     - Nano Examples: nano_examples.md
     # The tail of this section is the three "make your own" pages, in ascending order of how much
     # machinery they ask for, after the gallery that already uses them: MorphoHDL is a language
@@ -197,6 +201,7 @@ nav:
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
+      - GPU Schemas: gpu_schema.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
       # to one and the setup for the other: afield_four_graphics teaches the stateless compute
       # dispatch, this teaches what changes when the shader's input is its own last output, and
@@ -269,8 +274,12 @@ nav:
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    # After the four conversations rather than before them: those pages show a study being worked on,
+    # and this one is the layer they share, which reads best once you have seen one.
+    - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
+    - Notes on the Documentation: docs_notes.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
     - Agent Transcript Gallery: agent_transcripts.md

@@ -2188,6 +2188,15 @@
                         </div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
+                                <span class="ai-docs-label">Documentation notes</span>
+                                <span id="docs-pass-state">checking</span>
+                            </div>
+                            <div class="ai-docs-actions">
+                                <button id="open-docs-pass" type="button">Revision pass</button>
+                            </div>
+                        </div>
+                        <div class="ai-docs-panel">
+                            <div class="ai-docs-header">
                                 <span class="ai-docs-label">Agent tool use</span>
                                 <span id="ai-tool-use-improvement-state">checking</span>
                             </div>
@@ -5671,6 +5680,28 @@
             renderAiSettings();
         }
     }
+
+    // The notes queue and the revision pass (/docs-pass.html, docs_notes.py pass …). One status
+    // read on load; the page itself does the polling.
+    async function refreshDocsPassState() {
+        const node = document.getElementById("docs-pass-state");
+        if (!node) return;
+        try {
+            const response = await fetch("/api/docs-improvement/pass", { cache: "no-store" });
+            if (!response.ok) { node.textContent = "unavailable"; return; }
+            const body = await response.json();
+            const notes = (body.status && body.status.notes) || {};
+            const handoffs = (notes["handoff-open"] || 0) + (notes["handoff-taken"] || 0);
+            const parts = [`${notes.open || 0} open`];
+            if (notes.question) parts.push(`${notes.question} asking`);
+            if (handoffs) parts.push(`${handoffs} handoff${handoffs === 1 ? "" : "s"}`);
+            if (body.status && body.status.pass) parts.push("pass open");
+            node.textContent = parts.join(" · ");
+        } catch (ignored) { node.textContent = "unavailable"; }
+    }
+    document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
+    refreshDocsPassState();
+    setInterval(() => { if (!document.hidden) refreshDocsPassState(); }, 20000);
 
     async function runCompletionDocPolish() {
         window.open("/completion-doc-polish.html", "_blank", "noopener");

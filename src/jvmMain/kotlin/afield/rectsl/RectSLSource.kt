@@ -253,7 +253,6 @@ fun rectSLKnobs(source: String, takenBy: Map<Int, Pair<String, Int>> = emptyMap(
                     val value = when (token) {
                         is Token.Number -> token.value
                         is Token.ColorLit -> raw.drop(2).toLong(16).toDouble()
-                        else -> 0.0
                     }
                     out += RectSLKnob(out.size, value, raw, line, column, start, start + raw.length, role,
                         lines.getOrElse(line - 1) { "" }.trim(), colour)

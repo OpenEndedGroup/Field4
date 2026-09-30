@@ -37,7 +37,7 @@ object ContextWhy {
         val mechanism: ContextResolution.Mechanism
         val delegate: String?
         if (declaration != null && type == null) {
-            val hover = resolveInheritedDeclarationForHover(box, name!!, gathered!!.text)
+            val hover = resolveInheritedDeclarationForHover(box, name, gathered!!.text)
             resolution = hover?.resolution
             delegate = hover?.delegate
             mechanism = when (hover?.delegate) {
@@ -219,7 +219,7 @@ object ContextWhy {
         if (d != null) {
             append("; declared by `${d.text.removeSuffix("/**/").trim()}`")
             when {
-                d.suppliedBy != null && d.suppliedBy !== box -> append(" from ${label(d.suppliedBy)}'s preamble")
+                d.suppliedBy != null && d.suppliedBy !== box -> append(" from the preamble of ${label(d.suppliedBy)}")
                 d.inOwnPreamble -> append(" in this box's own preamble")
                 d.tag != null -> append(" (tagged from ${d.tag}, not an ancestor)")
             }

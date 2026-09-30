@@ -300,6 +300,11 @@ object ValueVisualizer {
         is Quantity -> formatQuantity(value)
         is Expression -> formatUnitExpression(value)
 
+        // A kotlinx JSON leaf is shown as the value it holds. Without this a JsonObject (a Map, so it
+        // already reads as one) printed every entry as `JsonLiteral "speed"`: the class name from the
+        // reflective fallback, then the quotes from JsonLiteral.toString().
+        is kotlinx.serialization.json.JsonPrimitive -> visualizeValue(jsonLeafValue(value), depth, visited, respectDepthLimit)
+
         // Primitives
         is Boolean -> "<span style='color: #f88;'>${value}</span>"
         is Number -> formatNumber(value)
@@ -2653,4 +2658,14 @@ val Any?.h : String
  */
 inline fun <reified T : Any> registerValuePrinter(noinline printer: (T) -> String) {
     ValuePrinterRegistry.register(T::class.java, printer)
+}
+
+/**
+ * The Kotlin value a kotlinx JSON leaf holds: `null`, a `Boolean`, a `Long` or `Double`, or the string's
+ * content without its quotes. What `.h` and `.h2` show in place of the `JsonPrimitive` itself.
+ */
+fun jsonLeafValue(p: kotlinx.serialization.json.JsonPrimitive): Any? = when {
+    p is kotlinx.serialization.json.JsonNull -> null
+    p.isString -> p.content
+    else -> p.content.toBooleanStrictOrNull() ?: p.content.toLongOrNull() ?: p.content.toDoubleOrNull() ?: p.content
 }

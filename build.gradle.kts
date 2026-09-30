@@ -861,6 +861,13 @@ kotlin {
         compilerOptions {
             target = "es2015"
             freeCompilerArgs.addAll(kotlinExperimentalCompilerArgs)
+            // At language 2.5 the klib IR inliner defaults to `intra-module`, and under incremental
+            // compilation it cannot re-inline an unchanged file's inline function from the IC cache:
+            // edit one file and the next build dies with "IrClassSymbolImpl is unbound: kotlin/Unit"
+            // or "Cannot deserialize inline function from a non-Kotlin library". Reproduced on stock
+            // 2.5.0-Beta1 in two files, 6 of 6 rebuilds; with this flag 0 of 6
+            // (dev_docs/KOTLIN_2_5_JS_IC_INLINER.md). Remove when a 2.5 release survives that repro.
+            freeCompilerArgs.add("-Xklib-ir-inliner=disabled")
         }
 
         // The Kotlin/JS incremental-compilation cache treats every entry in its cache directory as
@@ -1058,7 +1065,14 @@ kotlin {
                 implementation(files("libs/kotlin-compiler-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-impl-embeddable-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-compiler-embeddable-$customKotlinVersion.jar"))
-                implementation("com.facebook:ktfmt:0.64")
+                // ktfmt 0.64, the last release, cannot link against the 2.5 PSI. This is Kotlin/ktfmt
+                // main with a kotlin-2.5 compatibility source set (dev_docs/KTFMT_KOTLIN_2_5.md);
+                // replace it with org.jetbrains:ktfmt once a release supports 2.5. A local jar has no
+                // POM, so its runtime dependencies are named here, at the versions 0.64 resolved to.
+                implementation(files("libs/ktfmt-0.65-SNAPSHOT-kotlin-2.5.jar"))
+                implementation("com.google.googlejavaformat:google-java-format:1.23.0")
+                implementation("com.google.guava:guava:33.5.0-jre")
+                implementation("org.ec4j.core:ec4j-core:1.2.0")
 
                 implementation(files("libs/kotlin-scripting-ide-services-$customKotlinVersion.jar"))
                 implementation(files("libs/kotlin-scripting-common-$customKotlinVersion.jar"))

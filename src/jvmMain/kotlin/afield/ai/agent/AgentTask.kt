@@ -53,6 +53,10 @@ data class AgentTaskRequest(
      * then not available here (the panel keeps it); the checks still decide the verdict.
      */
     val chatBox: String = "",
+    /** `on` / `off` pins the eval-distilled lessons in the instructions ([AgentLessons]); blank = default. */
+    val lessons: String = "",
+    /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
+    val blind: Boolean = false,
 )
 
 /**
@@ -66,6 +70,10 @@ data class AgentTaskRequest(
  * - `last-run-ok` [box] — its latest run/launch since the turn began succeeded, and was of its current code
  * - `connected` [parent] [child]
  * - `running` / `not-running` [box]
+ * - `output-picture` [box] — a capture of its output area succeeds and is not blank (≥ 1% of pixels are not background)
+ * - `output-colour` [box] [text] = `#rrggbb` [fraction] — at least that share of the capture is within 48 of that colour
+ * - `output-rising` [box] [text] = `#c1,#c2,…` [fraction] = minimum bar count — the bars drawn in those colours
+ *   rise strictly left to right, and (with more than one colour) the last, tallest bar is mostly the last colour
  */
 @Serializable
 data class AgentCheck(
@@ -76,6 +84,7 @@ data class AgentCheck(
     val parent: String = "",
     val child: String = "",
     val ints: List<Long> = emptyList(),
+    val fraction: Double = 0.0,
 ) {
     companion object {
         /**
@@ -97,6 +106,19 @@ data class AgentCheck(
                     AgentCheck(kind, box = parts[0], property = parts[1], text = parts[2])
                 }
                 "connected" -> AgentCheck(kind, parent = rest.substringBefore(':'), child = rest.substringAfter(':', ""))
+                "output-picture" -> AgentCheck(kind, box = rest)
+                "output-colour" -> {
+                    val parts = rest.split(':')
+                    require(parts.size == 3) { "output-colour:<box>:#rrggbb:<fraction>" }
+                    PictureStats.parseHex(parts[1])
+                    AgentCheck(kind, box = parts[0], text = parts[1], fraction = parts[2].toDouble())
+                }
+                "output-rising" -> {
+                    val parts = rest.split(':')
+                    require(parts.size == 3) { "output-rising:<box>:#c1,#c2:<minBars>" }
+                    parts[1].split(',').forEach { PictureStats.parseHex(it) }
+                    AgentCheck(kind, box = parts[0], text = parts[1], fraction = parts[2].toDouble())
+                }
                 else -> throw IllegalArgumentException("Unknown check kind '$kind'")
             }
         }
@@ -140,6 +162,14 @@ data class AgentTaskResult(
     val error: String = "",
     /** Set when the task ran as a box's panel turn ([AgentTaskRequest.chatBox]). */
     val chatBox: String = "",
+    /** Failed tool calls that were mistakes about the tools, not the box's own errors ([AgentLessons.isMisuse]). */
+    val misuseCalls: Int = 0,
+    /** Tool results that attached a picture the model was shown. */
+    val imagesSeen: Int = 0,
+    /** Whether the eval-distilled lessons were in this turn's instructions. */
+    val lessons: Boolean = false,
+    /** The document as file refs spell it (`afield://<documentRef>/<uid>/code`): its directory's name. */
+    val documentRef: String = "",
 )
 
 /**
@@ -174,7 +204,7 @@ object AgentTaskRunner {
     ): AgentTaskResult {
         val taskId = request.taskId.ifBlank { "task-" + UUID.randomUUID().toString().take(8) }
         val started = System.nanoTime()
-        val graph = FieldGraphTools(info, host)
+        val graph = FieldGraphTools(info, host, lessons = AgentLessons.resolve(request.lessons), seesOutput = !request.blind)
         val budget = request.maxToolRounds.coerceIn(1, 64)
         var bridge: LlmBridge? = null
         var setupLog = emptyList<AgentToolCallRecord>()
@@ -227,21 +257,27 @@ object AgentTaskRunner {
                 thread, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
 
-            val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
+            val shots = HashMap<String, BoxOutputShot>()
+            val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots) }
             val verdict = when {
                 outcomes.isEmpty() -> "unchecked"
                 outcomes.all { it.passed } -> "pass"
                 sent.hitToolRoundCap -> "budget-exhausted"
                 else -> "fail"
             }
+            val calls = records(sent)
             AgentTaskResult(
                 taskId = taskId, goal = request.goal, mode = request.mode,
                 provider = sent.modelIdentity?.provider ?: b.modelIdentity?.provider.orEmpty(),
                 model = sent.modelIdentity?.let { it.responseModel?.takeIf { m -> m.isNotBlank() } ?: it.requestedModel } ?: b.modelIdentity?.requestedModel.orEmpty(),
-                verdict = verdict, checks = outcomes, toolCalls = records(sent), finalText = sent.text,
+                verdict = verdict, checks = outcomes, toolCalls = calls, finalText = sent.text,
                 rounds = sent.rounds, maxToolRounds = budget, hitToolRoundCap = sent.hitToolRoundCap,
                 elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens,
-                documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog
+                documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog,
+                misuseCalls = calls.count(AgentLessons::isMisuse),
+                imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },
+                lessons = graph.lessons,
+                documentRef = java.io.File(info.filename).name,
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")
@@ -289,7 +325,8 @@ object AgentTaskRunner {
         val marker = BoxOutputLog.mark()
         val turn = runAsBoxChatTurn(info, box, request, budget)
         if (turn.error != null) return refuse(turn.error)
-        val outcomes = request.checks.map { evaluate(it, info, graph, marker) }
+        val shots = HashMap<String, BoxOutputShot>()
+        val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots) }
         val result = AgentTaskResult(
             taskId = taskId, goal = request.goal, mode = request.mode,
             provider = turn.identity?.provider ?: "ai4-panel", model = turn.identity?.let { it.responseModel ?: it.requestedModel }.orEmpty(),
@@ -387,10 +424,13 @@ object AgentTaskRunner {
     private fun said(box: Box, marker: Long): List<BoxOutputLog.Entry> =
         BoxOutputLog.since(box.id, marker).entries.filter { it.kind == "out" || it.kind == "display" }
 
-    internal fun evaluate(check: AgentCheck, info: SessionInformation, graph: FieldGraphTools, marker: Long): AgentCheckOutcome {
+    internal fun evaluate(check: AgentCheck, info: SessionInformation, graph: FieldGraphTools, marker: Long,
+                          shots: MutableMap<String, BoxOutputShot> = HashMap()): AgentCheckOutcome {
         fun pass(detail: String) = AgentCheckOutcome(check, true, detail)
         fun fail(detail: String) = AgentCheckOutcome(check, false, detail)
         fun box(token: String): Box? = find(info, token)
+        // One capture per box per verdict: several picture checks on one box look at the same pixels.
+        fun shot(b: Box): BoxOutputShot = shots.getOrPut(b.id) { graph.captureOutput(b, settleMs = 500) }
         return when (check.kind) {
             "box-exists" -> box(check.box)?.let { pass("found ${it.id}") } ?: fail("no unique live box '${check.box}'")
             "output-contains" -> {
@@ -442,6 +482,38 @@ object AgentTaskRunner {
                 ?: fail("no unique live box '${check.box}'")
             "not-running" -> box(check.box)?.let { if (!graph.isRunning(it)) pass("not running") else fail("still running") }
                 ?: fail("no unique live box '${check.box}'")
+            "output-picture" -> {
+                val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
+                val s = shot(b)
+                val image = s.image ?: return fail("no picture: ${s.message}")
+                val stats = PictureStats.of(image)
+                val detail = "${image.width}x${image.height}, ink ${"%.3f".format(stats.inkFraction)}, ${stats.describeDominant()}" +
+                    (if (s.path.isNotBlank()) ", ${s.path}" else "")
+                if (stats.inkFraction >= 0.01) pass(detail) else fail("blank: $detail")
+            }
+            "output-colour" -> {
+                val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
+                val s = shot(b)
+                val image = s.image ?: return fail("no picture: ${s.message}")
+                val share = PictureStats.coverage(image, check.text)
+                val detail = "${"%.3f".format(share)} of ${image.width}x${image.height} is ${check.text} (need ${check.fraction}); " +
+                    PictureStats.of(image).describeDominant()
+                if (share >= check.fraction) pass(detail) else fail(detail)
+            }
+            "output-rising" -> {
+                val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
+                val s = shot(b)
+                val image = s.image ?: return fail("no picture: ${s.message}")
+                val colours = check.text.split(',').map { it.trim() }
+                val bars = PictureStats.bars(image, colours)
+                val detail = "${bars.size} bar(s), heights ${bars.map { it.height }}, colours ${bars.map { colours[it.colour] }}"
+                when {
+                    bars.size < check.fraction.toInt() -> fail("need ${check.fraction.toInt()} bars: $detail")
+                    bars.zipWithNext().any { (l, r) -> r.height <= l.height } -> fail("not rising left to right: $detail")
+                    colours.size > 1 && bars.last().colour != colours.lastIndex -> fail("the tallest bar is not ${colours.last()}: $detail")
+                    else -> pass(detail)
+                }
+            }
             else -> fail("unknown check kind '${check.kind}'")
         }
     }

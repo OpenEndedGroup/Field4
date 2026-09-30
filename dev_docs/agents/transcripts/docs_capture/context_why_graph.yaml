@@ -1,0 +1,59 @@
+name: context_why_graph
+description: |
+  Setup for `public/docs/why.md`. "Settings" declares `prop<Double>(speed)` and sets it to 0.25;
+  under it, "Fast" sets the inherited `speed` to 3.0; beside Fast, "Slow" declares its own
+  `prop<Double>(speed)`, sets 0.5 and leaves a plain variable `gear = 2`; "Mover" is connected under Fast
+  and then under Slow. Fast and Slow are the same distance from Mover and disagree, so Mover's
+  `speed` is a tie settled by parents order, and Settings, two edges up, is shadowed. "Gearbox",
+  under Slow only, asks about `gear`, which no `prop` declared. The page's two fences are the code
+  of Mover and of Gearbox.
+operations:
+  - create:
+      box: why_settings
+      name: Settings
+      frame: { x: 40.0, y: 40.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Double>(speed)
+          speed = 0.25
+  - create:
+      box: why_fast
+      name: Fast
+      frame: { x: 40.0, y: 180.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          speed = 3.0
+  - create:
+      box: why_slow
+      name: Slow
+      frame: { x: 560.0, y: 180.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          prop<Double>(speed)
+          speed = 0.5
+          val gear = 2
+  - create:
+      box: why_mover
+      name: Mover
+      frame: { x: 300.0, y: 480.0, w: 200.0, h: 60.0 }
+      properties:
+        code: |
+          display("main", why.speed.h)
+  - create:
+      box: why_gearbox
+      name: Gearbox
+      frame: { x: 880.0, y: 480.0, w: 160.0, h: 60.0 }
+      properties:
+        code: |
+          display("main", ContextResolution.explain(thisBox, "gear").h)
+  - connect: { parent: why_settings, child: why_fast }
+  - connect: { parent: why_fast, child: why_mover }
+  - connect: { parent: why_slow, child: why_mover }
+  - connect: { parent: why_slow, child: why_gearbox }
+  - execute: { box: why_settings, property: code }
+  - execute: { box: why_fast, property: code }
+  - execute: { box: why_slow, property: code }
+  - execute: { box: why_mover, property: code }
+  - execute: { box: why_gearbox, property: code }
+  - await: {}
+  - wait: { frames: 10 }

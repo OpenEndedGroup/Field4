@@ -86,6 +86,6 @@ class FnSoundRoundTripTest {
         assertTrue(fn.enclose(0.0, FnSoundDocs.SECONDS).certified)
         val range = fn.certifiedRange(0.0, FnSoundDocs.SECONDS, tolerance = 1e-9)
         assertTrue(range.certified, "did not converge: ${range.refusal}")
-        assertTrue(range.min!!.bound >= 0.19 && range.max!!.bound <= 0.95, "f's range ${range.min!!.bound}..${range.max!!.bound}")
+        assertTrue(range.min!!.bound >= 0.19 && range.max!!.bound <= 0.95, "f's range ${range.min.bound}..${range.max!!.bound}")
     }
 }

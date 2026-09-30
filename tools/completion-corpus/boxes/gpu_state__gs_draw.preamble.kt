@@ -60,11 +60,16 @@ fun BufferParameters.asHeat(): Heat =
 /*graphics-pc-binding-group:aspectRatio*/ var MeshGroup.aspectRatio by MeshGroup.BoundFromStructure<Float>()
 var Box.gsStateA by Inheritance<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Once.gsStateA by Onceing<FrameBufferGroup>() /*from:gs_sim*/ /**/
+val Why.gsStateA by Whying() /*from:gs_sim*/ /**/
 var Box.gsStateB by Inheritance<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Once.gsStateB by Onceing<FrameBufferGroup>() /*from:gs_sim*/ /**/
+val Why.gsStateB by Whying() /*from:gs_sim*/ /**/
 var Box.gsHeat by Inheritance<FrameBufferGroup>() /*from:gs_sim*/ /**/
 val Once.gsHeat by Onceing<FrameBufferGroup>() /*from:gs_sim*/ /**/
+val Why.gsHeat by Whying() /*from:gs_sim*/ /**/
 var Box.window by Inheritance<Window>() /*from:gs_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:gs_renderer*/ /**/
+val Why.window by Whying() /*from:gs_renderer*/ /**/
 var Box.renderer by Inheritance<Renderer>() /*from:gs_renderer*/ /**/
 val Once.renderer by Onceing<Renderer>() /*from:gs_renderer*/ /**/
+val Why.renderer by Whying() /*from:gs_renderer*/ /**/

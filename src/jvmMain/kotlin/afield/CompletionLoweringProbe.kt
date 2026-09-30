@@ -10,6 +10,9 @@ runner: jvm-main
 entrypoint: afield.CompletionLoweringProbe
 tags: [probe, kotlin, completion]
 timeoutSec: 1200
+# Provided by the runner; without one this is environment-incomplete, not a pass (it SKIPped and
+# passed until 2026-09-30).
+requiresSidecar: true
 expect:
   exitCode: 0
   stdoutContains:
@@ -61,8 +64,9 @@ expect:
  * the sidecar's own note on the misses. `--report` restores the exploration mode: same verdicts, exit 0.
  *
  * It lives in the SMOKE CATALOG rather than `./gradlew check` because it needs a live AA sidecar (a
- * `check` task must be deterministic and offline); `field.sh` starts a checkout-local one, and the probe
- * SKIPs cleanly where none is running.
+ * `check` task must be deterministic and offline). The smoke runner provides one (`requiresSidecar`), as
+ * `field.sh` does for a user; run by hand without one it exits 3, because an unchecked lowering has not
+ * passed. It used to SKIP with exit 0, which let the smoke gate pass it with no sidecar at all.
  *
  * Knobs, all env vars (the runner passes the environment through):
  *   AFIELD_LOWERING_CORPUS        comma-separated dirs (default: starting points + templates)
@@ -270,9 +274,8 @@ object CompletionLoweringProbe {
             ?: File("build/completion-corpus/sidecar-url.txt").takeIf { it.exists() }?.readText()?.trim()
                 ?.ifBlank { null })
         if (url == null) {
-            println("SKIP: no sidecar URL (set -Dafield.completion.sidecarUrl or write build/completion-corpus/sidecar-url.txt)")
-            println("LOWERING PROBE DONE")
-            return
+            println("NO SIDECAR: no sidecar URL (set -Dafield.completion.sidecarUrl or write build/completion-corpus/sidecar-url.txt); the lowering was not checked")
+            kotlin.system.exitProcess(3)
         }
         System.setProperty("afield.completion.sidecarUrl", url)
         KotlinEngineConfig.activeCompletionBackend = KotlinEngineConfig.CompletionBackend.AA

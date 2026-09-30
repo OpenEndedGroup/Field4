@@ -9,15 +9,19 @@ press `Ctrl+Shift+A`, type a note, and it is stored in `~/.afield/docs-annotatio
 by default (or the file selected by `AFIELD_DOCS_ANNOTATIONS_STORE`), with an anchor good
 enough to find the sentence again after the page is rebuilt.
 
-The second is not benign. `POST /api/docs-improvement` takes the unresolved notes, turns
-them into a prompt, and runs
+The second is not benign. `POST /api/docs-improvement` takes the queued notes and runs
+the revision harness,
 
 ```
-codex exec --sandbox workspace-write "<the prompt>"
+tools/docs_notes.py revise --agent codex
 ```
 
-in a source checkout. It is an autonomous coding agent, with write access, steered by
-text that arrived over HTTP.
+in a source checkout, which starts one `codex exec --sandbox workspace-write` (or
+`claude -p`, with `AFIELD_DOCS_IMPROVEMENT_AGENT=claude`) *per documentation page*, in
+parallel. Each is an autonomous coding agent, with write access, steered by text that
+arrived over HTTP. (Until 2026-09-30 it was one `codex exec` over every note, told to edit
+the annotation store itself; how the harness partitions, anchors and records is
+[`docs_notes.md`](../public/docs/docs_notes.md).)
 
 This page is about the second one: what it can do, what stops it, and how to turn it on.
 
@@ -182,6 +186,8 @@ curl -sk https://localhost:9092/api/docs-improvement
 | `AFIELD_DOCS_IMPROVEMENT` | unset | the same switch, from the environment. `1`, `true`, `yes`, `on`; anything else — **including the empty string** — is off. |
 | `AFIELD_DOCS_IMPROVEMENT_TOKEN` | a fresh random 24-byte hex value, printed once | the value of `X-Field-Docs-Improvement-Token`. Compared with `MessageDigest.isEqual`. |
 | `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
+| `AFIELD_DOCS_IMPROVEMENT_AGENT` | `codex` | the agent the harness runs per page: `codex` or `claude`. Anything else is `codex`. |
+| `AFIELD_DOCS_NOTES_PYTHON` | unset → `uv run --no-project python`, else `python3` | the interpreter the route runs `tools/docs_notes.py` with. The tool is stdlib-only. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
 | `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
@@ -323,9 +329,10 @@ faithfully follow.
   shared by the main tree, every worktree and every window so this change does not silently
   orphan existing notes. Automation and worktrees can instead set
   `AFIELD_DOCS_ANNOTATIONS_STORE=.field-backdoor/docs-annotations.json`; Field resolves it
-  against that checkout and prints the resulting path at startup. Two JVMs pointed at the
-  same file can still lose a note because the lock is per-JVM, so use distinct paths when
-  they may write concurrently. `recordedInCheckout` remains attribution, not locking.
+  against that checkout and prints the resulting path at startup. Since 2026-09-30 every
+  read-modify-write also takes a POSIX record lock on `<store>.lock`, which
+  `tools/docs_notes.py` takes too, so two JVMs, or a JVM and the harness, no longer lose each
+  other's notes. `recordedInCheckout` remains attribution, not locking.
 - **Prompt injection is mitigated, not removed.** With the endpoint gated, an attacker
   can no longer both plant the text and pull the trigger. A note you did not write can
   still end up in a run you did launch — the notes are yours, so this is mostly a
@@ -336,7 +343,7 @@ faithfully follow.
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
 - **The rest of the API is still unauthenticated, and that is the largest thing on this
-  page.** 49 of 54 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
+  page.** 49 of 57 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
   CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
   host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
   asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
@@ -360,7 +367,7 @@ worklog decays and this one should not:
 added, when one is removed, and — the case a count could never see — when one quietly
 loses its guard.
 
-**49 of 54 state-changing HTTP routes have no route-specific access control**, and there is no
+**49 of 57 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
 That was 36 of 40 until 2026-08-22, and the difference is not thirteen new routes — it is
@@ -403,7 +410,7 @@ install(CORS) {
 ```
 
 `anyHost()` means *any website you have open in any tab* may call Field. The surface is
-**54 state-changing HTTP routes**: 39 named method routes (34 POST, 3 DELETE, 2 PUT), the
+**57 state-changing HTTP routes**: 42 named method routes (37 POST, 3 DELETE, 2 PUT), the
 wildcard `POST /field-audio/{...}` and `PUT /field-audio/{...}` routes that the old
 literal-only census missed, and — since 2026-08-22 — the 13 verbless
 `route(…) { handle { … } }` routes that answer every method without naming one.
@@ -412,7 +419,10 @@ allow-listed — which is configuration, not a guard, and is not what `PUT …/r
 on any more. The application-wide same-site switch covers both Field Audio writes because
 its interceptor is not restricted to `/api`; it remains off by default.
 
-Five of the 54 are guarded: four in `docsAnnotations.kt` and the geometry review update in `Server.kt`, and the table that says so
+Eight of the 57 are guarded: four in `docsAnnotations.kt`, the revision pass's one in `docsPass.kt`
+(2026-09-30; loopback + same-site only, by choice: the token printed at startup scrolls out of
+the terminal, and the page is used from inside Field), the geometry review update in `Server.kt`, and the in-Field agent harness's two routes
+(2026-09-29, `agentRouteAccess.kt`), and the table that says so
 is asserted in `FieldApiCorsExposureTest`:
 
 | route | guard |
@@ -421,7 +431,10 @@ is asserted in `FieldApiCorsExposureTest`:
 | `PUT /api/docs-annotations/{id}/resolve` | loopback + same-site |
 | `DELETE /api/docs-annotations/{id}` | loopback + same-site |
 | `POST /api/docs-improvement` | loopback + same-site + enabled&token |
+| `POST /api/docs-improvement/pass` | loopback + same-site, both annotation hatches forced shut; no switch or token |
 | `POST /three-review-note` | loopback + same-site |
+| `POST /api/agent-task` | loopback + localhost Host + same-site |
+| `POST /api/agent-eval` | loopback + localhost Host + same-site |
 | `POST /field-audio/{...}` | none (covered only when the application switch is on) |
 | `PUT /field-audio/{...}` | none (covered only when the application switch is on; also absent from CORS) |
 | **the other 34** | **none** |

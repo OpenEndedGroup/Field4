@@ -177,8 +177,9 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 
 /** Agentic verification tools --------------------------------------------- */
 
-@JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success.")
+@JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success. (RunBoxRequest/LaunchBoxRequest compile by themselves; you do not need this before them.)")
 data class CompileKotlinRequest(
+    @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
     val file: String = "",
     val source: String? = null,
     val runSetupBlocks: Boolean = true

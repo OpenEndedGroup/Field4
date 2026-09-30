@@ -126,6 +126,15 @@ data class ReadBoxOutputRequest(
     val maxEntries: Int = 60,
 )
 
+@JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture, attached for you to inspect, with measured facts (size, dominant colours, how much of it is not background). Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. Printed text is not in the picture: read that with ReadBoxOutputRequest.")
+data class ViewBoxOutputRequest(
+    val box: String,
+    @JsonPropertyDescription("Milliseconds to wait before capturing, for a late script or an animation; clamped to 0..5000. 0 = a short default.")
+    val settleMs: Int = 0,
+    @JsonPropertyDescription("What you are looking for. Travels with the picture as its caption.")
+    val note: String = "",
+)
+
 // ---- results ---------------------------------------------------------------------------------
 
 data class FieldBoxSummary(
@@ -162,6 +171,43 @@ data class FieldGraphResult(
     val timedOut: Boolean = false,
 )
 
+/**
+ * What [ViewBoxOutputRequest] returns: the picture (as a tool image, not in the JSON) plus what was
+ * measured from it, so the model gets numbers alongside the pixels and the tool log shows whether a
+ * picture was attached at all.
+ */
+data class BoxOutputView(
+    val success: Boolean,
+    val message: String,
+    val uid: String = "",
+    val name: String = "",
+    val channels: List<String> = emptyList(),
+    val width: Int = 0,
+    val height: Int = 0,
+    /** Share of pixels that are not the background colour. */
+    val inkFraction: Double = 0.0,
+    /** `#rrggbb share%`, most common first. */
+    val dominantColours: List<String> = emptyList(),
+    /** Where the full-resolution PNG was kept, as evidence. */
+    val path: String = "",
+    val imageAttached: Boolean = false,
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    val dataUrl: String = "",
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    val note: String = "",
+) : afield.ai.core.CarriesToolImages, afield.ai.core.SummarisesForToolLog {
+    @get:com.fasterxml.jackson.annotation.JsonIgnore
+    override val toolImages: List<afield.ai.core.ToolImage>
+        get() = if (dataUrl.isBlank()) emptyList() else listOf(afield.ai.core.ToolImage(dataUrl,
+            "Output of box '$name' (${channels.joinToString()}), ${width}x$height, captured just now" +
+                (if (note.isNotBlank()) " — looking for: $note" else "") +
+                ". Describe what you actually see, then say whether it matches what was asked for."))
+
+    override fun toolLogSummary(): String =
+        "success=$success images=${toolImages.size} box=$name ${width}x$height ink=${"%.3f".format(inkFraction)} " +
+            "colours=${dominantColours.take(3)} path=$path" + (if (!success) " message=${message.take(160)}" else "")
+}
+
 // ---- host seam ---------------------------------------------------------------------------------
 
 /**
@@ -178,6 +224,9 @@ interface FieldGraphHost {
     fun run(info: SessionInformation, box: Box, exec: Execute, reply: (Message) -> Unit)
     fun launch(info: SessionInformation, box: Box, exec: Execute, reply: (Message) -> Unit)
     fun stop(info: SessionInformation, box: Box)
+    /** A picture of [box]'s output area. The default host cannot take one and says so. */
+    fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot =
+        BoxOutputShot.failed("This Field host cannot capture box output.")
 }
 
 object LiveFieldGraphHost : FieldGraphHost {
@@ -213,6 +262,9 @@ object LiveFieldGraphHost : FieldGraphHost {
     }
 
     override fun stop(info: SessionInformation, box: Box) = stopBoxRequest(box, entrypoint = "ai-agent.StopBox")
+
+    override fun captureOutput(info: SessionInformation, box: Box, settleMs: Int): BoxOutputShot =
+        BoxOutputCapture.capture(info, box.id, settleMs)
 }
 
 // ---- the tools ---------------------------------------------------------------------------------
@@ -226,6 +278,16 @@ class FieldGraphTools(
      * be silently overwritten when the reply lands, so the tools refuse and say where the edit goes.
      */
     val replyOwned: Set<Pair<String, String>> = emptySet(),
+    /**
+     * Whether this turn's instructions carry the eval-distilled lessons ([AgentLessons]). Defaults to
+     * on unless `AFIELD_AI4_LESSONS=off`; an eval can pin it per task to measure it.
+     */
+    val lessons: Boolean = AgentLessons.enabledByDefault(),
+    /**
+     * Whether [ViewBoxOutputRequest] is offered. Only an eval's counterfactual turns it off (`blind`):
+     * the same visual task with the model unable to look.
+     */
+    val seesOutput: Boolean = true,
 ) {
     companion object {
         /**
@@ -516,6 +578,28 @@ class FieldGraphTools(
             uid = box.id, name = box.name, running = running)
     }
 
+    /** A picture of [box]'s output area, through the host. Used by [viewOutput] and by picture checks. */
+    fun captureOutput(box: Box, settleMs: Int = 300): BoxOutputShot = host.captureOutput(info, box, settleMs)
+
+    fun viewOutput(req: ViewBoxOutputRequest): BoxOutputView {
+        val box = host.onOwner(info) { resolve(req.box) }
+        val shot = captureOutput(box, if (req.settleMs <= 0) 300 else req.settleMs.coerceIn(0, 5000))
+        val image = shot.image
+        if (!shot.success || image == null) return BoxOutputView(false, shot.message, uid = box.id, name = box.name, channels = shot.channels)
+        val stats = PictureStats.of(image)
+        val blank = stats.inkFraction < 0.002
+        return BoxOutputView(
+            success = true,
+            message = "Captured the output of '${box.name}' (${shot.channels.joinToString()}), ${image.width}x${image.height}" +
+                (if (blank) ". It looks BLANK: almost every pixel is the background colour ${stats.dominant.firstOrNull()?.first ?: ""}." else ".") +
+                " The picture is attached.",
+            uid = box.id, name = box.name, channels = shot.channels, width = image.width, height = image.height,
+            inkFraction = stats.inkFraction,
+            dominantColours = stats.dominant.map { (hex, share) -> "$hex ${"%.1f".format(share * 100)}%" },
+            path = shot.path, imageAttached = true, dataUrl = jpegDataUrl(image), note = req.note,
+        )
+    }
+
     fun readOutput(req: ReadBoxOutputRequest): FieldGraphResult {
         val box = host.onOwner(info) { resolve(req.box) }
         val deadline = System.currentTimeMillis() + (req.waitSeconds.coerceIn(0.0, 120.0) * 1000).toLong()
@@ -567,11 +651,12 @@ internal fun registerFieldGraphTools(tools: ToolRegistry) {
     tools.register(LaunchBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.launch(req) }
     tools.register(StopBoxRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.stop(req) }
     tools.register(ReadBoxOutputRequest::class.java, on) { ctx, req -> ctx.fieldGraph!!.readOutput(req) }
+    tools.register(ViewBoxOutputRequest::class.java, { ctx -> ctx.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.viewOutput(req) }
 }
 
 /** The tool names [registerFieldGraphTools] adds, for instructions and tests. */
 val fieldGraphToolNames: List<String> = listOf(
     ListBoxesRequest::class, NewBoxRequest::class, DeleteBoxRequest::class, SetBoxPropertyRequest::class,
     GetBoxPropertyRequest::class, PatchBoxTextRequest::class, ConnectBoxesRequest::class, DisconnectBoxesRequest::class, RunBoxRequest::class,
-    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class
+    LaunchBoxRequest::class, StopBoxRequest::class, ReadBoxOutputRequest::class, ViewBoxOutputRequest::class
 ).map { it.java.simpleName }

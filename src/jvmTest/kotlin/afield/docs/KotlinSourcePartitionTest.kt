@@ -171,6 +171,35 @@ class KotlinSourcePartitionTest {
     }
 
     @Test
+    fun `a setter with a brace body after a getter with one stays inside its property`() {
+        // `Structure.kt`'s `dirty`: the getter's braces closed at depth zero and ended the scan, so
+        // the three lines of `set(value) { … }` came out as unattributed FILLER.
+        val source = """
+            class Flags {
+                private var bits = 0
+
+                var dirty: Boolean
+                    get() {
+                        return bits != 0
+                    }
+                    set(value) {
+                        bits = if (value) 1 else 0
+                    }
+
+                val clean: Boolean get() = bits == 0
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        val dirty = declaration(partition, "dirty")
+        assertEquals(lineOf(source, "get() {"), dirty.bodyOpenLine, "the getter's braces are the body")
+        assertEquals(lineOf(source, "bits = if (value) 1 else 0") + 1, dirty.endLine, "the setter is inside")
+        assertEquals(lineOf(source, "val clean: Boolean get() = bits == 0"), declaration(partition, "clean").startLine)
+    }
+
+    @Test
     fun `an accessor written with an annotation stays inside its property`() {
         // The annotation sibling of the case above, and the one the corpus actually had: an
         // annotations-only line normally opens the next declaration's head, so the scan stopped at
@@ -201,6 +230,75 @@ class KotlinSourcePartitionTest {
         )
         // Blank lines between declarations are FILLER by design; unattributed *code* is what the
         // corpus guard ratchets on, and what this shape was contributing to it.
+        assertEquals(
+            emptyList(),
+            partition.allSpans()
+                .filter { it.kind == KotlinSourcePartition.Kind.FILLER }
+                .flatMap { span -> (span.startLine..span.endLine).map { partition.lines[it - 1] } }
+                .filter { it.isNotBlank() },
+            "no unattributed code should be left over",
+        )
+    }
+
+    @Test
+    fun `a block setter under a block getter stays inside its property`() {
+        // `four/buffers/Structure.kt`, 2026-09-30: with no initializer, the getter's `{` reads as the
+        // property's body, so its `}` ended the span and left `set(value) {` and its `}` unattributed,
+        // with the setter's `val r = …` read as a sibling declaration. The sibling after it must not be
+        // swallowed: a closed brace reopens the span only for an accessor.
+        val source = """
+            class Slots {
+                var dirty: Boolean
+                    get() {
+                        val r = 1
+                        return r > 0
+                    }
+                    set(value) {
+                        val r = 2
+                        println(value && r > 0)
+                    }
+
+                var count: Int
+                    get() {
+                        return 0
+                    }
+                    @Synchronized
+                    private set
+
+                val next: Int
+                    get() {
+                        return 1
+                    }
+                fun after() {
+                }
+            }
+        """.trimIndent()
+
+        val partition = KotlinSourcePartition.partition(source)
+        assertEquals(emptyList(), KotlinSourcePartition.verify(partition), "invariants")
+        assertEquals(source.split("\n"), KotlinSourcePartition.reconstruct(partition), "reconstruction")
+        assertEquals(
+            lineOf(source, "println(value && r > 0)") + 1,
+            declaration(partition, "dirty").endLine,
+            "the block setter is part of the property above it",
+        )
+        assertEquals(
+            lineOf(source, "private set"),
+            declaration(partition, "count").endLine,
+            "an annotated bare setter after a block getter is part of the property",
+        )
+        assertEquals(
+            lineOf(source, "fun after"),
+            declaration(partition, "after").startLine,
+            "a function after a block getter is its own declaration",
+        )
+        assertEquals(
+            listOf("dirty", "count", "next", "after"),
+            partition.allSpans()
+                .filter { it.kind == KotlinSourcePartition.Kind.DECLARATION && it.declKind != "class" }
+                .map { it.name },
+            "the setters' locals are not siblings",
+        )
         assertEquals(
             emptyList(),
             partition.allSpans()

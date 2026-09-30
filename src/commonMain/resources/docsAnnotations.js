@@ -6,7 +6,7 @@
     const upstream = new URL(window.__FIELD_DOCS_UPSTREAM__ || location.href);
     const proxyRoot = window.__FIELD_DOCS_PROXY__ || "/field-docs/";
     const canonicalPage = `${upstream.origin}${upstream.pathname}`;
-    const state = { annotations: [], visible: true, tag: "", from: "", to: "", selected: null };
+    const state = { annotations: [], visible: true, tag: "", from: "", to: "", selected: null, showResolved: false, buildCommit: "" };
 
     const css = document.createElement("style");
     css.textContent = `
@@ -25,6 +25,14 @@
       .f4a-marker-range { background:rgba(255,241,118,.16); border-bottom:1.5px solid rgba(255,241,118,.9); }
       .f4a-marker-position { width:7px; height:7px; border-radius:50%; background:var(--f4a-accent); box-shadow:0 0 0 3px rgba(255,241,118,.14); transform:translate(-50%,-50%); }
       #f4-annotations-launcher { position:fixed; z-index:2147483600; right:16px; bottom:16px; color:var(--f4a-fg); background:var(--f4a-bg); border:1px solid var(--f4a-line); padding:8px 11px; font:11px/1 Iosevka,monospace; cursor:pointer; letter-spacing:.04em; }
+      #f4-annotations .f4a-state { font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--f4a-dim); }
+      #f4-annotations .f4a-state[data-state="question"], #f4-annotations .f4a-state[data-state="handoff"] { color:var(--f4a-accent); } #f4-annotations .f4a-state[data-state="memory"] { color:var(--f4a-cyan); }
+      #f4-annotations .f4a-source { color:var(--f4a-cyan); font-size:10px; word-break:break-all; }
+      #f4-annotations .f4a-thread { margin:6px 0 0; padding-left:8px; border-left:1px solid var(--f4a-line); }
+      #f4-annotations .f4a-entry { font-size:11px; color:#bbb; margin-top:4px; } #f4-annotations .f4a-entry b { color:var(--f4a-dim); font-weight:normal; }
+      #f4-annotations .f4a-entry[data-kind="question"] b { color:var(--f4a-accent); } #f4-annotations .f4a-entry[data-kind="memory"] b { color:var(--f4a-cyan); }
+      #f4-annotations .f4a-reply { min-height:40px; margin-top:6px; }
+      #f4-annotations label.f4a-toggle { grid-column:1/-1; color:var(--f4a-dim); font-size:10px; display:flex; gap:6px; align-items:center; }
       #f4-annotations[hidden] { display:none; }
       #f4-annotations-launcher[hidden] { display:none; }
       @media (min-width:1180px) {
@@ -48,7 +56,7 @@
     const panel = document.createElement("aside");
     panel.id = "f4-annotations";
     panel.innerHTML = `<header><strong>DOC NOTES</strong><span class="f4a-count" data-role="source" title="${sourceTitle}">${sourceLabel}</span><span class="f4a-count" data-role="count">0</span><button data-act="new" title="Select documentation text, then press Ctrl+Shift+A">+ selection</button><button data-act="hide">×</button></header>
-      <div class="f4a-filters"><input data-filter="tag" placeholder="@tag"><input data-filter="from" type="date" title="from"><input data-filter="to" type="date" title="to"></div>
+      <div class="f4a-filters"><input data-filter="tag" placeholder="@tag"><input data-filter="from" type="date" title="from"><input data-filter="to" type="date" title="to"><label class="f4a-toggle"><input type="checkbox" data-role="show-resolved"> show resolved notes and memories</label></div>
       <div data-role="editor" hidden><div class="f4a-quote" data-role="selection"></div><textarea aria-label="Annotation note. Enter saves, Shift+Enter inserts a line, Escape cancels." placeholder="Note — use @tags to direct improvement"></textarea></div>
       <div data-role="list"></div>`;
     document.body.appendChild(panel);
@@ -113,6 +121,20 @@
         return candidates.reduce((best, range) => Math.abs(range.getBoundingClientRect().top + scrollY - expectedY) < Math.abs(best.getBoundingClientRect().top + scrollY - expectedY) ? range : best);
     };
 
+    // The heading a node sits under, as rendered, minus Material's permalink glyph. A second
+    // anchor for tools/docs_notes.py when the quote alone is a word that occurs ten times.
+    const headingAbove = node => {
+        const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+        const headings = [...document.querySelectorAll("article h1, article h2, article h3, article h4, main h1, main h2, main h3, main h4")];
+        let found = null;
+        for (const heading of headings) {
+            if (heading.compareDocumentPosition(element) & Node.DOCUMENT_POSITION_FOLLOWING || heading.contains(element)) found = heading;
+        }
+        return found ? found.textContent.replace(/\u00b6/g, "").trim() : "";
+    };
+    // Offsets, prefix and suffix are measured in the same text `annotationRange` searches, at
+    // the selection's own position. The old `innerText.indexOf(exact)` took the *first*
+    // occurrence, so a note on the fourth "continue" recorded the context of the first.
     const capture = () => {
         const selection = getSelection();
         if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
@@ -120,13 +142,22 @@
         if (panel.contains(range.commonAncestorContainer)) return null;
         const exact = selection.toString().trim();
         if (!exact) return null;
-        const text = document.body.innerText;
-        const start = text.indexOf(exact);
+        const { nodes, text } = searchableText();
+        const startNode = nodes.find(value => value.node === range.startContainer);
+        let start = startNode ? startNode.start + range.startOffset : text.indexOf(exact);
+        if (start >= 0 && text.slice(start, start + exact.length) !== exact) {
+            const near = text.indexOf(exact, Math.max(0, start - exact.length - 8));
+            start = near >= 0 ? near : text.indexOf(exact);
+        }
         const rect = range.getBoundingClientRect();
-        return { exact, prefix: start >= 0 ? text.slice(Math.max(0,start-48),start) : "", suffix: start >= 0 ? text.slice(start+exact.length,start+exact.length+48) : "", startOffset:start, endOffset:start+exact.length, xRatio:(rect.left+scrollX)/Math.max(1,document.documentElement.scrollWidth), yRatio:(rect.top+scrollY)/Math.max(1,document.documentElement.scrollHeight) };
+        // A selection in the header or the navigation is about the site, not this page's
+        // Markdown; saying so stops the resolver pinning it on the first matching word below.
+        const contentRoot = document.querySelector("article") || document.querySelector("main") || document.body;
+        const region = contentRoot.contains(range.startContainer) ? "content" : "chrome";
+        return { exact, region, prefix: start >= 0 ? text.slice(Math.max(0,start-48),start) : "", suffix: start >= 0 ? text.slice(start+exact.length,start+exact.length+48) : "", startOffset:start, endOffset:start+exact.length, xRatio:(rect.left+scrollX)/Math.max(1,document.documentElement.scrollWidth), yRatio:(rect.top+scrollY)/Math.max(1,document.documentElement.scrollHeight), heading:headingAbove(range.startContainer), sourceCommit:state.buildCommit, docsSource:servedLocally ? "local" : "published" };
     };
     const openEditor = () => {
-        state.selected = capture() || { exact:"", xRatio:.5, yRatio:(scrollY+innerHeight/2)/Math.max(1,document.documentElement.scrollHeight) };
+        state.selected = capture() || { exact:"", xRatio:.5, yRatio:(scrollY+innerHeight/2)/Math.max(1,document.documentElement.scrollHeight), heading:headingAbove(document.elementFromPoint(innerWidth/2, innerHeight/2) || document.body), sourceCommit:state.buildCommit, docsSource:servedLocally ? "local" : "published" };
         panel.querySelector('[data-role="selection"]').textContent = state.selected.exact || "Position note";
         editorRegion.hidden = false;
         noteEditor.focus();
@@ -151,7 +182,39 @@
         } catch (error) { return reportError(error.message); }
         noteEditor.value = ""; editorRegion.hidden = true; state.selected = null; await load();
     };
+    // Mirrors `note_state` in tools/docs_notes.py: an agent's question with no reply after it
+    // takes the note out of the revision queue until you answer it here, and a blocking handoff
+    // holds it until that handoff is closed (`docs_notes.py handoff-close`).
+    const noteState = item => {
+        if (item.kind === "memory") return "memory";
+        if (item.kind === "handoff") return "handoff";
+        if (item.resolvedAtEpochMs != null) return "resolved";
+        let pending = false, blocked = false;
+        (item.thread || []).forEach(entry => {
+            if (entry.kind === "question") pending = true; else if (entry.kind === "reply" || entry.kind === "reopen") pending = false;
+            if (entry.kind === "blocked") blocked = true; else if (entry.kind === "unblocked" || entry.kind === "reopen") blocked = false;
+        });
+        return blocked ? "blocked" : pending ? "question" : "open";
+    };
+    const stateLabel = { open:"open", question:"agent asks", resolved:"resolved", memory:"memory", handoff:"handoff", blocked:"waits on a handoff" };
+    const renderHandoff = item => {
+        const info = item.handoff;
+        if (!info) return "";
+        return `<div class="f4a-source">${esc(info.scope || "project")}${info.blocking ? " · blocking" : ""} · ${esc(info.state || "open")} · ${esc(info.path || "")}</div>`;
+    };
+    const renderThread = item => {
+        const entries = (item.thread || []).filter(entry => entry.kind !== "run");
+        if (!entries.length) return "";
+        return `<div class="f4a-thread">${entries.map(entry => `<div class="f4a-entry" data-kind="${esc(entry.kind)}"><b>${esc(entry.kind)} · ${esc(entry.author)} · ${new Date(entry.atEpochMs).toLocaleDateString()}</b> ${esc(entry.text)}${entry.commit ? ` <b>${esc(entry.commit.slice(0,10))}</b>` : ""}</div>`).join("")}</div>`;
+    };
+    const renderSource = item => {
+        const source = item.source;
+        if (!source) return "";
+        const where = source.startLine ? `${source.path}:${source.startLine}${source.endLine && source.endLine !== source.startLine ? "-" + source.endLine : ""}` : (source.path || source.page || "");
+        return `<div class="f4a-source" title="anchor ${esc(source.status)}${source.reason ? ": " + esc(source.reason) : ""}">${esc(where)} · ${esc(source.status)}</div>`;
+    };
     const filtered = item => {
+        if (!state.showResolved && item.kind === "memory") return false;
         const tag = state.tag.replace(/^@/,"").toLowerCase();
         if (tag && !item.tags.includes(tag)) return false;
         if (state.from && item.createdAtEpochMs < new Date(state.from).getTime()) return false;
@@ -184,10 +247,35 @@
         const visible = state.annotations.filter(filtered);
         panel.querySelector('[data-role="count"]').textContent = String(visible.length);
         launcher.textContent = `notes · ${visible.length}`;
-        panel.querySelector('[data-role="list"]').innerHTML = visible.map(item => `<article class="f4a-note" data-id="${esc(item.id)}" title="Show this annotation"><div>${esc(item.note)}</div>${item.anchor.exact ? `<div class="f4a-quote">${esc(item.anchor.exact)}</div>`:""}<div class="f4a-meta">${new Date(item.createdAtEpochMs).toLocaleDateString()} ${item.tags.map(t=>"@"+esc(t)).join(" ")}</div><div class="f4a-actions"><button data-act="resolve">resolve</button><button data-act="delete">delete</button></div></article>`).join("") || `<div class="f4a-meta">No notes on this page.</div>`;
+        panel.querySelector('[data-role="list"]').innerHTML = visible.map(item => {
+            const itemState = noteState(item);
+            // A handoff is closed with `docs_notes.py handoff-close`, which also releases the notes
+            // it holds; resolving it here would leave them waiting.
+            const actions = itemState === "handoff"
+                ? `<span class="f4a-meta">close with docs_notes.py handoff-close ${esc(item.id.slice(0,8))}</span>`
+                : itemState === "resolved"
+                ? `<button data-act="reopen">reopen</button><button data-act="delete">delete</button>`
+                : `<button data-act="resolve">resolve</button><button data-act="delete">delete</button>`;
+            return `<article class="f4a-note" data-id="${esc(item.id)}" title="Show this annotation"><div class="f4a-state" data-state="${itemState}">${stateLabel[itemState]}</div><div>${esc(item.note)}</div>${item.anchor.exact ? `<div class="f4a-quote">${esc(item.anchor.exact)}</div>`:""}${renderSource(item)}${renderHandoff(item)}<div class="f4a-meta">${new Date(item.createdAtEpochMs).toLocaleDateString()} ${item.tags.map(t=>"@"+esc(t)).join(" ")}</div>${renderThread(item)}${itemState === "memory" || itemState === "handoff" ? "" : `<textarea class="f4a-reply" data-role="reply" placeholder="${itemState === "question" ? "Answer the agent — Enter sends" : "Reply — Enter sends"}"></textarea>`}<div class="f4a-actions">${actions}</div></article>`;
+        }).join("") || `<div class="f4a-meta">No notes on this page.</div>`;
         renderMarkers();
     };
-    const load = async () => { state.annotations = await api(`/api/docs-annotations?page=${encodeURIComponent(canonicalPage)}`); render(); };
+    const load = async () => { state.annotations = await api(`/api/docs-annotations?page=${encodeURIComponent(canonicalPage)}${state.showResolved ? "&resolved=true" : ""}`); render(); };
+    // The build writes the commit it was built from next to the site; a note carries it so the
+    // quote is matched against the Markdown that produced *this* rendering. Absent (an old or
+    // published build) is fine: the server records its own HEAD as a fallback.
+    const loadBuildInfo = async () => {
+        try {
+            const response = await fetch(new URL(`${proxyRoot}field-docs-build.json`, window.location.origin), { cache:"no-store" });
+            if (response.ok) state.buildCommit = String((await response.json()).commit || "");
+        } catch (_) { /* no build info; not an error */ }
+    };
+    const sendReply = async (id, reply) => {
+        const item = state.annotations.find(value => value.id === id);
+        if (!item || !reply.trim()) return;
+        await api("/api/docs-annotations", { method:"POST", body:JSON.stringify({ annotation:{ id:item.id, pageUrl:item.pageUrl, note:item.note, tags:item.tags }, reply }) });
+        await load();
+    };
 
     panel.addEventListener("click", async event => {
         const button = event.target.closest("button"); if (!button) return;
@@ -195,13 +283,21 @@
         if (action === "new") openEditor();
         if (action === "hide") { panel.hidden = true; launcher.hidden = false; state.visible = false; renderMarkers(); }
         try {
+            if (action === "reopen" && id) { await api(`/api/docs-annotations/${id}/resolve`, {method:"PUT",body:JSON.stringify({resolved:false,resolution:"Reopened by user"})}); await load(); }
             if (action === "resolve" && id) { await api(`/api/docs-annotations/${id}/resolve`, {method:"PUT",body:JSON.stringify({resolved:true,resolution:"Resolved by user"})}); await load(); }
             if (action === "delete" && id && confirm("Delete this annotation?")) { await api(`/api/docs-annotations/${id}`, {method:"DELETE"}); await load(); }
         } catch (error) { reportError(error.message); }
     });
+    panel.querySelector('[data-role="list"]').addEventListener("keydown", async event => {
+        const reply = event.target.closest('[data-role="reply"]');
+        if (!reply || event.isComposing || event.key !== "Enter" || event.shiftKey) return;
+        event.preventDefault();
+        try { await sendReply(reply.closest("[data-id]")?.dataset.id, reply.value); } catch (error) { reportError(error.message); }
+    });
+    panel.querySelector('[data-role="show-resolved"]').addEventListener("change", event => { state.showResolved = event.target.checked; load().catch(error => reportError(error.message)); });
     launcher.addEventListener("click", () => { launcher.hidden = true; panel.hidden = false; state.visible = true; renderMarkers(); });
     panel.querySelector('[data-role="list"]').addEventListener("click", event => {
-        if (event.target.closest("button")) return;
+        if (event.target.closest("button, textarea")) return;
         const id = event.target.closest("[data-id]")?.dataset.id;
         const item = state.annotations.find(value => value.id === id);
         if (!item) return;
@@ -225,7 +321,7 @@
         const link = event.target.closest("a[href]"); if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
         const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = new URL(`${proxyRoot}${target.pathname.slice(8)}${target.search}${target.hash}`, window.location.origin).toString(); }
     });
-        addEventListener("resize", syncResponsiveVisibility); syncResponsiveVisibility(); load().catch(error => { panel.querySelector('[data-role="list"]').textContent = error.message; });
+        addEventListener("resize", syncResponsiveVisibility); syncResponsiveVisibility(); loadBuildInfo(); load().catch(error => { panel.querySelector('[data-role="list"]').textContent = error.message; });
     };
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once:true });
     else install();

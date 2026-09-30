@@ -156,6 +156,8 @@ Both the preamble gather and the value walk follow `parents`. Connecting a child
 
 This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
+When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
+
 The preamble is regenerated **on run**: Field recomputes the gathered preamble, diffs it against the cached copy, and executes only the newly-added segments, so adding a `prop` in a parent and re-running a child is enough to make the new accessor appear.
 
 ---

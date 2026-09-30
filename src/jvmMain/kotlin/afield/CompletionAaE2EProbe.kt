@@ -9,6 +9,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.SourceCodeCompletionVariant
 import java.io.File
+import kotlin.system.exitProcess
 
 /*
 FIELD_TEST
@@ -17,14 +18,17 @@ runner: jvm-main
 entrypoint: afield.CompletionAaE2EProbe
 tags: [probe, kotlin, completion]
 timeoutSec: 400
+# The runner provides a sidecar and hands its URL to Field, which this JVM inherits. Without one the
+# test is environment-incomplete: until 2026-09-30 it printed SKIP and PASSED instead, which is how
+# the Kotlin 2.5 uplift shipped a sidecar that could not complete anything past this gate.
+requiresSidecar: true
 expect:
   exitCode: 0
   stdoutContains:
     - "AA E2E DONE"
   # Every check below prints ✓ or ✗, and until now NOTHING asserted on them: all five could fail
   # and the probe still passed, because "AA E2E DONE" prints unconditionally. That is how `d.fl`
-  # shipped answering with stdlib junk. A ✗ is never printed on the no-sidecar SKIP path, so this
-  # stays green where no sidecar is running.
+  # shipped answering with stdlib junk.
   stdoutNotContains:
     - "✗"
     # The sidecar reports a truncated candidate list in its note, which now reaches this log line via
@@ -41,8 +45,9 @@ expect:
  * gathered preamble + implicit `Box` receiver + this JVM's classpath to the sidecar `/complete`.
  *
  * Needs a running sidecar; its URL comes from `-Dafield.completion.sidecarUrl`,
- * `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a `build/completion-corpus/sidecar-url.txt` file. If none
- * is set, the probe SKIPs (exit 0) so it never fails CI where no sidecar is running.
+ * `AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL`, or a `build/completion-corpus/sidecar-url.txt` file. With none
+ * it exits 3 without printing `AA E2E DONE`: a probe of the AA chain that cannot reach the chain has
+ * not passed. (It used to SKIP with exit 0 "so it never fails CI", and so the smoke gate never ran it.)
  *
  * Every check asserts the BACKEND as well as the candidate, via [KotlinInterface2.lastCompletionBackend]:
  * a K1 fallback answer is a failure here however good the candidate list is. Candidate presence alone is
@@ -70,9 +75,8 @@ object CompletionAaE2EProbe {
             ?: System.getenv("AFIELD_CODE_USE_SEMANTIC_SIDECAR_URL")?.trim()?.ifBlank { null }
             ?: urlFile.takeIf { it.exists() }?.readText()?.trim()?.ifBlank { null })
         if (url == null) {
-            println("SKIP: no sidecar URL (set -Dafield.completion.sidecarUrl or write build/completion-corpus/sidecar-url.txt)")
-            println("AA E2E DONE")
-            return
+            println("NO SIDECAR: no sidecar URL (set -Dafield.completion.sidecarUrl or write build/completion-corpus/sidecar-url.txt); the AA chain was not exercised")
+            exitProcess(3)
         }
         System.setProperty("afield.completion.sidecarUrl", url)
         KotlinEngineConfig.activeCompletionBackend = KotlinEngineConfig.CompletionBackend.AA

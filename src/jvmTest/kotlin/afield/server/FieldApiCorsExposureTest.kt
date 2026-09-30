@@ -179,9 +179,10 @@ class FieldApiCorsExposureTest {
      * ## What it is measuring, and what it cannot
      *
      * Two literals per route, read out of the source: the declaration, and whether one of
-     * the three known guard calls appears in the handler that follows it. The guard names
-     * are the vocabulary of `docsAnnotations.kt`; there is no other access control in the
-     * tree, because there is no `install(Authentication)` in it either. So `"none"` here
+     * the four known guard calls appears in the handler that follows it. The guard names
+     * are the vocabulary of `docsAnnotations.kt` plus `agentRouteAccess.kt`; there is no other
+     * access control in the tree, because there is no `install(Authentication)` in it either.
+     * A new guard function has to be added to `guardAtoms`, or its routes read as `"none"`. So `"none"` here
      * means precisely `"none"`.
      *
      * It reads **three** declaration shapes, and until 2026-08-22 it read only the first:
@@ -210,7 +211,7 @@ class FieldApiCorsExposureTest {
      *
      * ## What the table says, and it is the honest answer to "is Field's API authenticated"
      *
-     * **49 of 54 state-changing routes have no route-specific guard of any kind** — 36 of 40
+     * **49 of 56 state-changing routes have no route-specific guard of any kind** — 36 of 40
      * before the verbless shape was counted — including `POST /api/shutdown-instance`, which
      * a foreign origin was measured stopping the server with, `POST /api/agent-worktrees/delete`,
      * and now `ANY /lazy-value-fragment`, which takes four query parameters straight into
@@ -234,8 +235,11 @@ class FieldApiCorsExposureTest {
             "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
             "refuseUnlessLocalDocsClient" to listOf("loopback"),
             "refuseDocsImprovementLaunch" to listOf("loopback", "enabled+token"),
+            // agentRouteAccess.kt. Its own policy, so the docs-annotation opt-ins cannot loosen it;
+            // the Host allowlist is the DNS-rebinding check the docs guards do not make.
+            "agentRouteRefusal" to listOf("loopback", "localhost-host", "same-site"),
         )
-        val order = listOf("loopback", "same-site", "enabled+token")
+        val order = listOf("loopback", "localhost-host", "same-site", "enabled+token")
 
         val found = sortedMapOf<String, String>()
         var verbless = 0
@@ -517,7 +521,7 @@ class FieldApiCorsExposureTest {
          */
         const val ALL_METHODS = "ANY"
 
-        /** Five route-specific guards; the application-wide switch is off by default. */
+        /** Seven route-specific guards; the application-wide switch is off by default. */
         val EXPECTED_MUTATING_SURFACE = sortedMapOf(
             // Thirteen verbless routes, every one of them a page-serving `handle { }` that
             // also accepts POST, PUT and DELETE. `/lazy-value-fragment` is the one with real
@@ -538,6 +542,13 @@ class FieldApiCorsExposureTest {
             "DELETE /api/docs-annotations/{id}" to "loopback + same-site",
             "DELETE /api/maven-dependencies" to "none",
             "DELETE /api/maven-repositories" to "none",
+            // The in-Field agent harness (2026-09-29): runs code in Field's JVM and, in live mode,
+            // spends model tokens. No enabled+token gate, unlike docs-improvement: its callers are
+            // curl, the backdoor and field_mcp on this machine, the boundary is this machine's user
+            // (DOCS_IMPROVEMENT_AGENT.md, threat model), and the token's job there — CSRF that
+            // survives a CORS change — is done here by the route's own same-site check.
+            "POST /api/agent-eval" to "loopback + localhost-host + same-site",
+            "POST /api/agent-task" to "loopback + localhost-host + same-site",
             "POST /api/agent-worktrees/delete" to "none",
             "POST /api/agent-worktrees/merge" to "none",
             "POST /api/agent-worktrees/restart" to "none",
@@ -548,6 +559,11 @@ class FieldApiCorsExposureTest {
             "POST /api/completion-doc-polish" to "none",
             "POST /api/docs-annotations" to "loopback + same-site",
             "POST /api/docs-improvement" to "loopback + same-site + enabled+token",
+            // /docs-pass.html (docsPass.kt): the same agents as the route above, plus commit and a
+            // fast-forward of main. Loopback + same-site with both annotation hatches forced shut,
+            // and deliberately no switch or token (2026-09-30; see docsPass.kt's header and
+            // DocsPassRouteTest).
+            "POST /api/docs-improvement/pass" to "loopback + same-site",
             "POST /api/duplicate-document" to "none",
             // The one route whose openness is a feature: the offline viewer POSTs here from
             // whatever origin its bundle was served from, which is why anyHost() stands.
