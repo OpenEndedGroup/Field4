@@ -756,6 +756,108 @@ class DetachTest(unittest.TestCase):
             repo.close()
 
 
+class BatchTest(unittest.TestCase):
+    def h(self, title: str, scope: str = "project", blocking: bool = False) -> dict:
+        return {"id": "x", "kind": "handoff", "note": title, "handoff": {"scope": scope, "blocking": blocking}}
+
+    def test_the_rules_sort_real_titles_from_the_first_pass(self) -> None:
+        cases = {
+            ("Decide whether to fold Spatial Navigation into another page", "crosscutting", True): "decisions",
+            ("Give the Underfit Mancini page real audio, or retire it", "project", True): "decisions",
+            ("Move Linear Algebra out of Reference in the nav", "crosscutting", False): "navigation",
+            ("Shorten the keyframes page's sidebar title", "crosscutting", False): "navigation",
+            ("Capture the MuScriptor piano roll for the transcription page", "project", False): "captures",
+            ("Add a path-traced render of the mounted photo plaque", "project", False): "captures",
+            ("Give mid-page h1 headings more space above than below", "crosscutting", False): "site",
+            ("Auto-link repo source paths in docs to GitHub", "crosscutting", False): "site",
+            ("Rename or rescale the three misnamed dynamic-graph parameters", "project", False): "code",
+            ("Add two-keystroke chord sequences to keybindings", "project", False): "code",
+        }
+        for (title, scope, blocking), expected in cases.items():
+            self.assertEqual(dn.classify_handoff(self.h(title, scope, blocking)), expected, title)
+
+    def test_a_chosen_batch_wins_and_survives_grouping(self) -> None:
+        with TemporaryDirectory() as tmp:
+            store = dn.Store(Path(tmp) / "s.json")
+            (Path(tmp) / "s.json").write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "aaaa0001", "kind": "handoff", "pageUrl": PAGE, "note": "Move Linear Algebra out of Reference in the nav",
+                 "handoff": {"scope": "crosscutting", "state": "open"}}]}))
+            dn.set_handoff_batch(store, "aaaa", "code")
+            self.assertEqual(dn.group_handoffs(store), 0)
+            self.assertEqual(dn.handoff_batch(store.notes()[0]), "code")
+            self.assertEqual(dn.group_handoffs(store, force=True), 1)
+            self.assertEqual(dn.handoff_batch(store.notes()[0]), "navigation")
+
+
+class SessionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write("public/docs/guide.md", GUIDE)
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+        self.repo.write("dev_docs/handoffs/2026-10-01-move-it.md", "# Move it\n\nbody\n")
+        self.repo.commit("docs")
+        self.store_path = self.repo.root / "store.json"
+        self.store_path.write_text(json.dumps({"version": 1, "annotations": [
+            {"id": "aaaa0001", "kind": "handoff", "pageUrl": PAGE, "note": "Move the guide in the nav",
+             "handoff": {"scope": "crosscutting", "state": "open", "path": "dev_docs/handoffs/2026-10-01-move-it.md", "page": "guide.md"}},
+            {"id": "bbbb0002", "kind": "handoff", "pageUrl": PAGE, "note": "Rename the guide page title",
+             "handoff": {"scope": "crosscutting", "state": "open", "path": "dev_docs/handoffs/2026-10-01-not-landed.md"}}]}))
+        self.store = dn.Store(self.store_path)
+        self.git = dn.Git(self.repo.root)
+
+    def tearDown(self) -> None:
+        for session in dn.load_sessions(self.repo.root):
+            subprocess.run(["rm", "-rf", session["worktree"]], check=False)
+        self.repo.close()
+
+    def overview(self) -> dict:
+        return {b["key"]: b for b in dn.batch_overview(self.git, self.store.notes())}
+
+    def test_a_session_waits_until_every_document_is_on_main(self) -> None:
+        navigation = self.overview()["navigation"]
+        self.assertEqual(navigation["notLanded"], ["bbbb0002"])
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.start_session(self.git, self.store, "navigation")
+        self.assertIn("land the revision pass first", str(refused.exception))
+
+    def test_start_and_end_a_session(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        brief = (worktree / "HANDOFF_SESSION.md").read_text()
+        self.assertIn("Navigation and page structure", brief)
+        self.assertIn("dev_docs/handoffs/2026-10-01-move-it.md", brief)
+        self.assertIn("handoff-close", brief)
+        self.assertIn("claude", session["command"])
+        self.assertEqual(dn.Git(worktree).status_paths(), {}, "the brief is excluded, not an uncommitted file")
+        self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"taken"})
+        self.assertEqual(self.overview()["navigation"]["session"]["branch"], session["branch"])
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit):
+            dn.start_session(self.git, self.store, "navigation")  # everything in it is taken
+        # Nothing was committed on the session branch, so it counts as merged: ending it is clean.
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(worktree.exists())
+        self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"open"},
+                         "handoffs the session did not close go back to open")
+
+    def test_an_unmerged_session_is_only_ended_by_abandoning_it(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        (worktree / "public/docs/guide.md").write_text("changed\n")
+        subprocess.run(["git", "commit", "-qam", "work"], cwd=worktree, check=True)
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit):
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        with mock.patch("builtins.print"):
+            dn.end_session(self.git, self.store, "navigation", abandon=True)
+        self.assertFalse(worktree.exists())
+
+
 class KotlinSchemaTest(unittest.TestCase):
     """Every key this tool writes must exist on the Kotlin side, or the server's next write drops it."""
 

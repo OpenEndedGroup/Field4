@@ -1291,6 +1291,7 @@ def _apply_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str,
         "createdAtEpochMs": created, "updatedAtEpochMs": created, "recordedInCheckout": str(REPO_ROOT),
         "handoff": {"path": op["path"], "scope": op.get("scope", "project"), "blocking": bool(op.get("blocking")),
                     "state": "open", "page": page, "pages": op.get("pages", []), "fromNotes": op.get("notes", []),
+                    **({"batch": op["batch"]} if op.get("batch") in BATCH_KEYS else {}),
                     **({"runId": op["runId"]} if op.get("runId") else {})},
     })
     add_entry(handoff, "handoff", f"filed: {op['path']}", author, handoff=handoff["id"], **extra)
@@ -1436,7 +1437,12 @@ with file:line references; propose an approach and its alternatives; list the qu
 has to answer; and say what the page needs once it is done. Then file it:
 
   {cli} handoff "short imperative title" --scope project|crosscutting --body-file {draft_dir}/<name>.md \\
-      --note <note-id> [--note <note-id> ...] [--page <other affected page> ...] [--blocking]
+      --note <note-id> [--note <note-id> ...] [--page <other affected page> ...] [--blocking] \\
+      --batch decisions|navigation|captures|site|code
+
+--batch says which interactive session will pick it up: decisions (a choice only the human can make),
+navigation (nav, page merges, moves, renames), captures (a figure, video or board to capture for real),
+site (how every page is built or styled), code (a change to Field itself).
 
 Use --blocking when the rest of this page should not be revised until the handoff is done
 (for example: the page is about to be merged away, or its subject is about to change). After
@@ -2032,6 +2038,7 @@ def cmd_handoff(args: argparse.Namespace, store: Store, git: Git) -> int:
                                   notes=from_notes, author=current_author())
     result = record(store, {"op": "handoff", "handoffId": handoff_id, "title": args.title.strip(), "path": path,
                             "scope": args.scope, "blocking": args.blocking, "notes": [n["id"] for n in from_notes],
+                            **({"batch": args.batch} if args.batch else {}),
                             "pages": pages, "page": page, "pageUrl": page_url})
     print(f"handoff {handoff_id[:8]} written to {path}" + (" (journaled)" if "journaled" in result else ""))
     if args.blocking and in_run:
@@ -2098,6 +2105,20 @@ def default_pass_path(root: Path, stamp: str) -> Path:
     return root.parent / f"{root.name}-docs-pass-{stamp}"
 
 
+def add_prepared_worktree(git: Git, worktree: Path, branch: str, base_commit: str) -> None:
+    """`git worktree add`, plus the two things a fresh worktree of this repo lacks and a docs build or
+    commit guard needs: the LFS jars (checked out as pointers) and kotlin-js-store/yarn.lock (ignored,
+    so never checked out). Both failures are reported rather than fatal."""
+    git.run("worktree", "add", "-b", branch, str(worktree), base_commit)
+    lfs = subprocess.run(["git", "lfs", "checkout"], cwd=worktree, capture_output=True, text=True, check=False)
+    print("git lfs checkout: " + ("ok" if lfs.returncode == 0 else (lfs.stderr.strip() or "unavailable")), flush=True)
+    lock = git.root / "kotlin-js-store" / "yarn.lock"
+    if lock.is_file() and not (worktree / "kotlin-js-store" / "yarn.lock").exists():
+        (worktree / "kotlin-js-store").mkdir(exist_ok=True)
+        shutil.copy2(lock, worktree / "kotlin-js-store" / "yarn.lock")
+        print("copied kotlin-js-store/yarn.lock", flush=True)
+
+
 def pass_create(git: Git, *, base: str, path: str | None) -> dict[str, Any]:
     existing = load_pass(git.root)
     if existing and Path(existing["worktree"]).is_dir():
@@ -2107,17 +2128,7 @@ def pass_create(git: Git, *, base: str, path: str | None) -> dict[str, Any]:
     worktree = Path(path).expanduser().resolve() if path else default_pass_path(git.root, stamp)
     base_commit = git.run("rev-parse", base).strip()
     print(f"creating {worktree} on {branch} from {base} ({base_commit[:10]})", flush=True)
-    git.run("worktree", "add", "-b", branch, str(worktree), base_commit)
-    # Two things a fresh worktree of this repo lacks and a docs build or commit guard needs: the
-    # LFS jars (checked out as pointers) and kotlin-js-store/yarn.lock (ignored, so never checked
-    # out). Neither is needed to revise, and both failures are reported rather than fatal.
-    lfs = subprocess.run(["git", "lfs", "checkout"], cwd=worktree, capture_output=True, text=True, check=False)
-    print("git lfs checkout: " + ("ok" if lfs.returncode == 0 else (lfs.stderr.strip() or "unavailable")), flush=True)
-    lock = git.root / "kotlin-js-store" / "yarn.lock"
-    if lock.is_file() and not (worktree / "kotlin-js-store" / "yarn.lock").exists():
-        (worktree / "kotlin-js-store").mkdir(exist_ok=True)
-        shutil.copy2(lock, worktree / "kotlin-js-store" / "yarn.lock")
-        print("copied kotlin-js-store/yarn.lock", flush=True)
+    add_prepared_worktree(git, worktree, branch, base_commit)
     state = {"worktree": str(worktree), "branch": branch, "base": base, "baseCommit": base_commit,
              "primary": str(git.root), "createdAtEpochMs": now_ms(), "runs": []}
     save_pass(git.root, state)
@@ -2189,8 +2200,10 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
                          "blocking": bool(info.get("blocking")), "state": info.get("state", "open"),
                          "path": info.get("path"), "page": info.get("page") or item.get("pageUrl"),
                          "resolution": item.get("resolution", ""), "createdAtEpochMs": item.get("createdAtEpochMs"),
+                         "batch": handoff_batch(item), "batchChosen": info.get("batch") in BATCH_KEYS,
                          "waiting": sum(1 for n in notes if blocked_by(n) == item["id"])})
     result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs,
+                              "batches": batch_overview(git, notes),
                               "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
                               "pass": load_pass(git.root)}
     state = result["pass"]
@@ -2491,6 +2504,239 @@ def run_pass(args: argparse.Namespace, store: Store, git: Git) -> int:
     return 2
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Handoff batches and interactive sessions
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Handoffs are worked through in themed batches, in order, each in its own worktree with a human
+# (the page agents never touch them). The order is the point: decisions change what the navigation
+# work is; the navigation work moves and merges pages that captures and code then land on.
+
+
+BATCHES = [
+    {"key": "decisions", "order": 1, "title": "Decisions",
+     "how": "Yours, and mostly no agent: read each and close it done or dropped with a sentence. The blocking "
+            "ones release their pages' notes.",
+     "session": "Most of these are a question for the human. Put each question plainly, with the evidence the "
+                "handoff collected, and record the decision; do the work only when it is small and the human asks."},
+    {"key": "navigation", "order": 2, "title": "Navigation and page structure",
+     "how": "One session: they all edit public/zensical.yml, and the merges decided in batch 1 go with them.",
+     "session": "These change the site's structure: nav entries in public/zensical.yml, page merges, moves and "
+                "renames. Do them together so the nav is edited once. A moved or renamed page needs every link to it "
+                "fixed, and a rename of a published page is regenerated, never hand-edited (AGENTS.md section 8)."},
+    {"key": "captures", "order": 3, "title": "Captures",
+     "how": "The docs runner does the work, and a capture must be real (AGENTS.md section 3). Group by what they "
+            "need running: the Field Audio service, the UI, the GPU.",
+     "session": "Each asks for a figure, video or board. A capture exercises the real code or it does not exist: "
+                "never fake, synthesize or hand-edit one (AGENTS.md section 3). Fix the code or the capture system "
+                "when the real capture will not come out, or leave the handoff open and say why."},
+    {"key": "site", "order": 4, "title": "Site mechanics",
+     "how": "One session in the docs build and theme: highlighting, spacing, linking, capture resolution.",
+     "session": "These are changes to how every page is built or looks: public/docs_hooks.py, "
+                "tools/build_zensical_docs.py, public/docs/stylesheets/extra.css and the theme overrides. Rebuild and "
+                "look at several pages, not one."},
+    {"key": "code", "order": 5, "title": "Code",
+     "how": "Real engineering, usually one session each.",
+     "session": "These are changes to Field itself. Read AGENTS.md first; verify with the gates it names, and "
+                "update the docs page the handoff came from once the code is in."},
+]
+BATCH_KEYS = {b["key"] for b in BATCHES}
+_BATCH_ORDER = {b["key"]: b["order"] for b in BATCHES}
+
+_DECISION = re.compile(r"^(decide|choose)\b|\bor (retire|drop|remove|keep)\b|\bwhether\b", re.I)
+_CAPTURE = re.compile(r"\b(re)?captur|\bfigure|\bscreenshot|\bvideo|\bhero\b|\bpiano roll|\bboard\b|\bdashboard|"
+                      r"\bphase-portrait|\bpath-traced|\brender(ed)? (of|analysis)", re.I)
+_SITE = re.compile(r"highlight|\bspacing|\bspace above|auto-link|\bhidpi|\btrim\b|\bstyl", re.I)
+_NAV = re.compile(r"\bnav\b|\bmove\b|\bfold\b|\bmerge\b|\brename\b|\bpromote\b|\bh1\b|\bsidebar\b|\btitle\b|"
+                  r"\bout of (the )?(tour|reference)", re.I)
+
+
+def classify_handoff(item: dict[str, Any]) -> str:
+    """The batch a handoff belongs in, by the rules above — a default, for the page to override."""
+    info = item.get("handoff") or {}
+    title = item.get("note", "")
+    if _DECISION.search(title) or (info.get("blocking") and not _CAPTURE.search(title)):
+        return "decisions"
+    if _CAPTURE.search(title):
+        return "captures"
+    if _SITE.search(title):
+        return "site"
+    # "Rename" in a project handoff is a rename in the code; only crosscutting ones move the site.
+    if info.get("scope") == "crosscutting" and _NAV.search(title):
+        return "navigation"
+    if info.get("scope") == "crosscutting":
+        return "navigation"
+    return "code"
+
+
+def handoff_batch(item: dict[str, Any]) -> str:
+    batch = (item.get("handoff") or {}).get("batch")
+    return batch if batch in BATCH_KEYS else classify_handoff(item)
+
+
+def open_handoffs(notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [n for n in notes if n.get("kind") == "handoff" and not is_resolved(n)
+            and (n.get("handoff") or {}).get("state", "open") in ("open", "taken")]
+
+
+def group_handoffs(store: Store, force: bool = False) -> int:
+    """Store each open handoff's batch (where none was chosen, or everywhere with *force*)."""
+    def change(notes: list[dict[str, Any]]) -> int:
+        count = 0
+        for item in open_handoffs(notes):
+            info = item.setdefault("handoff", {})
+            if force or info.get("batch") not in BATCH_KEYS:
+                info["batch"] = classify_handoff(item)
+                count += 1
+        return count
+    return store.mutate(change)
+
+
+def set_handoff_batch(store: Store, handoff_id: str, batch: str) -> None:
+    if batch not in BATCH_KEYS:
+        raise SystemExit(f"no batch {batch!r}; one of {', '.join(sorted(BATCH_KEYS))}")
+
+    def change(notes: list[dict[str, Any]]) -> None:
+        item = find_note([n for n in notes if n.get("kind") == "handoff"], handoff_id)
+        item.setdefault("handoff", {})["batch"] = batch
+        item["updatedAtEpochMs"] = now_ms()
+    store.mutate(change)
+
+
+def sessions_path(root: Path) -> Path:
+    return root / ".field-backdoor" / "docs-pass" / "sessions.json"
+
+
+def load_sessions(root: Path) -> list[dict[str, Any]]:
+    path = sessions_path(root)
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
+
+
+def save_sessions(root: Path, sessions: list[dict[str, Any]]) -> None:
+    path = sessions_path(root)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_suffix(".tmp")
+    temp.write_text(json.dumps(sessions, indent=2), encoding="utf-8")
+    os.replace(temp, path)
+
+
+def on_base(git: Git, path: str, base: str = "main") -> bool:
+    return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], cwd=git.root, capture_output=True).returncode == 0
+
+
+def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Each batch, in order, with its open handoffs and why its session can or cannot start yet."""
+    open_items = open_handoffs(notes)
+    sessions = {s["batch"]: s for s in load_sessions(git.root) if Path(s["worktree"]).is_dir()}
+    overview = []
+    for batch in BATCHES:
+        items = sorted((h for h in open_items if handoff_batch(h) == batch["key"]),
+                       key=lambda h: (not (h.get("handoff") or {}).get("blocking"), h.get("createdAtEpochMs", 0)))
+        not_landed = [h["id"] for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
+        earlier = [b["title"] for b in BATCHES if b["order"] < batch["order"]
+                   and any(handoff_batch(h) == b["key"] for h in open_items)]
+        overview.append({**{k: batch[k] for k in ("key", "order", "title", "how")},
+                         "handoffs": [h["id"] for h in items], "notLanded": not_landed, "earlierOpen": earlier,
+                         "session": sessions.get(batch["key"])})
+    return overview
+
+
+def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: list[dict[str, Any]], root: Path,
+                  worktree: Path, branch: str, cli: str) -> str:
+    lines = [f"# Handoff session: {batch['title']} ({len(items)} handoff(s))", "",
+             f"You are in `{worktree}`, a worktree on `{branch}` from `main`, working with a human through handoffs "
+             "the documentation revision agents filed. This is an interactive session: ask before a decision that is "
+             "the human's, and say what you are doing as you go.", "",
+             batch["session"], "",
+             "For each handoff, in the order below: read its document, do the work (or get the decision), then close it:", "",
+             f"    {cli} handoff-close <id> \"what happened, in a sentence the page's next agent can use\"",
+             f"    {cli} handoff-close <id> --state dropped \"why not\"", "",
+             "Closing releases the notes the handoff held; the next revision pass finishes those pages with your "
+             "sentence in their brief. Commit here as you go. To land, merge `main` into this branch, then in "
+             f"`{root}` run `git merge --no-ff {branch}`. Do not push.", "", "## Handoffs", ""]
+    for number, item in enumerate(items, 1):
+        info = item.get("handoff") or {}
+        held = sum(1 for n in notes if blocked_by(n) == item["id"])
+        lines += [f"### {number}. {item.get('note', '').strip()}", "",
+                  f"- id `{item['id']}` · {info.get('scope', 'project')}" + (f" · **blocking**, holding {held} note(s)" if info.get("blocking") else
+                                                                            (f" · holding {held} note(s)" if held else "")),
+                  f"- from `{info.get('page') or item.get('pageUrl')}`" + (f", also {', '.join(info.get('pages', []))}" if info.get("pages") else ""),
+                  f"- document: `{info.get('path')}`", ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def start_session(git: Git, store: Store, batch_key: str) -> dict[str, Any]:
+    batch = next((b for b in BATCHES if b["key"] == batch_key), None)
+    if batch is None:
+        raise SystemExit(f"no batch {batch_key!r}")
+    notes = store.notes()
+    items = [h for h in open_handoffs(notes) if handoff_batch(h) == batch_key and (h.get("handoff") or {}).get("state", "open") == "open"]
+    if not items:
+        raise SystemExit(f"no open handoffs in {batch['title']}")
+    missing = [h for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
+    if missing:
+        raise SystemExit(f"{len(missing)} of these handoffs' documents are not on main yet: land the revision pass first "
+                         "(Commit, then Land on main), so the session starts from the pages the pass rewrote.")
+    stamp = time.strftime("%Y%m%d-%H%M")
+    branch = f"handoffs/{batch_key}-{stamp}"
+    worktree = default_pass_path(git.root, stamp).with_name(f"handoffs-{batch_key}-{stamp}")
+    base_commit = git.run("rev-parse", "main").strip()
+    print(f"creating {worktree} on {branch} from main ({base_commit[:10]})", flush=True)
+    add_prepared_worktree(git, worktree, branch, base_commit)
+    cli = f"python3 {shlex.quote(str(worktree / 'tools' / 'docs_notes.py'))} --store {shlex.quote(str(store.path))}"
+    brief = session_brief(batch, items, notes, git.root, worktree, branch, cli)
+    (worktree / "HANDOFF_SESSION.md").write_text(brief, encoding="utf-8")
+    exclude = Path(Git(worktree).run("rev-parse", "--git-path", "info/exclude").strip())
+    exclude = exclude if exclude.is_absolute() else worktree / exclude
+    exclude.parent.mkdir(parents=True, exist_ok=True)
+    with open(exclude, "a", encoding="utf-8") as handle:
+        handle.write("\n/HANDOFF_SESSION.md\n")
+    ids = [h["id"] for h in items]
+
+    def take(current: list[dict[str, Any]]) -> None:
+        for item in current:
+            if item.get("id") in ids:
+                item.setdefault("handoff", {})["state"] = "taken"
+                add_entry(item, "comment", f"taken in a {batch['title']} session: {worktree}", "human")
+    store.mutate(take)
+    command = f"cd {shlex.quote(str(worktree))} && claude \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
+    session = {"batch": batch_key, "title": batch["title"], "worktree": str(worktree), "branch": branch,
+               "base": base_commit, "handoffs": ids, "command": command, "createdAtEpochMs": now_ms()}
+    sessions = [s for s in load_sessions(git.root) if s.get("batch") != batch_key or Path(s["worktree"]).is_dir()]
+    save_sessions(git.root, sessions + [session])
+    print(json.dumps(session, indent=2), flush=True)
+    return session
+
+
+def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
+    sessions = load_sessions(git.root)
+    session = next((s for s in sessions if s.get("batch") == batch_key), None)
+    if session is None:
+        raise SystemExit(f"no {batch_key} session")
+    worktree, branch = Path(session["worktree"]), session["branch"]
+    merged = subprocess.run(["git", "merge-base", "--is-ancestor", branch, "main"], cwd=git.root).returncode == 0
+    dirty = worktree.is_dir() and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
+    if (dirty or not merged) and not abandon:
+        raise SystemExit("The session " + ("has uncommitted changes" if dirty else f"branch {branch} has not been merged into main")
+                         + "; land it first, or end it with --abandon to throw it away.")
+    if worktree.is_dir():
+        git.run(*(["worktree", "remove", "--force", str(worktree)]))
+    git.run("worktree", "prune", check=False)
+    git.run("branch", "-D" if abandon else "-d", branch, check=False)
+
+    def release(current: list[dict[str, Any]]) -> None:
+        for item in current:
+            info = item.get("handoff") or {}
+            if item.get("id") in session["handoffs"] and info.get("state") == "taken":
+                info["state"] = "open"  # not closed in the session: back in the queue
+                add_entry(item, "comment", f"its {session['title']} session ended without closing it", "human")
+    store.mutate(release)
+    save_sessions(git.root, [s for s in sessions if s is not session])
+    print(f"session ended: removed {worktree} and {branch}" + (" (abandoned)" if abandon else ""), flush=True)
+    return 0
+
+
 def add_revise_arguments(p: argparse.ArgumentParser) -> None:
     p.add_argument("--agent", choices=sorted(AGENTS), default=os.environ.get("DOCS_NOTES_AGENT", "claude"))
     p.add_argument("--agent-command", help="custom agent argv template: {prompt}, {prompt_file}, {root}")
@@ -2557,6 +2803,21 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--page", action="append", default=[], help="another page it affects (repeatable)")
     p.add_argument("--from-page", help="the page it is filed from (default: the run's page, or the notes' page)")
     p.add_argument("--blocking", action="store_true", help="the page's other notes wait until it is closed")
+    p.add_argument("--batch", choices=sorted(BATCH_KEYS),
+                   help="decisions, navigation, captures, site or code (the rules pick one when omitted)")
+
+    p = sub.add_parser("handoff-batches", help="the batches, in order, with their open handoffs")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("handoff-group", help="store a batch on every open handoff that has none")
+    p.add_argument("--force", action="store_true", help="re-derive every batch, overriding choices")
+    p = sub.add_parser("handoff-set-batch", help="move a handoff to another batch")
+    p.add_argument("id")
+    p.add_argument("batch", choices=sorted(BATCH_KEYS))
+    p = sub.add_parser("handoff-session", help="start an interactive session for one batch, in its own worktree")
+    p.add_argument("batch", choices=sorted(BATCH_KEYS))
+    p = sub.add_parser("handoff-session-end", help="remove a batch's session worktree once its branch is merged")
+    p.add_argument("batch", choices=sorted(BATCH_KEYS))
+    p.add_argument("--abandon", action="store_true")
 
     p = sub.add_parser("handoffs", help="the handoff queue, for the interactive pass")
     p.add_argument("--all", action="store_true", help="include done and dropped handoffs")
@@ -2677,6 +2938,27 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "handoff":
         return cmd_handoff(args, store, git)
+    if args.command == "handoff-batches":
+        overview = batch_overview(git, store.notes())
+        if args.json:
+            print(json.dumps(overview, indent=2))
+            return 0
+        for batch in overview:
+            print(f"{batch['order']}. {batch['title']}: {len(batch['handoffs'])} open"
+                  + (f" · session in {batch['session']['worktree']}" if batch.get("session") else ""))
+        return 0
+    if args.command == "handoff-group":
+        print(f"grouped {group_handoffs(store, args.force)} handoff(s)")
+        return 0
+    if args.command == "handoff-set-batch":
+        set_handoff_batch(store, args.id, args.batch)
+        print(f"{args.id[:8]} → {args.batch}")
+        return 0
+    if args.command == "handoff-session":
+        start_session(git, store, args.batch)
+        return 0
+    if args.command == "handoff-session-end":
+        return end_session(git, store, args.batch, args.abandon)
     if args.command == "handoffs":
         items = [n for n in store.notes() if n.get("kind") == "handoff"]
         if not args.all:

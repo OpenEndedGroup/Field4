@@ -22,6 +22,10 @@ class DocsPassArgumentsTest {
         assertEquals(listOf("pass", "rebuild", "--mode", "incremental"), docsPassArguments(DocsPassAction("rebuild", mode = "incremental")))
         assertEquals(listOf("pass", "finish", "--abandon"), docsPassArguments(DocsPassAction("finish", abandon = true)))
         assertEquals(listOf("pass", "discard", "--", "public/docs/sound.md"), docsPassArguments(DocsPassAction("discard", path = "public/docs/sound.md")))
+        assertEquals(listOf("handoff-group"), docsPassArguments(DocsPassAction("group-handoffs")))
+        assertEquals(listOf("handoff-set-batch", "--", "2dde24f2", "captures"), docsPassArguments(DocsPassAction("set-batch", id = "2dde24f2", batch = "captures")))
+        assertEquals(listOf("handoff-session", "navigation"), docsPassArguments(DocsPassAction("start-session", batch = "navigation")))
+        assertEquals(listOf("handoff-session-end", "code", "--abandon"), docsPassArguments(DocsPassAction("end-session", batch = "code", abandon = true)))
         assertEquals(
             listOf("handoff-close", "--state", "done", "--", "2dde24f2", "merged"),
             docsPassArguments(DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = " merged ")),
@@ -54,6 +58,10 @@ class DocsPassArgumentsTest {
             DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = ""),
             DocsPassAction("close-handoff", id = "2dde24f2", state = "merged", text = "x"),
             DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = "x".repeat(2001)),
+            DocsPassAction("set-batch", id = "2dde24f2", batch = "everything"),
+            DocsPassAction("set-batch", id = "--store", batch = "code"),
+            DocsPassAction("start-session", batch = "../../x"),
+            DocsPassAction("end-session", batch = ""),
         )
         refused.forEach { assertNull(docsPassArguments(it), "should refuse $it") }
     }
