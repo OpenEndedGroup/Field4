@@ -51,6 +51,9 @@ nav:
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
     - Where Field Looks for a File: files_and_paths.md
+    # Beside files_and_paths.md: that page answers "which file did this path mean", this one "which
+    # box did this value come from", and both are lookups a person otherwise reverse-engineers.
+    - Why Does This Value Resolve Here?: why.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
     # that explain what that past is; nothing about the split was deliberate.
@@ -269,6 +272,9 @@ nav:
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    # After the four conversations rather than before them: those pages show a study being worked on,
+    # and this one is the layer they share, which reads best once you have seen one.
+    - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
     - Notes on the Documentation: docs_notes.md

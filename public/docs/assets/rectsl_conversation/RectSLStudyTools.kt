@@ -7,6 +7,12 @@ import afield.ai.core.ToolExecutionContext
 import afield.plugins
 import afield.stdlib.FileManager
 import afield.stdlib.StudySourceEdit
+import afield.stdlib.LiveStudy
+import afield.stdlib.StudyReport
+import afield.stdlib.StudyRequest
+import afield.stdlib.StudyToolClasses
+import afield.stdlib.registerStudyTools
+import afield.stdlib.numbers
 import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 
@@ -21,37 +27,37 @@ data class RectSLStudyGuide(
 )
 
 @JsonClassDescription("Read this RectSL study: the checked scene, whether the editor holds an unchecked human edit (dirty; then liveSource is what is in the box and liveCheck says whether it compiles), revision history, the scene's shape (wall, duration, rectangles, what is visible when), the analysis's warnings, the lines that make rectangles, knobs (typed numbers and colours, one line each: index, line:column, as typed, what reads it), and personAt — the line the person's editor cursor is on, which a click on a rectangle in the window moves to the line that made it, so 'this one' usually means it. Inspect once before editing and reuse liveSourceHash. The window above the box plays the scene live; prefer ObserveRectSLStudy or TimelineRectSLStudy, which draw exact times.")
-data class InspectRectSLStudy(val revision: String = "current")
+data class InspectRectSLStudy(override val revision: String = "current") : StudyRequest.Inspect
 
 @JsonClassDescription("Replace the whole RectSL program. Compiles it (materials included), samples and draws it at probe times, then activates it as a new revision and returns warnings plus an image preview against the parent. Needs expectedRevision and expectedSourceHash from Inspect; a stale guard or failed check changes nothing. Prefer PatchRectSLStudy or SetRectSLNumbers for small edits.")
 data class EditRectSLStudy(
-    val expectedRevision: String,
-    val expectedSourceHash: String,
+    override val expectedRevision: String,
+    override val expectedSourceHash: String,
     @JsonPropertyDescription("Complete RectSL source. Keep it human-editable: scene words first, one object per paragraph with a # comment saying what it is, named rectangles (\"sun\" rect), : name ... ; definitions for repeated motifs.")
-    val source: String,
-    val description: String,
+    override val source: String,
+    override val description: String,
     @JsonPropertyDescription("Times in seconds for the preview frames; empty chooses four evenly across the clip.")
-    val previewSeconds: List<Double> = emptyList()
-)
+    override val previewSeconds: List<Double> = emptyList()
+) : StudyRequest.Edit, StudyRequest.Preview
 
 @JsonClassDescription("Preferred for local edits: apply exact, unique, non-overlapping text replacements to the live source, then check and activate like EditRectSLStudy. Returns warnings and a before/after preview.")
-data class PatchRectSLStudy(val expectedRevision: String, val expectedSourceHash: String,
-    val edits: List<StudySourceEdit>, val description: String, val previewSeconds: List<Double> = emptyList())
+data class PatchRectSLStudy(override val expectedRevision: String, override val expectedSourceHash: String,
+    override val edits: List<StudySourceEdit>, override val description: String, override val previewSeconds: List<Double> = emptyList()) : StudyRequest.Patch, StudyRequest.Preview
 
 /** One knob to set, by its index in the live source's knob list, and the value to write there. */
 data class RectSLNumberEdit(
-    val knob: Int,
-    @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") val value: Double
-)
+    override val knob: Int,
+    @JsonPropertyDescription("The new value; for a hex colour knob, the colour as a 24-bit number (0xff8800 is 16746496)") override val value: Double
+) : afield.stdlib.NumberEdit
 
 @JsonClassDescription("Set typed numbers and hex colours (knobs, by index from Inspect) to new values, rewritten in place. Checks and activates like an edit.")
-data class SetRectSLNumbers(val expectedRevision: String, val expectedSourceHash: String,
-    val numbers: List<RectSLNumberEdit>, val description: String, val previewSeconds: List<Double> = emptyList())
+data class SetRectSLNumbers(override val expectedRevision: String, override val expectedSourceHash: String,
+    override val numbers: List<RectSLNumberEdit>, override val description: String, override val previewSeconds: List<Double> = emptyList()) : StudyRequest.SetNumbers, StudyRequest.Preview
 
 @JsonClassDescription("See a revision: exact frames at the given times (a still scene draws once) sent as an image, with how many rectangles are visible, luma, detail, colourfulness, palette and motion between frames. compareTo adds that revision's frames and a difference map. renderSeconds says what drew them: the window's GPU, or the CPU reference when there is no window.")
-data class ObserveRectSLStudy(val revision: String = "current", val seconds: List<Double> = emptyList(),
-    @JsonPropertyDescription("Pixels along the wall's longer side, 48..1024; 0 chooses 512 for one frame and 320 for several") val size: Int = 0,
-    val compareTo: String = "")
+data class ObserveRectSLStudy(override val revision: String = "current", override val seconds: List<Double> = emptyList(),
+    @JsonPropertyDescription("Pixels along the wall's longer side, 48..1024; 0 chooses 512 for one frame and 320 for several") override val size: Int = 0,
+    override val compareTo: String = "") : StudyRequest.Observe, StudyRequest.Sized
 
 @JsonClassDescription("See the whole clip at once: frames evenly across the duration, and a chart of how many rectangles are visible, how much of the wall they cover and how fast they move, with the events a viewer would notice (a rectangle entering or leaving the wall, stopping, starting, turning, fading, touching another), each named with the line that made it. Use it to judge pacing and to find the moment something goes wrong.")
 data class TimelineRectSLStudy(val revision: String = "current",
@@ -66,20 +72,23 @@ data class TraceRectSLStudy(val revision: String = "current", val seconds: Doubl
 data class KnobsRectSLStudy(val revision: String = "current", val seconds: List<Double> = emptyList(), val sensitivity: Boolean = true)
 
 @JsonClassDescription("Draw one knob at 2..9 values side by side at one time, without publishing anything. Use it to choose a value before SetRectSLNumbers.")
-data class SweepRectSLNumber(val revision: String = "current", val knob: Int, val values: List<Double>, val seconds: Double = 0.0)
+data class SweepRectSLNumber(override val revision: String = "current", override val knob: Int, override val values: List<Double>, override val seconds: Double = 0.0) :
+    StudyRequest.Sweep, StudyRequest.Revisioned, StudyRequest.At
 
 @JsonClassDescription("Speculate: check and draw 1..8 candidate scenes beside the current one without publishing. Each variant is a complete source or exact edits to the live source, with a short label and note. They are held so the person can Adopt one in the study card, or you can with AdoptRectSLVariant. Labels are short (A, B or 'drift').")
-data class TryRectSLVariants(val variants: List<RectSLStudy.Variant>, val seconds: List<Double> = emptyList())
+data class TryRectSLVariants(override val variants: List<RectSLStudy.Variant>, override val seconds: List<Double> = emptyList()) : StudyRequest.TryVariants
 
 @JsonClassDescription("Publish a held variant by label as a new revision (guards as for an edit).")
-data class AdoptRectSLVariant(val expectedRevision: String, val expectedSourceHash: String, val label: String, val description: String = "")
+data class AdoptRectSLVariant(override val expectedRevision: String, override val expectedSourceHash: String, override val label: String, override val description: String = "") :
+    StudyRequest.Adopt
 
 @JsonClassDescription("Make an earlier revision current again, as a new revision; history is only appended to.")
-data class RestoreRectSLRevision(val expectedRevision: String, val expectedSourceHash: String, val revision: String, val description: String = "")
+data class RestoreRectSLRevision(override val expectedRevision: String, override val expectedSourceHash: String, override val revision: String, override val description: String = "") :
+    StudyRequest.Restore
 
 @JsonClassDescription("Check what an edit preserved: pixels (mode rgb, or luma for brightness only) held to one level outside allowedRegion [x0,y0,x1,y1] in wall units, and — by id — which rectangles changed (position, size, rotation, opacity, fill, material, order), appeared or went, grouped by the line that made them. Name rectangles so their ids survive edits.")
-data class CompareRectSLStudy(val beforeRevision: String, val afterRevision: String = "current", val seconds: List<Double> = emptyList(),
-    val mode: String = "rgb", val allowedRegion: List<Double> = emptyList())
+data class CompareRectSLStudy(override val beforeRevision: String, override val afterRevision: String = "current", override val seconds: List<Double> = emptyList(),
+    override val mode: String = "rgb", override val allowedRegion: List<Double> = emptyList()) : StudyRequest.Compare
 
 @JsonClassDescription("Export a checked revision into this document's files directory: kind png (one frame at seconds) or mp4 (the whole clip at the scene's fps, repeated loops times; needs ffmpeg). Runs in the background and returns at once with an estimate, timed from one real frame, and refuses one over maxMinutes with a size that fits; tell the person where the file will appear and how long it should take. Progress is in InspectRectSLStudy's exports. The filename is used literally. Refuses an unchecked editor edit; overwrite only when asked.")
 data class ExportRectSLStudy(val revision: String, val expectedSourceHash: String, val filename: String, val kind: String = "png",
@@ -127,6 +136,25 @@ private fun scene(ctx: ToolExecutionContext): Box =
 
 private fun studyOf(ctx: ToolExecutionContext): RectSLStudy = RectSLPrograms.readyStudy(scene(ctx))
 
+/** [RectSLStudy] through the standard verbs: what [registerStudyTools] calls. */
+internal class RectSLLiveStudy(val study: RectSLStudy) : LiveStudy {
+    private fun preview(q: Any) = (q as? StudyRequest.Preview)?.previewSeconds.orEmpty()
+    override fun inspect(q: StudyRequest.Inspect): StudyReport = study.inspect(q.revision)
+    override fun edit(q: StudyRequest.Edit) = study.edit(q.expectedRevision, q.expectedSourceHash, q.source, q.description, preview(q))
+    override fun patch(q: StudyRequest.Patch) = study.patch(q.expectedRevision, q.expectedSourceHash, q.edits, q.description, preview(q))
+    override fun setNumbers(q: StudyRequest.SetNumbers) =
+        study.setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.numbers(), q.description, preview(q))
+    override fun observe(q: StudyRequest.Observe) = study.observe(q.revision, q.seconds, (q as? StudyRequest.Sized)?.size ?: 0, q.compareTo)
+    override fun sweep(q: StudyRequest.Sweep) = study.sweep((q as? StudyRequest.Revisioned)?.revision ?: "current", q.knob, q.values,
+        (q as? StudyRequest.At)?.seconds ?: 0.0)
+    override fun tryVariants(q: StudyRequest.TryVariants) =
+        study.tryVariants(q.variants.map { it as? RectSLStudy.Variant ?: RectSLStudy.Variant(it.label, it.source, it.edits, it.note) }, q.seconds)
+    override fun adoptVariant(q: StudyRequest.Adopt) = study.adoptVariant(q.expectedRevision, q.expectedSourceHash, q.label, q.description)
+    override fun restore(q: StudyRequest.Restore) = study.restore(q.expectedRevision, q.expectedSourceHash, q.revision, q.description)
+    override fun compare(q: StudyRequest.Compare) =
+        study.compare(q.beforeRevision, q.afterRevision, q.seconds, mode = q.mode, region = q.allowedRegion.takeIf { it.isNotEmpty() })
+}
+
 /** Register the RectSL study tools once, for every conversation opened on a scene's `rectSL` property. */
 @RunsAt(plugins)
 fun installRectSLStudyTools() {
@@ -134,25 +162,14 @@ fun installRectSLStudyTools() {
     r.register(RectSLStudyGuide::class.java, onAScene, LIBRARY) { _, q ->
         RectSLGuideText(if (q.search.isBlank()) RectSLStudyGuides.working else RectSLStudyGuides.search(q.search))
     }
-    r.register(InspectRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).inspect(q.revision) }
-    r.register(EditRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).edit(q.expectedRevision, q.expectedSourceHash, q.source, q.description, q.previewSeconds) }
-    r.register(PatchRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).patch(q.expectedRevision, q.expectedSourceHash, q.edits, q.description, q.previewSeconds) }
-    r.register(SetRectSLNumbers::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).setNumbers(q.expectedRevision, q.expectedSourceHash, q.numbers.associate { it.knob to it.value }, q.description, q.previewSeconds) }
-    r.register(ObserveRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).observe(q.revision, q.seconds, q.size, q.compareTo) }
+    registerStudyTools(LIBRARY, onAScene, { RectSLLiveStudy(studyOf(it)) }, StudyToolClasses(
+        inspect = InspectRectSLStudy::class.java, edit = EditRectSLStudy::class.java, patch = PatchRectSLStudy::class.java,
+        setNumbers = SetRectSLNumbers::class.java, observe = ObserveRectSLStudy::class.java, compare = CompareRectSLStudy::class.java,
+        sweep = SweepRectSLNumber::class.java, tryVariants = TryRectSLVariants::class.java, adoptVariant = AdoptRectSLVariant::class.java,
+        restore = RestoreRectSLRevision::class.java))
     r.register(TimelineRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).timeline(q.revision, q.frames) }
     r.register(TraceRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).trace(q.revision, q.seconds, q.mode, probeX = q.probeX ?: Double.NaN, probeY = q.probeY ?: Double.NaN) }
     r.register(KnobsRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).knobs(q.revision, q.seconds, q.sensitivity) }
-    r.register(SweepRectSLNumber::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).sweep(q.revision, q.knob, q.values, q.seconds) }
-    r.register(TryRectSLVariants::class.java, onAScene, LIBRARY) { ctx, q -> studyOf(ctx).tryVariants(q.variants, q.seconds) }
-    r.register(AdoptRectSLVariant::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).adoptVariant(q.expectedRevision, q.expectedSourceHash, q.label, q.description) }
-    r.register(RestoreRectSLRevision::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).restore(q.expectedRevision, q.expectedSourceHash, q.revision, q.description) }
-    r.register(CompareRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q ->
-        studyOf(ctx).compare(q.beforeRevision, q.afterRevision, q.seconds, mode = q.mode, region = q.allowedRegion.takeIf { it.isNotEmpty() }) }
     r.register(ExportRectSLStudy::class.java, onAScene, LIBRARY) { ctx, q ->
         require(q.filename.matches(Regex("[a-zA-Z0-9][a-zA-Z0-9_.-]{0,120}"))) { "Use a plain document filename, such as orbit.mp4" }
         val box = scene(ctx)

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**15939 public symbols across 443 source files**, 9429 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**15949 public symbols across 445 source files**, 9438 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -21,13 +21,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [ALife](alife.md) | 11 | 635 | 432 (68%) | Spatial artificial life: grid cellular automata (life-like, cyclic and Wolfram's elementary rules), continuous systems (reaction-diffusion, Turing patterns, Lenia), agent populations (boids, Physarum, diffusion-limited aggregation) and structural growth (L-systems, space colonization), plus the measurement layer every one of them makes its claims through. |
 | [Function](function.md) | 15 | 599 | 393 (65%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
-| [Visualization](visualization.md) | 18 | 552 | 486 (88%) | Turning a value into something you can look at, without leaving the box. |
+| [Visualization](visualization.md) | 18 | 553 | 487 (88%) | Turning a value into something you can look at, without leaving the box. |
 | [Synthesis](synthesis.md) | 33 | 1225 | 566 (46%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 36 | 1217 | 658 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 19 | 895 | 294 (32%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 102 | 2800 | 1236 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 19 | 322 | 228 (70%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 21 | 331 | 236 (71%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 4 | 167 | 164 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -243,7 +243,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [LineNotePictures.kt](workspace.md#linenotepictures-kt) | Workspace | 5 | 5 |  |  |
 | [LineNotes.kt](workspace.md#linenotes-kt) | Workspace | 9 | 9 |  |  |
 | [LineNoteTools.kt](workspace.md#linenotetools-kt) | Workspace | 11 | 5 |  |  |
-| [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  |  |
+| [LiveStudy.kt](workspace.md#livestudy-kt) | Workspace | 54 | 23 |  | [Studies](../studies.md) |
 | [Lowerer.kt](languages.md#lowerer-kt) | Languages | 2 | 2 | The last stage of the FieldML front end: the typed tree becomes the `CoreExpr` tree the evaluator walks. |  |
 | [Marf.kt](patterns.md#marf-kt) | Patterns | 110 | 67 | Function generation over the pattern language: stored material, a trajectory that reads it, and the timing of that traversal, kept as three separate patterns. | [A pattern as a function generator](../marf.md) |
 | [MarfGallery.kt](patterns.md#marfgallery-kt) | Patterns | 11 | 8 | Headless **figure gallery** for the function-generation layer in `Marf.kt`, and the check that every figure on `marf.md` is a measurement of the reader it claims to draw. |  |
@@ -416,8 +416,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [SonicPiPatterns.kt](audio.md#sonicpipatterns-kt) | Audio | 85 | 58 | Field's pattern algebra as a sequencer for Sonic Pi's engine. | [Sonic Pi](../sonic_pi.md) |
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 36 | 36 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
-| [SourceFramesStudy.kt](workspace.md#sourceframesstudy-kt) | Workspace | 20 | 8 |  |  |
-| [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 39 | 30 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. |  |
+| [SourceFramesStudy.kt](workspace.md#sourceframesstudy-kt) | Workspace | 20 | 8 |  | [Studies](../studies.md) |
+| [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 39 | 30 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. | [Studies](../studies.md) |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 | The frequency-domain end of the synth: an `FFT`, two short-time transforms built on it, and a wavetable that keeps its waveforms as spectra. |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Spectral examples](../spectral_examples.md) |
@@ -452,7 +452,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |
 | [StudyKnob.kt](workspace.md#studyknob-kt) | Workspace | 11 | 9 |  |  |
 | [StudyReport.kt](workspace.md#studyreport-kt) | Workspace | 3 | 1 |  |  |
-| [StudyVariants.kt](workspace.md#studyvariants-kt) | Workspace | 15 | 15 |  |  |
+| [StudyReportView.kt](workspace.md#studyreportview-kt) | Workspace | 5 | 5 |  |  |
+| [StudyVariants.kt](workspace.md#studyvariants-kt) | Workspace | 15 | 15 |  | [Studies](../studies.md) |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Pure Data](../pure_data.md), [Making a sound in Field: every path there is](../sound_paths.md) |
@@ -473,12 +474,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [typography_field.kt](graphics.md#typography-field-kt) | Graphics | 31 | 24 | The bridges out of a `TextLayout` and into the four families Field already has. | [Typography as geometry — a string becomes contours](../typography_examples.md) |
 | [UnderfitOperations.kt](audio-ai.md#underfitoperations-kt) | Audio AI | 22 | 11 | Request builder for source-conditioned Stable Audio 3 generation, with LoRAs named by digest. | [Field Audio AI](../field_audio_ai.md) |
 | [units.kt](math.md#units-kt) | Math | 47 | 13 | Physical units for Field's spreadsheet-style numbers. |  |
-| [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 9 | 7 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [DataFrames in a Box](../dataframe.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
+| [ValueVisualizer.kt](visualization.md#valuevisualizer-kt) | Visualization | 10 | 8 | The default value display for Field output areas: a Kotlin value in, a compact HTML fragment out. | [DataFrames in a Box](../dataframe.md), [Visualizers, Displays, and Little Instruments](../visualizers.md), [Agent transcript gallery](../agent_transcripts.md) |
 | [Visualizers.kt](synthesis.md#visualizers-kt) | Synthesis | 52 | 3 | How to look at the audio. | [Visualizers, Displays, and Little Instruments](../visualizers.md) |
 | [VolumetricNoise.kt](languages.md#volumetricnoise-kt) | Languages | 45 | 26 | StackSL's volumetric noise family: `noise3`, `fbm3`, `fbmd3`, `warp3`, `curl3`, `worley3`, `noise4`, `fbm4` — eight words that work as true 3D and 4D fields. |  |
 | [voronoi.kt](graphics.md#voronoi-kt) | Graphics | 63 | 63 | Practical 3D Voronoi and approximate 3D multiplicatively weighted Voronoi ("CircularDirichlet") for Kotlin + Field linalg. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Meshes and 3D geometry](../mesh_examples.md) |
 | [wfc.kt](data.md#wfc-kt) | Data | 118 | 36 | Single-file, dependency-free Wave Function Collapse for Kotlin/JVM. | [Wave Function Collapse examples](../wfc_examples.md) |
 | [wfc_field.kt](data.md#wfc-field-kt) | Data | 37 | 29 | The bridge from Wave Function Collapse into the things Field already displays. | [Wave Function Collapse examples](../wfc_examples.md) |
+| [why.kt](workspace.md#why-kt) | Workspace | 4 | 3 |  |  |
 
 </div>
 

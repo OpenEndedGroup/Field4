@@ -77,7 +77,7 @@ class ContextWhyTest {
     @Test
     fun aNameIsExplainedWithItsSupplierPathTieAndShadows() {
         val g = graph("why-name")
-        val why = ContextResolution.explain(g.child, name = "speed")
+        val why = ContextResolution.explain(g.child, name = "speed").json
 
         assertTrue(why["found"]!!.jsonPrimitive.boolean)
         assertEquals("FROM_CONTEXT_NAMED", why["mechanism"]!!.jsonPrimitive.content)
@@ -96,13 +96,13 @@ class ContextWhyTest {
     fun aTypeIsExplainedAsFromContextFindsIt() {
         val g = graph("why-type")
         g.grand.setPropertyRaw("marker", Marker("grand"))
-        val why = ContextResolution.explain(g.child, type = Marker::class.java.name)
+        val why = ContextResolution.explain(g.child, type = Marker::class.java.name).json
         assertEquals("FROM_CONTEXT", why["mechanism"]!!.jsonPrimitive.content)
         assertEquals("grand", why.uidAt("supplier"))
         assertEquals(listOf("child", "a", "grand"), why["path"]!!.jsonArray.map { it.jsonObject["uid"]!!.jsonPrimitive.content })
         assertTrue(why["crossesEdges"]!!.jsonPrimitive.boolean)
-        assertEquals("grand", ContextResolution.explain(g.child, type = "Marker").uidAt("supplier"), "a simple name is enough")
-        assertFalse(ContextResolution.explain(g.child, type = "NoSuchType")["found"]!!.jsonPrimitive.boolean)
+        assertEquals("grand", ContextResolution.explain(g.child, type = "Marker").json.uidAt("supplier"), "a simple name is enough")
+        assertFalse(ContextResolution.explain(g.child, type = "NoSuchType").json["found"]!!.jsonPrimitive.boolean)
     }
 
     @Test
@@ -113,7 +113,7 @@ class ContextWhyTest {
         val line = withPreambleSupplierTag("var Box._gain by Inheritance<Double>() /**/", g.a.id)
         g.child.setPropertyRaw("preamble", line)
 
-        val why = ContextResolution.explain(g.child, name = "_gain")
+        val why = ContextResolution.explain(g.child, name = "_gain").json
         assertEquals("INHERITANCE", why["mechanism"]!!.jsonPrimitive.content)
         assertEquals("Inheritance", why["delegate"]!!.jsonPrimitive.content)
         assertEquals("a", why.uidAt("supplier"))

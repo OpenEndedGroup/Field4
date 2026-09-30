@@ -16,7 +16,8 @@ import afield.macros.MacroRegistry
  * happens at expansion time in [macro_prop] and [macro_root_prop], which are handed the type
  * argument and the name, and return an `Insert` that rewrites the call site to the bare name (or
  * `root.name`) and pushes two declarations into the box's preamble: a
- * `var Box.<name> by Inheritance<T>()` and a `val Once.<name> by Onceing<T>()`. Both generated
+ * `var Box.<name> by Inheritance<T>()`, a `val Once.<name> by Onceing<T>()` and a
+ * `val Why.<name> by Whying()` (so `why.<name>` explains where the value comes from). All three generated
  * lines carry the trailing empty-comment marker that makes the preamble gather copy them down into
  * child boxes, and an import for `T` is added via `kotlinImportStatementFor`. [macro_root_prop]
  * differs only in targeting `this.root`, so the accessors land on the document root rather than
@@ -56,7 +57,7 @@ fun <T> Box.rootProp(name: String) {
  * Macro expansion for `prop<T>(name)`: rewrites the call to the bare name and pushes the delegate declarations
  * into the box's preamble.
  *
- * Emits both a `var Box.<name> by Inheritance<T>()` and a `val Once.<name> by Onceing<T>()`, each carrying the
+ * Emits a `var Box.<name> by Inheritance<T>()`, a `val Once.<name> by Onceing<T>()` and a `val Why.<name> by Whying()`, each carrying the
  * trailing empty-comment marker that makes the preamble gather copy it down into child boxes, plus an import
  * for `T`. Called by `MacroRegistry`, not by you.
  *
@@ -73,6 +74,7 @@ fun Box.macro_prop(contents: List<String>): Insert? {
         preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
         var Box.${name} by Inheritance${contents[0]}() /**/
         val Once.${name} by Onceing${contents[0]}() /**/
+        val Why.${name} by Whying() /**/
     """.trimIndent()
     )
 }
@@ -93,6 +95,7 @@ fun Box.macro_root_prop(contents: List<String>): Insert? {
         preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
         var Box.${name} by Inheritance${contents[0]}() /**/
         val Once.${name} by Onceing${contents[0]}() /**/
+        val Why.${name} by Whying() /**/
     """.trimIndent(), target = this.root
     )
 }
