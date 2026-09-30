@@ -109,6 +109,10 @@ object DemoTranscriptExecSmokeTest {
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
         "studies_rings",
+        // Lua over LuaJIT: the transcript executes only its Kotlin root, which prints where LuaJIT was
+        // found (or how to install it), so it needs nothing the build does not own. The Lua boxes are a
+        // guest language; afield.lua.LuaStateTest and LuaBoxTest run their code against a real lua_State.
+        "lua_demo",
         // Three bounded CPU boxes: refusal messages, field-clock curves, and a computed ledger.
         // No audio device or renderer; unlike marf_demo, every box is safe to execute headless.
         "marf_field_clocks",

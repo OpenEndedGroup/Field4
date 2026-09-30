@@ -1,0 +1,150 @@
+# The Lua 5.1 standard library and LuaJIT 2.1's additions, one function a line, for completion:
+#   name(signature) | what it does
+# LuaCatalogTest checks this against a live LuaJIT state in both directions: every function a fresh
+# state has in these tables must have a line, and every line must name a function the state has.
+assert(v, [message]) | raises an error with message when v is false or nil; otherwise returns its arguments
+collectgarbage([opt], [arg]) | controls the collector: "collect", "count" (kilobytes in use), "step", "stop", "restart"
+dofile([filename]) | runs a Lua file and returns what it returned
+error(message, [level]) | raises an error; level 1 names the calling line, 2 its caller, 0 nothing
+gcinfo() | kilobytes in use (the older spelling of collectgarbage("count"))
+getfenv([f]) | the environment table of a function or stack level
+getmetatable(object) | the metatable of object, or its __metatable field
+ipairs(t) | iterates t[1], t[2], ... up to the first nil: for i, v in ipairs(t) do ... end
+load(func, [chunkname]) | compiles a chunk read piece by piece from func; returns the function or nil, message
+loadfile([filename]) | compiles a Lua file without running it
+loadstring(string, [chunkname]) | compiles a string without running it; returns the function or nil, message
+module(name, ...) | Lua 5.1's module declaration (deprecated in later Luas)
+newproxy([boolean or proxy]) | a zero-size userdata, optionally with a fresh metatable
+next(t, [key]) | the key after key in t and its value; next(t) == nil when t is empty
+pairs(t) | iterates every key and value of t, in no particular order
+pcall(f, ...) | calls f in protected mode: true and its results, or false and the error
+print(...) | writes its arguments, tab-separated, to the box's output
+rawequal(a, b) | equality without __eq
+rawget(t, k) | t[k] without __index
+rawset(t, k, v) | t[k] = v without __newindex
+require(modname) | loads a module through package.loaders and caches it in package.loaded
+select(n, ...) | the arguments from the nth on; select("#", ...) is how many there are
+setfenv(f, table) | sets the environment of a function or stack level
+setmetatable(t, mt) | sets t's metatable and returns t
+tonumber(e, [base]) | e as a number, or nil
+tostring(e) | e as a string, through __tostring when it has one
+type(v) | "nil", "boolean", "number", "string", "table", "function", "thread" or "userdata"
+unpack(t, [i], [j]) | t[i], ..., t[j] as separate values
+xpcall(f, handler) | calls f in protected mode with a message handler
+string.byte(s, [i], [j]) | the byte codes of s[i..j]
+string.char(...) | a string of those byte codes
+string.dump(f) | the bytecode of a Lua function, as a string
+string.find(s, pattern, [init], [plain]) | the start and end of the first match, and its captures
+string.format(fmt, ...) | formats values as C's printf does: %d %5.2f %s %q %x
+string.gmatch(s, pattern) | an iterator over every match: for word in s:gmatch("%a+") do ... end
+string.gsub(s, pattern, repl, [n]) | replaces matches with a string, table or function's result; returns the string and the count
+string.len(s) | the length in bytes; #s is the same
+string.lower(s) | s in lower case
+string.match(s, pattern, [init]) | the captures of the first match, or the whole match
+string.rep(s, n) | n copies of s
+string.reverse(s) | s backwards
+string.sub(s, i, [j]) | the substring from i to j; negative indices count from the end
+string.upper(s) | s in upper case
+table.concat(t, [sep], [i], [j]) | t's strings and numbers joined by sep
+table.foreach(t, f) | calls f(k, v) for each pair (deprecated)
+table.foreachi(t, f) | calls f(i, v) for each array element (deprecated)
+table.getn(t) | the length of t (deprecated; #t)
+table.insert(t, [pos], value) | inserts value at pos, or at the end
+table.maxn(t) | the largest positive numeric key
+table.move(a1, f, e, t, [a2]) | copies a1[f..e] to a2[t..] (LuaJIT, from Lua 5.3)
+table.remove(t, [pos]) | removes and returns t[pos], or the last element
+table.sort(t, [comp]) | sorts t in place, by < or by comp(a, b)
+math.abs(x) | |x|
+math.acos(x) | arc cosine, in radians
+math.asin(x) | arc sine, in radians
+math.atan(x) | arc tangent, in radians
+math.atan2(y, x) | the angle of (x, y), in radians
+math.ceil(x) | the smallest integer >= x
+math.cos(x) | cosine of radians
+math.cosh(x) | hyperbolic cosine
+math.deg(x) | radians to degrees
+math.exp(x) | e^x
+math.floor(x) | the largest integer <= x
+math.fmod(x, y) | the remainder of x / y, rounded toward zero
+math.frexp(x) | m and e with x = m * 2^e
+math.ldexp(m, e) | m * 2^e
+math.log(x) | natural logarithm
+math.log10(x) | base-10 logarithm
+math.max(x, ...) | the largest argument
+math.min(x, ...) | the smallest argument
+math.modf(x) | the integral and fractional parts of x
+math.pow(x, y) | x^y
+math.rad(x) | degrees to radians
+math.random([m], [n]) | a uniform number in [0, 1), or an integer in [1, m] or [m, n]
+math.randomseed(x) | seeds math.random
+math.sin(x) | sine of radians
+math.sinh(x) | hyperbolic sine
+math.sqrt(x) | square root
+math.tan(x) | tangent of radians
+math.tanh(x) | hyperbolic tangent
+os.clock() | CPU seconds used by the process
+os.date([format], [time]) | a formatted date, or a table with "*t"
+os.difftime(t2, t1) | seconds between two os.time values
+os.execute([command]) | runs a shell command
+os.exit([code]) | ends the process — Field included; do not call it from a box
+os.getenv(name) | an environment variable, or nil
+os.remove(filename) | deletes a file
+os.rename(old, new) | renames a file
+os.setlocale([locale], [category]) | sets the C locale
+os.time([table]) | seconds since the epoch, now or for a date table
+os.tmpname() | a name for a temporary file
+io.close([file]) | closes a file, or the default output
+io.flush() | flushes the default output
+io.input([file]) | sets or returns the default input
+io.lines([filename]) | an iterator over a file's lines
+io.open(filename, [mode]) | opens a file: "r", "w", "a", "rb", ...; returns the file or nil, message
+io.output([file]) | sets or returns the default output
+io.popen(prog, [mode]) | runs a program with a pipe to or from it
+io.read(...) | reads from the default input: "*l", "*n", "*a" or a count
+io.tmpfile() | a temporary file, removed when closed
+io.type(obj) | "file", "closed file" or nil
+io.write(...) | writes to the process's stdout, not the box: use print in a box
+coroutine.create(f) | a new coroutine running f
+coroutine.isyieldable() | whether the running code can yield
+coroutine.resume(co, ...) | runs co until it yields or ends: true and its values, or false and the error
+coroutine.running() | the running coroutine, or nil in the main one
+coroutine.status(co) | "suspended", "running", "normal" or "dead"
+coroutine.wrap(f) | a function that resumes a new coroutine each time it is called
+coroutine.yield(...) | suspends the running coroutine; its values go to resume
+debug.debug() | an interactive prompt on stdin (not useful in a box)
+debug.getfenv(o) | the environment of o
+debug.gethook([thread]) | the current hook, mask and count
+debug.getinfo([thread], f, [what]) | a table about a function or stack level: source, currentline, ...
+debug.getlocal([thread], level, n) | the name and value of local n at a stack level
+debug.getmetatable(object) | object's metatable, ignoring __metatable
+debug.getregistry() | the registry table
+debug.getupvalue(f, n) | the name and value of f's upvalue n
+debug.setfenv(o, table) | sets o's environment
+debug.sethook([thread], hook, mask, [count]) | sets a hook; Field's own run guard uses one, and a box that sets its own replaces it
+debug.setlocal([thread], level, n, value) | sets local n at a stack level
+debug.setmetatable(object, mt) | sets any value's metatable
+debug.setupvalue(f, n, value) | sets f's upvalue n
+debug.traceback([thread], [message], [level]) | a stack traceback as a string
+debug.upvalueid(f, n) | a unique id for f's upvalue n (LuaJIT)
+debug.upvaluejoin(f1, n1, f2, n2) | makes f1's upvalue n1 refer to f2's n2 (LuaJIT)
+bit.arshift(x, n) | arithmetic right shift (LuaJIT's bit library)
+bit.band(x, ...) | bitwise and
+bit.bnot(x) | bitwise not
+bit.bor(x, ...) | bitwise or
+bit.bswap(x) | swaps the byte order
+bit.bxor(x, ...) | bitwise exclusive or
+bit.lshift(x, n) | left shift
+bit.rol(x, n) | rotate left
+bit.ror(x, n) | rotate right
+bit.rshift(x, n) | logical right shift
+bit.tobit(x) | x normalised to a signed 32-bit integer
+bit.tohex(x, [n]) | x as n hexadecimal digits
+jit.attach(f, [event]) | attaches a JIT event handler
+jit.flush([f]) | discards compiled traces
+jit.off([f]) | turns the compiler off; Field's default in a box, so the run guard can stop a loop
+jit.on([f]) | turns the compiler on for this box's Lua — a compiled loop that never ends cannot be stopped
+jit.security() | LuaJIT's security settings
+jit.status() | whether the compiler is on, and its flags
+package.loadlib(libname, funcname) | links a C function from a library
+package.searchpath(name, path) | finds name along a package.path-style search path
+package.seeall(module) | lets a module see the globals (for module())

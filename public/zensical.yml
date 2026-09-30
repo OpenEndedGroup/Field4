@@ -181,6 +181,7 @@ nav:
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
     - Clojure in a Box: clojure.md
+    - Lua in a Box: lua.md
     - Nano Examples: nano_examples.md
     # The tail of this section is the three "make your own" pages, in ascending order of how much
     # machinery they ask for, after the gallery that already uses them: MorphoHDL is a language
