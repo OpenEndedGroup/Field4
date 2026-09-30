@@ -67,6 +67,13 @@
         .add-count { color: var(--ok); } .del-count { color: var(--danger); }
         #changes td:first-child, #handoffs td:nth-child(2) { max-width: 0; width: 100%; }
         .expand { overflow-x: auto; }
+        #dialog { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); display: flex; align-items: center; justify-content: center; z-index: 10; }
+        #dialog[hidden] { display: none; }
+        #dialog .box { width: min(560px, calc(100vw - 40px)); background: var(--panel); border: 1px solid var(--border-strong); border-radius: 8px; padding: 16px; display: grid; gap: 10px; }
+        #dialog .message { white-space: pre-wrap; line-height: 1.5; }
+        #dialog textarea, #dialog input { width: 100%; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 8px; }
+        #dialog textarea { min-height: 70px; resize: vertical; }
+        #dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
     </style>
@@ -81,7 +88,8 @@
         <div class="row">
             <a href="/field-docs/" target="_blank" rel="noopener">docs + notes</a>
             <a href="/welcome">welcome</a>
-            <button id="forget-token" type="button" title="Forget the cached token">token…</button>
+            <input id="token" type="password" placeholder="token (from Field's startup log)" size="26" autocomplete="off">
+            <button id="save-token" type="button">save token</button>
         </div>
     </header>
 
@@ -149,6 +157,7 @@
         <pre class="log" id="job-log"></pre>
     </section>
 </main>
+<div id="dialog" hidden><div class="box"><div class="message"></div><textarea hidden></textarea><div class="buttons"><button type="button" data-answer="cancel">Cancel</button><button type="button" data-answer="ok" class="primary">OK</button></div></div></div>
 <script>
 (() => {
     const TOKEN_KEY = "field.docsImprovementToken";  // shared with /welcome's "Improve annotated docs"
@@ -156,30 +165,60 @@
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const view = { status: null, job: null, enabled: false, openDiffs: new Map(), openHandoffs: new Map() };
 
-    const token = (reason) => {
-        let value = "";
-        try { value = localStorage.getItem(TOKEN_KEY) || ""; } catch (_) {}
+    // No window.prompt/confirm/alert anywhere on this page: Field's Electron window does not
+    // implement prompt(), which returned nothing and made every action silently do nothing.
+    // `ask` is an in-page dialog; it resolves to the typed text ("" without an input), or null.
+    const ask = (message, { input = false, placeholder = "", ok = "OK", danger = false } = {}) => new Promise(resolve => {
+        const dialog = $("dialog"), area = dialog.querySelector("textarea"), okButton = dialog.querySelector('[data-answer="ok"]');
+        dialog.querySelector(".message").textContent = message;
+        area.hidden = !input; area.value = ""; area.placeholder = placeholder;
+        okButton.textContent = ok; okButton.className = danger ? "danger" : "primary";
+        dialog.hidden = false;
+        (input ? area : okButton).focus();
+        const finish = answer => { dialog.hidden = true; dialog.onclick = null; dialog.onkeydown = null; resolve(answer); };
+        dialog.onclick = event => {
+            const button = event.target.closest("[data-answer]");
+            if (button) finish(button.dataset.answer === "ok" ? (input ? area.value : "") : null);
+        };
+        dialog.onkeydown = event => {
+            if (event.key === "Escape") finish(null);
+            else if (event.key === "Enter" && (!input || event.metaKey || event.ctrlKey)) { event.preventDefault(); finish(input ? area.value : ""); }
+        };
+    });
+    const confirmed = async (message, danger = false) => (await ask(message, { ok: "Yes", danger })) !== null;
+    const tell = message => ask(message, { ok: "OK" });
+
+    const storedToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (_) { return ""; } };
+    const storeToken = value => { try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch (_) {} };
+    const showToken = () => { $("token").value = ""; $("token").placeholder = storedToken() ? "token saved (type to replace)" : "token (from Field's startup log)"; };
+    const token = async (reason) => {
+        const value = storedToken();
         if (value && !reason) return value;
-        value = (window.prompt((reason ? reason + "\n\n" : "") + "Field's documentation-improvement token (printed in Field's log at startup, or AFIELD_DOCS_IMPROVEMENT_TOKEN):", "") || "").trim();
-        if (value) try { localStorage.setItem(TOKEN_KEY, value); } catch (_) {}
-        return value;
+        const typed = ((await ask((reason ? reason + "\n\n" : "") + "Field's documentation-improvement token: the value after X-Field-Docs-Improvement-Token in Field's startup log, or AFIELD_DOCS_IMPROVEMENT_TOKEN.", { input: true, placeholder: "token" })) || "").trim();
+        if (typed) storeToken(typed);
+        showToken();
+        return typed;
     };
 
     const act = async (action, extra = {}) => {
-        let secret = token();
+        let secret = await token();
         if (!secret) return null;
         const send = value => fetch("/api/docs-improvement/pass", { method: "POST", headers: { "Content-Type": "application/json", "X-Field-Docs-Improvement-Token": value }, body: JSON.stringify({ action, ...extra }) });
-        let response = await send(secret);
-        if (response.status === 401) {
-            try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
-            secret = token("That token was not accepted.");
-            if (!secret) return null;
-            response = await send(secret);
-        }
-        const text = await response.text();
-        if (!response.ok) { window.alert(text || `HTTP ${response.status}`); return null; }
-        try { return JSON.parse(text); } catch (_) { return text; }
-        finally { refresh(); }
+        try {
+            let response = await send(secret);
+            if (response.status === 401) {
+                storeToken("");
+                secret = await token("That token was not accepted. Field mints a new one at every start unless AFIELD_DOCS_IMPROVEMENT_TOKEN is set.");
+                if (!secret) return null;
+                response = await send(secret);
+            }
+            const text = await response.text();
+            if (!response.ok) { await tell(text || `HTTP ${response.status}`); return null; }
+            try { return JSON.parse(text); } catch (_) { return text; }
+        } catch (error) {
+            await tell(`The request failed: ${error.message}`);
+            return null;
+        } finally { refresh(); }
     };
 
     const words = value => value.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
@@ -310,16 +349,17 @@
     };
 
     $("create").onclick = () => act("create");
-    $("finish").onclick = () => confirm("Remove the pass's worktree and branch? The work is already on main.") && act("finish");
-    $("abandon").onclick = () => confirm("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
+    $("finish").onclick = async () => await confirmed("Remove the pass's worktree and branch? The work is already on main.") && act("finish");
+    $("abandon").onclick = async () => await confirmed("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
     $("revise").onclick = () => act("revise", { agent: $("agent").value, jobs: Number($("jobs").value) || 4, tags: words($("tags").value), pages: words($("pages").value) });
     $("stop").onclick = () => act("stop");
-    $("stop-now").onclick = () => confirm("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
+    $("stop-now").onclick = async () => await confirmed("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
-    $("commit").onclick = () => confirm("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
-    $("land").onclick = () => confirm("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
-    $("cancel-job").onclick = () => confirm("Kill the running job and everything it started?") && act("cancel-job");
-    $("forget-token").onclick = () => { try { localStorage.removeItem(TOKEN_KEY); } catch (_) {} token("Enter a new token."); };
+    $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
+    $("land").onclick = async () => await confirmed("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
+    $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
+    $("save-token").onclick = () => { const value = $("token").value.trim(); if (value) storeToken(value); showToken(); };
+    $("token").addEventListener("keydown", event => { if (event.key === "Enter") $("save-token").click(); });
 
     $("changes").addEventListener("click", async event => {
         const button = event.target.closest("button"); if (!button) return;
@@ -330,7 +370,7 @@
             const files = response.ok ? await response.json() : [];
             view.openDiffs.set(path, files[0] ? files[0].patch : await response.text());
             renderChanges(view.status); setButtons();
-        } else if (button.dataset.act === "discard" && confirm(`Discard every change to ${path}? Notes its edit resolved go back in the queue.`)) {
+        } else if (button.dataset.act === "discard" && await confirmed(`Discard every change to ${path}? Notes its edit resolved go back in the queue.`, true)) {
             view.openDiffs.delete(path);
             await act("discard", { path });
         }
@@ -348,11 +388,12 @@
             return;
         }
         const prompts = { taken: "Who has it, or where is it happening? (optional)", done: "What happened? This sentence goes into the page's brief when its notes come back.", dropped: "Why is it being dropped?" };
-        const text = window.prompt(prompts[kind], "");
+        const text = await ask(prompts[kind], { input: true, ok: kind === "dropped" ? "Drop" : "Save", danger: kind === "dropped" });
         if (text === null || (kind !== "taken" && !text.trim())) return;
         await act("close-handoff", { id, state: kind, text });
     });
 
+    showToken();
     refresh();
     setInterval(() => { if (!document.hidden) refresh(); }, 2500);
 })();

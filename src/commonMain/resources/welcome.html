@@ -1947,7 +1947,6 @@
             <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
             <a class="button-link" href="/field-docs/">/docs + notes</a>
             <button id="run-docs-annotation-improvement" type="button">Improve annotated docs</button>
-            <a class="button-link" href="/docs-pass.html">docs revision pass</a>
             <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
         <div id="vulkan-notice" class="vulkan-notice" hidden>
@@ -2186,6 +2185,15 @@
                                 <button id="run-completion-doc-polish" type="button">Polish docs</button>
                             </div>
                             <div id="completion-doc-polish-status" aria-live="polite"></div>
+                        </div>
+                        <div class="ai-docs-panel">
+                            <div class="ai-docs-header">
+                                <span class="ai-docs-label">Documentation notes</span>
+                                <span id="docs-pass-state">checking</span>
+                            </div>
+                            <div class="ai-docs-actions">
+                                <button id="open-docs-pass" type="button">Revision pass</button>
+                            </div>
                         </div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
@@ -5672,6 +5680,28 @@
             renderAiSettings();
         }
     }
+
+    // The notes queue and the revision pass (/docs-pass.html, docs_notes.py pass …). One status
+    // read on load; the page itself does the polling.
+    async function refreshDocsPassState() {
+        const node = document.getElementById("docs-pass-state");
+        if (!node) return;
+        try {
+            const response = await fetch("/api/docs-improvement/pass", { cache: "no-store" });
+            if (!response.ok) { node.textContent = "unavailable"; return; }
+            const body = await response.json();
+            const notes = (body.status && body.status.notes) || {};
+            const handoffs = (notes["handoff-open"] || 0) + (notes["handoff-taken"] || 0);
+            const parts = [`${notes.open || 0} open`];
+            if (notes.question) parts.push(`${notes.question} asking`);
+            if (handoffs) parts.push(`${handoffs} handoff${handoffs === 1 ? "" : "s"}`);
+            if (body.status && body.status.pass) parts.push("pass open");
+            if (!body.enabled) parts.push("actions off");
+            node.textContent = parts.join(" · ");
+        } catch (ignored) { node.textContent = "unavailable"; }
+    }
+    document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
+    refreshDocsPassState();
 
     async function runCompletionDocPolish() {
         window.open("/completion-doc-polish.html", "_blank", "noopener");
