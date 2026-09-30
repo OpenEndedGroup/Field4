@@ -25,12 +25,7 @@ That inverts three things a static graph lets you take for granted:
   moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the ten
   shipped processes add points and two remove them.
 
-Three of the parameters here are named for a quantity they are not, and the gap is wide enough that a
-badly-set one looks like the system misbehaving rather than like a units error. There is no ground
-truth that would let them be renamed or re-scaled, so they are documented instead. Read them before
-you configure anything:
-
-??? warning "Three parameters that do not mean what they read"
+??? aside "Three parameters that do not mean what they read"
     **`SpringMotionProcess.restLengthScale` is not a length.** An edge's rest length is
     `restLengthScale / weight`, so the units are length × weight. The weights these systems produce
     per frame are of order 0.02, so the default `1.0` asks for a rest length of **50 world units** in
@@ -49,7 +44,7 @@ you configure anything:
     least a sixth of it. Give this one a `reinforce` two orders of magnitude larger than its
     neighbours or its edges will be invisible next to theirs.
 
-    The measurements behind both are in `dev_docs/DYNAMIC_GRAPH_SYSTEMS_MEASUREMENTS.md`.
+    The measurements behind these are in `dev_docs/DYNAMIC_GRAPH_SYSTEMS_MEASUREMENTS.md`.
 
 ## 1. Six ways to propose an edge
 

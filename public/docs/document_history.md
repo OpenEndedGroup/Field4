@@ -28,6 +28,8 @@ The newest entry is the current `metadata.edn`; older entries are the backups Fi
 
 The timeline can be viewed against a **Saves** axis (one slot per version) or a **Time** axis (spaced by real save time), and you can zoom and focus it. A **Whole Document / selected box** toggle narrows everything on the page to the box you have selected, and a diff-basis toggle switches between comparing each version **against the current** state and against its immediate predecessor.
 
+If a box is selected, clicking a version also shows it in the editor: the box's text as it was in that version is laid over the current text as a read-only inline diff, so you can read the change in place before you restore anything. The **Line** button next to the search field filters the timeline to the versions that changed the line your editor cursor is on.
+
 ## Restore an earlier version
 
 To restore a whole version:

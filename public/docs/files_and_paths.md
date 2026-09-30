@@ -5,7 +5,7 @@ folder happens to be sitting. So a path typed into a box has a problem the same 
 program does not: `File("/Users/you/Desktop/scan.ply")` is correct exactly once, on one machine,
 until the document is copied, moved into a project, or sent to somebody else.
 
-Field's answer is a resolver. You hand it a short name, and it looks in the document first and the
+Field's answer is a *resolver*. You hand it a short name, and it looks in the document first and the
 workspace second.
 
 ## The one line to learn
@@ -153,12 +153,6 @@ name resolved somewhere you did not expect.
 It holds the most recent `FileManager.maxAccessHistoryEntries` lookups, 1024 by default, and is
 emptied when the session's file manager is first created, so it is a recent-activity log rather than
 a complete one.
-
-## `abslutePath`, the misspelling that still works
-
-`String.abslutePath` resolves exactly as `absolutePath` does. It is deprecated rather than deleted
-because a live-coded document is a file on somebody's disk, not a call site that can be recompiled.
-If you meet it in old box code, it does nothing different.
 
 ---
 

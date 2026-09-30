@@ -1,4 +1,4 @@
-# Simulation time
+# Simulation time and profiling
 
 A behaviour can wait, turn, fire, wait again, and cancel as ordinary Kotlin coroutine
 code. `SimulationClock` lets those delays follow time you advance explicitly. It creates
@@ -25,6 +25,13 @@ ui.pause(250)
 ```
 
 ## One owner, two clocks
+
+The box below uses two clocks. The outer `frames { }` loop runs once per Field frame, on
+wall-clock time. Inside it, `withSimulationClock { }` opens a simulation clock that owns two
+child coroutines: **Orbit**, which turns a phase every step, and **Pulse**, which prints
+every half second of simulation time. Each frame, the loop measures how much wall time has
+passed and hands it to `advance`, which moves simulation time forward and runs whichever
+children are due.
 
 ```diffstatic {data-lang=kotlin}
 :::static

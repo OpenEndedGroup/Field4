@@ -4,6 +4,15 @@
 
 Picking one color is easy. Trouble starts at six or seven, once they have to work as a set on a single page. Both examples below spend a whole palette on geometry rather than laying it out as a chart of hex values, because drawing it is how you find out which entry is the weak one.
 
+Every constructor returns an sRGB-encoded `Vec4` with components in `[0,1]`. There are four color spaces to build from:
+
+- **sRGB**: `rgb(r, g, b, a)` (alias `rgba`) takes components already sRGB-encoded, on 0..1 or 0..255. The scale is guessed per call: any of `r`, `g`, `b` above 1 means 0..255. `rgb255(...)` is the same thing always on 0..255, so nothing is guessed.
+- **HSL**: `hsl(h, s, l, a)` (alias `hsla`) is the classic cylinder, treated as linear light and then encoded to sRGB, so it is brighter than CSS `hsl()` at the same numbers.
+- **OKHSL**: `okhsl(h, s, l, a)` is hue, saturation and lightness built on Oklab, with `l` as *perceived* lightness and `s = 1` at the gamut edge for that hue.
+- **OKHSV**: `okhsv(h, s, v, a)` is the HSV-shaped version of the same, where `v` dims a color toward black.
+
+The three hue-based spaces read `h` as a fraction of a turn below 1 and as degrees from 1 up. Each one also has a ring generator that spaces `count` hues evenly: `hueSetHsl`, `hueSetOkhsl` and `hueSetOkhsv`, with the short aliases `hslSet`, `okhslSet` and `okhsvSet`. `paletteForBackground` builds an OKHSL ring and then corrects it for contrast. Oklab itself is used inside the file and has no public constructor.
+
 ## HSL vs OKHSL hue sets
 
 Stepping evenly round the hue wheel is the obvious way to ask for ten distinguishable colors, and it mostly works. What drifts is perceived weight. One swatch shouts, the next one disappears, and ten colors that were meant to read as a family stop doing so.

@@ -551,6 +551,43 @@ is what lets the ray find the solid and the toolbar is what draws the dimension.
 `ThreeSurfaceHit`, resolved to a vertex, an edge or a triangle, so a dimension runs from a corner of
 the solid to an annotation beside it — which is the scene `three` exists for.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/section.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// FIELD_DOCS_EXPECT_SVG: false — `lines(datum)` below is the scene builder's, not Box.lines.
+//
+// A block with a bore drilled down through it, and a datum line standing beside it.
+val part = marchingCubes(
+    sdfSubtract(sdfBox(vec(2.0, 1.2, 1.2)), sdfCylinder(0.35, 2.0)),
+    boundsAround(radius = 1.3), 72,
+)
+val datum = fline {
+    moveTo(1.4, -0.6, 0.0)
+    lineTo(1.4, 0.6, 0.0)
+    color = vec(1.0, 0.55, 0.2, 1.0)
+    thickness = 2.5
+}
+
+three(name = "section", channel = "section", width = 760, height = 460) {
+    mesh(part, id = "part", wireframe = false, pickable = true)
+    lines(datum)
+    camera(yaw = 30.0, pitch = 24.0)
+    inspect(
+        // Cut halfway through along z, so the plane runs straight down the bore.
+        section = ThreeSection(enabled = true, normal = floatArrayOf(0f, 0f, 1f), fraction = 0.5),
+        // From the block's +x face, on the cut plane, to the datum beside it: 1.4 - 1.0 = 0.4.
+        measurements = listOf(
+            ThreeMeasurement(
+                ThreeMeasureElement.point(1.0, 0.0, 0.0),
+                ThreeMeasureElement.segment(1.4, -0.6, 0.0, 1.4, 0.6, 0.0),
+                "clear "
+            )
+        )
+    )
+}
+```
+
+![A marched block with a vertical bore, cut in half along z by the inspector's section plane, with the cut outline drawn round the block and the bore; an orange datum line stands beside the block, and an authored dimension labelled "clear" runs from the block's face to the line.](assets/three_output/section.png)
+
 What you aim at is decided by true perpendicular distance in the hit triangle's plane, within a snap
 radius of 0.14 of that triangle's own longest edge, and a corner is tested before an edge. So
 **a sliver has no clickable interior**: every point of a triangle ten long and half a unit tall
@@ -631,17 +668,26 @@ context re-tile itself.
 
 ## Optional viewer tools
 
+Measure, section and explode ([above](#measuring-and-sectioning-a-solid)), **X-ray**
+([See through surfaces](#see-through-surfaces)) and **Export GLB**
+([Export a GLB](#export-a-glb)) are built into the viewer, and none of them is a tool in
+this sense. A tool is for anything else.
+
 A scene can opt into a tool without making that tool part of Field. Tools are trusted
 ES modules served by the same Field server. The default viewer loads none.
 This small example adds a reference-axis toggle:
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/tools.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
+// FIELD_DOCS_EXPECT_SVG: false — `lines(...)` below is the scene builder's, not Box.lines.
 three(name = "tools-example") {
     tools("/threejs_tools_demo.js")
     lines(fline { moveTo(0.0, 0.0, 0.0); lineTo(2.0, 1.0, 0.0) })
+    helpers(false)  // so the grid's own tripod is not mistaken for the tool's axes
 }
 ```
+
+![The Three.js viewer showing one straight line, with the tool's "Reference axes" button in the toolbar after the built-in X-ray and Export GLB buttons.](assets/three_output/tools.png)
 
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,
@@ -678,6 +724,23 @@ under the pointer. Click callbacks and hover highlights apply to that panel's ob
 
 Use `mesh(mesh, unlit = true)` for force bands or other scalar data: the mesh's vertex
 colours are displayed without lighting or tone mapping. The default remains a lit surface.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/lit-unlit.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
+:::static
+// One torus coloured by its Gaussian curvature, drawn twice: lit on the left, unlit on the right.
+val ring = torusMesh(96, 48, 0.62, 0.24)
+val curvature = ring.coloredByScalar(ring.gaussianCurvature(), "coolwarm")
+
+three(name = "lit-unlit", channel = "lit-unlit", width = 760, height = 340) {
+    columns(2)
+    mesh(curvature, panel = 0, wireframe = false)
+    mesh(curvature, panel = 1, wireframe = false, unlit = true)
+    panel(title = "lit (the default)", bounds = curvature.toThreeBounds())
+    panel(title = "unlit = true", bounds = curvature.toThreeBounds())
+}
+```
+
+![Two panels showing the same torus coloured from blue on its inner rim to red on its outer rim by Gaussian curvature. In the left, lit panel, the shading darkens and brightens the colours with the surface's angle to the lights; in the right, unlit panel, each colour is the colormap's own value wherever it sits on the surface.](assets/three_output/lit-unlit.png)
 For a smooth surface with per-element colours, compute normals on the connected geometry
 before duplicating vertices for discontinuous colours; colour boundaries are not creases.
 

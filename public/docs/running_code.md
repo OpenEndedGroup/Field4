@@ -1,7 +1,8 @@
 # Running code in a box
 
-"Run this" is the gesture you make most often in Field, and it means more than one thing. This page
-is the whole path, from the keystroke to the frame. Start at whichever end you need.
+This page is about what Field does behind the scenes when you run a box. You do not need it to
+start writing boxes. It is for when something that looks like an ordinary call turns out not to be
+one, or when a child box cannot see a value its parent set.
 
 - **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
   box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
@@ -13,6 +14,9 @@ is the whole path, from the keystroke to the frame. Start at whichever end you n
 - **What happens after the last line evaluates**, when what you returned is a `Frames`, is
   [Frames and the animation loop](animation_time_model.md). Launching a box is exactly the case where
   that page takes over from this one.
+- **When a value comes from a box you did not expect**, [Why does this value resolve
+  here?](why.md) asks Field which box supplied it and by what path. It is the inheritance walk
+  described below, reported for one name.
 
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
 [Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
@@ -282,4 +286,5 @@ So `//%-` is what makes "set some state, then run a macro that reads it" work. I
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
-See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), and the [Kotlin Overview](kotlin_overview.md).
+See also: [Feature Overview](funFeatures.md) (user-level `prop`/`connect`/`once`), [afield.four Graphics](afield_four_graphics.md) (graphics API), [StackSL Examples](stacksl_examples.md) (`stack.auto`), [RectSL Examples](rectsl_examples.md), [Why Does This Value Resolve Here?](why.md) (which box a
+value came from), and the [Kotlin Overview](kotlin_overview.md).

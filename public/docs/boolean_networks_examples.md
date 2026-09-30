@@ -15,6 +15,7 @@ import afield.graphics.FLine
 val net = toggleNetwork()
 val attrs = net.findAttractors()
 
+:::fold helpers: offset a drawing, fill a background panel
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
@@ -28,6 +29,7 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     thickness = 1.0
     this.color = color
 }
+:::endfold
 
 lines(
     listOf(
@@ -63,6 +65,7 @@ val start = largest.basin.firstOrNull { it !in cycleStates } ?: largest.basin.fi
 val trajectory = net.trajectoryUntilCycle(net.intToState(start))
 val shown = attrs.take(2)
 
+:::fold helpers: offset a drawing, fill a background panel
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
@@ -76,6 +79,7 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     thickness = 1.0
     this.color = color
 }
+:::endfold
 
 lines(
     listOf(
@@ -124,6 +128,7 @@ val rows = (1..5).map { k ->
     )
 }
 
+:::fold plot helpers: shared y scale, axes and grid, polylines, square markers
 val maxY = listOf(
     rows.maxOf { it.attractors },
     rows.maxOf { it.period },
@@ -175,6 +180,7 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
     }
     this.color = color
 }
+:::endfold
 
 lines(
     guides() + listOf(
@@ -236,6 +242,7 @@ val gated =
         )
     }
 
+:::fold helpers: offset a drawing, fill a background panel
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
@@ -249,6 +256,7 @@ fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
     thickness = 1.0
     this.color = color
 }
+:::endfold
 
 lines(
     listOf(

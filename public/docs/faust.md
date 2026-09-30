@@ -171,7 +171,8 @@ notes are, and both go through the same event timeline.
 
 ### What it sounds like, at eight voices and at one
 
-Here is that example, rendered offline. Then the same notation with `voices = 1`.
+Two offline renders of the example above. The first is the example as written, with `voices = 8`.
+The second changes only that argument, to `voices = 1`, so you can hear what the extra voices do.
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/faust/poly-chord-eight-voices.wav" audio-spec="poly-chord-eight-voices" audio-renderer="afield.four.synth.FaustPolySoundDocs" embed=true hidden=true name="faust-poly-eight-voices"}
 // FaustPolySoundDocs.render("poly-chord-eight-voices")

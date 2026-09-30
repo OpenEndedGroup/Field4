@@ -217,7 +217,7 @@ typed boundaries, interpolation and persistence.
     against `module.<block>`, which resolves to that same live structure
     (`Module.kt:238#return ModuleRebuild.access(inside, property.name, inside.current.liveUniformStructures[property.name] ?:`). The next section drives a uniform that way, on a GPU.
 
-!!! note "`capture()` reads either kind of property, and writes back a binding"
+??? aside "`capture()` reads either kind of property, and writes back a binding"
 
     A `Structure` can hold a property two ways: `structure.bind("radius") { 4f }` installs a
     binding, and `structure["radius"] = 4f` stores a value (and removes any binding). `capture()`

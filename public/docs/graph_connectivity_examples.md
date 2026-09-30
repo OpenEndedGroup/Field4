@@ -207,6 +207,76 @@ and more opaque up to the spanning tree at 2.6 and 0.95 — so the sparser a
 family is, the more it stands out, and the edges every family agrees on are the
 ones drawn five times over.
 
+## Orthant neighborhoods: one edge per direction
+
+A k-nearest-neighbor graph asks only *how close*, so on a clustered cloud every
+edge stays inside its cluster and the graph falls apart into islands.
+`vec2OrthantGraph(...)` also asks *which way*. It splits the plane around each
+point into four quadrants along the coordinate axes and joins the point to its
+nearest neighbor in each quadrant that has one. That gives each point at most
+four edges of its own, and the points other points choose add more. A point on
+the edge of a cluster facing another cluster has an empty quadrant on its own
+side, so its nearest neighbor in that direction is across the gap.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/graph_connectivity_examples/orthant_vs_knn.png" wait="1.0" capture="window" open-outputs="true"}
+:::static
+import afield.graphics.FLine
+
+val centers = listOf(vec(250.0, 550.0), vec(600.0, 250.0), vec(950.0, 520.0))
+val points = centers.flatMap { c ->
+    List(40) {
+        val a = random() * PI * 2.0
+        val r = random() * 60.0
+        vec(c.x + cos(a) * r, c.y + sin(a) * r)
+    }
+}
+
+val knn = vec2KnnGraph(points, k = 4)
+val orthant = vec2OrthantGraph(points)
+
+fun graphLine(graph: PointGraph, color: Vec4, thickness: Double): FLine = fline {
+    graph.edges.forEach { e ->
+        val a = points[e.i]
+        val b = points[e.j]
+        moveTo(a.x, a.y)
+        lineTo(b.x, b.y)
+    }
+    this.color = color
+    this.thickness = thickness
+}
+
+val cloud = fline {
+    points.forEach { p -> moveTo(p.x, p.y) }
+    pointed = true
+    pointSize = 3.2
+    stroked = false
+    color = vec(1.0, 1.0, 1.0, 0.72)
+}
+
+lines(
+    listOf(
+        graphLine(orthant, vec(0.56, 1.0, 0.67, 0.8), 1.4),
+        graphLine(knn, vec(1.0, 0.7, 0.32, 0.9), 2.2),
+        cloud
+    ),
+    channel = "orthant-vs-knn",
+    w = 1180.0,
+    h = 760.0,
+    fitToSize = true
+)
+```
+
+The orange 4-NN edges are drawn on top and never leave their cluster. The green
+orthant edges are the ones that also run between clusters.
+
+![three separated clusters of white points. Thick orange 4-NN edges knit each cluster together and none crosses the gaps between them; thinner green orthant edges cover the same clusters and also run across the gaps, joining neighbouring clusters](assets/graph_connectivity_examples/orthant_vs_knn.png)
+
+The quadrants follow the coordinate axes, not the data, so rotating the cloud
+changes the graph. `vec3OrthantGraph(...)` does the same with the eight octants
+in 3D. The ranking inside each quadrant uses
+`GraphConnectivityOptions.customDistanceMetric` if you pass one, and Euclidean
+distance otherwise.
+
 ## 3D graph families with `threeLines(...)`
 
 A flat projection stops working once points coil, stack or sit behind one

@@ -1,8 +1,9 @@
 # Interactive Guides
 
-A guide is a box that walks someone else through your document. You write it in the box; the person
-following it gets notes, moving selections and callout lines over the live document rather than a
-recording of one. A guide can:
+Guides exist for teaching: leading someone through a document they have not seen before. A guide
+is a box that walks them through it. You write it in the box; the person following it gets notes,
+moving selections and callout lines over the live document rather than a recording of one. A guide
+can:
 
 - show a note next to a box,
 - move the editor to a property and line,
@@ -12,6 +13,11 @@ recording of one. A guide can:
 - draw callout lines to boxes or exact code locations.
 
 The core API lives in `slideShow { ... }`. Each `step("...")` defines one stage of the guide, and `markdownNote(...)` or `note(...)` renders the overlay.
+
+A guide's notes and callout lines come and go with its steps. For marks that stay on the canvas,
+such as a hand-drawn diagram beside the boxes it explains or arrows a box draws for itself, see
+[Drawing and Notation](drawing_and_notation.md), the Excalidraw layer (`alt-d`) that is saved with
+the document.
 
 ## Start with a single-step guide
 

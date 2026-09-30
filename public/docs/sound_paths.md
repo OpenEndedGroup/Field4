@@ -1,4 +1,4 @@
-# Making a sound in Field: every path there is
+# How to make sound in Field
 
 You want to hear something. There is more than one way, and this page maps all of them.
 
@@ -33,7 +33,7 @@ in.**
 
 ## The nine that make samples
 
-| path | what it is | needs | offline? | on the seam? | page |
+| path | what it is | needs | offline? | shares `render`? | page |
 | --- | --- | --- | --- | --- | --- |
 | `pat-stand-in` | a pattern's events through a very small voice: one oscillator, one one-pole lowpass, one decay envelope, per event. `fun patRenderStereo` in `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` offline; `patSynth` live | nothing | both | **yes** | [Sound](sound.md) |
 | `dirt-samples` | the same events as real Tidal one-shots. `fun patRenderStereoDirt` in `src/jvmMain/kotlin/afield/four/synth/DirtRender.kt` offline; `DirtSamplePlayer` live | the Dirt-Samples quark | both | live half only | [Sound](sound.md) |
@@ -41,7 +41,7 @@ in.**
 | `faust` | a Faust program compiled at runtime and dropped into that same graph. `class FaustNode` in `src/jvmMain/kotlin/afield/four/synth/FaustDsp.kt` | nothing — libfaust is vendored as wasm | both | **yes** | [Faust](faust.md) |
 | `faust-poly` | the same program played as an *instrument*: N instances of one compiled module, allocated to notes by a pattern, each note landing on the sample it was scheduled for. `class FaustVoiceBank` in `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` | nothing — as `faust` | both | **yes** | [Faust](faust.md) |
 | `pure-data` | a Pure Data patch — inline text in the box, or a `.pd` file — in a libpd instance of its own, pulled a block at a time. `class PdNode` in `src/jvmMain/kotlin/afield/pd/PdInstance.kt` | libpd, built once by `./gradlew buildLibpdNative` | both | **yes** | [Pure Data](pure_data.md) |
-| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the seam by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
+| `dough-engine` | the whole dough/Strudel engine as a wasm module, with its own 128-frame block loop. `class DoughEngine` in `src/jvmMain/kotlin/afield/four/synth/Dough.kt`, wrapped onto the shared `render` call by `DoughAudioSink` | the dough wasm build | both | **yes**, through `parkDough` | — |
 | `pat-spatial` | a pattern **placed in space**: one dough engine per `spat` tag, its output taken as mono and aimed by Steam Audio's HRTF. `fun patSpatial` in `src/jvmMain/kotlin/afield/four/synth/PatSpatial.kt` | dough, plus an uncommitted `libphonon` — `./gradlew fetchSteamAudioNatives` | realtime only | **yes** | [A pattern in space](pat_spatial.md) |
 | `sonic-pi` | a Ruby program handed to Sonic Pi's own scsynth over OSC. `class SonicPi` in `src/jvmMain/kotlin/afield/four/synth/SonicPi.kt` | a local Sonic Pi v5 | realtime only | no | [Sonic Pi](sonic_pi.md) |
 
@@ -79,16 +79,12 @@ two figures are the *mono source* its dough engine produces, and neither is its 
 because this sink cannot be pointed at a path that only runs in realtime.
 [Its page says why](pat_spatial.md#why-there-is-no-clip-of-the-output).
 
-## Spatial audio: thread-local contexts, and rendering with no device
+## Spatial audio with OpenAL, and rendering with no device
 
-**Field has two spatial audio paths and they are not alternatives.** `spatial-openal` — this section
-— is a sink: you position sources from code, it opens its own OpenAL context, and it has an offline
-loopback mode, so a headless machine can render and measure it. `pat-spatial` is a *source*: the
-position is a tag in a pattern, the HRTF is Steam Audio's rather than OpenAL's, and it reaches the
-speakers through the ordinary seam rather than through a context of its own. The trade runs the other
-way on the one axis that matters for these docs: `spatial-openal` can be driven with no device at
-all, by the loopback renderer described below, and `pat-spatial` cannot be driven faster than wall
-clock by anything. Neither has a clip on this site.
+Field has two ways to place a sound in space: OpenAL, which is this section, and Steam Audio, whose
+HRTF is what [A pattern in space](pat_spatial.md) uses. With `spatial-openal` you position sources
+from code, it opens its own OpenAL context, and it has an offline loopback mode, so a machine with no
+sound card can render and measure it. Neither has a clip on this site.
 
 `spatial-openal` defaults to one shared engine. Two constructor arguments change that, and both
 exist so that spatial audio can happen somewhere other than the speakers of the machine you are
@@ -138,9 +134,9 @@ this tree exercises it.
 
 ---
 
-## The seam
+## The shared `render` call
 
-There is exactly one signature everything realtime meets at:
+Everything realtime is driven through one signature:
 
 ```diffstatic {data-lang=kotlin}
 fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext)
@@ -148,33 +144,33 @@ fun render(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext
 
 `AudioPatchSpec.Renderer` declares it. `StereoRenderable` declares it, character for character. So
 does every node in the graph, `DirtSamplePlayer`, `FaustNode`, `FaustPolyNode`, `DoughAudioSink`,
-`PatSynthBank`, `PatSpatialBank` and `PdNode`. Twelve of the eighteen paths above sit on it. **A path on the
-seam composes with every other path on the seam; a path off it composes with nothing.**
+`PatSynthBank`, `PatSpatialBank` and `PdNode`. Twelve of the eighteen paths above share it, and any
+of them can be plugged into any other.
 
 Faust is the clearest case of what that buys, twice over. `class FaustNode` is 23 lines that fill an
 input buffer and call `dsp.render`. `class FaustPolyNode` is five lines, and behind them is an event
 scheduler, a voice allocator and N WebAssembly instances in one GraalVM context — none of which the
-seam has to know about. Being on it is what gets both of them the speakers, the engine's visualisers,
-the Link output and the box lifecycle, with no adapter written for any of them.
+engine has to know about. Sharing `render` is what gets both of them the speakers, the engine's
+visualisers, the Link output and the box lifecycle, with no adapter written for any of them.
 
-Of the nine paths that make samples, `sonic-pi` is the only one off the seam, and no wrapper
-reaches it: it is a different process, and no sample ever enters this one.
+Of the nine paths that make samples, `sonic-pi` is the only one that does not share `render`, and no
+wrapper can make it: it is a different process, and no sample ever enters this one.
 
-`dough-engine` reaches the seam through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
+`dough-engine` reaches `render` through a wrapper: `class DoughAudioSink` is a `StereoNode` in the
 same file as `DoughEngine`, and `parkDough` registers `audio(sink)` with the engine. It renders in
 whole 128-frame blocks and copies out only what was asked for, so it drops samples at any engine
 buffer size that is not a multiple of 128. The default is 512.
 
-Getting a pattern onto the seam is the general case, because a pattern has to be *queried* over an
+Getting a pattern onto `render` is the general case, because a pattern has to be *queried* over an
 arc and there is no "next 128 frames" to ask one for. The answer is a scheduler in two halves: a
 thread that queries a cycle at a time and turns events into notes stamped with the absolute frame
 they start on, and an audio-thread voice bank whose only remaining job is an integer comparison. `DirtSamplePlayer` and `FaustPatternFeeder` divide the
 work the same way, and being early costs nothing because what crosses between the halves is frames.
 See [A pattern that moves particles](chain_pattern_particles.md).
 
-`pat-spatial` is the newest arrival on the seam, and it settles a question the column leaves open:
-being on the seam and being able to render offline are **independent**. It is the first path that can
-fill a block when asked and cannot do it faster than wall clock — the seam asks for a block, not for
+`pat-spatial` is the newest path to share `render`, and it settles a question the column leaves open:
+sharing `render` and being able to render offline are **independent**. It is the first path that can
+fill a block when asked and cannot do it faster than wall clock — `render` asks for a block, not for
 a buffer, and a render thread feeding a ring satisfies that with an `arraycopy`. Like `faust-poly`,
 it opens no device and encodes no WAV.
 
@@ -238,18 +234,18 @@ buffer; not 1.0, because they are not the same lowpass. Every number here is pri
 
 A lowpass shows that the paths differ. Feed the same buffer a plain gain instead — 0.5 by the
 graph, 0.5 by Faust — and the two are bit-equal, which is the stronger claim: two separate
-implementations on one seam, with no adapter in between.
+implementations behind one `render` call, with no adapter in between.
 
 ---
 
 ## Where the list comes from
 
-Everything on the seam is here, and not because somebody keeps the page up to date. If a table
+Everything that shares `render` is here, and not because somebody keeps the page up to date. If a table
 above names a path, that path exists, in that file, under that name: the `synth.sound.path.map`
 smoke re-derives the list from the tree on every `check`, and cites each entry point by *symbol*,
 so a rename fails the build rather than leaving a dead citation.
 
-Off the seam the derivation is blind, and both of the shapes it cannot find are listed above
+Beyond `render` the derivation is blind, and both of the shapes it cannot find are listed above
 anyway, because somebody declared them: a player in another process, like `sonic-pi`, and a
 whole-buffer free function, like `patRenderStereo`. A third of either kind could be added to Field
 tomorrow and this page would not notice. The marker literals, the assertions and the tolerances are

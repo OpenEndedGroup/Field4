@@ -15,6 +15,7 @@ import afield.graphics.FLine
 val bubble = SortingNetwork.bubble(10)
 val merge = SortingNetwork.oddEvenMerge(10)
 
+:::fold two tinted panels to hold the diagrams
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun panel(x: Double, y: Double, w: Double, h: Double, color: Vec4) = fline {
@@ -33,6 +34,7 @@ val frames = listOf(
     panel(30.0, 40.0, 1030.0, 390.0, vec(0.08, 0.14, 0.20, 0.55)),
     panel(30.0, 500.0, 1030.0, 390.0, vec(0.18, 0.11, 0.07, 0.52)),
 )
+:::endfold
 
 lines(
     frames +
@@ -64,6 +66,7 @@ val bubble = SortingNetwork.bubble(n)
 val merge = SortingNetwork.oddEvenMerge(n)
 val maxInv = n * (n - 1) / 2.0
 
+:::fold random permutations and an O(n²) inversion count
 fun randomPermutation(size: Int): IntArray {
     val xs = (0 until size).toMutableList()
     xs.shuffle()
@@ -75,6 +78,7 @@ fun inversions(values: IntArray): Int {
     for (i in values.indices) for (j in i + 1 until values.size) if (values[i] > values[j]) inv++
     return inv
 }
+:::endfold
 
 fun profile(net: SortingNetwork): List<Double> {
     val sums = DoubleArray(net.depth() + 1)
@@ -95,6 +99,7 @@ val mergeTraces = traceFamily(merge, traceCount)
 val bubbleProfile = profile(bubble)
 val mergeProfile = profile(merge)
 
+:::fold axes, gridlines, curves and square markers
 fun axis() = listOf(
     fline {
         moveTo(70, 580); lineTo(1120, 580)
@@ -141,6 +146,7 @@ fun markers(values: List<Double>, color: Vec4, size: Double): FLine = fline {
     }
     this.color = color
 }
+:::endfold
 
 val markers =
     bubbleTraces.map { curve(it, vec(0.58, 0.85, 1.0, 0.12), 1.2) } +
@@ -187,6 +193,7 @@ val best = SortingNetwork.anneal(
     history += iter to net
 }
 
+:::fold chart frames and a step-trace plotter
 fun shift(lines: List<FLine>, dx: Double, dy: Double) = lines.map { it + vec(dx, dy, 0) }
 
 fun chartFrame(x: Double, y: Double, w: Double, h: Double) = listOf(
@@ -223,6 +230,7 @@ fun plotMetric(
     this.color = color
     this.thickness = 2.8
 }
+:::endfold
 
 val countValues = history.map { it.first to it.second.comparators.size.toDouble() }
 val depthValues = history.map { it.first to it.second.depth().toDouble() }
@@ -258,6 +266,7 @@ Three seed topologies, three temperature schedules and three random seeds, all a
 :::static
 import afield.graphics.FLine
 
+:::fold a record for each run's settings and its traces
 data class RunConfig(
     val family: String,
     val initial: SortingNetwork,
@@ -274,6 +283,7 @@ data class RunResult(
     val depths: List<Pair<Int, Double>>,
     val best: SortingNetwork,
 )
+:::endfold
 
 val merge = SortingNetwork.oddEvenMerge(8)
 val mergeDense =
@@ -341,6 +351,7 @@ val runs = configs.map { config ->
     )
 }
 
+:::fold chart frames, trace curves and the final-result scatter
 val maxCount = runs.maxOf { run -> run.counts.maxOf { it.second } }
 val maxDepth = runs.maxOf { run -> run.depths.maxOf { it.second } }
 val minComparators = runs.minOf { it.best.comparators.size }.toDouble()
@@ -400,6 +411,7 @@ fun scatterPoints(): List<FLine> =
 
 val countCurves = runs.map { traceCurve(it.counts, 80.0, 80.0, 1080.0, 180.0, maxCount, it.config.traceColor) }
 val depthCurves = runs.map { traceCurve(it.depths, 80.0, 340.0, 1080.0, 180.0, maxDepth, it.config.traceColor) }
+:::endfold
 
 lines(
     chartFrame(80.0, 80.0, 1080.0, 180.0) +

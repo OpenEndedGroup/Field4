@@ -1,6 +1,6 @@
 # Charts as FLines
 
-*`chart()` builds a plot out of geometry rather than out of a browser. That matters for three things; Plotly is better at everything else.*
+*`chart()` builds a plot out of geometry rather than out of a browser. That matters for three things: drawing the plot into the same picture as your other FLines, clicking on its marks, and drawing an expectation you can watch the data break. Plotly is better at everything else.*
 
 `afield.Chart` is to a plot what `Table` is to a grid. You build one up a call at a time, hand it to
 `showChart`, and it arrives in the repo's style with no markup in the way. It implements `ToHTML`,
@@ -16,9 +16,17 @@ Chart(title = "residual per iteration", xLabel = "iteration", yLabel = "|r|")
 
 ## Reach for Plotly first
 
-Field already has [Plotly](visualizers.md): `linePlot`, `scatter`, `violin`, `showSignals`. It is a
-browser page, so the docs build captures it headlessly like anything else, and for a general plot it
-is the better answer. Plotly has real filled text with font fallback and shaping, a legend with line
+Field already has Plotly: `linePlot`, `scatter`, `violin`, `showSignals`, each described in the
+reference under [`plotly.kt`](reference/visualization.md#plotly-kt). The shortest of them puts named
+signals on screen in one call:
+
+```diffstatic {data-lang=kotlin}
+showSignals("residual" to residual, "step" to step, title = "per iteration")
+```
+
+The others return a `Plot` for you to `display`; [DoughDSP: hear the primitives](dough_dsp_sound.md)
+uses `showSignals` throughout, if you want to see it at work. Plotly is a browser page, so the docs build
+captures it headlessly like anything else, and for a general plot it is the better answer. Plotly has real filled text with font fallback and shaping, a legend with line
 swatches, axes that autorange, and it reflows to whatever shape you give it. A `Chart` is fixed
 geometry that gets fitted and centred, so any aspect mismatch is empty margin, and its text is
 geometry that scales with the fit rather than staying screen-relative.
@@ -201,26 +209,26 @@ through `FLine.transform`, which copies control points as well as node positions
 the whole thing is wrapped in `runCatching`, so a headless machine with no fonts gets an
 *unlabelled* chart rather than an exception in the middle of a figure.
 
-## Where the pictures come from
+??? aside "Where the pictures come from"
 
-The five figures above are **committed captures** from the `visualization.chart-gallery` FIELD_TEST:
-`Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU and no Field
-window. Regenerate them with:
+    The five figures on this page are **committed captures** from the `visualization.chart-gallery`
+    FIELD_TEST: `Chart.toFLines()` → Skia's `outputTo` on a raster surface → PNG, with no AWT, no GPU
+    and no Field window. Regenerate them with:
 
-```diffstatic {data-lang=bash}
-CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
-```
+    ```diffstatic {data-lang=bash}
+    CHART_GALLERY_DIR=public/docs/assets/chart_gallery python3 tools/run_field_tests.py --id visualization.chart-gallery
+    ```
 
-They are committed rather than built by the docs runner, so that command has to be re-run to reflect
-a change. What the gallery asserts, at what thresholds, and the one thing it cannot cover are in
-`dev_docs/chart_primitive.md`.
+    They are committed rather than built by the docs runner, so that command has to be re-run to
+    reflect a change. What the gallery asserts, at what thresholds, and the one thing it cannot cover
+    are in `dev_docs/chart_primitive.md`.
 
-The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
-refusals and expectations:
+    The arithmetic is tested separately from the pixels. `afield.ChartTest` owns ticks, mapping, log
+    refusals and expectations:
 
-```diffstatic {data-lang=bash}
-./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
-```
+    ```diffstatic {data-lang=bash}
+    ./gradlew jvmTest --no-daemon --tests 'afield.ChartTest'
+    ```
 
 ## Reference
 

@@ -160,7 +160,11 @@ The bank stops being five slots and becomes a sampled one-dimensional family of 
 
 ---
 
-## Two ways out, one structure
+## A reader's two outputs: a signal and triggers
+
+A reader gives you its stages in two forms: as a value that moves continuously, and as one event
+per stage. Both come from the same stages, so they always agree on where the
+boundaries fall.
 
 A reader's continuous output is a signal in the sense of [`PatSignals.kt`](pattern_language.md), so
 every combinator in the language already applies to it and the parameter algebra can sample it
@@ -218,10 +222,11 @@ own local phase, inside a structure the pattern algebra laid out.
 
 ## A stage's value need not be a number
 
-A stage's value is a type parameter. `MarfSpace` is the arithmetic a reader needs in order to move
-one value toward another, and it is three operations: subtract to get the direction, scale to walk
-part of it, add to arrive. The curve stays scalar, because a stage's *shape* is one-dimensional
-however many dimensions its value has.
+A stage can move toward a vector as easily as toward a number. All a reader ever does with two
+values is move part of the way from one to the other, and `MarfSpace<T>` supplies what that takes
+for a type `T`: `sub` for the difference between them, `scale` for the fraction of it, `add` to get
+there. The curve is still a single number from 0 to 1. It says how far through the stage you are,
+and that fraction is the same for every component of the vector.
 
 ```diffstatic {data-lang=kotlin}
 val path = marfBankIn(
@@ -248,7 +253,7 @@ scalar nearly everywhere: each component is a `PatPattern<Double>`, so `gain`, `
 `marf(...)` and `marfBank(...)` are the scalar spellings; `marfIn` and `marfBankIn` take a space.
 Instances for `Vector2f`, `Vector3f` and `Vector4f` ship with it.
 
-!!! warning "A space instance must copy before it writes"
+??? aside "Watch for mutation in your own space"
 
     In Field's generated linalg, `add(other)`, `sub(other)`, `mul(scalar)` and `normalize()` are
     in-place members that return the receiver, and `/` resolves to the mutating member operator
@@ -291,7 +296,8 @@ ordinary sample-and-hold.
 ## Which clock the fields are read in
 
 A field is a pattern, and there are two different things a pattern can mean here — a **sequence of
-steps** or a **voltage you sample** — so the layer has to decide which you meant. `MarfFieldClock`
+steps** or a **voltage you sample**, meaning a value that exists at every instant, the way a
+modular synthesizer's control voltage does — so the layer has to decide which you meant. `MarfFieldClock`
 is that decision.
 
 ![the same two fields under both readings: a stepped address collapses under CYCLES, and a saw freezes under STEPS](assets/marf/marf-field-clocks.svg)
@@ -372,8 +378,8 @@ absences.
 ### When `AUTO` picks the wrong one
 
 Name the clock. `AUTO` reads the shape of what you typed, and the shape is occasionally not the
-intent — a stepped pattern you want sampled as a voltage, or a signal you want latched once a
-cycle. `fields = MarfFieldClock.CYCLES` and `fields = MarfFieldClock.STEPS` always win, and a
+intent — a stepped pattern you want read at each stage's start time, whichever step that lands on
+(`CYCLES`), or a signal you want read one value per cycle, one cycle per stage (`STEPS`). `fields = MarfFieldClock.CYCLES` and `fields = MarfFieldClock.STEPS` always win, and a
 reader will tell you which one it ended up with:
 
 ```diffstatic {data-lang=kotlin}

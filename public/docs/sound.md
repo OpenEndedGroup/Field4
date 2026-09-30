@@ -316,16 +316,11 @@ A loadable Field document with all of this side by side is committed at
 `public/docs/assets/sound_render_path/`. Open `public/docs/assets` as the workspace and
 `sound_render_path` as the document, then play box 1 and box 2 back to back.
 
----
+<a id="what-a-voice-caption-promises"></a>
 
-## What a "Voice:" caption promises
-
-Every *"Voice: …"* sentence on this page is produced by a check rather than typed, so a caption
-cannot outlive the code that rendered its clip. What the check establishes is narrower than it
-looks: a clip captioned as the stand-in has to match a fresh synth render, and a clip captioned as
-real samples has to *not* match one. It can tell you an asset did not come from the synth; it
-cannot tell you it came from the Tidal library specifically.
-
-Print the whole table with `run_field_tests.py --id synth.docs.audio.provenance`. The method, the
-correlation figures and the pinned family counts are in
-`dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.
+??? aside "Where the \"Voice:\" captions come from"
+    The *"Voice: …"* captions on this page are written by the docs build, not by hand. A clip
+    captioned as the stand-in has to match a fresh synth render, and one captioned as real samples
+    has to *not* match one. That shows an asset did not come from the synth; it does not show it
+    came from the Tidal library specifically. `run_field_tests.py --id synth.docs.audio.provenance`
+    prints the table; the method and figures are in `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.

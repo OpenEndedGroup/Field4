@@ -129,7 +129,7 @@ expect:
   outputContains:
     - "/1/fader1 = 0."
 -->
-```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's outputs: in the main channel, an amber bar drawn inside a grey track, its length following the fader; in the value channel, the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true name="osc-fader" w="760" h="140"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/osc/fader.png" alt="a launched box's outputs: in the main channel, an amber bar drawn inside a grey track, its length following the fader; in the value channel, the line /1/fader1 = and the value it last received" capture="box" execution="launch" wait="3" wait-output=true wait-output-kind=display wait-output-channel="main" embed=true trim=true name="osc-fader" w="760" h="140"}
 :::static
 var level = 0f   // the fader, as last received
 
@@ -361,7 +361,7 @@ share one slot, and whichever ran last owns it. Give each box its own addresses,
 new one. That makes `close()` the reset when a document's handlers have got into a state you can no
 longer reason about: close the server, then run the boxes that should be listening again.
 
-!!! warning "A port another program holds does not make `osc(port)` fail"
+!!! warning "`osc(port)` succeeds even when another program already has the port"
     JavaOSC opens its sockets with `SO_REUSEADDR`, so binding a port that TouchOSC Bridge, Max or a
     second Field already holds succeeds, and `isListening` says `true`. Measured on macOS: a
     program bound to `127.0.0.1` on that port goes on receiving everything sent to `127.0.0.1`, and

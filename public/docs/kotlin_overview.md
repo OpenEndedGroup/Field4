@@ -708,7 +708,7 @@ f3.color = vec(1.0, 1.0, 1.0, 1.0)
 
 ## Advanced things
 
-These features are very useful, but you can live-code a lot of Field sketches without bumping into them.
+The features below are very useful, but you can live-code a lot of Field sketches without bumping into them.
 
 ### Nullability (`?`, `?.`, `?:`, `!!`)
 
@@ -1090,3 +1090,12 @@ var a = new Vec2(1.0, 2.0);
 var b = a with { Y = 5.0 };
 var (x, y) = b;
 ```
+
+## Where to go next
+
+This page covers the Kotlin you meet most often in Field. For the rest of the language, these are good places to start:
+
+- [A tour of Kotlin](https://kotlinlang.org/docs/kotlin-tour-welcome.html) — JetBrains' own introduction: short chapters with exercises you can run in the browser, from beginner to intermediate.
+- [Kotlin Koans](https://play.kotlinlang.org/koans) — small exercises, each a failing test you make pass, also in the browser. Good for building fluency once the syntax is familiar.
+- [Idioms](https://kotlinlang.org/docs/idioms.html) — one page of "the Kotlin way to do X", useful for turning Python or JavaScript habits into Kotlin.
+- [Scope functions](https://kotlinlang.org/docs/scope-functions.html) — `let`, `run`, `with`, `apply` and `also` side by side. These come up constantly in Field code, and the differences between them are hard to guess.

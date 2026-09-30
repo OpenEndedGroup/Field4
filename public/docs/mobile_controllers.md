@@ -34,6 +34,117 @@ Replace `FIELD-HOST` with the machine's LAN name or address and `YOUR-DOCUMENT` 
 
 </div>
 
+Below are Pad, Group, Outputs and Edit at iPhone size, each showing a box that publishes a small `controlGroup(...)` and one output channel. Chat and Select have their own sections further down.
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-pad" screenshot="assets/mobile_controllers/pad.png" alt="The Pad tab of the Field mobile controller at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-pad"}
+ui.eval("""
+    document.getElementById("docs-mobile-controller-pad")?.remove()
+    const driveBox = [...document.querySelectorAll(".box")].find(box => box.uid === "__docs_drive__" || box.name === "__docs_drive__")
+    if (driveBox && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
+        window.selectBox(driveBox)
+        window.selectionContextChanged?.()
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "pad")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-pad"
+    frame.setAttribute("title", "Field mobile controller pad")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return frame.getAttribute("src")
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-pad", 8000.0)
+ui.pause(6000)
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-group" screenshot="assets/mobile_controllers/group.png" alt="The Group tab of the Field mobile controller showing a box's controlGroup at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-group"}
+controlGroup("controls") {
+    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
+    vec2Control("orbit", initialValue = afield.stdlib.linalg.Vector2f(0.35f, -0.2f)) { }
+    checkbox("armed", initialValue = true) { }
+    stringInput("name", initialValue = "Field") { }
+    colorPicker("accent", initialValue = afield.stdlib.linalg.Vector4f(0.95f, 0.45f, 0.15f, 0.85f)) { }
+}
+ui.eval("""
+    document.getElementById("docs-mobile-controller-group")?.remove()
+    const driveBox = [...document.querySelectorAll(".box")].find(box => box.uid === "__docs_drive__" || box.name === "__docs_drive__")
+    if (driveBox && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
+        window.selectBox(driveBox)
+        window.selectionContextChanged?.()
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "controls")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-group"
+    frame.setAttribute("title", "Field mobile controller group")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return frame.getAttribute("src")
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-group", 8000.0)
+ui.pause(6000)
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-outputs" screenshot="assets/mobile_controllers/outputs.png" alt="The Outputs tab of the Field mobile controller showing a box's output areas at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-outputs"}
+controlGroup("controls") {
+    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
+    checkbox("armed", initialValue = true) { }
+}
+display("main", "<div style='padding:12px;font:15px system-ui'><b>gain</b> 0.35 · <b>armed</b> yes</div>")
+ui.eval("""
+    document.getElementById("docs-mobile-controller-outputs")?.remove()
+    const driveBox = [...document.querySelectorAll(".box")].find(box => box.uid === "__docs_drive__" || box.name === "__docs_drive__")
+    if (driveBox && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
+        window.selectBox(driveBox)
+        window.selectionContextChanged?.()
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "outputs")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-outputs"
+    frame.setAttribute("title", "Field mobile controller outputs")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return frame.getAttribute("src")
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-outputs", 8000.0)
+ui.pause(6000)
+```
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-edit" screenshot="assets/mobile_controllers/edit.png" alt="The Edit tab of the Field mobile controller with Monaco open on a box's code at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-edit"}
+// A box with a few live controls, open in the phone's editor.
+controlGroup("controls") {
+    slider("gain", min = 0.0, max = 1.0, step = 0.01, initialValue = 0.35) { }
+    checkbox("armed", initialValue = true) { }
+}
+ui.eval("""
+    document.getElementById("docs-mobile-controller-edit")?.remove()
+    const driveBox = [...document.querySelectorAll(".box")].find(box => box.uid === "__docs_drive__" || box.name === "__docs_drive__")
+    if (driveBox && typeof window.selectBox === "function") {
+        ;(window.selectedList || []).slice().forEach(box => window.deselectBox(box))
+        window.selectBox(driveBox)
+        window.selectionContextChanged?.()
+    }
+    const params = new URLSearchParams(window.location.search)
+    params.set("page", "editor")
+    const frame = document.createElement("iframe")
+    frame.id = "docs-mobile-controller-edit"
+    frame.setAttribute("title", "Field mobile controller editor")
+    frame.setAttribute("src", "/controllers?" + params.toString())
+    frame.setAttribute("style", "position:fixed;left:32px;top:32px;width:390px;height:844px;border:0;outline:1px solid rgba(72,201,255,.75);background:#050505;z-index:2147483000")
+    document.body.appendChild(frame)
+    return frame.getAttribute("src")
+""".trimIndent())
+ui.waitForSelector("#docs-mobile-controller-edit", 8000.0)
+ui.pause(10000)
+```
+
 ## Chat without the desktop
 
 The Chat tab is the same AI4 system used in a box output area. It knows the selected box, its current property, and the document around it. Press **Send** or use the return key to submit. While AI4 works, tool activity appears as compact expandable cards; proposed file edits remain open and put the target filename in the card heading.
@@ -108,7 +219,7 @@ Tap a result to select its box and property. The controller switches to **Edit**
 ## On the road
 
 1. Leave Field running with the working document open.
-2. Reach the Field machine through a trusted VPN or authenticated HTTPS tunnel.
+2. Reach the Field machine over your VPN or tunnel.
 3. Open `/controllers?file=...` on the phone and add it to the Home Screen if you use it often.
 4. Use **Select** to find the box you care about.
 5. Adjust live parameters in **Group**, check the result in **Outputs**, or use **Chat** for a larger change.

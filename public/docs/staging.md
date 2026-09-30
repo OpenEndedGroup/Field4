@@ -2,15 +2,13 @@
 
 The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to be read in order. This is the map for afterwards: what is in each section, and which page inside it to open first.
 
-Three of the pages below want a caveat before you open them. Two are about maturity: [Apple Vision Pro](vision.md) is a front end still being built and says so, and [Ray Tracing Examples](ray_tracing_examples.md) walks a real Vulkan pipeline but renders its four figures as placeholder cards, because macOS exposes no ray-tracing extension. The third is about *where*: [Geometry in the Headset](vision_geometry.md) is written for code running inside that visionOS app, and only its geometry half can be previewed on a desk.
-
 ## Working in a document
 
 The document itself — moving around it, finding things in it, and getting at what it used to say.
 
 - [Spatial Navigation](spatial_navigation.md) is the one to read first: `Cmd Cmd`-and-hold to see every box an arrow key can reach, and nine function keys that jump to saved views. It is how you stop reaching for the mouse.
 - [Where Field Looks for a File](files_and_paths.md) is the shortest page here and saves the most time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
-- [Your History with Field](history_overview.md) is the map of a genuinely awkward area — Field keeps several kinds of history, each with its own lifetime, and none of them is a complete record. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) answers the question you actually have more often, which is what *this line* said a few saves ago, without leaving the editor.
+- [Your History with Field](history_overview.md) is where to start: Field keeps several kinds of history, each with its own lifetime and its own tool, and that page says which one holds what. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) answers the question you actually have more often, which is what *this line* said a few saves ago, without leaving the editor.
 - [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
 - [Simulation Time](simulation_clock.md) is for a behaviour that waits, turns, fires and waits again as ordinary coroutine code, against a clock you advance yourself rather than the wall.
@@ -55,7 +53,8 @@ That section ends with the three pages about making your own, in ascending order
 - [Fabricate Renderer](fabricate_renderer.md) covers the `StandardRenderer` bundle: scene graph, render planning, frame graph, post stack, glTF import, material response, shadows and ambient occlusion.
 - [Aperture Playground](aperture_playground.md) is the worked multi-pass example: eight boxes carrying four light bands, two reductions, two aperture filters and a composite, with every shader stage in the document and no backend class hiding any of it. It is where to go to see defocus spread a line rather than just dim it.
 - [Field Probes](field_probes.md) instruments live shaders, with the CPU read-back `fieldProbe` and the GPU-resident `fieldStats` both demonstrated on one compute-shader particle system.
-- [Apple Vision Pro](vision.md) is the native visionOS front end being built: the projection model of docks, islands and tethers, with a stereo dock as the day-one feature.
+- [Apple Vision Pro](vision.md) is the native visionOS front end being built: the projection model of docks, islands and tethers, with a stereo dock as the day-one feature. [Geometry in the Headset](vision_geometry.md) is written for code running inside that app; only its geometry half can be previewed on your Mac.
+- [Ray Tracing Examples](ray_tracing_examples.md) walks four `VK_KHR_ray_tracing_pipeline` programs, from a raygen shader writing into a storage image to procedural spheres reflecting a traced floor. They need a GPU and driver with hardware ray tracing; the [path tracer](path_tracing.md) has a compute backend for machines without it.
 - [Kotlin in the Head](kotlin_in_the_head.md) is the compile route into that headset and into an ordinary browser tab: a box whose Kotlin is cross-compiled to JavaScript in-process and shipped over Field's own WebSocket, so `data class`es, operator overloading and compile-time type errors survive into a THREE.js scene, a Tone.js engine, or a native Metal shader.
 
 Not here yet: a guide to the low-level Vulkan renderer internals, especially device setup, synchronization, descriptor ownership and shader reflection. Fabricate Renderer is the entry point for the fabricated layer above them, and afield.four Graphics for the layer below.
@@ -71,7 +70,7 @@ Two pages you might expect here are on the Tour instead, because both are about 
 
 ## Reference, and internals
 
-Two sections that are not worked examples, and are read for different reasons.
+Neither section is a worked example. The reference is for looking something up; the internals are for understanding how Field works underneath.
 
 [What's Already in the Box](reference/index.md) is generated from the KDoc in `src/`, not written: every public declaration in Field's standard library, grouped the same way the editor's autocomplete groups it, and — where a page has earned one by calling enough of a file's entry points — a *Used in* link back to the page here that works it. It is the fastest way to find out whether something already exists. Beside it, *Libraries & APIs* holds three companions to that tree: [Linear Algebra](linear_algebra.md) for the vocabulary underneath movement, cameras and meshes, the [Generated Vector API](linear_algebra_api.md) emitted from the same model that emits those vector types, and [Querying Object Graphs](graph_query.md) for the times you want every cutoff in a rig rather than one you can name.
 

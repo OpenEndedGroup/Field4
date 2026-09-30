@@ -17,7 +17,9 @@ You can run code in Field the following ways (from the commonplace to the rare)
 
  * `alt-0` — runs everything in a box (but doesn't launch it)
 
-That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Since running code is very important, we actually have a few more ways of doing this. For completeness, we'll list them here:
+That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go and write and run some code against your favourite libraries, in [Kotlin](running_code.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
+
+Since running code is very important, we actually have a few more ways of doing this. For completeness, we'll list them here:
 
  * `alt-shift-up arrow` — immediately launches the box without recompiling if it that's possible.
  * `Command/ctrl-alt-k` and `Command/ctrl-alt-j` increments and decrements the number under the cursor and then acts like you pressed alt-enter.
@@ -34,34 +36,21 @@ Some of these effects are language dependent. For example, if you are editing a 
 
 Often your code does something — draws a line, loads a model, makes a sound. But when you are puzzled as to actually *what* is running, and where, and when you are confused as to how your variables are varying, nothing beats a good old `print` statement. Like its facilities for running code, Field has a few different ways of doing this.
 
-### `print(...)` — obviously:
+### `print(...)` — 'print here':
 
-```diffstatic {data-lang=kotlin}
-print("hello world")
+`print` (and `println`) always prints next to, or underneath, the line that the `print` is on. If what you print fits on a single line it sits beside that line; if it doesn't, you get a little block under the line instead. This is what the snippet below looks like in Field's editor, captured by the docs build running it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/funFeatures-print-here.png" capture="editor" outputs="inline" wait="2" padding="10" timeout="90" embed=true name="funfeatures-print-here" w="900" h="300" alt="Field's editor holding the snippet. Beside the print(x+y) line sits 30; under the last println is a small block with six rows of squares."}
+var x = 10
+var y = 20
+print(x+y)
+var z = 30
+println((1..6).joinToString("\n") { "row $it: ${it * it}" })
 ```
-
-That just prints things at the end of the code you executed, taking up a single line at the end:
-![](assets/screenshot_27.png)
-
-Or, if it doesn't fit on a single line, a little block:
-![](assets/screenshot_28.png)
 
 You can close blocks with the 'x' symbol in the margin, or by `double-tap Esc`, which you'll likely be pressing a lot. `triple-tap Esc` will get rid of all the outputs inside the current editor. You'll be doing that a lot.
 
-### `_print(...)` — 'print here':
-
-`_print` is just like `print` except it always prints next to, or underneath the line that `_print` is on. So:
-
-```diffstatic {data-lang=kotlin}
-var x = 10
-var y = 20
-_print(x+y)
-var z = 30
-```
-
-Gives us something like this:
-
-![](assets/screenshot_29.png)
+`print` isn't an ordinary function: it's a macro (see [below](#kotlin-with-macros)) that knows which line it was written on. You may see `_print` in older code and in the videos below; it's the same thing under its old name.
 
 This can be handy in longer, more interesting code, for example:
 
@@ -76,9 +65,9 @@ And is quite performant, so you can just use them as output:
 </video>
 
 
-There's a little bit of design here — if they are `_print`'ing but not changing they turn white, otherwise, the thought is that the text changing is enough for you to direct your attention to the line. 
+There's a little bit of design here — if they are `print`ing but not changing they turn white, otherwise, the thought is that the text changing is enough for you to direct your attention to the line. 
 
-So, if you don't know what that variable is, drop in a `_print()` and find out.
+So, if you don't know what that variable is, drop in a `print()` and find out.
 
 ## Printing complex things
 
@@ -120,6 +109,8 @@ display("just some html", "<div style='font-weight:900'>foo!</div>")
 ```
 
 ![](assets/screenshot_34.png)
+
+That's also how a lot of this documentation gets made: the docs build runs the examples in a real Field, automatically, and captures what they display. This page is older than that machinery and many of its screenshots were taken by hand, but the `print` example above, the flower in the geometry section below and the layers palette further down all came out of boxes that the build ran.
 
 ## Browsing things
 
@@ -183,7 +174,7 @@ It's important to note that you're not just editing a *copy* of the FLine. This 
 	<source src="assets/3dlines.mp4" type="video/mp4">
 </video>
 
-See [fline_examples](fline_examples.md) for more.
+See [fline_examples](fline_examples.md) for much more.
 
 ## "Printing" UI and data visualization
 
@@ -266,6 +257,20 @@ But here's the part that's hard to believe until you see it: you can *talk* thin
 # Multi-language, multi-paradigm
 
 Field's primary language for live coding is Kotlin, which we've found to be expressive and fun (but by no means flawless). We've added a compile-time macro system to it for extra flexibility and joy and the graphics system does some GLSL-driven code-generation. All in all it's working for it quite well. However, being on the JVM does give us access to some other options.
+
+## Kotlin, with macros
+
+A handful of things that look like function calls in a Kotlin box are really macros, rewritten before the compiler sees them. You've met two already: `print` knows the line it sits on, and `prop` (further down, under [Making bigger things](#making-bigger-things)) turns a name into a typed property that child boxes inherit. The graphics system leans on one more: `moduleHere { }` reads the GLSL in the box's shader properties, compiles it, and generates typed Kotlin accessors for its inputs, push constants and structs, so a shader's `pos` and `worldToClip` become ordinary typed Kotlin names. [Running code in a box](running_code.md) shows what each of them expands to.
+
+And you can write your own. A `rewrite { }` block in a box is a rule over the *shape* of your source:
+
+```diffstatic {data-lang=kotlin}
+rewrite { x: Expr -> from { neg(x) }; to { -x } }
+
+neg(10)          // →  -10
+```
+
+Rules can have guards, bind runs of arguments, run Kotlin at expansion time, and are inherited by child boxes; [Rewriting your own syntax](pattern_rewrite.md) is the whole story.
 
 ## Python
 
@@ -371,9 +376,9 @@ You can open history in two ways:
 - run `Show Document History` from the command palette
 - or open `/history?file=<document-name>` directly on the Field server
 
-![](assets/screenshot_58.png)
+![Document history timeline](assets/history-panel.png)
 
-The UI for history here is very dense. In addition to affordences for scrubbing and visualizing edit and execution history both with respect to the current document and adjecent versions, you'll find options for filtering based on content and cherry picking rollbacks (and roll-forwards) to individual and groups of boxes. Once history is open you'll also be able to filter based on editor cursor position (a kind of more deeply penetrating git blame).
+Along the top is a timeline of every saved version, which you can scrub, and view by save or by real time. You can compare each version against the current document or against the one before it, narrow everything to the selected box, search for the versions that touched a piece of text, blame a line, and name a version so you can find it again. Restoring can take the whole document back, or cherry-pick just the boxes you select, and every restore is itself recorded, so it can be undone. [Document History](document_history.md) walks through all of it, and the [History Lens](history_lens.md) scrubs a single line back through its versions without leaving the editor.
 
 ## Documentation browser
 
@@ -383,11 +388,13 @@ In some weird inception move, Field has a documentation browser (`Browse Documen
 
 Press that cyan arrow to get back to the text editor.
 
+Beside the page is a **DOC NOTES** panel. Select a sentence, press `Ctrl+Shift+A` and say what's wrong with it; your note joins a queue that agents, one per page, work through: they revise the Markdown behind the note and leave a record of what they did, or a question for you. [Notes on the Documentation](docs_notes.md) explains the loop.
+
 ## Navigating
 
 A few keyboard shortcuts for getting around Field.
 
-`f1` — pressing `f1` when you are in the editor brings up the command palette for that box; pressing it _again_ (`f1-f1`) brings up the command palette for Field as a whole:
+`command/ctrl-shift-P` (or `f1`) — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/Screen-Recording-2026-03-21-at-4.03.42.mp4" type="video/mp4">
@@ -442,11 +449,11 @@ There's a whole page on it: [Drawing and Notation](drawing_and_notation.md).
 
 ## The Welcome page
 
-The first page of the bundled version of Field is accessible from any web-browser via `https://localhost:9092/welcome.html`:
+The first page of Field is the welcome page: the first tab in our desktop app, and at `https://localhost:9092/welcome` in any web browser:
 
-![](assets/screenshot_41.png)
+![The welcome page: a document list with a search box on the left, and a stack of collapsible panels on the right](assets/welcome-dashboard.png)
 
-There you can make new documents or find that document you just _know_ you edited last week. It also has full text search over the whole workspace:
+On the left you can make new documents or find that document you just _know_ you edited last week; below the list are **Starting points** and **Templates**, curated scenes and scaffolds that open as an editable copy in your workspace. On the right is a stack of collapsible panels for the rest of Field: the changelog, projects, Maven dependencies, the workspace, the runtime, Vulkan and Python status, AI settings, preferences, and the OSC editor. The search box does full text search over the whole workspace:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
 	<source src="assets/welcoming.mp4" type="video/mp4">
@@ -464,7 +471,7 @@ keyframes(channel="k", name="keyframe", defaults=listOf(vec(0.2, 0.5), vec(0.5, 
 
 Gets you started. With some mouse clicks you can get to here:
 
-![](assets/screenshot_42.png)
+<img src="assets/screenshot_42.png" alt="The keyframe editor, with a curve drawn through several keyframes" style="width: min(100%, 660px);">
 
 Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double click` to add a keyframe, right click to change the keyframe type.
 
@@ -578,9 +585,9 @@ autorun = true
 There are lots of other ways of customizing Field's front end from within Field. One, higher level, is to introduce a custom Marking Menu:
 
 ```diffstatic {data-lang=kotlin}
-customMarking["N" to "bob"] = { _print("North!") }
-customMarking["SE" to "something"] = { _print("se!") }
-customMarking["W2" to "the end"] = { _print("W!")}  // outer ring
+customMarking["N" to "bob"] = { print("North!") }
+customMarking["SE" to "something"] = { print("se!") }
+customMarking["W2" to "the end"] = { print("W!")}  // outer ring
 ```
 
 You can open and swipe around these callbacks with `alt-shift-click`:
@@ -623,7 +630,7 @@ prop<Double>(foo) = 10.0
 Means that in the children:
 
 ```diffstatic {data-lang=kotlin}
-_print(foo)
+print(foo)
 ```
 
 Prints `10.0`. You can think about this mechanism as 'exporting' particular variables (with types) to child boxes. `prop` here is a _macro_ that expands and runs some set of glue code that makes a real Kotlin property backed by the right kind of storage. This glue code is stored in the `preamble` property. This code accumulates but it's essentially a layer of inherited auto-regeneratable glue code between boxes and their children.  

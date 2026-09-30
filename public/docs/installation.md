@@ -10,13 +10,11 @@ There are no binaries and no installer — the checkout is the installation.
 
 ## Starting Field
 
-Launch Field·4 by double-clicking the appropriate file in the repository:
+Launch Field·4 from the repository:
 
-- **Mac**: double-click `field.command` in Finder. It runs the Gradle `runDesktop` task.
-- **Windows**: double-click `field.bat` in File Explorer. It delegates to `field.ps1` when present,
-  otherwise it runs `gradlew runDesktop`.
-- **Linux**: double-click `field.sh` in a file manager. The script tries several common terminal
-  emulators and falls back to running in its current process.
+- **Mac**: run `./field.sh` in Terminal, or double-click `field.command` in Finder.
+- **Windows**: double-click `field.bat` in File Explorer, or run `.\field.ps1` in PowerShell.
+- **Linux**: run `./field.sh` in a terminal.
 
 The first Gradle build downloads dependencies and compiles the JVM and browser code, so it can take
 substantially longer than later starts.
@@ -25,14 +23,45 @@ Eventually you'll be greeted with the boot-screen:
 
 ![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
-The desktop launcher opens Field's Electron shell. You can also open
-[`https://localhost:9092/index.html?file=firstDocument`](https://localhost:9092/index.html?file=firstDocument)
-in a browser. The development certificate is self-signed, so the browser may require an explicit
-local-certificate exception. Press `?` for help, or consult the [survival guide](survivalGuide.md).
+The launcher then opens Field's desktop app. Press `?` for help, or consult the
+[survival guide](survivalGuide.md).
 
-That URL is a real web server, running inside Field and listening on your machine. If you share a
-network with anyone else, read [What Field Exposes, and What Stops It](server_surface.md) for what
-it exposes and what does, and does not, protect it.
+!!! note "Field in a browser"
+    You can also open
+    [`https://localhost:9092/index.html?file=firstDocument`](https://localhost:9092/index.html?file=firstDocument)
+    in a browser. The development certificate is self-signed, so the browser may require an
+    explicit local-certificate exception.
+
+    That URL is a real web server, running inside Field and listening on your machine. If you share
+    a network with anyone else, read [What Field Exposes, and What Stops It](server_surface.md) for
+    what it exposes and what does, and does not, protect it.
+
+## The welcome page
+
+The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
+a browser:
+
+![The welcome page: a document list with a search box on the left, and a stack of collapsible panels on the right](assets/welcome-dashboard.png)
+
+The left side is your documents. Type a name into the box at the top and press **Create** to make
+a new one; the search box above the list searches the text of every document in the workspace as
+well as their names. Below the list, **Starting points** and **Templates** are curated scenes and
+scaffolds; opening one gives you an editable copy in your workspace, which is the quickest way to
+see what Field does.
+
+The right side is a stack of collapsible panels, one per part of Field:
+
+- **Changelog**: the most recent commits in your checkout.
+- **Projects**, **Maven**, **Workspace**: what your documents can see, from other projects to
+  extra Java libraries.
+- **Runtime** and **Vulkan**: the JVM Field is running on, and whether graphics windows will open
+  on this machine. If Vulkan is missing, the panel gives install steps for your OS; the graphics
+  system itself is described in [afield.four Graphics](afield_four_graphics.md).
+- **Python**: which interpreter [Python boxes](python.md) will use.
+- **AI**: model settings and the background tasks that improve Field's docs and tools, described
+  in [Your History with Field](history_overview.md#the-welcome-dashboard); what the models do
+  inside a document is in [AI features](aiFeatures.md).
+- **Preferences** and the **OSC editor**.
 
 ## Troubleshooting
 
@@ -53,7 +82,7 @@ git pull
 
 and then start it again, which rebuilds whatever changed.
 
-The `F1` command palette includes **Check for updates**, which tells you whether that is worth
+The command palette (`Cmd-Shift-P`, or `Ctrl-Shift-P` on Windows and Linux; `F1` also works) includes **Check for updates**, which tells you whether that is worth
 doing. It asks `origin` what it has on your branch with one `git ls-remote`, fetching nothing at
 all if you are already level, and reports how many commits you are behind, along with any local
 commits of your own that `origin` does not have.

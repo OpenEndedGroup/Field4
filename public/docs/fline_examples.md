@@ -1,7 +1,5 @@
 # FLine examples (Field graphics)
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference: [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). Start from [what's already in the box](reference/index.md).*
-
 `FLine` is Field’s core geometry container type: it’s basically an ordered list of drawing instructions (`moveTo`, `lineTo`, `cubicTo`, `close`) plus style properties (`color`, `thickness`, `filled`, `stroked`, `pointed`, and so on). This isn’t a new idea — it’s essentially a “path” like you’ll find in [SVG](https://en.wikipedia.org/wiki/Scalable_Vector_Graphics), [PDF](https://en.wikipedia.org/wiki/PDF), and [PostScript](https://en.wikipedia.org/wiki/PostScript). Unlike those formats, Field stores points in 3D when that makes sense.
 
 All of the code below are meant to run inside a Box inside Field. Each snippet ends with a `lines(...)` so you can actually see what you've drawn.
@@ -2979,3 +2977,7 @@ val f = fline {
 
 lines(f, w = 420.0, h = 260.0, fitToSize = true)
 ```
+
+## Reference
+
+Every public declaration used on this page is listed, with its KDoc, in the codebase reference under [`StandardDrawing.kt`](reference/graphics.md#standarddrawing-kt). The rest of the standard library is in [what's already in the box](reference/index.md).

@@ -1641,7 +1641,7 @@ bvh.signedDistance(vec(0.5f, 0, 0))            // negative inside
 
 `src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt` — [read the source](source/jvmMain/afield/stdlib/mesh_measure/)
 
-**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [FLine examples (Field graphics)](../fline_examples.md)
+**Used in:** [Meshes and 3D geometry](../mesh_examples.md), [FLine examples (Field graphics)](../fline_examples.md), [Three.js scenes with `three { … }`](../three_output.md)
 
 ### Top-level functions { #mesh-measure-kt-functions }
 

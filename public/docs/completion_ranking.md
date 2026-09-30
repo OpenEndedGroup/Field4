@@ -4,16 +4,15 @@ Press `ctrl-space` in a Field editor and something has to choose which of a few 
 you see first. This page is about that choice: where it is made, what it is made from, and how a
 class you write, in a Field box or in Field's own source, gets a say in it.
 
-!!! important "The server sends everything. The browser does the ranking."
+The short answer is that the server sends everything and the browser does the ranking. Field's
+completion server does not rank. It answers a caret with *every* candidate it can find, up to a
+cap of 1200 that no real receiver comes near, and the order it sends them in is only the last-resort
+tie-break (see [the authority order](#the-authority-order)); a comment in the Kotlin reads "Ranking
+is client-side". The order you see is computed in JavaScript, in `src/commonMain/resources/fieldSuggest.js`, by a function called `rankItems`.
 
-    Field's completion server does not sort, filter or truncate. It answers a caret with *every*
-    candidate it can find; a comment in the Kotlin reads "Ranking is client-side". The order you see is
-    computed in JavaScript, in `src/commonMain/resources/fieldSuggest.js`, by a function called
-    `rankItems`.
-
-    So if you are reading Kotlin looking for the code that decides what comes first, you will not
-    find it. What Kotlin decides is what each row *carries*: its category, where it was declared,
-    and its receiver type's own prior. The browser turns those into an order.
+So if you are reading Kotlin looking for the code that decides what comes first, you will not find
+it. What Kotlin decides is what each row *carries*: its category, where it was declared, and its
+receiver type's own prior. The browser turns those into an order.
 
 The split buys two things. The popup can re-rank on every keystroke without another round trip,
 and which completions a person has accepted before can weigh on the order without leaving their

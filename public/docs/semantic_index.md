@@ -44,7 +44,7 @@ this local retrieval path.
 
 ## Managing it
 
-![The semantic search panel on the welcome page](assets/semantic-search.png)
+![The semantic search panel on the welcome page](assets/semantic-search.png){ width="560" }
 
 The **Semantic search** panel sits under the **AI** section of `/welcome`. That
 is where you switch the feature on, pick a model preset and download it, point

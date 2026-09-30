@@ -1,469 +1,30 @@
 # Frames and the animation loop
 
-Every animated thing in Field runs on one mechanism. `animate { }` in a box, the ALife evolution
-driver, a subprocess streaming its stdout into an output panel, the renderer's own `start(renderer::run)`
-— all of them are a `Frames`, and all of them are pumped by the same loop. This page is about that
-loop: what a frame is, how a `Frames` suspends and resumes, what *stops* one, and the pull-based
-generator layer that sits beside it.
-
-This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
-last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
-When the question turns from *what a frame is* to *why mine takes longer than 16 milliseconds*,
-[Holding a Frame Budget](frame_budget.md) is the page for it — a resume of the loop below is the
-unit all of Field's exact profiling counters are measured over.
-
-One property of the loop sets up everything else here:
-
-!!! important "A frame is one unit of work"
-
-    Field's Runloop is a bare `while (true)` that drains a queue, counts one, and idles for about
-    fifty microseconds. There is no 60 Hz, no vsync, no fixed timestep. `frameNumber` counts how
-    many times your animation reached a frame boundary, and two Field sessions on two machines will
-    not agree on how many of those fit in a second.
-
-    So if you write motion as a function of `frameNumber` it will run at a different speed on a
-    different machine, and at a different speed again while a shader is compiling. Write it as a
-    function of [`AnimationClock.nowSeconds()`](#time-in-seconds) instead.
-
-## The loop
-
-`Runloop.start()`, in `src/jvmMain/kotlin/afield/Runloop.kt`, is the whole scheduler:
+To animate something from a box, end the box with a `loop { }`. The code above it runs once, when
+you run the box. The block runs again every frame, until you stop the box or run it again:
 
 ```diffstatic {data-lang=kotlin}
-while (true) {
-    preRun.update()
-    main.frame()          // ← every Frames in the document advances here
-    postRun.update()
-    frame++
-    if (shouldSleep) schedulingState.idle()
-    shouldSleep = true
+var n = 0                           // runs once
+
+loop {                              // runs every frame
+    n++
+    display("main", "<h2>$n</h2>")
+    delay(100)                      // wait 100 ms; this counts as the pass's frame
 }
 ```
 
-It runs on one thread, named `field-runloop-main`. `idle()` is 64 `Thread.onSpinWait()`s followed by
-a 50 µs `LockSupport.parkNanos` by default, tunable with `AFIELD_RUNLOOP_IDLE` and friends. Nothing
-here waits for a display.
-
-`main` is a **`Framer`**, and a `Framer` is a `kotlinx.coroutines.CoroutineDispatcher`, about thirty
-lines of it. `dispatch` appends the runnable to a queue. `frame()` atomically swaps in a fresh queue
-and runs everything that was in the old one, inline, to completion:
+The `loop { }` has to be the box's last expression, because what Field launches is the value the box
+returns. Put anything after it and nothing animates:
 
 ```diffstatic {data-lang=kotlin}
-fun frame(): Int {
-    val currentList = synchronized(queueLock) {
-        val current = nextList; nextList = LinkedTransferQueue(); current
-    }
-    var n = currentList.poll()
-    while (n != null) { … n.second.run() … ; n = currentList.poll() }
-    return c
-}
+loop { n++ }                        // not the last expression …
+println("set up")                   // … so this is the box's value, and nothing runs
 ```
 
-That swap is the frame boundary. A coroutine that suspends during the drain re-dispatches onto the
-*new* queue, so it resumes on the next call and not this one. **A frame is one drain of the
-dispatcher's queue**, and the rest of this page follows from that.
-
-## Returning a `Frames` is what launches it
-
-A `Frames` is inert. Building one runs no code and schedules nothing. What starts it is *returning*
-it as the value of your box:
-
-```diffstatic {data-lang=kotlin}
-val n = expensiveSetup()      // runs once, when you hit run
-animate { drawFrameOf(n) }    // the box's value — Field launches this
-```
-
-`ReturnValueRegistry.registerFramesReturnValue` sees a `Frames` come back, dispatches
-`frames.body()` onto `Runloop.runLoop.main` inside `Box.withBoxContext(box)`, registers the coroutine
-in `box.jobs`, and starts reporting `is-running` for the box. Code *before* the `animate { }` runs
-once, on the run; the block runs once per frame after that.
-
-So if `animate { }` is not the returned expression, nothing happens.
-
-```diffstatic {data-lang=kotlin}
-animate { drawFrameOf(n) }    // not the last expression …
-println("set up")             // … so this is the box's value, and nothing animates
-```
-
-`animate` itself is not syntax and not a rewrite. It is three lines in `stdlib.kt`:
-
-```diffstatic {data-lang=kotlin}
-fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
-```
-
-There is a second way in, `Box.launchFrames(frames)`, which launches without going through the
-return value. It exists for fire-and-forget work (`streamProcessFireAndForget` is its only caller
-in the tree) and it differs in one respect: it *composes* onto any `shouldend` already installed,
-where the return-value path replaces it.
-
-## The four builders
-
-They differ only in who calls `frame()`. A `Framer` is an ordinary dispatcher, so you can stand in
-for the Runloop: make a private one, run each builder's body on it, drain it by hand, and count body
-calls per pump.
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/builders.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-builders"}
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-
-// One pump == one Runloop tick. Nothing here needs a window, a document or a wall clock.
-fun trace(pumps: Int, build: (() -> Unit) -> Frames): Pair<List<Int>, Int> {
-    var calls = 0
-    val f = build { calls++ }
-    val framer = Framer()
-    val job = CoroutineScope(framer).launch { runCatching { f.body() } }
-    val perPump = mutableListOf<Int>()
-    repeat(pumps) { framer.frame(); perPump += calls }
-    job.cancel()
-    return perPump to f.frameNumber
-}
-
-val pumps = 8
-val builders = listOf(
-    "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
-    "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
-    "loop { }" to trace(pumps) { body -> loop { body() } },
-    // Qualified: a box also has afield.four.util.forever in scope, and bare `forever { }` is an
-    // overload resolution ambiguity between the two.
-    "afield.forever { … ; true }" to trace(pumps) { body -> afield.forever { body(); true } },
-)
-
-// The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
-// colour itself and the footnote would count it, rather than waiting for a reader to check the
-// arithmetic by eye.
-val figure = showTable(
-    Table(
-        listOf("after pump #") + (1..pumps).map { "$it" } + "frameNumber",
-        note = "cells are cumulative body calls",
-    )
-        .rows(builders.map { (label, r) -> listOf(label) + r.first + r.second })
-        .accent("frameNumber")
-        .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
-    channel = "main",
-)
-
-// And the same claim as a build failure, so a regression in the builders cannot ship a
-// figure that contradicts the paragraph under it.
-check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per pump" }
-```
-
-![A table of cumulative body calls per pump for the four Frames builders, showing loop and forever one call ahead of frames and eachFrame, and all four ending on frameNumber 7](assets/animation_time_model/builders.png)
-
-All four advance exactly one frame per pump: the last column is `7` in every row. What differs is
-*when the body runs relative to the boundary*:
-
-<div class="field-reference" data-code-lang="kotlin" markdown>
-
-| builder | contract |
-| --- | --- |
-| `frames { }` | The body runs once and is responsible for calling `frame()` itself. Everything else is built on it. |
-| `eachFrame { }` | `frames { while (frame()) { block() } }` — advance, *then* run the body. `animate { }` is this. |
-| `loop { }` | Run the body, *then* advance — but only if the body did not advance already. |
-| `forever { }` | `loop { }`, except the body returns a `Boolean` and returning `false` ends it. |
-
-</div>
-
-`eachFrame`'s body runs from pump 2; `loop`'s from pump 1. That one pump is the difference between
-"advance, then run" and "run, then advance", for a body that does not advance itself.
-
-A body that *does* advance itself pulls them further apart. `eachFrame` spends a frame of its own
-before every body call, so a body that also calls `frame()` or `delay(ms)` costs two frames a pass
-and runs half as often. `loop` does not bolt a
-second advance onto a pass that already advanced. Over eight pumps:
-
-<div data-code-lang="kotlin" markdown>
-
-| Builder | body calls | frames |
-| --- | --- | --- |
-| `animate { }` | 7 | 7 |
-| `loop { }` | 8 | 7 |
-| `animate { …; frame() }` | 4 | 7 |
-| `loop { …; frame() }` | 8 | 7 |
-
-</div>
-
-One frame per pump throughout: the frame *rate* is the Runloop's, never the builder's. So reach for
-`loop` when the body paces itself, and for `animate` when it does not.
-
-!!! note "`frame()` returns `true`, or throws"
-    `eachFrame` is `while (frame())` and `loop` is `while (true)`, which looks like a second
-    difference and is not. Every route that stops a frame body cancels the job *before* the
-    `yield()` that `frame()` is suspended on, so the yield throws and `frame()` does not return at
-    all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
-    only return-based way to end a frame program.
-
-    The throw is what runs your `.end { }`: the end phase lives in that `catch`, so a body that
-    left through a `false` return would skip it. `dev_docs/frames_stop_end_phase.md` has the three
-    stop routes side by side.
-
-!!! note "`forever { }` needs qualifying"
-    A box imports both `afield.*` and `afield.four.util.*`, and each declares a `forever` — one
-    returning a `Frames`, one returning a `Sequence<Boolean>`. A bare `forever { }` in box code is
-    therefore an overload resolution ambiguity, which is why the figure above says
-    `afield.forever { }`.
-
-??? aside "Running two frame programs at once with `a + b`"
-    A launcher installs its stop fences (`shouldend`, `onAtEndStart`, `onAtEndFinish`,
-    `shouldCancelAtEnd`) on the `Frames` it was handed, which for `a + b` is the *combined* one, and
-    the children are reached only through `body()`. `plus` forwards all four down to them, lazily,
-    so a child is fenced exactly as the parent is and a re-run stops each child in its own right
-    rather than only via the parent's `finally`.
-
-    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
-    through the same hook pair, so the box can report `"ending"` more than once for one stop.
-    `dev_docs/frames_stop_end_phase.md` records the rest.
-
-## What stops one
-
-There is more than one answer, and all of them land in the same place: `Frames.frame()`, the only
-suspension point a well-behaved frame body has.
-
-```diffstatic {data-lang=kotlin}
-suspend fun frame(): Boolean {
-    job = coroutineContext[Job]
-    if (stillborn && job != null) { job?.cancel(); … }
-    if ((if (inEndPhase) shouldCancelAtEnd() else shouldend()) && job != null) { job?.cancel(); … }
-    try { yield(); frameNumber++; return r }
-    catch (t: Throwable) { …run atEnd in a NonCancellable scope…; throw t }
-}
-```
-
-<div class="field-data-table" markdown>
-
-<div class="field-reference" data-code-lang="kotlin" markdown>
-
-| how it stops | what actually happens |
-| --- | --- |
-| **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. This is the everyday one. |
-| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. Your [`.end { }` block still runs](#box-stop-and-the-end-block), but after stop has returned. |
-| **`end()` from inside the body.** | Cancels the job directly. Called before the launch has a job, it sets `stillborn` and the animation is cancelled at its first frame instead. |
-| **The body returns.** | `eachFrame`'s `while (frame())` exits, or a `frames { }` block runs off the end. Normal completion. |
-| **`forever { }` returns `false`.** | Normal completion, same as above. |
-| **The body throws.** | Caught by the launcher, logged, and reported on the box as an error. |
-| **A stale launch epoch.** | If a stop landed between preparing the launch and dispatching it, `registerLaunchJob` refuses and the body never runs at all. |
-
-</div>
-
-</div>
-
-Two of those differ by exactly one body call, and you can measure it:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/stopping.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-stopping"}
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-
-class Result(val how: String, val extraBodyCalls: Int, val endBlockRan: Boolean, val note: String)
-
-// Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
-// reports what the body did afterwards. These are the stops box code can stage for itself; the
-// `Box.stop` case needs the box's launch epoch, which is internal to Field — see the warning below.
-fun probe(
-    how: String,
-    note: String,
-    build: (counter: () -> Unit) -> Frames,
-    request: (Frames, kotlinx.coroutines.Job) -> Unit,
-): Result {
-    var calls = 0
-    var cleaned = false
-    val f = build { calls++ }.end { cleaned = true }
-    val framer = Framer()
-    val job = CoroutineScope(framer).launch { runCatching { f.body() } }
-    f.job = job
-    repeat(3) { framer.frame() }
-    val atRequest = calls
-    request(f, job)
-    repeat(6) { framer.frame() }
-    return Result(how, calls - atRequest, cleaned, note)
-}
-
-val results = listOf(
-    probe("shouldend flips — what re-running does", "the generation fence is read at the top of frame()",
-        { c -> eachFrame { c() } }, { f, _ -> f.shouldend = { true } }),
-    probe("the Job is cancelled directly", "the pending yield() throws immediately",
-        { c -> eachFrame { c() } }, { _, job -> job.cancel() }),
-    probe("end() from inside the body", "requested during a body call, so nothing follows it",
-        { c -> eachFrame { c(); end() } }, { _, _ -> }),
-    // `throw`, not `error("boom")`: in a box the script's implicit Box receiver is still in scope,
-    // so `error(...)` resolves to Box.error and reports a box error instead of throwing.
-    probe("the body throws", ".end { } is not a finally",
-        { c -> eachFrame { c(); throw IllegalStateException("boom") } }, { _, _ -> }),
-    probe("the body returns normally", "there is no cancellation to catch",
-        { c -> frames { repeat(2) { c(); frame() } } }, { _, _ -> }),
-)
-
-// `roleBy` rather than a hex literal: OK/BAD are the same `--field-*` tokens `markdown()`'s
-// `{ok:…}` spans use, so this column agrees with every other "ran / did not run" in the docs.
-showTable(
-    Table(listOf("how the Frames stopped", "further body calls", ".end { } ran", "why"))
-        .rows(results.map { listOf(it.how, it.extraBodyCalls, it.endBlockRan, it.note) })
-        .accent("further body calls")
-        .color("why", TABLE_MUTED)
-        // WARN, not BAD: two of these rows are correct completion behaviour, not errors — the
-        // figure wants a reader to notice them, not to read them as a failure.
-        .roleBy(".end { } ran") { if (it == true) CellRole.OK else CellRole.WARN }
-        .format(".end { } ran") { if (it == true) "yes" else "no" },
-    channel = "main",
-)
-
-// The two claims the paragraphs below make, as assertions rather than as prose a reader has to
-// check against the figure by eye.
-check(results.count { it.extraBodyCalls > 0 } == 1) { "only shouldend should cost a further body call" }
-check(results.count { it.endBlockRan } == 3) { ".end { } should run for the three cancellation cases" }
-```
-
-![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs for the three cancellation cases and not for the two completion cases](assets/animation_time_model/stopping.png)
-
-Two of those rows are easy to assume the other way round.
-
-**Re-running a box costs one more body call; stopping it costs none.** `shouldend` is read at the
-*top* of `frame()`. A body suspended inside `frame()` is halfway through a call that has already
-decided to return `true`: it resumes, returns `true`, and the loop runs the body one final time
-before the *next* `frame()` looks at the flag. Cancelling the `Job`, which is what `Box.stop` does,
-makes the pending `yield()` throw instead, so nothing more runs. If your animation holds a resource
-that must not be touched after a re-run, one extra pass is the window you have to survive.
-
-**`.end { }` is not a `finally`.** `atEnd` is invoked from exactly one place: `frame()`'s `catch`,
-reached only when the pending `yield()` throws a cancellation. A body that throws its own exception
-does not go through that path, and neither does one that simply returns. So `.end { }` means
-*"when this animation is cancelled"*, not *"when this animation finishes"*. For cleanup that must
-happen either way, use a Kotlin `try`/`finally` inside the body.
-
-And when both are present and a cancellation arrives, **`.end { }` runs first**: `frame()` calls it
-from inside its own `catch`, before rethrowing, so the cancellation has not yet unwound the body's
-`finally`. The nesting suggests the other order, so
-`FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds this one in place.
-
-When `atEnd` does run, it runs properly. `frame()` re-enters through `withContext(NonCancellable)`
-on a fresh `Job` that inherits the dispatcher and the box context, so the end block still gets frames
-and can still draw. That leaves the one case the figure above cannot stage, because it needs the
-box's launch epoch and that is internal to Field: the stop button.
-
-### `Box.stop` and the end block { #box-stop-and-the-end-block }
-
-Pressing stop runs your `.end { }`, and gives it frames to do it in.
-
-That takes a small exception to the launch-epoch rule. `stopTrackedJobs()` increments the box's
-`launchEpoch` before it cancels anything, and everywhere else a job arriving with a stale epoch is
-cancelled on sight. The end phase is the one piece of work that legitimately belongs to a launch
-stop has already invalidated, because it is stop's own cancellation that creates it, so
-`Box.registerEndPhaseJob` registers it against the epoch as it stands *now* rather than against the
-one the launch captured. The rest of the barrier is unchanged: the end job still goes into
-`box.jobs`, so a second press of stop cancels it, and `shouldCancelAtEnd` still fences it against
-the generation as it stood when the end phase began. A runaway end block cannot ignore the stop
-button.
-
-What stop gives up is being synchronous. The body is suspended in `yield()` when stop arrives;
-cancelling its job resumes it, and that resumption is dispatched, so the throw, and therefore the
-end phase, happens on a later Runloop tick, after `stop` has returned. This leaves `x` at `20`, but
-not until the frame after you press stop:
-
-```diffstatic {data-lang=kotlin}
-var x = 0
-loop {
-    x++
-}.end {
-    x = 20
-}
-```
-
-and because the end block is a normal frame body on a fresh `Job`, it can spend frames:
-
-```diffstatic {data-lang=kotlin}
-var x = 0
-loop {
-    x++
-}.end {
-    x = 20
-    10 {
-        frame()
-        x = 30 + it
-    }
-}
-```
-
-which stops at `x == 39`, eleven frames after the button. Draw from there rather than only
-assigning: the end phase is where the wind-down goes, and the disc animation further down this page
-spends two frames of it repainting the stopped state in red.
-
-!!! warning "If something must be released the moment stop is pressed"
-
-    Cancellation is the only route into `atEnd`. A body that returned, or that threw, never
-    re-enters `frame()` and so never reaches the end phase at all — the two `no` rows in the figure
-    above. So **if something must be released the instant a person presses stop, or must be
-    released even when the animation ends by returning, do not rely on `.end { }`.**
-
-    Use the box's `stopHooks` instead: a short, synchronous teardown list `stopTrackedJobs` drains
-    before it returns. `Box.streamProcess`, the one place in Field's own source that installs an
-    `atEnd`, registers its kill in both, so an external command dies whether it was still running
-    at stop or had already exited. The epoch mechanism and the caller sweep are in
-    `dev_docs/frames_stop_end_phase.md`.
-
-## Time in seconds
-
-`AnimationClock.nowSeconds()`, in `Runloop.kt`, is the time source to write motion against.
-Ordinarily it is monotonic wall time. Its second mode is the reason it exists:
-
-> A frame-synchronous video capture installs a token that advances by exactly `1 / fps` only after a
-> Field frame has been painted and copied into the movie. Code using `nowSeconds` therefore becomes
-> frame-indexed during offline capture without changing its live, interactive pacing.
-
-During an offline capture, real time runs at whatever rate the capture takes while `nowSeconds()`
-advances by exactly `1 / fps` per captured frame, so motion written against it comes out identical
-every time, including in the video below.
-
-Live, the rate is whatever the machine can manage. Here is a frame body that does nothing but stamp
-the clock, for two seconds, with the gaps between the stamps plotted:
-
-```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/cadence.png" execution="launch" wait="4.0" wait-output="true" capture="box" open-outputs="true" w="1100" timeout="90" name="animation-cadence"}
-// One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
-// is frame-indexed: a screenshot capture leaves AnimationClock on monotonic real time, unlike the
-// frame-synchronous video recorder.
-val t0 = AnimationClock.nowSeconds()
-val stamps = ArrayList<Double>(400_000)
-
-animate {
-    val now = AnimationClock.nowSeconds()
-    stamps += now
-    if (now - t0 >= 2.0) end()
-}.end {
-    val gapsUs = (1 until stamps.size).map { (stamps[it] - stamps[it - 1]) * 1_000_000.0 }
-    val elapsed = stamps.last() - stamps.first()
-
-    // A 100-frame running mean, so the trend is readable under the spikes.
-    val window = 100
-    val smooth = gapsUs.indices.map { i ->
-        val lo = maxOf(0, i - window + 1)
-        gapsUs.subList(lo, i + 1).average()
-    }
-
-    val perSecond = gapsUs.size / elapsed
-    val median = gapsUs.sorted()[gapsUs.size / 2]
-    showSignals(
-        "gap between frames (µs)" to gapsUs,
-        "100-frame running mean" to smooth,
-        channel = "main",
-        title = "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs".format(
-            gapsUs.size, elapsed, perSecond, median),
-        xTitle = "frame",
-        yTitle = "µs",
-    )
-}
-```
-
-![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
-
-The number in the title is not a property of Field. It is a property of one machine, one build, and
-whatever else the Runloop happened to be carrying, which here was a browser attached and other boxes
-idle in the same process. Run the [demo document](#where-this-lives) and you will get a different
-one, and a different one again on the second run. There is no frame *rate* in that plot to schedule
-against, which is why motion goes on the clock.
-
-## An animation, and the moment it stops
-
-Here is the loop actually running, recorded frame by frame. The disc's position comes from
+Here is a longer one, recorded frame by frame. The disc's position comes from
 `AnimationClock.nowSeconds()`; the tick row below it grows with `frameNumber`, one mark per four
 frames reached. At four and a half seconds the body calls `end()`, and the `.end { }` block redraws
-the last state in red. Nothing after that moves — the remaining three and a half seconds are the
+the last state in red. Nothing after that moves: the remaining three and a half seconds are the
 stopped animation, not the end of the recording.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/running_and_stopping.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="1000" h="140" embed=true name="animation-running-stopping" alt="a cyan disc travelling along a horizontal track above a row of tick marks that grows steadily longer as frames accumulate; four and a half seconds in the disc stops dead, the tick row stops growing, and everything redraws in red and stays frozen for the rest of the clip"}
@@ -523,7 +84,7 @@ val draw: (Double, Int, Boolean) -> Unit = { elapsed, frames, stopped ->
     )
 }
 
-animate {
+loop {
     val elapsed = AnimationClock.nowSeconds() - started
     draw(elapsed, frameNumber, false)
     if (elapsed >= stopAfter) end()
@@ -537,12 +98,214 @@ animate {
 }
 ```
 
+Two habits in that code are worth copying. Motion is a function of the clock, not of how many frames
+have gone by ([Time in seconds](#time-in-seconds) says why), and the wind-down goes in `.end { }`
+([What happens when you stop](#what-happens-when-you-stop)).
+
+Every animated thing in Field runs on this one mechanism: a `loop { }` in a box, the ALife evolution
+driver, a subprocess streaming its stdout into an output panel, the renderer's own
+`start(renderer::run)`. Each of them is a `Frames`, and the same loop pumps all of them. The sections
+below cover the other ways to build one, how they stop, a physics solver in the loop, and the
+pull-based generator layer that sits beside it. [Inside the loop](#inside-the-loop), at the bottom,
+is how the machinery works, for when an animation does something you did not expect.
+
+This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
+last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
+When the question turns to *why mine takes longer than 16 milliseconds*,
+[Holding a Frame Budget](frame_budget.md) is the page for it.
+
+## `loop`, `forever` and `frames`
+
+Three builders cover almost everything.
+
+**`loop { }`** is the one to reach for. It runs the body, then waits for the next frame, unless the
+body already waited by calling `frame()` or `delay(ms)` itself. So the `delay(100)` in the first
+example paces the loop at ten passes a second, and the loop adds no extra frame of its own.
+
+**`forever { }`** is `loop { }` for a body that knows when it is finished: the body returns a
+`Boolean`, and `false` ends the animation.
+
+```diffstatic {data-lang=kotlin}
+var x = 0.0
+afield.forever {
+    x += 0.01
+    display("main", "<h2>%.2f</h2>".format(x))
+    x < 1.0                         // false ends it
+}
+```
+
+In a box it has to be written `afield.forever`. Boxes also import `afield.four.util.*`, which has a
+`forever` of its own that returns a `Sequence<Boolean>`, and a bare `forever { }` is an overload
+resolution ambiguity between the two.
+
+**`frames { }`** is the building block the others are made from. Its body runs once, and it moves
+from frame to frame only when it calls `frame()` or `delay(ms)` itself, which makes it the one for
+a sequence of steps. It ends when the block does:
+
+```diffstatic {data-lang=kotlin}
+frames {
+    display("main", "<h2>ready</h2>")
+    delay(1000)
+    display("main", "<h2>set</h2>")
+    delay(1000)
+    display("main", "<h2>go</h2>")
+}
+```
+
+You will also see **`animate { }`** in older examples. It waits for the frame *before* each pass
+rather than after, and for a body that never calls `frame()` or `delay` that is the only difference.
+A body that does call one inside `animate { }` spends two frames a pass instead of one.
+[The builders side by side](#the-builders-side-by-side) has the counts.
+
+## Time in seconds
+
+Field's loop has no fixed rate. There is no 60 Hz, no vsync and no fixed timestep: it runs the next
+frame as soon as the last one is done. `frameNumber` counts how many frames your animation has
+reached, and two Field sessions on two machines will not agree on how many of those fit in a second.
+Motion written as a function of `frameNumber` runs at a different speed on a different machine, and
+at a different speed again while a shader is compiling. Write it against
+`AnimationClock.nowSeconds()` instead.
+
+`AnimationClock.nowSeconds()`, in `Runloop.kt`, is ordinarily monotonic wall time. Its second mode
+is the reason it exists:
+
+> A frame-synchronous video capture installs a token that advances by exactly `1 / fps` only after a
+> Field frame has been painted and copied into the movie. Code using `nowSeconds` therefore becomes
+> frame-indexed during offline capture without changing its live, interactive pacing.
+
+During an offline capture, real time runs at whatever rate the capture takes while `nowSeconds()`
+advances by exactly `1 / fps` per captured frame, so motion written against it comes out identical
+every time, including in the video at the top of this page.
+
+Live, the rate is whatever the machine can manage. Here is a frame body that does nothing but stamp
+the clock, for two seconds, with the gaps between the stamps plotted:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/cadence.png" execution="launch" wait="4.0" wait-output="true" capture="box" open-outputs="true" w="1100" timeout="90" name="animation-cadence"}
+// One wall-clock reading per frame for two seconds, then plot the gaps between them. Nothing here
+// is frame-indexed: a screenshot capture leaves AnimationClock on monotonic real time, unlike the
+// frame-synchronous video recorder.
+val t0 = AnimationClock.nowSeconds()
+val stamps = ArrayList<Double>(400_000)
+
+loop {
+    val now = AnimationClock.nowSeconds()
+    stamps += now
+    if (now - t0 >= 2.0) end()
+}.end {
+    val gapsUs = (1 until stamps.size).map { (stamps[it] - stamps[it - 1]) * 1_000_000.0 }
+    val elapsed = stamps.last() - stamps.first()
+
+    // A 100-frame running mean, so the trend is readable under the spikes.
+    val window = 100
+    val smooth = gapsUs.indices.map { i ->
+        val lo = maxOf(0, i - window + 1)
+        gapsUs.subList(lo, i + 1).average()
+    }
+
+    val perSecond = gapsUs.size / elapsed
+    val median = gapsUs.sorted()[gapsUs.size / 2]
+    showSignals(
+        "gap between frames (µs)" to gapsUs,
+        "100-frame running mean" to smooth,
+        channel = "main",
+        title = "%,d frames in %.2f s — %,.0f a second, median gap %,.0f µs".format(
+            gapsUs.size, elapsed, perSecond, median),
+        xTitle = "frame",
+        yTitle = "µs",
+    )
+}
+```
+
+![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
+
+The number in the title is a property of one machine, one build, and whatever else the loop happened
+to be carrying, which here was a browser attached and other boxes idle in the same process. Run the
+[demo document](#where-this-lives) and you will get a different one, and a different one again on
+the second run. There is no frame *rate* in that plot to schedule against, which is why motion goes
+on the clock.
+
+## What happens when you stop { #what-happens-when-you-stop }
+
+A running animation stops when:
+
+- **you run the box again.** The old animation stops at its next frame and the new one takes over.
+- **you press stop** (or call `Box.stop`). The animation is cancelled on the spot.
+- **the body calls `end()`.**
+- **the body finishes.** A `frames { }` block runs off its end, or `forever { }` returns `false`.
+- **the body throws.** The error is logged and reported on the box.
+
+`end()` is how an animation stops itself:
+
+```diffstatic {data-lang=kotlin}
+val started = AnimationClock.nowSeconds()
+
+loop {
+    val t = AnimationClock.nowSeconds() - started
+    display("main", "<h2>%.1f s</h2>".format(t))
+    if (t > 5.0) end()              // stop after five seconds
+}
+```
+
+`end()` does not jump out of the body: the rest of the current pass still runs, and then the body is
+not called again.
+
+### The `.end { }` block
+
+Chain `.end { }` onto an animation to say what happens when it is stopped. This leaves `x` at `20`,
+though not until the frame after you press stop:
+
+```diffstatic {data-lang=kotlin}
+var x = 0
+loop {
+    x++
+}.end {
+    x = 20
+}
+```
+
+The end block is a frame body in its own right, so it can take frames of its own:
+
+```diffstatic {data-lang=kotlin}
+var x = 0
+loop {
+    x++
+}.end {
+    x = 20
+    10 {
+        frame()
+        x = 30 + it
+    }
+}
+```
+
+which stops at `x == 39`, eleven frames after the button. Draw from there rather than only
+assigning: the end phase is where the wind-down goes, and the disc animation at the top of this page
+spends two frames of it repainting the stopped state in red.
+
+`.end { }` runs when the animation is *cancelled*: by the stop button, by a re-run, or by `end()`.
+It does not run when the body finishes by itself or throws. For cleanup that has to happen whichever
+way the animation ends, such as closing a file, use a Kotlin `try`/`finally` inside the body:
+
+```diffstatic {data-lang=kotlin}
+frames {
+    val out = java.io.File("/tmp/frames.txt").printWriter()
+    try {
+        while (frame()) out.println(frameNumber)
+    } finally {
+        out.close()
+    }
+}
+```
+
+When both are present and the animation is cancelled, `.end { }` runs first and the `finally` after
+it.
+
 ## A physics system in the loop
 
-The disc above is written against `AnimationClock.nowSeconds()`, so that it means the same thing
-live and under capture whatever rate frames arrive at. An integrator is the opposite case.
-`cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is one tick
-of physics and the frame boundary and the integration step become the same event.
+The disc at the top of this page is written against `AnimationClock.nowSeconds()`, so that it means
+the same thing live and under capture whatever rate frames arrive at. An integrator is the opposite
+case. `cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is
+one tick of physics and the frame boundary and the integration step become the same event.
 
 A fixed dt is what this solve wants. It is force-based, with positions advancing by
 `v * damping + a * dt²`, so a dt that jittered with the frame rate would change the sheet's own
@@ -835,13 +598,323 @@ a new high. The mean settles towards the sine's own average. Both came out of on
 step on the composed generator, and the crossing count in the title came from a third generator that
 never yielded a value anyone read.
 
-!!! warning "A `Generator` is not thread-safe and not re-entrant."
+## Inside the loop
 
-    `next(input)` throws if the generator is not currently parked at a `yield`, and an exception
-    from inside the generator is re-thrown out of the *caller's* `start`/`next`. Drive one from one
-    place.
+The rest of this page is how the machinery works: the loop itself, how a returned `Frames` gets
+launched, the builders compared pump by pump, and exactly what a stop does. None of it is needed to
+write an animation.
 
-## Every name in `Phased.kt`
+### The Runloop
+
+`Runloop.start()`, in `src/jvmMain/kotlin/afield/Runloop.kt`, is the whole scheduler:
+
+```diffstatic {data-lang=kotlin}
+while (true) {
+    preRun.update()
+    main.frame()          // ← every Frames in the document advances here
+    postRun.update()
+    frame++
+    if (shouldSleep) schedulingState.idle()
+    shouldSleep = true
+}
+```
+
+It runs on one thread, named `field-runloop-main`. `idle()` is 64 `Thread.onSpinWait()`s followed by
+a 50 µs `LockSupport.parkNanos` by default, tunable with `AFIELD_RUNLOOP_IDLE` and friends. Nothing
+here waits for a display, which is why a frame is a unit of work rather than of time.
+
+`main` is a **`Framer`**, and a `Framer` is a `kotlinx.coroutines.CoroutineDispatcher`, about thirty
+lines of it. `dispatch` appends the runnable to a queue. `frame()` atomically swaps in a fresh queue
+and runs everything that was in the old one, inline, to completion:
+
+```diffstatic {data-lang=kotlin}
+fun frame(): Int {
+    val currentList = synchronized(queueLock) {
+        val current = nextList; nextList = LinkedTransferQueue(); current
+    }
+    var n = currentList.poll()
+    while (n != null) { … n.second.run() … ; n = currentList.poll() }
+    return c
+}
+```
+
+That swap is the frame boundary. A coroutine that suspends during the drain re-dispatches onto the
+*new* queue, so it resumes on the next call and not this one. **A frame is one drain of the
+dispatcher's queue**, and it is also the unit all of Field's exact profiling counters in
+[Holding a Frame Budget](frame_budget.md) are measured over.
+
+### How a returned `Frames` is launched
+
+A `Frames` is inert. Building one runs no code and schedules nothing. What starts it is returning it
+as the value of your box. `ReturnValueRegistry.registerFramesReturnValue` sees a `Frames` come back,
+dispatches `frames.body()` onto `Runloop.runLoop.main` inside `Box.withBoxContext(box)`, registers
+the coroutine in `box.jobs`, and starts reporting `is-running` for the box.
+
+None of the builders is syntax or a rewrite. `animate` is three lines in `stdlib.kt`:
+
+```diffstatic {data-lang=kotlin}
+fun animate(block: suspend Frames.() -> Unit): Frames = eachFrame(block)
+```
+
+There is a second way in, `Box.launchFrames(frames)`, which launches without going through the
+return value. It exists for fire-and-forget work (`streamProcessFireAndForget` is its only caller
+in the tree) and it differs in one respect: it *composes* onto any `shouldend` already installed,
+where the return-value path replaces it.
+
+### The builders side by side
+
+The builders differ only in who calls `frame()`. A `Framer` is an ordinary dispatcher, so you can
+stand in for the Runloop: make a private one, run each builder's body on it, drain it by hand, and
+count body calls per pump.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/builders.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-builders"}
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+// One pump == one Runloop tick. Nothing here needs a window, a document or a wall clock.
+fun trace(pumps: Int, build: (() -> Unit) -> Frames): Pair<List<Int>, Int> {
+    var calls = 0
+    val f = build { calls++ }
+    val framer = Framer()
+    val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+    val perPump = mutableListOf<Int>()
+    repeat(pumps) { framer.frame(); perPump += calls }
+    job.cancel()
+    return perPump to f.frameNumber
+}
+
+val pumps = 8
+val builders = listOf(
+    "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
+    "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
+    "loop { }" to trace(pumps) { body -> loop { body() } },
+    // Qualified: a box also has afield.four.util.forever in scope, and bare `forever { }` is an
+    // overload resolution ambiguity between the two.
+    "afield.forever { … ; true }" to trace(pumps) { body -> afield.forever { body(); true } },
+)
+
+// The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
+// colour itself and the footnote would count it, rather than waiting for a reader to check the
+// arithmetic by eye.
+val figure = showTable(
+    Table(
+        listOf("after pump #") + (1..pumps).map { "$it" } + "frameNumber",
+        note = "cells are cumulative body calls",
+    )
+        .rows(builders.map { (label, r) -> listOf(label) + r.first + r.second })
+        .accent("frameNumber")
+        .expect("frameNumber", because = "one frame per pump") { it == pumps - 1 },
+    channel = "main",
+)
+
+// And the same claim as a build failure, so a regression in the builders cannot ship a
+// figure that contradicts the paragraph under it.
+check(figure.deviations.isEmpty()) { "a builder no longer advances one frame per pump" }
+```
+
+![A table of cumulative body calls per pump for the four Frames builders, showing loop and forever one call ahead of frames and eachFrame, and all four ending on frameNumber 7](assets/animation_time_model/builders.png)
+
+All four advance exactly one frame per pump: the last column is `7` in every row. What differs is
+*when the body runs relative to the boundary*:
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| builder | contract |
+| --- | --- |
+| `loop { }` | Run the body, *then* advance, but only if the body did not advance already. |
+| `forever { }` | `loop { }`, except the body returns a `Boolean` and returning `false` ends it. |
+| `frames { }` | The body runs once and is responsible for calling `frame()` itself. Everything else is built on it. |
+| `eachFrame { }` | `frames { while (frame()) { block() } }`: advance, *then* run the body. `animate { }` is this. |
+
+</div>
+
+`loop`'s body runs from pump 1, `eachFrame`'s from pump 2. That one pump is the difference between
+"run, then advance" and "advance, then run", for a body that does not advance itself.
+
+A body that *does* advance itself pulls them further apart. `eachFrame` spends a frame of its own
+before every body call, so a body that also calls `frame()` or `delay(ms)` costs two frames a pass
+and runs half as often. `loop` does not add a second advance to a pass that already advanced. Over
+eight pumps:
+
+<div data-code-lang="kotlin" markdown>
+
+| Builder | body calls | frames |
+| --- | --- | --- |
+| `loop { }` | 8 | 7 |
+| `loop { …; frame() }` | 8 | 7 |
+| `animate { }` | 7 | 7 |
+| `animate { …; frame() }` | 4 | 7 |
+
+</div>
+
+One frame per pump throughout: the frame *rate* is the Runloop's, never the builder's.
+
+!!! note "`frame()` returns `true`, or throws"
+    `eachFrame` is `while (frame())` and `loop` is `while (true)`, which looks like a second
+    difference and is not. Every route that stops a frame body cancels the job *before* the
+    `yield()` that `frame()` is suspended on, so the yield throws and `frame()` does not return at
+    all. `loop` gives up nothing by ignoring the value, and `forever { }`'s own `Boolean` is the
+    only return-based way to end a frame program.
+
+    The throw is what runs your `.end { }`: the end phase lives in that `catch`, so a body that
+    left through a `false` return would skip it. `dev_docs/frames_stop_end_phase.md` has the three
+    stop routes side by side.
+
+??? aside "Running two frame programs at once with `a + b`"
+    A launcher installs its stop fences (`shouldend`, `onAtEndStart`, `onAtEndFinish`,
+    `shouldCancelAtEnd`) on the `Frames` it was handed, which for `a + b` is the *combined* one, and
+    the children are reached only through `body()`. `plus` forwards all four down to them, lazily,
+    so a child is fenced exactly as the parent is and a re-run stops each child in its own right
+    rather than only via the parent's `finally`.
+
+    One rough edge is left, and it is cosmetic: all three end phases of `(a.end + b.end).end` route
+    through the same hook pair, so the box can report `"ending"` more than once for one stop.
+    `dev_docs/frames_stop_end_phase.md` records the rest.
+
+### How a stop reaches the body
+
+Every way of stopping lands in the same place: `Frames.frame()`, the only suspension point a
+well-behaved frame body has.
+
+```diffstatic {data-lang=kotlin}
+suspend fun frame(): Boolean {
+    job = coroutineContext[Job]
+    if (stillborn && job != null) { job?.cancel(); … }
+    if ((if (inEndPhase) shouldCancelAtEnd() else shouldend()) && job != null) { job?.cancel(); … }
+    try { yield(); frameNumber++; return r }
+    catch (t: Throwable) { …run atEnd in a NonCancellable scope…; throw t }
+}
+```
+
+<div class="field-data-table" markdown>
+
+<div class="field-reference" data-code-lang="kotlin" markdown>
+
+| how it stops | what actually happens |
+| --- | --- |
+| **You re-run the box.** | The launch bumps `runGeneration[strand]`. The old `Frames`'s `shouldend` closes over the *old* generation, sees the mismatch at the top of its next `frame()`, and cancels. |
+| **`Box.stop` / the stop button.** | `stopTrackedJobs()` is a barrier: it bumps `launchEpoch`, bumps *every* strand's generation, and cancels every job in `box.jobs` outright. The `.end { }` block still runs, but [after stop has returned](#box-stop-and-the-end-block). |
+| **`end()` from inside the body.** | Cancels the job directly. Called before the launch has a job, it sets `stillborn` and the animation is cancelled at its first frame instead. |
+| **The body returns.** | A `frames { }` block runs off the end. Normal completion. |
+| **`forever { }` returns `false`.** | Normal completion, same as above. |
+| **The body throws.** | Caught by the launcher, logged, and reported on the box as an error. |
+| **A stale launch epoch.** | If a stop landed between preparing the launch and dispatching it, `registerLaunchJob` refuses and the body never runs at all. |
+
+</div>
+
+</div>
+
+Two of those differ by exactly one body call, and you can measure it:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/animation_time_model/stopping.png" wait="1.5" capture="box" open-outputs="true" w="1100" name="animation-stopping"}
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+
+class Result(val how: String, val extraBodyCalls: Int, val endBlockRan: Boolean, val note: String)
+
+// Each probe runs a frame body for three pumps, requests a stop, then pumps six more times and
+// reports what the body did afterwards. These are the stops box code can stage for itself; the
+// `Box.stop` case needs the box's launch epoch, which is internal to Field — see below.
+fun probe(
+    how: String,
+    note: String,
+    build: (counter: () -> Unit) -> Frames,
+    request: (Frames, kotlinx.coroutines.Job) -> Unit,
+): Result {
+    var calls = 0
+    var cleaned = false
+    val f = build { calls++ }.end { cleaned = true }
+    val framer = Framer()
+    val job = CoroutineScope(framer).launch { runCatching { f.body() } }
+    f.job = job
+    repeat(3) { framer.frame() }
+    val atRequest = calls
+    request(f, job)
+    repeat(6) { framer.frame() }
+    return Result(how, calls - atRequest, cleaned, note)
+}
+
+val results = listOf(
+    probe("shouldend flips — what re-running does", "the generation fence is read at the top of frame()",
+        { c -> eachFrame { c() } }, { f, _ -> f.shouldend = { true } }),
+    probe("the Job is cancelled directly", "the pending yield() throws immediately",
+        { c -> eachFrame { c() } }, { _, job -> job.cancel() }),
+    probe("end() from inside the body", "requested during a body call, so nothing follows it",
+        { c -> eachFrame { c(); end() } }, { _, _ -> }),
+    // `throw`, not `error("boom")`: in a box the script's implicit Box receiver is still in scope,
+    // so `error(...)` resolves to Box.error and reports a box error instead of throwing.
+    probe("the body throws", ".end { } is not a finally",
+        { c -> eachFrame { c(); throw IllegalStateException("boom") } }, { _, _ -> }),
+    probe("the body returns normally", "there is no cancellation to catch",
+        { c -> frames { repeat(2) { c(); frame() } } }, { _, _ -> }),
+)
+
+// `roleBy` rather than a hex literal: OK/BAD are the same `--field-*` tokens `markdown()`'s
+// `{ok:…}` spans use, so this column agrees with every other "ran / did not run" in the docs.
+showTable(
+    Table(listOf("how the Frames stopped", "further body calls", ".end { } ran", "why"))
+        .rows(results.map { listOf(it.how, it.extraBodyCalls, it.endBlockRan, it.note) })
+        .accent("further body calls")
+        .color("why", TABLE_MUTED)
+        // WARN, not BAD: two of these rows are correct completion behaviour, not errors — the
+        // figure wants a reader to notice them, not to read them as a failure.
+        .roleBy(".end { } ran") { if (it == true) CellRole.OK else CellRole.WARN }
+        .format(".end { } ran") { if (it == true) "yes" else "no" },
+    channel = "main",
+)
+
+// The two claims the paragraphs below make, as assertions rather than as prose a reader has to
+// check against the figure by eye.
+check(results.count { it.extraBodyCalls > 0 } == 1) { "only shouldend should cost a further body call" }
+check(results.count { it.endBlockRan } == 3) { ".end { } should run for the three cancellation cases" }
+```
+
+![A table of five ways a Frames stops, showing that flipping shouldend costs one further body call while cancelling the Job costs none, and that the .end block runs for the three cancellation cases and not for the two completion cases](assets/animation_time_model/stopping.png)
+
+**Re-running a box costs one more body call; stopping it costs none.** `shouldend` is read at the
+*top* of `frame()`. A body suspended inside `frame()` is halfway through a call that has already
+decided to return `true`: it resumes, returns `true`, and the loop runs the body one final time
+before the *next* `frame()` looks at the flag. Cancelling the `Job`, which is what `Box.stop` does,
+makes the pending `yield()` throw instead, so nothing more runs. If your animation holds a resource
+that must not be touched after a re-run, one extra pass is the window you have to survive.
+
+**`.end { }` runs only on cancellation.** `atEnd` is invoked from exactly one place: `frame()`'s
+`catch`, reached only when the pending `yield()` throws a cancellation. A body that throws its own
+exception does not go through that path, and neither does one that simply returns.
+
+When both are present and a cancellation arrives, `.end { }` runs before the body's `finally`:
+`frame()` calls it from inside its own `catch`, before rethrowing, so the cancellation has not yet
+unwound the body. `FramesSemanticsTest.theEndBlockRunsBeforeTheBodysOwnFinally` holds that order in
+place.
+
+When `atEnd` does run, `frame()` re-enters through `withContext(NonCancellable)` on a fresh `Job`
+that inherits the dispatcher and the box context, so the end block still gets frames and can still
+draw. The one case the figure above cannot stage, because it needs the box's launch epoch, is the
+stop button.
+
+#### `Box.stop` and the end block { #box-stop-and-the-end-block }
+
+`stopTrackedJobs()` increments the box's `launchEpoch` before it cancels anything, and everywhere
+else a job arriving with a stale epoch is cancelled on sight. The end phase is the one piece of work
+that legitimately belongs to a launch stop has already invalidated, because it is stop's own
+cancellation that creates it, so `Box.registerEndPhaseJob` registers it against the epoch as it
+stands *now* rather than against the one the launch captured. The rest of the barrier is unchanged:
+the end job still goes into `box.jobs`, so a second press of stop cancels it, and
+`shouldCancelAtEnd` still fences it against the generation as it stood when the end phase began. A
+runaway end block cannot ignore the stop button.
+
+What stop gives up is being synchronous. The body is suspended in `yield()` when stop arrives;
+cancelling its job resumes it, and that resumption is dispatched, so the throw, and therefore the
+end phase, happens on a later Runloop tick, after `stop` has returned.
+
+For Field's own code that holds an OS resource, that is too late, so boxes also carry `stopHooks`: a
+short, synchronous teardown list, registered with the internal `Box.registerStopHook`, that
+`stopTrackedJobs` drains before it returns. `Box.streamProcess`, the one place in Field's own
+source that installs an `atEnd`, registers its kill in both, so an external command dies whether it
+was still running at stop or had already exited. The epoch mechanism and the caller sweep are in
+`dev_docs/frames_stop_end_phase.md`.
+
+### Every name in `Phased.kt`
 
 The whole vocabulary, in one place, and complete: the table is checked against `Phased.kt` in both
 directions, so a name on one side and not the other is a build failure.
@@ -908,7 +981,7 @@ directions, so a name on one side and not the other is a build failure.
 | `generator` | Output only — the input type is `Unit`. |
 | `gather` | Input only — the output type is `Boolean`. |
 | `Generator.start()` | Run to the first `yield` and return what it yielded, or `null` if it finished first. |
-| `Generator.next()` | Resume with an input, run to the next `yield`, return it — or `null` once finished. |
+| `Generator.next()` | Resume with an input, run to the next `yield`, return it — or `null` once finished. Throws if the generator is not parked at a `yield`. |
 | `Generator.isCompleted` | True once the body has returned without failing. |
 | `GeneratorScope.yield()` | Emit a value and suspend; resumes with the next input. The no-argument overload yields `true`. |
 | `Generator.plus` | Sequential composition: drive the left to completion, then the right. |

@@ -452,7 +452,7 @@ val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
 val b = pulseTrain(period = 0.08, duty = 0.35) over (0.0..0.8)
 ```
 
-The first form builds the pulse train with `0.0..0.8` as its construction-time domain. The second form builds the pulse train with its default `0.0..1.0` domain, then replaces the public `Fn.domain` with `0.0..0.8`. Because `pulseTrain` computes phase from `x`, period, duty, and phase rather than from domain-normalized position, the two functions are effectively equivalent here.
+The first form builds the pulse train with `0.0..0.8` as its construction-time domain. The second form builds the pulse train with its default unbounded domain (`Domain.ALL`), then replaces the public `Fn.domain` with `0.0..0.8`. Because `pulseTrain` computes phase from `x`, period, duty, and phase rather than from domain-normalized position, the two functions are effectively equivalent here. The box below plots `a`, then `b`, then `a - b`: the same ten pulses twice, and a flat zero line.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/domain-over-pulsetrain-difference.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1200" timeout="120" name="functions-domain-over-pulsetrain-difference"}
 :::static
@@ -462,10 +462,13 @@ with(Functions) {
     val a = pulseTrain(period = 0.08, duty = 0.35, domain = 0.0..0.8)
     val b = pulseTrain(period = 0.08, duty = 0.35) over (0.0..0.8)
 
+    a.plot("a", domain(0.0..0.8), heightPx = 200, title = "a: pulseTrain(..., domain = 0.0..0.8)", yDomain = domain((-0.1)..1.1))
+    b.plot("b", domain(0.0..0.8), heightPx = 200, title = "b: pulseTrain(...) over (0.0..0.8)", yDomain = domain((-0.1)..1.1))
+
     (a - b).plot(
-        "plot",
+        "difference",
         domain(0.0..0.8),
-        title = "pulseTrain: construction domain - over domain",
+        title = "a - b: construction domain - over domain",
         yDomain = domain((-0.1)..0.1)
     )
 }
@@ -759,6 +762,14 @@ Produces a flat function that evaluates to `0.5` everywhere in the default domai
 
 ```diffstatic {data-lang=kotlin}
 val f = constant(0.5)
+```
+
+`0.5.c` is the same value as a *parameter signal*: a constant over `Domain.ALL`, so it does not shrink the domain of anything it is combined with. `c(0.5)` and `constant(0.5)` carry the default `0.0..1.0`, and domains intersect, so `sin(frequency = c(2.0))` clips the oscillator to `0.0..1.0` where `sin(frequency = 2.0.c)` (or plain `2.0`) leaves it unbounded. Use `c(...)` when the constant is a signal in its own right and `.c` when it is a knob.
+
+```diffstatic {data-lang=kotlin}
+val knob = 0.5.c                          // Domain.ALL
+val wobble = sin(frequency = 2.0.c)       // still unbounded
+val clipped = sin(frequency = c(2.0))     // domain is now 0.0..1.0
 ```
 
 **Creative**

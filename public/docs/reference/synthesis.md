@@ -135,7 +135,7 @@ engine is built with a single orbit and cannot keep simultaneous sources apart o
 
 `src/jvmMain/kotlin/afield/four/synth/Dough.kt` — [read the source](source/jvmMain/afield/four/synth/Dough/)
 
-**Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
+**Used in:** [How to make sound in Field](../sound_paths.md)
 
 ### Top-level functions { #dough-kt-functions }
 
@@ -1300,7 +1300,7 @@ Writing to control index 0 instead would produce silence, which carries no diagn
 
 `src/jvmMain/kotlin/afield/four/synth/FaustPoly.kt` — [read the source](source/jvmMain/afield/four/synth/FaustPoly/)
 
-**Used in:** [Making a sound in Field: every path there is](../sound_paths.md)
+**Used in:** [How to make sound in Field](../sound_paths.md)
 
 ### FaustVoiceBank { #faustpoly-kt-faustvoicebank }
 
@@ -2414,7 +2414,7 @@ is what reaches [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudio
 
 `src/jvmMain/kotlin/afield/four/synth/Signal.kt` — [read the source](source/jvmMain/afield/four/synth/Signal/)
 
-**Used in:** [Making a sound in Field: every path there is](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md)
+**Used in:** [How to make sound in Field](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md)
 
 ### Top-level functions { #signal-kt-functions }
 
@@ -3487,7 +3487,7 @@ launch/stop manage registration automatically.
 
 `src/jvmMain/kotlin/afield/four/synth/synth.kt` — [read the source](source/jvmMain/afield/four/synth/synth/)
 
-**Used in:** [Pure Data](../pure_data.md), [Making a sound in Field: every path there is](../sound_paths.md)
+**Used in:** [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md)
 
 ### Top-level functions { #synth-kt-functions }
 

@@ -10,6 +10,15 @@ backwards, and the length of what it returns is a number about the rhythm it was
 with structure gets a much shorter spelling than one without. So the notation a CA's row condenses
 to is a statement about the rule, and the audio is that statement played.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/hero.png" wait="8" capture="box" open-outputs="true" w="1040" h="530" padding="18" timeout="120" name="chain-ca-hero" embed=true hidden=true alt="Rule 30's space-time diagram, live cells white on black: a fan spreading from one cell at the top centre until it fills the width at the bottom, regular diagonal stripes down its left edge and irregular triangles of every size everywhere else"}
+// 241 cells is exactly the light cone of 120 generations, so the fan touches both edges at the
+// bottom row and never wraps. toImg(2) is the state count; the upscale is what makes it visible.
+showImg(elementaryCa(30, 241, 120, wrap = false).toImg(2).upscaleNearest(4), channel = "rule 30", maxSide = 1000)
+```
+
+Rule 30 from one live cell, 120 generations. The first 32 cells straight down its middle are one
+of the two bars below.
+
 ## Rule 90 and rule 30, as bars
 
 Rule 90 is `left XOR right`. From a single live cell its space-time diagram is Pascal's triangle

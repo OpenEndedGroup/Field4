@@ -21,9 +21,6 @@ people.age            // resolves. Not people["age"], not a cast, not a generate
 
 The typing does not survive a compile boundary, though, and `typed()` is the call that gets you across. The sections below cover the shape that works, where the boundary falls, and why it falls there.
 
-!!! tip "This page as a document you can open"
-    Everything here is in the shipped, replayable example `dataframe_typed_columns` — four boxes, in the [Agent Transcript Gallery](agent_transcripts.md).
-
 ---
 
 ## The shape that works: derive and consume in one execution
@@ -53,14 +50,23 @@ println("decade: " + adults.decade.toList())
 
 `decade` is not in the source data, is not a string key, and is not declared anywhere. It exists in the type only because the plugin statically interpreted the `add("decade") { … }` call, and without the plugin loaded that line does not compile.
 
-## Where the boundary comes from
+## Where the boundary falls
 
-The plugin hangs off `FirFunctionCallRefinementExtension`, an extension point the Kotlin compiler itself describes as *"highly unstable and not recommended to use"*. At a call to a `@Refine`-annotated function it statically interprets the arguments, computes the resulting schema, and then **rewrites the call**: `call()` becomes `run { class Token; class Scope; call() as DataFrame<Token> }`. `Token` and `Scope` are **local** classes (the extension runs at body-resolve and cannot create top-level declarations), and the column accessors are not declarations anywhere at all. They are a per-call-site local type plus an implicit extension receiver.
+Typed columns do not survive a compile boundary. Declare `val df = dataFrameOf("a","b")(1,2)` in one snippet, read `df.a` in the next, and the frame comes back as `DataFrame<Any>` with an empty compile-time schema. Live coding means loading once and then poking at the result, so on its own that would be fatal.
 
-That is where the boundary comes from. Typed columns do not survive a compile boundary, and the reason is earlier than Field or the REPL: *a local class cannot appear in the type of a snippet's property*. So the moment a frame is stored in a `val` that outlives the expression, its type decays: declare `val df = dataFrameOf("a","b")(1,2)` in one snippet, read `df.a` in the next, and the frame comes back as `DataFrame<Any>` with an empty compile-time schema. Live coding means loading once and then poking at the result, so that is fatal.
+??? aside "Why the boundary is there"
+    The plugin hangs off `FirFunctionCallRefinementExtension`, an extension point the Kotlin
+    compiler itself describes as *"highly unstable and not recommended to use"*. At a call to a
+    `@Refine`-annotated function it statically interprets the arguments, computes the resulting
+    schema, and **rewrites the call**: `call()` becomes
+    `run { class Token; class Scope; call() as DataFrame<Token> }`. `Token` and `Scope` are
+    **local** classes (the extension runs at body-resolve and cannot create top-level
+    declarations), and the column accessors are not declarations at all: they are a per-call-site
+    local type plus an implicit extension receiver. A local class cannot appear in the type of a
+    snippet's property, so the type decays as soon as the frame is stored in a `val` that
+    outlives the expression. The cause is in the compiler, not in Field or the REPL.
 
-??? aside "Both halves, in the code"
-    `DataFramePluginSpike.kt` holds both: the call rewrite and the
+    `DataFramePluginSpike.kt` holds both halves: the call rewrite and the
     `ReturnTypeBasedReceiverInjector` that supplies the receiver at `:27`, and `probeAcrossSnippets` at
     `:147`, which is what prints the `<empty compile time schema>` result at `:161`.
 
@@ -243,12 +249,6 @@ Reusing the general machinery pays off again for nesting: a frame *inside* anoth
 The plugin jar is **not** on the app classpath. It vendors ~1000 classes of the DataFrame runtime of its own, so putting it beside the real `dataframe-core` dependency would put **two copies of `DataFrame`** in front of box code (`KotlinInterface2.kt:2974#The two plugins are located differently on purpose. Wither's jar`). `-Xplugin` loads it in the compiler's own plugin classloader, so only the compiler ever sees it — while the *runtime* goes on the classpath normally (`build.gradle.kts:999#Kotlin DataFrame. The RUNTIME goes on the classpath here`).
 
 The runtime version is pinned to `1.0.0-Beta4`. The plugin was built from Field's `2.5.255-SNAPSHOT` Kotlin fork, whose `libs.versions.toml` names that runtime version, and *the plugin statically interprets the runtime's API*. Moving to a released DataFrame 1.0 therefore means re-syncing the fork and rebuilding the plugin, not bumping a line in `build.gradle.kts`.
-
-### What it costs every other box
-
-Field builds one compiler engine per box, so anything added to the compilation state is paid per box rather than per DataFrame user. `kotlin.dataframe-plugin-cost.probe` measures it: toggling the plugin moves per-engine cost by **~4%** — 7449 ms against 7785 ms over three engines — and `dataframe-core` adds four entries to a 471-entry classpath (`DataFramePluginCostProbe.kt:27#cost by ~4% (7449ms vs 7785ms over three engines), and`).
-
-Engine cost is dominated by warm-up rather than by either addition: the first engine costs ~4.6 s to construct and ~13 s to first-evaluate, the second and third ~200 ms and ~1–3 s.
 
 ---
 

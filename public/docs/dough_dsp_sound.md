@@ -8,8 +8,9 @@ a pair of aliasing oscillators *does* is to run a real signal through it and lis
 The six clips below are the primitives themselves, driven by real signals rather than the
 `patVoice` drum stand-in the pattern pages use. Each is block-rendered offline (exactly as the
 audio engine renders it, minus the sound card) and written to a 16-bit PCM WAV at docs-build
-time by `DoughDspSoundDocs` (`src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt`); the
-plots are `showSignals` Plotly figures of the same run.
+time by [`DoughDspSoundDocs`](reference/synthesis.md#doughdspsounddocs-kt-doughdspsounddocs)
+(in [`DoughDspSoundDocs.kt`](reference/synthesis.md#doughdspsounddocs-kt)); the plots are
+[`showSignals`](reference/visualization.md#plotly-kt-functions) Plotly figures of the same run.
 [Sound: the Pattern → Audio Path](sound.md) audits every audio clip in these docs and names the
 family that produced each one.
 
@@ -18,7 +19,8 @@ render-and-plot boilerplate is folded behind a `+ …` pill you can click to rev
 offline `dough*` helpers it calls
 (`doughRenderMono`, `doughRenderStereoMono`, `doughRenderGated`, `doughPluckEnv`, and the
 plot-shaping `doughAbsEnvelope` / `doughShortTimeRms` / `doughShortTimeBrightness` /
-`doughWaveWindow`) live in the same file and are auto-imported into every box.
+`doughWaveWindow`) live in the same file, [listed with their KDoc](reference/synthesis.md#doughdspsounddocs-kt-functions),
+and are auto-imported into every box.
 
 ---
 

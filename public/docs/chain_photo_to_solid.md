@@ -198,14 +198,7 @@ genus `0, −1, −2, −3` while `decompose()` gives `1, 2, 3, 4` parts.
 
 ## The limits of this route
 
-The render hop here is the CPU rasteriser, not the GPU path tracer. `PathTraceScene.importTriMesh`
-takes exactly the meshes `mount()` produces and would trace them, but it needs a live Vulkan
-`Renderer` and therefore a native window, so every figure above is CPU work and reproducible in a
-headless build. The three chains that do end in a path trace —
-[polytope](chain_polytope_render.md), [particles](chain_physics_render.md) and
-[3D life](chain_life3d_render.md) — show that hop with native-window captures.
-
-The relief is also not a portrait. Monocular depth of an interior gives a basin, and a lithophane of a
+The relief is not a portrait. Monocular depth of an interior gives a basin, and a lithophane of a
 face would want a subject where the near surface is the subject rather than the walls. Nothing in the
 route changes; only the photograph does.
 

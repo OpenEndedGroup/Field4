@@ -58,7 +58,7 @@ val cam = Camera(Vector3f(0f, 1.5f, -4f), 55.0, true, listOf("dots", "lines", "l
 cam.h
 ```
 
-![Reflective tree for a Camera data class](assets/value_visualizers/reflective_tree.png)
+![Reflective tree for a Camera data class](assets/value_visualizers/reflective_tree.png){ width="516" }
 
 Notice that the tree is not flat text: the nested `position` is itself rendered as
 a `vec3`, and `layers` collapses to a list with a size count. The renderer keeps
@@ -95,7 +95,7 @@ its class internals:
 listOf(vec(0.5, 1.5), vec(1.0, 2.0, 3.0), vec(0.25, 0.5, 1.0, 2.0)).h
 ```
 
-![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png)
+![vec2, vec3 and vec4 rendered as compact tokens](assets/value_visualizers/vectors.png){ width="324" }
 
 Matrices summarise rather than dump every cell: a `mat3` shows its determinant, a
 `mat4` shows determinant plus extracted translation, and a quaternion shows its
@@ -111,7 +111,7 @@ linkedMapOf(
 ).h
 ```
 
-![A map of mat3, mat4 and quaternion values](assets/value_visualizers/linalg_map.png)
+![A map of mat3, mat4 and quaternion values](assets/value_visualizers/linalg_map.png){ width="564" }
 
 The `mat3` reports `det=6` (2 × 3 × 1), the `mat4` reports `det=1, t=(5, -2, 1)`,
 and the quaternion shows its normalized components. For the algebra behind these
@@ -139,7 +139,7 @@ for (i in 0..steps) {
 spiral.h
 ```
 
-![FLine node stats, path signature, and an SVG spiral thumbnail](assets/value_visualizers/fline_spiral.png)
+![FLine node stats, path signature, and an SVG spiral thumbnail](assets/value_visualizers/fline_spiral.png){ width="552" }
 
 The header reads `FLine (141 nodes)`, then `M=1 L=140 C=0 · b=130×124 ·
 len=1.19e+03`, then the run-compressed signature `M(Lx41) … (Lx22)`, and finally
@@ -162,7 +162,7 @@ with(Functions) {
 }
 ```
 
-![Fn reflective tree with an appended SVG sine plot](assets/value_visualizers/fn_sin_plot.png)
+![Fn reflective tree with an appended SVG sine plot](assets/value_visualizers/fn_sin_plot.png){ width="612" }
 
 The plot mirrors `Fn`'s own sampling rules: an unbounded domain falls back to a
 preview window, non-finite samples become gaps in the curve rather than spikes, a
@@ -191,7 +191,7 @@ val scene = Img.generateRGB(240, 180) { x, y -> /* … */ }
 scene.h
 ```
 
-![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png)
+![An RGB Img with its channel strip, histogram and statistics](assets/imaging_visualizers/img_rgb.png){ width="564" }
 
 #### The range policy
 
@@ -214,7 +214,7 @@ Grey simply cannot carry a sign:
 scene.luma().sobel().dx.h
 ```
 
-![A signed Sobel dx rendered with a coolwarm diverging map](assets/imaging_visualizers/img_signed_dx.png)
+![A signed Sobel dx rendered with a coolwarm diverging map](assets/imaging_visualizers/img_signed_dx.png){ width="752" }
 
 Read it: the rectangle's left edge is red (dark→bright going right, so `dx > 0`)
 and its right edge is blue; the disc is warm on its left limb and cool on its
@@ -231,12 +231,12 @@ with the **true range printed**, so a bright pixel is never mistaken for 1.0:
 (scene.luma().sobelMagnitude() * 25f).h
 ```
 
-![An unnormalised response, auto-ranged with its true 0…10.26 range printed](assets/imaging_visualizers/img_autoranged.png)
+![An unnormalised response, auto-ranged with its true 0…10.26 range printed](assets/imaging_visualizers/img_autoranged.png){ width="752" }
 
 And non-finite samples — NaN, ±∞ — are counted, excluded from every statistic, and
 painted **magenta**:
 
-![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png)
+![An image with a NaN block and one infinity, painted magenta](assets/imaging_visualizers/img_non_finite.png){ width="752" }
 
 Magenta because the alternative is silence: one NaN poisons `min()`/`max()`,
 `normalized()` returns an all-NaN image, and the PNG quantiser turns NaN into
@@ -246,7 +246,7 @@ Magenta because the alternative is silence: one NaN poisons `min()`/`max()`,
 Four-channel images sit on a checkerboard, so transparent black and opaque black
 are different pictures:
 
-![An RGBA image over a checkerboard, with its alpha channel broken out](assets/imaging_visualizers/img_rgba.png)
+![An RGBA image over a checkerboard, with its alpha channel broken out](assets/imaging_visualizers/img_rgba.png){ width="732" }
 
 #### Gradients and pyramids
 
@@ -254,14 +254,14 @@ A `Gradient` is two signed images and a direction, so it shows all of it — `dx
 `dy`, the magnitude, and the hue-by-direction image the type already knows how to
 build:
 
-![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png)
+![A Gradient shown as dx, dy, magnitude and hue-by-direction](assets/imaging_visualizers/gradient.png){ width="752" }
 
 A pyramid is drawn as a **ladder of rungs at true relative scale**, bottom-aligned,
 so the halving is the visible fact rather than a number in a caption:
 
-![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png)
+![A GaussianPyramid as five rungs at true relative scale](assets/imaging_visualizers/gaussian_pyramid.png){ width="752" }
 
-![A LaplacianPyramid: signed band rungs plus a tagged residual](assets/imaging_visualizers/laplacian_pyramid.png)
+![A LaplacianPyramid: signed band rungs plus a tagged residual](assets/imaging_visualizers/laplacian_pyramid.png){ width="752" }
 
 The Laplacian bands are signed, so they get the diverging treatment, and the one
 rung that is *not* a band is labelled `residual`.
@@ -274,7 +274,7 @@ points' own bounding box unioned with the origin — image coordinates start at
 `(0, 0)`, and including it keeps the points where they actually sit in the frame.
 The caption states the inferred extent:
 
-![Harris corners as a strength-coded scatter](assets/imaging_visualizers/corners.png)
+![Harris corners as a strength-coded scatter](assets/imaging_visualizers/corners.png){ width="752" }
 
 The four strongest here read back as `(30.7, 26.7)`, `(89.3, 26.7)`,
 `(30.7, 75.3)`, `(89.3, 75.3)` — the four corners of a rectangle planted at
@@ -287,11 +287,11 @@ still cross, says which square that was, and points at `linesToFLines` for the
 in-place version. The right panel needs no extent at all and is therefore exact:
 ρ against θ, sized by votes.
 
-![Hough lines in an inferred square, beside their (theta, rho) accumulator peaks](assets/imaging_visualizers/hough_lines.png)
+![Hough lines in an inferred square, beside their (theta, rho) accumulator peaks](assets/imaging_visualizers/hough_lines.png){ width="752" }
 
 A circle *does* have an extent, so no assumption is needed:
 
-![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png)
+![Hough circles drawn over their own extent](assets/imaging_visualizers/hough_circles.png){ width="752" }
 
 A `FlowField` is a quiver — one arrow per converged track, hue by direction, and
 **failed tracks drawn as grey crosses** rather than dropped. A tracker that never
@@ -299,7 +299,7 @@ reports failure is lying, and so is a picture that hides the failures.
 Displacements are drawn at true pixel scale unless the median motion is too small
 to see, in which case an integer exaggeration factor is applied and named:
 
-![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png)
+![An optical-flow field as a hue-coded quiver, tracing a planted rotation](assets/imaging_visualizers/flow_field.png){ width="752" }
 
 The frames here differ by a 0.06 rad rotation about the centre, and that is exactly
 what the arrows trace: little motion near the middle, tangential motion at the
@@ -310,12 +310,12 @@ rotation — adjacent label ids get unrelated colours, which is what makes two
 touching blobs distinguishable at thumbnail size — with the per-blob areas and
 centroids behind the disclosure:
 
-![A connected-component label map with one hue per blob](assets/imaging_visualizers/components.png)
+![A connected-component label map with one hue per blob](assets/imaging_visualizers/components.png){ width="752" }
 
 A plain `List<Img>` becomes a filmstrip, which is the shape a frame sequence or a
 parameter sweep already has:
 
-![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png)
+![A List<Img> as a filmstrip of a blur sweep](assets/imaging_visualizers/filmstrip.png){ width="752" }
 
 #### All of it, in a real box
 
@@ -709,9 +709,10 @@ Three things make this work on real figures rather than just on prose:
 - **`value.md` for computed values.** Runtime values are not markdown — a `|` splits the row it lands in, a pair of `*` becomes emphasis, a `<b>` is read as a tag and vanishes. Escape anything you did not write yourself. The prefix spelling `mdEscape(value)` is the same function and still works; the suffix is what a row of six escapes wants, and it is the one used above.
 - **Fenced bodies are interpolated at column zero**, hard left, the way `$report` is above. Inside a fence whitespace is the content, and splicing at the surrounding indentation would indent only the value's first line.
 
-Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written.
+Beyond GitHub-flavoured markdown there are two additions: `:::row … :::end`, splitting columns on a `---` line, for the before/after shape markdown cannot spell; and `{role:text}` spans — `accent`, `muted`, `dim`, `ok`, `warn`, `bad` — so a callout never needs a hex literal. Neither applies inside code, so a `:::row` or a `{warn:…}` shown *as* an example stays as written. The figure above uses both: the before/after row, and the `ok`, `warn` and `muted` spans on its status line.
 
-Close a row with `:::end`, not a bare `:::`. Both work in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
+??? aside "Why the example closes its row with `:::end`"
+    A bare `:::` also closes a row in a live box, but on a docs page the runner treats a line that is exactly `:::` as one of its own fence-section markers — the same family as the `:::static` at the top of every runnable example — and strips it out of the code before running it. The row then never closes, and swallows the rest of the card in the built page only.
 
 You do not need `trimIndent()`; the text is dedented for you, and unlike `trimIndent` it survives having a multi-line value interpolated into it. `width` pins the card, which matters for a docs `capture="box"` screenshot: that clips to the output card, so an unpinned card sized by its widest unbreakable line loses everything past the clip.
 
@@ -802,6 +803,8 @@ This is useful for demos, guided tutorials, and boxes that are meant to be rerun
 Some outputs are not there to be looked at. They are there to be touched.
 
 Field can build small, pleasant control surfaces directly into output areas.
+
+They also reach a phone. Open `/controllers?file=<document>` on it and the **Group** tab redraws the selected box's `controlGroup(...)` at thumb size, while **Outputs** shows its output areas with their controls still live. See [Field from your phone](mobile_controllers.md#the-six-tabs).
 
 <!--
 FIELD_TEST
@@ -1141,6 +1144,11 @@ different operations in the same zoomable, pannable timeline:
 - monophonic pYIN pitch and voicing confidence;
 - Basic Pitch polyphonic note rectangles and activity summaries.
 
+![Three stacked analysis panels over a twelve-second timeline, above the source waveform and its transport: beats, with onset, local tempo and tempo confidence lanes; pitch mono, with a pYIN curve against a C3 to C4 grid and a voicing track; pitch poly, with a Basic Pitch piano roll over activation and active-pitch curves](assets/audio_ai_analysis/synchronized_analysis.png)
+
+That board is `analysisPreviewDashboardHtml(...)` drawing model-free previews; the code that
+produces it is on the [beat and pitch analysis walkthrough](audio_ai_analysis.md#the-views).
+
 ```diffstatic {data-lang=kotlin}
 import afield.stdlib.noir.audioai.*
 
@@ -1394,7 +1402,7 @@ So the choice is mostly about **where you want the visual to live**, not whether
 
 Here is the practical rule of thumb:
 
-- If the visual explains one line of code, put it inline with `__m("...")`.
+- If the visual explains one line of code, put it inline on a stack mark (ᛟ, **Insert Stack Mark**).
 - If the visual explains a whole box or deserves interaction, put it in `display(...)`.
 - If the thing is large and structural, use `tree(...)`, `column(...)`, or `.h2`.
 - If the thing is tiny and human-readable, `.h` is often perfect.

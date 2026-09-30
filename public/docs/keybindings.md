@@ -412,5 +412,5 @@ exactly what a fresh `keybindings.yaml` says.
 
 ## See also
 
-- **[Survival Guide](survivalGuide.md)** — the shortcuts worth learning first.
-- **[Feature Overview](funFeatures.md)** — what the commands in that table actually do.
+- [Survival Guide](survivalGuide.md) — the shortcuts worth learning first.
+- [Feature Overview](funFeatures.md) — what the commands in that table actually do.

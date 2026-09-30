@@ -25,23 +25,23 @@ possible.
 
 ## The whole of it
 
+This is longer than most examples on these pages, because we are going to build all of it in place,
+in one box: a small scene to sweep over, a pool of saved keys, the sweep itself, and the morning's
+look at what it made. In your own document those would be separate boxes, and the scene and the keys
+would already exist. The box sits under a renderer parent, so `renderer` is already in its preamble.
+Two folds hold the scene and the pool. The sweep is the dozen lines between them and the last fold,
+which reads the archive back.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_autosweep/contact-sheet.png" capture="box" open-outputs="true" execution="launch" wait="45" timeout="300" graphics-context=true name="keyframe-autosweep-sheet" padding="16" w="1100" h="1000"}
+:::fold imports
 import afield.four.fabricated.StandardRenderer
 import afield.four.fabricated.applyScenePlan
-import afield.stdlib.KeyframeScope
-import afield.stdlib.KeyframeSweep
-import afield.stdlib.SweepConfig
-import afield.stdlib.awaitFrames
-import afield.stdlib.captureStill
-import afield.stdlib.linalg.Matrix4f
-import afield.stdlib.linalg.Vector3f
-import afield.stdlib.readSweepArchive
 import java.nio.file.Files
 import java.util.Base64
 import kotlin.io.path.readBytes
 import kotlin.io.path.writeText
+:::endfold
 
-val r: Renderer = fromContext()
 val dim = 420
 
 :::fold the scene, and the ten lanes of it that a key can drive
@@ -49,7 +49,7 @@ val dim = 420
 // `KeyframeScope` over ten places in it. Nothing below this block ever writes those ten places —
 // only a blended key does, which is what makes the contact sheet evidence rather than decoration.
 val bundle = StandardRenderer.build(
-    r,
+    renderer,
     StandardRenderer.Config(renderWidth = dim, renderHeight = dim, backgroundColor = Vector3f(0.02f, 0.02f, 0.03f))
 )
 val scene = bundle.scene
@@ -67,12 +67,12 @@ scene.lightIntensity = 3.4f
 
 val grid = 3
 val spheres = (0 until grid * grid).map {
-    bundle.registerSphere(name = "ball-$it", radius = 0.3f, slices = 24, stacks = 24, renderer = r)
+    bundle.registerSphere(name = "ball-$it", radius = 0.3f, slices = 24, stacks = 24, renderer = renderer)
 }
 // A floor, and not for decoration: `shadow.strength` and `ao.strength` are two of the ten lanes, and
 // with nothing under the spheres to receive a shadow they are two lanes a sweep could move all night
 // without changing a pixel.
-bundle.registerCube(name = "floor", size = 1f, renderer = r)
+bundle.registerCube(name = "floor", size = 1f, renderer = renderer)
     .setModel(Matrix4f().translate(0f, -0.34f, 0f).scale(11f, 0.04f, 11f))
 bundle.applyScenePlan()
 
@@ -130,8 +130,8 @@ val keys = KeyframeScope(schemaVersion = 1).apply {
     stringTarget("palette", { palette }) { applyPalette(it) }
 }
 
-bundle.present(renderer = r)
-bundle.attachTo(r)
+bundle.present(renderer = renderer)
+bundle.attachTo(renderer)
 :::endfold
 
 :::fold four keys, as a few evenings of clicking would have left them
@@ -188,8 +188,8 @@ frames {
     val report = sweep.run { render ->
         // The blend is already applied when this is called. Wait for it to be drawn, then read the
         // target back into the render's own directory.
-        r.awaitFrames(6)
-        render.captureStill(r, bundle.postStack.output(), settleFrames = 0)
+        renderer.awaitFrames(6)
+        render.captureStill(renderer, bundle.postStack.output(), settleFrames = 0)
     }
     println("$report")
 
@@ -370,13 +370,13 @@ sweep.
 
 ```diffstatic {data-lang=kotlin}
 sweep.run { render ->
-    r.awaitFrames(6)
-    render.captureStill(r, bundle.postStack.output(), settleFrames = 0)
-    render.captureClip(r, bundle.postStack.output(), frames = 24, fps = 12, settleFrames = 0) { _, t ->
+    renderer.awaitFrames(6)
+    render.captureStill(renderer, bundle.postStack.output(), settleFrames = 0)
+    render.captureClip(renderer, bundle.postStack.output(), frames = 24, fps = 12, settleFrames = 0) { _, t ->
         // Where the callback moves whatever should move — a camera, a phase, a simulation step.
         // Called before the readback, so frame i shows the state this established.
         orbitAround(render.key["camera.at"] as Vector3f, (t - 0.5) * 0.5)
-        r.awaitFrames(2)
+        renderer.awaitFrames(2)
     }
 }
 ```

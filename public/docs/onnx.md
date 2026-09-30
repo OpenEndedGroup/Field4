@@ -12,22 +12,50 @@ Both run on the ONNX Runtime JNI artifact (`com.microsoft.onnxruntime:onnxruntim
 on the classpath already because [semantic search](semantic_index.md) embeds text with it. The weights
 are not — each model is fetched the first time you ask for it, and that is the whole install.
 
-```diffstatic {data-lang=kotlin}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/onnx/overview.png" wait="30" capture="box" open-outputs="true" padding="20"}
+:::static
 import afield.onnx.*
+:::fold load a photograph that ships with Field, and pack it as the RGBA8 bytes both models read
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
+val photo = imgFromFile("public/docs/assets/vision/fline-viewer.jpg", 3).scaleBy(0.45)
+
+fun toRgba8(img: Img): ByteBuffer {
+    val out = ByteBuffer.allocateDirect(img.width * img.height * 4).order(ByteOrder.nativeOrder())
+    for (p in 0 until img.pixelCount) {
+        for (c in 0 until 3) {
+            val v = (img.data[p * img.channels + c].coerceIn(0f, 1f) * 255f + 0.5f).toInt()
+            out.put(p * 4 + c, v.toByte())
+        }
+        out.put(p * 4 + 3, 255.toByte())
+    }
+    return out
+}
+
+val rgbaBytes = toRgba8(photo)
+:::endfold
 
 // How far away is everything? — one image in, one single-channel map out.
-val depth = DepthAnything(width = 266, height = 266)
-depth.infer(rgbaBytes, srcW = 640, srcH = 480)
+val depth = DepthAnything.forSource(photo.width, photo.height)
+depth.infer(rgbaBytes, photo.width, photo.height)
 depth.depthFp16                       // ready to upload as VK_FORMAT_R16_SFLOAT
 
 // What is this a picture of? — no training, no labels, just prompts.
 val prompts = ClipText.encodeAll(listOf("an empty room", "a person at a desk"))
-ClipImage().encode(rgbaBytes, 640, 480).best(prompts)   // the better-matching label, and its share
+val best = ClipImage().encode(rgbaBytes, photo.width, photo.height).best(prompts)!!   // the better-matching label, and its share
+:::fold show both answers
+val depthMap = Img(depth.width, depth.height, 1, FloatArray(depth.width * depth.height) { depth.depthRaw.get(it) })
+showImgGrid(
+    "CLIP: \"%s\" (%.0f%%)".format(best.first, best.second * 100) to photo,
+    "depth, bright = near" to depthMap.colormap("inferno").resize(photo.width, photo.height),
+    columns = 2,
+    cellSide = 500,
+)
+:::endfold
 ```
 
-!!! info "Orientation only: `rgbaBytes` has no definition here, so this block will not run"
-    [Which code on this page runs](#which-code-on-this-page-runs) sorts every block on the page into
-    copy-and-run and illustration.
+![](assets/onnx/overview.png)
 
 ## Sessions are cached, so a box can re-run
 
@@ -64,7 +92,7 @@ model there is: one image in, one single-channel map out, no anchors, no non-max
 decode step, no state between frames.
 
 !!! warning "It is relative *inverse* depth in arbitrary units, not metres"
-    `predicted_depth` is **not** metres, **not** normalised, and **larger means nearer**. The numeric
+    `depthRaw` is **not** metres, **not** normalised, and **larger means nearer**. The numeric
     range depends on the scene *and* on the input resolution, so a threshold calibrated on one frame
     at one size means nothing on another.
 
@@ -376,9 +404,8 @@ same fetch machinery even though nothing about a `tokenizer.json` is ONNX, becau
 problem: a large asset that must not live in the repository.
 
 !!! note "Nothing to install: the native library ships in the jar"
-    Unlike [Manifold](manifold.md#installing-it), which needs a native library installed before a box
-    can use it, `afield.onnx` needs nothing but network access on first run. The ONNX Runtime native
-    library ships inside the JNI jar. `COMPILE_ONLY` box code that mentions `clipEncode("…")` compiles
+    `afield.onnx` needs nothing but network access on first run. The ONNX Runtime native library ships
+    inside the JNI jar. `COMPILE_ONLY` box code that mentions `clipEncode("…")` compiles
     without ever opening a model, because `ClipText`'s session is `by lazy`. That is what lets the
     completion corpus guard compile the shipped transcript with no network at all.
 
@@ -447,13 +474,12 @@ all-black buffer would produce a ranking just as plausible-looking.
 
 ## Which code on this page runs { #which-code-on-this-page-runs }
 
-The depth figure and the CLIP figure are executed by the docs build every time, imports and all, and
-the image under each is that box's own output.
+The opening snippet, the depth figure and the CLIP figure are executed by the docs build every time,
+imports and all, and the image under each is that box's own output.
 
-The other three Kotlin blocks are illustration, and are marked as such where they appear: the
-orientation snippet leaves `rgbaBytes` undefined, half of the session-cache do/don't is an
-anti-example that *must* not run, and the worker plus `StreamingTexture` needs a Vulkan device and a
-webcam. A snippet nobody executes drifts from the API it describes and looks exactly like one that
+The other two Kotlin blocks are illustration, and are marked as such where they appear: half of the
+session-cache do/don't is an anti-example that *must* not run, and the worker plus
+`StreamingTexture` needs a Vulkan device and a webcam. A snippet nobody executes drifts from the API it describes and looks exactly like one that
 works, so expect to finish them rather than to paste them. **`StreamingTexture(...)` and
 `recordUpload(...)` are the only calls on this page that nothing in this repository exercises at
 all.** `dev_docs/DOCS_PAGE_SNIPPET_COVERAGE.md` has the block-by-block census.
