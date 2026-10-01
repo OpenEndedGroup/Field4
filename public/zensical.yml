@@ -42,6 +42,27 @@ nav:
       # this page already was. The filename stays put so its inbound link and its
       # generated-artifact references do not have to move.
       - Where to Go Next: staging.md
+  # Straight after Start Here, ahead of the subsystem sections it draws on, and outside Start Here
+  # because nothing may follow "Where to Go Next" inside it. These pages are one object carried
+  # across three or four subsystems, with each hop's output checked against the next stage's
+  # arithmetic. A reader leaving the Tour sees several parts of Field working together before
+  # choosing one to learn in depth, so the chains are a showcase here rather than a capstone after
+  # the subsystem sections, where they used to sit. No one subsystem owns a chain — putting the polytope page under "Geometry & Solids" would file it
+  # away from the tracer it ends at, and under "Rendering & GPU" away from the algebra it starts from.
+  - Chains Across Subsystems:
+    - A Polytope, Cut Open and Traced: chain_polytope_render.md
+    - Particles, Welded and Traced: chain_physics_render.md
+    - A Cellular Automaton You Can Hear: chain_ca_sound.md
+    - A Pattern That Moves Particles: chain_pattern_particles.md
+    - Three-Dimensional Life, Counted and Traced: chain_life3d_render.md
+    - A RectSL Animation as a Solid: chain_rectsl_spacetime.md
+    - A Polytope, Canonicalised and Sliced: chain_ceres_manifold_contours.md
+    - A Photograph, Closed and Mounted: chain_photo_to_solid.md
+    - A λ-Term You Can Hear: chain_lambda_sound.md
+    - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
+    - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
+    - A RectSL Scene on a Light Rig: chain_scene_to_light.md
+    - A Drawn Score, Heard: chain_drawn_score.md
   - Working in a Document:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
@@ -252,26 +273,6 @@ nav:
       - Apple Vision Pro (WiP): vision.md
       - Geometry in the Headset: vision_geometry.md
       - ImGui as a VR Panel: imgui_vr_panel.md
-  # Every other section here is a subsystem, and a reader who has finished one of them still has no
-  # picture of how two of them meet. These pages are that picture: one object carried across three
-  # or four subsystems, with each hop's output checked against the next stage's arithmetic. They sit
-  # after the sections they draw on rather than inside any one of them, because no one of them owns
-  # a chain — putting the polytope page under "Geometry & Solids" would file it away from the tracer
-  # it ends at, and under "Rendering & GPU" away from the algebra it starts from.
-  - Chains Across Subsystems:
-    - A Polytope, Cut Open and Traced: chain_polytope_render.md
-    - Particles, Welded and Traced: chain_physics_render.md
-    - A Cellular Automaton You Can Hear: chain_ca_sound.md
-    - A Pattern That Moves Particles: chain_pattern_particles.md
-    - Three-Dimensional Life, Counted and Traced: chain_life3d_render.md
-    - A RectSL Animation as a Solid: chain_rectsl_spacetime.md
-    - A Polytope, Canonicalised and Sliced: chain_ceres_manifold_contours.md
-    - A Photograph, Closed and Mounted: chain_photo_to_solid.md
-    - A λ-Term You Can Hear: chain_lambda_sound.md
-    - A Twisted Limb, Weighed and Traced: chain_skinned_volume.md
-    - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
-    - A RectSL Scene on a Light Rig: chain_scene_to_light.md
-    - A Drawn Score, Heard: chain_drawn_score.md
   - AI & Agents:
     # First, ahead of the explanations: a showcase of whole documents agents built from a blank
     # canvas, which says what this section is for faster than any of the pages below. It used to

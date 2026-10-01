@@ -2,6 +2,15 @@
 
 The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to be read in order. This is the map for afterwards: what is in each section, and which page inside it to open first.
 
+## Chains across subsystems
+
+Each of these carries one object through three or four parts of Field, and checks every hop against the next stage's arithmetic. They are the quickest way to see how the sections below meet before you pick one to learn.
+
+- [A Polytope, Cut Open and Traced](chain_polytope_render.md) is the one to read first: a 62-face polytope out of the Conway algebra, cut by an exact Boolean, then path-traced.
+- [A Cellular Automaton You Can Hear](chain_ca_sound.md) goes the other way, from a Wolfram rule to the shortest pattern notation that plays it, rendered to a `.wav`.
+
+The rest of the section crosses physics, patterns, RectSL, photographs, λ-terms and lighting; open it for the full set.
+
 ## Working in a document
 
 The document itself — moving around it, finding things in it, and getting at what it used to say.
