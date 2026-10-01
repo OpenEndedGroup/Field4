@@ -191,6 +191,10 @@ object DemoTranscriptExecSmokeTest {
         "dataframe_typed_columns",
         "spectral_examples",
         "imaging_cv_examples",
+        // Two CPU boxes: one executed stipple(), one launched `loop { }` taking a Lloyd step a frame
+        // for 90 real runloop frames. Both draw through stipplesToImg -> showImg (a PNG into display),
+        // so no Window and no Renderer.
+        "stippling",
         // A photograph to a printable solid, across four families that do not import one another:
         // DepthAnything (ONNX) for monocular depth, the imaging family to normalise it, reliefMesh to
         // close it into something with a volume, and Manifold for the Boolean. EXECUTE rather than
