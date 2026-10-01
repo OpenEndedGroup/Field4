@@ -17,7 +17,7 @@ You can run code in Field the following ways (from the commonplace to the rare)
 
  * `alt-0` — runs everything in a box (but doesn't launch it)
 
-That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go and write and run some code against your favourite libraries, in [Kotlin](running_code.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
+That's everything you _need_ to know — with these shortcuts you can have a fun time in Field. Go and write and run some code against your favourite libraries, in [Kotlin](kotlin_overview.md) (on the JVM), [Python](python.md), [Clojure](clojure.md), even [Lua](lua.md).
 
 Since running code is very important, we actually have a few more ways of doing this. For completeness, we'll list them here:
 

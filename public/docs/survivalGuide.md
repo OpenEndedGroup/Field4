@@ -54,9 +54,9 @@ There are a large number of other ways of executing code, since executing code i
 
 Note that Field differentiates between running a piece of code (a line or two or the whole contents of a box) and _launching_ code (giving the code at least an opportunity to inject something into the main animation loop and keep going).
 
-[Running code in a box](running_code.md) is that distinction in full — every way to execute
-something, what Field does to your text before the compiler sees it, and where a launched box hands
-over to the animation loop.
+[Running code in a box](running_code.md) is what happens behind that distinction: what Field does
+to your text before the compiler sees it, how a child box sees its parent's values, and where a
+launched box hands over to the animation loop. You do not need it to start writing boxes.
 
 # Three things you'll want to know
 

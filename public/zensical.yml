@@ -18,15 +18,15 @@ nav:
     # that nobody reads in sequence, which makes it the cheapest thing to pass on the way in.
     - Keyboard Shortcuts: keybindings.md
     # A read-in-order arc, not a category: one faculty per page, and the order is the point.
-    # running_code is the mechanic every later page rests on; autocomplete is the editor you meet
-    # while typing that code, so it comes immediately after rather than being filed as an advanced
-    # topic; and the last two hand the whole running document to something that is not you — a
+    # Autocomplete is the editor you meet while typing your first code, so it comes straight after
+    # "What Field Is" rather than being filed as an advanced topic (running_code.md used to sit
+    # between them, and moved to Working in a Document as mechanism rather than a faculty); and
+    # the last two hand the whole running document to something that is not you — a
     # phone first, then an agent. Every entry also stands alone. A page appears once in this nav
     # (Zensical resolves prev/next from position), so these are moved here rather than aliased, and
     # their former sections were rebalanced to suit.
     - A Tour:
       - What Field Is: funFeatures.md
-      - Running Code in a Box: running_code.md
       - The Documentation Browser: completion_doc_browser.md
       - Drawing with FLines: fline_examples.md
       - Frames and the Animation Loop: animation_time_model.md
@@ -50,6 +50,11 @@ nav:
     # Beside files_and_paths.md: that page answers "which file did this path mean", this one "which
     # box did this value come from", and both are lookups a person otherwise reverse-engineers.
     - Why Does This Value Resolve Here?: why.md
+    # Out of the Tour, where it was the second stop: the page is what Field does behind the scenes
+    # when you run a box — fragments, macros, the preamble, inherited properties — which you need
+    # when a call turns out not to be one or a child cannot see its parent's value, not to start.
+    # Directly after why.md, which already sends readers into its inheritance section.
+    - Running Code in a Box: running_code.md
     # The three history pages together. history_lens.md used to sit below the two performance
     # pages, which put the inline view of a property's past two clicks away from the two pages
     # that explain what that past is; nothing about the split was deliberate.
