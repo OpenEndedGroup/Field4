@@ -4,7 +4,7 @@
 
 Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side.
 
-33 source file(s), 1478 public symbol(s), 1243 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+34 source file(s), 1487 public symbol(s), 1252 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -121,6 +121,100 @@ Hit information passed to `FLine.onClick` from the interactive line renderers �
 | <code class="highlight"><span class="k">val</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span></code> | The second face coordinate for an `FLineHitKind.FACE`, `NaN` otherwise. See `faceCoordinates`. |
 | <code class="highlight"><span class="k">val</span> <span class="n">faceCoordinates</span><span class="p">:</span> <span class="nc">FLineFaceCoordinates</span></code> | Which convention `u` and `v` follow for a face hit — bilinear on a four-corner face, its bounding box otherwise, or a refusal. Always `FLineFaceCoordinates.NONE` for a non-face hit. |
 | <code class="highlight"><span class="k">val</span> <span class="n">onElement</span><span class="p">:</span> <span class="nc">Vec3</span><span class="o">?</span></code> | The point *on* the element nearest the click, in the line's own coordinate space, or `null`. |
+
+## bspot.kt { #bspot-kt }
+
+One-to-one matching between two equally sized 2D point clouds, at a million points a side, using
+BSP-OT: every source point gets exactly one target and every target is used exactly once, with the
+total squared travel distance kept small.
+
+The exact answer to that problem is an assignment problem, and the Hungarian method that
+`flowmatching.kt` uses for its minibatches is `O(n³)` time over an `n × n` cost matrix. At a
+thousand points that is fine. At a million the matrix alone is four terabytes. BSP-OT gives up
+provable optimality to get to `O(n log n)`:
+
+1. Choose a direction. Split *each* cloud at its own median along it, so both left halves hold
+   the same number of points, and so do both right halves.
+2. Recurse, left with left and right with right, with a new direction each time. A leaf of one
+   point pairs its source with its target; a leaf of two picks the cheaper of the two pairings.
+3. That is one candidate bijection. Make several and merge each new one into the best so far: the
+   union of two permutations falls apart into disjoint alternating cycles, and on each cycle you
+   keep whichever orientation is cheaper. Then try two-point swaps along the candidate's edges.
+
+The direction in step 1 is what `BspOt2D.Splits` chooses. The default, as in the reference
+implementation, fits a Gaussian to each of the two subsets and splits along an eigenvector of the
+linear map that carries one Gaussian onto the other, picking one of the two at random per node.
+When the subsets differ in shape that axis is the one along which they need to move, and it
+about halves the excess cost of random directions at eight trees. Below 50 points it stops fitting and splits
+perpendicular to the parent.
+
+The counts are equal by construction, not because the two clouds occupy the same cells, so clouds
+of very different density still match completely.
+
+    val result = matchPoints(from, to)            // two List<Vec2> of the same size
+    val destination = result.reorder(to)          // destination`i` is where from`i` goes
+    val halfway = from.indices.map { from`it` + (destination`it` - from`it`) * 0.5f }
+
+For raw `FloatArray`s, call `BspOt2D.match` directly. A previous permutation can be passed as
+`initial` and is improved rather than replaced, which suits matching successive frames of a
+simulation.
+
+### Cost, measured
+
+On an M1 Max with the default four workers and eight trees, a million points a side takes 3 to
+4.5 s for two uniform clouds, and 5.7 s from a uniform square onto three discs (7.4 s with random
+splits, which reach a 5% higher cost). Merging is sequential. Array storage is about `69 + 60 P`
+bytes a point for `P` workers, roughly 309 MB at a million points and four workers. The SIMD
+paths (projection, and cost evaluation through a gather) gave no measurable end-to-end gain over
+`simd = false` when this was first measured; partitioning, cycle walking and the swaps are
+scalar.
+
+### What it does not give you
+
+- **No optimality guarantee, and further from optimal than the paper.** From a uniform square
+  onto three discs, 1000 points, the total cost is 5.5% above the exact Hungarian answer with 8
+  trees and 2.9% with 32. Two independent uniform clouds are the hard case: every node's two
+  subsets have nearly the same Gaussian, so the transport map is close to the identity and its
+  eigenvectors are noise. At 400 points that lands 26% above exact with 64 trees, where random
+  splits reach 16%. Leaving those clouds unmatched is 120 times worse. The paper reports
+  typically under 1% with 64 candidates; it ranks all candidates before merging, which this
+  version, merging as it goes in bounded memory, does not. The bijection is good enough for a
+  morph to read as a morph; it is not a solver for the exact assignment.
+- **2D only, equal sizes only, uniform weights only.** No partial or unbalanced transport.
+- **Deterministic for a given seed and options, across worker counts.** Not promised bit-identical
+  across JDKs or CPUs.
+
+Algorithm from Baptiste Genest, Nicolas Bonneel, Vincent Nivoliers and David Coeurjolly,
+"BSP-OT: Sparse transport plans between discrete measures in loglinear time", ACM Transactions on
+Graphics (SIGGRAPH Asia 2025), https://perso.liris.cnrs.fr/david.coeurjolly/publication/bspot-25/.
+The Gaussian split follows `gaussianPartialBSPOT` and the merge `MergePlansNoPar` and
+`BijectiveMatching::swapIfUpgrade` in their MIT-licensed
+reference implementation, https://github.com/baptiste-genest/BSP-OT, Copyright (c) 2025 the same
+authors.
+
+`src/jvmMain/kotlin/afield/stdlib/bspot.kt` — [read the source](source/jvmMain/afield/stdlib/bspot/)
+
+### Top-level functions { #bspot-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">matchPoints</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">trees</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">BspOt2D</span><span class="p">.</span><span class="nc">Result</span></code>](source/jvmMain/afield/stdlib/bspot/#L94) | Matches `from` onto `to` one-to-one with [`BspOt2D`](graphics.md#bspot-kt-bspot2d); both lists must be the same size. |
+
+### BspOt2D { #bspot-kt-bspot2d }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BspOt2D</span></code>](source/jvmMain/afield/stdlib/bspot/#L120)
+
+Equal-cardinality, equal-mass 2D BSP-OT with squared Euclidean cost: median BSP proposals split along Gaussian-guided or random directions, merged by alternating cycles and improving two-point swaps.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">simdLanes</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/bspot/#L124) | Doubles per SIMD register on this machine. |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Splits</span></code>](source/jvmMain/afield/stdlib/bspot/#L127) | How each BSP node chooses the direction it splits both subsets along. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">GAUSSIAN&#95;LEAF</span></code>](source/jvmMain/afield/stdlib/bspot/#L141) | Subsets smaller than this stop fitting Gaussians under `Splits.GAUSSIAN`. |
+| [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Options</span><span class="p">(</span><span class="k">val</span> <span class="n">trees</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="k">val</span> <span class="n">splits</span><span class="p">:</span> <span class="nc">Splits</span> <span class="o">=</span> <span class="nc">Splits</span><span class="p">.</span><span class="nc">GAUSSIAN</span><span class="p">,</span> <span class="k">val</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="k">val</span> <span class="n">simd</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">cycleMerge</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">swapPasses</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">parallelism</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nf">minOf</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="nc">Runtime</span><span class="p">.</span><span class="nf">getRuntime</span><span class="p">(</span><span class="p">)</span><span class="p">.</span><span class="nf">availableProcessors</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/bspot/#L144) | Settings for `match`. |
+| [<code class="highlight"><span class="k">class</span> <span class="nf">Result</span><span class="p">(</span><span class="k">val</span> <span class="n">targetOfSource</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">squaredCost</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">costHistory</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/bspot/#L168) | A bijection from sources to targets, and what it cost. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">match</span><span class="p">(</span><span class="n">ax</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">ay</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">bx</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">by</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="n">options</span><span class="p">:</span> <span class="nc">Options</span> <span class="o">=</span> <span class="nc">Options</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">IntArray</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">Result</span></code>](source/jvmMain/afield/stdlib/bspot/#L195) | Matches source points `(ax`i`, ay`i`)` onto target points `(bx`j`, by`j`)`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">validatePermutation</span><span class="p">(</span><span class="n">p</span><span class="p">:</span> <span class="nc">IntArray</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">p</span><span class="p">.</span><span class="n">size</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/bspot/#L215) | Throws `IllegalArgumentException` unless `p` is a permutation of `0 until n`. |
 
 ## colors.kt { #colors-kt }
 

@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 167 transcripts on every build, at three
-depths. 87 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 168 transcripts on every build, at three
+depths. 88 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -262,6 +262,30 @@ one coroutine at a time, so a plain `var` per control is enough. All three are `
 launches them, advances 90 frames, and stops them.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/inertial_movement/metadata.edn)
+
+### point_matching
+
+One-to-one matching between point clouds, a million points a side, with `matchPoints` and the
+`BspOt2D` matcher behind it, in three boxes that get bigger in that order. `match_hello` pairs 600
+points in a disc with 600 on a ring around it and draws every pair twice: matched, which comes out
+as a sunburst, and paired by list index, which is a tangle of chords through the middle.
+`square_to_heart` is a launched loop that flows 4000 points from a square into a heart and back,
+the matched version beside the index-order one. Each point keeps the colour of where it started, so
+on the left the colours stay in their sectors and on the right they turn to grey mush half way.
+`million_pixels` makes every pixel of a 1024 x 1024 square a source point, scatters a million
+targets through three discs, and paints each pixel with where its target sits in its disc: hue for
+the angle, lightness for the distance from the centre. The result is three colour wheels, each
+stretched over the part of the square that drains into it. The seams between them are the BSP
+splits; where the eight merged trees disagree, the edge goes grainy. The matcher splits along
+Gaussian-guided directions as the reference implementation does, and on these shapes it lands a few
+percent above the exact optimum (`BspOtTest` measures it against the Hungarian answer). CI executes
+the two still boxes, launches the morph for 90 frames, and stops it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/point_matching/million_pixels.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="rms travel" embed=true hidden=true timeout="300" padding="12" name="point-matching-million" alt="A square filled edge to edge with three large distorted colour wheels: one covering the upper left and centre, a smaller one at the upper right, and one across the bottom. Each wheel's hues run all the way round a dark centre and pale towards its rim. Where two wheels meet the boundary is a straight or gently curved seam, ragged and speckled in places" macro-file="../../dev_docs/agents/transcripts/point_matching.yaml" capture-box="million_pixels"}
+// The transcript builds and runs all three boxes; this is million_pixels' output.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/point_matching/metadata.edn)
 
 ### shared_types_demo
 
