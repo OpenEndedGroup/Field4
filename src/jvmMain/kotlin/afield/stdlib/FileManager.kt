@@ -24,8 +24,9 @@ import java.util.stream.Stream
  * session, which resolves, in order: absolute and `~/` paths; `%document/…` and `%project/…`;
  * any name registered with [FileManager.add] or `FileManager["name"] = dir`; globs, by walking
  * the search roots and taking the first sorted match; and otherwise a plain relative name looked
- * up in the document's `files/` directory and then in the `files/` directory of every workspace
- * project the document belongs to.
+ * up in the document's `files/` directory, then in the `files/` directory of every workspace
+ * project the document belongs to, and then in every directory put on the search list with
+ * `FileManager.add(name, dir, search = true)`, in the order they were added.
  *
  * Resolutions are cached per session and dropped when the named-directory table changes, and a
  * child path that would escape its root is rejected. Every lookup is appended to the session
@@ -50,7 +51,9 @@ const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY = "fileManagerAccessHistory"
  * Reach for it as [files] rather than constructing one. Resolution is tried in a fixed order — absolute and `~/`
  * paths; `%document/…` and `%project/…`; any name registered with [FileManager.add]; a glob, matched by walking the
  * search roots and taking the **first sorted** match; and otherwise a plain relative name looked for in the
- * document's `files/` directory and then in each workspace project the document belongs to.
+ * document's `files/` directory, then in each workspace project the document belongs to, and then in each directory
+ * registered with `search = true` ([FileManager.searchNames], in order). A name found nowhere resolves into the
+ * document's `files/`, never into a shared search directory.
  *
  * Two things worth knowing. A resolution is cached only **if the file exists**, so a name you resolve before
  * creating the file is re-resolved next time rather than being stuck; and a spec that would climb out of its root
@@ -206,7 +209,9 @@ class FieldFileManager internal constructor(private val session: SessionInformat
     }
 
     private fun searchRoots(): List<FileSearchRoot> {
-        return listOf(FileSearchRoot("document", documentFilesDirectory)) + currentProjectFileRoots(create = false)
+        return listOf(FileSearchRoot("document", documentFilesDirectory)) +
+            currentProjectFileRoots(create = false) +
+            FileManager.searchDirectories().map { (name, path) -> FileSearchRoot("search:$name", path) }
     }
 
     private fun currentProjectFilesDirectories(create: Boolean): List<Path> {
@@ -318,6 +323,7 @@ class FieldFileManager internal constructor(private val session: SessionInformat
 object FileManager {
     private val managers = Collections.synchronizedMap(WeakHashMap<SessionInformation, FieldFileManager>())
     private val namedDirectories = ConcurrentHashMap<String, Path>()
+    private val searchOrder = mutableListOf<String>()
     private val version = AtomicLong(0)
 
     /** How many lookups [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] keeps before dropping the oldest. Applied to the
@@ -383,10 +389,12 @@ object FileManager {
     operator fun get(name: String): Path? = namedDirectory(name)
 
     /** [add] from a string path, with `~` expanded first. */
-    fun add(name: String, directory: String, create: Boolean = false): Path = add(name, expandHome(directory), create)
+    fun add(name: String, directory: String, create: Boolean = false, search: Boolean = false): Path =
+        add(name, expandHome(directory), create, search)
 
     /** [add] from a `File`. */
-    fun add(name: String, directory: File, create: Boolean = false): Path = add(name, directory.toPath(), create)
+    fun add(name: String, directory: File, create: Boolean = false, search: Boolean = false): Path =
+        add(name, directory.toPath(), create, search)
 
     /**
      * Registers [directory] under [name] so `%name/…` resolves into it, returning the absolute path stored.
@@ -395,18 +403,28 @@ object FileManager {
      * registering an existing name replaces it without warning. Pass `create = true` to make the directory rather
      * than require it.
      *
+     * Pass `search = true` to also put the directory on the search list, so a plain name like `"kick.wav".file`
+     * (and a glob) looks in it after the document's and the projects' `files/`. Search directories are tried in the
+     * order they were added, and the access history names the one that answered as `search:<name>`. A file found in
+     * none of them still resolves into the document's `files/`. Re-registering a name replaces its search membership
+     * too, so `FileManager["name"] = dir` takes a directory off the search list.
+     *
      * The name must look like an identifier (letters, digits, `_`, `-`, not starting with a digit); a leading `%` or
      * `$` is stripped for you. `document` and `project` are **reserved**, since they are the built-in roots.
      *
      * @throws IllegalArgumentException on a malformed or reserved name, or when the path is not a directory
      */
-    fun add(name: String, directory: Path, create: Boolean = false): Path {
+    fun add(name: String, directory: Path, create: Boolean = false, search: Boolean = false): Path {
         val cleanName = validateName(name)
         val root = directory.toAbsolutePath().normalize()
         if (create) Files.createDirectories(root)
         require(Files.isDirectory(root)) { "FileManager directory '$cleanName' is not a directory: $root" }
-        namedDirectories[cleanName] = root
-        version.incrementAndGet()
+        synchronized(searchOrder) {
+            namedDirectories[cleanName] = root
+            searchOrder.remove(cleanName)
+            if (search) searchOrder.add(cleanName)
+            version.incrementAndGet()
+        }
         return root
     }
 
@@ -416,10 +434,21 @@ object FileManager {
      * @throws IllegalArgumentException on a malformed or reserved name, the same as [add]
      */
     fun remove(name: String): Boolean {
-        val removed = namedDirectories.remove(validateName(name)) != null
-        if (removed) version.incrementAndGet()
-        return removed
+        val cleanName = validateName(name)
+        return synchronized(searchOrder) {
+            val removed = namedDirectories.remove(cleanName) != null
+            searchOrder.remove(cleanName)
+            if (removed) version.incrementAndGet()
+            removed
+        }
     }
+
+    /**
+     * The names on the search list — registered with `search = true` — in the order a plain name tries them, after
+     * the document's and the projects' `files/`. A snapshot; change it with [add] and [remove].
+     */
+    val searchNames: List<String>
+        get() = synchronized(searchOrder) { searchOrder.toList() }
 
     /** Clears every session's resolution cache. Registering or removing a named directory already does this. */
     fun clearCache() {
@@ -431,6 +460,10 @@ object FileManager {
     internal fun namedDirectory(name: String): Path? = namedDirectories[validateName(name)]
 
     internal fun globalVersion(): Long = version.get()
+
+    internal fun searchDirectories(): List<Pair<String, Path>> = synchronized(searchOrder) {
+        searchOrder.mapNotNull { name -> namedDirectories[name]?.let { name to it } }
+    }
 
     private fun validateName(name: String): String {
         val clean = name.removePrefix("%").removePrefix("$").trim()

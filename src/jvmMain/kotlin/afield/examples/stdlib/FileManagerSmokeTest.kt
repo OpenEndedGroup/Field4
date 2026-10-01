@@ -38,6 +38,7 @@ object FileManagerSmokeTest {
             testDocumentDefaultAndExplicitPaths()
             testProjectLookupAndGlob()
             testNamedDirectoryLookup()
+            testSearchListLookup()
             testAccessHistoryPersistsOnRoot()
             testAccessHistorySurfacesAsSyntheticHistoryItem()
             println("FileManager smoke tests passed")
@@ -104,6 +105,57 @@ object FileManagerSmokeTest {
             require(sameFilePath(direct.file, namedFile)) { "Expected direct named-root lookup" }
             require(sameFilePath(glob.file, namedFile)) { "Expected named-root glob lookup" }
         }
+    }
+
+    private fun testSearchListLookup() {
+        val fixture = fixture("file-manager-search")
+        val name = "fmsearch_${fixture.documentDir.name}"
+        val searchRoot = Files.createTempDirectory("file-manager-search-root").toFile()
+        val onlyThere = File(searchRoot, "kit/only-there.json").also {
+            it.parentFile.mkdirs()
+            it.writeText("""{"search":true}""")
+        }
+        File(searchRoot, "shadowed.json").writeText("""{"from":"search"}""")
+        val documentCopy = File(fixture.documentDir, "files/shadowed.json").also {
+            it.parentFile.mkdirs()
+            it.writeText("""{"from":"document"}""")
+        }
+
+        try {
+            Box.withBoxContextNow(fixture.box) {
+                FileManager.add(name, searchRoot)
+                require(!sameFilePath("kit/only-there.json".file, onlyThere)) {
+                    "A root added without search = true must not answer a plain name"
+                }
+
+                FileManager.add(name, searchRoot, search = true)
+                require(FileManager.searchNames.contains(name)) { "Expected $name on FileManager.searchNames" }
+                require(sameFilePath("kit/only-there.json".file, onlyThere)) {
+                    "Expected a plain name to fall through to the search list"
+                }
+                val history = fixture.box.root.getPropertyRaw(FILE_MANAGER_ACCESS_HISTORY_PROPERTY) as List<*>
+                val source = (history.last() as Map<*, *>)["source"]
+                require(source == "search:$name") { "Expected source search:$name, got $source" }
+
+                require(sameFilePath("**/only-there.json".file, onlyThere)) { "Expected a glob to search the search list" }
+                require(sameFilePath("shadowed.json".file, documentCopy)) {
+                    "Expected the document's files/ to win over a search directory"
+                }
+                val missing = "not-anywhere.json".file
+                require(sameFilePath(missing, File(fixture.documentDir, "files/not-anywhere.json"))) {
+                    "Expected a missing name to resolve into the document's files/, got ${missing.absolutePath}"
+                }
+
+                FileManager[name] = searchRoot
+                require(!FileManager.searchNames.contains(name)) { "Re-registering with set should leave the search list" }
+                require(!sameFilePath("kit/only-there.json".file, onlyThere)) {
+                    "Expected the cached search resolution to be dropped once the root left the search list"
+                }
+            }
+        } finally {
+            FileManager.remove(name)
+        }
+        require(!FileManager.searchNames.contains(name)) { "Expected remove to clear the search list entry" }
     }
 
     private fun testAccessHistoryPersistsOnRoot() {

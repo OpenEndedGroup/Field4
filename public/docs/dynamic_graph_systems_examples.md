@@ -25,27 +25,6 @@ That inverts three things a static graph lets you take for granted:
   moves points, spawns them and kills them, so the cloud's *size* is an output. Three of the ten
   shipped processes add points and two remove them.
 
-??? aside "Three parameters that do not mean what they read"
-    **`SpringMotionProcess.restLengthScale` is not a length.** An edge's rest length is
-    `restLengthScale / weight`, so the units are length × weight. The weights these systems produce
-    per frame are of order 0.02, so the default `1.0` asks for a rest length of **50 world units** in
-    a cloud one unit across. Set it to `desiredRestLength × typicalWeight`; the morphogenesis clip
-    below uses `0.075` for a rest length of 0.05 at a typical weight of 1.5.
-
-    **`PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op**: `degree < 0` cannot hold and
-    `resource < -Double.MAX_VALUE` cannot hold, so it marks nothing. That is how
-    `exampleDynamicMorphogenesisStep` configures it, so the pipeline it demonstrates pairs an uncapped
-    growth rule with a death rule that cannot fire, and the population compounds once growth starts.
-    `DirectedTipGrowthProcess.maxPointCount` is the ceiling that bounds it.
-
-    **`Vec3AlphaEventHypergraphCollapseSystem`'s reinforcement is scaled by triangle area.** Its
-    increment is multiplied by `min(1, area)`, and a triangle in a cloud one unit across has an area of
-    a few thousandths, so it reaches **0.3 %** of the shared ceiling where the other five reach at
-    least a sixth of it. Give this one a `reinforce` two orders of magnitude larger than its
-    neighbours or its edges will be invisible next to theirs.
-
-    The measurements behind these are in `dev_docs/DYNAMIC_GRAPH_SYSTEMS_MEASUREMENTS.md`.
-
 ## 1. Six ways to propose an edge
 
 Six `DynamicGraphSystem`s ship, and they differ in what they think an edge *means*. Run all six over
@@ -84,7 +63,7 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
     "routing, 1 arc" to Vec3SignalRoutingGraphSystem(
         neighborhoodK = 6, ttl = 10f, reinforce = 1.0, maxWeight = ceiling, routeCount = 1, maxNeighborRadius = 0.10),
     "alpha-event" to Vec3AlphaEventHypergraphCollapseSystem(
-        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforce = 4.0, maxWeight = ceiling,
+        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforcePerUnitArea = 4.0, maxWeight = ceiling,
         maxNeighborRadius = 0.09, minArea = 1e-4)
 )
 
@@ -143,6 +122,11 @@ and joins it to whatever it lands nearest, so it is a functional map, one arc ou
 the pinwheel in the top-middle panel is the phyllotaxis spiral of the cloud made visible. The mutual
 kNN's 88.4 % sits between the two for no reason to do with its design; that is simply what a dense
 mesh gives you at `k = 5`.
+
+The alpha-event panel is faint for a different reason. Its parameter is `reinforcePerUnitArea`, not
+`reinforce`: each increment is multiplied by `min(1, area)`, and a triangle in this disc has an area of
+a few thousandths, so the same 4.0 reaches 0.3 % of the ceiling. Give it about a hundred times what
+the others get to bring its edges level with theirs.
 
 ## 2. Reinforcement and forgetting
 
@@ -422,8 +406,9 @@ coherent tips, merge collided ones, diffuse a resource along the edges and climb
 prune what has come loose. Graph and geometry are then coupled in both directions: the edges decide
 where the points go and the points decide which edges get proposed.
 
-Growth needs a population budget (the warning at the top of this page has the curve), so the clip
-below caps at 900 points. It also needs a **geometric step schedule** (`ramp`), because the birth
+Growth needs a population budget. Tip growth has no ceiling of its own, and on a 40-point ring with
+nothing pruning it the population sits still for 109 frames and then grows about 5 % per frame, so the
+clip below caps at 900 points with `maxPointCount`. It also needs a **geometric step schedule** (`ramp`), because the birth
 phase is over inside the first seventh of the run and a linear schedule would spend the other six
 sevenths on the aftermath.
 
@@ -459,9 +444,9 @@ fun morph(grow: Boolean): Morph {
     for (i in 0 until 16) kinetics.resource[i] = 6.0
     val stages = mutableListOf<DynamicPointProcess>(
         SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
-        // restLengthScale is length x weight -- see the warning at the top of this page. A rest
-        // length of 0.05 at a typical weight of 1.5 is 0.075.
-        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthScale = 0.075, maxSpeed = 0.30)
+        // rest = restLengthTimesWeight / weight: a rest length of 0.05 at a typical weight of 1.5
+        // is 0.075.
+        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30)
     )
     if (grow) stages += DirectedTipGrowthProcess(
         coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,

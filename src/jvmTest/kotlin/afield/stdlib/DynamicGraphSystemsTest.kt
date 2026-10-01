@@ -470,7 +470,7 @@ class DynamicGraphSystemsTest {
 
         val (alphaEdges, alphaClosed) = closedFraction(
             Vec3AlphaEventHypergraphCollapseSystem(
-                neighborhoodK = 8, alphaRadius = 0.10, ttl = 10f, reinforce = 1.0,
+                neighborhoodK = 8, alphaRadius = 0.10, ttl = 10f, reinforcePerUnitArea = 1.0,
                 maxWeight = 8.0, maxNeighborRadius = 0.12,
             ),
         )
@@ -504,7 +504,7 @@ class DynamicGraphSystemsTest {
             stepDynamicGraph(
                 1f / 60f, state, edges, hash,
                 Vec3AlphaEventHypergraphCollapseSystem(
-                    neighborhoodK = 3, alphaRadius = 0.05, ttl = 10f, reinforce = 100.0,
+                    neighborhoodK = 3, alphaRadius = 0.05, ttl = 10f, reinforcePerUnitArea = 100.0,
                     maxWeight = 8.0, maxNeighborRadius = 0.05, minArea = minArea,
                 ),
             )
@@ -653,8 +653,8 @@ class DynamicGraphSystemsTest {
         }
         assertEquals(state.pointCount, edges.toPointGraph().pointCount)
 
-        // The cap is the only population control this composition has — its prune stage is configured
-        // `minDegree = 0`, which cannot mark anything — so it must be doing the work by frame 200.
+        // The cap is the only population control this composition has — it has no prune stage — so
+        // it must be doing the work by frame 200.
         assertEquals(1200, state.pointCount, "uncapped, this reaches 3603 points by frame 199")
     }
 
@@ -703,7 +703,7 @@ class DynamicGraphSystemsTest {
         assertEquals(2, edges.toPointGraph().pointCount, "the snapshot must not report phantom vertices")
         assertEquals(1, edges.toPointGraph().edges.size)
 
-        // The control: minDegree = 0 keeps everyone, so the same call is a no-op.
+        // The control: minDegree = 0 with the default minResource keeps everyone, so the same call is a no-op.
         val kept = DynamicPointState(ring(10, 0.3))
         val keptKin = kinetics(kept.pointCount)
         val keptEdges = DynamicEdgeList(kept.pointCount)
@@ -804,7 +804,7 @@ class DynamicGraphSystemsTest {
      * than the same graph with the springs off. The control arm is `springK = 0`, which leaves the
      * cloud exactly where it started.
      *
-     * The rest length is `restLengthScale / weight` — see the KDoc — so the scale here is chosen for
+     * The rest length is `restLengthTimesWeight / weight` — see the KDoc — so the scale here is chosen for
      * the weight the fixture actually carries rather than left at its default.
      */
     @Test
@@ -828,8 +828,8 @@ class DynamicGraphSystemsTest {
                 return sqrt(lengths.sumOf { (it - mean) * (it - mean) } / lengths.size) / mean
             }
             val before = cv()
-            // rest = restLengthScale / weight; the mean gap on this ring is about 0.13.
-            val process = SpringMotionProcess(springK = springK, restLengthScale = 0.13 * weight, damping = 2.0, maxSpeed = 0.5)
+            // rest = restLengthTimesWeight / weight; the mean gap on this ring is about 0.13.
+            val process = SpringMotionProcess(springK = springK, restLengthTimesWeight = 0.13 * weight, damping = 2.0, maxSpeed = 0.5)
             repeat(400) { process.step(1f / 60f, state, kin, edges, hash) }
             return before to cv()
         }
@@ -1423,7 +1423,7 @@ class DynamicGraphSystemsTest {
             for (i in 0 until 16) kin.resource[i] = 6.0
             val stages = mutableListOf<DynamicPointProcess>(
                 SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
-                SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthScale = 0.075, maxSpeed = 0.30),
+                SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30),
             )
             if (grow) stages += DirectedTipGrowthProcess(
                 coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,

@@ -109,7 +109,7 @@ fun exampleSystemSwitching(
             neighborhoodK = 10,
             alphaRadius = 0.22,
             ttl = 2.3f,
-            reinforce = 1.1,
+            reinforcePerUnitArea = 1.1,
             maxWeight = 8.0,
             maxNeighborRadius = 0.30
         )
