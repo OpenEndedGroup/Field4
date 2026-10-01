@@ -65,7 +65,7 @@ data class DocsPassAction(
     val state: String = "done",
     val text: String = "",
     val abandon: Boolean = false,
-    /** A handoff batch: `decisions`, `navigation`, `captures`, `site` or `code`. */
+    /** A handoff batch: `decisions`, `navigation`, `captures`, `site`, `code` or `elsewhere`. */
     val batch: String = "",
 )
 
@@ -108,7 +108,7 @@ private val docsPassJson = Json { encodeDefaults = true; explicitNulls = true }
 private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "cancel-job", "group-handoffs", "set-batch")
 
 /** The batches `tools/docs_notes.py` knows, in the order they are worked through. */
-private val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code")
+private val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code", "elsewhere")
 
 private val docsPassTag = Regex("[a-z][a-z0-9_-]{0,63}")
 private val docsPassPage = Regex("[A-Za-z0-9_./-]{1,200}")

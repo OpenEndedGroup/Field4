@@ -147,6 +147,9 @@ object FnIntervalRules {
         "Neg" to "[−hi, −lo], exact",
         "Abs" to "exact; folds a range that straddles 0 to [0, max(|lo|, |hi|)]",
         "Floor" to "[floor(lo), floor(hi)], exact — the step inside the interval is covered by monotonicity",
+        "Sqrt" to "monotone and correctly rounded: [sqrt(lo), sqrt(hi)] exact on the non-negative part; NaN when the range reaches below 0",
+        "Rem" to "endpoint-exact when b is a point and [lo, hi] stays inside one period on one side of 0 (fmod is exact); otherwise sign-of-a, |r| < max|b|, |r| <= |a|; NaN when b may be 0 or a infinite",
+        "Hash" to "exact hull over the integers a.toLong() can take when there are at most 256 of them; [0, 1] otherwise",
         "Sin" to "endpoint values plus ±1 when a crest/trough (π/2 + 2kπ / −π/2 + 2kπ) lies inside; widened",
         "Cos" to "endpoint values plus ±1 when 2kπ / π + 2kπ lies inside; widened",
         "Exp" to "monotone endpoints, widened, floored at 0",
@@ -255,6 +258,50 @@ object FnRangeMath {
     }
 
     fun floor(a: FnRange): FnRange = unary(a) { FnRange(Math.floor(it.lo), Math.floor(it.hi)) }
+
+    /** `sqrt`: monotone and correctly rounded, so the endpoints are exact. */
+    fun sqrt(a: FnRange): FnRange = unary(a) {
+        when {
+            it.hi < 0.0 -> FnRange.NAN
+            it.lo < 0.0 -> FnRange(0.0, Math.sqrt(it.hi), true)
+            else -> FnRange(Math.sqrt(it.lo), Math.sqrt(it.hi))
+        }
+    }
+
+    /**
+     * Kotlin's `a % b`. Exact (fmod does not round), with the sign of `a` and magnitude below `|b|`
+     * and no larger than `|a|`. When `b` is one number and `[lo, hi]` holds no multiple of it on one
+     * side of zero, `a % b` is increasing across the interval, so its endpoints bound it — and the
+     * test for that is `lo % b <= hi % b` with the width below `|b|`, since a wrap would reverse them.
+     */
+    fun rem(a: FnRange, b: FnRange): FnRange = binary(a, b) {
+        val bMax = maxOf(Math.abs(b.lo), Math.abs(b.hi))
+        val nan = containsZero(b) || hasInfinity(a)
+        if (b.lo == b.hi && b.lo != 0.0 && !hasInfinity(a) && b.lo.isFinite() &&
+            (a.lo >= 0.0 || a.hi <= 0.0) && a.hi - a.lo < Math.abs(b.lo)
+        ) {
+            val rl = a.lo % b.lo
+            val rh = a.hi % b.lo
+            if (rl <= rh) return@binary FnRange(rl, rh)
+        }
+        if (!nan && Math.abs(a.lo) < minOf(Math.abs(b.lo), Math.abs(b.hi)) &&
+            Math.abs(a.hi) < minOf(Math.abs(b.lo), Math.abs(b.hi)) && (b.lo > 0.0 || b.hi < 0.0)
+        ) return@binary FnRange(a.lo, a.hi)
+        FnRange(maxOf(minOf(0.0, a.lo), -bMax), minOf(maxOf(0.0, a.hi), bMax), nan)
+    }
+
+    /** `hashToUnit(seed, a.toLong())`: exact over a few integers, `[0, 1]` beyond. */
+    fun hash(seed: Long, a: FnRange): FnRange {
+        var out = if (a.maybeNaN) FnRange.point(Functions.hashToUnit(seed, 0L)) else FnRange.EMPTY
+        if (a.isEmpty) return out
+        val lo = a.lo.toLong()
+        val hi = a.hi.toLong()
+        if (hi >= lo && hi - lo in 0..255) {
+            for (k in lo..hi) out = out.hull(FnRange.point(Functions.hashToUnit(seed, k)))
+            return out
+        }
+        return out.hull(FnRange(0.0, 1.0))
+    }
 
     /**
      * `t - floor(t)` for one value drawn from [a] — the fractional part, which [sub] of [a] and
@@ -524,6 +571,9 @@ fun evalFormulaInterval(
         is FnExpr.Neg -> FnRangeMath.neg(walk(expr.a))
         is FnExpr.Abs -> FnRangeMath.abs(walk(expr.a))
         is FnExpr.Floor -> FnRangeMath.floor(walk(expr.a))
+        is FnExpr.Sqrt -> FnRangeMath.sqrt(walk(expr.a))
+        is FnExpr.Rem -> FnRangeMath.rem(walk(expr.a), walk(expr.b))
+        is FnExpr.Hash -> FnRangeMath.hash(expr.seed, walk(expr.a))
         is FnExpr.Sin -> FnRangeMath.sin(walk(expr.a))
         is FnExpr.Cos -> FnRangeMath.cos(walk(expr.a))
         is FnExpr.Exp -> FnRangeMath.exp(walk(expr.a))
@@ -651,7 +701,7 @@ object FnIntervals {
         fun walk(f: Functions.Fn) {
             val node = f.graphNode()
             if (node.numbers.containsKey("value")) return
-            if (FnFormulas.valueOf(node.op) == null) out += node.op
+            if (FnFormulas.valueOf(node) == null) out += node.op
             for (edge in node.children) walk(edge.fn)
         }
         walk(fn)
@@ -683,7 +733,7 @@ object FnIntervals {
             node.numbers["value"]?.let { return FnRange.point(it) }
             val memo = ranges.getOrPut(fn) { HashMap(2) }
             memo[x]?.let { return it }
-            val formula = FnFormulas.valueOf(node.op)
+            val formula = FnFormulas.valueOf(node)
                 ?: throw FnIntervalRefusal(refusalFor(listOf(node.op)))
             val r = if (node.op == "multiply") {
                 val left = childOf(fn, "left")

@@ -86,7 +86,21 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: top; }
         th { color: var(--soft); font-weight: 300; border-top: none; }
-        td.num { text-align: right; white-space: nowrap; }
+        th.num, td.num { text-align: right; white-space: nowrap; }
+        .job-panel { position: sticky; top: 0; z-index: 8; padding: 10px 18px; background: #000; backdrop-filter: none; }
+        .job-line { display: flex; gap: 12px; align-items: center; min-height: 32px; }
+        .job-line .job-name { color: var(--text); white-space: nowrap; }
+        .job-line .job-last { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .job-line .job-run { color: var(--cyan); white-space: nowrap; }
+        .job-line button { padding: 6px 12px; }
+        .job-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--soft); flex: none; opacity: .4; }
+        .job-panel.running .job-dot { background: var(--cyan); opacity: 1; animation: job-pulse 1.2s ease-in-out infinite; }
+        .job-panel.failed .job-dot { background: var(--danger); opacity: 1; }
+        .job-panel.ok .job-dot { background: var(--ok); opacity: 1; }
+        .job-panel.waiting .job-dot { background: var(--warn); opacity: 1; }
+        .job-panel.running { border-color: rgba(72, 201, 255, 0.35); }
+        @keyframes job-pulse { 50% { opacity: .25; } }
+        #job-detail pre.log { max-height: 40vh; margin-top: 8px; }
         td button { padding: 5px 10px; }
         .state-running, .state-stopping { color: var(--cyan); }
         .state-done, .state-finished { color: var(--ok); }
@@ -127,6 +141,22 @@
 <script src="/fieldWebglBackground.js"></script>
 <script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
 <main>
+    <!-- Pinned at the top, so pressing any button shows at once that something started, and what
+         it is doing, without scrolling down to find out. -->
+    <section id="job-panel" class="job-panel idle">
+        <div class="job-line">
+            <span class="job-dot" aria-hidden="true"></span>
+            <span class="job-name" id="job-title">no job yet</span>
+            <span class="job-last muted" id="job-last"></span>
+            <span class="job-run" id="job-run"></span>
+            <button id="toggle-log" type="button">log</button>
+            <button id="cancel-job" type="button" class="danger">Cancel job</button>
+        </div>
+        <div id="job-detail" hidden>
+            <p class="muted" id="job-file"></p>
+            <pre class="log" id="job-log"></pre>
+        </div>
+    </section>
     <header>
         <div>
             <h1>Documentation revision pass</h1>
@@ -197,11 +227,6 @@
         <p class="muted">Commit runs the repository's pre-commit guard (several minutes). Land merges <code>main</code> into the pass branch if it has moved on, then fast-forwards <code>main</code> in this checkout. Nothing is pushed.</p>
     </section>
 
-    <section>
-        <h2>Job <span class="count" id="job-title"></span></h2>
-        <div class="row"><button id="cancel-job" type="button" class="danger">Cancel job</button><span class="muted" id="job-file"></span></div>
-        <pre class="log" id="job-log"></pre>
-    </section>
 </main>
 <div id="dialog" hidden><div class="box"><div class="message"></div><textarea hidden></textarea><div class="buttons"><button type="button" data-answer="cancel">Cancel</button><button type="button" data-answer="ok" class="primary">OK</button></div></div></div>
 <script>
@@ -236,6 +261,10 @@
     // No token: this route answers a browser on this machine, on Field's own pages, and nothing
     // else (loopback + same-site; see docsPass.kt).
     const act = async (action, extra = {}) => {
+        // Say at once that the button was heard; the next refresh replaces this with the job's state.
+        $("job-panel").className = "job-panel running";
+        $("job-title").textContent = `${action} · starting…`;
+        $("job-last").textContent = "";
         try {
             const response = await fetch("/api/docs-improvement/pass", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...extra }) });
             const text = await response.text();
@@ -293,7 +322,7 @@
         $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;
     };
 
-    const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code"];
+    const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code", "elsewhere"];
     const renderHandoffRow = h => {
         const open = view.openHandoffs.get(h.id);
         const options = BATCH_KEYS.map(k => `<option value="${k}"${k === h.batch ? " selected" : ""}>${k}</option>`).join("");
@@ -358,11 +387,35 @@
             + files.map(p => `<a href="${href(p)}" target="_blank" rel="noopener">${esc(p.slice("public/docs/".length))}</a>`).join(" ");
     };
 
+    // The pinned panel: what the current job is, its last line of output, and, while a drain runs,
+    // how far it has got. The full log opens below it on demand.
     const renderJob = (job) => {
+        const status = view.status || {}, progress = status.progress;
+        const panel = $("job-panel");
+        const draining = !!(progress && progress.alive);
+        const tail = ((job && job.logTail) || "").trimEnd().split("\n");
+        let state = "idle";
+        if (job && job.running) state = "running";
+        else if (job && job.name) state = job.exitCode === 0 ? "ok" : "failed";
+        if (draining) state = progress.state === "waiting" ? "waiting" : "running";
+        panel.className = `job-panel ${state}`;
+        $("job-title").textContent = job && job.name
+            ? `${job.name} · ${job.running ? "running" : job.exitCode === 0 ? "finished" : "exit " + job.exitCode}`
+            : (draining ? "revise · running" : "no job yet");
+        $("job-last").textContent = job && job.name ? (tail[tail.length - 1] || "") : "";
+        if (progress && (draining || progress.state === "waiting")) {
+            const parts = progress.partitions || [];
+            const done = parts.filter(p => ["done", "failed", "interrupted"].includes(p.state)).length;
+            const running = parts.filter(p => p.state === "running").length;
+            $("job-run").textContent = progress.state === "waiting" && progress.resumeAtEpochMs
+                ? `waiting for the usage limit until ${new Date(progress.resumeAtEpochMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                : `${done}/${parts.length} pages · ${running} running`;
+        } else {
+            $("job-run").textContent = "";
+        }
+        $("job-file").textContent = job && job.logFile ? job.logFile : "";
         const log = $("job-log");
         const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
-        $("job-title").textContent = job && job.name ? `${job.name} · ${job.running ? "running" : "exit " + job.exitCode}` : "none yet";
-        $("job-file").textContent = job && job.logFile ? job.logFile : "";
         log.textContent = (job && job.logTail) || "";
         if (atBottom) log.scrollTop = log.scrollHeight;
     };
@@ -411,6 +464,7 @@
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
     $("land").onclick = async () => await confirmed("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
+    $("toggle-log").onclick = () => { const d = $("job-detail"); d.hidden = !d.hidden; $("toggle-log").textContent = d.hidden ? "log" : "hide log"; };
     $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
 
     $("changes").addEventListener("click", async event => {

@@ -766,12 +766,13 @@ class BatchTest(unittest.TestCase):
             ("Give the Underfit Mancini page real audio, or retire it", "project", True): "decisions",
             ("Move Linear Algebra out of Reference in the nav", "crosscutting", False): "navigation",
             ("Shorten the keyframes page's sidebar title", "crosscutting", False): "navigation",
-            ("Capture the MuScriptor piano roll for the transcription page", "project", False): "captures",
-            ("Add a path-traced render of the mounted photo plaque", "project", False): "captures",
             ("Give mid-page h1 headings more space above than below", "crosscutting", False): "site",
             ("Auto-link repo source paths in docs to GitHub", "crosscutting", False): "site",
             ("Rename or rescale the three misnamed dynamic-graph parameters", "project", False): "code",
             ("Add two-keystroke chord sequences to keybindings", "project", False): "code",
+            ("Capture the MuScriptor piano roll for the transcription page", "project", False): "elsewhere",
+            ("Add a path-traced render of the mounted photo plaque", "project", False): "elsewhere",
+            ("Capture a real EnCodec reconstruction of real music for the codec microscope", "project", False): "elsewhere",
         }
         for (title, scope, blocking), expected in cases.items():
             self.assertEqual(dn.classify_handoff(self.h(title, scope, blocking)), expected, title)
@@ -860,6 +861,41 @@ class SessionTest(unittest.TestCase):
         with mock.patch("builtins.print"):
             dn.end_session(self.git, self.store, "navigation", abandon=True)
         self.assertFalse(worktree.exists())
+
+
+OUTCOMES_FILE_AGENT = textwrap.dedent("""\
+    import json, re, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    path = re.search(r"Write tool to\\n(\\S+) as a JSON list", prompt).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    json.dump([{"op": "resolve", "id": ids[0][:8], "text": "No edit needed (the handoff's commit did it).", "memory": "m"},
+               {"op": "resolve", "id": "not-a-note-of-mine", "text": "should be dropped"},
+               {"op": "handoff", "id": ids[0], "text": "not accepted from a file"}], open(path, "w"))
+    """)
+
+
+class OutcomesFileTest(unittest.TestCase):
+    def test_an_outcome_written_to_the_file_is_recorded_like_a_command(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", OUTCOMES_FILE_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "one", "anchor": {"exact": "says hello"}}]}))
+            with mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}}"])
+            self.assertEqual(code, 0)
+            note = json.loads(store.read_text())["annotations"][0]
+            self.assertEqual(dn.note_state(note), "resolved")
+            self.assertEqual(note["resolution"], "No edit needed (the handoff's commit did it).")
+            self.assertEqual([e["kind"] for e in note["thread"]].count("resolution"), 1)
+            self.assertIn("memory", [e["kind"] for e in note["thread"]])
+        finally:
+            repo.close()
 
 
 class KotlinSchemaTest(unittest.TestCase):

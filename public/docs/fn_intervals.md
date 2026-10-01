@@ -93,7 +93,10 @@ val cases = with(Functions) {
         "triangle(0.5)" to triangle(0.5),
         "square(0.5, duty = 0.3)" to square(0.5, duty = 0.3),
         "saw + square * triangle" to (saw(1.0) + square(0.25) * triangle(2.0)),
-        "pulseTrain(0.5)" to pulseTrain(0.5),
+        "pulseTrain, jittered" to pulseTrain(c(0.5, Functions.Domain.ALL), duty = c(0.4, Functions.Domain.ALL),
+            rise = c(0.05, Functions.Domain.ALL), jitter = c(0.3, Functions.Domain.ALL), domain = Functions.Domain.ALL),
+        "saw, eased BOUNCE_OUT" to saw(1.0, amplitude = 0.5, offset = 0.5).ease(Functions.Easing.BOUNCE_OUT),
+        "valueNoise(1, 3)" to valueNoise(1L, 3.0),
         "fn { x -> x * x }" to fn(0.0..100.0, "lambda") { x -> x * x },
     )
 }
@@ -106,19 +109,21 @@ for ((name, f) in cases) {
 display("oscillators", table)
 ```
 
-One enclosure over two hundred periods gives each generator its exact amplitude.
+One enclosure over two hundred periods gives each generator its exact amplitude, or a few ulps more for the jittered pulse train, whose phase arithmetic rounds more often.
+
+`pulseTrain` and the easings (`ease`, `tween`) are bounded too. Their formula depends on settings stored on the node (which edge shape, which body profile, which of the 33 easings), so Field builds a formula for each combination it meets. A jittered pulse train moves each cycle by a seeded hash of the cycle number. Over a piece of x that spans only a few cycles, that hash is bounded by computing it for each of them; over more, it is anywhere in `[0, 1]`.
 
 The last two rows are refused, and refusal is the only thing Field does with a function it can't bound. A bound it guessed would look exactly like one it proved.
 
 ## What can be bounded
 
-Anything built from ops that have a formula: arithmetic, `sin` and `cos`, the three generators above, `gaussian`, `ramp`, `remap`, `smoothStep`, `step`, `sign`, `abs`, `floor`, `exp`, `log`, `pow`, `atan2`, `hypot`, `clamp`, `softClip`, the windows, the modulators (`amplitudeMod`, `ringMod`) and the x-transforms (`shift`, `warp`, `scaleX`). A formula is also what gives an op an exact gradient for `fitGradient`, so the two lists are almost the same.
+Anything built from ops that have a formula: arithmetic, `sin` and `cos`, the three generators above, `gaussian`, `ramp`, `remap`, `smoothStep`, `pulseTrain`, `ease` and `tween` with any of their settings, `step`, `sign`, `abs`, `floor`, `exp`, `log`, `pow`, `atan2`, `hypot`, `clamp`, `softClip`, the windows, the modulators (`amplitudeMod`, `ringMod`) and the x-transforms (`shift`, `warp`, `scaleX`). A formula is also what gives an op an exact gradient for `fitGradient`, so the two lists are almost the same.
 
 Refused, by name:
 
 - **Lambdas** (`fn { ... }`, `mapX`, `mapY`): there is only compiled code, and nothing to read a formula from.
 - **Noise** (`valueNoise`, `perlinNoise`, `fbm`, ...): the value is a hash of position.
-- **`pulseTrain` and its relatives**: the pulse's edge and body shapes are picked from enums, and each cycle is jittered by a hash. These are the next to get formulas.
+- **`pulseBurst` and `pulsePattern`**: built on `pulseTrain` with their own bookkeeping for which pulses sound. These are the next to get formulas.
 - **Ops that carry data** (`piecewise`, splines, `timeline`, `sequence`, ...).
 
 `FnIntervals.unsupportedOps(f)` lists what stops a given function from being bounded.

@@ -1455,6 +1455,14 @@ page's remaining notes as waiting. A non-blocking handoff is filed and you carry
 other notes. A note you handed off needs no other outcome: it waits on the handoff, and comes
 back to this page's queue when the handoff is closed.
 
+If running that command is refused (a permission prompt nobody is there to answer), do not stop
+and do not leave the outcome only in your reply: write it with your Write tool to
+{outcomes_file} as a JSON list, and the harness records it exactly as if the command had run:
+
+  [{{"op": "resolve", "id": "<note-id>", "text": "what you changed", "memory": "optional"}},
+   {{"op": "question", "id": "<note-id>", "text": "what the human must decide"}},
+   {{"op": "memory", "id": "<note-id>", "text": "..."}}]
+
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
 non-obvious about this page — a constraint, a trap, why a sentence is the way it is — that would
@@ -1666,8 +1674,9 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
                   "is right, finish what is half done, and record an outcome for every note, including those the "
                   "earlier edits already address.")
     draft_dir = run_dir / f"{partition.slug}.handoffs"
+    outcomes_file = run_dir / f"{partition.slug}.outcomes.json"
     prompt = AGENT_PROMPT.format(root=git.root, owned=owned, cli=cli, brief=brief, draft_dir=draft_dir,
-                                 page_url=partition.notes[0].get("pageUrl", ""))
+                                 outcomes_file=outcomes_file, page_url=partition.notes[0].get("pageUrl", ""))
     journal = run_dir / f"{partition.slug}.journal.jsonl"
     log_path = run_dir / f"{partition.slug}.log"
     # A page queued again after a usage limit: keep the earlier attempt's log and journal under
@@ -1717,7 +1726,7 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     changed = [f for f in partition.files if file_digest(git.root / f) != before[f]]
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
-    for op in read_journal(journal):
+    for op in read_journal(journal) + read_outcomes_file(outcomes_file, partition, agent.name, ids):
         if op.get("op") == "handoff" and set(op.get("notes", [])) <= ids:
             ops.append(op)
             if op.get("path") and op["path"] not in changed:
@@ -1735,6 +1744,38 @@ def untouched_notes(result: RunResult) -> list[dict[str, Any]]:
     touched = {op.get("id") for op in result.ops if op.get("id")}
     touched |= {i for op in result.ops if op.get("op") == "handoff" for i in op.get("notes", [])}
     return [n for n in result.partition.notes if n["id"] not in touched]
+
+
+def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str]) -> list[dict[str, Any]]:
+    """Outcomes an agent wrote to a file because its notes command was refused.
+
+    The first real drain on 2026-10-01 lost three outcomes that way: each agent printed the exact
+    `resolve` command it wanted to run, the permission check asked for an approval nobody could give,
+    and the note stayed open. Only resolve, question, memory and comment are accepted here (a handoff
+    needs a document the command writes), and every id must be one of this partition's notes,
+    matched by prefix as the command would. Anything else is dropped, not guessed at.
+    """
+    if not path.is_file():
+        return []
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    ops = []
+    for entry in entries if isinstance(entries, list) else []:
+        if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment"):
+            continue
+        wanted = str(entry.get("id", ""))
+        match = [i for i in ids if wanted and (i == wanted or i.startswith(wanted))]
+        text = str(entry.get("text", "")).strip()
+        if len(match) != 1 or not text:
+            continue
+        op = {"op": entry["op"], "id": match[0], "text": text, "author": f"agent:{agent_name}", "atEpochMs": now_ms(),
+              "via": "outcomes file"}
+        if entry["op"] == "resolve" and str(entry.get("memory", "")).strip():
+            op["memory"] = str(entry["memory"]).strip()
+        ops.append(op)
+    return ops
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
@@ -2544,6 +2585,13 @@ BATCHES = [
      "how": "Real engineering, usually one session each.",
      "session": "These are changes to Field itself. Read AGENTS.md first; verify with the gates it names, and "
                 "update the docs page the handoff came from once the code is in."},
+    {"key": "elsewhere", "order": 6, "title": "Elsewhere",
+     "how": "Needs a machine or service this one does not have: the Field Audio worker, a GPU model service, "
+            "the Linux/NVIDIA path tracer. Start a session from the machine that has it.",
+     "session": "These need hardware or a service that is not available everywhere. Before anything else, check "
+                "that this machine has what the handoff needs (the Field Audio worker answering, the GPU, the path "
+                "tracer); if it does not, record that as a comment and stop. A capture must be real (AGENTS.md "
+                "section 3): never substitute a CPU stand-in for a GPU render, or synthetic audio for a model's."},
 ]
 BATCH_KEYS = {b["key"] for b in BATCHES}
 _BATCH_ORDER = {b["key"]: b["order"] for b in BATCHES}
@@ -2551,6 +2599,8 @@ _BATCH_ORDER = {b["key"]: b["order"] for b in BATCHES}
 _DECISION = re.compile(r"^(decide|choose)\b|\bor (retire|drop|remove|keep)\b|\bwhether\b", re.I)
 _CAPTURE = re.compile(r"\b(re)?captur|\bfigure|\bscreenshot|\bvideo|\bhero\b|\bpiano roll|\bboard\b|\bdashboard|"
                       r"\bphase-portrait|\bpath-traced|\brender(ed)? (of|analysis)", re.I)
+_ELSEWHERE = re.compile(r"field audio|path[- ]trac|encodec|nvidia|cuda|\\blora\\b|muscriptor|speech[- ]embedding|"
+                       r"spectral[- ]spaces|corpus microscope|rendered-pat|gpu service", re.I)
 _SITE = re.compile(r"highlight|\bspacing|\bspace above|auto-link|\bhidpi|\btrim\b|\bstyl", re.I)
 _NAV = re.compile(r"\bnav\b|\bmove\b|\bfold\b|\bmerge\b|\brename\b|\bpromote\b|\bh1\b|\bsidebar\b|\btitle\b|"
                   r"\bout of (the )?(tour|reference)", re.I)
@@ -2562,6 +2612,9 @@ def classify_handoff(item: dict[str, Any]) -> str:
     title = item.get("note", "")
     if _DECISION.search(title) or (info.get("blocking") and not _CAPTURE.search(title)):
         return "decisions"
+    # Before captures: a capture that only another machine can take is not this machine's to take.
+    if _ELSEWHERE.search(title):
+        return "elsewhere"
     if _CAPTURE.search(title):
         return "captures"
     if _SITE.search(title):
