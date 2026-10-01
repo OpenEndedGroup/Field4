@@ -28,7 +28,7 @@ will error without one.
 
 `src/jvmMain/kotlin/afield/stdlib/FileManager.kt` — [read the source](source/jvmMain/afield/stdlib/FileManager/)
 
-**Used in:** [Where Field looks for a file](../files_and_paths.md)
+**Used in:** [File management](../files_and_paths.md)
 
 ### Top-level values { #filemanager-kt-values }
 

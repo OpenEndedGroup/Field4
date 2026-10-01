@@ -173,7 +173,7 @@ Do the round trip once yourself: what comes back is not always what went out.
 Both examples below write into a temp directory, because a docs page must not leave files in the
 repository when it runs. In a document of your own you would not do that: name the file and let
 Field place it, with `"ball.obj".file` landing in the document's own `files/` folder next to the
-boxes that made it. [Where Field looks for a file](files_and_paths.md) is that resolver in full.
+boxes that made it. [File management](files_and_paths.md) is that resolver in full.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/geometry_from_disk/roundtrip.png" wait="9.0" capture="box" open-outputs="true" padding="20"}
 :::static

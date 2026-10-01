@@ -7,7 +7,7 @@ The [Tour](funFeatures.md) this page ends is an arc under *Start Here*, meant to
 The document itself — moving around it, finding things in it, and getting at what it used to say.
 
 - [Spatial Navigation](spatial_navigation.md) is the one to read first: `Cmd Cmd`-and-hold to see every box an arrow key can reach, and nine function keys that jump to saved views. It is how you stop reaching for the mouse.
-- [Where Field Looks for a File](files_and_paths.md) is the shortest page here and saves the most time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
+- [File Management](files_and_paths.md) is the shortest page here and saves the most time: `"data.csv".file` resolves inside the document folder first and the workspace project second, so a path keeps working after the document is moved or handed to somebody else.
 - [Your History with Field](history_overview.md) is where to start: Field keeps several kinds of history, each with its own lifetime and its own tool, and that page says which one holds what. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) answers the question you actually have more often, which is what *this line* said a few saves ago, without leaving the editor.
 - [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.

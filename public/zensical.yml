@@ -50,7 +50,7 @@ nav:
     - Spatial Navigation: spatial_navigation.md
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
-    - Where Field Looks for a File: files_and_paths.md
+    - File Management: files_and_paths.md
     # Beside files_and_paths.md: that page answers "which file did this path mean", this one "which
     # box did this value come from", and both are lookups a person otherwise reverse-engineers.
     - Why Does This Value Resolve Here?: why.md

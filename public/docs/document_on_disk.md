@@ -6,7 +6,7 @@ them. This page covers what is in that directory, **which artifact wins when Fie
 each of them is written. Edit one of those files by hand and those two answers decide whether your
 edit survives.
 
-[Where Field looks for a file](files_and_paths.md) covers the `files/` subdirectory — the resolver a
+[File management](files_and_paths.md) covers the `files/` subdirectory — the resolver a
 box uses to find `data.csv`. This page is about everything beside it.
 
 ## What one save writes
