@@ -280,6 +280,10 @@ function filenameFromUrl(rawUrl) {
     if (pathname.endsWith("/dir")) return "/dir";
     if (pathname.endsWith("/code-use")) return "Code Use";
     if (pathname.endsWith("/index.html")) return "document";
+    if (pathname.endsWith("/docs-pass.html")) return "Docs Pass";
+    // Any other Field page (/history.html, /logs.html, ...) is named by its file, not the host.
+    const page = pathname.match(/\/([^/]+)\.html$/);
+    if (page) return page[1];
     if (parsed.hostname) return parsed.hostname;
   } catch (_) {
     // Ignore invalid URLs and fall back below.
