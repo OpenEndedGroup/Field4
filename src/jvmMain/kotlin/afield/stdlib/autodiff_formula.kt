@@ -199,6 +199,22 @@ sealed interface FnExpr {
      *  short-circuits, differentiated as taken. */
     data class IfZero(val test: FnExpr, val then: FnExpr, val otherwise: FnExpr) : FnExpr
 
+    /** `kotlin.math.sqrt` — correctly rounded, so not `Pow(a, 0.5)`, which differs in the last bit and at `-0.0`. */
+    data class Sqrt(val a: FnExpr) : FnExpr
+
+    /**
+     * Kotlin's `a % b` on doubles — the truncated remainder, which keeps the sign of [a] and is
+     * computed exactly (no rounding). `pulseTrain` wraps its phase with `((local % p) + p) % p`.
+     */
+    data class Rem(val a: FnExpr, val b: FnExpr) : FnExpr
+
+    /**
+     * `Functions.hashToUnit(seed, a.toLong())`: a seeded hash of an integer position into `[0, 1)`,
+     * the per-cycle jitter of `pulseTrain`. Its derivative is zero; its interval is exact over a
+     * handful of integers and `[0, 1]` otherwise.
+     */
+    data class Hash(val seed: Long, val a: FnExpr) : FnExpr
+
     /** `if (a == b) then else otherwise`. */
     data class IfEq(val a: FnExpr, val b: FnExpr, val then: FnExpr, val otherwise: FnExpr) : FnExpr
 
@@ -469,8 +485,17 @@ object FnFormulas {
      */
     fun valueOf(op: String): FnExpr? = op.trim().lowercase().let { table[it] ?: valueOnlyTable[it] }
 
-    /** Every op with a declared formula, lower-cased. */
-    val ops: Set<String> get() = table.keys
+    /**
+     * The formula for [node]: a node-parameterised one ([FnShapedFormulas] — `ease`, `tween`,
+     * `pulseTrain`, whose shape is chosen by the node's strings, booleans and seed) or else [of] by op.
+     */
+    fun of(node: FnGraphNode): FnExpr? = FnShapedFormulas.of(node) ?: of(node.op)
+
+    /** [valueOf] for a node, with the same node-parameterised ops first. */
+    fun valueOf(node: FnGraphNode): FnExpr? = FnShapedFormulas.of(node) ?: valueOf(node.op)
+
+    /** Every op with a declared formula, lower-cased — including the node-parameterised ones. */
+    val ops: Set<String> get() = table.keys + FnShapedFormulas.ops
 
     /** Ops with a declared value formula and a deliberately refused gradient, lower-cased. */
     val valueOnlyOps: Set<String> get() = valueOnlyTable.keys
@@ -505,6 +530,9 @@ fun evalFormula(
     is FnExpr.Neg -> -evalFormula(expr.a, x, alpha, childValue)
     is FnExpr.Abs -> kotlin.math.abs(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Floor -> kotlin.math.floor(evalFormula(expr.a, x, alpha, childValue))
+    is FnExpr.Sqrt -> kotlin.math.sqrt(evalFormula(expr.a, x, alpha, childValue))
+    is FnExpr.Rem -> evalFormula(expr.a, x, alpha, childValue) % evalFormula(expr.b, x, alpha, childValue)
+    is FnExpr.Hash -> Functions.hashToUnit(expr.seed, evalFormula(expr.a, x, alpha, childValue).toLong())
     is FnExpr.Sin -> kotlin.math.sin(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> kotlin.math.cos(evalFormula(expr.a, x, alpha, childValue))
     is FnExpr.Exp -> kotlin.math.exp(evalFormula(expr.a, x, alpha, childValue))
@@ -588,6 +616,17 @@ fun evalFormulaAD(
     // back-propagate along, which is both correct almost everywhere and free.
     is FnExpr.Floor -> x.tape.constant(
         kotlin.math.floor(evalFormulaAD(expr.a, x, alpha, childValue).value)
+    )
+    is FnExpr.Sqrt -> sqrt(evalFormulaAD(expr.a, x, alpha, childValue))
+    // `a % b` is `a - trunc(a / b) * b`, and the trunc is a constant almost everywhere.
+    is FnExpr.Rem -> {
+        val a = evalFormulaAD(expr.a, x, alpha, childValue)
+        val b = evalFormulaAD(expr.b, x, alpha, childValue)
+        AD(x.tape, x.tape.push(a.value % b.value, a.index, 1.0, b.index, -kotlin.math.truncate(a.value / b.value)))
+    }
+    // A hash of an integer position is a constant on the tape, like Floor.
+    is FnExpr.Hash -> x.tape.constant(
+        Functions.hashToUnit(expr.seed, evalFormulaAD(expr.a, x, alpha, childValue).value.toLong())
     )
     is FnExpr.Sin -> sin(evalFormulaAD(expr.a, x, alpha, childValue))
     is FnExpr.Cos -> cos(evalFormulaAD(expr.a, x, alpha, childValue))
@@ -713,20 +752,11 @@ object FnNonDifferentiable {
             "lambda", "opaque", "mapX", "mapY", "withEdge"
         )
         group(
-            "shapes x or the value through an Easing enum, so the formula is chosen by a string at " +
-                "evaluation time rather than fixed by the node",
+            "a pulse generator built over pulseTrain with its own burst/pattern bookkeeping",
             closable = true,
-            missing = "one FnExpr per Easing constant plus a string-dispatch FnExpr kind (13 easings)",
-            "ease", "tween"
-        )
-        group(
-            "a shaped pulse generator: the edge and body shapes are chosen by PulseEdge/PulseProfile " +
-                "enums and each cycle is jittered by a seeded hash of its index",
-            closable = true,
-            missing = "an FnExpr per PulseEdge × PulseProfile pair and a jitter-free special case; saw, " +
-                "triangle and square were transcribed on 2026-10-01 with the fract shape " +
-                "`t - floor(t)`, which is the template",
-            "pulseTrain", "pulseburst", "pulsepattern"
+            missing = "a transcription of the burst and pattern selection; pulseTrain itself has a node-" +
+                "parameterised formula since 2026-10-01 (FnShapedFormulas), which is the template",
+            "pulseburst", "pulsepattern"
         )
         group(
             "a seeded generator: the value is a hash of position, so it has no derivative with respect " +

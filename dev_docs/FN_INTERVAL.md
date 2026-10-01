@@ -220,6 +220,40 @@ oscillators only in the `valueOnly` population, so the tightness ratchet's popul
 containment 290 400 samples (14 931 NaN), 0 violations, 0 refused; far 72 900, 0; envelope 122 658, 0;
 tightness p75 1.1286, binned p90 1.00133, both inside their ratchets.
 
+## Node-parameterised formulas: pulseTrain, ease, tween (2026-10-01)
+
+`FnFormulas.of(node)` / `valueOf(node)` consult `FnShapedFormulas` first: a formula built from the
+node's `strings`/`booleans`/`longs` (Easing name and `clampInput`; PulseEdge, PulseProfile, `bipolar`,
+`seed`), cached per variant. All callers already held the node (`FnAutoDiff.interpret`,
+`evalByFormula`, `FnIntervals` walk and `unsupportedOps`), so the op-name lookups stay for everything
+else. Differentiable ops 38 → 41; `pulseBurst`/`pulsePattern` remain refused.
+
+Three new `FnExpr` kinds, each needed for bit-identity:
+
+- `Sqrt`: `Pow(a, 0.5)` is not `sqrt` in the last bit or at `-0.0` (CIRC easings).
+- `Rem`: Kotlin `%`, the exact truncated remainder (`((local % p) + p) % p`). Interval rule:
+  endpoint-exact when `b` is a point and `[lo, hi]` holds no wrap on one side of 0, tested as
+  `lo % b <= hi % b` with width < `|b|`; else sign-of-`a`, `|r| < max|b|`, `|r| <= |a|`. AD:
+  `∂a = 1`, `∂b = -trunc(a/b)`.
+- `Hash(seed, a)`: `Functions.hashToUnit(seed, a.toLong())` (made `internal`). Interval: exact hull
+  over at most 256 integers, `[0, 1]` beyond; AD: a tape constant.
+
+The transcriptions use private operator overloads on `FnExpr` so `c3 * t * t * t` builds
+`((c3·t)·t)·t` as Kotlin evaluates the closure. Comparisons that must fail on NaN (`x >= e`,
+`duty <= 0`, `sigma <= 0`) are spelled with an `IfEq(x, x, …)` guard, as `step` is.
+
+**One deliberate divergence from the closure's shape.** The closure skips jitter when `jit == 0.0`;
+the formula subtracts `(h − 0.5)·jit·p` unconditionally. The bits agree (a signed zero), and an
+`IfZero` there made the gradient with respect to jitter exactly 0 at jitter = 0, where the function is
+continuous in it: the central-difference oracle read −6.86.
+
+`FnShapedFormulaAgreementTest`: 33 easings × {ease clamped, ease unclamped, tween} and
+5 edges × 5 profiles × bipolar × 3 jitter/rise/fall settings, each at 414 inputs (grid, branch points,
+±0, NaN), bit-identical except that two NaNs agree (NaN's sign bit is not stable across JIT tiers),
+and every sample inside its enclosure; plus the degenerate parameters. Gradient oracle trap, again:
+a pulse train whose third θ point sat within 1e-3 of a feature read 5e-5 off at the oracle's fixed
+step; shrinking the step converged to the exact value (3e-9 at h = 1e-7), so the θ point moved.
+
 ## The proof picture
 
 `certifiedRange(…, onEnclosure = { piece -> })` reports every `FnSearchPiece(lo, hi, range, side, kept)`
@@ -277,8 +311,7 @@ Public page: `public/docs/stacksl_intervals.md`. Fn page: `public/docs/fn_interv
 
 ## Next
 
-- Give formulas to the `ease`/`tween` family and to `pulseTrain` (`FnNonDifferentiable`'s closable
-  list); `saw`/`triangle`/`square` are done.
+- Give formulas to `pulseBurst` and `pulsePattern`; the oscillators, `pulseTrain` and the easings are done.
 - StackSL: word-level range declarations for the noise words, so a region over noise is bounded by
   the word's range rather than by its hash; interval rules for the matrix builtins, `cross`, `reflect`.
 - Interval *gradients* (both languages already have reverse-mode AD): a Lipschitz bound per region

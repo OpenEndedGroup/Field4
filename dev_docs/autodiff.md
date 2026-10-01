@@ -108,15 +108,17 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-eight<!--count:differentiableFnOps-->
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — forty-one<!--count:differentiableFnOps-->
 of `OpRegistry`'s 127<!--count:canonicalFnOps--> canonical ops, which `FnOpCoverageTest` prints as
-**27.6%** rather than asking you to trust it:
+**32.3%** rather than asking you to trust it:
 
 | group | ops |
 | --- | --- |
 | leaves and label-only wrappers | `const param identity name over` |
 | pointwise arithmetic | `add subtract multiply divide` |
 | smooth oscillators | `sin cos` |
+| piecewise oscillators and pulses | `saw triangle square pulseTrain` |
+| easings | `ease tween` |
 | the angle family | `atan atan2 hypot` |
 | value transforms | `scaleY offsetY pow log exp clamp softClip abs flip` |
 | x-domain transforms | `shift scaleX warp` |
@@ -124,7 +126,7 @@ of `OpRegistry`'s 127<!--count:canonicalFnOps--> canonical ops, which `FnOpCover
 | modulation | `amplitudeMod ringMod` |
 | the one exact step | `floor` |
 
-`floor` (`autodiff_formula.kt:257#put("floor", FnExpr.Floor`) is the odd one out and is here on purpose. Its derivative is zero
+`floor` (`autodiff_formula.kt:347#put("floor", FnExpr.Floor`) is the odd one out and is here on purpose. Its derivative is zero
 on every open interval and undefined on the integers, so it is not *smooth* — but zero really is the
 derivative of a staircase, and having it as a first-class differentiable node is what lets RectSL's
 visibility gates, hold tracks and looped clocks lower exactly instead of being refused. See
@@ -145,11 +147,11 @@ still hand-kept and is still unchecked; `./gradlew jvmTest --tests afield.stdlib
 --rerun` prints the authoritative `OP COVERAGE:` line. See
 `citation_contracts.md` under *Pinning a number written in prose*.)
 
-Not covered — and honestly reported by name by `unsupportedOps` — are the piecewise oscillators
-(`saw`, `triangle`, `square`, `pulseTrain`), everything table- or data-backed (`piecewise`,
+Not covered — and honestly reported by name by `unsupportedOps` — are the burst and pattern
+pulse generators (`pulseBurst`, `pulsePattern`), everything table- or data-backed (`piecewise`,
 `timeline`, `rbf`, the interpolants), the seeded noise family (whose generators are not
 differentiable in their parameters at all), the reflecting/quantising transforms (`fold`, `quantize`,
-`bitCrush`, `rectify`), the easings, the step functions (`sign`, `step` — see below), and everything
+`bitCrush`, `rectify`), the step functions (`sign`, `step` — see below), and everything
 built on `mapY`/`mapX` (whose node carries a lambda, not a recipe). Every name in the set is in
 `OpRegistry.knownOps`, and a test asserts it.
 

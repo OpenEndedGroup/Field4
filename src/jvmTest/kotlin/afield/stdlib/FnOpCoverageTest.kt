@@ -81,7 +81,7 @@ class FnOpCoverageTest {
     fun explainAnswersForEveryOpInBothCamps() {
         assertTrue("differentiable" in FnNonDifferentiable.explain("sin"))
         assertTrue("hash of position" in FnNonDifferentiable.explain("whiteNoise"))
-        assertTrue("closable" in FnNonDifferentiable.explain("pulseTrain"))
+        assertTrue("closable" in FnNonDifferentiable.explain("pulseburst"))
         assertTrue("not classified" in FnNonDifferentiable.explain("definitelyNotAnOp"))
         // Aliases resolve too, since OpRegistry.knows is alias-aware and statusOf lower-cases.
         assertTrue("hash of position" in FnNonDifferentiable.explain("whitenoise"))
@@ -94,8 +94,8 @@ class FnOpCoverageTest {
     @Test
     fun theRefusalDiagnosticExplainsRatherThanJustRefusing() = with(Functions) {
         val target = sin(1.5, amplitude = 0.8)
-        val refusal = exactFitRefusal(target, pulseTrain(1.0, amplitude = 0.9), Functions.Domain(0.0, 1.0))
-        assertTrue(refusal != null, "a pulseTrain seed must be refused")
-        assertTrue("pulsetrain" in refusal, "the refusal should name the op: $refusal")
+        val refusal = exactFitRefusal(target, valueNoise(3L, 2.0, 0.9), Functions.Domain(0.0, 1.0))
+        assertTrue(refusal != null, "a valueNoise seed must be refused")
+        assertTrue("valuenoise" in refusal.lowercase(), "the refusal should name the op: $refusal")
     }
 }
