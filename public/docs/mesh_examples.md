@@ -514,11 +514,11 @@ showMeshGrid(
 )
 ```
 
-Face membership in [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/voronoi.kt) is combinatorial rather than metric: a corner records which three
+Face membership in `src/jvmMain/kotlin/afield/stdlib/voronoi.kt` is combinatorial rather than metric: a corner records which three
 planes produced it, and a face's polygon is exactly the corners recording that plane. That matters
 around a near-cospherical site cluster, where the genuine corners sit closer together than any
 usable distance tolerance, and a face decided by proximity claims corners that are not its own and
-fails to close. [`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md) has the measurements.
+fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 ## Recipes
 
@@ -576,7 +576,7 @@ tiling their clip box.
     property: they need `mesh.gallery` re-run to reflect a change.
 
 There is a third route for playing with it rather than reading it: replay
-[`dev_docs/agents/transcripts/mesh_geometry_examples.yaml`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/mesh_geometry_examples.yaml) into a fresh Field with the agent backdoor
+`dev_docs/agents/transcripts/mesh_geometry_examples.yaml` into a fresh Field with the agent backdoor
 (`field_run_transcript`) and you get seven live boxes covering the same ground. Change a resolution, a
 smoothing parameter or an SDF expression, re-run the box, and watch it update. See
 [Agent transcripts](agent_transcripts.md).
@@ -823,17 +823,17 @@ Convert a mesh for display, renderer upload or further Field drawing.
 
 </div>
 
-Source, in `src/jvmMain/kotlin/afield/stdlib/`:
-[`mesh.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh.kt),
-[`mesh_topology.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt),
-[`mesh_generate.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt),
-[`mesh_sdf.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt),
-[`mesh_process.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_process.kt),
-[`mesh_measure.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt),
-[`mesh_io.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_io.kt),
-[`mesh_field.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/mesh_field.kt).
+Source:
+`src/jvmMain/kotlin/afield/stdlib/mesh.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_topology.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_generate.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_sdf.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_process.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_measure.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_io.kt`,
+`src/jvmMain/kotlin/afield/stdlib/mesh_field.kt`.
 Developer notes, including the measurements behind the Voronoi fix:
-[`dev_docs/MESH_GEOMETRY.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/MESH_GEOMETRY.md).
+`dev_docs/MESH_GEOMETRY.md`.
 
 Reading a mesh *in* from PLY, glTF or GLB: [Geometry from disk](geometry_from_disk.md), over
 `afield/four/modules/MeshFromDisk.kt`.

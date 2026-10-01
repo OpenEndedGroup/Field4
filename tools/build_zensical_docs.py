@@ -970,14 +970,26 @@ def run(args: argparse.Namespace) -> int:
     returncode = subprocess.run(command, cwd=public_dir, check=False).returncode
     if returncode == 0:
         site_dir = public_dir / "field4"
-        # Prose inline code is Kotlin by default; this marks the spans that read as code so the
-        # reference-table highlighter colours them (docs_hooks.mark_inline_code_html). It runs
-        # on the rendered HTML because only there is a span's context (a `pre`, a reference table,
-        # a heading) known. `docs_hooks` is importable: preprocess_docs put `public/` on sys.path.
+        # Repo source paths become GitHub links, and prose inline code is marked for Kotlin
+        # highlighting (docs_hooks.postprocess_built_site). Both run on the rendered HTML because
+        # only there is a span's context (a `pre`, a link, a reference table) known. `docs_hooks`
+        # is importable: preprocess_docs put `public/` on sys.path.
         import docs_hooks  # type: ignore[import-not-found]
 
-        pages, spans = docs_hooks.mark_inline_code_in_site(site_dir)
-        print(f"{spans} prose inline code span(s) marked for Kotlin highlighting ({pages} page(s) rewritten).")
+        report = docs_hooks.postprocess_built_site(site_dir, repo_root)
+        print(
+            f"{report.source_links} repo source path(s) linked to GitHub; {report.spans_marked} prose "
+            f"inline code span(s) marked for Kotlin highlighting ({report.pages_rewritten} page(s) rewritten)."
+        )
+        if report.stale_paths:
+            count = sum(len(paths) for paths in report.stale_paths.values())
+            print(
+                f"WARNING: {count} repo path(s) in backticks name no tracked file, so they stay unlinked. "
+                "Fix the path, or drop the backticks if it is not meant to be one:"
+            )
+            for page_rel, paths in report.stale_paths.items():
+                for stale_path in paths:
+                    print(f"  {page_rel}: {stale_path}")
         emit_offline_viewer(site_dir=site_dir)
         emit_build_info(site_dir=site_dir, repo_root=repo_root)
         copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)

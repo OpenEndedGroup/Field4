@@ -281,6 +281,22 @@ code {
     cursor: pointer;
 }
 
+/* A repo source path linked to its file (`link_repo_source_paths_html` in public/docs_hooks.py:
+   GitHub on the public site, the local checkout inside Field's docs pane). The same treatment as a
+   linked citation, with a solid rule because this one always goes somewhere. */
+.md-typeset a.repo-source-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.md-typeset a.repo-source-link code {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.md-typeset a.repo-source-link:hover code {
+    border-bottom-color: var(--md-accent-fg-color, rgba(255, 255, 255, 0.7));
+}
+
 .md-typeset a.source-citation-link:hover code.source-citation {
     border-bottom-style: solid;
     border-bottom-color: var(--md-accent-fg-color, rgba(255, 255, 255, 0.7));

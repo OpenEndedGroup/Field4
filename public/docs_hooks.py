@@ -514,21 +514,21 @@ _HTML_TAG_RE = re.compile(r"<!--.*?-->|<(/?)([A-Za-z][\w:-]*)((?:[^>\"']|\"[^\"]
 _INLINE_CODE_AUTO_OPEN = f"<code {INLINE_CODE_MARK}>"
 
 
-def mark_inline_code_html(page_html: str) -> str:
-    """Mark the prose inline code in one built page for Kotlin highlighting.
+def _rewrite_article_code(page_html: str, rewrite: Any, *, skip_code_lang_containers: bool) -> str:
+    """Offer each text-only `<code>` element in the page's `<article>` to `rewrite`.
 
-    Only a bare `<code>` (or one this pass marked on an earlier build, which is re-decided) inside the
-    page's `<article>` is considered, and only when it holds text alone. A code element with any other
-    attribute is someone else's: a generated signature (`code.highlight`), a source citation, an
-    inlinehilite span. So is one inside `pre`, a `[data-code-lang]` container (the reference tables,
-    which carry their author's language), or the other skipped elements above.
+    `rewrite(open_tag, inner_html, in_link)` returns the replacement for the whole element, from
+    `<code` to `</code>`, or None to leave it. A `<code>` inside `pre` or the other skipped elements
+    is never offered, nor (with `skip_code_lang_containers`) one inside a `[data-code-lang]`
+    container. Script and style bodies are not markup and are skipped whole.
     """
     out: list[str] = []
     stack: list[tuple[str, bool]] = []  # (tag, makes its contents ineligible)
     article_depth = 0
+    link_depth = 0
     blocked = 0
     copied = 0  # page_html[:copied] is already in `out`
-    skip_until = 0  # a script or style body, which is not markup
+    skip_until = 0
     for match in _HTML_TAG_RE.finditer(page_html):
         if match.start() < skip_until:
             continue
@@ -543,40 +543,167 @@ def mark_inline_code_html(page_html: str) -> str:
                 continue
             if name == "code" and article_depth and not blocked:
                 close = page_html.find("</code>", match.end())
-                inner = page_html[match.end():close] if close >= 0 else ""
-                tag = match.group(0)
-                if close >= 0 and "<" not in inner and (tag == "<code>" or tag == _INLINE_CODE_AUTO_OPEN):
-                    language = inline_code_language(html.unescape(inner))
-                    out.append(page_html[copied:match.start()])
-                    out.append(_INLINE_CODE_AUTO_OPEN if language else "<code>")
-                    copied = match.end()
-                    continue
+                inner = page_html[match.end():close] if close >= 0 else "<"
+                if "<" not in inner:
+                    replacement = rewrite(match.group(0), inner, link_depth > 0)
+                    if replacement is not None:
+                        out.append(page_html[copied:match.start()])
+                        out.append(replacement)
+                        copied = skip_until = close + len("</code>")
+                        continue
             if name in _INLINE_CODE_VOID_TAGS or attrs.rstrip().endswith("/"):
                 continue
-            ineligible = name in _INLINE_CODE_SKIP_TAGS or "data-code-lang" in attrs
+            ineligible = name in _INLINE_CODE_SKIP_TAGS or (skip_code_lang_containers and "data-code-lang" in attrs)
             stack.append((name, ineligible))
-            if ineligible:
-                blocked += 1
-            if name == "article":
-                article_depth += 1
+            blocked += ineligible
+            article_depth += name == "article"
+            link_depth += name == "a"
         else:
             for index in range(len(stack) - 1, -1, -1):
                 if stack[index][0] == name:
                     for popped, ineligible in stack[index:]:
-                        if ineligible:
-                            blocked -= 1
-                        if popped == "article":
-                            article_depth -= 1
+                        blocked -= ineligible
+                        article_depth -= popped == "article"
+                        link_depth -= popped == "a"
                     del stack[index:]
                     break
     out.append(page_html[copied:])
     return "".join(out)
 
 
-def mark_inline_code_in_site(site_dir: Path) -> tuple[int, int]:
-    """Run `mark_inline_code_html` over every built page; returns (pages changed, spans marked)."""
-    changed = 0
-    marked = 0
+def mark_inline_code_html(page_html: str) -> str:
+    """Mark the prose inline code in one built page for Kotlin highlighting.
+
+    Only a bare `<code>` (or one this pass marked on an earlier build, which is re-decided) inside the
+    page's `<article>` is considered, and only when it holds text alone. A code element with any other
+    attribute is someone else's: a generated signature (`code.highlight`), a source citation, an
+    inlinehilite span. So is one inside `pre`, a `[data-code-lang]` container (the reference tables,
+    which carry their author's language), or the other skipped elements above.
+    """
+
+    def rewrite(tag: str, inner: str, in_link: bool) -> str | None:
+        del in_link
+        if tag != "<code>" and tag != _INLINE_CODE_AUTO_OPEN:
+            return None
+        opened = _INLINE_CODE_AUTO_OPEN if inline_code_language(html.unescape(inner)) else "<code>"
+        return f"{opened}{inner}</code>"
+
+    return _rewrite_article_code(page_html, rewrite, skip_code_lang_containers=True)
+
+
+# ── Repo source paths become GitHub links ──────────────────────────────────────────────────────
+#
+# Marc, 2026-10-01 (handoff 9b508085): a code span that is exactly an existing repo path under
+# src/, tools/, server/ or public/ links to it on GitHub, at blob/main. The repo is private today
+# and will be public at this URL. dev_docs/ paths stay unlinked: they are notes, not source. Only
+# tracked files and directories link (`git ls-files`), so nothing generated or ignored does. A path
+# under a linked root that names nothing in the checkout stays plain and is reported by the build,
+# so a moved file shows up as a warning rather than a dead link. Inside Field's own docs pane
+# (/field-docs/), docsAnnotations.js intercepts a click on one of these links and shows the file
+# from the local checkout instead (GET /api/docs-source-file, docsAnnotations.kt).
+
+REPO_SOURCE_GITHUB = "https://github.com/OpenEndedGroup/Field4"
+REPO_SOURCE_BRANCH = "main"
+REPO_SOURCE_LINKED_ROOTS = ("src", "tools", "server", "public")
+REPO_SOURCE_UNLINKED_ROOTS = ("dev_docs",)
+REPO_SOURCE_LINK_CLASS = "repo-source-link"
+_REPO_SOURCE_PATH_RE = re.compile(
+    r"(?P<path>(?P<root>[A-Za-z_]+)/[A-Za-z0-9_.@+-]+(?:/[A-Za-z0-9_.@+-]+)*/?)(?::(?P<line>\d+)(?:-(?P<end>\d+))?)?"
+)
+
+
+@dataclass(frozen=True)
+class RepoTree:
+    """The repo's tracked files and the directories that hold them, as `/`-separated paths."""
+
+    files: frozenset[str]
+    directories: frozenset[str]
+
+    @classmethod
+    def from_paths(cls, paths: Any) -> "RepoTree":
+        files = frozenset(paths)
+        directories = {parent for path in files for parent in _parents(path)}
+        return cls(files, frozenset(directories))
+
+    @classmethod
+    def from_git(cls, repo_root: Path) -> "RepoTree":
+        listed = subprocess.run(
+            ["git", "ls-files", "-z"], cwd=repo_root, capture_output=True, check=True
+        ).stdout.decode("utf-8", "replace")
+        return cls.from_paths(path for path in listed.split("\0") if path)
+
+
+def _parents(path: str) -> list[str]:
+    parts = path.split("/")[:-1]
+    return ["/".join(parts[: index + 1]) for index in range(len(parts))]
+
+
+def repo_source_href(text: str, tree: RepoTree) -> tuple[str | None, str | None]:
+    """`(href, None)` for a span that is a tracked repo path under a linked root, `(None, path)` for
+    one that looks like such a path but names nothing tracked (stale), and `(None, None)` otherwise.
+
+    `path:LINE` and `path:LINE-END` keep their lines as a GitHub `#L` anchor. A directory links to
+    its `tree/` view.
+    """
+    match = _REPO_SOURCE_PATH_RE.fullmatch(text.strip())
+    if match is None or match.group("root") not in REPO_SOURCE_LINKED_ROOTS:
+        return None, None
+    path = match.group("path").rstrip("/")
+    if path in tree.files:
+        kind = "blob"
+    elif path in tree.directories and match.group("line") is None:
+        kind = "tree"
+    else:
+        return None, match.group("path")
+    href = f"{REPO_SOURCE_GITHUB}/{kind}/{REPO_SOURCE_BRANCH}/{path}"
+    if match.group("line"):
+        href += f"#L{match.group('line')}"
+        if match.group("end"):
+            href += f"-L{match.group('end')}"
+    return href, None
+
+
+def link_repo_source_paths_html(page_html: str, tree: RepoTree, stale: list[str] | None = None) -> str:
+    """Wrap each prose code span that is a tracked repo path in a GitHub link.
+
+    A span already inside a link is left alone, so an author's own link wins. Stale paths are
+    appended to `stale` when it is given.
+    """
+
+    def rewrite(tag: str, inner: str, in_link: bool) -> str | None:
+        if in_link or (tag != "<code>" and tag != _INLINE_CODE_AUTO_OPEN):
+            return None
+        href, missing = repo_source_href(html.unescape(inner), tree)
+        if missing is not None and stale is not None:
+            stale.append(missing)
+        if href is None:
+            return None
+        path = _REPO_SOURCE_PATH_RE.fullmatch(html.unescape(inner).strip())
+        assert path is not None
+        line = path.group("line")
+        return (
+            f'<a class="{REPO_SOURCE_LINK_CLASS}" href="{html.escape(href, quote=True)}"'
+            f' data-repo-path="{html.escape(path.group("path").rstrip("/"), quote=True)}"'
+            + (f' data-repo-line="{line}"' if line else "")
+            + f">{tag}{inner}</code></a>"
+        )
+
+    return _rewrite_article_code(page_html, rewrite, skip_code_lang_containers=False)
+
+
+@dataclass
+class BuiltSiteReport:
+    pages_rewritten: int = 0
+    spans_marked: int = 0
+    source_links: int = 0
+    stale_paths: dict[str, list[str]] | None = None  # page -> stale repo paths, in page order
+
+
+def postprocess_built_site(site_dir: Path, repo_root: Path) -> BuiltSiteReport:
+    """The passes that need a page's rendered HTML: GitHub links for repo source paths, then the
+    Kotlin marking of prose inline code. Run by tools/build_zensical_docs.py after Zensical."""
+    tree = RepoTree.from_git(repo_root)
+    report = BuiltSiteReport(stale_paths={})
     for page in sorted(site_dir.rglob("*.html")):
         try:
             text = page.read_text(encoding="utf-8")
@@ -584,12 +711,19 @@ def mark_inline_code_in_site(site_dir: Path) -> tuple[int, int]:
             continue
         if "<article" not in text:
             continue
-        updated = mark_inline_code_html(text)
-        marked += updated.count(_INLINE_CODE_AUTO_OPEN)
+        stale: list[str] = []
+        updated = mark_inline_code_html(link_repo_source_paths_html(text, tree, stale))
+        report.spans_marked += updated.count(_INLINE_CODE_AUTO_OPEN)
+        report.source_links += updated.count(f'<a class="{REPO_SOURCE_LINK_CLASS}"')
+        # A path that exists but is not tracked (the built site under public/field4/, the
+        # untracked src/personal/) is a real place, just not one GitHub has: unlinked, not stale.
+        stale = [path for path in stale if not (repo_root / path).exists()]
+        if stale:
+            report.stale_paths[page.relative_to(site_dir).as_posix()] = list(dict.fromkeys(stale))
         if updated != text:
             page.write_text(updated, encoding="utf-8")
-            changed += 1
-    return changed, marked
+            report.pages_rewritten += 1
+    return report
 
 
 def is_marker_line(stripped: str) -> bool:
