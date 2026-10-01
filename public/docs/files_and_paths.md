@@ -5,8 +5,8 @@ folder happens to be sitting. So a path typed into a box has a problem the same 
 program does not: `File("/Users/you/Desktop/scan.ply")` is correct exactly once, on one machine,
 until the document is copied, moved into a project, or sent to somebody else.
 
-Field's answer is a *resolver*. You hand it a short name, and it looks in the document first and the
-workspace second.
+Field's answer is a *resolver*. You hand it a short name, and it looks in the document first, the
+workspace projects it belongs to second, and a list of other directories you choose third.
 
 ## The one line to learn
 

@@ -703,7 +703,7 @@ For the mechanism behind all of this — how `prop`/`once` expand, how propertie
 
 ## Nesting
 
-Boxes can be nested inside other boxes (`f1` "nest ...")
+Boxes can be nested inside other boxes: select them, open the command palette (`command/ctrl-shift-P` or `f1`) and pick "Nest ...":
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/nesting.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-nesting" alt="Two boxes, sketch and helper. A click selects sketch and shift-click adds helper; F1 opens the palette over the canvas, typing nest narrows it to Nest 'helper' into 'sketch', and Enter runs it: helper disappears into sketch's nest."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
@@ -781,7 +781,7 @@ conflict-free collaboration protocol.
 
 ## Multiple editors
 
-The document-level command 'Add Editor to Output Area` will allow you to pin a particular property of a box to a boxes output zone:
+The document-level command "Add Editor to Output Area" pins a particular property of a box to that box's output area:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/multi-editor.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-multi-editor" alt="A click selects the box named helper and opens its editor. F1, then typing add editor to output, finds Add Editor to Output Area; Enter, then code, picks the property, and a second, embedded editor holding helper's code opens in the box's output area under it."}
 // The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
