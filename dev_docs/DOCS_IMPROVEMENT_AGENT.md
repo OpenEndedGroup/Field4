@@ -235,10 +235,11 @@ own check does not. The annotation hatch is forced shut for this call, for the s
 The consequence, and it is deliberate: **the token is never served over HTTP.** Not from
 an endpoint, not inlined into a page — because with `anyHost()`, anything this origin
 would hand its own pages it would also hand that other website. It lives in the
-environment and in the startup log. The welcome page's "Improve annotated docs" button
-prompts for it once and caches it in `localStorage`, which *is* origin-scoped; a 401 drops
-the cached copy and asks again, which is what you want given Field mints a fresh token on
-every restart unless you set `AFIELD_DOCS_IMPROVEMENT_TOKEN` yourself.
+environment and in the startup log. Field mints a fresh one on every restart unless you set
+`AFIELD_DOCS_IMPROVEMENT_TOKEN` yourself. (The welcome page's "Improve annotated docs" button
+used to prompt for it and cache it in `localStorage`. It was removed on 2026-10-02; the
+Revision pass card, which drives `/docs-pass.html`, replaced it, so nothing in Field's own
+pages calls this route any more.)
 
 ### Two details in the loopback check are load-bearing and easy to undo by accident.
 
