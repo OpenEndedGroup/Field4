@@ -93,7 +93,9 @@ nav:
       # model for a target that keeps moving. Filed under Time & Signals rather than beside
       # physics.md because nothing here is a solve — it is arithmetic on a value over time.
       - Springs & Character Movement: movement_examples.md
-      - Capturing & Replaying Live State (Keyframes): keyframer_examples.md
+      # Short because the long title wrapped in the sidebar; the page's own H1 still says what a
+      # keyframe is for (capturing, persisting and replaying live state).
+      - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
       - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
