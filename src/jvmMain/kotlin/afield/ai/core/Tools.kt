@@ -36,6 +36,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
 /**
@@ -847,7 +849,21 @@ data class ToolExecutionContext(
      * Native box graph + execution tools (NewBox, RunBox, ReadBoxOutput, ...) for one document.
      * `null` hides them: only contexts that mean to let the agent edit and run the document wire it.
      */
-    val fieldGraph: afield.ai.agent.FieldGraphTools? = null
+    val fieldGraph: afield.ai.agent.FieldGraphTools? = null,
+
+    /**
+     * Tool names this conversation must not see or call, whatever their gates say. The registry
+     * enforces it everywhere (schemas, MCP descriptors, dispatch), so an A/B arm that withholds a tool
+     * cannot leak it through a second path. An eval's `programs=off` arm withholds `RunToolProgramRequest`.
+     */
+    val withheld: Set<String> = emptySet(),
+
+    /**
+     * Progress lines from inside a long tool — a tool program reports each nested call through it,
+     * so the panel shows `program: RunBox Cell03 (4/12)` rather than one silent spinner. The bridges
+     * wire it to their `onProgress`; null where nobody is watching.
+     */
+    val progress: ((String) -> Unit)? = null,
 )
 
 /**
@@ -953,9 +969,13 @@ internal class ToolRegistry {
         }
     }
 
+    /** A handler's gate, with the conversation's [ToolExecutionContext.withheld] applied on top. */
+    private fun Handler<*>.offeredUnder(ctx: ToolExecutionContext): Boolean =
+        cls.simpleName !in ctx.withheld && available(ctx)
+
     fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
         handlers.values.forEach { h ->
-            if (h.available(ctx)) {
+            if (h.offeredUnder(ctx)) {
                 @Suppress("UNCHECKED_CAST")
                 builder.addTool(h.cls as Class<Any>)
             }
@@ -967,6 +987,7 @@ internal class ToolRegistry {
     }
 
     fun execute(ctx: ToolExecutionContext, call: ResponseFunctionToolCall): Any {
+        check(call.name() !in ctx.withheld) { "Tool '${call.name()}' is not available in this conversation." }
         val h = handlers[call.name()]
         if (h != null) {
             @Suppress("UNCHECKED_CAST")
@@ -982,7 +1003,7 @@ internal class ToolRegistry {
 
     /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */
     private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> =
-        ctx.dynamicTools.filter { it.name !in handlers.keys }
+        ctx.dynamicTools.filter { it.name !in handlers.keys && it.name !in ctx.withheld }
 
     // --- Provider-neutral face (used by the MCP backdoor bridge) -----------
     // The OpenAI path above binds tools to ResponseCreateParams / ResponseFunctionToolCall.
@@ -993,7 +1014,7 @@ internal class ToolRegistry {
     /** Tools available under [ctx], as MCP-style descriptors {name, description, inputSchema}. */
     fun describe(ctx: ToolExecutionContext): JsonArray = buildJsonArray {
         handlers.values
-            .filter { it.available(ctx) }
+            .filter { it.offeredUnder(ctx) }
             .sortedBy { it.cls.simpleName }
             .forEach { h ->
                 add(buildJsonObject {
@@ -1016,7 +1037,11 @@ internal class ToolRegistry {
 
     /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. */
     fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
-        handlers[name]?.available(ctx) == true || dynamicToolsIn(ctx).any { it.name == name }
+        handlers[name]?.offeredUnder(ctx) == true || dynamicToolsIn(ctx).any { it.name == name }
+
+    /** The descriptor [describe] would give for [name] under [ctx], or null if it is not offered. */
+    fun describeOne(ctx: ToolExecutionContext, name: String): JsonObject? =
+        describe(ctx).firstOrNull { (it as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull == name } as? JsonObject
 
     /**
      * Deserialize [argsJson] into the tool's request class (Jackson, matching the
@@ -1026,7 +1051,7 @@ internal class ToolRegistry {
     fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String): Any {
         val h = handlers[name]
         if (h != null) {
-            if (!h.available(ctx)) {
+            if (!h.offeredUnder(ctx)) {
                 throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
             }
             @Suppress("UNCHECKED_CAST")

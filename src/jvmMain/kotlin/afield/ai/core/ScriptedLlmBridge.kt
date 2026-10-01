@@ -80,6 +80,8 @@ class ScriptedLlmBridge(
         received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available)
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
+        val callCtx = if (ctx.progress != null || onProgress == null) ctx
+            else ctx.copy(progress = { line -> onProgress(LlmProgressUpdate(line, phase = "tool")) })
         val latestByTool = mutableMapOf<String, String>()
         var rounds = 0
         var hitCap = false
@@ -95,7 +97,7 @@ class ScriptedLlmBridge(
                     onProgress?.invoke(LlmProgressUpdate("Using ${step.tool}", args.take(700), phase = "tool"))
                     val started = System.nanoTime()
                     val result: Any = try {
-                        tools.executeByName(ctx, step.tool, args)
+                        tools.executeByName(callCtx, step.tool, args)
                     } catch (e: Exception) {
                         if (isAiTurnCancellation(e)) throw e
                         mapOf("error" to true, "tool" to step.tool, "message" to (e.message ?: e::class.java.name))
@@ -106,6 +108,7 @@ class ScriptedLlmBridge(
                     transcript += LlmToolTranscriptEntry(
                         step.tool, "scripted-$rounds", args, json.take(300), json, elapsedMs = elapsedMs
                     )
+                    transcript += afield.ai.core.program.nestedTranscriptEntries("scripted-$rounds", result)
                     onProgress?.invoke(LlmProgressUpdate("${step.tool} finished", json.take(300), phase = "tool_result"))
                 }
             }

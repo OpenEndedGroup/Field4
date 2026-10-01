@@ -18,6 +18,8 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         registerDocumentGuideTools(tools)
         registerDocumentSourceTools(tools)
         afield.ai.agent.registerFieldGraphTools(tools)
+        // One tool whose argument is a program over all the others; see ToolProgramTools.kt.
+        afield.ai.core.program.registerToolProgramTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.

@@ -191,6 +191,8 @@ class AnthropicBridge(
         }
         var toolElapsedMs = 0L
         var activePhase = "model:initial"
+        val callCtx = if (ctx.progress != null || onProgress == null) ctx
+            else ctx.copy(progress = { line -> onProgress(LlmProgressUpdate(line)) })
         try {
         var hitToolRoundCap = false
         var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
@@ -215,7 +217,7 @@ class AnthropicBridge(
                 activePhase = "tool:$name"
                 val started = System.nanoTime()
                 val result: Any = try {
-                    tools.executeByName(ctx, name, argsJson)
+                    tools.executeByName(callCtx, name, argsJson)
                 } catch (e: Exception) {
                     // A cancelled turn must end the turn, not become a tool error the model is asked about.
                     if (isAiTurnCancellation(e)) throw e
@@ -230,10 +232,12 @@ class AnthropicBridge(
                 val resultJson = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
                 val summary = truncate(resultJson, 300)
                 transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson, elapsedMs = toolMs)
+                transcript += afield.ai.core.program.nestedTranscriptEntries(use.id(), result)
                 toolIo("tool_result", mapOf(
                     "round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "summary" to summary,
                     "elapsedMs" to toolMs, "result" to resultJson,
                     "imageCount" to ((result as? CarriesToolImages)?.toolImages?.size ?: 0)))
+                afield.ai.core.program.nestedToolIoEvents(rounds + 1, use.id(), result).forEach { (event, fields) -> toolIo(event, fields) }
                 onProgress?.invoke(LlmProgressUpdate("$name finished ($toolMs ms)", summary))
 
                 if (name == Commentary::class.java.simpleName) {

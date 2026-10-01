@@ -247,6 +247,8 @@ class OpenAiIdeCodexBridge(
             }
         }
 
+        val callCtx = if (ctx.progress != null || onProgress == null) ctx
+            else ctx.copy(progress = { line -> onProgress(ProgressUpdate(title = line, phase = "tool")) })
         try {
         val promptItems = buildPromptItems(inputText, imageDataUrls)
 
@@ -364,7 +366,7 @@ class OpenAiIdeCodexBridge(
                 val toolStarted = System.nanoTime()
                 activeToolStarted = toolStarted
                 val toolResult: Any = try {
-                    tools.execute(ctx, call)
+                    tools.execute(callCtx, call)
                 } catch (e: Exception) {
                     if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=${call.name()} msg=${e.message}")
@@ -402,6 +404,7 @@ class OpenAiIdeCodexBridge(
                     resultJson = toolResultJson,
                     elapsedMs = toolMs
                 )
+                toolTranscript += afield.ai.core.program.nestedTranscriptEntries(call.callId(), toolResult)
 
                 trace?.log(
                     "TOOL_OUTPUT",
@@ -428,6 +431,8 @@ class OpenAiIdeCodexBridge(
                             ((toolResult as? CarriesToolImages)?.toolImages?.map { it.caption } ?: emptyList())
                     )
                 )
+                afield.ai.core.program.nestedToolIoEvents(rounds + 1, call.callId(), toolResult)
+                    .forEach { (event, fields) -> toolIo(event, fields) }
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",

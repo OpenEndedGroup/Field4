@@ -57,6 +57,11 @@ data class AgentTaskRequest(
     val lessons: String = "",
     /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
     val blind: Boolean = false,
+    /**
+     * `off` withholds `RunToolProgramRequest` (the tool-program A/B arm); `on` or blank leaves it to
+     * [afield.ai.core.program.ToolPrograms.enabled].
+     */
+    val programs: String = "",
 )
 
 /**
@@ -136,6 +141,8 @@ data class AgentToolCallRecord(
     /** The tool's own verdict: false when it threw or returned `success: false` / `error: true`. */
     val ok: Boolean,
     val result: String,
+    /** The call this one ran inside — a tool program's — or blank for a call the model made itself. */
+    val parent: String = "",
 )
 
 @Serializable
@@ -173,6 +180,10 @@ data class AgentTaskResult(
     val lessons: Boolean = false,
     /** The document as file refs spell it (`afield://<documentRef>/<uid>/code`): its directory's name. */
     val documentRef: String = "",
+    /** Whether `RunToolProgramRequest` was offered, how often the model called it, and the calls those programs made. */
+    val programs: Boolean = false,
+    val programCalls: Int = 0,
+    val nestedCalls: Int = 0,
 )
 
 /**
@@ -224,7 +235,9 @@ object AgentTaskRunner {
         )
 
         return try {
-            val ctx = contextFor(info, graph, request.focusBox.ifBlank { null })
+            val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
+                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.core.program.RUN_TOOL_PROGRAM) else base
+            }
 
             if (request.setup.isNotBlank()) {
                 val setup = ScriptedLlmBridge(ScriptedLlmBridge.parse(request.setup), "setup")
@@ -279,9 +292,14 @@ object AgentTaskRunner {
                 cacheReadTokens = sent.cacheReadTokens, cacheWriteTokens = sent.cacheWriteTokens,
                 documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog,
                 misuseCalls = calls.count(AgentLessons::isMisuse),
-                imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },
+                // Only the model's own calls: a picture a program's nested call took reached the model
+                // only if the program show()ed it, and then it rode on the program's result.
+                imagesSeen = sent.toolTranscript.count { it.parentCallId.isEmpty() && it.resultJson.contains("\"imageAttached\":true") },
                 lessons = graph.lessons,
                 documentRef = java.io.File(info.filename).name,
+                programs = request.programs != "off" && afield.ai.core.program.ToolPrograms.enabled,
+                programCalls = calls.count { it.tool == afield.ai.core.program.RUN_TOOL_PROGRAM },
+                nestedCalls = calls.count { it.parent.isNotEmpty() },
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")
@@ -415,7 +433,7 @@ object AgentTaskRunner {
         sent.toolTranscript.mapIndexed { index, entry ->
             val node = runCatching { afield.ai.core.aiToolMapper.readTree(entry.resultJson) }.getOrNull()
             val ok = node == null || !(node.get("success")?.asBoolean(true) == false || node.get("error")?.asBoolean(false) == true)
-            AgentToolCallRecord(index + 1, entry.name, entry.argumentsJson.take(4000), ok, entry.resultJson.take(4000))
+            AgentToolCallRecord(index + 1, entry.name, entry.argumentsJson.take(4000), ok, entry.resultJson.take(4000), parent = entry.parentCallId)
         }
 
     // ---- checks -----------------------------------------------------------------------------

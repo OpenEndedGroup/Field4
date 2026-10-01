@@ -93,6 +93,9 @@ ${ctx.documentGuides.catalogueContext()}
     }
 
     ctx.fieldGraph?.let { graph -> toolAds += fieldGraphToolGuidance(graph.replyOwned.isNotEmpty(), graph.seesOutput) }
+    if (afield.ai.core.program.ToolPrograms.enabled && afield.ai.core.program.RUN_TOOL_PROGRAM !in ctx.withheld) {
+        toolAds += afield.ai.core.program.toolProgramGuidance()
+    }
 
     if (ctx.attachments.isNotEmpty() || ctx.resolveAttachment != null) {
         toolAds += "- ListAttachments: lists available attached context files."

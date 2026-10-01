@@ -4,8 +4,8 @@ import afield.ai.core.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
- * A small eval suite for Field's own agent: ten tasks (three of them graded by pixels), each a goal, the setup it starts from,
- * checks that decide it, and a scripted solution.
+ * A small eval suite for Field's own agent: fifteen tasks (five graded by pixels, three made of many similar calls
+ * that a tool program does in one), each a goal, the setup it starts from, checks that decide it, and a scripted solution.
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
  * a live Field (`agent-eval --mode scripted`) they test the tools, the execution path and the checkers
@@ -97,6 +97,30 @@ object InFieldAgentEvals {
     val ROW_CODE = rowCode("listOf(20, 30, 40, 50, 60)", nowrap = false)
     val ROW_FIRST_TRY = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = false)
     val ROW_FIXED = rowCode("listOf(20, 30, 40, 50, 60, 70, 80, 90, 100, 110)", nowrap = true)
+
+    // ---- many-call tasks: the work is the same call over many boxes or values -------------------------
+    //
+    // These exist to measure tool programs (RunToolProgramRequest): each is a dozen similar calls done
+    // directly, or one program. Their scripted solutions are programs; `programs=off` is the other arm.
+
+    val CELL_BAD = "val xs = listOf<Int>()\nprintln(\"cell \" + xs.first())"
+    fun cellCode(n: Int) = "println(\"cell $n ok\")"
+    val CELL_NAMES = (1..10).map { "Cell%02d".format(it) }
+    val FAILING_CELLS = listOf("Cell03", "Cell07", "Cell09")
+    val REPORT_CODE = "println(\"Cell03, Cell07, Cell09\")"
+
+    /** A value nobody computes in their head: the hash of a string built from k, so the sweep has to run. */
+    fun sqCode(k: Int) = "val k = $k\nprintln(\"\${k}x\${k * k}\".hashCode().mod(1000))"
+    /** What [sqCode] prints for k = 1..8, as Kotlin computes it. */
+    val SWEEP_OUTPUTS = listOf(858, 822, 788, 25, 846, 669, 494, 342)
+    val RESULTS_CODE = "println(\"${SWEEP_OUTPUTS.joinToString(" ")}\")"
+
+    val TODO_NOTES = setOf(3, 4, 8, 10, 12)
+    fun noteCode(n: Int) = "// note $n" + (if (n in TODO_NOTES) "\n// TODO: tidy this up" else "") + "\nprintln($n)"
+    fun noteName(n: Int) = "Note%02d".format(n)
+
+    private fun program(code: String, purpose: String) =
+        call("RunToolProgramRequest", "code" to code.trimIndent(), "purpose" to purpose)
 
     val CHART_CODE = chartCode("listOf(55, 25, 90, 40, 70)", tallestRed = false)
     /** The first try: sorted ascending, tallest red — drawn tallest-first because of row-reverse. */
@@ -277,7 +301,79 @@ object InFieldAgentEvals {
                 call("ViewBoxOutputRequest", "box" to "Row", "note" to "ten bars in one row, rising"),
                 "Ten bars wrapped onto two rows in the panel's width; white-space:nowrap keeps them in one.")
         ),
+        EvalTask(
+            "audit-failing",
+            AgentTaskRequest(
+                goal = "Some of the boxes Cell01 to Cell10 fail when they run. Make a box named Report that prints the " +
+                    "names of the failing ones, sorted and separated by a comma and a space (for example: Cell02, Cell05), " +
+                    "and run Report.",
+                setup = steps(*CELL_NAMES.mapIndexed { i, name ->
+                    call("NewBoxRequest", "name" to name, "code" to if (name in FAILING_CELLS) CELL_BAD else cellCode(i + 1))
+                }.toTypedArray()),
+                checks = listOf(check("last-run-ok:Report"), check("output-contains:Report:Cell03, Cell07, Cell09")),
+                taskId = "audit-failing"
+            ),
+            steps(program("""
+                const cells = tools.ListBoxes({}).boxes.map(b => b.name).filter(n => n.startsWith("Cell")).sort();
+                const failing = cells.filter(n => !tools.RunBox({box: n}).success);
+                tools.NewBox({name: "Report", code: 'println("' + failing.join(", ") + '")'});
+                const report = tools.RunBox({box: "Report"});
+                return {failing, printed: report.stdout};
+            """, "run every Cell, collect the failing ones, report them"),
+                "Cell03, Cell07 and Cell09 fail (an empty list's first()); Report prints them.")
+        ),
+        EvalTask(
+            "sweep-parameter",
+            AgentTaskRequest(
+                goal = "The box Sq starts with the line `val k = 1`. Run Sq once for each k from 1 to 8 by changing that " +
+                    "line, then make a box named Results that prints the eight numbers Sq printed, in order of k, separated " +
+                    "by spaces, and run Results. Leave Sq with k = 1 when you are done.",
+                setup = steps(call("NewBoxRequest", "name" to "Sq", "code" to sqCode(1))),
+                checks = listOf(check("last-run-ok:Results"),
+                    check("output-ints-include:Results:${SWEEP_OUTPUTS.joinToString(",")}"),
+                    check("property-contains:Sq:code:val k = 1\n"), check("property-lacks:Sq:code:val k = 8")),
+                taskId = "sweep-parameter"
+            ),
+            steps(program("""
+                const printed = [];
+                for (let k = 1; k <= 8; k++) {
+                  tools.PatchBoxText({box: "Sq", startLine: 1, replacement: "val k = " + k});
+                  printed.push(tools.RunBox({box: "Sq"}).stdout.join(" ").trim());
+                }
+                tools.PatchBoxText({box: "Sq", startLine: 1, replacement: "val k = 1"});
+                tools.NewBox({name: "Results", code: 'println("' + printed.join(" ") + '")'});
+                return {printed, results: tools.RunBox({box: "Results"}).stdout};
+            """, "sweep k = 1..8 through Sq and collect what it prints"),
+                "Swept k = 1..8 through Sq; Results prints the eight values in order, and Sq is back at k = 1.")
+        ),
+        EvalTask(
+            "tag-todos",
+            AgentTaskRequest(
+                goal = "Some of the boxes Note01 to Note12 have a TODO comment in their code. Insert the line " +
+                    "`// reviewed` as the first line of the code of each of those boxes, and change nothing else. " +
+                    "Do not run any box.",
+                setup = steps(*(1..12).map { n -> call("NewBoxRequest", "name" to noteName(n), "code" to noteCode(n)) }.toTypedArray()),
+                checks = TODO_NOTES.map { n -> check("property-contains:${noteName(n)}:code:// reviewed\n// note $n") } +
+                    listOf(1, 2, 6, 11).map { n -> check("property-lacks:${noteName(n)}:code:reviewed") },
+                taskId = "tag-todos"
+            ),
+            steps(program("""
+                const notes = tools.ListBoxes({}).boxes.map(b => b.name).filter(n => n.startsWith("Note")).sort();
+                const tagged = [];
+                for (const n of notes) {
+                  const code = tools.GetBoxProperty({box: n}).value || "";
+                  if (!code.includes("TODO")) continue;
+                  tools.PatchBoxText({box: n, startLine: 1, insert: true, replacement: "// reviewed"});
+                  tagged.push(n);
+                }
+                return tagged;
+            """, "tag every Note box whose code has a TODO"),
+                "Five boxes had a TODO (Note03, Note04, Note08, Note10, Note12); each now starts with // reviewed.")
+        ),
     )
+
+    /** Tasks made of many similar calls: what tool programs are for. */
+    val manyCallTaskIds = setOf("audit-failing", "sweep-parameter", "tag-todos")
 
     /** Tasks whose checks read pixels; they need a Field that can capture box output. */
     val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible", "bars-sorted-red", "bars-one-row")
@@ -304,6 +400,8 @@ data class AgentEvalRequest(
     val distilFrom: String = "",
     /** Withhold ViewBoxOutputRequest from every task (the counterfactual for the visual tasks). */
     val blind: Boolean = false,
+    /** `off` withholds RunToolProgramRequest from every task (the tool-program A/B arm); see [AgentTaskRequest.programs]. */
+    val programs: String = "",
 )
 
 @Serializable
@@ -339,11 +437,15 @@ data class AgentEvalReport(
     val documentsBefore: Int = -1,
     val documentsAfter: Int = -1,
     val capturePagesOpenAfter: Int = -1,
+    /** Whether tool programs were offered; sums of [AgentTaskResult.programCalls] and [AgentTaskResult.nestedCalls]. */
+    val programs: Boolean = false,
+    val programCalls: Int = 0,
+    val nestedCalls: Int = 0,
 )
 
 object AgentEvalRunner {
     /** Hard caps for a live eval: one run of at most this many tasks, at most this many rounds each. */
-    const val MAX_LIVE_TASKS = 12
+    const val MAX_LIVE_TASKS = 16
     const val MAX_LIVE_ROUNDS = 32
 
     /**
@@ -372,6 +474,7 @@ object AgentEvalRunner {
                 script = if (live) "" else task.solution,
                 lessons = lessonsPin,
                 blind = request.blind,
+                programs = request.programs,
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
@@ -392,6 +495,9 @@ object AgentEvalRunner {
             rounds = results.sumOf { it.rounds.coerceAtLeast(0) },
             lessons = lessonsOn,
             lessonsVersion = lessonsVersion,
+            programs = results.any { it.programs },
+            programCalls = results.sumOf { it.programCalls },
+            nestedCalls = results.sumOf { it.nestedCalls },
         )
         if (!request.distil) return report
         val outcome = AgentLessons.distilAndWrite(report)
