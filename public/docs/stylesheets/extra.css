@@ -109,6 +109,16 @@ h3 {
     margin-top: 0.4rem;
 }
 
+/* A second `#` on a page starts a part of it ("Making bigger things" on the tour), and it groups with
+   what follows, so it needs more air above than below. The two rules above gave it the reverse: 1rem
+   on top against the theme's 1.25em underneath, which at 300% type is about 60px. `h1 ~ h1` matches
+   only an h1 after the page title, so the title keeps its spacing, and the generated source pages'
+   sticky h1s, each the first child of its own section, are untouched. */
+.md-typeset > h1 ~ h1 {
+    margin-top: 2em;
+    margin-bottom: 0.5em;
+}
+
 .md-typeset h1 + h2,
 .md-typeset h1 + h3,
 .md-typeset h2 + h2,
