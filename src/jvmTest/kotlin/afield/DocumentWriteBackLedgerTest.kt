@@ -496,8 +496,6 @@ class DocumentWriteBackLedgerTest {
             "public/docs/assets/rectsl_gallery/history_screenshots/four-window/v00001_1783801210737.jpg",
             "public/docs/assets/rectsl_gallery/operations.yaml",
             "public/docs/assets/rectsl_gallery/transcript.edn",
-            "public/docs/assets/sound_path_map/history_metrics.edn",
-            "public/docs/assets/sound_path_map/transcript.edn",
             "public/docs/assets/sound_render_path/history_metrics.edn",
             "public/docs/assets/sound_render_path/transcript.edn"
         )

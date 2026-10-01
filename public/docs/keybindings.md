@@ -63,7 +63,10 @@ Three things are *not* in the file:
   nothing in the grammar below to write them with; they are hard-wired.
 - **Monaco's own editor bindings.** Autocomplete (`Ctrl+Space`), undo, find, multi-cursor
   and the rest belong to the text editor Field embeds, not to Field's command list.
-- **Two-keystroke chords.** There is no `cmd+k cmd+s`. See "Limits" at the end.
+
+Two-key chords, such as `cmd+k cmd+s`, *are* in the grammar: see
+[Writing a two-key chord](#writing-a-two-key-chord). No default uses one, so every chord in
+your file is one you wrote.
 
 ## Getting a file to edit
 
@@ -126,6 +129,36 @@ Two characters that are also separators need a word about them: a lone `,`, `-` 
 read as a key only when it is the last thing in the spec. So `cmd+,` binds the comma key
 (that really is one of Field's defaults, "Previous Property"), `cmd+-` binds the minus key,
 and `cmd + k` is just `cmd+k` with room to breathe.
+
+### Writing a two-key chord
+
+Two specs separated by a space make a chord: press the first, let go, press the second.
+
+```diffstatic {data-lang=yaml}
+bindings:
+  open-user-keybindings: "cmd+k cmd+s"   # Cmd+K, then Cmd+S
+  toggle-docs: "cmd+k d"                 # Cmd+K, then a bare D
+```
+
+Every key ends a chord, and the modifiers written before a key belong to it. That is why
+`cmd shift d` is still one shortcut, Cmd+Shift+D: it has one key. `cmd+k cmd+s` has two, so it
+is two chords. A chord is at most two keys.
+
+After the first key Field shows it at the bottom of the window ("Cmd+K … (waiting for the
+second key)") and waits **one second**. Then:
+
+- **the second key completes a chord**: that command runs, and nothing bound to the second key
+  on its own does;
+- **another key** cancels the wait. If the first key is a shortcut on its own, it runs now, and the
+  new key does whatever it normally does;
+- **Escape** cancels without running anything;
+- **nothing, for a second**: the first key runs as an ordinary shortcut, if it is one.
+
+So a key can be a shortcut and the first half of a chord at once (`cmd+k` and `cmd+k cmd+s`), and
+the cost is that the plain `cmd+k` now fires a second late. This is the same in an editor and on
+the canvas. In an editor, a chord whose first key has no `cmd` or `alt` is canvas-only, for the
+same reason a bare letter is (below): that key is typing. The second key may be bare: `cmd+k d`
+works in an editor too.
 
 ### Where a shortcut is live
 
@@ -202,8 +235,8 @@ Field would rather tell you than guess.
   and the other lines in the file still apply, so one bad shortcut does not cost you the rest:
 
     ```diffstatic {data-lang=text}
-    keybindings.yaml: 'cmd+k cmd+s' (for 'open-anything') is not a shortcut
-      — a shortcut is one key with modifiers, Field has no two-keystroke chords
+    keybindings.yaml: 'cmd+k cmd+s cmd+d' (for 'open-anything') is not a shortcut
+      — a chord is at most two keys, like `cmd+k cmd+s` — this one has more
     ```
 
     **The command keeps its default.** A line Field cannot read is ignored, not obeyed
@@ -263,8 +296,8 @@ dead.
 
 ## Limits
 
-- **One key per shortcut.** Field has no two-keystroke chords, so there is no `cmd+k cmd+s`.
-  A spec with two keys in it is refused with that explanation rather than half-obeyed.
+- **Two keys per chord, one second apart.** `cmd+k cmd+s` works; a third key is refused with
+  that explanation rather than half-obeyed. The one-second wait is fixed.
 - **`f13`–`f24` and some rarer keys** are accepted on the canvas but may have no
   counterpart in the editor, where the binding is Monaco's to make. If a shortcut works on
   the canvas and not in an editor, that is the likely reason.

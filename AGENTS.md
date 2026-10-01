@@ -100,7 +100,7 @@ The crib:
 | One smoke test | `... tools/run_field_tests.py --id <catalog-id>` (also `--tag`, `--runner jvm-main`) |
 | Browser UI regressions | `uv run --project . --group backdoor python tools/run_ui_regressions.py` (`--id <regression>` for one) |
 | One browser screenshot | `uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --command 'new-box --name Visual' --command 'run @last --value "display(\"main\", \"<div>hello</div>\")"' --command 'screenshot-box @last /tmp/field-smoke.png'` |
-| Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen; checks Manifold and JEP; checksummed downloads shared across worktrees) |
+| Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen, the pinned Dirt-Samples subset; checks Manifold and JEP; checksummed downloads shared across worktrees) |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental uv run --project . --group docs python tools/build_zensical_docs.py` |
 | Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict uv run --project . --group docs python tools/build_zensical_docs.py` |

@@ -42,7 +42,28 @@ provoked on purpose.
 
 ## The comparison figures
 
-The three one-buffer-three-paths clips are checked as a shape, not against stored values: both
+The shared input is `pat("bd ~ sd ~, hh*8") with gain(0.9)`, four cycles at 2 cps, rendered by
+`patRenderStereoDirt(..., library = DirtRender.requirePinnedLibrary(), strict = true)`: real
+`bd:0`, `sd:0` and `hh:0` one-shots from tidalcycles/Dirt-Samples at the commit pinned in
+`src/jvmMain/resources/afield/four/synth/dirt-samples-pinned.json`, fetched by
+`./gradlew fetchDocsDirtSamples`. Until 2026-10-01 it was `patRenderStereo`, the `patVoice`
+stand-in, whose noise hats put the dry centroid at 10.9 kHz. There is no fallback to it: without the
+pinned subset, the smoke, the docs capture and `DocsAudioProvenanceGuardTest` all fail with the
+fetch command in the message.
+
+Measured on the new input (`run_field_tests.py --id synth.sound.path.map` prints all of these):
+
+| figure | centroid | vs dry | peak before normalization | rms before normalization |
+| --- | --- | --- | --- | --- |
+| `same-input-dry` | 2856 Hz | — | 0.723 | 0.1605 |
+| `same-input-signal-graph` | 652 Hz | 0.23× | 0.685 | 0.1293 |
+| `same-input-faust` | 783 Hz | 0.27× | 0.676 | 0.1551 |
+
+Signal-graph against Faust waveform similarity **0.9899** (it was 0.9584 on the stand-in): most of
+what either filter leaves is the kick, about 83% of the dry buffer's energy sits below 200 Hz, and
+both lowpasses pass that nearly unchanged.
+
+The three clips are checked as a shape, not against stored values: both
 filters must take the spectral centroid below 0.6× the dry buffer's, the two filtered renders must
 still correlate above 0.5 with each other, and the gain agreement must stay under
 `SoundPathMap.SEAM_AGREEMENT_CEILING` = `1e-6`. `DocsAudioProvenance` separately re-renders all
@@ -63,19 +84,19 @@ buffers, not on the committed `.wav`s: `brightnessHz(audio.mono)` runs on the re
 centroid, the slopes and the 0.9584 similarity are identical either way — which is why the page
 does not distinguish them.
 
-The levels before that scalar, which the page used to print: the dry beat peaks at **2.005**, well
-past full scale because ten voices a cycle sum, and the two filtered renders at **0.934** and
-**1.069**. A 12 dB/octave filter removes more energy than a 6 dB/octave one, and that shows up as
-level before normalization scales it away. Printed by the smoke, not asserted.
+The levels before that scalar are in the table above. On the stand-in input the dry beat peaked at
+2.005, past full scale because ten synth voices a cycle summed; the Dirt one-shots peak at 0.723.
+Printed by the smoke, not asserted.
 
 The gain leg of the seam check, also displaced from the page on 2026-09-16: the same buffer
 multiplied by 0.5 by the graph (`Signal * 0.5f`) and by Faust (`process = _,_ : *(0.5), *(0.5);`)
 over 44100 samples gives a **worst per-sample disagreement of 0.000e+00** — bit-equal, against a
 ceiling of `1e-6`.
 
-Byte-level agreement, for whoever next doubts the clips share an input: the two filtered clips
-reach their maximum at frames 25778 and 25777, one sample apart, while the dry beat peaks at
-22632. Printed by `run_field_tests.py --id synth.sound.path.map`, not asserted.
+Byte-level agreement, for whoever next doubts the clips share an input: in the committed WAVs the
+dry beat reaches its maximum at frame 44194 and the Faust render at 44203, nine samples later, the
+first-order filter's delay on a kick. The two-pole render peaks on a different kick, at 55225.
+Measured off the committed files with numpy on 2026-10-01; the smoke does not print it.
 
 ## The spatial loopback smoke
 

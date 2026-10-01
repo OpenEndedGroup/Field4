@@ -123,6 +123,9 @@ object DocsAudioProvenance {
         // eight voices and at one — the difference between them is voice allocation, not origin.
         "afield.four.synth.FaustPolySoundDocs" to Origin.FAUST,
         "afield.four.synth.PatSpatialSoundDocs" to Origin.DOUGH_WASM,
+        // Boolean-network note streams played through the pinned Dirt-Samples subset, strictly:
+        // no token falls back, so the family is the pure one. See boolean_network_music_examples.md.
+        "afield.four.synth.BooleanNetworkSoundDocs" to Origin.DIRT_SAMPLES,
     )
 
     /** The renderer a fence gets when it does not name one, matching `docs_hooks.py`. */
@@ -213,13 +216,14 @@ object DocsAudioProvenance {
         // that one buffer is rendered through several *different* paths, so the renderer object
         // cannot name a single family. It reads the family off the figure's declared SoundPath.
         //
-        // Two of the three are honestly *chains* — the stand-in synth's output, then a filter from
-        // another path — and are classified by the processing rather than by the source, because
-        // the processing is what the figure is about. The `standInSimilarity` column below says how
-        // much of the stand-in survived, which is the number that keeps that classification honest.
+        // Two of the three are honestly *chains* — real Dirt one-shots, then a filter from another
+        // path — and are classified by the processing rather than by the source, because the
+        // processing is what the figure is about. The `standInSimilarity` column below says how
+        // much of the dry input survived, which is the number that keeps that classification
+        // honest. (The input was the stand-in synth until 2026-10-01.)
         "afield.four.synth.SoundPathMap" ->
             when (SoundPathMap.comparison(published.spec).pathId) {
-                "pat-stand-in" -> Origin.STAND_IN_SYNTH
+                "dirt-samples" -> Origin.DIRT_SAMPLES
                 "signal-graph" -> Origin.DOUGH_DSP
                 "faust" -> Origin.FAUST
                 else -> null
@@ -309,8 +313,8 @@ object DocsAudioProvenance {
                         committed, SoundRenderPathDocs.standInReference(published.spec),
                     )
 
-                // The comparison figures share one stand-in render by construction — it is the
-                // *input* to all three — so this column reads as "how much of the dry beat is left".
+                // The comparison figures share one dry render by construction — it is the *input*
+                // to all three — so this column reads as "how much of the dry beat is left".
                 "afield.four.synth.SoundPathMap" ->
                     SoundRenderPathDocs.waveformSimilarity(committed, SoundPathMap.dryBeat())
 

@@ -3428,6 +3428,47 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Fetch the pinned subset of tidalcycles/Dirt-Samples the docs' sample clips are rendered from.
+//
+// Not a native library, but the same kind of dependency: third-party, too large to vendor (~400MB
+// for the whole set), and required by documentation captures. tools/fetch_dirt_samples.py reads
+// the folder list, commit and per-file SHA-256s from the manifest the JVM also reads
+// (src/jvmMain/resources/afield/four/synth/dirt-samples-pinned.json), seeds from a local Tidal quark
+// when its bytes match, downloads the rest file by file, and verifies all of them. The result is
+// the per-user native download cache, which DirtRender.pinnedSampleRoot() finds. A render that
+// needs it and does not have it fails with this task's name in the message; there is no fallback.
+//
+//     ./gradlew fetchDocsDirtSamples
+val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
+    group = "documentation"
+    description = "Fetches the pinned Dirt-Samples folders the docs render (~6MB, checksummed, shared across worktrees)."
+
+    val script = layout.projectDirectory.file("tools/fetch_dirt_samples.py")
+    val manifest = layout.projectDirectory.file("src/jvmMain/resources/afield/four/synth/dirt-samples-pinned.json")
+    inputs.file(script)
+    inputs.file(manifest)
+    inputs.file(layout.projectDirectory.file("tools/native_download_cache.py"))
+    // The output is outside the build directory (a per-user cache), so let the script decide.
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath) +
+            if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim())
+    }
+}
+
 // Build libpd — Pure Data as a C library — into build/field-libpd, for afield.pd.
 //
 // There is no wrapper: afield.pd binds z_libpd.h directly through FFM. The script shallow-clones
@@ -3550,7 +3591,8 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 }
 
 // One callable preparation gate for every native dependency declared by a documentation fence.
-// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here; Manifold and
+// Ceres, TetGen, libpd, the native browser bridge and the Electron runtime are built here, and the
+// pinned Dirt-Samples subset is fetched; Manifold and
 // JEP remain system/interpreter dependencies and the checker reports their exact resolved paths
 // and remedies. The source archives used by the downloaded builds live in the shared per-user
 // cache owned by tools/native_download_cache.py.
@@ -3566,7 +3608,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

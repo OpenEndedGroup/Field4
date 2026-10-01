@@ -17,6 +17,12 @@ import kotlinx.serialization.json.decodeFromJsonElement
  * the shortcut everywhere at once. Commands that need extra conditions beyond the chord (for example
  * "copy, but not when there is a text selection") keep those on `action.canvasGuard`, which is ANDed
  * with the chord match rather than replacing it.
+ *
+ * A spec can be a two-key chord (`cmd+k cmd+s`). [ChordState] does the waiting, on the canvas and in
+ * an editor alike: a capture-phase listener that holds the first key, shows it on screen, and waits
+ * [KeySpec.CHORD_TIMEOUT_MS] for the second. The first key is hidden from every other listener while
+ * it waits, so a command bound to the first key alone does not fire at once; it fires when the wait
+ * runs out, or at once when a key arrives that completes no chord.
  */
 object Keybindings {
 
@@ -122,12 +128,13 @@ object Keybindings {
      * different fallback defaults (a global listener passes none, `installOnAction` passes the
      * action's own), and keying on the id would let the first caller poison the entry.
      */
-    private val chordCache = mutableMapOf<String, List<KeyChord>>()
+    private val chordCache = mutableMapOf<String, List<List<KeyChord>>>()
 
-    private fun chordsFor(id: String, defaults: List<String>): List<KeyChord> {
+    /** Every shortcut for [id] as a sequence: one chord for a plain shortcut, two for a chord. */
+    private fun sequencesFor(id: String, defaults: List<String>): List<List<KeyChord>> {
         val specs = resolve(id, defaults)
         if (specs.isEmpty()) return emptyList()
-        return chordCache.getOrPut(specs.joinToString("\u0000")) { specs.mapNotNull { KeySpec.parse(it) } }
+        return chordCache.getOrPut(specs.joinToString("\u0000")) { specs.mapNotNull { KeySpec.parseSequence(it) } }
     }
 
     // ── monaco ───────────────────────────────────────────────────────────────────
@@ -152,6 +159,18 @@ object Keybindings {
             if (number != null && number != 0) return number
         }
         return null
+    }
+
+    /**
+     * The Monaco keybinding integer for a one- or two-chord [sequence]. Two chords go through
+     * `monaco.KeyMod.chord`, which is also why Field stops at two.
+     */
+    fun monacoBinding(sequence: List<KeyChord>): Int? {
+        val first = monacoBinding(sequence.firstOrNull() ?: return null) ?: return null
+        if (sequence.size == 1) return first
+        val second = monacoBinding(sequence[1]) ?: return null
+        val chord = window.asDynamic().monaco?.KeyMod?.chord ?: return null
+        return (chord(first, second) as? Number)?.toInt()
     }
 
     /** The Monaco keybinding integer for [chord], or null when Monaco has no code for that key. */
@@ -189,10 +208,29 @@ object Keybindings {
         return key.lowercase() == literal.lowercase()
     }
 
+    /**
+     * True when [event] triggers one of [sequences]: a one-chord sequence by matching the event, a
+     * two-chord one when [ChordState] has just marked the event as the key that completed it.
+     *
+     * An event [ChordState] is holding as the first key of a chord matches nothing, and an event that
+     * completed a chord matches only that chord, so `cmd+s` alone does not also fire for the second
+     * half of `cmd+k cmd+s`.
+     */
+    private fun matchesAny(event: dynamic, sequences: List<List<KeyChord>>): Boolean {
+        if (event == null || event == undefined) return false
+        if (event.__fieldChordHeld == true) return false
+        val completed = event.__fieldChordCompleted
+        if (completed != null && completed != undefined) {
+            val done = completed as List<KeyChord>
+            return sequences.any { it == done }
+        }
+        return sequences.any { it.size == 1 && matchesChord(event, it[0]) }
+    }
+
     /** True when [event] triggers command [id]. [defaults] applies when the user has not rebound it. */
     fun matches(event: dynamic, id: String, defaults: List<String> = emptyList()): Boolean {
         val fallback = if (defaults.isNotEmpty()) defaults else (virtualById[id]?.defaults ?: emptyList())
-        return chordsFor(id, fallback).any { matchesChord(event, it) }
+        return matchesAny(event, sequencesFor(id, fallback))
     }
 
     // ── applying to an action ────────────────────────────────────────────────────
@@ -208,8 +246,10 @@ object Keybindings {
      * It overrides even an explicit `keyScope: 'editor'`. That combination is contradictory, and of
      * the two ways to resolve it, keeping the letter typable is the only tolerable one.
      */
-    private fun effectiveScope(declared: String, chords: List<KeyChord>): String =
-        if (chords.any { KeySpec.typesACharacter(it) }) KeyScope.canvas else declared
+    private fun effectiveScope(declared: String, sequences: List<List<KeyChord>>): String =
+        // A chord whose *first* key types a character is canvas-only too; its second key may be bare
+        // (`cmd+k s`), since by then Monaco is already waiting for a chord and nothing is typed.
+        if (sequences.any { it.isNotEmpty() && KeySpec.typesACharacter(it[0]) }) KeyScope.canvas else declared
 
     /**
      * Rewrites [action]'s `keybindings` and `canvasKeybinding` from its `keys` default and any user
@@ -220,8 +260,8 @@ object Keybindings {
         val id = (action.id as? String) ?: return
 
         val defaults = declaredSpecs(action.keys)
-        val chords = chordsFor(id, defaults)
-        val scope = effectiveScope(KeyScope.normalize(action.keyScope as? String), chords)
+        val sequences = sequencesFor(id, defaults)
+        val scope = effectiveScope(KeyScope.normalize(action.keyScope as? String), sequences)
 
         action.keybindings = if (scope == KeyScope.canvas) {
             emptyArray<Int>()
@@ -229,17 +269,19 @@ object Keybindings {
             // Monaco may not have loaded yet — actions are registered early. Remember that, so
             // [awaitMonaco] can redo the registrations once the key codes exist; otherwise this
             // action would keep the empty binding array for the rest of the session.
-            if (chords.isNotEmpty() && !monacoReady()) installedBeforeMonaco = true
-            chords.mapNotNull { monacoBinding(it) }.toTypedArray()
+            if (sequences.isNotEmpty() && !monacoReady()) installedBeforeMonaco = true
+            sequences.mapNotNull { monacoBinding(it) }.toTypedArray()
         }
 
         val guard = action.canvasGuard
         val hasGuard = guard != null && guard != undefined
-        action.canvasKeybinding = if (scope == KeyScope.editor || chords.isEmpty()) {
+        val canvasLive = scope != KeyScope.editor && sequences.isNotEmpty()
+        ChordState.register(id, sequences, canvas = canvasLive, editor = scope != KeyScope.canvas)
+        action.canvasKeybinding = if (!canvasLive) {
             { _: dynamic -> false }
         } else {
             { event: dynamic ->
-                chords.any { matchesChord(event, it) } && (!hasGuard || guard(event) == true)
+                matchesAny(event, sequences) && (!hasGuard || guard(event) == true)
             }
         }
     }
@@ -265,7 +307,7 @@ object Keybindings {
             // claiming a reach into the editor that [effectiveScope] has already taken away.
             scope = effectiveScope(
                 KeyScope.normalize(action.keyScope as? String),
-                defaults.mapNotNull { KeySpec.parse(it) }
+                defaults.mapNotNull { KeySpec.parseSequence(it) }
             ),
             group = group
         )
@@ -324,7 +366,7 @@ object Keybindings {
             userBindings.containsKey(id) -> userBindings.getValue(id)
             else -> return null
         }
-        return specs.mapNotNull { KeySpec.parse(it) }.map { KeySpec.label(it, isMac()) }
+        return specs.mapNotNull { KeySpec.parseSequence(it) }.map { KeySpec.labelSequence(it, isMac()) }
     }
 
     /** The `keys` default declared by whichever registration owns [id], if it is registered now. */
@@ -377,6 +419,9 @@ object Keybindings {
      */
     private fun reregisterAll() {
         val w = window.asDynamic()
+        // Every action re-registers its chords below; virtual commands are re-read here.
+        ChordState.clear()
+        registerVirtualChords()
 
         // Field commands (canvas + editor palette actions).
         if (w.resetActionRegistrations != undefined) w.resetActionRegistrations()
@@ -450,7 +495,16 @@ object Keybindings {
         }
     }
 
+    /** The two-key chords of the hand-matched global commands, which have no action to install on. */
+    private fun registerVirtualChords() {
+        for (command in virtualCommands) {
+            ChordState.register(command.id, sequencesFor(command.id, command.defaults), canvas = true, editor = true, virtual = true)
+        }
+    }
+
     fun install() {
+        ChordState.install()
+        registerVirtualChords()
         val bridge = js("{}")
         bridge.matches = { event: dynamic, id: String -> matches(event, id) }
         bridge.installOnAction = { action: dynamic -> installOnAction(action) }
@@ -458,6 +512,8 @@ object Keybindings {
         bridge.resolve = { id: String -> resolve(id, virtualById[id]?.defaults ?: emptyList()).toTypedArray() }
         // null (not an empty array) when Field cannot say — see labelsFor.
         bridge.labels = { id: String -> labelsFor(id)?.toTypedArray() }
+        // For regressions and the curious: the first key being held, as a label, or null.
+        bridge.pendingChord = { ChordState.pendingLabel() }
         window.asDynamic().fieldKeybindings = bridge
 
         awaitMonaco()
@@ -476,4 +532,209 @@ object Keybindings {
 /** Asks the server to re-read `keybindings.yaml` now and push it to every client. */
 fun reloadUserKeybindings() {
     send(Message("reload-user-keybindings"))
+}
+
+/**
+ * The waiting half of a two-key chord.
+ *
+ * One capture-phase `keydown` listener on `window`, installed before anything else listens, so it
+ * sees every key before Monaco or any other listener does. When a key is the first chord of some
+ * registered two-key sequence it is *held*: marked so that [Keybindings.matches] and every
+ * `canvasKeybinding` ignore it, stopped, and shown in a small hint. Then, for the next non-modifier
+ * key:
+ *
+ *  - it completes a sequence: a palette or editor action runs at once, and a hand-matched global
+ *    command (the palette, the cheatsheet, bookmarks) gets the event marked with that sequence, so its
+ *    own listener's [Keybindings.matches] says yes. Nothing bound to the key alone runs;
+ *  - it completes nothing: the held key fires first, so a command bound to it alone still runs, and
+ *    then the new key goes on as if nothing had been waiting;
+ *  - Escape: the wait is cancelled and the Escape is swallowed.
+ *
+ * If no second key comes within [KeySpec.CHORD_TIMEOUT_MS], the held key fires. Outside an editor that
+ * is a synthetic `KeyboardEvent` re-dispatched on the element that had focus, which every listener in
+ * Field reads the same way (by `key`, `code` and the modifier flags) and which this listener lets
+ * through. Monaco does not read synthetic events, so inside an editor the action bound to the held key
+ * is run directly instead. Monaco has the chords too (`KeyMod.chord`), but never sees their keys while
+ * this listener holds them: its own resolver fires a bound prefix at once, which is the behaviour this
+ * object exists to replace.
+ *
+ * In a text field or code editor only chords whose first key has Cmd or Alt are held, and only for
+ * commands that are live there; a bare first key in an editor is typing.
+ */
+internal object ChordState {
+
+    private class Entry(
+        val id: String,
+        val sequence: List<KeyChord>,
+        val virtual: Boolean,
+        val canvas: Boolean,
+        val editor: Boolean,
+    )
+
+    private val byId = mutableMapOf<String, List<Entry>>()
+
+    private var held: dynamic = null
+    private var heldTarget: dynamic = null
+    private var heldEditable = false
+    private var candidates: List<Entry> = emptyList()
+    private var timer: Int? = null
+    private var hint: org.w3c.dom.HTMLElement? = null
+
+    fun clear() = byId.clear()
+
+    fun register(id: String, sequences: List<List<KeyChord>>, canvas: Boolean, editor: Boolean, virtual: Boolean = false) {
+        if (sequences.isEmpty() || (!canvas && !editor)) byId.remove(id)
+        else byId[id] = sequences.map { Entry(id, it, virtual, canvas, editor) }
+    }
+
+    fun pendingLabel(): String? =
+        if (held == null || held == undefined) null else candidates.firstOrNull()?.let { KeySpec.label(it.sequence[0], isMac()) }
+
+    private fun isMac(): Boolean = window.navigator.platform.contains("Mac", ignoreCase = true)
+
+    private fun isModifierKey(event: dynamic): Boolean =
+        when (event.key as? String) { "Shift", "Control", "Alt", "Meta", "OS", "CapsLock", "AltGraph" -> true; else -> false }
+
+    private fun isEditable(target: dynamic): Boolean {
+        val el: dynamic = if (target != null && target != undefined && target.nodeType == 1) target else kotlinx.browser.document.activeElement
+        if (el == null || el == undefined) return false
+        val tag = ((el.tagName as? String) ?: "").lowercase()
+        if (tag == "input" || tag == "textarea" || tag == "select") return true
+        if (el.isContentEditable == true) return true
+        return el.closest != undefined && el.closest(".monaco-editor, .afield-palette, .quick-input-widget") != null
+    }
+
+    /** The action registered as [id] right now, or null. */
+    private fun actionFor(id: String): dynamic {
+        val last = window.asDynamic().lastActions
+        if (last == null || last == undefined) return null
+        val n = (last.length as? Number)?.toInt() ?: 0
+        for (i in 0 until n) if ((last[i]?.id as? String) == id) return last[i]
+        return null
+    }
+
+    /** Entries live where [editable] says the key is going. Actions only while they are registered. */
+    private fun live(editable: Boolean): List<Entry> =
+        byId.values.flatten().filter { e ->
+            (e.virtual || actionFor(e.id) != null) &&
+                if (editable) e.editor && (e.sequence[0].ctrlCmd || e.sequence[0].alt) else e.canvas
+        }
+
+    fun install() {
+        window.addEventListener("keydown", { event: dynamic -> onKeyDown(event) }, true)
+    }
+
+    private fun onKeyDown(event: dynamic) {
+        if (event.__fieldChordReplay == true) return
+        if (isModifierKey(event)) return
+
+        if (held != null) {
+            val completed = candidates.firstOrNull { Keybindings.matchesChord(event, it.sequence[1]) }
+            val first = held
+            val target = heldTarget
+            val editable = heldEditable
+            cancelWait()
+            when {
+                completed != null -> {
+                    // Not to the browser either: `cmd+k cmd+s` must not also save the page.
+                    event.__fieldChordCompleted = completed.sequence
+                    event.preventDefault()
+                    if (!completed.virtual) {
+                        event.stopImmediatePropagation()
+                        runAction(completed.id, event, editable)
+                    }
+                }
+                (event.key as? String) == "Escape" -> {
+                    event.preventDefault(); event.stopImmediatePropagation()
+                }
+                else -> fireHeld(first, target, editable)
+            }
+            return
+        }
+
+        val editable = isEditable(event.target)
+        val entries = live(editable)
+        val starts = entries.filter { it.sequence.size == 2 && Keybindings.matchesChord(event, it.sequence[0]) }
+        if (starts.isEmpty()) return
+        event.__fieldChordHeld = true
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        held = event
+        heldTarget = event.target
+        heldEditable = editable
+        candidates = starts
+        showHint(KeySpec.label(starts[0].sequence[0], isMac()))
+        timer = window.setTimeout({
+            val first = held
+            val target = heldTarget
+            val wasEditable = heldEditable
+            cancelWait()
+            if (first != null) fireHeld(first, target, wasEditable)
+        }, KeySpec.CHORD_TIMEOUT_MS)
+    }
+
+    private fun runAction(id: String, event: dynamic, editable: Boolean) {
+        val action = actionFor(id) ?: return
+        val guard = action.canvasGuard
+        if (!editable && guard != null && guard != undefined && guard(event) != true) return
+        action.run()
+    }
+
+    /** The held key, late: as a replayed event outside an editor, as a direct run inside one. */
+    private fun fireHeld(original: dynamic, target: dynamic, editable: Boolean) {
+        if (editable) {
+            val single = live(true).firstOrNull { !it.virtual && it.sequence.size == 1 && Keybindings.matchesChord(original, it.sequence[0]) }
+            if (single != null) {
+                runAction(single.id, original, true)
+                return
+            }
+        }
+        replay(original, target)
+    }
+
+    private fun cancelWait() {
+        timer?.let { window.clearTimeout(it) }
+        timer = null
+        held = null
+        heldTarget = null
+        heldEditable = false
+        candidates = emptyList()
+        hint?.style?.display = "none"
+    }
+
+    /** Re-dispatches the held key, so a command bound to it alone runs after all. */
+    private fun replay(original: dynamic, target: dynamic) {
+        val init = js("{}")
+        init.key = original.key
+        init.code = original.code
+        init.ctrlKey = original.ctrlKey
+        init.metaKey = original.metaKey
+        init.altKey = original.altKey
+        init.shiftKey = original.shiftKey
+        init.bubbles = true
+        init.cancelable = true
+        val KeyboardEventCtor = window.asDynamic().KeyboardEvent
+        val copy = js("new KeyboardEventCtor('keydown', init)")
+        copy.__fieldChordReplay = true
+        val dest: dynamic = if (target != null && target != undefined && target.isConnected == true) target else kotlinx.browser.document.body
+        dest.dispatchEvent(copy)
+    }
+
+    private fun showHint(label: String) {
+        val doc = kotlinx.browser.document
+        val el = hint ?: (doc.createElement("div") as org.w3c.dom.HTMLElement).also {
+            it.id = "field-chord-hint"
+            it.setAttribute(
+                "style",
+                "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100000;" +
+                    "padding:6px 12px;border-radius:4px;background:rgba(20,20,20,0.92);color:#eee;" +
+                    "font:12px/1.4 var(--field-mono-font, monospace);pointer-events:none;" +
+                    "box-shadow:0 2px 8px rgba(0,0,0,0.4)",
+            )
+            doc.body?.appendChild(it)
+            hint = it
+        }
+        el.textContent = "$label … (waiting for the second key)"
+        el.style.display = "block"
+    }
 }

@@ -81,8 +81,10 @@ object UserKeybindingsManager {
 # elsewhere (ctrl, control, meta and mod are accepted spellings of it); `alt` is Option on macOS.
 # Keys are a-z, 0-9, f1-f24, enter, escape, backspace, delete, space, tab, up, down, left, right,
 # home, end, pageup, pagedown, insert, and punctuation written as itself: [ ] ' ; , . / \ - = `
-# A shifted character stands for shift plus that key, so `?` means the same as `shift+/`. One key per
-# shortcut: there are no two-keystroke chords, so `cmd+k cmd+s` is rejected rather than half-obeyed.
+# A shifted character stands for shift plus that key, so `?` means the same as `shift+/`.
+# Two-key chords are written with a space: `cmd+k cmd+s` is Cmd+K, then Cmd+S within a second (a
+# hint shows the first key while Field waits). Two keys at most. If the first key is also a shortcut
+# on its own, it fires only once the second has not come.
 #
 # The whole story, including how to find a command id and what happens when a line is wrong:
 # http://openendedgroup.com/Field4/keybindings/
@@ -399,7 +401,7 @@ bindings:
             val canonical = KeySpec.canonicalize(candidate)
             if (canonical == null) {
                 // Say *why*. "not a shortcut Field understands" is no help at all when the answer is
-                // either a misspelled key or a two-keystroke chord Field simply does not have.
+                // either a misspelled key or a chord of more keys than Field takes.
                 val reason = KeySpec.explainFailure(candidate) ?: "Field cannot read it"
                 problems.add("keybindings.yaml: '$candidate' (for '$id') is not a shortcut — $reason")
             } else {
