@@ -2744,7 +2744,8 @@ def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]
                    and any(handoff_batch(h) == b["key"] for h in open_items)]
         overview.append({**{k: batch[k] for k in ("key", "order", "title", "how")},
                          "handoffs": [h["id"] for h in items], "notLanded": not_landed, "earlierOpen": earlier,
-                         "session": sessions.get(batch["key"])})
+                         "session": ({**sessions[batch["key"]], "occupants": session_occupants(sessions[batch["key"]]["worktree"])}
+                                     if batch["key"] in sessions else None)})
     return overview
 
 
@@ -2783,7 +2784,31 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
     return "\n".join(lines).rstrip() + "\n"
 
 
-def start_session(git: Git, store: Store, batch_key: str) -> dict[str, Any]:
+def session_occupants(worktree: str) -> list[str]:
+    """Interactive agents (`claude`, `codex`) whose working directory is inside the worktree.
+
+    A second agent in the same worktree edits under the first one's feet, so the page warns before
+    handing out the command. An agent driven from another session (a sub-agent) has no process of
+    its own here; `handoff-session --driver` records that one instead.
+    """
+    try:
+        out = subprocess.run(["lsof", "-a", "-d", "cwd", "-F", "pcn"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    roots = {worktree.rstrip("/"), str(Path(worktree).resolve())}  # lsof reports /private/var for /var
+    found, pid, name = [], "", ""
+    for line in out.splitlines():
+        tag, value = line[:1], line[1:]
+        if tag == "p":
+            pid, name = value, ""
+        elif tag == "c":
+            name = value
+        elif tag == "n" and name in ("claude", "codex") and any(value == r or value.startswith(r + "/") for r in roots):
+            found.append(f"{name} (pid {pid})")
+    return found
+
+
+def start_session(git: Git, store: Store, batch_key: str, driver: str = "") -> dict[str, Any]:
     batch = next((b for b in BATCHES if b["key"] == batch_key), None)
     if batch is None:
         raise SystemExit(f"no batch {batch_key!r}")
@@ -2820,6 +2845,8 @@ def start_session(git: Git, store: Store, batch_key: str) -> dict[str, Any]:
     command = f"cd {shlex.quote(str(worktree))} && claude \"Read HANDOFF_SESSION.md, then let's start with the first handoff.\""
     session = {"batch": batch_key, "title": batch["title"], "worktree": str(worktree), "branch": branch,
                "base": base_commit, "handoffs": ids, "command": command, "createdAtEpochMs": now_ms()}
+    if driver:
+        session["driver"] = driver
     sessions = [s for s in load_sessions(git.root) if s.get("batch") != batch_key or Path(s["worktree"]).is_dir()]
     save_sessions(git.root, sessions + [session])
     print(json.dumps(session, indent=2), flush=True)
@@ -2932,6 +2959,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("batch", choices=sorted(BATCH_KEYS))
     p = sub.add_parser("handoff-session", help="start an interactive session for one batch, in its own worktree")
     p.add_argument("batch", choices=sorted(BATCH_KEYS))
+    p.add_argument("--driver", default="", help="who is already running it (e.g. an orchestrating agent); the page warns before handing out its command")
     p = sub.add_parser("handoff-session-end", help="remove a batch's session worktree once its branch is merged")
     p.add_argument("batch", choices=sorted(BATCH_KEYS))
     p.add_argument("--abandon", action="store_true")
@@ -3072,7 +3100,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{args.id[:8]} → {args.batch}")
         return 0
     if args.command == "handoff-session":
-        start_session(git, store, args.batch)
+        start_session(git, store, args.batch, args.driver)
         return 0
     if args.command == "handoff-session-end":
         return end_session(git, store, args.batch, args.abandon)

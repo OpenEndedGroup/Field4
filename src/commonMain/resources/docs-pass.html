@@ -344,7 +344,8 @@
         $("questions").innerHTML = items.map(q => {
             const where = q.kind === "handoff" ? `handoff · ${esc(q.batch || "")}` : "note";
             const buttons = `<button data-act="reply" class="primary">reply…</button>`
-                + (q.kind === "handoff" ? ` <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button>` : "");
+                + (q.kind === "handoff" ? ` <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button>`
+                    : ` <button data-act="resolve" title="your answer needs no edit: close the note instead of sending it back to an agent">resolve…</button>`);
             return `<div class="question" data-handoff="${esc(q.id)}"><div><span class="badge">${where}</span> ${esc(q.title)} <span class="muted">· ${esc(q.page)} · <code>${esc(q.id.slice(0, 8))}</code></span></div>`
                 + (q.quote ? `<blockquote>${esc(q.quote)}</blockquote>` : "")
                 + `<pre class="asked">${esc(q.question)}</pre><div class="muted">asked ${esc(when(q.askedAtEpochMs))}</div><div class="row">${buttons}</div></div>`;
@@ -375,7 +376,9 @@
             const openRows = rows.filter(h => h.state === "open");
             let action;
             if (batch.session) {
+                const running = [batch.session.driver, ...(batch.session.occupants || [])].filter(Boolean);
                 action = `<div class="session"><span class="muted">session in <code>${esc(batch.session.worktree)}</code> — run:</span>`
+                    + (running.length ? ` <span class="state-waiting">already running: ${esc(running.join(", "))}</span>` : "")
                     + `<pre class="command">${esc(batch.session.command)}</pre>`
                     + `<button data-act="copy" data-batch="${esc(batch.key)}">Copy command</button> <button data-act="end-session" data-batch="${esc(batch.key)}">End session</button> <button data-act="abandon-session" data-batch="${esc(batch.key)}" class="danger">Abandon session</button></div>`;
             } else {
@@ -535,6 +538,12 @@
             await act("reply", { id, text });
             return;
         }
+        if (button.dataset.act === "resolve") {
+            const text = await ask(`Close this note without an edit. Why? (kept in its thread)\n\n${q ? q.question : id}`, { input: true, ok: "Resolve" });
+            if (text === null || !text.trim()) return;
+            await act("resolve", { id, text });
+            return;
+        }
         await closeHandoff(id, button.dataset.act);
     });
     $("handoffs").addEventListener("click", async event => {
@@ -548,6 +557,8 @@
         }
         if (kind === "copy") {
             const text = batch.session.command;
+            const running = [batch.session.driver, ...(batch.session.occupants || [])].filter(Boolean);
+            if (running.length && !await confirmed(`This session is already being run by ${running.join(", ")}. A second agent in the same worktree edits under the first one's feet. Copy the command anyway?`, true)) return;
             try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy command"; }, 1500); }
             catch (_) { await tell(text); }
             return;

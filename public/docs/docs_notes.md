@@ -70,8 +70,8 @@ A run keeps each agent's prompt, complete log and recorded outcomes in
 
 ### From the welcome page
 
-**docs revision pass** on `/welcome` opens `/docs-pass.html`, which runs a whole pass without a
-terminal:
+**Revision pass**, in the *Documentation notes* card of `/welcome`'s AI panel, opens
+`/docs-pass.html`, which runs a whole pass without a terminal:
 
 1. **Start a pass** makes a worktree on a new `docs-pass/…` branch from `main`. Agents edit there,
    never in the checkout you work in.

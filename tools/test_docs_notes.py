@@ -840,6 +840,20 @@ class SessionTest(unittest.TestCase):
             dn.start_session(self.git, self.store, "navigation")
         self.assertIn("land the revision pass first", str(refused.exception))
 
+    def test_the_overview_says_who_is_already_running_a_session(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation", driver="orchestrating agent")
+        lsof = ("p101\ncclaude\nfcwd\nn" + session["worktree"] + "/public\n"
+                "p102\nczsh\nfcwd\nn" + session["worktree"] + "\n"
+                "p103\ncclaude\nfcwd\nn" + session["worktree"] + "-other\n")
+        with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=lsof)):
+            shown = self.overview()["navigation"]["session"]
+        self.assertEqual(shown["driver"], "orchestrating agent")
+        # Only an agent, and only inside this worktree: not the shell, not a sibling with a longer name.
+        self.assertEqual(shown["occupants"], ["claude (pid 101)"])
+
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
         self.repo.commit("land")
