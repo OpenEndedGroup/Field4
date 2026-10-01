@@ -396,9 +396,54 @@ A few keyboard shortcuts for getting around Field.
 
 `command/ctrl-shift-P` (or `f1`) — pressed in the editor, this brings up the command palette for that box; press it _again_ and you get the command palette for the document as a whole:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
-	<source src="assets/Screen-Recording-2026-03-21-at-4.03.42.mp4" type="video/mp4">
-</video>
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/command-palette.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-command-palette" alt="In a small Field window with two boxes, sketch's editor is open. Cmd/Ctrl-Shift-P opens the Command Palette for the box, with editor commands in it, and typing fold all narrows it to the folding commands; pressing the shortcut again turns it into Document Commands, and typing document history narrows that to the document history commands. Escape closes it."}
+// The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
+// window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
+fun boxAt(name: String): List<Double> = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    if (!b) return null
+    const r = b.getBoundingClientRect()
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
+""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+fun boxUid(name: String): String = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    return b ? b.uid : null
+""".trimIndent()).toString().trim('"')
+fun freeEditorLayout() {
+    ui.eval("""
+        const c = document.querySelector(".monaco-editor-container")
+        if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+        if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+        return true
+    """.trimIndent())
+}
+// The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
+// hides them; toasts the drive's own actions raise still show.
+ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+freeEditorLayout()
+ui.openEditor(boxUid("sketch"))
+ui.waitForSelector(".monaco-editor", 15000.0)
+freeEditorLayout()
+ui.pause(600)
+ui.clickSelector(".monaco-editor")
+ui.pause(700)
+// Cmd/Ctrl-Shift-P in the editor: the palette for this box, editor commands included.
+ui.press("ControlOrMeta+Shift+P")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(800)
+ui.typeSlowly("fold all", 110)
+ui.pause(800)
+// Again: the palette for the document as a whole.
+ui.press("ControlOrMeta+Shift+P")
+ui.pause(600)
+val title = ui.eval("return document.querySelector('.afield-palette-shell')?.innerText?.slice(0, 200) || ''").toString()
+check("document commands" in title.lowercase()) { "the second press did not open the document palette: " + title }
+ui.pause(600)
+ui.typeSlowly("document history", 110)
+ui.pause(900)
+ui.press("Escape")
+ui.pause(600)
+```
 
 `Double tap-command/control` (command on Mac, control on Windows/Linux) in the editor gives you an affordance that lets you use the cursor keys to switch box:
 
@@ -440,6 +485,8 @@ The layers palette shows any layer that's mentioned by any box; the currently se
 ## Drawing on the canvas
 
 `alt-d` turns the canvas into a drawing surface: pens, shapes, arrows and text, in Excalidraw's hand-drawn style, right over your boxes. `alt-d` again and you're back with the boxes, and the drawing stays put, panning and zooming along with everything else. Pinch to zoom, by the way; that works everywhere now.
+
+![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box, with its blue piano-roll rectangles, a red glissando and its label, a green held note and an orange playhead, and the box that drew them to the left](assets/chain_drawn_score/hero.png)
 
 The fun part is that boxes can read the drawing and draw on it. `notation { arrow(from = thisBox, to = other) }` draws an arrow that follows both boxes around; `notation.onStroke { }` hears every stroke you make; and `notation.space(...)` lets you read a region like a score, cutting it at an instant and asking what's there. Here's Cage's _Fontana Mix_, read by a box:
 
@@ -658,9 +705,57 @@ For the mechanism behind all of this — how `prop`/`once` expand, how propertie
 
 Boxes can be nested inside other boxes (`f1` "nest ...")
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
-	<source src="assets/nesting.mp4" type="video/mp4">
-</video>
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/nesting.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-nesting" alt="Two boxes, sketch and helper. A click selects sketch and shift-click adds helper; F1 opens the palette over the canvas, typing nest narrows it to Nest 'helper' into 'sketch', and Enter runs it: helper disappears into sketch's nest."}
+// The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
+// window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
+fun boxAt(name: String): List<Double> = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    if (!b) return null
+    const r = b.getBoundingClientRect()
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
+""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+fun boxUid(name: String): String = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    return b ? b.uid : null
+""".trimIndent()).toString().trim('"')
+fun freeEditorLayout() {
+    ui.eval("""
+        const c = document.querySelector(".monaco-editor-container")
+        if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+        if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+        return true
+    """.trimIndent())
+}
+// The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
+// hides them; toasts the drive's own actions raise still show.
+ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+freeEditorLayout()
+val sketch = boxAt("sketch")
+val helper = boxAt("helper")
+ui.pause(600)
+// Select sketch, then shift-click helper: the first selected box is the one nested into.
+ui.moveMouse(sketch[0], sketch[1], 10)
+ui.clickAt(sketch[0], sketch[1])
+ui.pause(700)
+freeEditorLayout()
+ui.pause(500)
+ui.moveMouse(helper[0], helper[1], 10)
+ui.clickAt(helper[0], helper[1], "Shift")
+ui.pause(600)
+ui.press("F1")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(600)
+ui.typeSlowly("nest", 120)
+ui.pause(800)
+ui.press("Enter")
+ui.pause(1250)
+val nested = ui.eval("""
+    const h = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "helper")
+    return h ? getComputedStyle(h).display + "/" + getComputedStyle(h).visibility : "gone"
+""".trimIndent()).toString()
+check(!nested.contains("block/visible")) { "helper is still on the canvas after Nest: " + nested }
+ui.pause(750)
+```
 
 This allows you to encapsulate boxes inside other boxes to work together to achieve a common aim. 
 
@@ -688,9 +783,53 @@ conflict-free collaboration protocol.
 
 The document-level command 'Add Editor to Output Area` will allow you to pin a particular property of a box to a boxes output zone:
 
-<video controls autoplay loop muted playsinline style="width: min(100%, 660px);">
-	<source src="assets/multieditor.mp4" type="video/mp4">
-</video>
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="900x560" clip="0,0,900,560" video="assets/funfeatures/multi-editor.mp4" fps="10" transcript="assets/transcripts/funfeatures_tour_setup.yaml" padding="0" wait="0" timeout="180" embed=true hidden=true name="funfeatures-multi-editor" alt="A click selects the box named helper and opens its editor. F1, then typing add editor to output, finds Add Editor to Output Area; Enter, then code, picks the property, and a second, embedded editor holding helper's code opens in the box's output area under it."}
+// The setup transcript makes two boxes, sketch and helper. Lay the editor pane out for this
+// window, as a user's browser would: screenshot prep pins it to a size meant for a larger page.
+fun boxAt(name: String): List<Double> = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    if (!b) return null
+    const r = b.getBoundingClientRect()
+    return [r.left + r.width / 2, r.top + r.height / 2, b.uid || ""].join(",")
+""".trimIndent()).toString().trim('"').split(",").let { listOf(it[0].toDouble(), it[1].toDouble()) }
+fun boxUid(name: String): String = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.name || "") === "$name" || (b.textContent || "").trim() === "$name")
+    return b ? b.uid : null
+""".trimIndent()).toString().trim('"')
+fun freeEditorLayout() {
+    ui.eval("""
+        const c = document.querySelector(".monaco-editor-container")
+        if (c) for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+        if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+        return true
+    """.trimIndent())
+}
+// The page-load toasts (keybindings reloaded, finished loading) are hidden the way screenshot prep
+// hides them; toasts the drive's own actions raise still show.
+ui.eval("document.querySelectorAll('.bubble').forEach(b => { b.style.visibility = 'hidden'; b.style.opacity = '0' }); return true")
+freeEditorLayout()
+val helper = boxAt("helper")
+ui.pause(600)
+ui.moveMouse(helper[0], helper[1], 10)
+ui.clickAt(helper[0], helper[1])
+ui.pause(600)
+freeEditorLayout()
+ui.pause(600)
+ui.press("F1")
+ui.waitForSelector(".afield-palette-shell", 8000.0)
+ui.pause(600)
+ui.typeSlowly("add editor to output", 110)
+ui.pause(700)
+ui.press("Enter")
+ui.pause(600)
+ui.typeSlowly("code", 140)
+ui.pause(600)
+ui.press("Enter")
+ui.pause(900)
+val open = ui.eval("return !!(window.embeddedEditors && window.embeddedEditors.getFor('" + boxUid("helper") + "', 'code'))").toString()
+check(open.contains("true")) { "no embedded code editor opened in helper's output area" }
+ui.pause(900)
+```
 
 These additional, fully functional editors, give you a place to keep code (or outputs embedded in code!) that you keep coming back to.
 
@@ -703,7 +842,9 @@ output areas reformatted into a single narrow column, the real AI4 conversation 
 Anything, and a full Monaco editor on whatever is selected. There is one selection behind all of
 it, shared with the desktop — the phone follows Field's, and a pick made on the phone becomes
 Field's — so a piece can be running on a projector while you hold its controls and walk around in
-front of it.
+front of it. Here is the Group tab at iPhone size, showing the sliders, the XY pad, the toggle and the text field one box published with `controlGroup(...)`:
+
+![The Group tab of the Field mobile controller at iPhone size: a gain slider at 0.35, an orbit XY pad, an armed toggle reading ON and a name text field, with the six tabs Pad, Group, Outputs, Chat, Select and Edit along the bottom](assets/mobile_controllers/group.png){ width="320" }
 
 [Field from your phone](mobile_controllers.md) has the URL, what each of the six tabs does, and the
 warning that goes with any of this: the page can run boxes, edit code and call AI4 tools, so it
