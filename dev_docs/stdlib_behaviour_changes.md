@@ -558,3 +558,17 @@ Swept: every `push["…"] = <Int>` in `public/docs`, `templates`, `metadata_stor
 `OpticalFlowDemo`, is set from a `Float`). A float with
 a fraction set on an integer member, which used to be written as float bits, is now refused and
 reported. Tests: `StructurePerFrameWriteTest`, `StructureCoercionTest`.
+
+## 2026-10-01 — `saw`, `triangle`, `square`, `pulseTrain`, `ease` and `tween` gained formulas
+
+Values are unchanged: each formula is pinned bit-identical to the closure (`FnFormulaAgreementTest`,
+`FnShapedFormulaAgreementTest`). What changes is which path a fit takes.
+
+| surface | change | who notices | how to spot it |
+| --- | --- | --- | --- |
+| `FnAutoDiff.differentiableOps` | 35 -> 41 (of 127 canonical ops, 32.3%) | `fitGradient(gradient = AUTO)` on a graph containing any of the six ops now takes the **exact** reverse-mode gradient where it used to fall back to finite differences, so a seeded fit can land somewhere slightly different; `EXACT` now accepts these graphs instead of throwing | `FitResult.usedExactGradient` flips from false to true |
+| `Fn.enclose` / `certifiedRange` / `certifiedEnvelope` | refusal -> certified bound | a signal containing one of the six ops is now bounded instead of refused, so a `certifiedSignalChannel` gains its band | `FnEnclosure.refusal` is null |
+
+Swept for callers: tests that used `saw` or `pulseTrain` as the *refused* example now use
+`valueNoise` (`AutoDiffFnBridgeTest`, `FnOpCoverageTest`, `FnRefineRoundsTest`), as does the refusal
+figure on `public/docs/autodiff_examples.md`.
