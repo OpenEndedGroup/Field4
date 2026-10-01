@@ -646,7 +646,7 @@ fun vec3KnnGraph(
 /**
  * Compute an Orthant Neighborhood Graph for 2D points.
  *
- * Two points are connected if they are mutual nearest neighbors in the same orthant.
+ * Each point links to its nearest neighbour in every quadrant that holds one; an edge need not be chosen by both ends.
  * An orthant is a quadrant defined by the coordinate axes relative to a point.
  *
  * Note: orthant membership is axis-based; the nearest-neighbour distance ranking within each orthant
@@ -714,7 +714,7 @@ fun vec2OrthantGraph(
 /**
  * Compute an Orthant Neighborhood Graph for 3D points.
  *
- * Two points are connected if they are mutual nearest neighbors in the same orthant.
+ * Each point links to its nearest neighbour in every octant that holds one; an edge need not be chosen by both ends.
  * An orthant is an octant defined by the coordinate axes relative to a point.
  *
  * Note: orthant membership is axis-based; the nearest-neighbour distance ranking within each orthant
