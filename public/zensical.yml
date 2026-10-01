@@ -84,7 +84,6 @@ nav:
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
     - Simulation Time: simulation_clock.md
-    - Flow Grain and Motion: flow_grain.md
     - Profiling Timeline: profiling_timeline.md
     # Beside profiling_timeline.md rather than under Internals, and the split between the two is
     # audience: that page is the panel's controls, this one is what the numbers under them mean and
@@ -241,6 +240,11 @@ nav:
       # it uses. Third in this group so the order reads contract, then feedback, then a graph built
       # out of both.
       - Aperture Playground: aperture_playground.md
+      # A second worked render graph — fluid storage, grain, and a motion attachment through
+      # render-to-texture — moved out of "Working in a Document" for the same reason as the page
+      # above: nothing on it is about working in a document. It stays inside one subsystem and has
+      # no hop checks, which is why it is not under "Chains Across Subsystems".
+      - Flow Grain and Motion: flow_grain.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
       - Direct Lighting: direct_lighting.md
