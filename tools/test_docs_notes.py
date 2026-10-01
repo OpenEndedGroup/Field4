@@ -863,6 +863,41 @@ class SessionTest(unittest.TestCase):
         self.assertFalse(worktree.exists())
 
 
+OUTCOMES_FILE_AGENT = textwrap.dedent("""\
+    import json, re, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    path = re.search(r"Write tool to\\n(\\S+) as a JSON list", prompt).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    json.dump([{"op": "resolve", "id": ids[0][:8], "text": "No edit needed (the handoff's commit did it).", "memory": "m"},
+               {"op": "resolve", "id": "not-a-note-of-mine", "text": "should be dropped"},
+               {"op": "handoff", "id": ids[0], "text": "not accepted from a file"}], open(path, "w"))
+    """)
+
+
+class OutcomesFileTest(unittest.TestCase):
+    def test_an_outcome_written_to_the_file_is_recorded_like_a_command(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", OUTCOMES_FILE_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "one", "anchor": {"exact": "says hello"}}]}))
+            with mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}}"])
+            self.assertEqual(code, 0)
+            note = json.loads(store.read_text())["annotations"][0]
+            self.assertEqual(dn.note_state(note), "resolved")
+            self.assertEqual(note["resolution"], "No edit needed (the handoff's commit did it).")
+            self.assertEqual([e["kind"] for e in note["thread"]].count("resolution"), 1)
+            self.assertIn("memory", [e["kind"] for e in note["thread"]])
+        finally:
+            repo.close()
+
+
 class KotlinSchemaTest(unittest.TestCase):
     """Every key this tool writes must exist on the Kotlin side, or the server's next write drops it."""
 

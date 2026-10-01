@@ -1455,6 +1455,14 @@ page's remaining notes as waiting. A non-blocking handoff is filed and you carry
 other notes. A note you handed off needs no other outcome: it waits on the handoff, and comes
 back to this page's queue when the handoff is closed.
 
+If running that command is refused (a permission prompt nobody is there to answer), do not stop
+and do not leave the outcome only in your reply: write it with your Write tool to
+{outcomes_file} as a JSON list, and the harness records it exactly as if the command had run:
+
+  [{{"op": "resolve", "id": "<note-id>", "text": "what you changed", "memory": "optional"}},
+   {{"op": "question", "id": "<note-id>", "text": "what the human must decide"}},
+   {{"op": "memory", "id": "<note-id>", "text": "..."}}]
+
 Resolve only what you actually fixed. Ask a question rather than guessing when a note is
 ambiguous or asks for a decision that is the human's. Leave a memory when you learned something
 non-obvious about this page — a constraint, a trap, why a sentence is the way it is — that would
@@ -1666,8 +1674,9 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
                   "is right, finish what is half done, and record an outcome for every note, including those the "
                   "earlier edits already address.")
     draft_dir = run_dir / f"{partition.slug}.handoffs"
+    outcomes_file = run_dir / f"{partition.slug}.outcomes.json"
     prompt = AGENT_PROMPT.format(root=git.root, owned=owned, cli=cli, brief=brief, draft_dir=draft_dir,
-                                 page_url=partition.notes[0].get("pageUrl", ""))
+                                 outcomes_file=outcomes_file, page_url=partition.notes[0].get("pageUrl", ""))
     journal = run_dir / f"{partition.slug}.journal.jsonl"
     log_path = run_dir / f"{partition.slug}.log"
     # A page queued again after a usage limit: keep the earlier attempt's log and journal under
@@ -1717,7 +1726,7 @@ def run_partition(partition: Partition, *, agent: AgentSpec, run_dir: Path, stor
     changed = [f for f in partition.files if file_digest(git.root / f) != before[f]]
     ids = {n["id"] for n in partition.notes}
     ops, rejected = [], []
-    for op in read_journal(journal):
+    for op in read_journal(journal) + read_outcomes_file(outcomes_file, partition, agent.name, ids):
         if op.get("op") == "handoff" and set(op.get("notes", [])) <= ids:
             ops.append(op)
             if op.get("path") and op["path"] not in changed:
@@ -1735,6 +1744,38 @@ def untouched_notes(result: RunResult) -> list[dict[str, Any]]:
     touched = {op.get("id") for op in result.ops if op.get("id")}
     touched |= {i for op in result.ops if op.get("op") == "handoff" for i in op.get("notes", [])}
     return [n for n in result.partition.notes if n["id"] not in touched]
+
+
+def read_outcomes_file(path: Path, partition: "Partition", agent_name: str, ids: set[str]) -> list[dict[str, Any]]:
+    """Outcomes an agent wrote to a file because its notes command was refused.
+
+    The first real drain on 2026-10-01 lost three outcomes that way: each agent printed the exact
+    `resolve` command it wanted to run, the permission check asked for an approval nobody could give,
+    and the note stayed open. Only resolve, question, memory and comment are accepted here (a handoff
+    needs a document the command writes), and every id must be one of this partition's notes,
+    matched by prefix as the command would. Anything else is dropped, not guessed at.
+    """
+    if not path.is_file():
+        return []
+    try:
+        entries = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    ops = []
+    for entry in entries if isinstance(entries, list) else []:
+        if not isinstance(entry, dict) or entry.get("op") not in ("resolve", "question", "memory", "comment"):
+            continue
+        wanted = str(entry.get("id", ""))
+        match = [i for i in ids if wanted and (i == wanted or i.startswith(wanted))]
+        text = str(entry.get("text", "")).strip()
+        if len(match) != 1 or not text:
+            continue
+        op = {"op": entry["op"], "id": match[0], "text": text, "author": f"agent:{agent_name}", "atEpochMs": now_ms(),
+              "via": "outcomes file"}
+        if entry["op"] == "resolve" and str(entry.get("memory", "")).strip():
+            op["memory"] = str(entry["memory"]).strip()
+        ops.append(op)
+    return ops
 
 
 def apply_run(store: Store, result: RunResult, run_id: str, agent_name: str) -> None:
