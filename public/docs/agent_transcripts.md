@@ -117,7 +117,7 @@ and vector allocation. The fourth box records three seconds with JVM stacks and 
 **Hot code** explores sampled classes, methods, and box lines within the same time brush.
 Replay waits for launch startup, verifies the measured lanes and allocation, then stops the workers
 so you can brush and explore a quiet, latched capture. Change the vector box's `reuse` flag to
-compare construction with in-place `set` on Field's vectors. See [Profiling Timeline](profiling_timeline.md).
+compare construction with in-place `set` on Field's vectors. See [Profiling](profiling_timeline.md).
 
 ![A real three-second Field capture, brushed and zoomed, with separate lanes for steady arithmetic, periodic bursts, and vector allocation. The selected vector lane reports CPU time and allocated bytes](assets/profiling_timeline/brush.png)
 
@@ -137,7 +137,7 @@ claiming it — on stop the box's own `finally` counts the children that unwound
 checks that count is exactly 2 alongside the lanes it expects (`Orbit` as a coroutine, `Vectors` as
 a scope) and more than ten recorded frames. Replay records and then stops; launch the first box to
 watch it play. It carries the same `reuse` flag as `profiling_timeline`, over 2048 vectors: flip it
-and compare bytes per frame. See [Simulation time](simulation_clock.md).
+and compare bytes per frame. See [Simulation time](profiling_timeline.md#simulation-time).
 
 ![Field's existing profiling panel displaying complete simulation frame intervals, allocation per frame, budget misses, and selectable slow intervals from a real capture](assets/simulation_clock/frames.png)
 

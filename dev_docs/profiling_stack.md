@@ -1,7 +1,8 @@
 # The profiling stack
 
 Three instruments, one wire type, one dispatch hook. This is the internals companion to
-`public/docs/frame_budget.md`, which is the measurement model as a reader of the published
+the "Holding a frame budget" part of `public/docs/profiling_timeline.md` (until 2026-10-01 its
+own page, `frame_budget.md`), which is the measurement model as a reader of the published
 docs needs it. What is here is the part that is only interesting if you are changing this
 code: where the three instruments meet, which of their properties are load-bearing for the
 published page, and a record of what one real capture actually produced.
@@ -90,7 +91,7 @@ shortened, that is the assumption to revisit first.
 
 ## Properties the published page depends on
 
-If you change one of these, `public/docs/frame_budget.md` becomes wrong while every
+If you change one of these, the frame-budget part of `public/docs/profiling_timeline.md` becomes wrong while every
 citation on it still resolves. That is precisely why it was brought under
 `CitationContractTest.GUARDED_PAGES` on its first day rather than later — see
 `dev_docs/citation_contracts.md` and `dev_docs/guard_population_hygiene.md` for the general
@@ -258,5 +259,5 @@ The gutter stripes themselves are covered only in a browser regression, which as
 painted decoration exists
 (`profiling-stacks.js:73#await wait(()=>document.querySelector('.monaco-editor .afield-profile-heat'),'Painted gutter stripe');`)
 and not the three-way identity rule above it.
-| the published model | `public/docs/frame_budget.md` |
-| the published panel reference | `public/docs/profiling_timeline.md` |
+| the published model | `public/docs/profiling_timeline.md`, "Holding a frame budget" |
+| the published panel reference | `public/docs/profiling_timeline.md`, its first part |

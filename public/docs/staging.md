@@ -20,8 +20,7 @@ The document itself — moving around it, finding things in it, and getting at w
 - [Your History with Field](history_overview.md) is where to start: Field keeps several kinds of history, each with its own lifetime and its own tool, and that page says which one holds what. [Document History](document_history.md) is whole-document recovery from saved versions; the [History Lens](history_lens.md) answers the question you actually have more often, which is what *this line* said a few saves ago, without leaving the editor.
 - [Snapping](snapping.md) is a toggle rather than a mode, for a moment of layout cleanup.
 - [The Semantic Index](semantic_index.md) is the second of the two searches that `/welcome` runs over your workspace as you type.
-- [Simulation Time](simulation_clock.md) is for a behaviour that waits, turns, fires and waits again as ordinary coroutine code, against a clock you advance yourself rather than the wall.
-- [Profiling Timeline](profiling_timeline.md) and [Holding a Frame Budget](frame_budget.md) are the pair to open when a piece stops keeping up: the panel that records what each box cost, and what its numbers mean — three instruments, three clocks, three populations, and no obligation to agree.
+- [Profiling](profiling_timeline.md) is the page to open when a piece stops keeping up: the panel that records what each box cost; [simulation time](profiling_timeline.md#simulation-time), for a behaviour that waits, turns, fires and waits again as ordinary coroutine code against a clock you advance yourself rather than the wall; and what the panel's numbers mean — three instruments, three clocks, three populations, and no obligation to agree.
 
 ## Seeing values
 

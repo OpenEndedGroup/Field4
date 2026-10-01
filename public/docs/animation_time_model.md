@@ -112,7 +112,7 @@ is how the machinery works, for when an animation does something you did not exp
 This page picks up where [Running code in a box](running_code.md) stops: that page ends when the
 last fragment finishes evaluating, and this one starts with what Field does to the value it produced.
 When the question turns to *why mine takes longer than 16 milliseconds*,
-[Holding a Frame Budget](frame_budget.md) is the page for it.
+[Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) is the page for it.
 
 ## `loop`, `forever` and `frames`
 
@@ -641,7 +641,7 @@ fun frame(): Int {
 That swap is the frame boundary. A coroutine that suspends during the drain re-dispatches onto the
 *new* queue, so it resumes on the next call and not this one. **A frame is one drain of the
 dispatcher's queue**, and it is also the unit all of Field's exact profiling counters in
-[Holding a Frame Budget](frame_budget.md) are measured over.
+[Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) are measured over.
 
 ### How a returned `Frames` is launched
 

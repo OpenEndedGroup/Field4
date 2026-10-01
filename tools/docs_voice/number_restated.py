@@ -49,7 +49,7 @@ Keeps, and the shapes to recognise:
 
 - **A running example.** `tetgen.md`'s `66,489` is the element count of the bracket the whole page
   meshes; it recurs because the bracket recurs. Nothing to fix.
-- **A deliberate diagnostic restatement.** `frame_budget.md` quotes `63.9` ms in `3,002.6` ms once
+- **A deliberate diagnostic restatement.** `profiling_timeline.md` (its frame-budget part) quotes `63.9` ms in `3,002.6` ms once
   where it measures the recording and again in a troubleshooting bullet about summed lane time.
   The second is where a confused reader looks, and one of the pair carries a `<!--derive:-->`
   marker, so a guard does hold them together.

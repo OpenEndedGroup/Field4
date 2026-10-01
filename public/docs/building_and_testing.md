@@ -166,7 +166,7 @@ capture are under `.field-backdoor/logs/`.
 That is DevTools profiling a capture browser, which is a different subject from
 profiling a piece you are writing. For the second one — the renderer's span
 timer, the exact per-resume counters, and the JFR sampler — see
-[Holding a Frame Budget](frame_budget.md).
+[Holding a frame budget](profiling_timeline.md#holding-a-frame-budget).
 
 ## Running the tests
 

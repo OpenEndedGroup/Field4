@@ -94,7 +94,6 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
     "public/docs/pure_data.md",
     "public/docs/rectsl_examples.md",
-    "public/docs/simulation_clock.md",
     "public/docs/solid_notation.md",
     "public/docs/stacksl_examples.md",
     "public/docs/three_output.md",

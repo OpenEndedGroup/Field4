@@ -86,14 +86,13 @@ nav:
     - Document History: document_history.md
     - Inline History (History Lens): history_lens.md
     - The Semantic Index: semantic_index.md
-    - Simulation Time: simulation_clock.md
-    - Profiling Timeline: profiling_timeline.md
-    # Beside profiling_timeline.md rather than under Internals, and the split between the two is
-    # audience: that page is the panel's controls, this one is what the numbers under them mean and
-    # what each of the three instruments structurally cannot see. Somebody whose piece is dropping
-    # frames needs this one, and may never need to open the other. Last in the section, as the pair
-    # you open when something is wrong rather than when you are working.
-    - Holding a Frame Budget: frame_budget.md
+    # One page in three parts, merged on 2026-10-01 from three: the panel's controls
+    # (profiling_timeline.md, the filename that survives), Simulation time (was simulation_clock.md)
+    # and Holding a Frame Budget (was frame_budget.md), the measurement model under the panel's
+    # numbers. Here rather than under Internals because somebody whose piece is dropping frames
+    # needs it; last in the section, as the page you open when something is wrong rather than when
+    # you are working.
+    - Profiling: profiling_timeline.md
   # "What happens when a box ends on a value" is a faculty of its own, and these five were spread
   # across Libraries & APIs and the staging area. Note that output_panel_sizing.md is deliberately
   # NOT here: see the comment on it under Internals, which places it beside server_surface.md as a

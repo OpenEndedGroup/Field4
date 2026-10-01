@@ -391,7 +391,9 @@ class CitationContractTest {
             // this population non-empty.
             //
             // Floored at 21, about half, on the DATAFRAME_PLUGIN convention.
-            "public/docs/frame_budget.md" to 21,
+            // Since 2026-10-01 this text is the "Holding a frame budget" part of profiling_timeline.md,
+            // which absorbed frame_budget.md; the floor moved with the citations.
+            "public/docs/profiling_timeline.md" to 21,
             // The internals companion to the page above, added the same night and guarded for the
             // same reason it exists: its whole argument is a list of four constants and two
             // allocation sites that are load-bearing *for the published page*, and a page making

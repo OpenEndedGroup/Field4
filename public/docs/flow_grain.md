@@ -165,4 +165,4 @@ graph. The setting is read at startup, so switching it on always costs you a res
 which pipeline statistics you get back varies by device.
 
 What each instrument measures, and what it is fair to compare, is in
-[Holding a Frame Budget](frame_budget.md) and [Profiling Timeline](profiling_timeline.md).
+[Profiling](profiling_timeline.md), in its [Holding a frame budget](profiling_timeline.md#holding-a-frame-budget) part.

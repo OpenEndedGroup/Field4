@@ -59,5 +59,5 @@ rendering at a different resolution.
 
 The underlying APIs are the same ones introduced in
 [render-to-texture and blur lessons](afield_four_graphics.md). Combine the graph with
-[frame budgets](frame_budget.md) when comparing CPU work, and the renderer inspector for
+[frame budgets](profiling_timeline.md#holding-a-frame-budget) when comparing CPU work, and the renderer inspector for
 the render passes themselves.
