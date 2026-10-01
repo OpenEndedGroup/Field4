@@ -65,7 +65,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [graph_connectivity.kt](../src/jvmMain/kotlin/afield/stdlib/graph_connectivity.kt) | Graphics | graph_connectivity_examples, spatial_geometry_examples | 0 | 28 | 63% |
 | [spectral.kt](../src/jvmMain/kotlin/afield/stdlib/spectral.kt) | Math | spectral_examples | 0 | 28 | 64% |
 | [Topology.kt](../src/jvmMain/kotlin/afield/stdlib/polytope/Topology.kt) | Polytopes | polytope_examples | 0 | 27 | 69% |
-| [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | autodiff_examples, functions_examples, pattern_language | 0 | 26 | 53% |
+| [FunctionFit.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt) | Function | functions_examples, autodiff_examples, pattern_language | 0 | 26 | 53% |
 | [FunctionGraphRules.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraphRules.kt) | Function | functions_examples | 0 | 26 | 36% |
 | [mesh_repair.kt](../src/jvmMain/kotlin/afield/stdlib/mesh_repair.kt) | Graphics | manifold, geometry_from_disk, mesh_examples | 0 | 26 | 58% |
 | [FaustEngine.kt](../src/jvmMain/kotlin/afield/four/synth/FaustEngine.kt) | Synthesis | faust | 0 | 25 | 45% |

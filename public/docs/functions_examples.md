@@ -193,16 +193,96 @@ The capture above is the *endpoint*. The plainer case (a single `fitGradient` wi
 target whose amplitude and offset are wrong but whose frequency is right) shows all three curves at
 once: the target, the seed it started from, and where it ended up.
 
-![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_gallery/functions-fit-before-after.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/fit_before_after_box.png" wait="1.5" capture="box" open-outputs="true" w="1200" name="functions-fit-before-after"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.byDashing
+import afield.stdlib.Functions
+import afield.stdlib.fitGradient
+
+with(Functions) {
+    // The same graph structure as the target, with the wrong numbers in it: a fifth of the
+    // amplitude and the offset the wrong way. One fitGradient, no restarts.
+    val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
+    val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
+    val run = fitGradient(target = target, seed = seed, iterations = 400, lr = 0.05, samples = 160, rngSeed = 0L)
+
+    :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
+    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
+    val lo = -1.1; val hi = 1.1
+    val yScale = -(y1 - y0) / (hi - lo)
+    val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
+    fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
+        val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        return parts.onEach { it.color = color; it.thickness = thickness }
+    }
+    val guides = listOf(
+        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
+        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+    )
+    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    :::endfold
+
+    lines(
+        guides + curve(target, orange, 5.0) + curve(seed, grey, 2.0, dashed = true) + curve(run.fitted, cyan, 2.0),
+        channel = "fit", w = 980.0, h = 440.0, fitToSize = false
+    )
+    markdown("notes", "**fitGradient, before and after**: target (orange), seed (grey, dashed), fitted (cyan); " +
+        "error ${"%.4f".format(run.initialError)} -> ${"%.4f".format(run.finalError)}")
+}
+```
+
+![Three curves: a thick orange target, a dashed grey seed at about a fifth of the amplitude and offset the wrong way, and a cyan fitted curve lying exactly on the target](assets/functions_examples/fit_before_after_box.png)
 
 And the descent itself, one frame every 8 iterations from 0 to 320. Each frame is its own
-`fitGradient` run, truncated at that iteration count, so the error in its title belongs to that run:
+`fitGradient` run, truncated at that iteration count, so the error printed under it belongs to that run:
 
-<video src="assets/functions_gallery/functions-fit-convergence.mp4"
-       controls autoplay loop muted playsinline preload="metadata"
-       aria-label="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the title counting the iteration and the falling error"
-       style="width:100%;max-width:640px;border-radius:8px;">
-</video>
+```diffstatic_runner {data-lang=kotlin video="assets/functions_examples/fit_convergence.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="3" fps="20" timeout="240" w="1200" embed=true name="functions-fit-convergence" alt="a cyan curve starting far below a thick orange target sine, growing in amplitude and sliding into place over successive iterations until it lies exactly on the target, the iteration count and its error printed under it"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.byDashing
+import afield.stdlib.Functions
+import afield.stdlib.fitGradient
+
+// One frame every 8 iterations, from 0 to 320, then the last frame held. Each frame is its own
+// fitGradient run, truncated at that iteration count, so the error under it belongs to that run.
+// k starts a step early because the recording begins on the launch's second frame.
+var k = -8
+loop {
+    with(Functions) {
+        val target = sin(frequency = 2.0, amplitude = 0.8, offset = 0.12)
+        val seed = sin(frequency = 2.0, amplitude = 0.30, offset = -0.15)
+        val run = fitGradient(target = target, seed = seed, iterations = maxOf(k, 0), lr = 0.05, samples = 160, rngSeed = 0L)
+        :::fold the plot frame: 900 x 380 px, y up, values -1.1..1.1
+        val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
+        val lo = -1.1; val hi = 1.1
+        val yScale = -(y1 - y0) / (hi - lo)
+        val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
+        fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
+            val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+            val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+            return parts.onEach { it.color = color; it.thickness = thickness }
+        }
+        val guides = listOf(
+            fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
+            fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+        )
+        val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
+        val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
+        val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+        :::endfold
+
+        lines(guides + curve(target, orange, 5.0) + curve(run.fitted, cyan, 2.0),
+            channel = "descent", w = 980.0, h = 440.0, fitToSize = false)
+        markdown("iteration", "**iteration ${maxOf(k, 0)}**: error ${"%.4f".format(run.finalError)}")
+    }
+    if (k < 320) k += 8
+    frame()
+}
+```
 
 Watch *which* parameter moves first; the error number alone hides it.
 Amplitude is essentially found by iteration 8 (the peaks already match) and the error is still
@@ -622,7 +702,49 @@ sweep.chebyshev(3)                         // the 3rd Chebyshev polynomial
 sweep.rectify(Functions.RectifyMode.FULL)  // absolute value, folded about zero
 ```
 
-![Four transfer curves against a dashed input ramp: fold reflecting into a zig-zag, softClip as a smooth bounded S, chebyshev(3) as a cubic with two turning points, and rectify as a V](assets/functions_gallery/functions-waveshaper-transfer.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_transfer_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-transfer"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.byDashing
+import afield.stdlib.Functions
+
+with(Functions) {
+    // Push a rising ramp through each shaper: what comes out is the shape it imposes.
+    val sweep = ramp(-1.5, 1.5) over Functions.Domain.of(0.0, 1.0)
+
+    :::fold the plot frame: 900 x 380 px, y up, values -1.7..1.7
+    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
+    val lo = -1.7; val hi = 1.7
+    val yScale = -(y1 - y0) / (hi - lo)
+    val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
+    fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
+        val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        return parts.onEach { it.color = color; it.thickness = thickness }
+    }
+    val guides = listOf(
+        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
+        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+    )
+    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    :::endfold
+
+    lines(
+        guides + curve(sweep, grey, 2.0, dashed = true) +
+            curve(sweep.fold(0.7), cyan, 2.4) +
+            curve(sweep.softClip(2.5), orange, 2.4) +
+            curve(sweep.chebyshev(3), violet, 2.4) +
+            curve(sweep.rectify(Functions.RectifyMode.FULL), green, 2.4),
+        channel = "transfer", w = 980.0, h = 440.0, fitToSize = false
+    )
+    markdown("notes", "**transfer curves over a -1.5..1.5 sweep**: input ramp (grey, dashed), fold(0.7) (cyan), " +
+        "softClip(2.5) (orange), chebyshev(3) (violet), rectify(FULL) (green)")
+}
+```
+
+![Four transfer curves against a dashed input ramp: fold reflecting into a zig-zag, softClip as a smooth bounded S, chebyshev(3) as a cubic with two turning points, and rectify as a V](assets/functions_examples/waveshaper_transfer_box.png)
 
 `fold` reflects rather than flattens, so it keeps adding harmonics where a clipper stops; `softClip`
 is bounded and smooth everywhere, so it has no corner to alias off; `chebyshev(3)` is a polynomial,
@@ -632,7 +754,47 @@ Now on real signal rather than on a ramp: a 1.2-amplitude sine, so each shaper h
 bite on. `clip` appears here and not above, because it is the only member of the family with
 corners in it:
 
-![The same shapers applied to a sine of amplitude 1.2 over two cycles: softClip rounding the peaks, fold turning each peak inside out into a dip, and clip flattening them to hard plateaux with visible corners](assets/functions_gallery/functions-waveshaper-on-sine.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/waveshaper_on_sine_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-waveshaper-on-sine"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.byDashing
+import afield.stdlib.Functions
+
+with(Functions) {
+    val tone = sin(frequency = 2.0, amplitude = 1.2)
+
+    :::fold the plot frame: 900 x 380 px, y up, values -1.4..1.4
+    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
+    val lo = -1.4; val hi = 1.4
+    val yScale = -(y1 - y0) / (hi - lo)
+    val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
+    fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
+        val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        return parts.onEach { it.color = color; it.thickness = thickness }
+    }
+    val guides = listOf(
+        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
+        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+    )
+    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    :::endfold
+
+    lines(
+        guides + curve(tone, grey, 2.0, dashed = true) +
+            curve(tone.softClip(2.0), cyan, 2.4) +
+            curve(tone.fold(0.8), orange, 2.4) +
+            curve(tone.clip(0.7), pink, 2.4),
+        channel = "on-sine", w = 980.0, h = 440.0, fitToSize = false
+    )
+    markdown("notes", "**a sine of amplitude 1.2, shaped**: the sine (grey, dashed), softClip(2.0) (cyan), " +
+        "fold(0.8) (orange), clip(0.7) (pink)")
+}
+```
+
+![The same shapers applied to a sine of amplitude 1.2 over two cycles: softClip rounding the peaks, fold turning each peak inside out into a dip, and clip flattening them to hard plateaux with visible corners](assets/functions_examples/waveshaper_on_sine_box.png)
 
 ### Building up a pipeline
 
@@ -688,7 +850,49 @@ Because every stage returns an `Fn`, you can plot the pipeline **at each stage**
 the end, which is how you find out which stage did the thing you did not want. A carrier times an
 envelope, then folded, then soft-clipped:
 
-![The same signal at three stages: the carrier-times-envelope in dashed grey, the same after fold(0.75) pulled its peaks in, and after softClip(2.0) pushed them back out and rounded them](assets/functions_gallery/functions-composed-pipeline.png)
+```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/composed_pipeline_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-composed-pipeline"}
+:::static
+import afield.graphics.FLine
+import afield.graphics.byDashing
+import afield.stdlib.Functions
+
+with(Functions) {
+    // One signal, plotted at each stage of its pipeline.
+    val carrier = sin(frequency = 3.0, amplitude = 1.0)
+    val envelope = ramp(0.2, 1.0) over Functions.Domain.of(0.0, 1.0)
+    val stage0 = carrier * envelope
+    val stage1 = stage0.fold(0.75)
+    val stage2 = stage1.softClip(2.0)
+
+    :::fold the plot frame: 900 x 380 px, y up, values -1.3..1.3
+    val x0 = 40.0; val x1 = 940.0; val y0 = 30.0; val y1 = 410.0
+    val lo = -1.3; val hi = 1.3
+    val yScale = -(y1 - y0) / (hi - lo)
+    val zeroY = y1 + lo * (y1 - y0) / (hi - lo)
+    fun curve(fn: Functions.Fn, color: Vec4, thickness: Double, dashed: Boolean = false): List<FLine> {
+        val line = fn.toFLine(0.0..1.0, samples = 600, xScale = x1 - x0, yScale = yScale, xOffset = x0, yOffset = zeroY)
+        val parts = if (dashed) line.byDashing(10f, 7f) else listOf(line)
+        return parts.onEach { it.color = color; it.thickness = thickness }
+    }
+    val guides = listOf(
+        fline { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1); lineTo(x0, y0); color = vec(1.0, 1.0, 1.0, 0.28); thickness = 1.6 },
+        fline { moveTo(x0, zeroY); lineTo(x1, zeroY); color = vec(1.0, 1.0, 1.0, 0.30); thickness = 1.2 },
+    )
+    val orange = vec(0.97, 0.45, 0.18, 1.0); val cyan = vec(0.30, 0.79, 0.94, 1.0)
+    val grey = vec(0.6, 0.6, 0.6, 1.0); val violet = vec(0.66, 0.50, 0.98, 1.0)
+    val green = vec(0.45, 0.85, 0.45, 1.0); val pink = vec(0.96, 0.45, 0.72, 1.0)
+    :::endfold
+
+    lines(
+        guides + curve(stage0, grey, 2.0, dashed = true) + curve(stage1, orange, 2.4) + curve(stage2, cyan, 2.4),
+        channel = "stages", w = 980.0, h = 440.0, fitToSize = false
+    )
+    markdown("notes", "**carrier x envelope, stage by stage**: the product (grey, dashed), after fold(0.75) (orange), " +
+        "after softClip(2.0) (cyan)")
+}
+```
+
+![The same signal at three stages: the carrier-times-envelope in dashed grey, the same after fold(0.75) pulled its peaks in, and after softClip(2.0) pushed them back out and rounded them](assets/functions_examples/composed_pipeline_box.png)
 
 ### The editor helps you discover operators
 
@@ -4063,23 +4267,6 @@ Finally, rewrite rules run during graph copy, bottom-up through children before 
 
 ## Where the pictures come from
 
-Two routes, and they cost different amounts:
-
-| figure | how |
-|---|---|
-| `assets/functions_examples/*.png` | **executed by the docs build** — `diffstatic_runner` fences, so the image under each is that box's own output |
-| `assets/functions_gallery/*` (four plots and the mp4) | **committed captures** from the `functions.plot-gallery` FIELD_TEST |
-
-Regenerate the second set with:
-
-```diffstatic {data-lang=bash}
-FUNCTIONS_PLOT_DIR=/tmp/functions-plots python3 tools/run_field_tests.py --id functions.plot-gallery
-```
-
-Render to a temp directory and copy the files in, rather than writing into the working tree while the
-runner's Field server is watching it.
-
-What the gallery asserts and at what thresholds are in `dev_docs/FUNCTIONS_PLOT_GALLERY.md`.
-
-The mp4 is the one best-effort figure: a machine with no `ffmpeg` gets a printed note and the rest
-of the gallery, rather than a failed build.
+Every figure on this page is executed by the docs build: each is a `diffstatic_runner` fence, so the
+image or video under it is that box's own output, drawn with `lines(...)` like everything else here.
+The convergence video is a launched box whose `loop` runs one truncated `fitGradient` per frame.
