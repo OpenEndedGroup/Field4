@@ -68,7 +68,7 @@ showIntervals(f, 0.0, 6.0, title = "saw + a 0.5 ms bump")
 Reading it from back to front:
 
 - **Boxes.** Each rectangle is one interval evaluation: over its x span, every value of `f` lies within its height. Orange boxes belong to the search for the maximum, green to the minimum. A box drawn strongly was split further; a faint one was dropped because its bound couldn't beat the best value already found.
-- **Band.** The blue band is the certified envelope. Where the sampled line drops at each saw reset, the band covers the jump, and at `x = 2.31` it reaches up to the bump the line never shows.
+- **Band.** The blue band is the certified envelope. Where the sampled line drops at each saw reset, the band covers the jump. At this width the band is tight enough to sit almost on the line; the narrow orange boxes around `x = 2.31` are where the search closed in on the bump.
 - **Line.** The sampled curve: what an ordinary plot would draw.
 - **Dots and dashed rules.** The witness (the best value actually computed) and the proven bound for each extreme.
 
