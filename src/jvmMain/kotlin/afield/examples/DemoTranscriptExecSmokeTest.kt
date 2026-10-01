@@ -138,6 +138,9 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
+        // seconds) and a launched morph loop stopped after 90 frames.
+        "point_matching",
         "fn_differentiable_fit_demo",
         // The two ways to run a `@{...}` Kotlin right-hand side, side by side; all three boxes execute.
         // `fnrw_broken` is the one-box form, which used to re-enter its own box 172 levels deep and

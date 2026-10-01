@@ -95,6 +95,12 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
+- `point_matching.yaml`: BSP-OT one-to-one matching (`matchPoints`, `BspOt2D` in
+  `afield/stdlib/bspot.kt`) as three pure-CPU boxes, smallest first. `match_hello` draws a disc's
+  600 points matched onto a ring beside the same lists paired by index; `square_to_heart` is a
+  **launched** morph loop, matched beside unmatched; `million_pixels` matches every pixel of a
+  1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
+  The two still boxes execute and the morph is launched for 90 frames and stopped.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
