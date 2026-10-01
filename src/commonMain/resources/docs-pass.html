@@ -293,7 +293,7 @@
         $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;
     };
 
-    const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code"];
+    const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code", "elsewhere"];
     const renderHandoffRow = h => {
         const open = view.openHandoffs.get(h.id);
         const options = BATCH_KEYS.map(k => `<option value="${k}"${k === h.batch ? " selected" : ""}>${k}</option>`).join("");

@@ -2544,6 +2544,13 @@ BATCHES = [
      "how": "Real engineering, usually one session each.",
      "session": "These are changes to Field itself. Read AGENTS.md first; verify with the gates it names, and "
                 "update the docs page the handoff came from once the code is in."},
+    {"key": "elsewhere", "order": 6, "title": "Elsewhere",
+     "how": "Needs a machine or service this one does not have: the Field Audio worker, a GPU model service, "
+            "the Linux/NVIDIA path tracer. Start a session from the machine that has it.",
+     "session": "These need hardware or a service that is not available everywhere. Before anything else, check "
+                "that this machine has what the handoff needs (the Field Audio worker answering, the GPU, the path "
+                "tracer); if it does not, record that as a comment and stop. A capture must be real (AGENTS.md "
+                "section 3): never substitute a CPU stand-in for a GPU render, or synthetic audio for a model's."},
 ]
 BATCH_KEYS = {b["key"] for b in BATCHES}
 _BATCH_ORDER = {b["key"]: b["order"] for b in BATCHES}
@@ -2551,6 +2558,8 @@ _BATCH_ORDER = {b["key"]: b["order"] for b in BATCHES}
 _DECISION = re.compile(r"^(decide|choose)\b|\bor (retire|drop|remove|keep)\b|\bwhether\b", re.I)
 _CAPTURE = re.compile(r"\b(re)?captur|\bfigure|\bscreenshot|\bvideo|\bhero\b|\bpiano roll|\bboard\b|\bdashboard|"
                       r"\bphase-portrait|\bpath-traced|\brender(ed)? (of|analysis)", re.I)
+_ELSEWHERE = re.compile(r"field audio|path[- ]trac|encodec|nvidia|cuda|\\blora\\b|muscriptor|speech[- ]embedding|"
+                       r"spectral[- ]spaces|corpus microscope|rendered-pat|gpu service", re.I)
 _SITE = re.compile(r"highlight|\bspacing|\bspace above|auto-link|\bhidpi|\btrim\b|\bstyl", re.I)
 _NAV = re.compile(r"\bnav\b|\bmove\b|\bfold\b|\bmerge\b|\brename\b|\bpromote\b|\bh1\b|\bsidebar\b|\btitle\b|"
                   r"\bout of (the )?(tour|reference)", re.I)
@@ -2562,6 +2571,9 @@ def classify_handoff(item: dict[str, Any]) -> str:
     title = item.get("note", "")
     if _DECISION.search(title) or (info.get("blocking") and not _CAPTURE.search(title)):
         return "decisions"
+    # Before captures: a capture that only another machine can take is not this machine's to take.
+    if _ELSEWHERE.search(title):
+        return "elsewhere"
     if _CAPTURE.search(title):
         return "captures"
     if _SITE.search(title):
