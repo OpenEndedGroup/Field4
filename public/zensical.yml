@@ -173,6 +173,7 @@ nav:
     - FieldML Stage by Stage: fieldml_stages.md
     - StackSL Cheatsheet: stacksl_cheatsheet.md
     - StackSL Examples: stacksl_examples.md
+    - Proving What a Shader Draws: stacksl_intervals.md
     - RectSL Cheatsheet: rectsl_cheatsheet.md
     - RectSL Examples: rectsl_examples.md
     - RectSL Inverse Animation: rectsl_inverse_animation.md

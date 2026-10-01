@@ -127,4 +127,27 @@ class StackSLIntervalTest {
         }
         File(afield.proofDir("stacksl-intervals"), "tiles.png").writeBytes(StackSLIntervals.tilePng(tiles, 64, 4))
     }
+
+    /**
+     * The docs page's pictures, as numbers: each is a proof that covers the image exactly once, and
+     * the counts printed here are the ones `public/docs/stacksl_intervals.md` describes.
+     */
+    @Test
+    fun tilePicturesCoverTheImageAndReportTheirWork() {
+        val dir = afield.proofDir("stacksl-tile-pictures")
+        for (program in listOf(
+            "p length 0.5 0.08 pulse white *",
+            "uv x 18 * sin 0.5 + 0.5 * palette saturate",
+            "uv 6 * noise palette saturate",
+            "uv 5 * fbm 0.45 threshold orange * saturate",
+        )) {
+            val picture = StackSLIntervals.tilePicture(program, 128)
+            assertEquals(128 * 128, picture.tiles.sumOf { it.size * it.size }, program)
+            println("STACKSL TILES: '$program' ${picture.tiles.size} tiles, ${picture.tiles.count { it.settled }} settled, " +
+                "${picture.provenByRegion} px proven by a region, ${picture.enclosures} runs, ${picture.millis} ms, refusal ${picture.refusal}")
+            val stem = program.replace(Regex("[^a-z0-9]+"), "_")
+            File(dir, "$stem.html").writeText(picture.toHTML())
+            File(dir, "$stem.png").writeBytes(StackSLIntervals.tilePng(picture.tiles, 128, 2))
+        }
+    }
 }

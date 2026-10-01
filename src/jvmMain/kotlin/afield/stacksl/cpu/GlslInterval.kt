@@ -111,13 +111,22 @@ internal object GlslIntervalScalars : GlslScalars<IntervalValue> {
     private inline fun r1(a: Iv, f: (FnRange) -> FnRange): Iv = Iv.of(f(a.toRange()))
     private inline fun r2(a: Iv, b: Iv, f: (FnRange, FnRange) -> FnRange): Iv = Iv.of(f(a.toRange(), b.toRange()))
 
-    private fun add(a: Iv, b: Iv) = r2(a, b, FnRangeMath::add)
-    private fun sub(a: Iv, b: Iv) = r2(a, b, FnRangeMath::sub)
-    private fun mul(a: Iv, b: Iv) = r2(a, b, FnRangeMath::mul)
+    // A point is computed exactly as the reference path computes it. Rounding a point's result
+    // outward would leave a one-ulp interval, and a hash's fract of a large product turns one ulp
+    // into most of [0, 1], so a single pixel of noise would never be a single value.
+    private fun bothPoints(a: Iv, b: Iv) = a.isPoint && b.isPoint
+
+    /** [f] at a point, as `f1` in GlslValue.kt computes it: in Double, rounded to Float once. */
+    private inline fun pointOr(a: Iv, f: (Double) -> Double, range: (FnRange) -> FnRange): Iv =
+        if (a.isPoint) Iv.point(f(a.lo.toDouble()).toFloat()) else r1(a, range)
+
+    private fun add(a: Iv, b: Iv) = if (bothPoints(a, b)) Iv.point(a.lo + b.lo) else r2(a, b, FnRangeMath::add)
+    private fun sub(a: Iv, b: Iv) = if (bothPoints(a, b)) Iv.point(a.lo - b.lo) else r2(a, b, FnRangeMath::sub)
+    private fun mul(a: Iv, b: Iv) = if (bothPoints(a, b)) Iv.point(a.lo * b.lo) else r2(a, b, FnRangeMath::mul)
 
     /** `x * x` for one value — only where the two factors are provably the same value. */
-    private fun sq(a: Iv) = r1(a, FnRangeMath::square)
-    private fun div(a: Iv, b: Iv) = r2(a, b, FnRangeMath::div)
+    private fun sq(a: Iv) = if (a.isPoint) Iv.point(a.lo * a.lo) else r1(a, FnRangeMath::square)
+    private fun div(a: Iv, b: Iv) = if (bothPoints(a, b)) Iv.point(a.lo / b.lo) else r2(a, b, FnRangeMath::div)
     private fun neg(a: Iv) = Iv(-a.hi, -a.lo, a.nan)
     private fun floor(a: Iv) = r1(a, FnRangeMath::floor)
     private fun minIv(a: Iv, b: Iv) = r2(a, b, FnRangeMath::min)
@@ -362,16 +371,20 @@ internal object GlslIntervalScalars : GlslScalars<IntervalValue> {
     override fun callBuiltin(name: String, args: List<IntervalValue>, samplers: GlslSamplers): IntervalValue? {
         val a = args
         return when (name) {
-            "radians" -> unary(a[0]) { x -> r1(x) { FnRangeMath.mul(it, FnRange.point(Math.PI / 180.0)) } }
-            "degrees" -> unary(a[0]) { x -> r1(x) { FnRangeMath.mul(it, FnRange.point(180.0 / Math.PI)) } }
-            "sin" -> unary(a[0]) { r1(it, FnRangeMath::sin) }
-            "cos" -> unary(a[0]) { r1(it, FnRangeMath::cos) }
-            "tanh" -> unary(a[0]) { r1(it, FnRangeMath::tanh) }
-            "exp" -> unary(a[0]) { r1(it, FnRangeMath::exp) }
-            "log" -> unary(a[0]) { r1(it, FnRangeMath::ln) }
-            "sqrt" -> unary(a[0]) { r1(it, ::sqrtRange) }
-            "atan" -> if (a.size == 2) pair(a[0], a[1]) { y, x -> r2(y, x, FnRangeMath::atan2) } else unary(a[0]) { r1(it, FnRangeMath::atan) }
-            "pow" -> pair(a[0], a[1]) { x, y -> r2(x, y, FnRangeMath::pow) }
+            "radians" -> unary(a[0]) { x -> pointOr(x, { it * Math.PI / 180.0 }) { FnRangeMath.mul(it, FnRange.point(Math.PI / 180.0)) } }
+            "degrees" -> unary(a[0]) { x -> pointOr(x, { it * 180.0 / Math.PI }) { FnRangeMath.mul(it, FnRange.point(180.0 / Math.PI)) } }
+            "sin" -> unary(a[0]) { pointOr(it, Math::sin, FnRangeMath::sin) }
+            "cos" -> unary(a[0]) { pointOr(it, Math::cos, FnRangeMath::cos) }
+            "tanh" -> unary(a[0]) { pointOr(it, Math::tanh, FnRangeMath::tanh) }
+            "exp" -> unary(a[0]) { pointOr(it, Math::exp, FnRangeMath::exp) }
+            "log" -> unary(a[0]) { pointOr(it, Math::log, FnRangeMath::ln) }
+            "sqrt" -> unary(a[0]) { pointOr(it, Math::sqrt, ::sqrtRange) }
+            "atan" -> if (a.size == 2) pair(a[0], a[1]) { y, x ->
+                if (bothPoints(y, x)) Iv.point(Math.atan2(y.lo.toDouble(), x.lo.toDouble()).toFloat()) else r2(y, x, FnRangeMath::atan2)
+            } else unary(a[0]) { pointOr(it, Math::atan, FnRangeMath::atan) }
+            "pow" -> pair(a[0], a[1]) { x, y ->
+                if (bothPoints(x, y)) Iv.point(Math.pow(x.lo.toDouble(), y.lo.toDouble()).toFloat()) else r2(x, y, FnRangeMath::pow)
+            }
             "abs" -> unary(a[0]) { r1(it, FnRangeMath::abs) }
             "sign" -> unary(a[0]) { x -> monotone(x) { GlslMath.sign(it) } }
             "floor" -> unary(a[0]) { floor(it) }

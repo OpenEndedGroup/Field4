@@ -184,17 +184,104 @@ the band, an amber spike at 1234 s; without, nothing there.
   fails in a box with *"Smart cast to 'FnExtremum' is impossible, because 'max' is a public API
   property declared in different module"*, while the same code compiles in jvmTest. Bind to a
   local `val` first. (Found running demo box 3; library-green, box-red.)
-  The property it refuses is `FnInterval.kt:784#val max: FnExtremum?`, a public nullable `val` in
+  The property it refuses is `FnInterval.kt:818#val max: FnExtremum?`, a public nullable `val` in
   the library module, which Kotlin will not smart-cast from code compiled elsewhere.
 - Inside `with(Functions) { }`, `all` is `Functions.all` (an `FnTransform`), not a `Domain`, and
   `Domain` itself is not in scope unqualified — write `Functions.Domain.ALL`.
 - Tightness numbers depend on the generator's population; the median is dominated by small graphs,
   which is why the ratchets are on p75 / p90.
 
+## The piecewise oscillators (2026-10-01)
+
+`saw`, `triangle` and `square` have `FnFormulas` entries, through one helper (`periodic`): `IfZero(|period|, offset, body(fract))`
+with `fract` spelled `t - floor(t)`, `t = (x - phase) / |period|`, association order copied from the closures
+so `FnFormulaAgreementTest` holds them bit-identical. They are in `table`, not `valueOnlyTable`:
+`d fract/dt = 1` wherever it exists, which is a real gradient for period and phase. Differentiable
+ops 35 → 38 (both prose counts updated); enclosable 37 → 40 of 127. `pulseTrain`/`pulseBurst`/`pulsePattern`
+stay in `FnNonDifferentiable`: their edge and body shapes are enum-dispatched and each cycle is hash-jittered.
+
+Two walker rules the generators needed, both structural and so free to any later formula of the same shape:
+
+- **fract.** `Sub(t, Floor(t))` with the same `t` is `FnRangeMath.fract`: endpoint-exact inside one
+  unit cell (`fl(t - k)` is monotone in `t` for fixed `k`), `[0, 1]` across a boundary, closed at 1
+  because `-1e-20 - floor(-1e-20)` is exactly `1.0`. The generic rule gives `[-100, 100]` over 100 periods.
+- **Branch narrowing.** An undecided `IfLt(a, b, then, else)` walks `then` with `a` known to be in
+  `[a.lo, nextDown(b.hi)]` and `else` with `a` in `[max(a.lo, b.lo), a.hi]` (NaN kept). The facts are a
+  `known: Map<FnExpr, FnRange>` checked before each node, and dropped at `AtX`, since a moved position
+  invalidates them. Without it the triangle's `if (t < 0.5) 2t else 2 - 2t` encloses as `[-1, 3]`.
+
+Gradient-oracle trap: `AutoDiffFnBridgeTest`'s three θ points (`base`, `1.4·base + 0.13`, `base - 0.27`)
+put a triangle corner exactly on the `x = 0` sample when the phase was 0.11 (period 0.16, phase −0.16):
+a 15% disagreement that was the oracle's kink, not the gradient. Phase 0.12 avoids it. Seeds that
+need to stay refused (`FnRefineRoundsTest`, the EXACT-throws checks) moved from `saw` to `pulseTrain`.
+
+Population after the change (`FnIntervalTest`, 2026-10-01; the generator draws the three
+oscillators only in the `valueOnly` population, so the tightness ratchet's population is unchanged):
+containment 290 400 samples (14 931 NaN), 0 violations, 0 refused; far 72 900, 0; envelope 122 658, 0;
+tightness p75 1.1286, binned p90 1.00133, both inside their ratchets.
+
+## The proof picture
+
+`certifiedRange(…, onEnclosure = { piece -> })` reports every `FnSearchPiece(lo, hi, range, side, kept)`
+either search computes. `Fn.intervalPicture(a, b)` (`afield/visualization/intervalPicture.kt`, `ToHTML`)
+draws them as boxes (orange = max search, green = min; kept stronger than pruned; coarse pieces
+outlined only, or the first whole-interval enclosure washes out the plot), then the certified
+envelope, then the samples, then witness dots and dashed proven bounds, with an enclosures-per-x strip
+underneath. `Box.showIntervals(fn, a, b)` displays it.
+
+Trap: the first cut clipped with `<clipPath id=…>` + `url(#id)`. It rendered under `rsvg-convert` and
+drew an **empty plot** in a box output, where the reference does not resolve. A nested `<svg>`
+with `overflow='hidden'` clips with no id. `FnIntervalPictureTest` checks every recorded piece is a real
+enclosure and that the SVG carries one box per drawn piece; the live render was checked through the backdoor.
+
+## The same contract for StackSL (2026-10-01)
+
+`GlslIntervalScalars` (`stacksl/cpu/GlslInterval.kt`) is a third `GlslScalars` instance: components are
+`Iv(lo, hi, nan)` of `Float`s, each operation bounded by `FnRangeMath` in `Double` and rounded outward to
+`Float`. The contract moves to binary32: every value the `Float` reference path renders. Points are
+computed exactly as the reference computes them, in `Float` or `Double`-then-round once. Without that,
+outward rounding leaves a one-ulp interval and the hash's `fract` of a large product spreads it over
+most of `[0, 1]`: value noise never settled even at one pixel. `cubicSmoothstep`'s monotone rule is *not*
+reused: its `(1 ± u)³` argument is for `Double` `u`, and `Float`'s is 2²⁹ times coarser. Smoothstep is
+bounded op by op.
+
+**Three-valued conditions.** `GlslScalars` gained `truth`, `boolOfTruth`, `equalTruth` and `join`, with
+defaults that make every point algebra exactly what it was (`StackSLCpuFloatPathManifestTest`,
+`StackSLGradientTest` green). `GlslMachine`:
+
+- undecided `if`: save frame values + globals + return value, run `then`, save, restore, run `else`,
+  join slot by slot. An arm that `discard`s contributes nothing and sets `maybeDiscarded`. Arms that exit
+  differently (RETURN vs NORMAL, BREAK vs NORMAL) are refused: one continuation cannot hold both.
+- undecided `?:`: the same fork, joining the two values.
+- `&&`/`||`: Kleene logic, short-circuiting exactly when the left side is decided.
+- `!`, `==`, `!=`: through `truth`/`equalTruth`.
+- an undecided loop condition, or a non-point `asInt` (index), is refused.
+
+**Entry points** (`StackSLIntervals.kt`): `enclosePixels(glsl, x0, y0, x1, y1, w, h)` brackets
+`fragUV` by the corner pixel centres, computed as `StackSLCpu.fragUvAt` computes them (monotone per axis).
+`certifiedTiles(glsl, dim, tolerance)` is a quadtree that stops at a tile whose widest channel is
+≤ tolerance. `tilePicture(program)` is the render and the quadtree side by side (`ToHTML`).
+
+| claim | population | result |
+| --- | --- | --- |
+| containment | 29 non-feedback gallery programs × 15 random rectangles (1² … 64²) of a 64×64 render | 401 157 pixels, **0 violations**; all 29 bounded (after the matrix `*` rule; before it, 20 refused) |
+| tiles, soft ring | 128², tolerance 2/255 | 6 508 tiles; 61.8% of pixels proven by a tile larger than one pixel; 8 677 runs, 0.25 s |
+| tiles, stripes / value noise / fbm threshold | same | 512 px / **0** / **0** proven by a region; noise and fbm bottom out at single pixels everywhere |
+
+The noise result is the honest limit. A lattice hash is `fract` of a large product, so over any range
+wider than a point it is `[0, 1]`, and no subdivision short of a pixel helps. A bound for noise would
+need a declared range for the noise *word* (its output is in `[0, 1]` by construction) and a Lipschitz
+constant, i.e. a rule above the GLSL, at the StackSL level.
+
+Public page: `public/docs/stacksl_intervals.md`. Fn page: `public/docs/fn_intervals.md`.
+
 ## Next
 
-- Give formulas to the ops the workbench actually uses (`saw`/`triangle`/`square` and the
-  `ease`/`tween` family per `FnNonDifferentiable`'s closable list): each one also gains an exact
-  gradient and becomes certifiable.
+- Give formulas to the `ease`/`tween` family and to `pulseTrain` (`FnNonDifferentiable`'s closable
+  list); `saw`/`triangle`/`square` are done.
+- StackSL: word-level range declarations for the noise words, so a region over noise is bounded by
+  the word's range rather than by its hash; interval rules for the matrix builtins, `cross`, `reflect`.
+- Interval *gradients* (both languages already have reverse-mode AD): a Lipschitz bound per region
+  would give safe sphere-tracing steps and much tighter tiles.
 - A mean-value / monotonicity form (interval forward-mode AD) would fix attained-bound tangency in
   general, but needs a rigorous rounding-error allowance to keep the Double-containment contract.

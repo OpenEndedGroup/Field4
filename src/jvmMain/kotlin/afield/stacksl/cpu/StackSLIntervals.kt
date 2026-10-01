@@ -105,12 +105,14 @@ object StackSLIntervals {
         tolerance: Float = 1f / 255f,
         minSize: Int = 1,
         uniforms: Map<String, GlslValue> = emptyMap(),
+        onEnclosure: (() -> Unit)? = null,
     ): List<StackSLTile> {
         require(dim > 0 && dim and (dim - 1) == 0) { "dim must be a power of two" }
         val shader = parseGlslShader(glsl)
         val out = ArrayList<StackSLTile>()
         fun visit(x: Int, y: Int, size: Int) {
             val bound = enclosePixels(shader, x, y, x + size - 1, y + size - 1, dim, dim, uniforms)
+            onEnclosure?.invoke()
             val settled = bound.certified && !bound.maybeNaN && bound.width <= tolerance
             if (settled || size <= minSize || !bound.certified) {
                 out += StackSLTile(x, y, size, bound, settled)
@@ -124,6 +126,19 @@ object StackSLIntervals {
     }
 
     /**
+     * Render [program] through the gallery's still template at [dim] square, prove it into
+     * [certifiedTiles], and return both as one picture.
+     */
+    fun tilePicture(program: String, dim: Int = 128, tolerance: Float = 2f / 255f, time: Float = 1.75f): StackSLTilePicture {
+        val glsl = StackSLCpu.expandStackAuto(StackSLCpu.stillTemplate(time), program)
+        val render = StackSLCpu.renderFragment(glsl, dim, dim)
+        val start = System.nanoTime()
+        var runs = 0
+        val tiles = certifiedTiles(glsl, dim, tolerance, onEnclosure = { runs++ })
+        return StackSLTilePicture(program, dim, tolerance, tiles, render, runs, (System.nanoTime() - start) / 1_000_000)
+    }
+
+    /**
      * The tiles drawn as a picture: each settled tile filled with its proven colour and outlined,
      * each unsettled pixel shown magenta. The quadtree *is* the proof, so its shape shows where the
      * program is simple and where it is not.
@@ -131,13 +146,14 @@ object StackSLIntervals {
     fun tilePng(tiles: List<StackSLTile>, dim: Int, scale: Int = 2): ByteArray {
         val w = dim * scale
         val argb = IntArray(w * w)
-        fun channel(v: Float) = Math.round(v.coerceIn(0f, 1f) * 255f)
+        // sRGB-encoded, as the gallery stills and CpuRaster.toSrgbArgb are, so a tile matches its render.
+        fun channel(v: Float) = Math.round(CpuRaster.linearToSrgb(v) * 255.0).toInt()
         for (t in tiles) {
             val color = if (t.settled) {
                 val mid = FloatArray(3) { (t.bound.lo[it] + t.bound.hi[it]) * 0.5f }
                 (0xff shl 24) or (channel(mid[0]) shl 16) or (channel(mid[1]) shl 8) or channel(mid[2])
             } else 0xffff00ff.toInt()
-            val edge = 0xff101317.toInt()
+            val edge = 0xff3a414a.toInt()
             for (py in t.y * scale until (t.y + t.size) * scale) for (px in t.x * scale until (t.x + t.size) * scale) {
                 val border = t.settled && t.size * scale >= 4 &&
                     (px == t.x * scale || py == t.y * scale)
@@ -145,5 +161,59 @@ object StackSLIntervals {
             }
         }
         return PngEncoder.encode(argb, w, w)
+    }
+}
+
+/**
+ * A StackSL program's render beside its proof: the `Float` render on the left, the
+ * [StackSLIntervals.certifiedTiles] quadtree on the right, and a line of counts under both.
+ *
+ * Build one with [StackSLIntervals.tilePicture]; it is [afield.ToHTML], so it is the last
+ * expression of a box or the argument to `display`.
+ */
+class StackSLTilePicture(
+    val program: String,
+    val dim: Int,
+    val tolerance: Float,
+    val tiles: List<StackSLTile>,
+    val render: CpuRaster,
+    /** Interval runs the subdivision took, one per tile it visited. */
+    val enclosures: Int,
+    val millis: Long,
+) : afield.ToHTML {
+
+    /** Pixels inside a settled tile: proven to within [tolerance] without being rendered. */
+    val settledPixels: Int get() = tiles.filter { it.settled }.sumOf { it.size * it.size }
+
+    /**
+     * Pixels inside a settled tile **larger than one pixel** — the ones proven by a region rather
+     * than by evaluating them one at a time, which is the saving the quadtree buys.
+     */
+    val provenByRegion: Int get() = tiles.filter { it.settled && it.size > 1 }.sumOf { it.size * it.size }
+
+    /** Tiles the subdivision gave up on because a rule was missing, with the first reason. */
+    val refusal: String? get() = tiles.firstOrNull { !it.bound.certified }?.bound?.refusal
+
+    override fun toHTML(): String {
+        val scale = maxOf(1, 384 / dim)
+        fun img(png: ByteArray) =
+            "<img src='data:image/png;base64,${java.util.Base64.getEncoder().encodeToString(png)}' " +
+                "style='width:${dim * scale}px;height:${dim * scale}px;image-rendering:pixelated'/>"
+        val renderPng = PngEncoder.encode(upscale(render.toSrgbArgb(), dim, scale), dim * scale, dim * scale)
+        val pct = 100.0 * provenByRegion / (dim * dim)
+        val caption = buildString {
+            append("<code>${program.replace("&", "&amp;").replace("<", "&lt;")}</code> · ")
+            append("${tiles.size} tiles; ${"%.1f".format(pct)}% of pixels proven by a tile larger than one pixel; ")
+            append("$enclosures interval runs for ${dim * dim} pixels (${millis} ms) · tolerance ${"%.4f".format(tolerance)}")
+            refusal?.let { append("<br/>refused: ${it.replace("<", "&lt;")}") }
+        }
+        return "<div style='font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#9aa4ae'>" +
+            "<div style='display:flex;gap:12px'>${img(renderPng)}${img(StackSLIntervals.tilePng(tiles, dim, scale))}</div>" +
+            "<div style='margin-top:6px;max-width:${2 * dim * scale + 12}px'>$caption</div></div>"
+    }
+
+    private fun upscale(argb: IntArray, dim: Int, scale: Int): IntArray {
+        val w = dim * scale
+        return IntArray(w * w) { i -> argb[(i / w / scale) * dim + (i % w) / scale] }
     }
 }
