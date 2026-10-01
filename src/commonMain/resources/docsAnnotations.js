@@ -317,6 +317,71 @@
         }
     }, true);
     panel.querySelectorAll("[data-filter]").forEach(input => input.addEventListener("input", () => { state[input.dataset.filter] = input.value; render(); }));
+
+    // A repo source path the docs build linked to GitHub (`a.repo-source-link`, from
+    // `link_repo_source_paths_html` in public/docs_hooks.py) opens here, from this checkout,
+    // instead: GitHub is the public reader's copy, and inside Field the file is on this machine.
+    // GET /api/docs-source-file serves it (docsSourceFile.kt), loopback + same-site only. A
+    // modified click still follows the GitHub link, and so does a file the route will not serve.
+    const sourceCss = document.createElement("style");
+    sourceCss.textContent = `
+      #f4-source { position:fixed; z-index:2147483610; inset:4vh 4vw; display:flex; flex-direction:column; color:#d7dce2; background:#0b0b0b; border:1px solid #333; box-shadow:0 12px 40px #000c; font:12px/1.5 Iosevka,monospace; }
+      #f4-source[hidden] { display:none; }
+      #f4-source header { display:flex; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid #333; }
+      #f4-source header strong { flex:1; font-weight:normal; color:#e8e8e8; word-break:break-all; }
+      #f4-source header a, #f4-source header button { color:#8b8b8b; background:none; border:1px solid #333; padding:3px 8px; cursor:pointer; text-decoration:none; font:inherit; }
+      #f4-source .f4s-body { flex:1; overflow:auto; display:flex; position:relative; }
+      #f4-source .f4s-gutter { padding:10px 8px 10px 12px; text-align:right; color:#555; user-select:none; white-space:pre; }
+      #f4-source pre { margin:0; padding:10px 12px; flex:1; white-space:pre; tab-size:4; background:none; }
+      #f4-source pre code { background:none; padding:0; font:inherit; color:inherit; }
+      #f4-source .f4s-line { position:absolute; left:0; right:0; height:1.5em; background:rgba(255,241,118,.10); border-left:2px solid rgba(255,241,118,.8); pointer-events:none; }
+      #f4-source .f4s-note { padding:4px 12px; color:#8b8b8b; border-top:1px solid #222; }
+    `;
+    document.head.appendChild(sourceCss);
+    const sourceViewer = document.createElement("section");
+    sourceViewer.id = "f4-source"; sourceViewer.hidden = true;
+    sourceViewer.setAttribute("role", "dialog"); sourceViewer.setAttribute("aria-label", "Source file from this checkout");
+    sourceViewer.innerHTML = `<header><strong data-role="path"></strong><a data-role="github" target="_blank" rel="noopener">GitHub</a><button data-act="close-source" title="Close (Escape)">×</button></header><div class="f4s-body"><div class="f4s-gutter" data-role="gutter"></div><pre><code data-role="code"></code></pre></div><div class="f4s-note" data-role="note" hidden></div>`;
+    document.body.appendChild(sourceViewer);
+    const SOURCE_LANGUAGES = { kt:"kotlin", kts:"kotlin", java:"java", js:"javascript", mjs:"javascript", cjs:"javascript", py:"python", sh:"bash", json:"json", yaml:"yaml", yml:"yaml", md:"markdown", html:"xml", css:"css", glsl:"cpp", swift:"swift", toml:"ini" };
+    const closeSource = () => { sourceViewer.hidden = true; };
+    const openSource = async link => {
+        const path = link.dataset.repoPath;
+        const line = Number(link.dataset.repoLine || 0);
+        const file = await api(`/api/docs-source-file?path=${encodeURIComponent(path)}`);
+        sourceViewer.querySelector('[data-role="path"]').textContent = file.path + (line ? `:${line}` : "");
+        sourceViewer.querySelector('[data-role="github"]').href = link.href;
+        const code = sourceViewer.querySelector('[data-role="code"]');
+        const language = SOURCE_LANGUAGES[(file.path.split(".").pop() || "").toLowerCase()];
+        if (window.hljs && language && hljs.getLanguage(language) && file.text.length < 400000) {
+            // `data-code-lang` brings in the docs' own token palette (code-diff-player.css);
+            // `data-reference-highlighted` stops highlightReferences() from colouring it again.
+            code.innerHTML = hljs.highlight(file.text, { language, ignoreIllegals:true }).value; code.className = "hljs";
+            code.dataset.codeLang = language; code.dataset.referenceHighlighted = "true";
+        } else { code.textContent = file.text; code.className = ""; delete code.dataset.codeLang; }
+        const count = file.text.split("\n").length;
+        sourceViewer.querySelector('[data-role="gutter"]').textContent = Array.from({ length: count }, (_, i) => i + 1).join("\n");
+        const note = sourceViewer.querySelector('[data-role="note"]');
+        note.hidden = !file.truncated; note.textContent = file.truncated ? `Showing the first ${count} lines; the whole file is on GitHub.` : "";
+        const body = sourceViewer.querySelector(".f4s-body");
+        body.querySelector(".f4s-line")?.remove();
+        sourceViewer.hidden = false;
+        if (line > 0) {
+            const band = document.createElement("div"); band.className = "f4s-line";
+            const lineHeight = parseFloat(getComputedStyle(code.parentElement).lineHeight) || 18;
+            band.style.top = `${10 + (line - 1) * lineHeight}px`; body.appendChild(band);
+            body.scrollTop = Math.max(0, (line - 1) * lineHeight - body.clientHeight / 3);
+        } else body.scrollTop = 0;
+    };
+    sourceViewer.addEventListener("click", event => { if (event.target.closest('[data-act="close-source"]')) closeSource(); });
+    document.addEventListener("keydown", event => { if (event.key === "Escape" && !sourceViewer.hidden) { event.preventDefault(); closeSource(); } });
+    document.addEventListener("click", event => {
+        const link = event.target.closest("a.repo-source-link[data-repo-path]");
+        if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+        event.preventDefault();
+        openSource(link).catch(error => { console.warn("Field docs: could not open the local file, following the link instead", error); window.open(link.href, "_blank", "noopener"); });
+    });
+
     document.addEventListener("click", event => {
         const link = event.target.closest("a[href]"); if (!link || event.defaultPrevented || event.metaKey || event.ctrlKey) return;
         const target = new URL(link.href, upstream); if (target.origin === upstream.origin && target.pathname.toLowerCase().startsWith("/field4/")) { event.preventDefault(); location.href = new URL(`${proxyRoot}${target.pathname.slice(8)}${target.search}${target.hash}`, window.location.origin).toString(); }

@@ -95,6 +95,7 @@ mutation; it is a different one.
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/handoff` | `docsPass.kt` | loopback + same-site |
+| `GET /api/docs-source-file` | `docsSourceFile.kt` | loopback + same-site |
 | `GET /api/document-guide-asset` | `documentGuides.kt` | none |
 | `GET /api/export-tagged-documents` | `Server.kt` | none |
 | `GET /api/instance-info` | `Server.kt` | none |

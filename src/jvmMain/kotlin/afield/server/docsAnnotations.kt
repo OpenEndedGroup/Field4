@@ -1066,6 +1066,7 @@ internal fun Route.installDocsAnnotationRoutes(
         call.respond(DocsImprovementTask.start(call.receive<DocsImprovementLaunchRequest>().tags.map(String::lowercase)))
     }
     installDocsPassRoutes(policy)
+    installDocsSourceFileRoute(policy)
     // Gated like the annotations, and the reason is not the one you would guess.
     //
     // The content is a public website — or this checkout's own build of it — so nothing
