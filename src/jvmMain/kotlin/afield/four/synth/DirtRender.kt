@@ -6,6 +6,10 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.isDirectory
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlin.math.sqrt
 
 /**
@@ -34,6 +38,11 @@ import kotlin.math.sqrt
  *  * **Library present, token missing from it** — only *that event* falls back to the synth voice.
  *    A pattern of note numbers, or one naming a drum Dirt has never heard of, must not go silent
  *    just because the library loaded.
+ *
+ * Both are for a box, where something audible beats an error. A published clip wants the
+ * opposite: `strict = true` turns either case into an exception, and the docs renderers pass
+ * [DirtRender.requirePinnedLibrary], the checksummed subset `./gradlew fetchDocsDirtSamples`
+ * downloads, so a clip is made from the same bytes on every machine or not made at all.
  */
 
 /**
@@ -60,6 +69,107 @@ object DirtRender {
         add(Paths.get(home, "Library", "Application Support", "SuperCollider", "downloaded-quarks", "Dirt-Samples"))
         add(Paths.get(home, ".local", "share", "SuperCollider", "downloaded-quarks", "Dirt-Samples"))
         add(Paths.get(home, "Dirt-Samples"))
+        // Last, because it holds only the few folders the docs use: a full Tidal install should
+        // win for live playing. See [pinnedSampleRoot].
+        runCatching { pinnedCacheDir() }.getOrNull()?.let { add(it) }
+    }
+
+    // ── the pinned subset the docs render from ──────────────────────────────────────────────
+
+    /** The manifest `tools/fetch_dirt_samples.py` downloads from; one copy, read by both sides. */
+    private const val MANIFEST_RESOURCE = "/afield/four/synth/dirt-samples-pinned.json"
+
+    /** One pinned file: its path inside the library, its size and its SHA-256. */
+    class PinnedFile(val path: String, val bytes: Long, val sha256: String)
+
+    /** The pinned subset: which commit of tidalcycles/Dirt-Samples, which folders, which files. */
+    class PinnedManifest(val commit: String, val folders: List<String>, val files: List<PinnedFile>)
+
+    /** The manifest off the classpath. */
+    val pinnedManifest: PinnedManifest by lazy {
+        val text = DirtRender::class.java.getResourceAsStream(MANIFEST_RESOURCE)
+            ?.use { it.readBytes().toString(Charsets.UTF_8) }
+            ?: error("$MANIFEST_RESOURCE is missing from the classpath")
+        val root = kotlinx.serialization.json.Json.parseToJsonElement(text).jsonObject
+        PinnedManifest(
+            commit = root.getValue("commit").jsonPrimitive.content,
+            folders = root.getValue("folders").jsonArray.map { it.jsonPrimitive.content },
+            files = root.getValue("files").jsonArray.map {
+                val o = it.jsonObject
+                PinnedFile(
+                    o.getValue("path").jsonPrimitive.content,
+                    o.getValue("bytes").jsonPrimitive.long,
+                    o.getValue("sha256").jsonPrimitive.content,
+                )
+            },
+        )
+    }
+
+    /**
+     * Where `tools/fetch_dirt_samples.py` puts the pinned subset, whether or not it is there.
+     *
+     * The per-user native download cache of `tools/native_download_cache.py`, computed the same
+     * way: `AFIELD_NATIVE_DOWNLOAD_CACHE` first, then the platform's cache convention.
+     */
+    fun pinnedCacheDir(): Path {
+        val override = System.getenv("AFIELD_NATIVE_DOWNLOAD_CACHE")?.trim().orEmpty()
+        val home = System.getProperty("user.home") ?: "."
+        val os = System.getProperty("os.name").orEmpty().lowercase()
+        val cache = when {
+            override.isNotEmpty() -> Paths.get(override.replaceFirst(Regex("^~"), home))
+            os.contains("windows") ->
+                Paths.get(System.getenv("LOCALAPPDATA") ?: Paths.get(home, "AppData", "Local").toString(), "Field4", "Cache")
+            os.contains("mac") -> Paths.get(home, "Library", "Caches", "Field4")
+            else -> Paths.get(System.getenv("XDG_CACHE_HOME") ?: Paths.get(home, ".cache").toString(), "field4")
+        }
+        return cache.resolve("native-downloads").resolve("dirt-samples").resolve(pinnedManifest.commit)
+    }
+
+    private val verifiedRoots = java.util.concurrent.ConcurrentHashMap<Path, List<String>>()
+
+    /** What is wrong with the pinned subset at [root]: missing files and wrong digests. Empty when it is whole. */
+    fun pinnedProblems(root: Path = pinnedCacheDir()): List<String> = verifiedRoots.computeIfAbsent(root.toAbsolutePath().normalize()) {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        pinnedManifest.files.mapNotNull { file ->
+            val path = root.resolve(file.path)
+            when {
+                !Files.isRegularFile(path) -> "missing ${file.path}"
+                Files.size(path) != file.bytes -> "wrong size ${file.path}"
+                digest.digest(Files.readAllBytes(path)).joinToString("") { "%02x".format(it) } != file.sha256 ->
+                    "wrong digest ${file.path}"
+                else -> null
+            }
+        }
+    }
+
+    /**
+     * The pinned, checksummed Dirt-Samples subset, or null when it is not on this machine intact.
+     *
+     * Verified once per process: every file in the manifest present at its pinned SHA-256.
+     */
+    fun pinnedSampleRoot(): Path? = pinnedCacheDir().takeIf { it.isDirectory() && pinnedProblems(it).isEmpty() }
+
+    /** How to get the pinned subset; quoted by every failure that needs it. */
+    const val PINNED_REMEDY = "run `./gradlew fetchDocsDirtSamples` (or `python3 tools/fetch_dirt_samples.py`), " +
+        "which downloads the pinned, checksummed Dirt-Samples folders into the shared per-user cache"
+
+    /**
+     * The library a published clip is rendered from: the pinned subset, and nothing else.
+     *
+     * Not [libraryOrNull], which takes whatever Tidal install it finds first. Two machines with two
+     * different installs would publish two different clips, and the provenance audit compares
+     * bytes. Throws, naming the remedy, when the subset is missing or any file is wrong.
+     */
+    fun requirePinnedLibrary(): DirtSampleLibrary {
+        val dir = pinnedCacheDir()
+        val problems = if (dir.isDirectory()) pinnedProblems(dir) else listOf("no directory at $dir")
+        check(problems.isEmpty()) {
+            "the pinned Dirt-Samples subset (tidalcycles/Dirt-Samples@${pinnedManifest.commit.take(12)}: " +
+                "${pinnedManifest.folders.joinToString(" ")}) is not usable at $dir — " +
+                "${problems.size} problem(s), first: ${problems.first()}. To fix it, $PINNED_REMEDY. " +
+                "There is no synth fallback for a published clip."
+        }
+        return DirtSampleLibrary.shared(dir, preload = false)
     }
 
     /**
@@ -104,6 +214,9 @@ object DirtRender {
  *
  * Honours the same `gain`, `pan` and `speed` annotations as [patRenderStereo], so the parameter
  * algebra applies unchanged.
+ *
+ * With [strict], a missing [library] or a token it has no sample for is an exception rather than
+ * the synth voice; that is the mode every published clip uses.
  */
 fun patRenderStereoDirt(
     pattern: PatPattern<String>,
@@ -112,9 +225,14 @@ fun patRenderStereoDirt(
     library: DirtSampleLibrary? = DirtRender.libraryOrNull(),
     voice: PatVoiceSpec = patVoice(),
     sampleRate: Int = PatSoundDocs.SR,
+    strict: Boolean = false,
 ): DirtRender.DirtRenderResult {
     require(cycles > 0) { "cycles must be > 0" }
     require(cps > 0.0) { "cps must be > 0" }
+    check(!strict || library != null) {
+        "a strict Dirt render needs a sample library and none was found; ${DirtRender.PINNED_REMEDY}, " +
+            "or set ${DirtRender.ENV_VAR} to a Dirt-Samples directory"
+    }
 
     if (library == null) {
         return DirtRender.DirtRenderResult(
@@ -142,6 +260,10 @@ fun patRenderStereoDirt(
         val token = event.value.trim()
         val sample = runCatching { library.sample(token) }.getOrNull()
         if (sample == null) {
+            check(!strict) {
+                "a strict Dirt render met '$token', which ${library.root} has no sample for " +
+                    "(it has ${library.families.keys.sorted().joinToString(" ")})"
+            }
             unmatched += token
             leftovers += event
             continue

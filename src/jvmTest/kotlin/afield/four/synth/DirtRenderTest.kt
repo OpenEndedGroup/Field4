@@ -3,6 +3,7 @@ package afield.four.synth
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -83,5 +84,52 @@ class DirtRenderTest {
         assertEquals(setOf("zzzznotadrum"), mixed.unmatched)
         assertTrue(mixed.audio.left.any { it != 0f }, "the unknown token should still have been voiced")
         assertTrue(DirtRender.ENV_VAR !in mixed.describe(), "a partial match is not the no-library case")
+    }
+
+    @Test
+    fun `a strict render with no library fails and names the fetch task`() {
+        val e = assertFailsWith<IllegalStateException> {
+            patRenderStereoDirt(beat, cycles = 1, cps = 2.0, library = null, strict = true)
+        }
+        assertTrue("fetchDocsDirtSamples" in e.message.orEmpty(), "the failure must say how to fix it: ${e.message}")
+    }
+
+    @Test
+    fun `a strict render refuses a token the library does not have`() {
+        val library = DirtRender.libraryOrNull() ?: return
+        val e = assertFailsWith<IllegalStateException> {
+            patRenderStereoDirt(pat("bd zzzznotadrum"), cycles = 1, cps = 2.0, library = library, strict = true)
+        }
+        assertTrue("zzzznotadrum" in e.message.orEmpty(), e.message)
+    }
+
+    @Test
+    fun `the pinned subset is found intact or reported with what is wrong`() {
+        // The docs renders use this and nothing else. On a machine without it, requirePinnedLibrary
+        // must throw with the fetch command; with it, every manifest file must verify.
+        val manifest = DirtRender.pinnedManifest
+        assertEquals(40, manifest.commit.length, "the pin is a full commit hash")
+        assertTrue(manifest.files.all { it.path.substringBefore('/') in manifest.folders })
+        val root = DirtRender.pinnedSampleRoot()
+        if (root == null) {
+            val e = assertFailsWith<IllegalStateException> { DirtRender.requirePinnedLibrary() }
+            assertTrue("fetchDocsDirtSamples" in e.message.orEmpty(), e.message)
+        } else {
+            assertTrue(DirtRender.pinnedProblems(root).isEmpty())
+            val library = DirtRender.requirePinnedLibrary()
+            assertEquals(manifest.folders.toSet(), library.families.keys)
+        }
+    }
+
+    @Test
+    fun `a pinned root with a missing file is not a pinned root`() {
+        val dir = kotlin.io.path.createTempDirectory("dirt-pinned-broken")
+        try {
+            val problems = DirtRender.pinnedProblems(dir)
+            assertEquals(DirtRender.pinnedManifest.files.size, problems.size)
+            assertTrue(problems.all { it.startsWith("missing ") }, problems.take(3).toString())
+        } finally {
+            dir.toFile().deleteRecursively()
+        }
     }
 }
