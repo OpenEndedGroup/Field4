@@ -53,6 +53,12 @@ class AnthropicBridge(
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("anthropic", model)
     private val tools = ToolRegistry()
 
+    /**
+     * The same per-turn JSONL the OpenAI bridge writes (`~/.afield/logs/ai4_tool_io/`). Without it the
+     * tool-use improvement loop, and any usage count taken from those logs, only ever saw OpenAI turns.
+     */
+    private val toolIoLog: AiToolIoLogger? = AiToolIoLogger.fromEnvOrDefault(log)
+
     /** Per-thread message history (stateless API — we resend the full transcript each turn). */
     private val history = ConcurrentHashMap<String, MutableList<MessageParam>>()
 
@@ -134,6 +140,38 @@ class AnthropicBridge(
 
         info("convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} maxOutputTokens=$maxOutputTokens")
 
+        // Field names match OpenAiIdeCodexBridge's, so one reader (tools/ai_tool_usage.py, the
+        // improvement monitor) covers both providers.
+        val toolIoSession = runCatching {
+            toolIoLog?.begin(
+                mapOf(
+                    "model" to model,
+                    "provider" to "anthropic",
+                    "reasoningEffort" to "provider-default",
+                    "conversationId" to state.conversationId,
+                    "localThreadId" to state.localThreadId,
+                    "fileKey" to state.fileKey,
+                    "inputChars" to inputText.length,
+                    "attachmentCount" to ctx.attachments.size,
+                    "imageCount" to imageDataUrls.size,
+                    "maxOutputTokens" to maxOutputTokens,
+                    "maxToolRounds" to maxToolRounds,
+                    "prompt" to inputText
+                )
+            )
+        }.onFailure { warn("tool I/O log unavailable: ${it.message ?: it::class.java.simpleName}") }.getOrNull()
+        var toolIoFailureReported = false
+        fun toolIo(event: String, fields: Map<String, Any?> = emptyMap()) {
+            val session = toolIoSession ?: return
+            val logger = toolIoLog ?: return
+            runCatching { logger.event(session, event, fields) }.onFailure {
+                if (!toolIoFailureReported) {
+                    toolIoFailureReported = true
+                    warn("tool I/O log write failed: ${it.message ?: it::class.java.simpleName}")
+                }
+            }
+        }
+
         val toolDefs = buildToolDefs(ctx)
         val commentary = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
@@ -141,12 +179,19 @@ class AnthropicBridge(
 
         var inputTokens = 0L
         var outputTokens = 0L
+        var cacheReadTokens: Long? = null
+        var cacheWriteTokens: Long? = null
         fun countUsage(message: Message) {
             runCatching { message.usage() }.getOrNull()?.let {
                 inputTokens += it.inputTokens()
                 outputTokens += it.outputTokens()
+                it.cacheReadInputTokens().orElse(null)?.let { n -> cacheReadTokens = (cacheReadTokens ?: 0L) + n }
+                it.cacheCreationInputTokens().orElse(null)?.let { n -> cacheWriteTokens = (cacheWriteTokens ?: 0L) + n }
             }
         }
+        var toolElapsedMs = 0L
+        var activePhase = "model:initial"
+        try {
         var hitToolRoundCap = false
         var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
         countUsage(response)
@@ -164,18 +209,32 @@ class AnthropicBridge(
                 val name = use.name()
                 val argsJson = runCatching { toJsonString(use._input()) }.getOrElse { "{}" }
                 info("tool: name=$name id=${use.id()} args=${truncate(argsJson, 400)}")
+                toolIo("tool_call", mapOf("round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "arguments" to argsJson))
                 onProgress?.invoke(LlmProgressUpdate("Using $name", truncate(argsJson, 700)))
 
+                activePhase = "tool:$name"
+                val started = System.nanoTime()
                 val result: Any = try {
                     tools.executeByName(ctx, name, argsJson)
                 } catch (e: Exception) {
+                    // A cancelled turn must end the turn, not become a tool error the model is asked about.
+                    if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=$name msg=${e.message}")
+                    toolIo("tool_exception", mapOf(
+                        "round" to (rounds + 1), "toolName" to name, "callId" to use.id(),
+                        "exceptionType" to e::class.java.name, "message" to (e.message ?: "")))
                     mapOf("error" to true, "tool" to name, "message" to (e.message ?: e::class.java.name))
                 }
+                val toolMs = (System.nanoTime() - started) / 1_000_000
+                toolElapsedMs += toolMs
                 val resultJson = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
                 val summary = truncate(resultJson, 300)
-                transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson)
-                onProgress?.invoke(LlmProgressUpdate("$name finished", summary))
+                transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson, elapsedMs = toolMs)
+                toolIo("tool_result", mapOf(
+                    "round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "summary" to summary,
+                    "elapsedMs" to toolMs, "result" to resultJson,
+                    "imageCount" to ((result as? CarriesToolImages)?.toolImages?.size ?: 0)))
+                onProgress?.invoke(LlmProgressUpdate("$name finished ($toolMs ms)", summary))
 
                 if (name == Commentary::class.java.simpleName) {
                     runCatching { aiToolMapper.readValue(argsJson.ifBlank { "{}" }, Commentary::class.java).text }
@@ -237,6 +296,7 @@ class AnthropicBridge(
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer without further tools.")
             }
             if (!includeTools) hitToolRoundCap = true
+            activePhase = if (includeTools) "model:followup" else "model:forced_final"
             response = createMessage(buildParams(system, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
@@ -253,6 +313,12 @@ class AnthropicBridge(
 
         val ms = (System.nanoTime() - t0) / 1_000_000
         info("done id=${response.id()} textChars=${text.length} commentary=${commentary.size} rounds=$rounds (${ms}ms)")
+        toolIo("session_end", mapOf(
+            "responseId" to response.id(), "textChars" to text.length, "commentaryCount" to commentary.size,
+            "toolCallCount" to transcript.size, "elapsedMs" to ms, "status" to "completed",
+            "toolElapsedMs" to toolElapsedMs, "rounds" to rounds,
+            "inputTokens" to inputTokens, "outputTokens" to outputTokens,
+            "cacheReadTokens" to cacheReadTokens, "cacheWriteTokens" to cacheWriteTokens))
 
         return OpenAiIdeCodexBridge.SendResult(
             threadState = state,
@@ -265,8 +331,20 @@ class AnthropicBridge(
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            cacheReadTokens = cacheReadTokens,
+            cacheWriteTokens = cacheWriteTokens
         )
+        } catch (failure: Throwable) {
+            val cancelled = isAiTurnCancellation(failure)
+            toolIo(if (cancelled) "session_cancelled" else "session_failed", mapOf(
+                "status" to if (cancelled) "cancelled" else "failed",
+                "phase" to activePhase,
+                "elapsedMs" to (System.nanoTime() - t0) / 1_000_000,
+                "toolElapsedMs" to toolElapsedMs,
+                "exceptionType" to failure::class.java.name, "message" to (failure.message ?: "")))
+            throw failure
+        }
     }
 
     // ---- request construction ------------------------------------------------

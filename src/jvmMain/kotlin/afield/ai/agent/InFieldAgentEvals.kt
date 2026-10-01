@@ -318,6 +318,9 @@ data class AgentEvalReport(
     val inputTokens: Long?,
     val outputTokens: Long?,
     val error: String = "",
+    /** Sums of [AgentTaskResult.cacheReadTokens] / [AgentTaskResult.cacheWriteTokens]; null when no task reported them. */
+    val cacheReadTokens: Long? = null,
+    val cacheWriteTokens: Long? = null,
     /** Sum of [AgentTaskResult.misuseCalls]. */
     val misuseCalls: Int = 0,
     /** Sum of [AgentTaskResult.imagesSeen]. */
@@ -382,6 +385,8 @@ object AgentEvalRunner {
             elapsedMs = (System.nanoTime() - started) / 1_000_000,
             inputTokens = sum { it.inputTokens },
             outputTokens = sum { it.outputTokens },
+            cacheReadTokens = sum { it.cacheReadTokens },
+            cacheWriteTokens = sum { it.cacheWriteTokens },
             misuseCalls = results.sumOf { it.misuseCalls },
             imagesSeen = results.sumOf { it.imagesSeen },
             rounds = results.sumOf { it.rounds.coerceAtLeast(0) },

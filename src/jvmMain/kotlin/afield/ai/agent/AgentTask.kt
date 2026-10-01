@@ -156,6 +156,9 @@ data class AgentTaskResult(
     val elapsedMs: Long,
     val inputTokens: Long? = null,
     val outputTokens: Long? = null,
+    /** Input tokens the provider served from its prompt cache (see [afield.ai.core.LlmSendResult.cacheReadTokens]). */
+    val cacheReadTokens: Long? = null,
+    val cacheWriteTokens: Long? = null,
     val documentName: String,
     val createdBoxes: List<String> = emptyList(),
     val setupCalls: List<AgentToolCallRecord> = emptyList(),
@@ -273,6 +276,7 @@ object AgentTaskRunner {
                 verdict = verdict, checks = outcomes, toolCalls = calls, finalText = sent.text,
                 rounds = sent.rounds, maxToolRounds = budget, hitToolRoundCap = sent.hitToolRoundCap,
                 elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens,
+                cacheReadTokens = sent.cacheReadTokens, cacheWriteTokens = sent.cacheWriteTokens,
                 documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog,
                 misuseCalls = calls.count(AgentLessons::isMisuse),
                 imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },

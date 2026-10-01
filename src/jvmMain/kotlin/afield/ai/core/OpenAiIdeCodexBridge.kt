@@ -222,6 +222,7 @@ class OpenAiIdeCodexBridge(
         var activeToolStarted: Long? = null
         var inputTokens: Long? = null
         var outputTokens: Long? = null
+        var cacheReadTokens: Long? = null
         fun <T> modelRequest(phase: String, action: () -> T): T {
             activePhase = "model:$phase"
             toolIo("model_request", mapOf("phase" to phase))
@@ -234,6 +235,9 @@ class OpenAiIdeCodexBridge(
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
+                        runCatching { usage.inputTokensDetails().cachedTokens() }.getOrNull()?.let { cached ->
+                            cacheReadTokens = (cacheReadTokens ?: 0L) + cached
+                        }
                     }
                 }
             } finally {
@@ -395,7 +399,8 @@ class OpenAiIdeCodexBridge(
                     callId = call.callId(),
                     argumentsJson = call.arguments(),
                     resultSummary = toolResultSummary,
-                    resultJson = toolResultJson
+                    resultJson = toolResultJson,
+                    elapsedMs = toolMs
                 )
 
                 trace?.log(
@@ -647,7 +652,8 @@ class OpenAiIdeCodexBridge(
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            cacheReadTokens = cacheReadTokens
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -685,7 +691,14 @@ class OpenAiIdeCodexBridge(
         val hitToolRoundCap: Boolean = false,
         /** Summed over every model request in the turn; null when the provider did not report usage. */
         val inputTokens: Long? = null,
-        val outputTokens: Long? = null
+        val outputTokens: Long? = null,
+        /**
+         * Input tokens served from the provider's prompt cache, summed over the turn (a subset of
+         * [inputTokens] on OpenAI; reported separately by Anthropic). Null when the provider did not say.
+         */
+        val cacheReadTokens: Long? = null,
+        /** Input tokens written to the prompt cache this turn (Anthropic only); null when not reported. */
+        val cacheWriteTokens: Long? = null
     )
 
     data class ToolTranscriptEntry(
@@ -693,7 +706,14 @@ class OpenAiIdeCodexBridge(
         val callId: String,
         val argumentsJson: String,
         val resultSummary: String,
-        val resultJson: String
+        val resultJson: String,
+        /** Wall time the handler took; -1 when the bridge did not measure it. */
+        val elapsedMs: Long = -1,
+        /**
+         * The call this one ran inside, or "" for a call the model made itself. A tool program's
+         * nested calls carry the program call's id here, and their own id is `<parent>/<n>`.
+         */
+        val parentCallId: String = ""
     )
 
     data class ProgressUpdate(

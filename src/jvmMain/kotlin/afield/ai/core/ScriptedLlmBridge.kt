@@ -93,14 +93,19 @@ class ScriptedLlmBridge(
                     rounds++
                     val args = substitute(step.argumentsJson, latestByTool)
                     onProgress?.invoke(LlmProgressUpdate("Using ${step.tool}", args.take(700), phase = "tool"))
+                    val started = System.nanoTime()
                     val result: Any = try {
                         tools.executeByName(ctx, step.tool, args)
                     } catch (e: Exception) {
+                        if (isAiTurnCancellation(e)) throw e
                         mapOf("error" to true, "tool" to step.tool, "message" to (e.message ?: e::class.java.name))
                     }
+                    val elapsedMs = (System.nanoTime() - started) / 1_000_000
                     val json = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
                     latestByTool[step.tool] = json
-                    transcript += LlmToolTranscriptEntry(step.tool, "scripted-$rounds", args, json.take(300), json)
+                    transcript += LlmToolTranscriptEntry(
+                        step.tool, "scripted-$rounds", args, json.take(300), json, elapsedMs = elapsedMs
+                    )
                     onProgress?.invoke(LlmProgressUpdate("${step.tool} finished", json.take(300), phase = "tool_result"))
                 }
             }
