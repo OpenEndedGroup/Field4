@@ -2,7 +2,91 @@
 
 Field keeps document backups as you work. The history view lets you inspect those saved versions, compare them, and restore an earlier state — either the whole document or just a few boxes.
 
-![Document history timeline](assets/history-panel.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1440x900" clip="0,0,1440,900" screenshot="assets/document_history/history-version-selected.png" transcript="assets/transcripts/document_history_setup.yaml" document="docs-history-figure" fresh-document=true padding="0" wait="0" timeout="150" embed=true hidden=true name="document-history-version-selected" alt="Field with the document history view open below a box named sketch and its editor: the timeline holds versions #0, #1 and #2 and the current document, version #1 is selected and differs from the live document in one box, and the editor lays version #1 over the current code as a read-only inline diff, version #1's lines in green (radius 40.0, a println of radius and count) against the current lines in red (radius 64.0, the ring and its println)"}
+// The setup box holds version 0 of its code. Two edits through the editor, each left for the
+// 5 s autosave, give the document's backups three real versions; then the history view opens and
+// the middle version is clicked, which lays that version's text over the editor as a diff.
+val uid = ui.eval("""
+    const b = [...document.querySelectorAll(".box")].find(b => (b.textContent || "").includes("sketch"))
+    return b ? (b.uid || b.getAttribute("uid") || b.getAttribute("data-uid")) : null
+""".trimIndent()).toString().trim('"')
+check(uid.isNotBlank() && uid != "null") { "the setup transcript's sketch box is not on the canvas" }
+ui.openEditor(uid)
+ui.waitForSelector(".monaco-editor", 15000.0)
+// Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it to a
+// size and place meant for a much larger page.
+ui.eval("""
+    const c = document.querySelector(".monaco-editor-container")
+    for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
+    if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
+    return true
+""".trimIndent())
+ui.pause(6500)
+val versions = listOf(
+    """
+    // A ring of points, saved three times.
+    val radius = 40.0
+    val count = 12
+    println("radius " + radius + ", count " + count)
+    """.trimIndent(),
+    """
+    // A ring of points, saved three times.
+    val radius = 64.0
+    val count = 12
+    val ring = (0 until count).map { it * 360.0 / count }
+    println("radius " + radius + ", " + ring.size + " points")
+    """.trimIndent(),
+)
+for (text in versions) {
+    val quoted = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\""
+    ui.eval("window.globalEditor.setValue($quoted); return true")
+    ui.pause(6500)
+}
+ui.eval("""
+    window.switchToHistoryForFile(window.currentDocumentFilename || "default")
+    return window.currentDocumentFilename
+""".trimIndent())
+// Wait for the rail to show the three saved versions and the current one.
+var rail = ""
+for (i in 0 until 80) {
+    ui.pause(250)
+    rail = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const d = f && f.contentDocument
+        const dots = d ? d.querySelectorAll("#rail [data-version-index]").length : 0
+        return "dots=" + dots
+    """.trimIndent()).toString()
+    if ((Regex("dots=(\\d+)").find(rail)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) break
+}
+check((Regex("dots=(\\d+)").find(rail)?.groupValues?.get(1)?.toInt() ?: 0) >= 3) { "the history rail never showed three versions: " + rail }
+ui.pause(1200)
+// Click version #1 where it is drawn, in page coordinates.
+val at = ui.eval("""
+    const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+    const fr = f.getBoundingClientRect()
+    const dot = f.contentDocument.querySelector('#rail [data-version-index="1"]')
+    const r = dot.getBoundingClientRect()
+    return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2].join(",")
+""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+ui.moveMouse(at[0], at[1], 6)
+ui.clickAt(at[0], at[1])
+var shown = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    shown = ui.eval("""
+        const f = window.getHistoryIframeElement ? window.getHistoryIframeElement() : document.querySelector("#history-iframe")
+        const target = f.contentDocument.querySelector("#target-version")?.textContent?.trim() || ""
+        const zones = document.querySelectorAll(".monaco-editor .view-zones > div").length
+        const decorations = document.querySelectorAll(".monaco-editor [class*='aidiff'], .monaco-editor [class*='ai-diff']").length
+        return "target=" + target + " zones=" + zones + " decorations=" + decorations
+    """.trimIndent()).toString()
+    if (shown.contains("target=#1") && !shown.contains("zones=0 decorations=0")) break
+}
+check(shown.contains("target=#1")) { "clicking version #1 did not select it: " + shown }
+check(!shown.contains("zones=0 decorations=0")) { "version #1 is selected but the editor shows no diff: " + shown }
+ui.moveMouse(5.0, 5.0, 2)
+ui.pause(800)
+```
 
 It is for document-level recovery rather than for undoing single edits. To scrub one line back through its versions without leaving the editor, see the [History Lens](history_lens.md).
 

@@ -184,6 +184,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 **Where the code runs.**
 
 - `name`, `x`, `y`, `w`, `h`, `document`, `property` — name and place the scratch box, and say which property the code goes in.
+- `fresh-document=true` — runs in a new document named after `document` plus a random suffix, rather than in a scratch session. A scratch session never saves, so a figure of what saving makes (backups, document history) needs one.
 - `graphics-context=true` — asks for a Field with a live Vulkan renderer, which is what any `native-window` capture needs.
 - `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` — replays an `OperationTranscript` before the fence runs.
 - `macro-name`, `macro-selection` — pick a macro and a box selection inside that transcript.

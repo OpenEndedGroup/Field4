@@ -1,0 +1,15 @@
+name: document_history_setup
+description: >
+  Setup for the document-history figure on document_history.md: one box, named sketch, holding the
+  first of three versions of its code. The capture=ui drive (in a fresh, saving document) edits it
+  twice, waiting out the autosave each time, so the document's backups hold three real versions.
+operations:
+  - create:
+      box: history_sketch
+      name: sketch
+      frame: { x: 60, y: 60, w: 160, h: 60 }
+      properties:
+        code: |
+          // A ring of points, saved three times.
+          val radius = 40.0
+          println("radius " + radius)

@@ -376,7 +376,7 @@ You can open history in two ways:
 - run `Show Document History` from the command palette
 - or open `/history?file=<document-name>` directly on the Field server
 
-![Document history timeline](assets/history-panel.png)
+![The document history view with version #1 of a three-version document selected, and the editor showing that version as an inline diff against the current code](assets/document_history/history-version-selected.png)
 
 Along the top is a timeline of every saved version, which you can scrub, and view by save or by real time. You can compare each version against the current document or against the one before it, narrow everything to the selected box, search for the versions that touched a piece of text, blame a line, and name a version so you can find it again. Restoring can take the whole document back, or cherry-pick just the boxes you select, and every restore is itself recorded, so it can be undone. [Document History](document_history.md) walks through all of it, and the [History Lens](history_lens.md) scrubs a single line back through its versions without leaving the editor.
 
