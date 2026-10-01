@@ -31,8 +31,21 @@ for paths, keyboard shortcuts, shell options or mixed-language comparisons. Alre
 highlighted declarations in generated reference pages retain their existing tokens.
 
 The shared highlighter uses the same loaded library as the code player. FieldML has
-its own grammar for its keywords, types, operators and nested comments. There is no
-language auto-detection and no replacement of a code fragment's text with a title.
+its own grammar for its keywords, types, operators and nested comments. Inside a
+`data-code-lang` container the author's language is used; there is no language
+auto-detection there and no replacement of a code fragment's text with a title.
+
+Inline code in prose, outside those containers, is Kotlin by default (Marc,
+2026-10-01). The docs build marks each prose `<code>` that reads as code with
+`data-code-lang="kotlin"` (`mark_inline_code_html` in `public/docs_hooks.py`, run by
+`tools/build_zensical_docs.py` on the built HTML), and the same highlighter colours
+it. Paths, file names, URLs, flags, shell commands, environment assignments, key
+chords, markup, single bare words, and spans in the site's other notations (EDN,
+StackSL stack effects and programs, Petri arcs, rewrite rules, FieldML types,
+Clojure forms) stay plain. The classifier is `inline_code_language`; its cases are
+pinned in `tools/test_docs_hooks_inline_code.py`. Prose code inside a
+`data-code-lang` container is not marked: that container's language is the author's,
+and only its table cells are highlighted.
 In Zensical tables, pipes inside backticks do not need backslash escaping; an escaped
 pipe is rendered with the literal backslash. Inspect the result after editing syntax.
 

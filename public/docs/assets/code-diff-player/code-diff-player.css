@@ -224,6 +224,12 @@
 [data-code-lang] .hljs-punctuation { color: #8d99a8; }
 [data-code-lang] .hljs-meta { color: #7aa2f7; }
 
+/* Prose inline code carries `data-code-lang` on the `code` itself (public/docs_hooks.py,
+   `mark_inline_code_html`), so the descendant rules above colour its tokens but not the text
+   between them. Give that text the table cells' base colour, or a highlighted span reads as
+   light-blue pill text with coloured islands in it. */
+.md-typeset code[data-code-lang].hljs { color: #d7dce2; }
+
 .code-diff-line {
   display: grid;
   grid-template-columns: 46px 1fr;

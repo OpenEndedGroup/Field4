@@ -343,6 +343,255 @@ def rewrite_source_citations(markdown: str, depth: int | None = None) -> str:
     return "".join(out)
 
 
+# ── Inline code in prose: Kotlin by default ────────────────────────────────────────────────────
+#
+# Every inline `code` span in a page's prose is highlighted as Kotlin unless it is plainly not code
+# (Marc, 2026-10-01, handoffs 400854a2 and b4bdc0a0: "the highlighting used in the reference tables,
+# everywhere inline code appears in prose"). There is ONE highlighter: `highlightReferences()` in
+# public/docs/assets/code-diff-player/code-diff-player.js, the highlight.js `kotlin-reference` pass the
+# `data-code-lang` reference tables already use, with its palette from code-diff-player.css. This
+# pass only decides, at build time, which spans it gets: it runs over the built HTML and gives each
+# qualifying bare `<code>` the attributes in INLINE_CODE_MARK, so the decision is in the published
+# page (and testable here) while the tokens are the reference tables' own.
+#
+# `inline_code_language` is the classifier. It errs towards plain: a path, URL, flag, shell command,
+# key chord, markup, a single bare word, or a span in one of the site's other notations (EDN, StackSL
+# stack effects, Petri arcs, rewrite rules, FieldML type variables, Clojure forms) is left alone,
+# because confidently mis-highlighted text is worse than none. tools/test_docs_hooks_inline_code.py
+# pins both halves.
+
+INLINE_CODE_LANGUAGE = "kotlin"
+INLINE_CODE_MARK = f'data-code-lang="{INLINE_CODE_LANGUAGE}" data-inline-code="auto"'
+
+# File extensions that make `name.ext` a file name rather than a Kotlin member access. Deliberately
+# missing the ones that are also common member names (`lock`, `log`, `properties`, `env`, `bin`,
+# `mid`, `ts`, `go`, single letters), so `mutex.lock` and `math.log` still read as code.
+INLINE_CODE_FILE_EXTENSIONS = frozenset(
+    """kt kts java md edn js mjs cjs py ipynb glsl vert frag comp geom tesc tese rgen rchit rmiss rahit
+    slang hlsl metal wgsl spv json jsonl yaml yml toml xml html htm css scss svg png jpg jpeg gif webp
+    webm mp4 mov wav mp3 flac ogg aif aiff midi txt csv tsv sh bash zsh ps1 bat gradle jar zip gz tgz
+    tar dylib so dll exe p12 pem obj stl ply gltf glb fbx usdz hdr exr ktx ktx2 onnx safetensors cpp
+    cc hpp mm swift rs rb lua scd pd dsp wasm wat clj cljs ini cfg plist entitlements pdf mjs tsv
+    com org net io edu example test local""".split()
+)
+
+# Leading words of a shell command line. `open` is absent on purpose: it is a Kotlin modifier.
+INLINE_CODE_SHELL_COMMANDS = frozenset(
+    """git uv uvx python python3 pip pip3 npm npx node yarn cd ls curl wget brew java javac gradle
+    gradlew kill lsof pgrep ps zensical export sudo echo cat grep rg sed awk make cmake cargo ssh
+    scp tar unzip rm cp mv mkdir touch source env xcrun xcodebuild adb clang chmod docker
+    GET POST PUT DELETE PATCH HEAD OPTIONS""".split()
+)
+
+# Kotlin's hard and soft keywords plus the standard infix words, for the "three bare words in a
+# row" rule below: `a until b` and `private data class` are Kotlin, `fbm palette saturate` is not.
+INLINE_CODE_KOTLIN_WORDS = frozenset(
+    """as break class continue do else false for fun if in interface is null object package return
+    super this throw true try typealias typeof val var when while by catch constructor delegate
+    dynamic field file finally get import init param property receiver set setparam value where
+    abstract actual annotation companion const crossinline data enum expect external final infix
+    inline inner internal lateinit noinline open operator out override private protected public
+    reified sealed suspend tailrec vararg to until downTo step and or xor shl shr ushr it""".split()
+)
+# Words that make an all-words span (`val x`, `return result`) Kotlin rather than English.
+INLINE_CODE_LEADING_KEYWORDS = frozenset(
+    """val var fun class object interface data enum sealed import return if when for while suspend
+    override private internal public protected typealias inline operator infix abstract open
+    companion const lateinit external tailrec annotation value package throw try do""".split()
+)
+
+_INLINE_STRING_RE = re.compile(r'"(?:[^"\\]|\\.)*"|\'(?:\\.|[^\'\\])\'')
+_INLINE_SINGLE_TOKEN_RE = re.compile(r"[@#$]?\w+[?!]?")
+_INLINE_URL_RE = re.compile(r"://|^(?:www\.|localhost\b|https?:|mailto:)|^[\w.-]+:\d+(?:/|$)")
+_INLINE_FILE_RE = re.compile(r"[\w.@+~*-]*\.(?P<ext>[A-Za-z0-9]+)(?::\d+(?:-\d+)?)?")
+_INLINE_FLAG_RE = re.compile(r"(?:^|\s)--?[A-Za-z]")
+_INLINE_ENV_RE = re.compile(r"^[A-Z][A-Z0-9_]*=")
+_INLINE_KEY_CHORD_RE = re.compile(
+    r"^(?:(?:ctrl|control|cmd|command|alt|option|opt|shift|meta|super|fn|win|mod|[⌘⌥⇧⌃])\s*[-+]\s*)+\S+$",
+    re.I,
+)
+_INLINE_EDN_KEYWORD_RE = re.compile(r"(?:^|[\s{\[(]):(?!:)[A-Za-z]")
+_INLINE_STACK_EFFECT_RE = re.compile(r"(?:^|\s)--(?:\s|$)")
+_INLINE_REWRITE_VARIABLE_RE = re.compile(r"(?:^|[\s(,\[])\?[A-Za-z_]")
+_INLINE_KEBAB_RE = re.compile(r"\b[A-Za-z][A-Za-z0-9]*-[A-Za-z][A-Za-z0-9]+")
+_INLINE_LISP_FORM_RE = re.compile(r"^\((?:[^\s,()]+)(?:\s+[^\s,()]+){2,}\)$")
+_INLINE_WORD_ONLY_RE = re.compile(r"[\w\s]+")
+# Two names side by side with only a space between them. Kotlin puts a space between names only
+# around a keyword or an infix call (`a until b`, `gain(0.6) then lowPass(0.08)`); the site's other
+# notations do it all the time: StackSL and FieldML application (`sin 0.0`, `propOr "x" "y"`),
+# Strudel mini-notation (`bd sd, hh*4`), and English. The lookbehinds let an infix call after a
+# closing bracket through, and the lookahead lets one whose right side is a call or member through.
+_INLINE_JUXTAPOSED_RE = re.compile(
+    r"(?<![\w.)\]@])(?<![)\]] )(?P<left>[A-Za-z_]\w*)[ \t]+"
+    r"(?=(?P<right>[A-Za-z_]\w*(?![\w(.])|\d|\"))"
+)
+_INLINE_MAVEN_RE = re.compile(r"[a-z][\w-]*(?:\.[\w-]+)+:[\w.-]+(?::[\w.-]+)*")
+
+
+def inline_code_language(text: str) -> str | None:
+    """The language a prose inline code span is highlighted in: `"kotlin"`, or None for plain.
+
+    Kotlin is the default for anything that reads as code; the exceptions are the things on this
+    site that are written in backticks but are not Kotlin, in the order they are tested here.
+    """
+    s = text.strip()
+    if not s or "\n" in s:
+        return None
+    # String and char literals are opaque: a URL or `--flag` inside `"..."` does not make the span
+    # a URL or a command line, so most rules look at `bare`.
+    bare = _INLINE_STRING_RE.sub('""', s)
+    if not re.search(r"[A-Za-z_]", s):
+        return None  # numbers, versions, maths with no identifier: `0.5`, `28 / 28 / 29`
+    if _INLINE_SINGLE_TOKEN_RE.fullmatch(s):
+        return None  # a single bare word, identifier or hash: `frame`, `FLine`, `@last`, `601f63d73`
+    if any(ord(ch) > 127 and ch != "…" for ch in bare):
+        return None  # maths and prose: `x̂ × ẑ = −ŷ`, `b → c`, `3·V`
+    if _INLINE_URL_RE.search(bare):
+        return None
+    if bare[0] in "/~" or bare.startswith(("./", "../")):
+        return None  # a path: `/field-docs/`, `~/Dirt-Samples`, `./field.sh`
+    if not re.search(r"\s", bare) and "/" in bare and "(" not in bare:
+        return None  # a relative path or glob: `src/jvmMain/...`, `tools/test_*.py`
+    file_match = _INLINE_FILE_RE.fullmatch(s)
+    if file_match is not None and file_match.group("ext").lower() in INLINE_CODE_FILE_EXTENSIONS:
+        return None  # a file or host name: `metadata.edn`, `Boxes.kt:54`, `openendedgroup.com`
+    if re.fullmatch(r"\.\w+", s) or s.startswith("*"):
+        return None  # an extension or glob: `.kt`, `*.md`
+    if _INLINE_FLAG_RE.search(bare):
+        return None  # a flag, or a command line carrying one: `--workspace`, `kill -INT`
+    first_word = re.split(r"\s", s, maxsplit=1)[0]
+    if first_word in INLINE_CODE_SHELL_COMMANDS and " " in s:
+        return None  # a command line: `git merge main`, `npm ci`
+    if _INLINE_MAVEN_RE.fullmatch(s):
+        return None  # a Maven coordinate: `com.microsoft.onnxruntime:onnxruntime`
+    if s.endswith(("=", ":")) and not re.search(r"\s", s):
+        return None  # an option or field name: `audio=`, `from:`
+    if re.match(r"[A-Z][\w-]*: \S", s):
+        return None  # an HTTP header: `Host: localhost`, `Origin: null`
+    if re.search(r"(?:^|\s)<[a-z][\w-]*>", bare):
+        return None  # a usage line with placeholders: `why <box> <name>`
+    if _INLINE_ENV_RE.match(s):
+        return None  # an environment assignment: `AFIELD_OFFLINE=1`
+    if _INLINE_KEY_CHORD_RE.fullmatch(s):
+        return None  # a key chord: `Ctrl+Space`, `Alt+D`, `Shift-Enter`
+    if s.startswith("<") or "</" in bare or "/>" in bare:
+        return None  # markup: `<div>hello</div>`
+    if bare[0] in "#:$" or bare.startswith("->"):
+        return None  # EDN tags, directives, keywords, shell variables, threading forms
+    if _INLINE_EDN_KEYWORD_RE.search(bare):
+        return None  # EDN maps: `{ :id "..." }`
+    if _INLINE_STACK_EFFECT_RE.search(bare):
+        return None  # StackSL stack effects: `lo hi x -- c`
+    if any(mark in bare for mark in ("-[", "]->", "=>", ":=", "{{", "}}")):
+        return None  # Petri arcs, rewrite rules, templates: `pre -[ move ]-> post`, `{{ name }}`
+    if _INLINE_REWRITE_VARIABLE_RE.search(bare):
+        return None  # rewrite pattern variables: `multiply(?x, 1)`
+    if "'" in bare or "`" in bare or "\\" in bare or "~" in bare:
+        return None  # type variables, English, Pd objects: `('a -> 'b)`, `osc~`
+    if re.search(r"(?<!\|)\|(?!\|)", bare) or "$" in bare or "^" in bare:
+        return None  # pipes, shell expansions, powers: Kotlin has `||`, not `|`, and no `^`
+    if _INLINE_KEBAB_RE.search(bare):
+        return None  # kebab-case names are commands and options: `new-box`, `wait-output-channel=`
+    if _INLINE_LISP_FORM_RE.fullmatch(bare):
+        return None  # a Clojure form: `(display channel v)`
+    if _INLINE_WORD_ONLY_RE.fullmatch(bare) and first_word not in INLINE_CODE_LEADING_KEYWORDS:
+        return None  # words and numbers only: `outWidth x outHeight`, `add 5`
+    if "->" in bare and "{" not in bare and not re.search(r"\)\s*->", bare):
+        return None  # an arrow type outside a lambda or a `(A) -> B`: FieldML's `Float -> Float`
+    for pair in _INLINE_JUXTAPOSED_RE.finditer(bare):
+        left, right = pair.group("left"), pair.group("right")
+        if left not in INLINE_CODE_KOTLIN_WORDS and right not in INLINE_CODE_KOTLIN_WORDS:
+            return None  # names side by side: `sin 0.0`, `bd sd, hh*4`, `animateFor seconds f`
+    return INLINE_CODE_LANGUAGE
+
+
+# Elements whose `<code>` is not prose inline code, or is someone else's to colour.
+_INLINE_CODE_SKIP_TAGS = frozenset({"pre", "script", "style", "textarea", "svg", "nav", "kbd", "samp"})
+_INLINE_CODE_VOID_TAGS = frozenset(
+    {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+)
+_HTML_TAG_RE = re.compile(r"<!--.*?-->|<(/?)([A-Za-z][\w:-]*)((?:[^>\"']|\"[^\"]*\"|'[^']*')*)>", re.S)
+_INLINE_CODE_AUTO_OPEN = f"<code {INLINE_CODE_MARK}>"
+
+
+def mark_inline_code_html(page_html: str) -> str:
+    """Mark the prose inline code in one built page for Kotlin highlighting.
+
+    Only a bare `<code>` (or one this pass marked on an earlier build, which is re-decided) inside the
+    page's `<article>` is considered, and only when it holds text alone. A code element with any other
+    attribute is someone else's: a generated signature (`code.highlight`), a source citation, an
+    inlinehilite span. So is one inside `pre`, a `[data-code-lang]` container (the reference tables,
+    which carry their author's language), or the other skipped elements above.
+    """
+    out: list[str] = []
+    stack: list[tuple[str, bool]] = []  # (tag, makes its contents ineligible)
+    article_depth = 0
+    blocked = 0
+    copied = 0  # page_html[:copied] is already in `out`
+    skip_until = 0  # a script or style body, which is not markup
+    for match in _HTML_TAG_RE.finditer(page_html):
+        if match.start() < skip_until:
+            continue
+        closing, raw_name, attrs = match.group(1), match.group(2), match.group(3)
+        if raw_name is None:
+            continue  # a comment
+        name = raw_name.lower()
+        if not closing:
+            if name in ("script", "style"):
+                end = re.compile(rf"</{name}", re.I).search(page_html, match.end())
+                skip_until = len(page_html) if end is None else end.start()
+                continue
+            if name == "code" and article_depth and not blocked:
+                close = page_html.find("</code>", match.end())
+                inner = page_html[match.end():close] if close >= 0 else ""
+                tag = match.group(0)
+                if close >= 0 and "<" not in inner and (tag == "<code>" or tag == _INLINE_CODE_AUTO_OPEN):
+                    language = inline_code_language(html.unescape(inner))
+                    out.append(page_html[copied:match.start()])
+                    out.append(_INLINE_CODE_AUTO_OPEN if language else "<code>")
+                    copied = match.end()
+                    continue
+            if name in _INLINE_CODE_VOID_TAGS or attrs.rstrip().endswith("/"):
+                continue
+            ineligible = name in _INLINE_CODE_SKIP_TAGS or "data-code-lang" in attrs
+            stack.append((name, ineligible))
+            if ineligible:
+                blocked += 1
+            if name == "article":
+                article_depth += 1
+        else:
+            for index in range(len(stack) - 1, -1, -1):
+                if stack[index][0] == name:
+                    for popped, ineligible in stack[index:]:
+                        if ineligible:
+                            blocked -= 1
+                        if popped == "article":
+                            article_depth -= 1
+                    del stack[index:]
+                    break
+    out.append(page_html[copied:])
+    return "".join(out)
+
+
+def mark_inline_code_in_site(site_dir: Path) -> tuple[int, int]:
+    """Run `mark_inline_code_html` over every built page; returns (pages changed, spans marked)."""
+    changed = 0
+    marked = 0
+    for page in sorted(site_dir.rglob("*.html")):
+        try:
+            text = page.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if "<article" not in text:
+            continue
+        updated = mark_inline_code_html(text)
+        marked += updated.count(_INLINE_CODE_AUTO_OPEN)
+        if updated != text:
+            page.write_text(updated, encoding="utf-8")
+            changed += 1
+    return changed, marked
+
+
 def is_marker_line(stripped: str) -> bool:
     """True for any `:::` section/fold marker line. Fold markers (`:::fold [label]` /
     `:::endfold`) mark boilerplate that the code-diff player collapses in the rendered

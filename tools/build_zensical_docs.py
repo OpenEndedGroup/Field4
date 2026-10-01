@@ -970,6 +970,14 @@ def run(args: argparse.Namespace) -> int:
     returncode = subprocess.run(command, cwd=public_dir, check=False).returncode
     if returncode == 0:
         site_dir = public_dir / "field4"
+        # Prose inline code is Kotlin by default; this marks the spans that read as code so the
+        # reference-table highlighter colours them (docs_hooks.mark_inline_code_html). It runs
+        # on the rendered HTML because only there is a span's context (a `pre`, a reference table,
+        # a heading) known. `docs_hooks` is importable: preprocess_docs put `public/` on sys.path.
+        import docs_hooks  # type: ignore[import-not-found]
+
+        pages, spans = docs_hooks.mark_inline_code_in_site(site_dir)
+        print(f"{spans} prose inline code span(s) marked for Kotlin highlighting ({pages} page(s) rewritten).")
         emit_offline_viewer(site_dir=site_dir)
         emit_build_info(site_dir=site_dir, repo_root=repo_root)
         copied = copy_workspace_markdown(source_docs=public_dir / "docs", site_dir=site_dir)

@@ -39,7 +39,8 @@ samples.push(
 );
 const languages = samples.map((_, i) => i < 6 ? 'fieldml' : i < 10 ? 'kotlin' : i < 12 ? 'petri' : i < slangStart ? 'fnrewrite' : 'slang');
 const nodes = samples.map((textContent, i) => ({textContent,innerHTML:'',dataset:{},classList:{add(){}},closest(){return {dataset:{codeLang:languages[i]}}}}));
-const context = {console,URL,location:{href:'https://example.test/field4/reference/math/'},document:{currentScript:{src:'https://example.test/field4/assets/code-diff-player/code-diff-player.js'},readyState:'loading',addEventListener(){},querySelectorAll(selector){return selector.startsWith('[data-code-lang]') ? nodes : []}}};
+const selectors = [];
+const context = {console,URL,location:{href:'https://example.test/field4/reference/math/'},document:{currentScript:{src:'https://example.test/field4/assets/code-diff-player/code-diff-player.js'},readyState:'loading',addEventListener(){},querySelectorAll(selector){selectors.push(selector);return selector.startsWith('[data-code-lang]') ? nodes : []}}};
 context.window=context;
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(libraryPath,'utf8'), context);
@@ -98,5 +99,10 @@ for (let i = 0; i < nodes.length; i++) {
   assert.equal(plain, samples[i], 'highlighting must preserve source text');
 }
 assert.ok(nodes.every(n => n.dataset.referenceHighlighted === 'true'));
+// Prose inline code: the build marks a span with its own `data-code-lang` (docs_hooks.mark_inline_code_html),
+// and the same pass must select it. Nothing unmarked outside a reference table is selected.
+const referenceSelector = selectors.find(s => s.startsWith('[data-code-lang]'));
+assert.match(referenceSelector, /(^|,\s*)code\[data-code-lang\]:not\(\.highlight\)/);
+assert.doesNotMatch(referenceSelector, /(^|,\s*)(p|li) code\b/);
 console.log('PASS: reference languages and Slang kernel; types, attributes, semantics, generic calls, comments, HTML escaping and preserved source text');
 })();

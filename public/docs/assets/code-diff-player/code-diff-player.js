@@ -700,7 +700,8 @@
   function registerReferenceLanguages() {
     if (!window.hljs) return;
     // Keep Kotlin's string/comment handling; add lexical call and type tokens for
-    // short signatures, where the standard grammar otherwise colours almost nothing.
+    // short signatures and prose inline code, where the standard grammar otherwise colours
+    // almost nothing.
     if (!hljs.getLanguage("kotlin-reference")) {
       hljs.registerLanguage("kotlin-reference", function(hljs) {
         const kotlin = hljs.getLanguage("kotlin").rawDefinition();
@@ -1560,13 +1561,25 @@
     highlightReferences();
   }
 
+  // Two kinds of inline code are coloured here, by the same grammar and palette:
+  //
+  //  - cells of a `[data-code-lang]` reference table, in the language the author declared on the
+  //    table's container (`kotlin`, `fieldml`, `petri`, ...);
+  //  - prose inline code, which is Kotlin by default. The build decides which spans that covers:
+  //    `mark_inline_code_html` in public/docs_hooks.py puts `data-code-lang="kotlin"` on each one it
+  //    classifies as code, and leaves paths, URLs, flags, shell commands, key chords, single bare
+  //    words and the site's other notations (EDN, StackSL, Petri, FieldML, Clojure) plain. Nothing
+  //    is guessed here: a span without the attribute is never highlighted.
   async function highlightReferences() {
-    const references = document.querySelectorAll("[data-code-lang] td code:not(.highlight):not([data-reference-highlighted])");
+    const references = document.querySelectorAll(
+      "[data-code-lang] td code:not(.highlight):not([data-reference-highlighted]), " +
+      "code[data-code-lang]:not(.highlight):not([data-reference-highlighted])"
+    );
     if (!references.length) return;
     await ensureHighlight();
     if (!window.hljs) return;
     references.forEach((code) => {
-      // Language is an author choice, never guessed from a short identifier.
+      // The nearest declaration wins: the span's own (prose code), else its table's container.
       const declared = code.closest("[data-code-lang]").dataset.codeLang;
       const language = resolveLanguage(declared === "kotlin" ? "kotlin-reference" : declared);
       if (!language) return;
