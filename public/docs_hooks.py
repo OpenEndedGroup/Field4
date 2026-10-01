@@ -847,6 +847,15 @@ class RunnerOptions:
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
     # at a legible scale.
     viewport: tuple[int, int] | None = None
+    # `scale="3"` (capture="box" only): device pixels per CSS pixel for this still; the capture
+    # page's own is 2. For a narrow output panel the page wants to show wider than its CSS size
+    # without upscaling the raster.
+    scale: float | None = None
+    # `fresh-document=true`: run in a new, uniquely named document (the `document=` name, or
+    # "docs-fresh", plus a random suffix) instead of a scratch session. Scratch sessions never save,
+    # so a figure of something only saving makes (document history, backups) needs a real document,
+    # and a fixed name would carry every earlier capture's saves into the next one.
+    fresh_document: bool = False
 
 
 def capture_profile_enabled(profile: str | None) -> bool:
@@ -3264,6 +3273,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     open_outputs = parse_bool(
         first_attr(attrs, "open-outputs", "open_outputs"), default=expect_outputs == "panel"
     )
+    if first_attr(attrs, "scale") is not None and capture != "box":
+        raise RuntimeError(f"{page_path}:{line_number} scale= applies to capture=\"box\" stills only, not capture={capture!r}")
     wait_output = parse_bool(first_attr(attrs, "wait-output", "wait_output", "waitForOutput", "wait-for-output"), default=False)
     wait_output_kind = (first_attr(attrs, "wait-output-kind", "wait_output_kind") or "display").strip().lower()
     if wait_output_kind not in {"inline", "display", "all"}:
@@ -3324,6 +3335,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
         viewport=parse_viewport(first_attr(attrs, "viewport")),
+        scale=parse_capture_scale(first_attr(attrs, "scale")),
+        fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -3945,6 +3958,10 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["clip"] = list(options.clip)
     if options.viewport is not None:
         payload["viewport"] = list(options.viewport)
+    if options.scale is not None:
+        payload["scale"] = options.scale
+    if options.fresh_document:
+        payload["freshDocument"] = True
     if options.wait_output:
         payload.update({
             "waitOutput": True,
@@ -4578,6 +4595,19 @@ def parse_clip(value: str | None) -> tuple[float, float, float, float] | None:
     return (x, y, w, h)
 
 
+def parse_capture_scale(value: str | None) -> float | None:
+    """`scale="3"` -> 3.0 device pixels per CSS pixel, between 1 and 4."""
+    if value is None or not value.strip():
+        return None
+    try:
+        scale = float(value)
+    except ValueError:
+        raise RuntimeError(f"scale={value!r} must be a number of device pixels per CSS pixel, e.g. 3")
+    if not (1.0 <= scale <= 4.0):
+        raise RuntimeError(f"scale={value!r} must be between 1 and 4")
+    return scale
+
+
 def parse_viewport(value: str | None) -> tuple[int, int] | None:
     """`viewport="1280x800"` -> (1280, 800), in CSS pixels."""
     if value is None or not value.strip():
@@ -5016,6 +5046,14 @@ def build_audio_backdoor_command(
     return command
 
 
+def invocation_document(options: RunnerOptions) -> str | None:
+    """The document a capture runs in: `document=`, or a new uniquely named one for `fresh-document`."""
+    if not options.fresh_document:
+        return options.document
+    import uuid
+    return f"{options.document or 'docs-fresh'}-{uuid.uuid4().hex[:8]}"
+
+
 def build_backdoor_command(
     *,
     repo_root: Path,
@@ -5041,8 +5079,9 @@ def build_backdoor_command(
         "--timeout",
         str(capture_timeout),
     ]
-    if options.document:
-        command.extend(["--document", options.document])
+    document = invocation_document(options)
+    if document:
+        command.extend(["--document", document])
     backdoor_commands: list[str] = []
 
     if options.capture == "ui":
@@ -5108,7 +5147,7 @@ def build_backdoor_command(
             backdoor_commands=backdoor_commands,
             session_eligible=False,
             port=port,
-            document=options.document or None,
+            document=document or None,
         )
     generated_target_uid = docs_runner_target_uid(page_path=page_path, block_index=block_index, options=options)
     default_target_uid = options.capture_box or options.run_box or (generated_target_uid if options.graphics_context else "@last")
@@ -5406,6 +5445,8 @@ def build_backdoor_command(
             if options.open_outputs:
                 parts.append("--open-outputs")
             parts.extend(["--expect-outputs", options.expect_outputs])
+            if options.scale is not None:
+                parts.extend(["--scale", str(options.scale)])
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid
@@ -5447,11 +5488,13 @@ def build_backdoor_command(
         backdoor_commands = [waive_execution_verdict(line) for line in backdoor_commands]
     for command_line in backdoor_commands:
         command.extend(["--command", command_line])
-    session_eligible = not options.graphics_context and not is_video and not options.source_image
+    session_eligible = (
+        not options.graphics_context and not is_video and not options.source_image and not options.fresh_document
+    )
     return BackdoorInvocation(
         process_command=command,
         backdoor_commands=backdoor_commands,
         session_eligible=session_eligible,
         port=port,
-        document=options.document or None,
+        document=document or None,
     )

@@ -1504,7 +1504,7 @@ large immutable value to a public data class from `Summaries.kt` and then hand *
 ordinary reflective visualizer. So the topology stays independent of presentation, and any of these
 is a useful last expression in a live box.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/polytope_examples/value_printers.png" wait="2.5" capture="box" open-outputs="true" w="1100" h="720" padding="14" scale="3"}
 :::static
 import afield.stdlib.polytope.*
 
@@ -1516,7 +1516,7 @@ val result = seed.kis(ElementSelectors.attributeEquals("lift", 0.4), ElementPara
 viz("inspection", listOf(result, result.polyhedron.triangulate()))
 ```
 
-![Field's reflective value visualizer showing a PolytopeTransformSummary — a TransformDeploymentSummary naming the kis operation and a selected count of two, then the output PolyhedralObjectSummary with the lift attribute key, a Realization3Summary of ten vertices, and a PolytopeTopologySummary reporting cellularEulerCharacteristic 2, closedManifold true, element counts 10, 20, 12, 1, Euler characteristic 2, face degree counts of eight triangles and four squares, faceHoleCount 0, and valid true — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
+![Field's reflective value visualizer showing a PolytopeTransformSummary — requested and primitive operations (kis), the output PolyhedralObjectSummary with a PolytopeTopologySummary of rank 3 reporting element counts 10, 20, 12, 1, face degree counts of eight triangles and four squares, Euler characteristic 2, faceHoleCount 0, cellularEulerCharacteristic 2, valid true and closedManifold true, a Realization3Summary of ten vertices and the lift attribute key, then a TransformDeploymentSummary naming the kis operation with a selected count of two — followed by a TriangulatedGeometrySummary of 40 render vertices, 16 triangles, 12 source polygon faces, 10 source vertex elements and flat normals present](assets/polytope_examples/value_printers.png)
 
 The `…` links are the visualizer's ordinary lazy expansion for nested values, not a rendering
 failure; click one in a live box and it fetches the rest.

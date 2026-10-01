@@ -801,6 +801,58 @@ One caveat for old files: a `.versions` directory written before 2026-08 can hav
 unparseable manifest read as no history at all back then, so the next save called itself version 0
 and wrote over `000000.json`. Whatever is on disk is still readable; what was overwritten is gone.
 
+### Browsing saved keys
+
+A directory of saved keys is easier to read laid out than listed. `keyframeBrowser(dir, scope = …)`
+puts the keyframe collection browser in a box's output: every key in the directory, every slot any
+of them holds, and each slot's saved values plotted across its range, so you can see at a glance
+which slots the looks actually disagree about. Passing the `scope` is what makes it live: with
+it, **Apply** writes a selected key back into the scope's targets, a slot the scope watches but no
+key holds shows as never saved, and a slot a key holds that the scope no longer watches is struck
+through. Without it the browser only reads.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframer_examples/browser.png" wait="4.0" capture="box" open-outputs="true" w="960" h="560" padding="16"}
+:::static
+import afield.four.buffers.Structure
+import afield.stdlib.KeyframeScope
+import java.nio.file.Files
+import java.nio.file.Path
+
+// A fixed directory rather than a fresh temp one, so the browser's header names the same folder
+// every run; cleared first so only these four keys are in it.
+val dir = Path.of(System.getProperty("java.io.tmpdir"), "keyframer-docs", "glow-looks")
+if (Files.exists(dir)) dir.toFile().deleteRecursively()
+Files.createDirectories(dir)
+
+// One pass with three uniforms, and a scope that watches them.
+val glow = Structure()
+val scope = KeyframeScope()
+scope.target("glow@radius", glow)
+scope.target("glow@intensity", glow)
+scope.target("glow@falloff", glow)
+
+// Four looks, each saved as its own key with a note.
+listOf(
+    Triple("soft", listOf(3f, 0.20f, 1.5f), "first pass"),
+    Triple("hot", listOf(9f, 0.80f, 0.6f), "too much"),
+    Triple("mid", listOf(6f, 0.50f, 1.0f), "between the two"),
+    Triple("wide", listOf(12f, 0.35f, 2.2f), "for the long shot"),
+).forEach { (name, v, note) ->
+    glow.bind("radius") { v[0] }
+    glow.bind("intensity") { v[1] }
+    glow.bind("falloff") { v[2] }
+    scope.capture().save(dir.resolve(name), note)
+}
+
+keyframeBrowser(dir, scope = scope, height = 330)
+```
+
+![The keyframe collection browser in a box's keyframes output: a header naming the glow-looks folder and the note of the last save, counters for 4 keys, 4 versions, 3 slots and 0 selected, the four keys hot, mid, soft and wide as buttons, the Apply, Copy updateCode, Code blend, Clear and Reload buttons, and one row per slot, glow@falloff, glow@intensity and glow@radius, each a float held by 4 of 4 keys with a tick for every key's value along its range and the spread at the right](assets/keyframer_examples/browser.png)
+
+Click a key to read its contents, shift-click a second for a diff of the two, and drag across a
+slot's range to select the keys whose values fall inside it. **Copy updateCode** hands you the
+selected key as source, which is the next section.
+
 ## A captured look becomes source
 
 The last step of the loop closes it. `Key.updateCode()` emits the snapshot as pasteable Kotlin: an
@@ -962,8 +1014,8 @@ to an `Int`, and a hexadecimal or unsigned literal is left alone.
 A blend that stepped looks exactly like a blend that is not working, so the plan is the thing to
 read. `plan.describe()` is the text above; `display(plan)` renders the same breakdown as a table of
 sites with each one's midpoint. `scope.codeBlendPlans(a, b)` returns a plan per code slot for a pair
-of keys, and the keyframe collection browser's **Code blend** button does that for the two keys you
-have selected there.
+of keys, and the [keyframe collection browser](#browsing-saved-keys)'s **Code blend** button does that for the
+two keys you have selected there.
 
 The whole feature is a runnable scene: `keyframe_code_blend` in the
 [agent transcript corpus](agent_transcripts.md) blends two looks, renders the runtime program at five

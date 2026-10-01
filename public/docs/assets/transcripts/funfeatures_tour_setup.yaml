@@ -1,0 +1,24 @@
+name: funfeatures_tour_setup
+description: >
+  Setup for the funFeatures palette, nesting and multiple-editor videos: two small boxes with a
+  few lines of code each, near the top-left of a small window. The capture=ui drives do the rest
+  through the keyboard and the command palette.
+operations:
+  - create:
+      box: tour_sketch
+      name: sketch
+      frame: { x: 40, y: 40, w: 150, h: 56 }
+      properties:
+        code: |
+          // a ring of points
+          val count = 12
+          val ring = (0 until count).map { it * 360.0 / count }
+          println(ring.take(3))
+  - create:
+      box: tour_helper
+      name: helper
+      frame: { x: 40, y: 150, w: 150, h: 56 }
+      properties:
+        code: |
+          // a helper the sketch can lean on
+          val radius = 64.0

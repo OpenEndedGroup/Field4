@@ -7,6 +7,12 @@ test/docs time. RectSL and StackSL already had gallery/capture harnesses
 (`RectSLDataVizProof`, `RectSL/StackSLGalleryHarness`); Functions had none, so its worked
 examples shipped CPU-only numbers with no rendered proof. This closes that gap.
 
+Since 2026-10 `public/docs/functions_examples.md` does not show these images. Its five figures
+(fit before/after, the convergence video, the two waveshaper plots, the staged pipeline) are now
+`diffstatic_runner` box fences that compute the same things and draw them with `lines(...)`, so
+they share the page's black-canvas style and are recaptured with it. The harness remains as a
+FIELD_TEST of the same computations.
+
 ## Rendering path (and why it is honest)
 
 Pure-CPU AWT `Graphics2D` → `BufferedImage` → `ImageIO` PNG, run under

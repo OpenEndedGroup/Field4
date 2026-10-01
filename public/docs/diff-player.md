@@ -165,6 +165,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 - `clip="x,y,w,h"` — on a `ui` capture, clips the recording and the still to this rectangle of the page, in CSS pixels, for a frame no single element owns (a box and its editor). On other captures it crops the finished screenshot.
 - `viewport="760x560"` — lays the page out at this size for a `ui` capture, then puts it back. Field's layout follows the window, so a smaller one shows a box and its editor together at a readable scale.
 - `padding="16"` — insets a `box` or `editor` crop.
+- `scale="3"` — on a `box` still, rasterises the shot at this many device pixels per CSS pixel instead of the capture page's 2, so a narrow output panel can be shown wider than its CSS size and stay sharp.
 - `trim=true` — crops the uniform background off any finished capture.
 - `trim-native=true` — the older, narrower form of the same thing, and only for a `native-window` graphics capture.
 
@@ -183,6 +184,7 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 **Where the code runs.**
 
 - `name`, `x`, `y`, `w`, `h`, `document`, `property` — name and place the scratch box, and say which property the code goes in.
+- `fresh-document=true` — runs in a new document named after `document` plus a random suffix, rather than in a scratch session. A scratch session never saves, so a figure of what saving makes (backups, document history) needs one.
 - `graphics-context=true` — asks for a Field with a live Vulkan renderer, which is what any `native-window` capture needs.
 - `macro-file="../../dev_docs/agents/transcripts/hello_display.yaml"` — replays an `OperationTranscript` before the fence runs.
 - `macro-name`, `macro-selection` — pick a macro and a box selection inside that transcript.

@@ -1467,6 +1467,7 @@ class FieldBackdoor:
         timeout: float,
         preserve_selection: bool = False,
         include_notifications: bool = False,
+        scale: float | None = None,
     ) -> dict[str, Any]:
         resolved_uid, _ = self.require_box_reference(uid)
         normalized_path = str(Path(path).expanduser().resolve())
@@ -1491,6 +1492,7 @@ class FieldBackdoor:
                 "expectOutputs": expect_outputs,
                 "preserveSelection": preserve_selection,
                 "includeNotifications": include_notifications,
+                **({"deviceScaleFactor": scale} if scale is not None else {}),
             },
             timeout=timeout,
         )
@@ -3390,6 +3392,8 @@ def build_command_parser() -> argparse.ArgumentParser:
     screenshot_box.add_argument("--no-pan", action="store_true")
     screenshot_box.add_argument("--preserve-selection", action="store_true")
     screenshot_box.add_argument("--include-notifications", action="store_true")
+    screenshot_box.add_argument("--scale", type=float, default=None,
+                                help="device pixels per CSS pixel for this shot (the page's own is 2)")
     screenshot_box.add_argument("--timeout", type=float)
 
     native_screenshot = subparsers.add_parser("native-screenshot", add_help=False)
@@ -4066,9 +4070,13 @@ async def dispatch_command(
             timeout=timeout,
             preserve_selection=args.preserve_selection,
             include_notifications=args.include_notifications,
+            scale=args.scale,
         )
         data = attach_capture_warnings(client, data, args.uid, editor=False)
         data = await annotate_screenshot_size(client, data)
+        if args.scale is not None and isinstance(data, dict) and data.get("ok"):
+            # The page's own ratio is not this shot's: a --scale still is rasterised at its own.
+            data["devicePixelRatio"] = args.scale
         ok = bool(data.get("ok"))
         result = command_result(command_line, ok, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])

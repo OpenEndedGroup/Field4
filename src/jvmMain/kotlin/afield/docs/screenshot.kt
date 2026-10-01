@@ -23,6 +23,7 @@ import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
+import java.util.Locale
 import java.util.UUID
 import javax.imageio.ImageIO
 
@@ -1441,12 +1442,17 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
     outputPath.parent?.let { Files.createDirectories(it) }
 
     return runCatching {
-        page.screenshot(
-            Page.ScreenshotOptions()
-                .setPath(outputPath)
-                .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
-                .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
-        )
+        val scale = request.deviceScaleFactor
+        if (scale != null) {
+            captureClipAtScale(page, outputPath, Clip(clip.x, clip.y, clip.w, clip.h), scale)
+        } else {
+            page.screenshot(
+                Page.ScreenshotOptions()
+                    .setPath(outputPath)
+                    .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
+                    .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
+            )
+        }
         postProcessScreenshot(outputPath)
         AgentScreenshotResponse(
             ok = true,
@@ -1469,6 +1475,39 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
             uid = request.uid,
             message = it.message ?: "Playwright screenshot failed"
         )
+    }
+}
+
+/**
+ * A clipped screenshot at [scale] device pixels per CSS pixel rather than the page's own.
+ *
+ * Playwright fixes the scale per browser context, and overriding the device metrics from a second
+ * CDP session does not reach Playwright's own screenshot (and clearing it afterwards left the page
+ * at a scale of 1). So this asks Chromium directly: `Page.captureScreenshot` with a clip whose
+ * `scale` is output pixels per CSS pixel, which Chromium rasterises at that density rather than
+ * enlarging the page's pixels. The layout is untouched; the clip is the same CSS rectangle.
+ */
+private fun captureClipAtScale(page: Page, outputPath: Path, clip: Clip, scale: Double) {
+    require(scale.isFinite() && scale >= 1.0 && scale <= 4.0) { "deviceScaleFactor $scale is outside 1..4" }
+    val cdp = page.context().newCDPSession(page)
+    try {
+        val params = com.google.gson.JsonObject().apply {
+            addProperty("format", "png")
+            addProperty("captureBeyondViewport", false)
+            add("clip", com.google.gson.JsonObject().apply {
+                addProperty("x", clip.x)
+                addProperty("y", clip.y)
+                addProperty("width", clip.width)
+                addProperty("height", clip.height)
+                // In output pixels per CSS pixel, whatever the page's own density.
+                addProperty("scale", scale)
+            })
+        }
+        val reply = cdp.send("Page.captureScreenshot", params)
+        val data = reply.get("data")?.asString ?: error("Page.captureScreenshot returned no data")
+        Files.write(outputPath, java.util.Base64.getDecoder().decode(data))
+    } finally {
+        runCatching { cdp.detach() }
     }
 }
 
@@ -1570,6 +1609,7 @@ suspend fun captureWindowVideo(info: SessionInformation, request: AgentWindowVid
                 durationSec = request.durationSec,
                 fps = request.fps,
                 visibleOutputUid = request.uid.takeIf { request.openOutputs && !request.editorOnly },
+                trimEditorToContent = request.editorOnly,
                 prepare = videoCapturePreparation(
                     info = info,
                     page = page,
@@ -2089,7 +2129,7 @@ private fun coarseFrameSignature(jpeg: ByteArray): IntArray? = runCatching {
  * normalized to a constant [fps] so playback duration is stable. Shared by the
  * fixed-duration poll recorder and the interactive [DocsUiRecorder].
  */
-internal fun encodeJpegFramesToMp4(frames: List<ByteArray>, outputPath: Path, fps: Int) {
+internal fun encodeJpegFramesToMp4(frames: List<ByteArray>, outputPath: Path, fps: Int, keepHeightFraction: Double? = null) {
     if (frames.isEmpty()) {
         throw IllegalStateException("Video capture sampled 0 frames")
     }
@@ -2098,6 +2138,12 @@ internal fun encodeJpegFramesToMp4(frames: List<ByteArray>, outputPath: Path, fp
     val ffmpeg = FFMPEG
 
     val filterParts = mutableListOf<String>()
+    // One crop for every frame, so the movie has a single geometry: the top fraction of each
+    // frame that the recorder measured as holding content (see recordFrameSynchronousToMp4).
+    if (keepHeightFraction != null && keepHeightFraction < 1.0) {
+        val f = String.format(Locale.US, "%.6f", keepHeightFraction.coerceIn(0.05, 1.0))
+        filterParts.add("crop=iw:trunc(ih*$f/2)*2:0:0")
+    }
     // Ensure dimensions are even (required by yuv420p)
     filterParts.add("pad=ceil(iw/2)*2:ceil(ih/2)*2")
     // Normalize to a constant output frame rate for stable playback duration.
@@ -2254,9 +2300,12 @@ private suspend fun recordFrameSynchronousToMp4(
     durationSec: Double,
     fps: Int,
     visibleOutputUid: String? = null,
+    trimEditorToContent: Boolean = false,
     prepare: suspend () -> FrameCaptureGate,
 ): ScreencastResult {
     val frames = mutableListOf<ByteArray>()
+    // The lowest content edge any frame showed, in page CSS px (editor videos only).
+    var contentBottom = 0.0
     val safeFps = fps.coerceAtLeast(1)
     val targetFrames = videoFrameCount(durationSec, safeFps)
     val installed = CompletableDeferred<Unit>()
@@ -2338,6 +2387,9 @@ private suspend fun recordFrameSynchronousToMp4(
                         // Let websocket output and layout reach a painted browser frame while
                         // Field itself remains parked at this exact runloop boundary.
                         page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+                        if (trimEditorToContent) {
+                            editorContentBottom(page)?.let { if (it > contentBottom) contentBottom = it }
+                        }
                         page.screenshot(screenshotOptions)
                     }
                     frames += frame
@@ -2385,11 +2437,52 @@ private suspend fun recordFrameSynchronousToMp4(
     }
 
     lprintln("info,video", "Captured ${frames.size} frame-synchronous frames")
+    // Editor movies are shot against the whole editor pane, so their raster does not depend on when
+    // inline view-zones arrived. Most of that pane is empty below the code. Each frame measured the
+    // pane's content edge (text, view-zones and inline output, from Monaco's own layout); the movie
+    // is cut once, at the lowest edge any frame reached, so the crop still does not depend on timing
+    // within the recording and nothing any frame showed is lost.
+    val keepFraction = if (trimEditorToContent && clip != null && contentBottom > 0.0) {
+        ((contentBottom + EDITOR_VIDEO_BOTTOM_PAD - clip.y) / clip.h).coerceIn(0.05, 1.0)
+    } else null
+    keepFraction?.let { lprintln("info,video", "Trimming editor video to ${"%.3f".format(it)} of the pane height") }
     withContext(Dispatchers.IO) {
-        encodeJpegFramesToMp4(frames, outputPath, safeFps)
+        encodeJpegFramesToMp4(frames, outputPath, safeFps, keepFraction)
     }
     return ScreencastResult(frameCount = frames.size)
 }
+
+private const val EDITOR_VIDEO_BOTTOM_PAD = 24.0
+
+/**
+ * The bottom of what the visible Monaco editor is showing, in page CSS px: the larger of its
+ * content height (lines plus view-zones, from Monaco's layout) and the lowest rendered line,
+ * view-zone or inline output. The same reading `clipForRenderedEditorContent` (Main.kt) trims a
+ * still editor capture with.
+ */
+private fun editorContentBottom(page: Page): Double? = (page.evaluate(
+    """
+    () => {
+      const container = document.querySelector('.monaco-editor-container');
+      if (!container) return null;
+      const rect = container.getBoundingClientRect();
+      const editor = window.globalEditor;
+      let contentHeight = 0;
+      try { contentHeight = Number(editor && editor.getContentHeight && editor.getContentHeight()) || 0; } catch (e) {}
+      let header = 0;
+      const hover = container.querySelector('.hoverlay');
+      if (hover) header = hover.getBoundingClientRect().height;
+      let domBottom = 0;
+      for (const el of container.querySelectorAll('.view-lines > div, .view-zones > div, .margin-view-zones > div, .execution_output')) {
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        domBottom = Math.max(domBottom, r.bottom - rect.top);
+      }
+      const bottom = Math.min(rect.height, Math.max(domBottom, header + contentHeight));
+      return rect.top + window.scrollY + bottom;
+    }
+    """.trimIndent()
+) as? Number)?.toDouble()
 
 /**
  * Interactive recorder. Unlike [recordScreencastToMp4] this exposes explicit

@@ -186,46 +186,6 @@
       "artifact": "The box's Kotlin compiled by the real KotlinToJsCompiler, its JavaScript run under node against a mirror of LiveMetalJavaScript.swift, and the packed vertex array rasterized with a stand-in lambert shade (every caption says so). Render to a temp dir and copy in: writing into the working tree while the runner's Field server watches it takes the child down mid-run with no explanation in the output. The mp4 needs ffmpeg."
     },
     {
-      "asset": "public/docs/assets/functions_gallery/functions-waveshaper-transfer.png",
-      "page": "functions_examples.md",
-      "owner": "functions.plot-gallery",
-      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
-      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
-      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
-    },
-    {
-      "asset": "public/docs/assets/functions_gallery/functions-waveshaper-on-sine.png",
-      "page": "functions_examples.md",
-      "owner": "functions.plot-gallery",
-      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
-      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
-      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
-    },
-    {
-      "asset": "public/docs/assets/functions_gallery/functions-composed-pipeline.png",
-      "page": "functions_examples.md",
-      "owner": "functions.plot-gallery",
-      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
-      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
-      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
-    },
-    {
-      "asset": "public/docs/assets/functions_gallery/functions-fit-before-after.png",
-      "page": "functions_examples.md",
-      "owner": "functions.plot-gallery",
-      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
-      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
-      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
-    },
-    {
-      "asset": "public/docs/assets/functions_gallery/functions-fit-convergence.mp4",
-      "page": "functions_examples.md",
-      "owner": "functions.plot-gallery",
-      "generator": "src/jvmMain/kotlin/afield/examples/functions/FunctionsPlotGallery.kt",
-      "command": "FUNCTIONS_PLOT_DIR=/tmp/functions_gallery python3 tools/run_field_tests.py --id functions.plot-gallery && cp /tmp/functions_gallery/* public/docs/assets/functions_gallery/",
-      "artifact": "Every plotted (x, y) is a real Fn.evalSafe(...) of a genuine Functions graph and the fit series is a real fitGradient run; only the line between real samples is synthetic. The mp4 is one fresh truncated fitGradient run per frame rather than a cached trajectory, and it is best-effort: a machine without ffmpeg prints a skip note instead of failing."
-    },
-    {
       "asset": "public/docs/assets/pat_transcription/pat-transcription-roundtrip.svg",
       "page": "sound.md",
       "owner": "synth.pat.transcription",

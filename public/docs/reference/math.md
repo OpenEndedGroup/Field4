@@ -707,7 +707,7 @@ which is the minimum-norm subgradient. PyTorch instead defines `relu'(0) = 0`.
 
 `src/jvmMain/kotlin/afield/stdlib/autodiff.kt` — [read the source](source/jvmMain/afield/stdlib/autodiff/)
 
-**Used in:** [Spatial artificial life](../alife_examples.md), [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md)
+**Used in:** [Spatial artificial life](../alife_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Differentiating Functions](../autodiff_examples.md)
 
 ### Top-level functions { #autodiff-kt-functions }
 

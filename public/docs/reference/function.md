@@ -475,7 +475,7 @@ fit re-run with the same seed comes back identical. [`FnEvolveRun`](function.md#
 
 `src/jvmMain/kotlin/afield/stdlib/FunctionFit.kt` — [read the source](source/jvmMain/afield/stdlib/FunctionFit/)
 
-**Used in:** [Differentiating Functions](../autodiff_examples.md), [Functions to FLine examples (Field graphics)](../functions_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
+**Used in:** [Functions to FLine examples (Field graphics)](../functions_examples.md), [Differentiating Functions](../autodiff_examples.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
 
 ### Top-level functions { #functionfit-kt-functions }
 

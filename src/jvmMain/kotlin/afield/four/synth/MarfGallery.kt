@@ -608,13 +608,19 @@ object MarfGallery {
     private const val CURVE = "#7fd4ff"
     private const val PULSE = "#ffb347"
 
-    private const val WIDTH = 1100
-    private const val LEFT = 220
-    private const val RIGHT_PAD = 24
-    private const val TOP = 62
+    // Proportioned for the docs column (about 680-740 CSS px), so a figure draws near 1:1 there
+    // and its text lands at the size written here. At the old 1100 units wide the column drew it
+    // at about 0.6x and the 12px lane labels came out near 7px. Lane labels sit in a strip above
+    // their lane rather than in a left gutter, which is what lets the plot keep its width.
+    private const val WIDTH = 760
+    private const val LEFT = 52
+    private const val RIGHT_PAD = 14
+    private const val TOP = 64
+    private const val LABEL_H = 20
     private const val LANE_H = 74
-    private const val LANE_GAP = 10
+    private const val LANE_GAP = 8
     private const val BOTTOM = 34
+    private const val LANE_STRIDE = LABEL_H + LANE_H + LANE_GAP
 
     /** The geometry a figure drew, so the checks can count it rather than trust it. */
     class Drawn(
@@ -635,14 +641,14 @@ object MarfGallery {
 
     fun render(figure: Figure): Drawn {
         val plotWidth = WIDTH - LEFT - RIGHT_PAD
-        val height = TOP + figure.lanes.size * (LANE_H + LANE_GAP) + BOTTOM
+        val height = TOP + figure.lanes.size * LANE_STRIDE + BOTTOM
         val window = PatArc(PatQ.ZERO, PatQ.of(figure.cycles.toLong()))
 
         val sb = StringBuilder(1 shl 16)
         sb.append("""<svg xmlns="http://www.w3.org/2000/svg" width="$WIDTH" height="$height" """)
         sb.append("""viewBox="0 0 $WIDTH $height" font-family="Iosevka, Menlo, monospace">""").append('\n')
         sb.append("""<rect x="0" y="0" width="$WIDTH" height="$height" fill="$BG"/>""").append('\n')
-        sb.append(text(LEFT, 26, figure.title, TEXT, 17, weight = "600")).append('\n')
+        sb.append(text(LEFT, 26, figure.title, TEXT, 18, weight = "600")).append('\n')
         sb.append(text(LEFT, 46, figure.subtitle, TEXT_DIM, 12)).append('\n')
 
         fun x(cycleTime: Double) = LEFT + cycleTime / figure.cycles * plotWidth
@@ -667,7 +673,7 @@ object MarfGallery {
         val span = if (hi - lo < 1e-9) 1.0 else hi - lo
 
         figure.lanes.forEachIndexed { laneIndex, lane ->
-            val top = TOP + laneIndex * (LANE_H + LANE_GAP)
+            val top = TOP + laneIndex * LANE_STRIDE + LABEL_H
             val bottom = top + LANE_H
             val inner = LANE_H - 18.0
 
@@ -683,7 +689,7 @@ object MarfGallery {
                 ).append('\n')
             }
 
-            sb.append(text(12, top + LANE_H / 2 + 4, lane.label, TEXT, 12)).append('\n')
+            sb.append(text(LEFT, top - 6, lane.label, TEXT, 13)).append('\n')
 
             val laneStages = stages.getValue(lane.key)
             val values = samples.getValue(lane.key)
@@ -713,9 +719,9 @@ object MarfGallery {
             for (stage in if (addressIsJustTheIndex) emptyList() else laneStages) {
                 val x0 = x(stage.start.toDouble())
                 val x1 = x(stage.end.toDouble())
-                if (x1 - x0 < 22.0) continue
+                if (x1 - x0 < 16.0) continue
                 val label = if (stage.address % 1.0 > 1e-4) "~" else stage.address.toInt().toString()
-                sb.append(text(x0 + 3, top + 13, label, TEXT_DIM, 9)).append('\n')
+                sb.append(text(x0 + 3, top + 13, label, TEXT_DIM, 10)).append('\n')
             }
 
             // pulses, taken from the reader's own trigger pattern.
@@ -728,15 +734,17 @@ object MarfGallery {
             }
             pulses[lane.key] = triggerEvents.size
 
-            sb.append(text(LEFT - 6, top + 14, patFormatNumber(round3(hi)), TEXT_DIM, 9, anchor = "end")).append('\n')
-            sb.append(text(LEFT - 6, bottom - 4, patFormatNumber(round3(lo)), TEXT_DIM, 9, anchor = "end")).append('\n')
+            sb.append(text(LEFT - 6, top + 14, patFormatNumber(round3(hi)), TEXT_DIM, 10, anchor = "end")).append('\n')
+            sb.append(text(LEFT - 6, bottom - 4, patFormatNumber(round3(lo)), TEXT_DIM, 10, anchor = "end")).append('\n')
         }
 
-        val axisY = TOP + figure.lanes.size * (LANE_H + LANE_GAP) + 16
+        val axisY = TOP + figure.lanes.size * LANE_STRIDE + 12
         for (cycle in 0..figure.cycles) {
             sb.append(
                 text(
-                    x(cycle.toDouble()), axisY, "cycle $cycle", TEXT_DIM, 10,
+                    // Only the first tick says "cycle": at this width a full label on every tick
+                    // runs the last two into each other.
+                    x(cycle.toDouble()), axisY, if (cycle == 0) "cycle 0" else "$cycle", TEXT_DIM, 11,
                     anchor = if (cycle == figure.cycles) "end" else "start"
                 )
             ).append('\n')

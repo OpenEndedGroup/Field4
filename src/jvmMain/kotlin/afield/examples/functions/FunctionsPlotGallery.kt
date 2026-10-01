@@ -48,7 +48,9 @@ expect:
  * As a FIELD_TEST it renders to a temp dir and asserts real correctness (painted fraction,
  * finite samples, that the fit genuinely converges and the fitted curve tracks its target). It
  * writes NO committed assets during the test. Pass an output dir as `args[0]` (or set
- * `FUNCTIONS_PLOT_DIR`) to regenerate committed docs captures.
+ * `FUNCTIONS_PLOT_DIR`) to keep the images. The docs page no longer uses them: since 2026-10 its
+ * figures are `diffstatic_runner` box fences drawn with `lines(...)`, so they match the page's
+ * other captures.
  *
  * The harness is **parameterized/reusable**: add a plot by appending one [Plot] to [PLOTS];
  * each plot builds a [PlotSpec] of named [Series] and everything else (axes, gridlines,
