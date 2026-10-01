@@ -41,7 +41,33 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-![The welcome page: a document list with a search box on the left, and a stack of collapsible panels on the right](assets/welcome-dashboard.png)
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons to open the welcome document, open the docs with notes, improve annotated docs, and shut Field down, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
+// /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
+// window's size, against the runner's fresh checkout-local workspace: what a new user sees.
+ui.eval("""
+    document.getElementById("docs-welcome-frame")?.remove()
+    const f = document.createElement("iframe")
+    f.id = "docs-welcome-frame"
+    f.src = "/welcome"
+    f.setAttribute("style", "position:fixed;left:0;top:0;width:1100px;height:1000px;border:0;background:#111;z-index:2147483000")
+    document.body.appendChild(f)
+    return true
+""".trimIndent())
+// Wait for the parts that load after the page: the starting-points dock and every panel summary.
+var state = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    state = ui.eval("""
+        const d = document.getElementById("docs-welcome-frame")?.contentDocument
+        if (!d || !d.getElementById("starting-points-dock")) return "loading"
+        const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
+        return pending === 0 ? "ready" : "pending:" + pending
+    """.trimIndent()).toString()
+    if (state.contains("ready")) break
+}
+check(state.contains("ready")) { "the welcome page did not finish loading: " + state }
+ui.pause(1200)
+```
 
 The left side is your documents. Type a name into the box at the top and press **Create** to make
 a new one; the search box above the list searches the text of every document in the workspace as
