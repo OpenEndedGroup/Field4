@@ -1,7 +1,7 @@
 # What a capture can and cannot show
 
 For anything visual, *it compiles* is not verification. The way to know a change worked is to drive
-it to pixels and look at them, and [Letting an Agent Drive](automating_field.md) is how that is
+it to pixels and look at them, and [Automating Field](automating_field.md) is how that is
 done here without a human in the chair.
 
 This page is about the pictures that cannot be taken, or that come out wrong without saying so.

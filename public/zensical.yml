@@ -41,7 +41,7 @@ nav:
       # thing the previous four pages built. Moved out of "AI & Agents", where it sat behind three
       # pages about Field's own AI and was found by nobody.
       - Field From Your Phone: mobile_controllers.md
-      - Letting an Agent Drive: automating_field.md
+      - Automating Field: automating_field.md
       # The exit ramp rather than another step: a themed map of everything below, which is what
       # this page already was. The filename stays put so its inbound link and its
       # generated-artifact references do not have to move.
