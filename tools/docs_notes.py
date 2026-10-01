@@ -1434,7 +1434,11 @@ them — a later, interactive pass with a human works through handoffs one at a 
 Write the handoff document with your Write tool under {draft_dir}/ (no title line; the
 command adds one). Say what was asked and why it is bigger than a docs edit; give the evidence,
 with file:line references; propose an approach and its alternatives; list the questions a human
-has to answer; and say what the page needs once it is done. Then file it:
+has to answer; and say what the page needs once it is done. The document lands in dev_docs/, where
+the commit guard (ImpossibilityClaimContractTest, dev_docs/impossibility_claims.md) refuses a heading
+or bolded lead that says something "cannot"/"can't" be done, or is "ruled out", without evidence in the
+same paragraph: cite the code (`File.kt:120#symbol`), or mark what you reasoned but did not measure
+with "(conjecture, <today's date>)". Then file it:
 
   {cli} handoff "short imperative title" --scope project|crosscutting --body-file {draft_dir}/<name>.md \\
       --note <note-id> [--note <note-id> ...] [--page <other affected page> ...] [--blocking] \\
@@ -2662,7 +2666,18 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
                   f"- id `{item['id']}` · {info.get('scope', 'project')}" + (f" · **blocking**, holding {held} note(s)" if info.get("blocking") else
                                                                             (f" · holding {held} note(s)" if held else "")),
                   f"- from `{info.get('page') or item.get('pageUrl')}`" + (f", also {', '.join(info.get('pages', []))}" if info.get("pages") else ""),
-                  f"- document: `{info.get('path')}`", ""]
+                  f"- document: `{info.get('path')}`"]
+        # The human's decisions, and what earlier sessions found, live on the handoff's thread.
+        # A session that only read the document would redo a question already answered.
+        said = [e for e in item.get("thread", []) if e.get("kind") in ("reply", "comment", "question", "memory")
+                and not str(e.get("text", "")).startswith("taken in a ")]
+        if said:
+            lines.append("- on this handoff so far:")
+            for entry in said:
+                who = "the human" if entry.get("author") == "human" else entry.get("author", "?")
+                lines.append(f"  - {entry.get('kind')} from {who}, {fmt_time(entry.get('atEpochMs'))}: "
+                             + str(entry.get("text", "")).strip().replace("\n", " "))
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 
