@@ -37,7 +37,7 @@ class FnIntervalTest {
                 else -> cos(num(0.1, 3.0), amplitude = num(0.2, 2.0), offset = num(-1.0, 1.0))
             }
         }
-        when (r.nextInt(if (valueOnly) 38 else 33)) {
+        when (r.nextInt(if (valueOnly) 41 else 33)) {
             0 -> sub() + sub()
             1 -> sub() - sub()
             2 -> sub() * sub()
@@ -80,6 +80,18 @@ class FnIntervalTest {
             // and a signal phase moves the fract argument by more than one cell.
             34 -> saw(period = if (r.nextInt(6) == 0) c(0.0, unbounded) else c(num(0.2, 2.0), unbounded), phase = small(), amplitude = small(), offset = c(num(-1.0, 1.0), unbounded))
             35 -> triangle(period = c(num(-2.0, 2.0), unbounded), phase = c(num(-1.0, 1.0), unbounded), amplitude = small(), offset = small())
+            // The node-parameterised ops (2026-10-01): any easing, either clamp, and a pulse of any edge
+            // and profile, jittered a third of the time so the per-cycle hash is reached.
+            37 -> sub().ease(Functions.Easing.entries[r.nextInt(Functions.Easing.entries.size)], clampInput = r.nextBoolean())
+            38 -> tween(small(), small(), win, Functions.Easing.entries[r.nextInt(Functions.Easing.entries.size)])
+            39 -> pulseTrain(
+                period = c(num(0.2, 1.5), unbounded), phase = small(), duty = c(num(-0.1, 1.1), unbounded),
+                amplitude = small(), offset = c(num(-1.0, 1.0), unbounded), rise = c(num(0.0, 0.3), unbounded),
+                fall = c(num(0.0, 0.3), unbounded), edge = Functions.PulseEdge.entries[r.nextInt(5)], curve = c(num(-3.0, 3.0), unbounded),
+                profile = Functions.PulseProfile.entries[r.nextInt(5)], profileSigma = c(num(0.0, 0.4), unbounded),
+                jitter = if (r.nextInt(3) == 0) c(num(0.1, 0.6), unbounded) else c(0.0, unbounded), seed = r.nextLong(),
+                bipolar = r.nextBoolean(), domain = unbounded
+            )
             36 -> square(period = c(num(0.2, 2.0), unbounded), phase = small(), duty = if (r.nextBoolean()) c(num(-0.2, 1.2), unbounded) else small(), amplitude = small(), offset = c(num(-1.0, 1.0), unbounded))
             else -> identity(unbounded) * sub()
         }
@@ -108,6 +120,9 @@ class FnIntervalTest {
             is FnExpr.Neg -> kindsOf(e.a, into)
             is FnExpr.Abs -> kindsOf(e.a, into)
             is FnExpr.Floor -> kindsOf(e.a, into)
+            is FnExpr.Sqrt -> kindsOf(e.a, into)
+            is FnExpr.Rem -> { kindsOf(e.a, into); kindsOf(e.b, into) }
+            is FnExpr.Hash -> kindsOf(e.a, into)
             is FnExpr.Sin -> kindsOf(e.a, into)
             is FnExpr.Cos -> kindsOf(e.a, into)
             is FnExpr.Exp -> kindsOf(e.a, into)
@@ -136,10 +151,18 @@ class FnIntervalTest {
         for (fn in population()) opsOf(fn, seen)
         val missingOps = (FnFormulas.ops + FnFormulas.valueOnlyOps).filterNot { it in seen }
         assertTrue(missingOps.isEmpty(), "formula ops the generator never produced: $missingOps")
-        assertTrue(seen.all { FnFormulas.valueOf(it) != null }, "the generator produced a formula-less op: ${seen.filter { FnFormulas.valueOf(it) == null }}")
-
+        // By node, not by op name: ease, tween and pulseTrain choose their formula from node data.
         val kinds = mutableSetOf<String>()
-        for (op in seen) kindsOf(FnFormulas.valueOf(op)!!, kinds)
+        val formulaLess = mutableSetOf<String>()
+        fun walkNodes(fn: Functions.Fn) {
+            val node = fn.graphNode()
+            if (!node.numbers.containsKey("value")) {
+                FnFormulas.valueOf(node)?.let { kindsOf(it, kinds) } ?: run { formulaLess += node.op }
+            }
+            for (edge in node.children) walkNodes(edge.fn)
+        }
+        population().forEach(::walkNodes)
+        assertTrue(formulaLess.isEmpty(), "the generator produced a formula-less op: $formulaLess")
         val allKinds = FnExpr::class.sealedSubclasses.mapNotNull { it.simpleName }.toSet()
         assertTrue(allKinds.size >= 28, "sealedSubclasses came back with ${allKinds.size} kinds; the premise check would be vacuous")
         assertEquals(allKinds, kinds, "FnExpr kinds the generated population never reaches")

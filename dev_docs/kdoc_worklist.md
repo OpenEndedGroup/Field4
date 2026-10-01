@@ -2,7 +2,7 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9464 of 16001 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9472 of 16009 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
 **806 undocumented entry points** (types, top-level functions and values) and 5396 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
@@ -50,7 +50,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [ValueVisualizer.kt](../src/jvmMain/kotlin/afield/visualization/ValueVisualizer.kt) | Visualization | dataframe, visualizers, agent_transcripts | 1 | 1 | 80% |
 | [FabricatePostEffects.kt](../src/jvmMain/kotlin/afield/four/fabricated/FabricatePostEffects.kt) | Renderers | fabricate_renderer | 1 | 0 | 75% |
 | [stats.kt](../src/jvmMain/kotlin/afield/stdlib/stats.kt) | Math | statistics_examples | 0 | 152 | 13% |
-| [FnInterval.kt](../src/jvmMain/kotlin/afield/stdlib/FnInterval.kt) | Function | fn_intervals | 0 | 46 | 50% |
+| [FnInterval.kt](../src/jvmMain/kotlin/afield/stdlib/FnInterval.kt) | Function | fn_intervals | 0 | 46 | 51% |
 | [Marf.kt](../src/jvmMain/kotlin/afield/four/synth/Marf.kt) | Patterns | marf | 0 | 41 | 60% |
 | [FunctionGraph.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionGraph.kt) | Function | functions_examples, pattern_language | 0 | 38 | 44% |
 | [Envelopes.kt](../src/jvmMain/kotlin/afield/four/synth/Envelopes.kt) | Synthesis | visualizers | 0 | 36 | 21% |

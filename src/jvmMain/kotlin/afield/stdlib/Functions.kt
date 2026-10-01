@@ -7978,7 +7978,7 @@ object Functions {
         return x xor (x ushr 31)
     }
 
-    private fun hashToUnit(seed: Long, x: Long): Double {
+    internal fun hashToUnit(seed: Long, x: Long): Double {
         val h = mix64(x + seed)
         val bits = h ushr 11
         return bits.toDouble() / (1L shl 53).toDouble()

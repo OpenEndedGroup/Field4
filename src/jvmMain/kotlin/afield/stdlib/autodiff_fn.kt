@@ -181,7 +181,7 @@ object FnAutoDiff {
             val index = indices[path] ?: error("no theta index for leaf at path $path")
             return theta[index]
         }
-        val formula = FnFormulas.of(node.op)
+        val formula = FnFormulas.of(node)
             ?: error("op '${node.op}' is not differentiable; see FnAutoDiff.differentiableOps")
         return evalFormulaAD(
             formula,
@@ -206,7 +206,7 @@ object FnAutoDiff {
         val node = fn.graphNode()
         node.numbers["value"]?.let { return it }
         // valueOf, not of: this is the value pin, and it covers FnFormulas.valueOnlyOps too.
-        val formula = FnFormulas.valueOf(node.op)
+        val formula = FnFormulas.valueOf(node)
             ?: error("op '${node.op}' has no formula; see FnFormulas")
         return evalFormula(
             formula,

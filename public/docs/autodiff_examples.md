@@ -138,7 +138,7 @@ with(Functions) {
 
     // The exact path never trusts itself: it re-checks its own interpretation against Fn.eval on the
     // loss grid before switching over. Ask it why a piecewise oscillator is refused.
-    val refusal = exactFitRefusal(target, pulseTrain(1.0, amplitude = 0.8), Functions.Domain.DEFAULT)
+    val refusal = exactFitRefusal(target, valueNoise(3L, 2.0, 0.8), Functions.Domain.DEFAULT)
 :::fold draw target, fit and both loss trajectories
     plot(target, channel = "1 target", title = "target   cos(2) * sin(1.5)")
     plot(exact.fitted, channel = "2 fitted", title = "fitted, exact reverse-mode gradients")
@@ -165,7 +165,7 @@ with(Functions) {
     val numbers =
         "finite differences: RMSE " + fd.initialError + " -> " + fd.finalError + " in " + fd.evaluations + " loss evaluations\n" +
         "exact reverse mode: RMSE " + exact.initialError + " -> " + exact.finalError + " in " + exact.evaluations + " loss evaluations\n" +
-        "a pulseTrain seed is refused, with a reason:\n  " + wrap(refusal ?: "(none)")
+        "a valueNoise seed is refused, with a reason:\n  " + wrap(refusal ?: "(none)")
     markdown("4 numbers", """
         ~~~
 $numbers
@@ -183,9 +183,9 @@ exactly: **1.4×, not 8×**, because building the tape costs about what the extr
 did. What the exact path buys is exactness, no `fdStep` to tune, and one sweep per step whatever the
 parameter count, where finite differences costs `2n`.
 
-The refusal line is the other half of the figure. Only 38<!--count:differentiableFnOpsOnExamplesPage-->
+The refusal line is the other half of the figure. Only 41<!--count:differentiableFnOpsOnExamplesPage-->
 of `OpRegistry`'s 127<!--count:canonicalFnOpsOnExamplesPage--> canonical ops have a derivative; the
-pulse generators, the seeded noise generators, the table-backed interpolants and the windowed
+burst and pattern pulse generators, the seeded noise generators, the table-backed interpolants and the windowed
 numeric operators do not. `FnGradientMode.EXACT` throws with the reason, `FnGradientMode.AUTO` falls
 back to finite differences, and `FnFitRun.usedExactGradient` tells you which happened.
 

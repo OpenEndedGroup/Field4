@@ -141,6 +141,18 @@ class AutoDiffFnBridgeTest {
             "saw" to saw(0.37, phase = 0.05, amplitude = 0.8, offset = 0.1),
             "triangle" to triangle(0.43, phase = 0.12, amplitude = 0.9),
             "square" to square(c(0.41, Functions.Domain.ALL), phase = c(0.07, Functions.Domain.ALL), duty = sin(0.7, amplitude = 0.2, offset = 0.5), amplitude = c(0.6, Functions.Domain.ALL)),
+            // The node-parameterised ops (2026-10-01). Smooth edges and a Hann body keep the pulse
+            // continuous (rise and fall stay positive at all three oracle points, so no edge goes hard),
+            // so the central difference has no jump to straddle. With phase 0.03 the third oracle point
+            // sat within 1e-3 of a feature and the oracle's fixed step read 5e-5 off; shrinking the step
+            // converged on the exact value (to 3e-9 at h = 1e-7), so the point moved, not the rule.
+            // ease keeps its source inside
+            // [0, 1], where the clamp is the identity.
+            "ease" to sin(1.1, amplitude = 0.4, offset = 0.5).ease(Functions.Easing.QUAD_IN_OUT),
+            "tween" to tween(0.2, 0.9, Functions.Domain(0.0, 1.0), Functions.Easing.CUBIC_IN_OUT),
+            "pulseTrain" to pulseTrain(c(0.61, Functions.Domain.ALL), phase = c(0.08, Functions.Domain.ALL),
+                duty = c(0.7, Functions.Domain.ALL), rise = c(0.4, Functions.Domain.ALL), fall = c(0.4, Functions.Domain.ALL),
+                edge = Functions.PulseEdge.SMOOTH, profile = Functions.PulseProfile.HANN, domain = Functions.Domain.ALL),
             // x-domain transforms.
             "scaleX" to sin(2.0, amplitude = 0.6).scaleX(1.5, 0.25),
             "warp" to sin(2.0, amplitude = 0.6).warp(cos(1.0), 0.1),
@@ -334,23 +346,23 @@ class AutoDiffFnBridgeTest {
     @Test
     fun nonDifferentiableGraphsAreRefusedWithADiagnostic() = with(Functions) {
         val target = sin(1.5, amplitude = 0.8)
-        val pulseSeed = pulseTrain(1.0, amplitude = 0.9)
-        assertFalse(FnAutoDiff.supports(pulseSeed))
-        assertTrue("pulsetrain" in FnAutoDiff.unsupportedOps(pulseSeed).map { it.lowercase() })
-        assertNull(exactFitObjective(target, pulseSeed, domain))
-        val refusal = exactFitRefusal(target, pulseSeed, domain)
+        val noiseSeed = valueNoise(3L, 2.0, 0.9)
+        assertFalse(FnAutoDiff.supports(noiseSeed))
+        assertTrue("valuenoise" in FnAutoDiff.unsupportedOps(noiseSeed).map { it.lowercase() })
+        assertNull(exactFitObjective(target, noiseSeed, domain))
+        val refusal = exactFitRefusal(target, noiseSeed, domain)
         assertNotNull(refusal)
-        assertTrue("pulsetrain" in refusal, "refusal should name the offending op: $refusal")
+        assertTrue("valuenoise" in refusal.lowercase(), "refusal should name the offending op: $refusal")
 
         // EXACT is loud about it.
         val failure = runCatching {
-            fitGradient(target, pulseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.EXACT)
+            fitGradient(target, noiseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.EXACT)
         }.exceptionOrNull()
         assertNotNull(failure, "EXACT must throw for a non-differentiable seed")
-        assertTrue("pulsetrain" in (failure.message ?: ""), "message should name the op: ${failure.message}")
+        assertTrue("valuenoise" in (failure.message ?: "").lowercase(), "message should name the op: ${failure.message}")
 
         // AUTO is quiet about it, and says so afterwards.
-        val auto = fitGradient(target, pulseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.AUTO)
+        val auto = fitGradient(target, noiseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.AUTO)
         assertFalse(auto.usedExactGradient, "AUTO should have fallen back")
         assertEquals(FnGradientMode.AUTO, auto.config.gradient)
     }
