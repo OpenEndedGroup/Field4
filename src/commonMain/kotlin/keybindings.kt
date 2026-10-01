@@ -12,6 +12,11 @@ import kotlinx.serialization.Serializable
  * `cmd` is Monaco's `CtrlCmd`: Command on macOS, Control elsewhere. It is written `cmd` in the file
  * because that is what a Field user types; `ctrl`, `control`, `command`, `meta`, `mod` and `ctrlcmd`
  * are all accepted as input and canonicalize to it.
+ *
+ * A spec may also be a **two-key chord**, VS Code style: `cmd+k cmd+s` is Cmd+K, then Cmd+S. Every
+ * key ends a chord and the modifiers before it belong to it, so `cmd shift d` is still one chord and
+ * no spec that parsed before chords existed changes meaning. Two keys at most — Monaco's `KeyMod.chord`
+ * limit — and the second must arrive within [KeySpec.CHORD_TIMEOUT_MS] of the first.
  */
 @Serializable
 data class KeyChord(
@@ -143,32 +148,43 @@ object KeySpec {
         return null
     }
 
+    /** How long the canvas waits for the second key of a chord, in milliseconds. */
+    const val CHORD_TIMEOUT_MS = 1000
+
     /**
-     * Parses a spec such as `cmd+shift+d`, `alt+]`, `f12` or `?`. Separators may be `+`, `-`, space or
-     * comma; a trailing `-` or `+` is treated as the key itself (so `cmd+-` and `cmd+plus` both work).
-     * Returns null for a blank or unparseable spec — [explainFailure] says why.
+     * Parses a single-key spec such as `cmd+shift+d`, `alt+]`, `f12` or `?`. Separators may be `+`,
+     * `-`, space or comma; a trailing `-` or `+` is treated as the key itself (so `cmd+-` and
+     * `cmd+plus` both work). Returns null for a blank or unparseable spec, and for a two-key chord —
+     * use [parseSequence] for those. [explainFailure] says why.
      */
-    fun parse(spec: String): KeyChord? = parseDetailed(spec).first
+    fun parse(spec: String): KeyChord? = parseSequence(spec)?.singleOrNull()
+
+    /**
+     * Parses a spec into the one or two chords it names: `cmd+shift+d` is one, `cmd+k cmd+s` is two.
+     * Null for anything that is not a shortcut, including a chord of three or more keys.
+     */
+    fun parseSequence(spec: String): List<KeyChord>? = parseDetailed(spec).first
 
     /**
      * Why [spec] is not a shortcut, phrased for someone looking at their own `keybindings.yaml`, or
-     * null when it parses. The bad cases are worth distinguishing: a misspelled key and a
-     * VS-Code-style two-keystroke chord fail for completely different reasons, and the second used to
+     * null when it parses. The bad cases are worth distinguishing: a misspelled key and a chord of
+     * three keys fail for completely different reasons, and before chords existed the second used to
      * be silently *accepted* as its last key — `cmd+k cmd+s` quietly became Cmd+S.
      */
     fun explainFailure(spec: String): String? = parseDetailed(spec).second
 
-    private fun parseDetailed(spec: String): Pair<KeyChord?, String?> {
+    private fun parseDetailed(spec: String): Pair<List<KeyChord>?, String?> {
         val trimmed = spec.trim()
         if (trimmed.isEmpty()) return null to "it is empty"
 
         val tokens = tokenize(trimmed)
         if (tokens.isEmpty()) return null to "it is empty"
 
+        val chords = mutableListOf<KeyChord>()
         var ctrlCmd = false
         var alt = false
         var shift = false
-        var key: String? = null
+        var pendingModifier = false
 
         for (token in tokens) {
             val lower = token.lowercase()
@@ -179,45 +195,57 @@ object KeySpec {
                     "alt" -> alt = true
                     "shift" -> shift = true
                 }
+                pendingModifier = true
                 continue
             }
             // A bare shifted character (`?`) means Shift plus its unshifted key.
             val shifted = shiftedChars[token]
-            val next = shifted ?: canonicalKeyToken(token)
+            val key = shifted ?: canonicalKeyToken(token)
                 ?: return null to "'$token' is not a key Field can bind"
-            // Two keys in one spec is a two-keystroke chord, which Field does not do. Say so instead
-            // of binding whichever one happened to come last. `key != next` was wrong: it let the
-            // same key twice (`cmd+k cmd+k`) through as a plain Cmd+K, which is exactly what this
-            // guard exists to refuse — a chord half-obeyed is worse than a chord rejected.
-            if (key != null) {
-                return null to "a shortcut is one key with modifiers — Field has no two-keystroke chords"
+            // Every key ends a chord. A third one is refused rather than dropped: a chord
+            // half-obeyed is worse than a chord rejected.
+            if (chords.size == 2) {
+                return null to "a chord is at most two keys, like `cmd+k cmd+s` — this one has more"
             }
-            if (shifted != null) shift = true
-            key = next
+            chords += KeyChord(ctrlCmd = ctrlCmd, alt = alt, shift = shift || shifted != null, key = key)
+            ctrlCmd = false; alt = false; shift = false; pendingModifier = false
         }
 
-        val resolved = key ?: return null to "it has modifiers but no key"
-        return KeyChord(ctrlCmd = ctrlCmd, alt = alt, shift = shift, key = resolved) to null
+        if (pendingModifier || chords.isEmpty()) {
+            return null to (if (chords.isEmpty()) "it has modifiers but no key" else "it ends in modifiers with no key after them")
+        }
+        return chords to null
     }
 
+    /**
+     * Splits on whitespace first, so a chord boundary written with a space never swallows a key that
+     * is also a separator (`cmd+, cmd+s`), then on `+`, `-` and `,` inside each word.
+     */
     private fun tokenize(spec: String): List<String> {
+        val words = spec.split(' ', '\t').filter { it.isNotEmpty() }
+        return words.flatMapIndexed { index, word ->
+            // `cmd + k`: a word that is only a separator is spacing, unless it is the very last word.
+            if (word.length == 1 && word in separatorChars && index != words.lastIndex) emptyList()
+            else tokenizeWord(word)
+        }
+    }
+
+    private fun tokenizeWord(word: String): List<String> {
         val out = mutableListOf<String>()
         val current = StringBuilder()
-        for (c in spec) {
-            val isSeparator = (c == '+' || c == '-' || c == ' ' || c == '\t' || c == ',') && current.isNotEmpty()
+        for (c in word) {
+            val isSeparator = (c == '+' || c == '-' || c == ',') && current.isNotEmpty()
             if (isSeparator) {
                 out.add(current.toString())
                 current.clear()
-            } else if (c == ' ' || c == '\t') {
-                // whitespace around a separator — ignore
             } else {
                 current.append(c)
             }
         }
         if (current.isNotEmpty()) out.add(current.toString())
 
-        // `+`, `-` and `,` are both separators and bindable keys. A lone one is only a key when it is
-        // the last token — so `cmd+,` binds comma, while the stray `+` in `cmd + k` is just spacing.
+        // `+`, `-` and `,` are both separators and bindable keys. A lone one only survives when it
+        // follows another separator (`cmd+,`), and it is a key when it is the last token of its word.
         return out.filterIndexed { index, token ->
             token.isNotEmpty() && (token.length > 1 || token !in separatorChars || index == out.size - 1)
         }
@@ -233,8 +261,11 @@ object KeySpec {
         append(chord.key)
     }
 
-    /** Canonicalizes a user-written spec, or null if it cannot be parsed. */
-    fun canonicalize(spec: String): String? = parse(spec)?.let { format(it) }
+    /** Renders a one- or two-chord sequence back to its canonical spec: `cmd+k cmd+s`. */
+    fun formatSequence(chords: List<KeyChord>): String = chords.joinToString(" ") { format(it) }
+
+    /** Canonicalizes a user-written spec, chord or not, or null if it cannot be parsed. */
+    fun canonicalize(spec: String): String? = parseSequence(spec)?.let { formatSequence(it) }
 
     /** The DOM `KeyboardEvent.code` that [chord] matches, or null for a key with no stable code. */
     fun domCode(chord: KeyChord): String? {
@@ -306,6 +337,9 @@ object KeySpec {
         parts.add(keyLabel(chord.key))
         return parts.joinToString("+")
     }
+
+    /** [label] for each chord of a sequence, space-separated: `Cmd+K Cmd+S`. */
+    fun labelSequence(chords: List<KeyChord>, mac: Boolean): String = chords.joinToString(" ") { label(it, mac) }
 
     private fun keyLabel(key: String): String = when {
         key.length == 1 && key[0] in 'a'..'z' -> key.uppercase()

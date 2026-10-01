@@ -144,31 +144,54 @@ class KeySpecTest {
     }
 
     /**
-     * A spec that names two keys is a VS-Code-style two-keystroke chord, which Field does not have.
-     * It used to parse as whichever key came last — `cmd+k cmd+s` silently became Cmd+S — which is
-     * worse than a refusal, because nothing tells you your shortcut went somewhere else.
+     * A spec that names two keys is a two-key chord: each key ends a chord, and the modifiers before
+     * it belong to it. Before chords existed these were refused; before *that* they parsed as
+     * whichever key came last, so `cmd+k cmd+s` silently became Cmd+S.
      */
     @Test
-    fun twoKeystrokeChordsAreRefusedRatherThanHalfObeyed() {
-        for (spec in listOf("cmd+k cmd+s", "cmd+k,cmd+s", "a b")) {
-            assertNull(KeySpec.parse(spec), "'$spec' should not parse")
-            val why = assertNotNull(KeySpec.explainFailure(spec), "'$spec' had no explanation")
-            assertTrue(why.contains("two-keystroke"), "unhelpful explanation for '$spec': $why")
+    fun twoKeyChordsParseAsSequences() {
+        val expected = listOf(KeyChord(ctrlCmd = true, key = "k"), KeyChord(ctrlCmd = true, key = "s"))
+        for (spec in listOf("cmd+k cmd+s", "cmd+k,cmd+s", "ctrl+K  Command+S", "cmd k cmd s")) {
+            assertEquals(expected, KeySpec.parseSequence(spec), "'$spec'")
+            assertEquals("cmd+k cmd+s", KeySpec.canonicalize(spec))
+            // `parse` is the single-chord view and says no rather than returning half of it.
+            assertNull(KeySpec.parse(spec), "'$spec' parsed as one keystroke")
+            assertNull(KeySpec.explainFailure(spec), "'$spec' was called a failure")
         }
+        assertEquals(listOf(KeyChord(key = "a"), KeyChord(key = "b")), KeySpec.parseSequence("a b"))
+        // The same key twice is a chord too, not a plain Cmd+K.
+        assertEquals("cmd+k cmd+k", KeySpec.canonicalize("cmd+k cmd+k"))
+        // A separator key survives a chord boundary.
+        assertEquals("cmd+, cmd+s", KeySpec.canonicalize("cmd+, cmd+s"))
+        assertEquals("cmd+k shift+/", KeySpec.canonicalize("cmd+k ?"))
+        assertEquals("Cmd+K Cmd+S", KeySpec.labelSequence(KeySpec.parseSequence("cmd+k cmd+s")!!, mac = true))
+        assertEquals("Ctrl+K S", KeySpec.labelSequence(KeySpec.parseSequence("cmd+k s")!!, mac = false))
     }
 
     /**
-     * The same key twice is still a two-keystroke chord. The guard used to compare the two keys and
-     * wave `cmd+k cmd+k` through as a plain Cmd+K — the exact silent half-obedience the refusal above
-     * exists to prevent, just in the one case the comparison could not see.
+     * Every spec that parsed as one chord before chords existed still means exactly that one chord.
+     * This is why no separator change was needed: each of these has exactly one key.
      */
     @Test
-    fun aChordOfTheSameKeyTwiceIsAlsoRefused() {
-        for (spec in listOf("cmd+k cmd+k", "a a", "cmd+k,cmd+k")) {
-            assertNull(KeySpec.parse(spec), "'$spec' parsed as a single keystroke")
-            val why = assertNotNull(KeySpec.explainFailure(spec), "'$spec' had no explanation")
-            assertTrue(why.contains("two-keystroke"), "unhelpful explanation for '$spec': $why")
+    fun singleChordSpellingsAreUnchanged() {
+        for ((spec, canonical) in listOf(
+            "cmd shift d" to "cmd+shift+d", "cmd + k" to "cmd+k", "cmd+ k" to "cmd+k", "cmd, shift, d" to "cmd+shift+d",
+            "cmd+-" to "cmd+-", "cmd+," to "cmd+,", "cmd+plus" to "cmd+=", "?" to "shift+/", "alt+]" to "alt+]",
+        )) {
+            assertEquals(canonical, KeySpec.canonicalize(spec), "'$spec'")
+            assertNotNull(KeySpec.parse(spec), "'$spec' stopped being a single chord")
         }
+    }
+
+    @Test
+    fun threeKeysAndDanglingModifiersAreRefused() {
+        for (spec in listOf("cmd+k cmd+s cmd+d", "a b c")) {
+            assertNull(KeySpec.parseSequence(spec), "'$spec' should not parse")
+            val why = assertNotNull(KeySpec.explainFailure(spec))
+            assertTrue(why.contains("at most two keys"), "unhelpful explanation for '$spec': $why")
+        }
+        val why = assertNotNull(KeySpec.explainFailure("cmd+k cmd"))
+        assertTrue(why.contains("no key"), why)
     }
 
     @Test

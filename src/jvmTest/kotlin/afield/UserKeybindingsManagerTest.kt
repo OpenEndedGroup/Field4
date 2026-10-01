@@ -68,7 +68,7 @@ class UserKeybindingsManagerTest {
             bindings:
               new-box: cmd+alt+b
               edit-hashtag: ""
-              stop-all: cmd+k cmd+s
+              stop-all: cmd+k cmd+s cmd+d
             """.trimIndent()
         )
         UserKeybindingsManager.watchFile(scratch)
@@ -78,9 +78,19 @@ class UserKeybindingsManagerTest {
         // "" is an explicit unbind, not "use the default".
         assertEquals(emptyList(), resolved.bindings["edit-hashtag"])
         val problem = assertNotNull(resolved.problems.singleOrNull(), "problems were ${resolved.problems}")
-        assertTrue(problem.contains("cmd+k cmd+s"), problem)
-        // The message has to name the actual reason: this is a two-keystroke chord, not a typo.
-        assertTrue(problem.contains("two-keystroke"), problem)
+        assertTrue(problem.contains("cmd+k cmd+s cmd+d"), problem)
+        // The message has to name the actual reason: a chord of three keys, not a typo.
+        assertTrue(problem.contains("at most two keys"), problem)
+    }
+
+    /** A two-key chord is a shortcut: accepted, canonicalized, and reported as no problem at all. */
+    @Test
+    fun aTwoKeyChordIsAccepted() {
+        scratch.writeText("bindings:\n  stop-all: [\"Cmd+K  cmd+S\", alt+down]\n")
+        UserKeybindingsManager.watchFile(scratch)
+        val resolved = UserKeybindingsManager.resolved
+        assertEquals(listOf("cmd+k cmd+s", "alt+down"), resolved.bindings["stop-all"])
+        assertTrue(resolved.problems.isEmpty(), "problems were ${resolved.problems}")
     }
 
     /** Broken YAML keeps the last good bindings rather than unbinding the whole application. */
@@ -213,19 +223,20 @@ class UserKeybindingsManagerTest {
      * A shortcut Field cannot read leaves the command on its default — it is not also an unbind.
      *
      * `""` means "I want no shortcut for this" and the client honours it. A *rejected* spec used to
-     * produce the same empty list, so `open-anything: cmd+k cmd+s` did not mean "that is not a chord,
-     * keep Cmd+P" — it meant `open-anything` had no shortcut at all, on top of the reported error.
+     * produce the same empty list, so `open-anything: cmd+k cmd+s` (refused, before two-key chords)
+     * did not mean "that is not a chord, keep Cmd+P" — it meant `open-anything` had no shortcut at
+     * all, on top of the reported error. The rejected spec here is a three-key chord.
      */
     @Test
     fun aSpecFieldCannotReadFallsBackToTheDefault() {
         UserKeybindingsManager.watchFile(scratch)
         UserKeybindingsManager.applyInventory(inventory())
 
-        scratch.writeText("bindings:\n  stop-all: cmd+k cmd+s\n  edit-hashtag: \"\"\n")
+        scratch.writeText("bindings:\n  stop-all: cmd+k cmd+s cmd+d\n  edit-hashtag: \"\"\n")
         UserKeybindingsManager.watchFile(scratch)
         val resolved = UserKeybindingsManager.resolved
 
-        assertTrue(resolved.problems.any { it.contains("cmd+k cmd+s") }, "problems were ${resolved.problems}")
+        assertTrue(resolved.problems.any { it.contains("cmd+k cmd+s cmd+d") }, "problems were ${resolved.problems}")
         // The rejected line is absent from the overrides, so the default applies...
         assertFalse("stop-all" in resolved.bindings, "a rejected spec was recorded as an override")
         assertEquals(listOf("alt+down", "alt+shift+down"), resolved.effective["stop-all"])
