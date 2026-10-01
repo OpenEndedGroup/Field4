@@ -105,7 +105,7 @@ data class DocsPassQuickResult(val exitCode: Int, val output: String)
 private val docsPassJson = Json { encodeDefaults = true; explicitNulls = true }
 
 /** The actions that answer at once, and may run while a job does (stopping one, most of all). */
-private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "cancel-job", "group-handoffs", "set-batch")
+private val quickDocsPassActions = setOf("stop", "stop-now", "discard", "close-handoff", "reply", "cancel-job", "group-handoffs", "set-batch")
 
 /** The batches `tools/docs_notes.py` knows, in the order they are worked through. */
 private val docsPassBatches = setOf("decisions", "navigation", "captures", "site", "code", "elsewhere")
@@ -145,6 +145,14 @@ internal fun docsPassArguments(request: DocsPassAction): List<String>? {
             if (text.length > 2000 || text.any { it.code < 0x20 && it != '\n' }) return null
             if (request.state == "done" && text.isEmpty()) return null
             listOf("handoff-close", "--state", request.state, "--", request.id, text)
+        }
+        // A human answer to an agent's question, on a note or a handoff; it puts the note back in
+        // the queue (or, on a handoff, goes into the next session's brief).
+        "reply" -> {
+            val text = request.text.trim()
+            if (!docsPassHandoffId.matches(request.id) || text.isEmpty()) return null
+            if (text.length > 2000 || text.any { it.code < 0x20 && it != '\n' }) return null
+            listOf("reply", "--", request.id, text)
         }
         "cancel-job" -> emptyList()
         "group-handoffs" -> listOf("handoff-group")

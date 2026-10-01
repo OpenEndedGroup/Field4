@@ -204,6 +204,11 @@ object DemoTranscriptExecSmokeTest {
         // bytes and a plot — so no audio device and no GPU. The fifth returns a live launch and is not
         // executed by the transcript.
         "faust_polyphony",
+        // sound_paths.md's starting point: the declared map printed, then one Dirt-Samples beat through
+        // a Signal-graph lowpass and a Faust lowpass, all offline. Box 2 needs the pinned Dirt-Samples
+        // subset (./gradlew fetchDocsDirtSamples) and fails loudly without it, by decision: no synth
+        // stand-in for this comparison.
+        "sound_path_map",
         "pattern_rewrite_worked_example",
         "rewrite_strategies_demo",
         // Three pure-compute boxes over the `pat` Fn graph op: one prints the node, two run a real

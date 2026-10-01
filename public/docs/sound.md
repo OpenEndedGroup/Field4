@@ -22,7 +22,7 @@ space with Steam Audio's HRTF, in realtime only. Where it puts a note is written
 Nine things in Field make samples by one route or another, and
 [Making a sound in Field: every path there is](sound_paths.md) maps all nine and helps you pick.
 
-**Three quarters** of the audio published elsewhere in these docs is the first voice below, and the
+**Two thirds** of the audio published elsewhere in these docs is the first voice below, and the
 rest is not. [Most of the audio in these docs is the
 stand-in](#most-of-the-audio-in-these-docs-is-the-stand-in) says which is which.
 
@@ -278,7 +278,9 @@ instrument on
 [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one). The clips on
 [A pattern in space](pat_spatial.md) are **half a path** — the mono source Steam Audio is handed,
 not the spatialised output, because that half is realtime-only and needs a binary this repository
-does not carry.
+does not carry. And the drums on [How to make sound in Field](sound_paths.md#one-buffer-three-paths)
+and [Boolean network music examples](boolean_network_music_examples.md) are the real Tidal
+one-shots, rendered from a pinned, checksummed copy of the few Dirt-Samples folders they use.
 
 The clip-by-clip census, and the one piece of audio no code can regenerate, are in
 `dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.
@@ -289,7 +291,9 @@ The clip-by-clip census, and the one piece of audio no code can regenerate, are 
 
 Install the quark (`Quarks.install("Dirt-Samples")` in SuperCollider, or clone
 [tidalcycles/Dirt-Samples](https://github.com/tidalcycles/Dirt-Samples)) and then change one
-call:
+call. Without either, `./gradlew fetchDocsDirtSamples` downloads just the folders these docs use
+(`arpy`, `bd`, `click`, `cp`, `hh`, `perc`, `sd`, `sn`, about 6 MB), and the library is found
+there too, after any full install:
 
 ```diffstatic {data-lang=kotlin}
 // the stand-in

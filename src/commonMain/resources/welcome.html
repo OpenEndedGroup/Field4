@@ -5693,7 +5693,9 @@
             const notes = (body.status && body.status.notes) || {};
             const handoffs = (notes["handoff-open"] || 0) + (notes["handoff-taken"] || 0);
             const parts = [`${notes.open || 0} open`];
-            if (notes.question) parts.push(`${notes.question} asking`);
+            // Questions on handoffs count too: they wait on you just as a note's do.
+            const asking = body.status && body.status.questions ? body.status.questions.length : (notes.question || 0);
+            if (asking) parts.push(`${asking} asking you`);
             if (handoffs) parts.push(`${handoffs} handoff${handoffs === 1 ? "" : "s"}`);
             if (body.status && body.status.pass) parts.push("pass open");
             node.textContent = parts.join(" · ");

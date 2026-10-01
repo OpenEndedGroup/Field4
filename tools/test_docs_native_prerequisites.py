@@ -15,6 +15,7 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    dirt_samples_root_path,
     libpd_library_path,
     jep_python_candidates,
     resolve_jep_python,
@@ -236,6 +237,28 @@ class NativePrerequisiteTests(unittest.TestCase):
     def test_the_word_requires_in_prose_is_not_a_declaration(self):
         docs = self.docs({"p.md": 'This capture requires="ceres" in spirit only.\n'})
         self.check(docs, runner_mode="always")
+
+
+class DirtSamplesRootPathTests(unittest.TestCase):
+    """The pinned Dirt-Samples subset counts as present only when every pinned file verifies."""
+
+    def test_an_empty_cache_is_absent_and_a_verified_one_is_present(self):
+        import fetch_dirt_samples
+        with TemporaryDirectory() as cache, patch.dict(os.environ, {"AFIELD_NATIVE_DOWNLOAD_CACHE": cache}):
+            self.assertFalse(dirt_samples_root_path(Path(".")).exists())
+            manifest = fetch_dirt_samples.load_manifest()
+            root = fetch_dirt_samples.pinned_root(manifest)
+            # One file present with the wrong bytes is still absent.
+            first = root / manifest["files"][0]["path"]
+            first.parent.mkdir(parents=True)
+            first.write_bytes(b"not a wav")
+            self.assertFalse(dirt_samples_root_path(Path(".")).exists())
+            self.assertIn("wrong digest", fetch_dirt_samples.problems_in(root, manifest)[0])
+
+    def test_the_key_is_registered_with_the_gradle_remedy(self):
+        resolve, remedy = NATIVE_PREREQUISITES["dirt-samples"]
+        self.assertIs(resolve, dirt_samples_root_path)
+        self.assertIn("fetchDocsDirtSamples", remedy)
 
 
 if __name__ == "__main__":

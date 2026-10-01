@@ -196,7 +196,8 @@ object SoundPathMap {
         SoundPath(
             id = "dirt-samples",
             role = Role.MAKES, timing = Timing.BOTH, onSeam = true,
-            needs = "the Tidal Dirt-Samples quark (~400MB, not vendored)",
+            needs = "the Tidal Dirt-Samples quark (~400MB, not vendored), or the pinned subset " +
+                "./gradlew fetchDocsDirtSamples downloads",
             channels = "stereo",
             what = "the same pattern's events as real Tidal one-shots — offline into a buffer via " +
                 "patRenderStereoDirt, or live through DirtSamplePlayer, which is a StereoNode",
@@ -546,6 +547,7 @@ object SoundPathMap {
                 "src/jvmMain/kotlin/afield/four/synth/DoughDspSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/FnSoundDocs.kt" to "signal-graph",
                 "src/jvmMain/kotlin/afield/four/synth/SoundRenderPathDocs.kt" to "dirt-samples",
+                "src/jvmMain/kotlin/afield/four/synth/BooleanNetworkSoundDocs.kt" to "dirt-samples",
                 "src/jvmMain/kotlin/afield/four/synth/FaustPolySoundDocs.kt" to "faust-poly",
                 // The only producer here that cannot render the path it belongs to. It publishes
                 // the *mono source* pat-spatial hands Steam Audio, because the spatialisation is
@@ -719,12 +721,20 @@ object SoundPathMap {
     const val COMPARISON_CUTOFF_HZ = 900.0
 
     /**
-     * The dry beat: [patRenderStereo] with the voice's filter wide open.
+     * The dry beat: [patRenderStereoDirt] through the real Tidal one-shots, unfiltered.
      *
      * The *shared input* for the comparison. Every figure below is this exact buffer, so a
      * difference between two of them is a difference between the two paths and nothing else.
+     *
+     * Rendered from [DirtRender.requirePinnedLibrary] with `strict = true`, so it is a real kick,
+     * snare and closed hat on every machine or an exception naming `./gradlew fetchDocsDirtSamples`.
+     * It used to be [patRenderStereo], whose `sd` and `hh` are bursts of filtered white noise; the
+     * dry clip's centroid was 10.9 kHz and it sounded like it. There is deliberately no fallback to
+     * that voice now: a comparison of three filters on an input nobody can stand to listen to
+     * demonstrates nothing.
      */
-    fun dryBeat(): PatSoundDocs.Stereo = patRenderStereo(theBeat(), CYCLES, CPS)
+    fun dryBeat(): PatSoundDocs.Stereo =
+        patRenderStereoDirt(theBeat(), CYCLES, CPS, library = DirtRender.requirePinnedLibrary(), strict = true).audio
 
     /** A [Signal] that plays a fixed buffer once and then silence. Lets a graph filter a recording. */
     private class BufferSignal(private val samples: FloatArray) : Signal() {
@@ -777,10 +787,6 @@ object SoundPathMap {
         }
     }
 
-    /** [dryBeat] lowpassed inside [patVoice] itself, per event, by the voice's own one-pole. */
-    fun throughStandInVoice(cutoffHz: Double = COMPARISON_CUTOFF_HZ): PatSoundDocs.Stereo =
-        patRenderStereo(theBeat() with cutoff(cutoffHz), CYCLES, CPS)
-
     /**
      * Proof that the seam is one seam: the same gain, computed by the graph and by Faust.
      *
@@ -832,8 +838,8 @@ object SoundPathMap {
     val COMPARISON: List<ComparisonFigure> = listOf(
         ComparisonFigure(
             name = "same-input-dry",
-            pathId = "pat-stand-in",
-            pageLabel = "**Path: `pat-stand-in`, unfiltered.** This exact buffer is the input to both figures below.",
+            pathId = "dirt-samples",
+            pageLabel = "**Path: `dirt-samples`, unfiltered.** This exact buffer is the input to both figures below.",
             render = { dryBeat() },
         ),
         ComparisonFigure(
@@ -1024,10 +1030,10 @@ object SoundPathMap {
     /**
      * A 900 Hz lowpass must take the spectral centroid down to a fraction of the dry buffer's.
      *
-     * Re-measure with `run_field_tests.py --id synth.sound.path.map`, which prints all four
-     * centroids. The beat is a quarter sixteenth-note hats at 6.2 kHz, so the dry centroid is high
-     * and both filters move it a long way; 0.6 leaves room to change the cutoff or the pattern
-     * without leaving room for a filter that has stopped filtering.
+     * Re-measure with `run_field_tests.py --id synth.sound.path.map`, which prints all three
+     * centroids. On the Dirt one-shots the dry centroid is 2856 Hz, from the closed hat and the
+     * snare's crack, and the two filters take it to 0.23× and 0.27×; 0.6 leaves room to change the
+     * cutoff or the pattern without leaving room for a filter that has stopped filtering.
      */
     const val BRIGHTNESS_DROP_CEILING = 0.6
 
@@ -1058,8 +1064,9 @@ object SoundPathMap {
  *
  * Three players and a brightness plot, so the difference between the paths can be heard *and*
  * seen without leaving the box. Routed through `displayAudioSamples`, which is the
- * `box-output-player` path from the map — so running this exercises four of the eighteen declared
- * paths at once (`pat-stand-in`, `signal-graph`, `faust`, `box-output-player`).
+ * `box-output-player` path from the map — so running this exercises four of the declared
+ * paths at once (`dirt-samples`, `signal-graph`, `faust`, `box-output-player`). It needs the pinned
+ * Dirt-Samples subset (`./gradlew fetchDocsDirtSamples`) and says so if it is missing.
  *
  * The Faust compile costs 13–22s the first time in a process and is nearly free afterwards, so
  * the first run of this box is slow and the second is not. That is Truffle warming up, not
@@ -1071,7 +1078,7 @@ fun afield.Box.showSoundPathComparison(cutoffHz: Double = SoundPathMap.COMPARISO
     val faust = SoundPathMap.throughFaust(dry, cutoffHz)
 
     val renders = listOf(
-        "pat-stand-in — the shared input, unfiltered" to dry,
+        "dirt-samples — the shared input, unfiltered" to dry,
         "signal-graph — ChamberlinLowpass at ${cutoffHz.toInt()} Hz (2-pole)" to graph,
         "faust — fi.lowpass(1, ${cutoffHz.toInt()}) (1-pole)" to faust,
     )

@@ -120,6 +120,14 @@
         .add-count { color: var(--ok); } .del-count { color: var(--danger); }
         #changes td:first-child, #handoffs td:nth-child(2) { max-width: 0; width: 100%; }
         .expand { overflow-x: auto; }
+        .badge.asks { border-color: var(--warn); color: var(--warn); }
+        .question { border-top: 1px solid var(--border); padding: 12px 0 4px; }
+        .question:first-child { border-top: 0; padding-top: 4px; }
+        .question .asked { color: var(--warn); margin: 6px 0 8px; }
+        .question blockquote { margin: 4px 0; padding-left: 10px; border-left: 2px solid var(--border-strong); color: var(--soft); }
+        .thread { margin-top: 8px; }
+        .thread div { margin: 3px 0; }
+        .thread .kind-question { color: var(--warn); } .thread .kind-reply { color: var(--field-cyan); }
         .batch { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
         .batch h3 { margin: 0; font-weight: 400; font-size: 14px; color: var(--field-cyan); display: flex; gap: 10px; align-items: baseline; }
         .batch h3 .count { color: var(--soft); font-size: 12px; }
@@ -167,6 +175,12 @@
             <a href="/welcome">welcome</a>
         </div>
     </header>
+
+    <section id="questions-section" hidden>
+        <h2>Questions for you <span class="count" id="question-count"></span></h2>
+        <p class="muted">What agents asked and are waiting on, from page passes and handoff sessions alike, oldest first. A reply puts a note back in the queue, so the next drain takes it up; on a handoff it goes into the next session's brief. A handoff your answer finishes can be closed here too.</p>
+        <div id="questions"></div>
+    </section>
 
     <section>
         <h2>1 · Worktree</h2>
@@ -322,13 +336,30 @@
         $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;
     };
 
+    const when = ms => ms ? new Date(ms).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    const renderQuestions = (status) => {
+        const items = status.questions || [];
+        $("questions-section").hidden = !items.length;
+        $("question-count").textContent = items.length ? `${items.length} waiting` : "";
+        $("questions").innerHTML = items.map(q => {
+            const where = q.kind === "handoff" ? `handoff · ${esc(q.batch || "")}` : "note";
+            const buttons = `<button data-act="reply" class="primary">reply…</button>`
+                + (q.kind === "handoff" ? ` <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button>` : "");
+            return `<div class="question" data-handoff="${esc(q.id)}"><div><span class="badge">${where}</span> ${esc(q.title)} <span class="muted">· ${esc(q.page)} · <code>${esc(q.id.slice(0, 8))}</code></span></div>`
+                + (q.quote ? `<blockquote>${esc(q.quote)}</blockquote>` : "")
+                + `<pre class="asked">${esc(q.question)}</pre><div class="muted">asked ${esc(when(q.askedAtEpochMs))}</div><div class="row">${buttons}</div></div>`;
+        }).join("");
+    };
+    const renderThread = thread => (thread || []).length
+        ? `<div class="thread">${thread.map(e => `<div class="kind-${esc(e.kind)}"><span class="muted">${esc(when(e.atEpochMs))} · ${esc(e.kind)} · ${esc(e.author)}</span><pre>${esc(e.text)}</pre></div>`).join("")}</div>` : "";
+
     const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code", "elsewhere"];
     const renderHandoffRow = h => {
         const open = view.openHandoffs.get(h.id);
         const options = BATCH_KEYS.map(k => `<option value="${k}"${k === h.batch ? " selected" : ""}>${k}</option>`).join("");
-        return `<tr data-handoff="${esc(h.id)}"><td>${h.blocking ? `<span class="badge blocking">blocking ${h.waiting}</span> ` : ""}<span class="badge ${esc(h.scope)}">${esc(h.scope)}</span> <span class="badge">${esc(h.state)}</span></td>`
+        return `<tr data-handoff="${esc(h.id)}"><td>${h.blocking ? `<span class="badge blocking">blocking ${h.waiting}</span> ` : ""}<span class="badge ${esc(h.scope)}">${esc(h.scope)}</span> <span class="badge">${esc(h.state)}</span>${h.question ? ` <span class="badge asks">asks you</span>` : ""}</td>`
             + `<td>${esc(h.title)}<div class="muted">${esc(h.page || "")} · <code>${esc(h.path || "")}</code></div>`
-            + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p></div>` : "") + `</td>`
+            + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p>${renderThread(h.thread)}</div>` : "") + `</td>`
             + `<td class="num"><select data-act="batch" title="move to another batch">${options}</select> <button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
     };
     const renderHandoffs = (status) => {
@@ -353,7 +384,8 @@
                 action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>Start session</button>`
                     + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "");
             }
-            return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span></h3><p class="muted">${esc(batch.how)}</p>`
+            const asking = rows.filter(h => h.question).length;
+            return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span>${asking ? ` <span class="badge asks">${asking} asking you</span>` : ""}</h3><p class="muted">${esc(batch.how)}</p>`
                 + `<div class="row">${action}</div>` + (rows.length ? `<table>${rows.map(renderHandoffRow).join("")}</table>` : "") + `</div>`;
         }).join("");
     };
@@ -449,7 +481,7 @@
             const body = await response.json();
             view.status = body.status || {}; view.job = body.job;
             renderPosture(body); renderPass(view.status); renderCounts(view.status); renderProgress(view.status.progress);
-            renderHandoffs(view.status); renderChanges(view.status); renderBuiltLinks(view.status); renderJob(view.job); setButtons();
+            renderQuestions(view.status); renderHandoffs(view.status); renderChanges(view.status); renderBuiltLinks(view.status); renderJob(view.job); setButtons();
         } catch (error) {
             $("posture").innerHTML = `<div class="notice bad">${esc(error.message)}</div>`;
         } finally { refreshing = false; }
@@ -487,6 +519,24 @@
         const select = event.target.closest('select[data-act="batch"]'); if (!select) return;
         await act("set-batch", { id: select.closest("[data-handoff]").dataset.handoff, batch: select.value });
     });
+    const closePrompts = { taken: "Who has it, or where is it happening? (optional)", done: "What happened? This sentence goes into the page's brief when its notes come back.", dropped: "Why is it being dropped?" };
+    const closeHandoff = async (id, kind) => {
+        const text = await ask(closePrompts[kind], { input: true, ok: kind === "dropped" ? "Drop" : "Save", danger: kind === "dropped" });
+        if (text === null || (kind !== "taken" && !text.trim())) return;
+        await act("close-handoff", { id, state: kind, text });
+    };
+    $("questions").addEventListener("click", async event => {
+        const button = event.target.closest("button"); if (!button) return;
+        const item = button.closest("[data-handoff]"), id = item.dataset.handoff;
+        const q = (view.status.questions || []).find(x => x.id === id);
+        if (button.dataset.act === "reply") {
+            const text = await ask(`Your answer to:\n\n${q ? q.question : id}`, { input: true, ok: "Reply" });
+            if (text === null || !text.trim()) return;
+            await act("reply", { id, text });
+            return;
+        }
+        await closeHandoff(id, button.dataset.act);
+    });
     $("handoffs").addEventListener("click", async event => {
         const button = event.target.closest("button"); if (!button) return;
         const kind = button.dataset.act;
@@ -512,10 +562,7 @@
             renderHandoffs(view.status); setButtons();
             return;
         }
-        const prompts = { taken: "Who has it, or where is it happening? (optional)", done: "What happened? This sentence goes into the page's brief when its notes come back.", dropped: "Why is it being dropped?" };
-        const text = await ask(prompts[kind], { input: true, ok: kind === "dropped" ? "Drop" : "Save", danger: kind === "dropped" });
-        if (text === null || (kind !== "taken" && !text.trim())) return;
-        await act("close-handoff", { id, state: kind, text });
+        await closeHandoff(id, kind);
     });
 
     refresh();

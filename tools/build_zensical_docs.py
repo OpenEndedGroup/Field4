@@ -317,6 +317,25 @@ def default_python_venv_to_this_tree(repo_root: Path) -> None:
     os.environ["FIELD_PYTHON_EXECUTABLE"] = str(interpreter)
 
 
+def dirt_samples_root_path(repo_root: Path) -> Path:
+    """The pinned Dirt-Samples subset, when it is complete and every file has its pinned digest.
+
+    Not a native library, but listed here for the same reason the libraries are: the docs' sample
+    clips (``sound_paths.md``, ``boolean_network_music_examples.md``, ``sound.md``'s ``beat-dirt``)
+    are rendered from it, nothing vendors it, and a render without it fails rather than falling
+    back. ``tools/fetch_dirt_samples.py`` owns the manifest and the cache layout;
+    ``DirtRender.pinnedSampleRoot()`` reads the same manifest on the JVM side.
+    """
+    tools_dir = str(repo_root / "tools")
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    from fetch_dirt_samples import load_manifest, pinned_root, problems_in
+
+    manifest = load_manifest()
+    root = pinned_root(manifest)
+    return root if root.is_dir() and not problems_in(root, manifest) else root / "incomplete"
+
+
 NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
@@ -325,6 +344,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "luajit": (luajit_library_path, "brew install luajit (or apt install libluajit-5.1-2)"),
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),
+    "dirt-samples": (dirt_samples_root_path, "./gradlew fetchDocsDirtSamples"),
     "jep": (
         jep_library_path,
         "pip install 'jep==4.3.1' jedi into the interpreter Field resolves, then point "

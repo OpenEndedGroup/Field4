@@ -179,8 +179,8 @@ object SoundRenderPathDocs {
      *
      * A [Voice.DIRT_SAMPLES] figure is an error when no library can be found: the caller asked for
      * real samples and cannot have them, and the one thing this file exists to prevent is silently
-     * substituting the other voice under a caption that says otherwise. Set
-     * `FIELD_DIRT_SAMPLES` (see [DirtRender.ENV_VAR]) or install the Tidal quark.
+     * substituting the other voice under a caption that says otherwise. The library is
+     * [DirtRender.requirePinnedLibrary]: `./gradlew fetchDocsDirtSamples` provides it.
      */
     fun render(name: String): Rendered {
         val figure = figure(name)
@@ -192,13 +192,11 @@ object SoundRenderPathDocs {
             )
 
             Voice.DIRT_SAMPLES, Voice.MIXED -> {
-                val library = DirtRender.libraryOrNull()
-                    ?: error(
-                        "figure '$name' is published as ${figure.voice}, and no Dirt-Samples library " +
-                            "was found on this machine. Rendering it through the stand-in would publish a " +
-                            "figure whose caption is a lie, so this fails instead. Install the Tidal " +
-                            "Dirt-Samples quark or set ${DirtRender.ENV_VAR} to a copy of it."
-                    )
+                // The pinned subset, not whichever install dirtSampleRoot finds first: the
+                // provenance audit compares bytes, so every machine must render from the same ones.
+                // Throws with the fetch command when it is missing; rendering through the stand-in
+                // would publish a figure whose caption is a lie.
+                val library = DirtRender.requirePinnedLibrary()
                 val result = patRenderStereoDirt(
                     figure.pattern(), figure.cycles, figure.cps, library = library, voice = figure.synth,
                 )
@@ -373,8 +371,8 @@ object SoundRenderPathDocs {
         )
         outDir.mkdirs()
 
-        val root = DirtRender.dirtSampleRoot()
-        println("Dirt sample root: ${root ?: "(none — DIRT_SAMPLES figures will be skipped)"}")
+        val root = DirtRender.pinnedSampleRoot()
+        println("Dirt sample root: ${root ?: "(none — DIRT_SAMPLES figures will be skipped; ${DirtRender.PINNED_REMEDY})"}")
 
         var rendered = 0
         var skipped = 0

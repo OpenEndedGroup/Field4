@@ -30,6 +30,10 @@ class DocsPassArgumentsTest {
             listOf("handoff-close", "--state", "done", "--", "2dde24f2", "merged"),
             docsPassArguments(DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = " merged ")),
         )
+        assertEquals(
+            listOf("reply", "--", "2dde24f2", "--keep it strict"),
+            docsPassArguments(DocsPassAction("reply", id = "2dde24f2", text = " --keep it strict ")),
+        )
     }
 
     @Test
@@ -58,6 +62,9 @@ class DocsPassArgumentsTest {
             DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = ""),
             DocsPassAction("close-handoff", id = "2dde24f2", state = "merged", text = "x"),
             DocsPassAction("close-handoff", id = "2dde24f2", state = "done", text = "x".repeat(2001)),
+            DocsPassAction("reply", id = "2dde24f2", text = "  "),
+            DocsPassAction("reply", id = "--store=/tmp/x", text = "yes"),
+            DocsPassAction("reply", id = "2dde24f2", text = "x".repeat(2001)),
             DocsPassAction("set-batch", id = "2dde24f2", batch = "everything"),
             DocsPassAction("set-batch", id = "--store", batch = "code"),
             DocsPassAction("start-session", batch = "../../x"),

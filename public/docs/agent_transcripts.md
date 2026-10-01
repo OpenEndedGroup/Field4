@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 166 transcripts on every build, at three
-depths. 86 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 167 transcripts on every build, at three
+depths. 87 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -1292,6 +1292,19 @@ heading reads each position track twelve times, so one named parameter occupies 
 fitter has to move all of them as one variable.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rectsl_heading_fit/metadata.edn)
+
+### sound_path_map
+
+The two boxes behind [How to make sound in Field](sound_paths.md). *The map* prints every
+declared way Field has of making, carrying out and bringing in sound straight from
+`SoundPathMap.PATHS`, ending with how many meet the one `render` signature and which ones no page
+mentions. *One buffer, three paths* plays a two-second `bd ~ sd ~, hh*8` from real Dirt-Samples
+one-shots, then the same buffer through `ChamberlinLowpass` and through a Faust `fi.lowpass(1, 900)`,
+and prints the centroids (2856, 652 and 783 Hz), the two filters' similarity (0.9899) and the gain
+seam's worst disagreement, which is 0. It needs `./gradlew fetchDocsDirtSamples` once and says so if
+you skip it.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn)
 
 ### faust_voice
 

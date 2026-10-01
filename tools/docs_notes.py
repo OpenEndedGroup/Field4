@@ -203,6 +203,17 @@ def is_resolved(note: dict[str, Any]) -> bool:
     return note.get("resolvedAtEpochMs") is not None
 
 
+def pending_question(note: dict[str, Any]) -> dict[str, Any] | None:
+    """The question an agent asked that nothing has answered since, or None."""
+    pending = None
+    for entry in note.get("thread", []):
+        if entry.get("kind") == "question":
+            pending = entry
+        elif entry.get("kind") in ("reply", "reopen"):
+            pending = None
+    return pending
+
+
 def awaiting_human(note: dict[str, Any]) -> bool:
     """True when an agent has asked a question that nothing has answered since.
 
@@ -2242,6 +2253,11 @@ def _int(value: str) -> int:
     return int(value) if value.isdigit() else 0
 
 
+def thread_summary(entry: dict[str, Any]) -> dict[str, Any]:
+    return {"kind": entry.get("kind"), "author": entry.get("author", ""), "text": entry.get("text", ""),
+            "atEpochMs": entry.get("atEpochMs")}
+
+
 def pass_status(git: Git, store: Store) -> dict[str, Any]:
     notes = store.notes()
     counts: dict[str, int] = {}
@@ -2258,8 +2274,27 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
                          "path": info.get("path"), "page": info.get("page") or item.get("pageUrl"),
                          "resolution": item.get("resolution", ""), "createdAtEpochMs": item.get("createdAtEpochMs"),
                          "batch": handoff_batch(item), "batchChosen": info.get("batch") in BATCH_KEYS,
-                         "waiting": sum(1 for n in notes if blocked_by(n) == item["id"])})
-    result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs,
+                         "waiting": sum(1 for n in notes if blocked_by(n) == item["id"]),
+                         "question": (pending_question(item) or {}).get("text"),
+                         "thread": [thread_summary(e) for e in item.get("thread", [])]})
+    # Every question an agent is waiting on, notes and handoffs alike, oldest first: the page
+    # answers them with `reply` without anyone opening the docs site.
+    questions = []
+    for item in notes:
+        if note_state(item) in ("resolved", "memory") or (item.get("handoff") or {}).get("state") in ("done", "dropped"):
+            continue
+        asked = pending_question(item)
+        if not asked:
+            continue
+        handoff = item.get("kind") == "handoff"
+        questions.append({"id": item["id"], "kind": "handoff" if handoff else "note",
+                          "title": item.get("note", ""), "quote": "" if handoff else ((item.get("anchor") or {}).get("exact") or "")[:300],
+                          "page": (item.get("handoff") or {}).get("page") or item.get("pageUrl") or "",
+                          "batch": handoff_batch(item) if handoff else None,
+                          "question": asked.get("text", ""), "askedBy": asked.get("author", ""),
+                          "askedAtEpochMs": asked.get("atEpochMs")})
+    questions.sort(key=lambda q: q.get("askedAtEpochMs") or 0)
+    result: dict[str, Any] = {"primary": str(git.root), "notes": counts, "handoffs": handoffs, "questions": questions,
                               "batches": batch_overview(git, notes),
                               "primaryBranch": git.run("branch", "--show-current", check=False).strip(),
                               "pass": load_pass(git.root)}
