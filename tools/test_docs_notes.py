@@ -868,6 +868,7 @@ class SessionTest(unittest.TestCase):
         self.assertIn("handoff-close", brief)
         self.assertIn("reply from the human", brief)
         self.assertIn("Decision: merge it into the tour.", brief)
+        self.assertIn("dev_docs/agents/DOCS_WRITING_RULES.md", brief)
         self.assertIn("claude", session["command"])
         self.assertEqual(dn.Git(worktree).status_paths(), {}, "the brief is excluded, not an uncommitted file")
         self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"taken"})
@@ -929,6 +930,13 @@ class OutcomesFileTest(unittest.TestCase):
             self.assertIn("memory", [e["kind"] for e in note["thread"]])
         finally:
             repo.close()
+
+
+class WritingRulesTest(unittest.TestCase):
+    def test_both_prompts_name_a_rules_file_that_exists(self) -> None:
+        rules = "dev_docs/agents/DOCS_WRITING_RULES.md"
+        self.assertIn(rules, dn.AGENT_PROMPT)
+        self.assertTrue((Path(__file__).resolve().parent.parent / rules).is_file(), rules)
 
 
 class KotlinSchemaTest(unittest.TestCase):

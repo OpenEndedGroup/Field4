@@ -1415,7 +1415,9 @@ Several agents are working in this checkout at once, one per page. You own exact
 
 Edit nothing else. Do not commit, stash, reset, or run the docs build or Gradle: the harness that
 started you commits and verifies after every agent has finished. Read {root}/AGENTS.md (section 8,
-"Docs authoring") before writing prose.
+"Docs authoring") and {root}/dev_docs/agents/DOCS_WRITING_RULES.md before writing prose. The rules
+file is what the human's earlier notes asked for, page after page; a note on your page is often one
+of them broken again, and the rest apply to whatever you write while fixing it.
 
 The brief below lists the human's open notes on your page(s), each with its current location in
 the source (line numbers are live — they were computed from `git blame` against the working tree
@@ -2756,6 +2758,8 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
              "the documentation revision agents filed. This is an interactive session: ask before a decision that is "
              "the human's, and say what you are doing as you go.", "",
              batch["session"], "",
+             "Any prose you write under `public/docs/` follows `dev_docs/agents/DOCS_WRITING_RULES.md`: the rules the "
+             "human's notes asked for, page after page.", "",
              "For each handoff, in the order below: read its document, do the work (or get the decision), then close it:", "",
              f"    {cli} handoff-close <id> \"what happened, in a sentence the page's next agent can use\"",
              f"    {cli} handoff-close <id> --state dropped \"why not\"", "",
