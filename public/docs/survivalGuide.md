@@ -8,6 +8,9 @@ Shortcuts](keybindings.md) is the whole story. Right now it looks like this:
 
 ![Field's ? cheatsheet card with the default bindings: Basics (N for a new box, select a box for its editor), Search and Help, Run (Opt-0 runs the whole box, Opt-click and Opt-Up launch, Opt-Down stops, Opt-Enter runs the current line), Editor, and Graph](assets/keybindings/cheatsheet.png)
 
+The card holds the keys you need first; [the full list](keybindings.md#the-defaults-in-full) has
+every command and its default shortcut.
+
 Using these keyboard shortcuts, you should be able to write and execute some code in Field:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x560" clip="0,0,760,380" video="assets/survival_intro.mp4" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="survival-intro" alt="The mouse moves onto the empty canvas and n makes a new box there; a click selects it and opens its empty editor. A println of hello world is typed one key at a time and Alt-Enter runs that line, printing hello world underneath it. Two more lines are typed, val total = (1..10).sum() and println(total), and Alt-0 runs the whole box, printing 55 under the last line and hello world a second time (marked x2)."}
