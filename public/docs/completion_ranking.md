@@ -1,8 +1,9 @@
 # How completions are ranked
 
-Press `ctrl-space` in a Field editor and something has to choose which of a few hundred candidates
-you see first. This page is about that choice: where it is made, what it is made from, and how a
-class you write, in a Field box or in Field's own source, gets a say in it.
+This is an internals page. You do not need it to use completion; it is for someone changing
+the completion code, or writing a class whose members should rank well. It covers where the
+popup's order is decided, what goes into it, and how a class you write, in a Field box or in
+Field's own source, gets a say in it.
 
 The short answer is that the server sends everything and the browser does the ranking. Field's
 completion server does not rank. It answers a caret with *every* candidate it can find, up to a
