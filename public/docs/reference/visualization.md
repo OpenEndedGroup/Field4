@@ -4,7 +4,7 @@
 
 Turning a value into something you can look at, without leaving the box.
 
-18 source file(s), 553 public symbol(s), 487 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+19 source file(s), 569 public symbol(s), 491 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -1663,6 +1663,41 @@ A colour-mapped raster produced by `heatmapImage`: ARGB `pixels` laid out row-ma
 | Declaration | Summary |
 | --- | --- |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">png</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/visualization/heatmap/#L36) | Encode to PNG bytes (ARGB, sRGB) via `PngEncoder`. |
+
+## intervalPicture.kt { #intervalpicture-kt }
+
+`src/jvmMain/kotlin/afield/visualization/intervalPicture.kt` — [read the source](source/jvmMain/afield/visualization/intervalPicture/)
+
+**Used in:** [Proving a Function's Range](../fn_intervals.md)
+
+### Top-level functions { #intervalpicture-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">.</span><span class="nf">intervalPicture</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">bins</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">240</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">maxEnclosures</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">50</span><span class="n">&#95;000</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnIntervalPicture</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L202) | Proves this function's range on `[a, b]` and draws the proof — see [`FnIntervalPicture`](visualization.md#intervalpicture-kt-fnintervalpicture). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">showIntervals</span><span class="p">(</span><span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">channel</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;intervals&quot;</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mi">1e</span><span class="p">-</span><span class="mi">6</span><span class="p">,</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">FnIntervalPicture</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L217) | Draws `fn`'s `intervalPicture` into `channel` and returns it. |
+
+### FnIntervalPicture { #intervalpicture-kt-fnintervalpicture }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">FnIntervalPicture</span><span class="p">(</span><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span><span class="p">,</span> <span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">FnCertifiedRange</span><span class="p">,</span> <span class="k">val</span> <span class="n">envelope</span><span class="p">:</span> <span class="nc">FnCertifiedEnvelope</span><span class="p">,</span> <span class="k">val</span> <span class="n">pieces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnSearchPiece</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1200</span><span class="p">,</span> <span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">:</span> <span class="nc">ToHTML</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L41)
+
+A picture of what interval arithmetic proved about a function, and where it had to work to prove it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">fn</span><span class="p">:</span> <span class="nc">Functions</span><span class="p">.</span><span class="nc">Fn</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">a</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">b</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">range</span><span class="p">:</span> <span class="nc">FnCertifiedRange</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">envelope</span><span class="p">:</span> <span class="nc">FnCertifiedEnvelope</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pieces</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">FnSearchPiece</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">samples</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">title</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L52) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L53) |  |
+| [<code class="highlight"><span class="k">var</span> <span class="n">maxBoxes</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L56) | At most this many search boxes are drawn — the first ones, which are the widest. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L58) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">svg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/visualization/intervalPicture/#L60) |  |
 
 ## plotly.kt { #plotly-kt }
 

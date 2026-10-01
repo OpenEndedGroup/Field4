@@ -134,6 +134,13 @@ class AutoDiffFnBridgeTest {
             // `hypot` on the same pair, offset so it passes near the origin without landing on it —
             // the length that gates a heading's widening search.
             "hypot" to sin(1.3, amplitude = 0.9, offset = 0.2).hypot(cos(0.9, amplitude = 1.1)),
+            // The piecewise oscillators, transcribed 2026-10-01 over `t - floor(t)`. Periods and
+            // phases are chosen so no corner lands on a sample at any of the oracle's three theta points
+            // (a triangle with phase 0.11 put one at x = 0 when shifted by -0.27, and failed by 15%);
+            // `square` gets a swept duty, so its duty partial is the one a PWM fit would follow.
+            "saw" to saw(0.37, phase = 0.05, amplitude = 0.8, offset = 0.1),
+            "triangle" to triangle(0.43, phase = 0.12, amplitude = 0.9),
+            "square" to square(c(0.41, Functions.Domain.ALL), phase = c(0.07, Functions.Domain.ALL), duty = sin(0.7, amplitude = 0.2, offset = 0.5), amplitude = c(0.6, Functions.Domain.ALL)),
             // x-domain transforms.
             "scaleX" to sin(2.0, amplitude = 0.6).scaleX(1.5, 0.25),
             "warp" to sin(2.0, amplitude = 0.6).warp(cos(1.0), 0.1),
@@ -327,23 +334,23 @@ class AutoDiffFnBridgeTest {
     @Test
     fun nonDifferentiableGraphsAreRefusedWithADiagnostic() = with(Functions) {
         val target = sin(1.5, amplitude = 0.8)
-        val sawSeed = saw(1.0, amplitude = 0.9)
-        assertFalse(FnAutoDiff.supports(sawSeed))
-        assertTrue("saw" in FnAutoDiff.unsupportedOps(sawSeed).map { it.lowercase() })
-        assertNull(exactFitObjective(target, sawSeed, domain))
-        val refusal = exactFitRefusal(target, sawSeed, domain)
+        val pulseSeed = pulseTrain(1.0, amplitude = 0.9)
+        assertFalse(FnAutoDiff.supports(pulseSeed))
+        assertTrue("pulsetrain" in FnAutoDiff.unsupportedOps(pulseSeed).map { it.lowercase() })
+        assertNull(exactFitObjective(target, pulseSeed, domain))
+        val refusal = exactFitRefusal(target, pulseSeed, domain)
         assertNotNull(refusal)
-        assertTrue("saw" in refusal, "refusal should name the offending op: $refusal")
+        assertTrue("pulsetrain" in refusal, "refusal should name the offending op: $refusal")
 
         // EXACT is loud about it.
         val failure = runCatching {
-            fitGradient(target, sawSeed, domain = domain, iterations = 5, gradient = FnGradientMode.EXACT)
+            fitGradient(target, pulseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.EXACT)
         }.exceptionOrNull()
         assertNotNull(failure, "EXACT must throw for a non-differentiable seed")
-        assertTrue("saw" in (failure.message ?: ""), "message should name the op: ${failure.message}")
+        assertTrue("pulsetrain" in (failure.message ?: ""), "message should name the op: ${failure.message}")
 
         // AUTO is quiet about it, and says so afterwards.
-        val auto = fitGradient(target, sawSeed, domain = domain, iterations = 5, gradient = FnGradientMode.AUTO)
+        val auto = fitGradient(target, pulseSeed, domain = domain, iterations = 5, gradient = FnGradientMode.AUTO)
         assertFalse(auto.usedExactGradient, "AUTO should have fallen back")
         assertEquals(FnGradientMode.AUTO, auto.config.gradient)
     }

@@ -266,6 +266,28 @@ object BoxOutputChannelGuard {
         return out.toString()
     }
 
+    /**
+     * Blanks each Lua `--` line comment (to the end of its line) that is not inside a `'…'` or
+     * `"…"` string, keeping line numbers. A `--[[ … ]]` block comment is blanked only on its first
+     * line; no transcript box uses one.
+     */
+    internal fun blankLuaLineComments(code: String): String = code.lines().joinToString("\n") { line ->
+        var quote: Char? = null
+        var cut = -1
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            when {
+                quote != null && c == '\\' -> i++
+                quote != null && c == quote -> quote = null
+                quote == null && (c == '\'' || c == '"') -> quote = c
+                quote == null && c == '-' && i + 1 < line.length && line[i + 1] == '-' -> { cut = i; break }
+            }
+            i++
+        }
+        if (cut < 0) line else line.substring(0, cut) + " ".repeat(line.length - cut)
+    }
+
     /** The substring from the bracket at or after [from] through its match, or null if unbalanced. */
     private fun balanced(text: String, from: Int): String? {
         val open = text.indexOfAny(charArrayOf('(', '[', '{'), from)
@@ -312,8 +334,13 @@ object BoxOutputChannelGuard {
                     if (verb !in CREATE_VERBS) continue
                     val payload = operation.values.firstOrNull() as? Map<*, *> ?: continue
                     val box = (payload["box"] ?: payload["uid"] ?: payload["id"])?.toString() ?: continue
-                    val code = (payload["properties"] as? Map<*, *>)?.get("code")?.toString() ?: continue
-                    result.add("${file.name}#$box" to code)
+                    val properties = payload["properties"] as? Map<*, *> ?: continue
+                    val raw = properties["code"]?.toString() ?: continue
+                    // A Lua box's helpers replace their channel exactly as Kotlin's do, so it is
+                    // scanned, but its comments start with `--`, which maskCommentsAndStrings does
+                    // not know: `-- lines(...) draws them` read as a second lines() call.
+                    val lua = properties["code_language"]?.toString()?.trim()?.equals("lua", ignoreCase = true) == true
+                    result.add("${file.name}#$box" to if (lua) blankLuaLineComments(raw) else raw)
                 }
             }
         return result

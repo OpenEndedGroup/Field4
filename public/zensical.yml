@@ -114,6 +114,7 @@ nav:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
       - Differentiating Functions: autodiff_examples.md
+      - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
       # Directly after the interpolants page, which is the other half of the same subject: that
@@ -213,6 +214,7 @@ nav:
     - FieldML Stage by Stage: fieldml_stages.md
     - StackSL Cheatsheet: stacksl_cheatsheet.md
     - StackSL Examples: stacksl_examples.md
+    - Proving What a Shader Draws: stacksl_intervals.md
     - RectSL Cheatsheet: rectsl_cheatsheet.md
     - RectSL Examples: rectsl_examples.md
     - RectSL Inverse Animation: rectsl_inverse_animation.md

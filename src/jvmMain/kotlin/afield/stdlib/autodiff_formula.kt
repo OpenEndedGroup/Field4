@@ -241,6 +241,20 @@ object FnFormulas {
     private fun smoothstepOf(t: FnExpr): FnExpr =
         FnExpr.Mul(FnExpr.Mul(t, t), FnExpr.Sub(lit(3.0), FnExpr.Mul(lit(2.0), t)))
 
+    /**
+     * The period-and-phase guard shared by [Functions.saw], `triangle` and `square`: [offset] when
+     * `|period|` is zero, else [body] applied to `fract((x - phase) / |period|)`.
+     *
+     * The fraction is spelled `t - floor(t)` because that is `Functions.fract`, and the interval walker
+     * recognises that shape structurally (as it does the smoothstep cubic) and bounds it to the
+     * fractional part rather than to `t - floor(t)` taken as two unrelated numbers.
+     */
+    private fun periodic(body: (fraction: FnExpr) -> FnExpr): FnExpr {
+        val p = FnExpr.Abs(child("period"))
+        val t = FnExpr.Div(FnExpr.Sub(FnExpr.X, child("phase")), p)
+        return FnExpr.IfZero(p, child("offset"), body(FnExpr.Sub(t, FnExpr.Floor(t))))
+    }
+
     /** `0.5 - 0.5 * cos(TAU * t)`-shaped raised-cosine window with the given pedestal and depth. */
     private fun raisedCosine(pedestal: Double, depth: Double): FnExpr = FnExpr.Sub(
         lit(pedestal),
@@ -262,6 +276,41 @@ object FnFormulas {
         // ---- smooth oscillators (Functions.sin / Functions.cos) ----
         put("sin", oscillator { FnExpr.Sin(it) })
         put("cos", oscillator { FnExpr.Cos(it) })
+
+        // ---- piecewise oscillators (Functions.saw / triangle / square) ----
+        // Each is `offset + amplitude * shape(fract((x - phase) / |period|))`, with the closures'
+        // association order kept so FnFormulaAgreementTest can hold them bit-identical. The corners
+        // have a zero-measure gradient problem, not a formula problem: `d fract(t)/dt` is 1 wherever
+        // it exists, which is what lets a fit move period and phase.
+        put(
+            "saw",
+            periodic { f ->
+                FnExpr.Add(
+                    child("offset"),
+                    FnExpr.Mul(child("amplitude"), FnExpr.Sub(FnExpr.Mul(f, lit(2.0)), lit(1.0)))
+                )
+            }
+        )
+        put(
+            "triangle",
+            periodic { f ->
+                val twice = FnExpr.Mul(f, lit(2.0))
+                val v = FnExpr.IfLt(f, lit(0.5), twice, FnExpr.Sub(lit(2.0), twice))
+                FnExpr.Add(
+                    child("offset"),
+                    FnExpr.Mul(child("amplitude"), FnExpr.Sub(FnExpr.Mul(v, lit(2.0)), lit(1.0)))
+                )
+            }
+        )
+        put(
+            "square",
+            periodic { f ->
+                FnExpr.Add(
+                    child("offset"),
+                    FnExpr.IfLt(f, FnExpr.Clamp01(child("duty")), child("amplitude"), FnExpr.Neg(child("amplitude")))
+                )
+            }
+        )
 
         // ---- value transforms ----
         put("scaley", FnExpr.Mul(child("source"), child("scale")))
@@ -671,14 +720,13 @@ object FnNonDifferentiable {
             "ease", "tween"
         )
         group(
-            "a piecewise oscillator: differentiable almost everywhere, with a countable set of corners " +
-                "the sample grid will usually miss",
+            "a shaped pulse generator: the edge and body shapes are chosen by PulseEdge/PulseProfile " +
+                "enums and each cycle is jittered by a seeded hash of its index",
             closable = true,
-            missing = "only the transcription now. FnExpr.Floor exists (added 2026-08-06 for RectSL's " +
-                "loop-time), so the modulo these need is `t - p * floor(t / p)` and the saw/triangle/" +
-                "square/pulse formulas follow directly. Still the highest-value gap left, since " +
-                "oscillator fitting is the flagship use of fitGradient",
-            "saw", "triangle", "square", "pulseTrain", "pulseburst", "pulsepattern"
+            missing = "an FnExpr per PulseEdge × PulseProfile pair and a jitter-free special case; saw, " +
+                "triangle and square were transcribed on 2026-10-01 with the fract shape " +
+                "`t - floor(t)`, which is the template",
+            "pulseTrain", "pulseburst", "pulsepattern"
         )
         group(
             "a seeded generator: the value is a hash of position, so it has no derivative with respect " +

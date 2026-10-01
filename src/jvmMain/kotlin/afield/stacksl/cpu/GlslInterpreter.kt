@@ -68,6 +68,15 @@ private class Frame<V> {
 
     fun setAt(index: Int, value: V) { values[index] = value }
 
+    /** The live values, for an undecided branch to run both arms from one state. */
+    fun snapshot(): Array<Any?> = values.copyOf(size)
+
+    /** Put back a [snapshot] taken at this same size. */
+    fun restore(saved: Array<Any?>) {
+        if (saved.size != size) throw GlslUnsupported("an undecided branch declared a variable outside a block")
+        saved.copyInto(values, 0, 0, size)
+    }
+
     fun truncateTo(mark: Int) {
         for (i in mark until size) { names[i] = null; values[i] = null }
         size = mark
@@ -90,6 +99,13 @@ internal class GlslMachine<V> internal constructor(
 ) {
     /** True when this invocation executed `discard`. The caller decides what that means. */
     var discarded: Boolean = false
+        private set
+
+    /**
+     * True when an undecided branch had an arm that executed `discard`: some inputs in the region
+     * may discard, and the values read afterwards are those of the inputs that do not.
+     */
+    var maybeDiscarded: Boolean = false
         private set
 
     private var frame = Frame<V>()
@@ -128,6 +144,7 @@ internal class GlslMachine<V> internal constructor(
     /** Run `main()`. Returns whether it completed without `discard`. */
     fun runMain(): Boolean {
         discarded = false
+        maybeDiscarded = false
         call("main", emptyList())
         return !discarded
     }
@@ -156,16 +173,18 @@ internal class GlslMachine<V> internal constructor(
 
         is GExprStmt -> { eval(stmt.expr); Flow.NORMAL }
 
-        is GIf ->
-            if (s.asBool(eval(stmt.cond))) exec(stmt.then)
-            else stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL
+        is GIf -> when (s.truth(eval(stmt.cond))) {
+            GlslTruth.TRUE -> exec(stmt.then)
+            GlslTruth.FALSE -> stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL
+            GlslTruth.UNKNOWN -> fork({ exec(stmt.then) }, { stmt.otherwise?.let { exec(it) } ?: Flow.NORMAL })
+        }
 
         is GFor -> {
             val mark = frame.size
             stmt.init?.let { exec(it) }
             var flow = Flow.NORMAL
             var iterations = 0
-            while (stmt.cond == null || s.asBool(eval(stmt.cond))) {
+            while (stmt.cond == null || decided(eval(stmt.cond), "a for-loop condition")) {
                 if (++iterations > MAX_LOOP_ITERATIONS) {
                     throw GlslEvalError("loop exceeded $MAX_LOOP_ITERATIONS iterations — non-terminating shader?")
                 }
@@ -183,7 +202,7 @@ internal class GlslMachine<V> internal constructor(
             var iterations = 0
             var first = true
             while (true) {
-                if (!(first && stmt.isDoWhile) && !s.asBool(eval(stmt.cond))) break
+                if (!(first && stmt.isDoWhile) && !decided(eval(stmt.cond), "a while-loop condition")) break
                 first = false
                 if (++iterations > MAX_LOOP_ITERATIONS) {
                     throw GlslEvalError("loop exceeded $MAX_LOOP_ITERATIONS iterations — non-terminating shader?")
@@ -252,13 +271,17 @@ internal class GlslMachine<V> internal constructor(
         is GUnary -> when (e.op) {
             "-" -> s.negate(eval(e.operand))
             "+" -> eval(e.operand)
-            "!" -> s.boolOf(!s.asBool(eval(e.operand)))
+            "!" -> s.boolOfTruth(not(s.truth(eval(e.operand))))
             else -> throw GlslUnsupported("unary '${e.op}' is not in the StackSL subset")
         }
 
         is GBinary -> binary(e.op, e)
 
-        is GTernary -> if (s.asBool(eval(e.cond))) eval(e.yes) else eval(e.no)
+        is GTernary -> when (s.truth(eval(e.cond))) {
+            GlslTruth.TRUE -> eval(e.yes)
+            GlslTruth.FALSE -> eval(e.no)
+            GlslTruth.UNKNOWN -> forkValue({ eval(e.yes) }, { eval(e.no) })
+        }
 
         is GAssign -> {
             val rhs = eval(e.value)
@@ -284,15 +307,104 @@ internal class GlslMachine<V> internal constructor(
 
     private fun binary(op: String, e: GBinary): V {
         // `&&` and `||` short-circuit in GLSL, so the right operand must not be evaluated.
-        if (op == "&&") return s.boolOf(s.asBool(eval(e.left)) && s.asBool(eval(e.right)))
-        if (op == "||") return s.boolOf(s.asBool(eval(e.left)) || s.asBool(eval(e.right)))
+        // Kleene's three-valued logic, which is GLSL's two-valued logic whenever nothing is UNKNOWN.
+        if (op == "&&") {
+            val l = s.truth(eval(e.left))
+            if (l == GlslTruth.FALSE) return s.boolOfTruth(GlslTruth.FALSE)
+            val r = s.truth(eval(e.right))
+            return s.boolOfTruth(if (r == GlslTruth.FALSE) GlslTruth.FALSE else if (l == GlslTruth.TRUE && r == GlslTruth.TRUE) GlslTruth.TRUE else GlslTruth.UNKNOWN)
+        }
+        if (op == "||") {
+            val l = s.truth(eval(e.left))
+            if (l == GlslTruth.TRUE) return s.boolOfTruth(GlslTruth.TRUE)
+            val r = s.truth(eval(e.right))
+            return s.boolOfTruth(if (r == GlslTruth.TRUE) GlslTruth.TRUE else if (l == GlslTruth.FALSE && r == GlslTruth.FALSE) GlslTruth.FALSE else GlslTruth.UNKNOWN)
+        }
         val a = eval(e.left)
         val b = eval(e.right)
         return when (op) {
-            "==" -> s.boolOf(s.equalComponents(a, b))
-            "!=" -> s.boolOf(!s.equalComponents(a, b))
+            "==" -> s.boolOfTruth(s.equalTruth(a, b))
+            "!=" -> s.boolOfTruth(not(s.equalTruth(a, b)))
             else -> s.binary(op, a, b)
         }
+    }
+
+    private fun not(t: GlslTruth): GlslTruth = when (t) {
+        GlslTruth.TRUE -> GlslTruth.FALSE
+        GlslTruth.FALSE -> GlslTruth.TRUE
+        GlslTruth.UNKNOWN -> GlslTruth.UNKNOWN
+    }
+
+    private fun decided(cond: V, what: String): Boolean = when (s.truth(cond)) {
+        GlslTruth.TRUE -> true
+        GlslTruth.FALSE -> false
+        GlslTruth.UNKNOWN -> throw GlslUnsupported("$what is undecided over this region; an interval run cannot join loop iterations")
+    }
+
+    // -- undecided branches ----------------------------------------------------------------------
+
+    private inner class Saved(val frameValues: Array<Any?>, val globals: HashMap<String, V>, val returnValue: V?)
+
+    private fun save() = Saved(frame.snapshot(), HashMap(globals), returnValue)
+
+    private fun load(saved: Saved) {
+        frame.restore(saved.frameValues)
+        globals.clear(); globals.putAll(saved.globals)
+        returnValue = saved.returnValue
+    }
+
+    /** Join the state [other] left with the current one, slot by slot. */
+    private fun mergeWith(other: Saved) {
+        val mine = frame.snapshot()
+        if (mine.size != other.frameValues.size) throw GlslUnsupported("an undecided branch changed the frame's shape")
+        @Suppress("UNCHECKED_CAST")
+        for (i in mine.indices) {
+            val a = other.frameValues[i] as V
+            val b = mine[i] as V
+            if (a !== b) frame.setAt(i, s.join(a, b))
+        }
+        for ((key, a) in other.globals) {
+            val b = globals[key] ?: continue
+            if (a !== b) globals[key] = s.join(a, b)
+        }
+        val ra = other.returnValue
+        val rb = returnValue
+        returnValue = if (ra == null || rb == null) ra ?: rb else if (ra === rb) ra else s.join(ra, rb)
+    }
+
+    /**
+     * Run both arms of an undecided `if` from the same state and leave the join of what they did.
+     *
+     * An arm that executes `discard` contributes nothing — the inputs that take it produce no pixel —
+     * and sets [maybeDiscarded]. Arms that leave by different routes cannot be joined into one
+     * continuation, so that is refused rather than approximated.
+     */
+    private fun fork(thenArm: () -> Flow, elseArm: () -> Flow): Flow {
+        val start = save()
+        val fa = thenArm()
+        val afterThen = save()
+        load(start)
+        val fb = elseArm()
+        return when {
+            fa == Flow.DISCARD && fb == Flow.DISCARD -> Flow.DISCARD
+            fa == Flow.DISCARD -> { maybeDiscarded = true; fb }
+            fb == Flow.DISCARD -> { maybeDiscarded = true; load(afterThen); fa }
+            fa != fb -> throw GlslUnsupported(
+                "an undecided branch leaves by two routes ($fa and $fb), which an interval run cannot join"
+            )
+            else -> { mergeWith(afterThen); fa }
+        }
+    }
+
+    /** [fork] for a `?:`: both values, from the same state, joined. */
+    private fun forkValue(yes: () -> V, no: () -> V): V {
+        val start = save()
+        val a = yes()
+        val afterYes = save()
+        load(start)
+        val b = no()
+        mergeWith(afterYes)
+        return s.join(a, b)
     }
 
     /** Write [value] through an lvalue: a variable, a swizzle of one, or a component of one. */

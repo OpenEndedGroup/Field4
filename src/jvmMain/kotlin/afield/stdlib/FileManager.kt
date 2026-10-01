@@ -26,9 +26,10 @@ import java.util.stream.Stream
  * the search roots and taking the first sorted match; and otherwise a plain relative name looked
  * up in the document's `files/` directory, then in the `files/` directory of every workspace
  * project the document belongs to, and then in every directory put on the search list with
- * `FileManager.add(name, dir, search = true)`, in the order they were added.
+ * `FileManager.add(name, dir, search = true)`, in the order they were added; finally, an exact
+ * filename registered with [FileManager.addFile].
  *
- * Resolutions are cached per session and dropped when the named-directory table changes, and a
+ * Resolutions are cached per session and dropped when a directory or file registration changes, and a
  * child path that would escape its root is rejected. Every lookup is appended to the session
  * root's [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] property, trimmed to
  * [FileManager.maxAccessHistoryEntries] — so these calls need an active session or Box context and
@@ -52,7 +53,8 @@ const val FILE_MANAGER_ACCESS_HISTORY_PROPERTY = "fileManagerAccessHistory"
  * paths; `%document/…` and `%project/…`; any name registered with [FileManager.add]; a glob, matched by walking the
  * search roots and taking the **first sorted** match; and otherwise a plain relative name looked for in the
  * document's `files/` directory, then in each workspace project the document belongs to, and then in each directory
- * registered with `search = true` ([FileManager.searchNames], in order). A name found nowhere resolves into the
+ * registered with `search = true` ([FileManager.searchNames], in order), then exact filenames registered
+ * with [FileManager.addFile]. A name found nowhere resolves into the
  * document's `files/`, never into a shared search directory.
  *
  * Two things worth knowing. A resolution is cached only **if the file exists**, so a name you resolve before
@@ -112,7 +114,7 @@ class FieldFileManager internal constructor(private val session: SessionInformat
 
     /**
      * Forgets this session's cached resolutions. Rarely needed: the cache already drops a resolution whose file has
-     * gone, and is cleared wholesale whenever the named-directory table changes.
+     * gone, and is cleared wholesale whenever a directory or file registration changes.
      */
     fun clearCache() {
         resolved.clear()
@@ -128,7 +130,7 @@ class FieldFileManager internal constructor(private val session: SessionInformat
         refreshGlobalStateIfNeeded()
         val cleanSpec = spec.takeIf { it.isNotBlank() } ?: error("FileManager cannot resolve a blank path")
 
-        resolved[cleanSpec]?.takeIf { Files.exists(it.path) }?.let { return it }
+        resolved[cleanSpec]?.takeIf { Files.exists(it.path) && FileManager.fallbackFile(cleanSpec) == null }?.let { return it }
         resolved.remove(cleanSpec)
 
         val resolution = when {
@@ -164,6 +166,9 @@ class FieldFileManager internal constructor(private val session: SessionInformat
         for (root in roots) {
             val candidate = resolveChild(root.path, spec)
             if (Files.exists(candidate)) return FileResolution(candidate, root.source)
+        }
+        FileManager.fallbackFile(spec)?.takeIf { Files.isRegularFile(it) }?.let {
+            return FileResolution(it, "file:$spec")
         }
         return FileResolution(resolveChild(documentFilesDirectory, spec), "document")
     }
@@ -325,6 +330,54 @@ object FileManager {
     private val namedDirectories = ConcurrentHashMap<String, Path>()
     private val searchOrder = mutableListOf<String>()
     private val version = AtomicLong(0)
+    private val fallbackFiles = ConcurrentHashMap<String, Path>()
+
+    init {
+        val location = runCatching {
+            Paths.get(FileManager::class.java.protectionDomain.codeSource.location.toURI())
+        }.getOrNull()
+        location?.let(::bundledSlugExecutable)?.let { addFile("field-slug", it) }
+    }
+
+    /**
+     * Registers an exact bare filename as a process-global fallback after document, project and search directories.
+     * Returns the absolute normalized target. Re-registering replaces it and invalidates session caches.
+     * The target may not exist yet (for an optional helper built later); only regular files answer lookups.
+     * Names may include extensions but cannot be paths, globs, or explicit root selectors.
+     * This does not build, copy or execute the file. Globs do not search these registrations.
+     */
+    fun addFile(name: String, file: Path): Path {
+        validateFileName(name)
+        val target = file.toAbsolutePath().normalize()
+        fallbackFiles[name] = target
+        version.incrementAndGet()
+        return target
+    }
+
+    /** [addFile] with a File target. */
+    fun addFile(name: String, file: File): Path = addFile(name, file.toPath())
+
+    /** [addFile] with a string target; expands a leading `~/`. */
+    fun addFile(name: String, file: String): Path = addFile(name, expandHome(file))
+
+    /** Removes an exact-file fallback and invalidates caches; leaves the target on disk. */
+    fun removeFile(name: String): Boolean {
+        validateFileName(name)
+        val removed = fallbackFiles.remove(name) != null
+        if (removed) version.incrementAndGet()
+        return removed
+    }
+
+    internal fun fallbackFile(name: String): Path? = fallbackFiles[name]
+
+    private fun validateFileName(name: String) {
+        require(name.isNotBlank() && name == name.trim() && name != "." && name != ".." &&
+            name.none { it == '/' || it == '\\' || it == ':' || it == '\u0000' } &&
+            !name.startsWith("%") && !name.startsWith("~") && !hasGlob(name)) {
+            "Invalid FileManager fallback filename '$name'"
+        }
+    }
+
 
     /** How many lookups [FILE_MANAGER_ACCESS_HISTORY_PROPERTY] keeps before dropping the oldest. Applied to the
      * whole list on the next lookup, so lowering it *does* trim the history already recorded. */
@@ -450,7 +503,7 @@ object FileManager {
     val searchNames: List<String>
         get() = synchronized(searchOrder) { searchOrder.toList() }
 
-    /** Clears every session's resolution cache. Registering or removing a named directory already does this. */
+    /** Clears every session's resolution cache. Directory and exact-file registration changes already do this. */
     fun clearCache() {
         synchronized(managers) {
             managers.values.forEach { it.clearCache() }
@@ -541,4 +594,15 @@ private fun expandHome(spec: String): Path {
     } else {
         Paths.get(spec)
     }
+}
+
+// Locate optional build output from the loaded classes/JAR, never from a document or the working directory.
+internal fun bundledSlugExecutable(codeLocation: Path): Path? {
+    var root: Path? = codeLocation.toAbsolutePath().normalize()
+    while (root != null) {
+        val helper = root.resolve("native/field-slug")
+        if (Files.isRegularFile(helper.resolve("build.sh"))) return helper.resolve("build/field-slug")
+        root = root.parent
+    }
+    return null
 }

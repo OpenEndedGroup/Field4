@@ -108,7 +108,7 @@ of needing a special case.
 `node.children` in order, firing on any node carrying `numbers["value"]`), so index *i* here is the
 same leaf as index *i* in `extractParameters()`.
 
-`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-five<!--count:differentiableFnOps-->
+`FnAutoDiff.differentiableOps` is a deliberate **subset** — thirty-eight<!--count:differentiableFnOps-->
 of `OpRegistry`'s 127<!--count:canonicalFnOps--> canonical ops, which `FnOpCoverageTest` prints as
 **27.6%** rather than asking you to trust it:
 

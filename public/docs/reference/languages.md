@@ -4,7 +4,7 @@
 
 Field's small languages, from the host side. A box can be *written* in one of them — a per-box property picks the language and a `BoxExecution` runs it, which is how `datalog`, `forth`, `nano`, `morpho`, `clojure`, `python`, FieldML and the two `remotejs` runtimes work — or a program can be *embedded*, a triple-quoted Kotlin string whose first line names the language and whose contents are compiled on the JVM, which is how RectSL and StackSL work. What is documented below is the Kotlin that either shape hands you: the compiler you give a program to, the result and the diagnostics it gives back, and the bridge a running program calls host values through. The notation itself is on the cheatsheets, and that is where the pictures are. Read `Datalog.kt` first — it is the smallest complete example of the shape all of these have, a value you add source to, query, and then ask `why` of — then `DatalogEngine.kt` for what the implementation underneath actually costs, `StackSL.kt` for the compile-and-diagnose surface both embedded languages share, `ForthInterpreter.kt` and `NanoVM.kt` for the two implementations you can read end to end in a sitting, and `HostBridge.kt` for FieldML's reflective JVM bridge — the file to read before wiring any language to Kotlin values. `dev_docs/` carries the map of what a new language has to touch on the way in, in `small_language_anatomy.md`, which is also the guarded list of which languages exist. The prose, with pictures: [Language extensions](../language_extensions.md) for the route decision, then [Datalog](../datalog.md), [RectSL](../rectsl_cheatsheet.md), [StackSL](../stacksl_cheatsheet.md), [FieldML](../fieldml_cheatsheet.md), [MorphoHDL](../morpho_examples.md), [Nano](../nano_examples.md), [Forth](../forth_examples.md) and [Python](../python.md).
 
-102 source file(s), 2800 public symbol(s), 1236 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+104 source file(s), 2828 public symbol(s), 1250 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -8072,21 +8072,62 @@ every pre-existing caller uses, unchanged.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">fun</span> <span class="nc">GlslShader</span><span class="p">.</span><span class="nf">newInvocation</span><span class="p">(</span><span class="n">initialGlobals</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslInvocation</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L400) | Prepare a shader for repeated invocation over binary32 floats. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">GlslShader</span><span class="p">.</span><span class="nf">newInvocation</span><span class="p">(</span><span class="n">initialGlobals</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">samplers</span><span class="p">:</span> <span class="nc">GlslSamplers</span> <span class="o">=</span> <span class="nc">GlslSamplers</span><span class="p">.</span><span class="nc">REFUSE</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslInvocation</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L512) | Prepare a shader for repeated invocation over binary32 floats. |
 
 ### GlslInvocation { #glslinterpreter-kt-glslinvocation }
 
-[<code class="highlight"><span class="k">class</span> <span class="nc">GlslInvocation</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">machine</span><span class="p">:</span> <span class="nc">GlslMachine</span><span class="p">&lt;</span><span class="nc">GlslValue</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L372)
+[<code class="highlight"><span class="k">class</span> <span class="nc">GlslInvocation</span> <span class="k">internal</span> <span class="k">constructor</span><span class="p">(</span><span class="k">internal</span> <span class="k">val</span> <span class="n">machine</span><span class="p">:</span> <span class="nc">GlslMachine</span><span class="p">&lt;</span><span class="nc">GlslValue</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L484)
 
 One invocation of a shader over binary32 floats — the CPU backend's reference path.
 
 | Declaration | Summary |
 | --- | --- |
-| [<code class="highlight"><span class="k">val</span> <span class="n">discarded</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L375) | True when this invocation executed `discard`. The caller decides what that means. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">global</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslValue</span><span class="o">?</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L378) | Read a global — `outColor` after running `main`, most usefully. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">setGlobal</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">GlslValue</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L381) | Set a global before running, or between runs of the same invocation. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">call</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlslValue</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslValue</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L384) | Call a function by name with already-evaluated arguments. |
-| [<code class="highlight"><span class="k">fun</span> <span class="nf">runMain</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L387) | Run `main()`. Returns whether it completed without `discard`. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">discarded</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L487) | True when this invocation executed `discard`. The caller decides what that means. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">global</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslValue</span><span class="o">?</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L490) | Read a global — `outColor` after running `main`, most usefully. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">setGlobal</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">value</span><span class="p">:</span> <span class="nc">GlslValue</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L493) | Set a global before running, or between runs of the same invocation. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">call</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">args</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">GlslValue</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">GlslValue</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L496) | Call a function by name with already-evaluated arguments. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">runMain</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/GlslInterpreter/#L499) | Run `main()`. Returns whether it completed without `discard`. |
+
+## GlslInterval.kt { #glslinterval-kt }
+
+Interval arithmetic for the GLSL interpreter: a shader run over a whole *region* of `fragUV` at
+once, returning a bound on every colour any pixel in it can produce.
+
+`GlslIntervalScalars` is the third `GlslScalars` instance, beside the binary32 reference and the
+reverse-mode one, so it runs **the emitted GLSL** through the interpreter's one copy of the
+control flow. Nothing about a StackSL word is restated here.
+
+### What is contained
+
+The contract is the one `afield.stdlib.FnInterval` states for `Fn`, moved to binary32: for every
+input inside the intervals, the value the **`Float` reference path** computes lies inside the
+result (or is NaN, and the result says NaN is possible). Each operation is bounded by
+[`FnRangeMath`](function.md#fninterval-kt-fnrangemath) in `Double` and the endpoints rounded *outward* to `Float`. That is sound for the
+correctly rounded operations because rounding to nearest is monotone, and because a `Double`
+product or sum of two floats rounds to `Float` the way the `Float` operation does (the argument
+`GlslAd.kt` makes for its primal). The library transcendentals are already widened by
+[`FnRangeMath`](function.md#fninterval-kt-fnrangemath), and the `Float` path rounds their `Double` result to nearest, which is monotone too.
+
+The composite builtins (`mod`, `fract`, `mix`, `smoothstep`, `dot`, `length`) are bounded as the
+`Float` path spells them, operation by operation, so the bound is of *that* arithmetic and not of
+a real-number ideal. `fract(x)` gets the one structural rule `FnInterval` also has: inside one unit
+cell it is endpoint-exact, across a boundary it is `[0, 1]`.
+
+### Branches
+
+A comparison of two overlapping intervals is neither true nor false. `truth` answers
+`GlslTruth.UNKNOWN`, and `GlslMachine` then runs **both** arms from the same state and joins what
+each wrote, with `join`. The machine refuses (with [`GlslUnsupported`](languages.md#glslvalue-kt-glslunsupported)) the cases a join cannot
+express: arms that leave by different routes (one returns, the other falls through), and a loop
+whose condition is undecided. An integer index must be a single value.
+
+### What is refused
+
+Builtins with no rule here are refused by name, never guessed: textures, `cross`, `reflect`,
+`refract`, `faceforward`, the matrix builtins, `tan`, the inverse trigonometric and hyperbolic
+functions except `tanh`, and the bit operators.
+
+`src/jvmMain/kotlin/afield/stacksl/cpu/GlslInterval.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/GlslInterval/)
 
 ## GlslParser.kt { #glslparser-kt }
 
@@ -8416,6 +8457,67 @@ What a fit produced, including the program a human can paste back into a box.
 | [<code class="highlight"><span class="k">val</span> <span class="n">lossRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L323) | How far the loss fell, as a ratio. 1.0 means the descent achieved nothing. |
 | [<code class="highlight"><span class="k">val</span> <span class="n">saturatedFraction</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L326) | Fraction of RGB samples clamped at the seed — see [`StackSLFit`](languages.md#stackslfit-kt-stackslfit)'s second caveat. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">report</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLFit/#L329) | One line per moved literal: what the human wrote, and what the fit made of it. |
+
+## StackSLIntervals.kt { #stackslintervals-kt }
+
+`src/jvmMain/kotlin/afield/stacksl/cpu/StackSLIntervals.kt` — [read the source](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/)
+
+### StackSLRegionBound { #stackslintervals-kt-stackslregionbound }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLRegionBound</span><span class="p">(</span><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">maybeNaN</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">maybeDiscarded</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">refusal</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L12)
+
+A certified bound on the colour of every pixel in a rectangle of a fragment shader's output.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">lo</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">hi</span><span class="p">:</span> <span class="nc">FloatArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maybeNaN</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maybeDiscarded</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">refusal</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">certified</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L19) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Float</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L22) | The widest channel's `hi - lo`, or infinity when refused. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">contains</span><span class="p">(</span><span class="n">rgba</span><span class="p">:</span> <span class="nc">FloatArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">Boolean</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L25) | Whether `rgba` (one pixel) lies inside, channel by channel. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L28) |  |
+
+### StackSLTile { #stackslintervals-kt-stacksltile }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLTile</span><span class="p">(</span><span class="k">val</span> <span class="n">x</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">y</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">bound</span><span class="p">:</span> <span class="nc">StackSLRegionBound</span><span class="p">,</span> <span class="k">val</span> <span class="n">settled</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">)</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L35)
+
+One square of a `StackSLIntervals.certifiedTiles` subdivision: pixels `[x, x+size) × [y, y+size)`.
+
+### StackSLIntervals { #stackslintervals-kt-stackslintervals }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLIntervals</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L48)
+
+Interval evaluation of StackSL programs: what a shader can output over a rectangle of pixels, as a proof rather than a render. The rules are in `GlslInterval.kt`; this is the face a box or a test uses.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">enclosePixels</span><span class="p">(</span><span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">x0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y0</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">x1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">y1</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">width</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">height</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">uniforms</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLRegionBound</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L55) | Bound every pixel `x0..x1 × y0..y1` (inclusive) of a `width` × `height` render of `glsl`, a complete fragment shader writing `outColor` from `fragUV`, as `StackSLCpu.renderFragment` runs it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">certifiedTiles</span><span class="p">(</span><span class="n">glsl</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">1f</span> <span class="p">/</span> <span class="mi">255f</span><span class="p">,</span> <span class="n">minSize</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">uniforms</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">GlslValue</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nf">emptyMap</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">onEnclosure</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Unit</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLTile</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L102) | Split a `dim` × `dim` render of `glsl` into squares until each one's colour is pinned to within `tolerance` in every channel, or the square is `minSize` pixels across. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tilePicture</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">128</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">2f</span> <span class="p">/</span> <span class="mi">255f</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTilePicture</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L132) | Render `program` through the gallery's still template at `dim` square, prove it into `certifiedTiles`, and return both as one picture. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">tilePng</span><span class="p">(</span><span class="n">tiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLTile</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">)</span><span class="p">:</span> <span class="nc">ByteArray</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L146) | The tiles drawn as a picture: each settled tile filled with its proven colour and outlined, each unsettled pixel shown magenta. The quadtree *is* the proof, so its shape shows where the program is simple and where it is not. |
+
+### StackSLTilePicture { #stackslintervals-kt-stacksltilepicture }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLTilePicture</span><span class="p">(</span><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span><span class="p">,</span> <span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLTile</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">render</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="k">val</span> <span class="n">enclosures</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">millis</span><span class="p">:</span> <span class="nc">Long</span><span class="p">)</span> <span class="p">:</span> <span class="n">afield</span><span class="p">.</span><span class="nc">ToHTML</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L174)
+
+A StackSL program's render beside its proof: the `Float` render on the left, the `StackSLIntervals.certifiedTiles` quadtree on the right, and a line of counts under both.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">program</span><span class="p">:</span> <span class="nc">String</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tolerance</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">tiles</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLTile</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">render</span><span class="p">:</span> <span class="nc">CpuRaster</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">enclosures</span><span class="p">:</span> <span class="nc">Int</span></code> | Interval runs the subdivision took, one per tile it visited. |
+| <code class="highlight"><span class="k">val</span> <span class="n">millis</span><span class="p">:</span> <span class="nc">Long</span></code> |  |
+| [<code class="highlight"><span class="k">val</span> <span class="n">settledPixels</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L186) | Pixels inside a settled tile: proven to within `tolerance` without being rendered. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">provenByRegion</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L192) | Pixels inside a settled tile **larger than one pixel** — the ones proven by a region rather than by evaluating them one at a time, which is the saving the quadtree buys. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">refusal</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L195) | Tiles the subdivision gave up on because a rule was missing, with the first reason. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toHTML</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stacksl/cpu/StackSLIntervals/#L197) |  |
 
 ## StackSLWires.kt { #stackslwires-kt }
 

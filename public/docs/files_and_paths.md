@@ -41,9 +41,11 @@ In order, first existing file winning:
 
 1. `files/` inside the document folder;
 2. `files/` inside each workspace project the document belongs to, which lives at
-   `_projects/<project>/files/` in the workspace.
+   `_projects/<project>/files/` in the workspace;
+3. directories registered with `FileManager.add(name, directory, search = true)`, in registration order;
+4. an exact filename registered with `FileManager.addFile(name, target)`.
 
-If neither has it, you still get a path back: the one the name *would* have inside the document's
+If none has it, you still get a path back: the one the name *would* have inside the document's
 `files/`. That is what makes writing a new file work.
 
 ```diffstatic {data-lang=kotlin}
@@ -95,6 +97,31 @@ FileManager.remove("renders")            // unregisters; nothing on disk is touc
 A name has to look like an identifier: letters, digits, `_` and `-`, not starting with a digit. A
 leading `%` or `$` is stripped for you. `document` and `project` are reserved, since the resolver
 owns them.
+
+## Fallback files
+
+Register an individual file when its friendly name differs from its installed location:
+
+```diffstatic {data-lang=kotlin}
+FileManager.addFile("my-helper", executablePath) // Path, File, or String
+val helper = "my-helper".file
+FileManager.removeFile("my-helper") // unregisters without deleting anything
+```
+
+These registrations are process-global. Document, project and search-directory copies take
+precedence, including copies added after a previous fallback lookup. Re-registering a name
+replaces its target; removing it invalidates cached resolutions. The access history records
+`file:my-helper` when the fallback supplies the answer.
+
+A registration is an exact bare filename, including any extension, rather than a path or glob.
+The target may be built later: missing targets and directories do not answer lookups, and an
+unresolved name still returns the document-local path for writing. Registration does not build
+or execute anything. Globs and explicit `%document/` or `%project/` paths bypass this table.
+
+Field registers `field-slug` at `native/field-slug/build/field-slug` relative to the checkout
+containing its loaded classes or JAR. Build it once with `bash native/field-slug/build.sh`;
+then use `"field-slug".file` from any document. No working-directory lookup is involved.
+A distribution without that native helper directory needs an explicit `addFile` registration.
 
 ## Globs
 
