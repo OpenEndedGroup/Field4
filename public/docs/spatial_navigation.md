@@ -135,10 +135,9 @@ while (tries < 24 && !report.contains("overlay-settled")) {
 // Worth knowing how this reports: the runner appends its own ui.shotClip after this script, and a
 // thrown error here does not stop it -- the REPL runs the next top-level statement anyway, and the
 // error lands in `data.output` of the macro reply, which the runner's error extractor does not read
-// (it only scans `events`). So a give-up here does not fail the build. What it does do is leave the
-// crop marker absent, and shotClip with a missing selector falls back to a full-page shot: the
-// symptom is a 4400x5600 PNG instead of this figure's ~1300x1100, which is hard to miss and hard to
-// mistake for a good capture.
+// (it only scans `events`). So a give-up here does not fail the build by itself. What it does do is
+// leave the crop marker absent, and shotClip with a missing selector writes nothing and fails the
+// drive op, so the build reports the selector instead of committing a full-window PNG.
 if (!report.contains("overlay-settled")) {
     error("spatial navigation overlay never settled after " + tries + " tries: " + report)
 }

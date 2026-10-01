@@ -2516,22 +2516,30 @@ class DocsUiDriver internal constructor(
     }
 
     /**
+     * Selectors a [shotClip] could not find, in call order. The `drive` op reads this after the
+     * script and fails the capture, because a thrown error inside a drive fragment does not by
+     * itself stop the REPL from running the next statement.
+     */
+    val clipFailures: MutableList<String> = mutableListOf()
+
+    /**
      * Screenshot, clipped to a CSS selector's bounds, to [path] *now*. Use for overlays that
-     * close on blur (command palette, popups, AI panels) — capture while still open. Falls
-     * back to a full-page shot if the selector isn't present.
+     * close on blur (command palette, popups, AI panels) — capture while still open.
+     *
+     * If the selector matches nothing visible, no file is written and this throws. It used to
+     * fall back to a full-page shot, which is how `funFeatures.md`'s layers figure shipped as a
+     * 4400x5600 picture of the whole window with no palette in it.
      */
     fun shotClip(path: String, selector: String, padding: Double = 8.0) {
-        runBlocking(playwrightDispatcher) {
+        val clip = runBlocking(playwrightDispatcher) {
             val page = pageProvider()
-            val p = java.nio.file.Path.of(path)
-            val clip = computeSelectorClip(page, selector, padding)
-            if (clip != null) {
-                captureClippedScreenshot(page, p, clip)
-            } else {
-                p.parent?.let { Files.createDirectories(it) }
-                page.screenshot(Page.ScreenshotOptions().setPath(p))
-                postProcessScreenshot(p)
+            computeSelectorClip(page, selector, padding)?.also { clip ->
+                captureClippedScreenshot(page, java.nio.file.Path.of(path), clip)
             }
+        }
+        if (clip == null) {
+            clipFailures += selector
+            error("shotClip: selector '$selector' matched nothing visible; no screenshot written to $path")
         }
     }
 

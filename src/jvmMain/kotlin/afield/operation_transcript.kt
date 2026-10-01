@@ -1603,6 +1603,10 @@ object OperationTranscript {
                     checkedMacroExecution(target, exec, collect) { reply ->
                         runBlocking { target.ke.executeFragmentAndWait(target, exec, reply) }
                     }
+                    check(driver.clipFailures.isEmpty()) {
+                        "drive: clip selector(s) matched nothing visible, so no clipped still was written: " +
+                            driver.clipFailures.joinToString(", ")
+                    }
                 } finally {
                     if (recorder != null && videoPath != null) {
                         val frames = runBlocking { recorder.stopAndEncode(java.nio.file.Path.of(videoPath)) }
