@@ -569,6 +569,10 @@ class PassTest(unittest.TestCase):
         self.assertIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
         self.assertTrue((self.repo.root / "public/docs/unrelated.md").is_file())
         self.assertTrue(self.status()["worktree"]["landed"])
+        after = self.status()["worktree"]
+        # main's own new file arrived through the landing merge; it is not the pass's change.
+        self.assertEqual(after["changed"], [], "a landed pass has no changes of its own left")
+        self.assertEqual(after["ahead"], 0)
 
         self.assertEqual(self.cli("pass", "finish"), 0)
         self.assertFalse(self.worktree.exists())

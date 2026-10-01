@@ -2209,6 +2209,18 @@ def latest_progress(worktree: Path) -> dict[str, Any] | None:
     return progress
 
 
+def pass_fork_point(wt: Git, state: dict[str, Any]) -> str:
+    """Where the pass branch last met its base: what "the pass's own changes" are measured from.
+
+    Not `baseCommit`, the commit the pass started from. Landing merges the base into the pass
+    branch first, and from then on everything the base gained meanwhile (other sessions' work, a
+    whole afternoon of it on 2026-10-01) would show as the pass's own change. The merge base moves
+    forward with each such merge, so before landing this is the pass's work and after it, nothing.
+    """
+    fork = wt.run("merge-base", "HEAD", state["base"], check=False).strip()
+    return fork or state["baseCommit"]
+
+
 def changed_files(wt: Git, base_commit: str) -> list[dict[str, Any]]:
     """Everything that differs from the pass's base, committed on the branch or not, untracked too."""
     files: dict[str, dict[str, Any]] = {}
@@ -2257,11 +2269,11 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
         base = state["base"]
         result["worktree"] = {
             "exists": True, "head": wt.head(),
-            "ahead": _int(wt.run("rev-list", "--count", f"{state['baseCommit']}..HEAD", check=False).strip()),
-            "baseAdvanced": _int(git.run("rev-list", "--count", f"{state['baseCommit']}..{base}", check=False).strip()),
+            "ahead": _int(wt.run("rev-list", "--count", f"{base}..HEAD", check=False).strip()),
+            "baseAdvanced": _int(wt.run("rev-list", "--count", f"HEAD..{base}", check=False).strip()),
             "landed": subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", base], cwd=wt.root).returncode == 0
                       and wt.head() != state["baseCommit"],
-            "changed": changed_files(wt, state["baseCommit"]),
+            "changed": changed_files(wt, pass_fork_point(wt, state)),
             "uncommitted": len([p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]),
             "handoffDocuments": sorted(p.relative_to(wt.root).as_posix() for p in (wt.root / HANDOFF_DIR).glob("*.md")
                                        if p.name != "README.md") if (wt.root / HANDOFF_DIR).is_dir() else [],
@@ -2282,7 +2294,8 @@ def safe_relative(path: str) -> str:
 def pass_diff(git: Git, path: str | None) -> list[dict[str, Any]]:
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
-    files = changed_files(wt, state["baseCommit"])
+    fork = pass_fork_point(wt, state)
+    files = changed_files(wt, fork)
     if path:
         path = safe_relative(path)
         files = [f for f in files if f["path"] == path]
@@ -2291,7 +2304,7 @@ def pass_diff(git: Git, path: str | None) -> list[dict[str, Any]]:
             text = (wt.root / item["path"]).read_text(encoding="utf-8", errors="replace")
             item["patch"] = f"--- /dev/null\n+++ b/{item['path']}\n" + "".join(f"+{line}\n" for line in text.split("\n"))
         else:
-            item["patch"] = wt.run("diff", state["baseCommit"], "--", item["path"], check=False)
+            item["patch"] = wt.run("diff", fork, "--", item["path"], check=False)
         if len(item["patch"]) > 400_000:
             item["patch"] = item["patch"][:400_000] + "\n… (truncated; see git diff in the worktree)\n"
     return files
@@ -2302,9 +2315,10 @@ def pass_discard(git: Git, store: Store, path: str) -> None:
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
     path = safe_relative(path)
-    tracked_at_base = bool(wt.run("ls-tree", "--name-only", state["baseCommit"], "--", path, check=False).strip())
+    fork = pass_fork_point(wt, state)
+    tracked_at_base = bool(wt.run("ls-tree", "--name-only", fork, "--", path, check=False).strip())
     if tracked_at_base:
-        wt.run("restore", f"--source={state['baseCommit']}", "--staged", "--worktree", "--", path)
+        wt.run("restore", f"--source={fork}", "--staged", "--worktree", "--", path)
     else:
         with contextlib.suppress(FileNotFoundError):
             (wt.root / path).unlink()
@@ -2385,7 +2399,7 @@ def uv_command() -> list[str]:
 def pass_rebuild(git: Git, mode: str, all_pages: bool) -> int:
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
-    pages = sorted({f["path"][len(DOCS_SOURCE_DIR) + 1:] for f in changed_files(wt, state["baseCommit"])
+    pages = sorted({f["path"][len(DOCS_SOURCE_DIR) + 1:] for f in changed_files(wt, pass_fork_point(wt, state))
                     if f["path"].startswith(DOCS_SOURCE_DIR + "/") and f["path"].endswith(".md") and f["status"] != "deleted"})
     command = uv_command() + ["run", "--project", str(wt.root), "--group", "docs", "python", "tools/build_zensical_docs.py",
                               "--no-source-pages"]
@@ -2441,7 +2455,7 @@ def pass_commit(git: Git, store: Store) -> int:
         print("nothing to commit", flush=True)
         return 0
     wt.run("add", "-A")  # .field-backdoor/ (run logs) is gitignored
-    message = pass_commit_message(state, store.notes(), changed_files(wt, state["baseCommit"]))
+    message = pass_commit_message(state, store.notes(), changed_files(wt, pass_fork_point(wt, state)))
     print(message, flush=True)
     print("committing; the pre-commit guard runs Gradle and takes a few minutes …", flush=True)
     result = subprocess.run(["git", "commit", "-F", "-"], cwd=wt.root, input=message, text=True, check=False)
