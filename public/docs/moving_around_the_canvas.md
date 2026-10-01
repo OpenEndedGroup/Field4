@@ -1,11 +1,27 @@
-# Spatial Navigation
+# Moving around the canvas
+
+A Field document is usually bigger than the window. There are three ways to move around it: pan and
+zoom with the mouse or trackpad; step from box to box with the keyboard, by tapping `Cmd` twice and
+holding it; or jump to one of nine views you have saved. All three change what you are looking at
+and never the document itself.
+
+## Panning and zooming
+
+- **Scroll** with a mouse wheel or two fingers on a trackpad to pan the canvas. Over a box's output
+  area the scroll goes to the output instead.
+- **Drag with the middle mouse button** to pan.
+- **Hold `Ctrl` or `Cmd` while scrolling**, or pinch on a trackpad, to zoom about the pointer: the
+  point under it stays put. The zoom runs from 10% to 400%.
+- **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
+  where it is.
+
+## Stepping between boxes
 
 With a box selected, tap `Cmd` twice and hold it down on the second tap: Field outlines the box you
-are on and every box an arrow key can reach from it. That is one of the two ways to move the
-selection around a document without touching the mouse. The other is a function key, which jumps to
-one of nine views you have saved. Both leave you with a box selected and its code in the editor.
+are on and every box an arrow key can reach from it. That moves the selection around a document
+without touching the mouse, and leaves you with a box selected and its code in the editor.
 
-## Cmd Cmd and hold
+### Cmd Cmd and hold
 
 1. Select a box.
 2. Tap `Cmd` twice quickly, holding it down on the second tap.
@@ -24,7 +40,7 @@ does clicking away from the window.
 Letting go of the trigger key puts the focus in the editor of whichever box you landed on, ready to
 type.
 
-## What the overlay draws
+### What the overlay draws
 
 While the mode is up, Field draws over the canvas:
 
@@ -143,7 +159,7 @@ if (!report.contains("overlay-settled")) {
 }
 ```
 
-## How the four are chosen
+### How the four are chosen
 
 Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
 further to the left than it is above counts as west, and so on. Within each direction it takes the
@@ -172,16 +188,12 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 - the property that was open in Monaco
 - the editor cursor line and column
 
-## Slots inside the overlay
-
 Bring up the navigation overlay and every box on screen that a slot points at wears an `F` chip
 with that slot's number. A box can wear more than one if several slots were saved on it. So the
 arrows tell you what is next to you, and the chips tell you which of the nine keys reaches what
 is not.
 
 The number on a chip is a slot, so `F3` means the view saved in slot 3, reached with `Shift+F3`.
-
-## Persistence
 
 Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
 document state. They survive a reload, and they travel with the document rather than with your
@@ -190,7 +202,8 @@ browser session.
 ## Limits
 
 - one target per direction, so the overlay never offers a choice between two boxes on the same side
-- a slot stores a single selected box, so a multi-selection is not restored as a set
+- a slot stores the pan position but not the zoom level, and a single selected box, so a
+  multi-selection is not restored as a set
 - there are nine slots and the numbering is fixed
 - restoring a slot changes the view and never the document content
 - restoring a slot you have not set yet shows a notification and leaves the view alone

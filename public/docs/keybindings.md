@@ -59,7 +59,7 @@ Three things are *not* in the file:
 - **Gestures.** Alt-click to launch a box, Alt-drag to "strum" several, Opt+drag, and the
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
   `Shift Shift` to open anything from the canvas, `Cmd Cmd`-and-hold for
-  [spatial navigation](spatial_navigation.md). These are not single chords, so there is
+  [stepping between boxes](moving_around_the_canvas.md#stepping-between-boxes). These are not single chords, so there is
   nothing in the grammar below to write them with; they are hard-wired.
 - **Monaco's own editor bindings.** Autocomplete (`Ctrl+Space`), undo, find, multi-cursor
   and the rest belong to the text editor Field embeds, not to Field's command list.

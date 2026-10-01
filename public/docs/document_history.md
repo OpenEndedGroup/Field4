@@ -77,5 +77,5 @@ If a document has no backups yet, the history page will have little or nothing t
 ## Related features
 
 - Use the [History Lens](history_lens.md) to scrub a single line through its versions without leaving the editor.
-- Use [Spatial Navigation](spatial_navigation.md) to return to a saved working view without changing content.
+- Use a [bookmark](moving_around_the_canvas.md#bookmarks) to return to a saved working view without changing content.
 - Use [Interactive Guides](interactive_guides.md) when you want to explain a document state instead of restoring one.

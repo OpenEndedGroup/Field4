@@ -64,7 +64,10 @@ nav:
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
   - Working in a Document:
-    - Spatial Navigation: spatial_navigation.md
+    # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
+    # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
+    # Spatial Navigation page (spatial_navigation.md), which was judged not worth a page of its own.
+    - Moving Around the Canvas: moving_around_the_canvas.md
     - Snapping: snapping.md
     - Drawing and Notation: drawing_and_notation.md
     - File Management: files_and_paths.md

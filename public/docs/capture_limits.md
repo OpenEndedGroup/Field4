@@ -118,7 +118,7 @@ A capture can be correctly sized, correctly timed, and still of the wrong thing.
   the target can contain its neighbours' panels too (`dev_docs/chart_bad_separation.md`).
 - **The box capture path pans, and panning drops the selection.** A figure whose subject *is* the
   selection — a navigation highlight, say — cannot use that path at all, which is why
-  [Spatial Navigation](spatial_navigation.md) drives its own capture.
+  [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) drives its own capture.
 
 ---
 
@@ -229,7 +229,7 @@ Three things make this cheap enough to be a habit:
 | outputs closed with no client → a box-handle-sized capture, `ok: true` | `dev_docs/MARF_DEMO.md`, `dev_docs/OUTPUT_PANEL_SIZING.md`, `dev_docs/path_tracer_instrument.md` |
 | stale selection blurs a box capture; repeats are flaky | `dev_docs/chart_primitive.md` |
 | neighbouring panels inside the clip | `dev_docs/chart_bad_separation.md` |
-| box capture pans and drops the selection | [Spatial Navigation](spatial_navigation.md) |
+| box capture pans and drops the selection | [Moving around the canvas](moving_around_the_canvas.md#what-the-overlay-draws) |
 | per-frame vertex re-upload and property read time out the native capture | `dev_docs/SKINNED_CHARACTERS.md`, `dev_docs/GPU_SKINNING.md` |
 | `applyToMesh` throws from a `main` | `dev_docs/GPU_SKINNING.md` |
 | no native-window video on any agent-facing path | `dev_docs/DOCS_RUNNER_GPU_CAPTURES.md`, [Pattern → particles](chain_pattern_particles.md) |
