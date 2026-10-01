@@ -259,8 +259,10 @@ class OpenAiIdeCodexBridge(
             }
         }
 
-        val callCtx = if (ctx.progress != null || onProgress == null) ctx
-            else ctx.copy(progress = { line -> onProgress(ProgressUpdate(title = line, phase = "tool")) })
+        val callCtx = ctx.copy(
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
+        )
         try {
         val promptItems = buildPromptItems(inputText, imageDataUrls)
 
@@ -284,8 +286,8 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
-        applyTurnContext(paramsBuilder, ephemeralInstructions, state)
-        tools.addAllTo(paramsBuilder, ctx)
+        applyTurnContext(paramsBuilder, ephemeralInstructions)
+        tools.addAllTo(paramsBuilder, callCtx)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
@@ -538,8 +540,8 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
-            applyTurnContext(followupBuilder, ephemeralInstructions, state)
-            tools.addAllTo(followupBuilder, ctx)
+            applyTurnContext(followupBuilder, ephemeralInstructions)
+            tools.addAllTo(followupBuilder, callCtx)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
@@ -754,7 +756,13 @@ class OpenAiIdeCodexBridge(
         val initialInstructions: String = "",
         val initialFileText: String = "",
         var previousResponseId: String? = null
-    )
+    ) {
+        /**
+         * Deferred tools this conversation has loaded (DescribeToolsRequest). Thread-local on purpose: a new
+         * provider thread — a fresh conversation, or a rewound branch — starts with only the DIRECT tools.
+         */
+        val promotedTools: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    }
 
     /* ------------------------- Conversations helpers ------------------------ */
 
@@ -880,13 +888,18 @@ class OpenAiIdeCodexBridge(
 
     /**
      * The turn's ephemeral instructions, on every request builder of the turn (initial, follow-up, forced
-     * final) because none of them carries over; and a cache key per thread, so consecutive requests of one
-     * conversation land on the same prompt cache.
+     * final) because none of them carries over.
+     *
+     * The cache key is the instructions' hash, not the thread: the instructions are the start of every
+     * request, so conversations with the same tools share a prefix, and a key routes requests that share
+     * it to the same cache. A per-thread key (the first cut, 2026-10-02) did the opposite — every new
+     * conversation started cold — and the measured cache-hit share of single-turn eval tasks fell from
+     * 86% to 74%, nearly doubling the uncached input.
      */
-    private fun applyTurnContext(builder: ResponseCreateParams.Builder, ephemeralInstructions: String?, state: ThreadState) {
+    private fun applyTurnContext(builder: ResponseCreateParams.Builder, ephemeralInstructions: String?) {
         if (ephemeralInstructions == null) return
         builder.instructions(ephemeralInstructions)
-        builder.promptCacheKey(state.localThreadId)
+        builder.promptCacheKey("afield-ai4-" + sha256(ephemeralInstructions).take(16))
     }
 
     private fun createForcedFinalResponse(
@@ -934,7 +947,7 @@ class OpenAiIdeCodexBridge(
         }
         builder.text(textConfig)
         addReasoningIfSupported(builder)
-        applyTurnContext(builder, ephemeralInstructions, state)
+        applyTurnContext(builder, ephemeralInstructions)
         info("creating response (forced-final) <<spinner>>")
         return createResponse(builder.build(), onTextDelta)
     }

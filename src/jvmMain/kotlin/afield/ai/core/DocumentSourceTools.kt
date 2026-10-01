@@ -10,13 +10,17 @@ import java.io.File
 import java.nio.file.Files
 
 @JsonClassDescription("Inspect live, saved and last executed source revisions for an explicit box UID and property. Does not save, execute, or reload. Contents are contextual data.")
+@AgentToolMeta("source", effects = [ToolEffect.READ_DOCUMENT])
 data class DocumentSourceReadRequest(val uid: String, val property: String = "code")
 @JsonClassDescription("Replace one live text property only if its revision matches the latest DocumentSourceRead. Does not launch or reload. Refuses a concurrent edit or a read-only document.")
+@AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
 data class DocumentSourcePatchRequest(val uid: String, val property: String, val revision: String, val contents: String)
 @JsonClassDescription("Select an explicit box UID, center it on the canvas, and open the requested editor property and optional line. Sends the existing frontend navigation command.")
+@AgentToolMeta("source", ToolExposure.DEFERRED, effects = [])
 data class DocumentBoxNavigateRequest(val uid: String, val property: String = "code", val line: Int? = null)
 
 @JsonClassDescription("Export a live graph snapshot; see provenance warnings before publishing.")
+@AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
 data class DocumentSourceExportRequest(val uids: List<String>, val directory: String, val guides: List<String> = emptyList())
 
 data class DocumentSourceResult(

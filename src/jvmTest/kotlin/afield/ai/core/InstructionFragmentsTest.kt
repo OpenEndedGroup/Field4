@@ -69,7 +69,9 @@ class InstructionFragmentsTest {
         val mismatches = mutableListOf<String>()
         for ((name, ctx) in contexts()) for (lang in languages) for (mode in InstructionMode.entries) {
             val legacy = legacyBuildDynamicInstructions(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
-            var joined = buildInstructionFragments(mode, lang, prompt, "Unresolved reference: foo", 7, ctx).joinToString("") { it.text }
+            // Deliberate difference 2 (2026-10-02): the tool catalogue (deferred and extension tools) is new.
+            var joined = buildInstructionFragments(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
+                .filter { it.source != "tools.catalogue" }.joinToString("") { it.text }
             // The one deliberate difference (2026-10-02): a chat turn no longer repeats the request inside its
             // instructions, because chatGeneral's message ends with it anyway. Put it back and nothing else differs.
             if (mode == InstructionMode.Chat) {
@@ -89,7 +91,7 @@ class InstructionFragmentsTest {
     fun theRequestIsDurableOnlyWhereItAppearsNowhereElse() {
         val ctx = ToolExecutionContext()
         fun durable(mode: InstructionMode) =
-            buildInstructionFragments(mode, KOTLIN_SCRIPT, prompt, "boom", 3, ctx).filter { it.retention == Retention.DURABLE }.map { it.source }
+            buildInstructionFragments(mode, KOTLIN_SCRIPT, prompt, "boom", 3, ctx).filter { it.retention == FragmentRetention.DURABLE }.map { it.source }
         assertEquals(listOf("core.request"), durable(InstructionMode.Inline))
         assertEquals(listOf("core.request"), durable(InstructionMode.Error))
         assertEquals(emptyList(), durable(InstructionMode.General))

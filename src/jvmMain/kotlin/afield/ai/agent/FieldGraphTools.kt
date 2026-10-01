@@ -49,9 +49,11 @@ import java.util.concurrent.TimeoutException
 // =============================================================================================
 
 @JsonClassDescription("List every box in this Field document: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.READ_DOCUMENT])
 data class ListBoxesRequest(val unused: Int = 0)
 
 @JsonClassDescription("Create a new box in this Field document. Optionally give it Kotlin code (not run until RunBox/LaunchBox) and a parent box (uid or name) to connect it under. Returns the new box's uid.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class NewBoxRequest(
     @JsonPropertyDescription("Box name, shown on the canvas. Prefer unique names; tools accept a unique name wherever they take a box.")
     val name: String,
@@ -62,9 +64,11 @@ data class NewBoxRequest(
 )
 
 @JsonClassDescription("Delete a box (and anything nested in it) from this Field document.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class DeleteBoxRequest(val box: String)
 
 @JsonClassDescription("Set a text property on a box, most often `code`. Does not run it: call RunBox or LaunchBox afterwards.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class SetBoxPropertyRequest(
     val box: String,
     @JsonPropertyDescription("Property name; `code` for Kotlin source, `name` to rename.")
@@ -73,6 +77,7 @@ data class SetBoxPropertyRequest(
 )
 
 @JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; matches are counted without overlap; `occurrence` N = the Nth match, 0 = every match; the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts `replacement` before startLine instead of replacing). Recorded like SetBoxPropertyRequest. Does not run it.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class PatchBoxTextRequest(
     val box: String,
     val property: String = "code",
@@ -87,15 +92,19 @@ data class PatchBoxTextRequest(
 )
 
 @JsonClassDescription("Read a text property of a box, most often `code`.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.READ_DOCUMENT])
 data class GetBoxPropertyRequest(val box: String, val property: String = "code")
 
 @JsonClassDescription("Connect two boxes: `child` becomes a child of `parent`. Children inherit properties and can see their parents' context.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class ConnectBoxesRequest(val parent: String, val child: String)
 
 @JsonClassDescription("Remove the parent→child connection between two boxes.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.MUTATE_DOCUMENT])
 data class DisconnectBoxesRequest(val parent: String, val child: String)
 
 @JsonClassDescription("Run a box's code once to completion (like the Run command) and wait for its verdict. Returns success=false with compile/runtime errors when it fails, plus what it printed and displayed during the run. If `code` is given it replaces the box's code first.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.EXECUTE_CODE])
 data class RunBoxRequest(
     val box: String,
     @JsonPropertyDescription("Optional replacement source; omitted or blank = run the box's current code.")
@@ -104,6 +113,7 @@ data class RunBoxRequest(
 )
 
 @JsonClassDescription("Launch a box (like the Launch command): run its setup, which may start loops or animations that keep running. Waits for setup to complete or fail, then reports whether it is still running and what it said so far.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.EXECUTE_CODE, afield.ai.core.ToolEffect.CONTROL_RUNTIME])
 data class LaunchBoxRequest(
     val box: String,
     val code: String? = null,
@@ -113,9 +123,11 @@ data class LaunchBoxRequest(
 )
 
 @JsonClassDescription("Stop a running box and everything it launched.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.CONTROL_RUNTIME])
 data class StopBoxRequest(val box: String)
 
 @JsonClassDescription("Read what a box has printed, displayed, or reported since a marker (0 = everything retained). Optionally wait until the output contains some text. Returns a new marker to pass next time.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.READ_DOCUMENT])
 data class ReadBoxOutputRequest(
     val box: String,
     @JsonPropertyDescription("Return entries after this marker; use the marker from a previous RunBox/LaunchBox/ReadBoxOutput result.")
@@ -127,6 +139,7 @@ data class ReadBoxOutputRequest(
 )
 
 @JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture, attached for you to inspect, with measured facts (size, dominant colours, how much of it is not background). Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. Printed text is not in the picture: read that with ReadBoxOutputRequest.")
+@afield.ai.core.AgentToolMeta("graph", effects = [afield.ai.core.ToolEffect.CAPTURE_IMAGE])
 data class ViewBoxOutputRequest(
     val box: String,
     @JsonPropertyDescription("Milliseconds to wait before capturing, for a late script or an animation; clamped to 0..5000. 0 = a short default.")

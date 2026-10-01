@@ -180,7 +180,12 @@ class AnthropicBridge(
             }
         }
 
-        val toolDefs = buildToolDefs(ctx).let { if (tc != null) withToolCacheBreakpoint(it) else it }
+        val callCtx = ctx.copy(
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line)) } },
+        )
+        // Rebuilt each round: a DescribeToolsRequest in one round adds schemas to the next.
+        fun toolDefs() = buildToolDefs(callCtx).let { if (tc != null) withToolCacheBreakpoint(it) else it }
         val commentary = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
@@ -199,11 +204,9 @@ class AnthropicBridge(
         }
         var toolElapsedMs = 0L
         var activePhase = "model:initial"
-        val callCtx = if (ctx.progress != null || onProgress == null) ctx
-            else ctx.copy(progress = { line -> onProgress(LlmProgressUpdate(line)) })
         try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(systemBlocks, messages, toolDefs, maxOutputTokens, cacheTail = tc != null))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null))
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
@@ -309,7 +312,7 @@ class AnthropicBridge(
             }
             if (!includeTools) hitToolRoundCap = true
             activePhase = if (includeTools) "model:followup" else "model:forced_final"
-            response = createMessage(buildParams(systemBlocks, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens, cacheTail = tc != null))
+            response = createMessage(buildParams(systemBlocks, messages, if (includeTools) toolDefs() else emptyList(), maxOutputTokens, cacheTail = tc != null))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()

@@ -45,6 +45,7 @@ import kotlinx.serialization.json.put
  * You collect these separately and keep code output clean.
  */
 @JsonClassDescription("Assistant commentary or design notes about the code.")
+@AgentToolMeta("core", effects = [])
 data class Commentary(val text: String)
 
 /**
@@ -60,6 +61,7 @@ data class ContextAttachment(
 
 /** Tool: list available attachment filenames (+ languages) for this request. */
 @JsonClassDescription("List all attached context files available for this request.")
+@AgentToolMeta("context", effects = [ToolEffect.READ_DOCUMENT])
 data class ListAttachmentsRequest(val unused: Int = 0)
 
 data class ListAttachmentsResult(val attachments: List<AttachmentInfo>)
@@ -67,6 +69,7 @@ data class AttachmentInfo(val file: String, val language: String, val descriptio
 
 /** Tool: retrieve an attached file's contents by name. */
 @JsonClassDescription("Retrieve the code content of an attached file by its name. Responses may also include relatedGuides and relatedExamples paths.")
+@AgentToolMeta("context", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class AttachmentRequest(val file: String)
 
 data class AttachmentResponse(
@@ -81,6 +84,7 @@ data class AttachmentResponse(
 
 /** Tool: list all definitions visible from the current Kotlin file (incl shaders). */
 @JsonClassDescription("List all definitions visible from the current Kotlin file, including associated shaders.")
+@AgentToolMeta("kotlin", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
 data class ListDefinitionsRequest(val unused: Int = 0)
 
 data class ListDefinitionsResult(val definitions: List<DefinitionInfo>)
@@ -88,6 +92,7 @@ data class DefinitionInfo(val name: String, val type: String, val fileRef: Strin
 
 /** Tool: get full contents of text properties for the current box/file context. */
 @JsonClassDescription("Return full contents for available text properties (code and shaders) in the current Field box and graph-relevant boxes, with file refs, languages, box names, relation labels, and preamble hints. Preamble hints distinguish inherited Box properties from shader-generated Mesh/Module binding helpers.")
+@AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListContentsRequest(val unused: Int = 0)
 
 data class ListContentsResult(
@@ -120,6 +125,7 @@ data class ListContentEntry(
 )
 
 @JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.")
+@AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListKotlinContextVariablesRequest(
     val target: String = "",
     val maxValueChars: Int = 300
@@ -147,6 +153,7 @@ data class ListKotlinContextVariablesResult(
 )
 
 @JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.")
+@AgentToolMeta("kotlin", effects = [ToolEffect.EXECUTE_CODE])
 data class EvaluateKotlinExpressionRequest(
     val target: String = "",
     val expression: String,
@@ -173,6 +180,7 @@ data class EvaluateKotlinExpressionResult(
 
 /** Tool: edit another file by name (your integration decides how to apply this). */
 @JsonClassDescription("Edit another file by specifying its name and new content.")
+@AgentToolMeta("kotlin", effects = [ToolEffect.MUTATE_DOCUMENT])
 data class EditFileRequest(val file: String, val newContent: String)
 
 data class EditFileResponse(val success: Boolean, val message: String? = null)
@@ -180,6 +188,7 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 /** Agentic verification tools --------------------------------------------- */
 
 @JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success. (RunBoxRequest/LaunchBoxRequest compile by themselves; you do not need this before them.)")
+@AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class CompileKotlinRequest(
     @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
     val file: String = "",
@@ -214,6 +223,7 @@ data class CompileKotlinResult(
 )
 
 @JsonClassDescription("Reload shader modules for the current Field box or target box/file ref. Call this after editing GLSL/Slang shader properties and before finishing the turn; fix errors and rerun until success.")
+@AgentToolMeta("render", effects = [ToolEffect.CONTROL_RUNTIME, ToolEffect.GPU, ToolEffect.CAPTURE_IMAGE])
 data class ReloadShadersRequest(
     val target: String = "",
     val mode: String = "auto",
@@ -277,6 +287,7 @@ data class ReloadShadersResult(
         "visualCheck this needs no shader edit and no successful reload, so it also works when a " +
         "reload just failed — which is when looking is most useful."
 )
+@AgentToolMeta("render", effects = [ToolEffect.CAPTURE_IMAGE, ToolEffect.GPU])
 data class CaptureRenderWindowRequest(
     @JsonPropertyDescription(
         "Which window, when more than one is visible: a 1-based index, or a substring of the window " +
@@ -340,6 +351,7 @@ data class CaptureRenderWindowResult(
 /** Macro transcript tools --------------------------------------------------- */
 
 @JsonClassDescription("List saved operation-transcript macros available to the current Field document. Use this before running a macro when the user names one imprecisely or asks what macros exist.")
+@AgentToolMeta("macros", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
 data class MacroListRequest(val unused: Int = 0)
 
 data class MacroListResult(
@@ -349,6 +361,7 @@ data class MacroListResult(
 )
 
 @JsonClassDescription("Read a saved operation-transcript macro YAML file by name. Read before editing a macro, and usually read before running when target mapping or expected effects matter.")
+@AgentToolMeta("macros", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT])
 data class MacroReadRequest(val name: String)
 
 data class MacroReadResult(
@@ -360,6 +373,7 @@ data class MacroReadResult(
 )
 
 @JsonClassDescription("Create or replace a saved operation-transcript macro YAML file in the current Field document. Content should be YAML with an operations list. Use this to save a user-requested new/edited macro; do not rewrite an existing macro just to run it.")
+@AgentToolMeta("macros", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
 data class MacroWriteRequest(
     val name: String,
     val content: String
@@ -373,6 +387,7 @@ data class MacroWriteResult(
 )
 
 @JsonClassDescription("Run or undo a saved operation-transcript macro. Use direction=do to replay it and direction=undo to run it backwards. targetBoxes may contain box uids or names; when set, the macro's first recorded source box is remapped to each target box, which is the normal way to do a recorded macro to the current/selected box. Empty targetBoxes replays the recorded uids literally. Inspect applied/skipped/errors; if applied=0 or errors are returned, do not repeat the identical request. A failed Kotlin setup stops dependent operations and preserves changes already applied. Other language engines retain ordinary dispatch and report setupVerified=false; success then means operations were dispatched, not that their code completed. Inspect errors before retrying; undo is a separate explicit action.")
+@AgentToolMeta("macros", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.EXECUTE_CODE])
 data class MacroRunRequest(
     val name: String,
     val direction: String = "do",
@@ -396,6 +411,7 @@ data class MacroRunResult(
 /** Code-use telemetry tools ------------------------------------------------- */
 
 @JsonClassDescription("Query Field's local code-use telemetry database. kind may be summary, failures, snippets, launches, symbols, unresolved, line-callers, references-for-code, related-source-for-code, semantic-analyze, hot-symbols, or early-document-symbols. Prefer kind=failures when looking for compiler errors/runtime exceptions that reveal API gaps, missing docs, or growth points. Optional document and box filters are case-insensitive substrings for row types that carry that metadata.")
+@AgentToolMeta("codeuse", effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseQueryRequest(
     val kind: String = "failures",
     val limit: Int = 20,
@@ -431,6 +447,7 @@ data class CodeUseQueryResult(
 )
 
 @JsonClassDescription("Given a source path and line inside src/, show recent Field box code snippets that appear to call the enclosing source symbol, with timestamps, compile/eval status, return types, and launch lifecycles. Confidence values are literal: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence and must not be described as resolved.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseCallersForSourceLineRequest(
     val sourcePath: String,
     val line: Int,
@@ -438,18 +455,21 @@ data class CodeUseCallersForSourceLineRequest(
 )
 
 @JsonClassDescription("Given Kotlin code, rank the most interesting files/properties/methods inside src/ that the code appears to refer to. This is useful for grounding a Field box or inline chat request in Field source.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseReferencesForCodeRequest(
     val code: String,
     val limit: Int = 5
 )
 
 @JsonClassDescription("List hot Field source symbols by observed Field box usage. window may be all, week, day, or month. Report each row's confidence literally: k2-resolved is semantic; source-index-* values are static source-index evidence; textual values are fallback evidence. Do not call source-index or textual rows resolved.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseHotSymbolsRequest(
     val window: String = "all",
     val limit: Int = 20
 )
 
 @JsonClassDescription("Find source symbols used early in a document's observed code-use timeline and then rarely afterward. Use this to spot initialization/open-time helpers. document is an optional case-insensitive substring.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseEarlyDocumentSymbolsRequest(
     val document: String = "",
     val earlyWindowMs: Long = 600000,
@@ -457,6 +477,7 @@ data class CodeUseEarlyDocumentSymbolsRequest(
 )
 
 @JsonClassDescription("Given Field box code, return the most relevant src/ routines with bounded source excerpts, observed call-site frequencies, return/lifecycle summaries, and other Field snippets that called the same routines. Prefer this when interrogating how box code maps onto Field source.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseRelatedSourceForCodeRequest(
     val code: String,
     val limit: Int = 5,
@@ -465,6 +486,7 @@ data class CodeUseRelatedSourceForCodeRequest(
 )
 
 @JsonClassDescription("Given Field box or inline Kotlin code, ask Field's optional semantic K2 sidecar to resolve the code against src/ and enrich the result with local code-use graph evidence: source excerpts, call-site frequencies, timestamps, and peer snippets. Falls back to the local source-index graph if the sidecar is not configured or unavailable.")
+@AgentToolMeta("codeuse", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class CodeUseSemanticAnalyzeCodeRequest(
     val code: String,
     val sourceName: String = "AgentSnippet.kt",
@@ -476,6 +498,7 @@ data class CodeUseSemanticAnalyzeCodeRequest(
 /** Semantic retrieval tools ------------------------------------------------ */
 
 @JsonClassDescription("Search Field's native Lucene semantic retrieval index across Field internals, current workspace code, and documentation. This is natural-language to code/docs retrieval, not compiler resolution. Set corpus for one corpus, or corpora for combinations. Available corpora are field-internals, workspace, and documentation. Leave both blank to search all corpora. Use documentName with corpus/workspace to search a specific current workspace document. Results include BM25/symbol/vector ranks when available; vector search is active only when the local ONNX embedder is configured.")
+@AgentToolMeta("retrieval", effects = [ToolEffect.FILESYSTEM_READ])
 data class SemanticRetrievalSearchRequest(
     val query: String,
     val limit: Int = 10,
@@ -491,9 +514,11 @@ data class SemanticRetrievalSearchRequest(
 )
 
 @JsonClassDescription("Return status for Field's native Lucene semantic retrieval index, including capsule backend, ONNX/vector availability, and available corpora for SemanticRetrievalSearchRequest.")
+@AgentToolMeta("retrieval", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ])
 data class SemanticRetrievalStatusRequest(val unused: Int = 0)
 
 @JsonClassDescription("Rebuild Field's native Lucene semantic retrieval index from current source-index declarations and documentation sections. Use sparingly; normal searches rebuild automatically if the index is missing.")
+@AgentToolMeta("retrieval", ToolExposure.DEFERRED, effects = [ToolEffect.FILESYSTEM_READ, ToolEffect.FILESYSTEM_WRITE])
 data class SemanticRetrievalRebuildRequest(val unused: Int = 0)
 
 data class SemanticRetrievalToolResult(
@@ -508,9 +533,11 @@ data class SemanticRetrievalToolResult(
 /** Long-running task tools -------------------------------------------------- */
 
 @JsonClassDescription("Read this chat's in-memory scratchpad across turns. It does not survive a server restart; use document guide tools for durable handoff notes.")
+@AgentToolMeta("memory", effects = [ToolEffect.AGENT_STATE])
 data class ScratchpadReadRequest(val unused: Int = 0)
 
 @JsonClassDescription("Update this chat's in-memory scratchpad. Use append, replace or clear. Use document guide tools for notes that must survive a restart.")
+@AgentToolMeta("memory", effects = [ToolEffect.AGENT_STATE])
 data class ScratchpadUpdateRequest(
     val operation: String = "append",
     val text: String = ""
@@ -524,9 +551,11 @@ data class ScratchpadResult(
 )
 
 @JsonClassDescription("Read the in-memory checklist for this chat. Use it to track long-running tasks across turns.")
+@AgentToolMeta("memory", effects = [ToolEffect.AGENT_STATE])
 data class ChecklistReadRequest(val unused: Int = 0)
 
 @JsonClassDescription("Update the in-memory checklist for this chat. Use operation add, update, complete, reopen, remove, replace, or clear. For update/complete/reopen/remove, itemId identifies the item.")
+@AgentToolMeta("memory", effects = [ToolEffect.AGENT_STATE])
 data class ChecklistUpdateRequest(
     val operation: String,
     val itemId: String = "",
@@ -776,6 +805,7 @@ interface CarriesToolImages {
 
 /** Example tool (optional) ------------------------------------------------- */
 @JsonClassDescription("Look up symbols, including extension properties such as String.file. Exact names return the exact declaration first, with KDoc and getter/source. Related guides/examples are optional; request them only when needed.")
+@AgentToolMeta("symbols", effects = [ToolEffect.FILESYSTEM_READ])
 data class WorkspaceSymbolSearch(val query: String, val limit: Int = 25, val includeRelatedContext: Boolean = false)
 
 data class WorkspaceSymbolSearchResult(val matches: List<WorkspaceSymbolMatch>)
@@ -864,7 +894,17 @@ data class ToolExecutionContext(
      * wire it to their `onProgress`; null where nobody is watching.
      */
     val progress: ((String) -> Unit)? = null,
-)
+
+    /**
+     * Deferred tools this conversation has loaded with `DescribeToolsRequest` — the bridges pass their
+     * thread's own set, so a load lasts for the conversation (and, with branching, for its branch). Null
+     * where there is no conversation to remember it in.
+     */
+    val promoted: MutableSet<String>? = null,
+) {
+    /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
+    fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true
+}
 
 /**
  * The document, box and property a conversation is focused on — the box whose AI4 chat is open.
@@ -890,7 +930,8 @@ internal class ToolRegistry {
     private data class Handler<T : Any>(
         val cls: Class<T>,
         val available: (ToolExecutionContext) -> Boolean,
-        val fn: (ToolExecutionContext, T) -> Any
+        val fn: (ToolExecutionContext, T) -> Any,
+        val meta: ToolMeta = ToolMeta.of(cls),
     )
 
     private val handlers = ConcurrentHashMap<String, Handler<*>>()
@@ -910,10 +951,11 @@ internal class ToolRegistry {
     fun <T : Any> register(
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean = { true },
+        meta: ToolMeta = ToolMeta.of(toolClass),
         handler: (ToolExecutionContext, T) -> Any
     ) {
         synchronized(writeLock) {
-            handlers[toolClass.simpleName] = Handler(toolClass, available, handler)
+            handlers[toolClass.simpleName] = Handler(toolClass, available, handler, meta)
             // Core is registering this name directly, so core owns it from here on — even if an
             // extension got there first, which it does: applyTo runs at the top of
             // registerBuiltInAgentTools, before any of core's own register calls.
@@ -949,11 +991,12 @@ internal class ToolRegistry {
     internal fun <T : Any> registerExtension(
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean,
-        handler: (ToolExecutionContext, T) -> Any
+        meta: ToolMeta = ToolMeta.of(toolClass),
+        handler: (ToolExecutionContext, T) -> Any,
     ): Boolean = synchronized(writeLock) {
         val name = toolClass.simpleName
         if (handlers.containsKey(name) && !extensionOwned.contains(name)) return@synchronized false
-        handlers[name] = Handler(toolClass, available, handler)
+        handlers[name] = Handler(toolClass, available, handler, meta)
         extensionOwned.add(name)
         true
     }
@@ -973,32 +1016,81 @@ internal class ToolRegistry {
     private fun Handler<*>.offeredUnder(ctx: ToolExecutionContext): Boolean =
         cls.simpleName !in ctx.withheld && available(ctx)
 
+    // ---- exposure: which face sees which tool ------------------------------------------------------
+
+    private fun programsOffered(ctx: ToolExecutionContext): Boolean =
+        handlers[afield.ai.core.program.RUN_TOOL_PROGRAM]?.offeredUnder(ctx) == true
+
+    /**
+     * Whether [face] lists a tool with [meta] under [ctx]. A model sees DIRECT tools, DEFERRED ones it has
+     * loaded with DescribeToolsRequest, and PROGRAM ones only when it has no tool programs to call them from.
+     * MCP clients and programs see everything but HIDDEN.
+     */
+    private fun shown(name: String, meta: ToolMeta, face: ToolFace, ctx: ToolExecutionContext): Boolean = when (meta.exposure) {
+        ToolExposure.HIDDEN -> false
+        ToolExposure.DIRECT -> true
+        ToolExposure.DEFERRED -> face != ToolFace.MODEL || ctx.promoted?.contains(name) == true
+        ToolExposure.PROGRAM -> face != ToolFace.MODEL || !programsOffered(ctx)
+    }
+
+    /** Core's own tools (not extensions) and their metadata, whatever their gates: what ToolMetaPinTest pins. */
+    internal fun coreMetas(): Map<String, ToolMeta> =
+        handlers.filterKeys { it !in extensionOwned }.mapValues { it.value.meta }.toSortedMap()
+
+    /** The metadata of [name] under [ctx] (built-in, extension or box-authored), or null if unknown. */
+    fun metaOf(ctx: ToolExecutionContext, name: String): ToolMeta? =
+        handlers[name]?.meta ?: ctx.dynamicTools.firstOrNull { it.name == name }?.meta
+
     fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
         handlers.values.forEach { h ->
-            if (h.offeredUnder(ctx)) {
+            if (h.offeredUnder(ctx) && shown(h.cls.simpleName, h.meta, ToolFace.MODEL, ctx)) {
                 @Suppress("UNCHECKED_CAST")
                 builder.addTool(h.cls as Class<Any>)
             }
         }
         // Document-authored tools (box aiTool DSL). Built-ins win on name collision.
-        dynamicToolsIn(ctx).forEach { tool ->
+        dynamicToolsIn(ctx).filter { shown(it.name, it.meta, ToolFace.MODEL, ctx) }.forEach { tool ->
             builder.addTool(tool.toFunctionTool())
         }
     }
 
-    fun execute(ctx: ToolExecutionContext, call: ResponseFunctionToolCall): Any {
-        check(call.name() !in ctx.withheld) { "Tool '${call.name()}' is not available in this conversation." }
-        val h = handlers[call.name()]
+    fun execute(ctx: ToolExecutionContext, call: ResponseFunctionToolCall): Any =
+        dispatch(ctx, call.name(), CallOrigin.MODEL, { cls -> call.arguments(cls) }, { call.arguments() })
+
+    /**
+     * The one place a call is checked, for both execution paths: the conversation's withheld set, the
+     * tool's gate (the OpenAI path used to skip it), HIDDEN tools (Field's own callers only), and a
+     * document mutation on a read-only document — refused here, centrally, because until 2026-10-02 only
+     * two of the graph tools checked for themselves and NewBox, Connect and Delete did not.
+     */
+    private fun dispatch(
+        ctx: ToolExecutionContext,
+        name: String,
+        origin: CallOrigin,
+        typedArgs: (Class<Any>) -> Any,
+        rawArgs: () -> String,
+    ): Any {
+        check(name !in ctx.withheld) { "Tool '$name' is not available in this conversation." }
+        val h = handlers[name]
+        val meta = h?.meta ?: dynamicToolsIn(ctx).firstOrNull { it.name == name }?.meta
+            ?: throw IllegalArgumentException("No tool registered for: $name")
+        if (meta.exposure == ToolExposure.HIDDEN && origin != CallOrigin.BACKDOOR) {
+            throw IllegalStateException("Tool '$name' is not offered to agents.")
+        }
+        if (meta.mutates && ctx.documentReadOnly()) {
+            throw IllegalStateException("This document is read-only, and '$name' changes it.")
+        }
         if (h != null) {
+            if (!h.offeredUnder(ctx)) {
+                throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
+            }
             @Suppress("UNCHECKED_CAST")
             val handler = h as Handler<Any>
-            val args: Any = call.arguments(handler.cls)
-            return handler.fn(ctx, args)
+            return handler.fn(ctx, typedArgs(handler.cls))
         }
         // Fall through to a document-authored tool with this name.
-        val tool = dynamicToolsIn(ctx).firstOrNull { it.name == call.name() }
-            ?: throw IllegalArgumentException("No tool registered for: ${call.name()}")
-        return tool.runBlockingFromToolLoop(ctx, call.arguments())
+        val tool = dynamicToolsIn(ctx).first { it.name == name }
+        return tool.runBlockingFromToolLoop(ctx, rawArgs())
     }
 
     /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */
@@ -1011,58 +1103,97 @@ internal class ToolRegistry {
     // transport that speaks plain JSON — currently the agent backdoor's
     // agent-ai-tools-list / agent-ai-tool-call handlers, surfaced over MCP.
 
-    /** Tools available under [ctx], as MCP-style descriptors {name, description, inputSchema}. */
-    fun describe(ctx: ToolExecutionContext): JsonArray = buildJsonArray {
+    /**
+     * Tools available under [ctx], as MCP-style descriptors {name, description, inputSchema}, for one [face]:
+     * what a model is sent (the default), what an MCP client lists, or what a program may call. The MCP face
+     * adds `annotations` (`readOnlyHint`, `destructiveHint`) and `x-field` {namespace, exposure, effects}.
+     */
+    fun describe(ctx: ToolExecutionContext, face: ToolFace = ToolFace.MODEL): JsonArray = buildJsonArray {
+        fun descriptor(name: String, description: String?, schema: JsonObject, meta: ToolMeta) = buildJsonObject {
+            put("name", name)
+            if (!description.isNullOrBlank()) put("description", description)
+            put("inputSchema", schema)
+            if (face == ToolFace.MCP) {
+                put("annotations", buildJsonObject {
+                    put("readOnlyHint", meta.readOnly)
+                    put("destructiveHint", meta.mutates)
+                })
+                put("x-field", buildJsonObject {
+                    put("namespace", meta.namespace)
+                    put("exposure", meta.exposure.name)
+                    put("effects", buildJsonArray { meta.effects.sortedBy { it.name }.forEach { add(JsonPrimitive(it.name)) } })
+                })
+            }
+        }
         handlers.values
-            .filter { it.offeredUnder(ctx) }
+            .filter { it.offeredUnder(ctx) && shown(it.cls.simpleName, it.meta, face, ctx) }
             .sortedBy { it.cls.simpleName }
             .forEach { h ->
-                add(buildJsonObject {
-                    put("name", h.cls.simpleName)
-                    val desc = h.cls.kotlin.findAnnotation<JsonClassDescription>()?.value
-                    if (!desc.isNullOrBlank()) put("description", desc)
-                    put("inputSchema", ToolSchema.forClass(h.cls))
-                })
+                add(descriptor(h.cls.simpleName, h.cls.kotlin.findAnnotation<JsonClassDescription>()?.value,
+                    ToolSchema.forClass(h.cls), h.meta))
             }
         dynamicToolsIn(ctx)
+            .filter { shown(it.name, it.meta, face, ctx) }
             .sortedBy { it.name }
-            .forEach { tool ->
-                add(buildJsonObject {
-                    put("name", tool.name)
-                    if (tool.description.isNotBlank()) put("description", tool.description)
-                    put("inputSchema", tool.parametersSchema)
-                })
-            }
+            .forEach { tool -> add(descriptor(tool.name, tool.description, tool.parametersSchema, tool.meta)) }
     }
 
-    /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. */
+    /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. Exposure aside: a deferred tool is available. */
     fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
         handlers[name]?.offeredUnder(ctx) == true || dynamicToolsIn(ctx).any { it.name == name }
 
-    /** The descriptor [describe] would give for [name] under [ctx], or null if it is not offered. */
-    fun describeOne(ctx: ToolExecutionContext, name: String): JsonObject? =
-        describe(ctx).firstOrNull { (it as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull == name } as? JsonObject
+    /** The descriptor [describe] would give for [name] under [ctx] on [face], or null if it is not offered there. */
+    fun describeOne(ctx: ToolExecutionContext, name: String, face: ToolFace = ToolFace.PROGRAM): JsonObject? =
+        describe(ctx, face).firstOrNull { (it as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull == name } as? JsonObject
+
+    /** Offered tools a model does not get schemas for until it asks: DEFERRED ones not yet loaded, by namespace. */
+    fun deferredUnder(ctx: ToolExecutionContext): Map<String, List<String>> {
+        // Exposure first: DescribeToolsRequest's own gate calls this, so asking every gate here would recurse.
+        val names = handlers.values.filter { it.meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(it.cls.simpleName) != true && it.offeredUnder(ctx) }
+            .map { it.meta.namespace to it.cls.simpleName } +
+            dynamicToolsIn(ctx).filter { it.meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(it.name) != true }.map { it.meta.namespace to it.name }
+        return names.groupBy({ it.first }, { it.second }).mapValues { (_, v) -> v.sorted() }.toSortedMap()
+    }
+
+    /**
+     * The tool catalogue for the instructions: one line per namespace that a model cannot learn from its
+     * schemas alone — namespaces with deferred or program-only tools, and every tool that came from outside
+     * core (extensions, box-authored tools), which the hand-written tool adverts never mention. Empty when
+     * there is nothing to say.
+     */
+    fun catalogue(ctx: ToolExecutionContext): String {
+        data class Entry(val namespace: String, val label: String)
+        val entries = mutableListOf<Entry>()
+        fun label(name: String, meta: ToolMeta): String {
+            val marks = buildString {
+                if (meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(name) != true) append('*')
+                if (meta.exposure == ToolExposure.PROGRAM && programsOffered(ctx)) append('°')
+            }
+            return marks + name + if (meta.mutates) "!" else ""
+        }
+        handlers.values.filter { it.offeredUnder(ctx) && it.meta.exposure != ToolExposure.HIDDEN }.forEach { h ->
+            val name = h.cls.simpleName
+            val notVisible = h.meta.exposure == ToolExposure.DEFERRED || (h.meta.exposure == ToolExposure.PROGRAM && programsOffered(ctx))
+            if (notVisible || name in extensionOwned) entries += Entry(h.meta.namespace, label(name, h.meta))
+        }
+        dynamicToolsIn(ctx).filter { it.meta.exposure != ToolExposure.HIDDEN }.forEach { entries += Entry(it.meta.namespace, label(it.name, it.meta)) }
+        if (entries.isEmpty()) return ""
+        return buildString {
+            append("- Tool catalogue beyond the schemas above (* = schema not loaded: call DescribeToolsRequest with the namespace or names first; ")
+            append("° = call it from RunToolProgramRequest; ! = changes the document):")
+            entries.groupBy { it.namespace }.toSortedMap().forEach { (namespace, list) ->
+                append("\n  - ").append(namespace).append(": ").append(list.map { it.label }.sorted().joinToString(", "))
+            }
+        }
+    }
 
     /**
      * Deserialize [argsJson] into the tool's request class (Jackson, matching the
      * OpenAI path's `call.arguments(cls)`) and invoke the handler. The result is a
      * plain Jackson data class; callers serialize it with [aiToolMapper].
      */
-    fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String): Any {
-        val h = handlers[name]
-        if (h != null) {
-            if (!h.offeredUnder(ctx)) {
-                throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
-            }
-            @Suppress("UNCHECKED_CAST")
-            val handler = h as Handler<Any>
-            val args: Any = aiToolMapper.readValue(argsJson.ifBlank { "{}" }, handler.cls)
-            return handler.fn(ctx, args)
-        }
-        val tool = dynamicToolsIn(ctx).firstOrNull { it.name == name }
-            ?: throw IllegalArgumentException("No tool registered for: $name")
-        return tool.runBlockingFromToolLoop(ctx, argsJson)
-    }
+    fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String, origin: CallOrigin = CallOrigin.MODEL): Any =
+        dispatch(ctx, name, origin, { cls -> aiToolMapper.readValue(argsJson.ifBlank { "{}" }, cls) }, { argsJson })
 }
 
 /** Shared Jackson mapper for the provider-neutral tool face (Kotlin data classes). */

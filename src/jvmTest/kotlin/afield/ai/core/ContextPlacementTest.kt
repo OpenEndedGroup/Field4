@@ -50,7 +50,7 @@ class ContextPlacementTest {
         listOf(
             ContextFragment("core.contract", "STABLE-CONTRACT"),
             ContextFragment("guides", "\n\nVOLATILE-CATALOGUE", stability = Stability.VOLATILE),
-            ContextFragment("core.request", "\n\nDURABLE-REQUEST", Retention.DURABLE, Stability.VOLATILE),
+            ContextFragment("core.request", "\n\nDURABLE-REQUEST", FragmentRetention.DURABLE, Stability.VOLATILE),
         ),
         rest = "the user's words"
     )

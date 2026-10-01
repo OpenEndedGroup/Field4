@@ -68,6 +68,11 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
         box = this,
         params = builder.params.toList(),
         body = body,
+        meta = ToolMeta(
+            namespace = builder.namespace ?: name.substringBefore('.', "doc").ifBlank { "doc" },
+            exposure = builder.exposure,
+            effects = builder.effects ?: setOf(ToolEffect.UNDECLARED),
+        ),
     )
     DocumentToolRegistry.register(documentKeyFor(this), tool)
     runCatching { notify("Registered AI tool '$name'", "AI tools") }
@@ -91,10 +96,34 @@ class BoxToolBuilder internal constructor(
     internal var description: String = ""
     internal val params = mutableListOf<BoxToolArg<*>>()
     internal var body: (suspend BoxToolScope.() -> Any?)? = null
+    internal var namespace: String? = null
+    internal var exposure: ToolExposure = ToolExposure.DIRECT
+    internal var effects: Set<ToolEffect>? = null
 
     /** Human-readable description shown to the agent. */
     fun describe(text: String) {
         description = text
+    }
+
+    /** The catalogue namespace; defaults to the part of the name before its first `.` (`rectsl.run` → `rectsl`), else `doc`. */
+    fun namespace(name: String) {
+        namespace = name
+    }
+
+    /**
+     * How the model meets this tool ([ToolExposure]): DIRECT (the default) sends its schema with every request;
+     * DEFERRED lists it by name and sends the schema only once the model asks; PROGRAM leaves it to tool programs.
+     */
+    fun exposure(exposure: ToolExposure) {
+        this.exposure = exposure
+    }
+
+    /**
+     * What calling it does ([ToolEffect]); `effects()` with nothing says "none". Undeclared by default. A tool
+     * declaring MUTATE_DOCUMENT is refused on a read-only document without its action running.
+     */
+    fun effects(vararg effects: ToolEffect) {
+        this.effects = effects.toSet()
     }
 
     /**
@@ -236,6 +265,7 @@ class BoxTool internal constructor(
     internal val box: Box,
     internal val params: List<BoxToolArg<*>>,
     internal val body: suspend BoxToolScope.() -> Any?,
+    val meta: ToolMeta = ToolMeta(namespace = name.substringBefore('.', "doc").ifBlank { "doc" }),
 ) {
     /** JSON-Schema for the parameters (kotlinx form), reusing the static-tool emitter. */
     val parametersSchema: JsonObject by lazy { buildParamsSchema(params) }

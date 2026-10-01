@@ -328,7 +328,8 @@ object InFieldAgentEvals {
                 setup = steps(*CELL_NAMES.mapIndexed { i, name ->
                     call("NewBoxRequest", "name" to name, "code" to if (name in FAILING_CELLS) CELL_BAD else cellCode(i + 1))
                 }.toTypedArray()),
-                checks = listOf(check("last-run-ok:Report"), check("output-contains:Report:Cell03, Cell07, Cell09")),
+                checks = listOf(check("last-run-ok:Report"), check("output-contains:Report:Cell03, Cell07, Cell09"),
+                    check("effects-absent:FILESYSTEM_WRITE")),
                 taskId = "audit-failing"
             ),
             steps(program("""
@@ -372,7 +373,8 @@ object InFieldAgentEvals {
                     "Do not run any box.",
                 setup = steps(*(1..12).map { n -> call("NewBoxRequest", "name" to noteName(n), "code" to noteCode(n)) }.toTypedArray()),
                 checks = TODO_NOTES.map { n -> check("property-contains:${noteName(n)}:code:// reviewed\n// note $n") } +
-                    listOf(1, 2, 6, 11).map { n -> check("property-lacks:${noteName(n)}:code:reviewed") },
+                    listOf(1, 2, 6, 11).map { n -> check("property-lacks:${noteName(n)}:code:reviewed") } +
+                    check("effects-absent:EXECUTE_CODE"),
                 taskId = "tag-todos"
             ),
             steps(program("""

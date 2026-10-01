@@ -91,6 +91,8 @@ object AgentToolExtensions {
         val handler: (ToolExecutionContext, T) -> Any,
         /** Who owns this registration — see "Scopes" above; `null` for an unscoped tool. */
         val scope: Any? = null,
+        /** Namespace, exposure and effects; null = the request class's [AgentToolMeta], or [ToolMeta.DEFAULT]. */
+        val meta: ToolMeta? = null,
     )
 
     private val registrations = CopyOnWriteArrayList<Registration<*>>()
@@ -129,6 +131,7 @@ object AgentToolExtensions {
         toolClass: Class<T>,
         available: (ToolExecutionContext) -> Boolean = { true },
         scope: Any? = null,
+        meta: ToolMeta? = null,
         handler: (ToolExecutionContext, T) -> Any,
     ) {
         val name = toolClass.simpleName
@@ -141,7 +144,7 @@ object AgentToolExtensions {
             )
         }
         registrations.removeAll { it.toolClass.simpleName == name && it.scope == scope }
-        registrations.add(Registration(toolClass, available, handler, scope))
+        registrations.add(Registration(toolClass, available, handler, scope, meta))
         publish(name, live, "register")
     }
 
@@ -175,7 +178,8 @@ object AgentToolExtensions {
             val typed = if (target.toolClass.isInstance(request)) request else aiToolMapper.convertValue(request, target.toolClass)
             target.handler(ctx, typed)
         }
-        into.forEach { if (!it.registerExtension(schema, gate, handler)) reportRefusal(name, where) }
+        val meta = newest.meta ?: ToolMeta.of(schema)
+        into.forEach { if (!it.registerExtension(schema, gate, meta, handler)) reportRefusal(name, where) }
     }
 
     /**

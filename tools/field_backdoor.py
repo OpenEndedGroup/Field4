@@ -279,6 +279,8 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
         return {"kind": kind, "parent": parent, "child": child}
     if kind == "output-picture":
         return {"kind": kind, "box": rest}
+    if kind in ("effects-absent", "effects-present", "tool-used"):
+        return {"kind": kind, "text": rest.strip()}
     if kind == "output-rising":
         parts = rest.split(":")
         if len(parts) != 3:

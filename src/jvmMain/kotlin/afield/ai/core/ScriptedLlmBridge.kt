@@ -83,8 +83,10 @@ class ScriptedLlmBridge(
         received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available, turnContext)
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
-        val callCtx = if (ctx.progress != null || onProgress == null) ctx
-            else ctx.copy(progress = { line -> onProgress(LlmProgressUpdate(line, phase = "tool")) })
+        val callCtx = ctx.copy(
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line, phase = "tool")) } },
+        )
         val latestByTool = mutableMapOf<String, String>()
         var rounds = 0
         var hitCap = false

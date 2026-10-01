@@ -91,11 +91,11 @@ fun buildInstructionFragments(
         InstructionMode.General -> listOf(ContextFragment("core.contract", generalInstructions(lang)))
         InstructionMode.Inline -> listOf(
             ContextFragment("core.contract", baseAssistantContract(lang.name)),
-            ContextFragment("core.request", inlineRequest(userPrompt ?: "", lineNumber ?: 0), Retention.DURABLE, Stability.VOLATILE),
+            ContextFragment("core.request", inlineRequest(userPrompt ?: "", lineNumber ?: 0), FragmentRetention.DURABLE, Stability.VOLATILE),
         )
         InstructionMode.Error -> listOf(
             ContextFragment("core.contract", baseAssistantContract(lang.name)),
-            ContextFragment("core.request", errorRequest(errorMessage ?: ""), Retention.DURABLE, Stability.VOLATILE),
+            ContextFragment("core.request", errorRequest(errorMessage ?: ""), FragmentRetention.DURABLE, Stability.VOLATILE),
         )
         // No request line: a chat turn's message ends with the request itself (IdeChatHelpers.chatGeneral),
         // and until 2026-10-02 every chat turn carried it twice.
@@ -167,6 +167,10 @@ ${ctx.documentGuides.catalogueContext()}
     if (ctx.semanticRetrievalSearch != null) {
         ad("tools.retrieval", "- SemanticRetrievalSearchRequest / SemanticRetrievalStatusRequest: search the native Lucene semantic retrieval index across selectable corpora: field-internals, workspace, documentation, or combinations via corpora=[...]. Use this for natural-language code/docs discovery; use CodeUseSemanticAnalyzeCodeRequest when you need compiler-backed resolution of a specific Kotlin snippet. Report capsuleBackend and embedderBackend literally.")
     }
+
+    // What the schemas cannot tell the model: deferred tools (by name, to load), program-only tools, and every
+    // tool from outside core — extensions and box-authored aiTools, which the adverts above never mention.
+    Ai4BackdoorTools.registry.catalogue(ctx).takeIf { it.isNotEmpty() }?.let { ad("tools.catalogue", it) }
 
     val hasGlslIncludeManifest = ctx.attachments.any { it.fileName == "afield://glsl-includes/manifest" }
     val includeGuidance = if (hasGlslIncludeManifest || lang.name.startsWith("GLSL", ignoreCase = true)) {
@@ -258,7 +262,7 @@ $includeGuidance
         fragments += ContextFragment(
             source,
             (if (group == 0) "\n\nTools available:\n" else "\n") + text,
-            stability = if (source == "guides") Stability.VOLATILE else Stability.STABLE,
+            stability = if (source == "guides" || source == "tools.catalogue") Stability.VOLATILE else Stability.STABLE,
         )
     }
     fragments += ContextFragment("guidance.${mode.name.lowercase()}", "\n\nGuidance:\n$guidance")

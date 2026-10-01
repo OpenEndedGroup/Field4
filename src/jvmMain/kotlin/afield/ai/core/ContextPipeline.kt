@@ -13,11 +13,11 @@ import java.security.MessageDigest
  * call instead from its parts — the session so far, the system prompt, the tools, the context in force
  * *now* — and keeps only the durable parts in the session. That is the change here.
  *
- * A [ContextFragment] is one part, tagged with a [Retention] and a [Stability]:
+ * A [ContextFragment] is one part, tagged with a [FragmentRetention] and a [Stability]:
  *
- * - [Retention.DURABLE] parts are what the person asked — the request text, the line and error an editor
+ * - [FragmentRetention.DURABLE] parts are what the person asked — the request text, the line and error an editor
  *   turn is about — and stay in the stored message, because a later turn has to be able to see them.
- * - [Retention.EPHEMERAL] parts are instructions about the tools and the document *as of this turn*. They
+ * - [FragmentRetention.EPHEMERAL] parts are instructions about the tools and the document *as of this turn*. They
  *   are sent on every request of the turn and never stored: the next turn sends its own.
  * - [Stability.STABLE] parts do not change from turn to turn (the contract, the tool adverts for a given
  *   set of tools). Bridges put them where the provider's prompt cache can reuse them. [Stability.VOLATILE]
@@ -30,7 +30,7 @@ import java.security.MessageDigest
  * A bridge that does neither (OpenRouter's stateless path, the scripted bridge) sends [legacyPrompt], which
  * is byte-for-byte the string every turn used to send.
  */
-enum class Retention { DURABLE, EPHEMERAL }
+enum class FragmentRetention { DURABLE, EPHEMERAL }
 
 enum class Stability { STABLE, VOLATILE }
 
@@ -39,7 +39,7 @@ data class ContextFragment(
     val source: String,
     /** The text, including the separator that joins it to the fragment before (so a join is a plain concat). */
     val text: String,
-    val retention: Retention = Retention.EPHEMERAL,
+    val retention: FragmentRetention = FragmentRetention.EPHEMERAL,
     val stability: Stability = Stability.STABLE,
 ) {
     val chars: Int get() = text.length
@@ -61,12 +61,12 @@ data class TurnContext(val fragments: List<ContextFragment>, val rest: String) {
 
     /** The user message to store: the durable fragments and [rest]. */
     fun durablePrompt(): String {
-        val head = fragments.filter { it.retention == Retention.DURABLE }.joinToString("") { it.text }.trim()
+        val head = fragments.filter { it.retention == FragmentRetention.DURABLE }.joinToString("") { it.text }.trim()
         return if (head.isEmpty()) rest else "$head\n\n$rest"
     }
 
     fun ephemeral(stability: Stability): List<ContextFragment> =
-        fragments.filter { it.retention == Retention.EPHEMERAL && it.stability == stability }
+        fragments.filter { it.retention == FragmentRetention.EPHEMERAL && it.stability == stability }
 
     /** The ephemeral fragments of one stability, joined, with the leading separator dropped. */
     fun ephemeralText(stability: Stability): String = ephemeral(stability).joinToString("") { it.text }.trim()

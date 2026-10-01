@@ -6,6 +6,8 @@ import afield.ai.core.SummarisesForToolLog
 import afield.ai.core.ToolExecutionContext
 import afield.ai.core.ToolImage
 import afield.ai.core.ToolRegistry
+import afield.ai.core.ToolFace
+import afield.ai.core.CallOrigin
 import afield.ai.core.aiToolMapper
 import afield.ai.core.isAiTurnCancellation
 import com.fasterxml.jackson.databind.JsonNode
@@ -180,7 +182,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
 
     /** What the program may call: everything this conversation is offered, less [NOT_CALLABLE_FROM_PROGRAMS]. */
     internal fun callableNames(ctx: ToolExecutionContext): List<String> =
-        registry.describe(ctx).mapNotNull { (it as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull }
+        registry.describe(ctx, ToolFace.PROGRAM).mapNotNull { (it as? JsonObject)?.get("name")?.jsonPrimitive?.contentOrNull }
             .filter { it !in NOT_CALLABLE_FROM_PROGRAMS }
 
     private fun describe(ctx: ToolExecutionContext, name: String): String {
@@ -223,7 +225,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
             val t0 = System.nanoTime()
             val outcome: Any = try {
                 inCall = true
-                try { registry.executeByName(ctx, name, args) } finally { inCall = false }
+                try { registry.executeByName(ctx, name, args, CallOrigin.PROGRAM) } finally { inCall = false }
             } catch (e: Exception) {
                 if (isAiTurnCancellation(e)) { fatal.compareAndSet(null, e); throw e }
                 val ms = (System.nanoTime() - t0) / 1_000_000

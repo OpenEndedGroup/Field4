@@ -55,6 +55,7 @@ import com.fasterxml.jackson.databind.JsonNode
         "value, or chain calls where the next depends on the last. show(result) forwards that result's images. " +
         "describe(\"RunBoxRequest\") returns a tool's input schema. No files, network, timers or Java."
 )
+@afield.ai.core.AgentToolMeta("program", effects = [])
 data class RunToolProgramRequest(
     @JsonPropertyDescription(
         "The body of an async JavaScript function (ES2024). `return` a value (it is JSON-serialised); " +
@@ -131,7 +132,7 @@ const val RUN_TOOL_PROGRAM = "RunToolProgramRequest"
  * Tools a program may not call: itself (no nesting), and `Commentary`, which the bridges read off the
  * model's own call arguments — inside a program it would vanish, so programs use `text(...)` instead.
  */
-internal val NOT_CALLABLE_FROM_PROGRAMS = setOf(RUN_TOOL_PROGRAM, "Commentary")
+internal val NOT_CALLABLE_FROM_PROGRAMS = setOf(RUN_TOOL_PROGRAM, "Commentary", "DescribeToolsRequest")
 
 /** `AFIELD_AI4_TOOL_PROGRAMS=off` (or `-Dafield.ai4.toolPrograms=off`) removes the tool everywhere. */
 internal object ToolPrograms {

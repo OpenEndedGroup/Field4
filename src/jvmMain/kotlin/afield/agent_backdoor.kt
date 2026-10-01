@@ -1431,7 +1431,7 @@ fun installAgentBackdoorHandlers() {
         val focusBox = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("focusBox")
             ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
         val ctx = Ai4BackdoorTools.buildContext(info, focusBox)
-        val tools = Ai4BackdoorTools.registry.describe(ctx)
+        val tools = Ai4BackdoorTools.registry.describe(ctx, afield.ai.core.ToolFace.MCP)
         reply(Message("agent-ai-tools-list").payload(AgentAiToolsListResponse(tools = tools)))
         Handled.yes
     })
@@ -1448,7 +1448,7 @@ fun installAgentBackdoorHandlers() {
             try {
                 val ctx = Ai4BackdoorTools.buildContext(info, request.focusBox)
                 val argsJson = request.arguments?.toString() ?: "{}"
-                val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson)
+                val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson, afield.ai.core.CallOrigin.BACKDOOR)
                 val resultJson = Json.parseToJsonElement(aiToolMapper.writeValueAsString(result))
                 reply(
                     Message("agent-ai-tool-call").payload(
