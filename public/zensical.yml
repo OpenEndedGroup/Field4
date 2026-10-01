@@ -273,6 +273,12 @@ nav:
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
   - AI & Agents:
+    # First, ahead of the explanations: a showcase of whole documents agents built from a blank
+    # canvas, which says what this section is for faster than any of the pages below. It used to
+    # close the section, the slot mobile_controllers.md was moved out of because nobody found it
+    # there; the same was true of this page. The Tour reaches it from automating_field.md, and the
+    # front page links it too.
+    - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
@@ -283,10 +289,9 @@ nav:
     - Studies: studies.md
     - AI Tool-Use History: ai_tool_use_history.md
     - AI Documentation Polish: ai_doc_polish.md
-    - Notes on the Documentation: docs_notes.md
     # mobile_controllers.md used to close this section. It is in the Tour now: a phone remote is a
     # way of reaching a running document, and only one of its six tabs is about AI at all.
-    - Agent Transcript Gallery: agent_transcripts.md
+    - Notes on the Documentation: docs_notes.md
   # Generated from source rather than written: extracted KDoc and codegen output. As finished as
   # the source it is read out of, which is why it never needed a maturity tier of its own.
   - Reference:

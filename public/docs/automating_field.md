@@ -47,6 +47,8 @@ or `execute` with no inline code simply runs the code the box already has.
 Because the transcript is just data, a macro is legible: you can open one, see what it
 does, change a name or a value, and run your version. Field records what you do as you
 work, so you can turn a sequence you just performed into a macro and replay it elsewhere.
+The [Agent transcript gallery](agent_transcripts.md) is a whole corpus of them: documents agents
+built from a blank canvas this way, each one a transcript you can open, run and change.
 
 The **Macro Recorder** panel is where that recording happens: press **Start** and work as
 normal while each operation you perform is appended to the transcript, then **Save** the
