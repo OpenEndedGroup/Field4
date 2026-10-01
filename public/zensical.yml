@@ -124,15 +124,16 @@ nav:
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       - Spectral Examples: spectral_examples.md
-    # Its own group rather than a sixth entry under "Time & Signals": the input to a projection is
-    # a set of things and one distance per pair, which is neither a time series nor a signal. The
-    # worked examples are words under an edit distance and curve samples under a graph distance.
-    - Distances & Projections:
+    # Two pages whose input is an unordered set of points rather than a series or a function, and
+    # which were each a one-page group of their own ("Distances & Projections", "Clouds &
+    # Deformations") until they were put together here. Not under "Time & Signals": the input to a
+    # projection is a set of things and one distance per pair, which is neither a time series nor a
+    # signal — the worked examples are words under an edit distance and curve samples under a graph
+    # distance. Not under "Functions & Derivatives": flow matching takes a cloud and returns a
+    # deformation of it, which is a shape problem rather than a calculus one, and the network it
+    # trains is incidental to what the page is for.
+    - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
-    # Beside the projections rather than under Functions & Derivatives: the input is an unordered
-    # cloud and the output is a deformation of it, which is a shape problem rather than a calculus
-    # one. The network it trains is incidental to what the page is for.
-    - Clouds & Deformations:
       - Flow Matching: flow_matching.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
@@ -263,7 +264,7 @@ nav:
       # Directly after the hand-written particle systems, because it is the same compute-then-draw
       # shape with the rule replaced by a trained network — a velocity field in tier one, a Deep
       # Sets interaction over a GPU neighbour grid in tier two. Here rather than beside
-      # flow_matching.md under "Clouds & Deformations": the CPU page fits a field to a cloud, this
+      # flow_matching.md under "Point Sets & Shape": the CPU page fits a field to a cloud, this
       # one is about getting it onto the GPU and proving it is still the same network.
       - Neural Particle Systems: neural_particles.md
       - Field Probes: field_probes.md
