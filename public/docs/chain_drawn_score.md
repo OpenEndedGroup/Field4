@@ -9,6 +9,26 @@ onsets and pitches, and put next to what was drawn.
 The score here is drawn by code, so the page can be rebuilt without anyone holding a pen. The
 reading does not know that. A rectangle you draw by hand in the same frame is read the same way.
 
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x520" clip="0,0,1100,520" screenshot="assets/chain_drawn_score/hero.png" transcript="assets/transcripts/drawn_score_hero_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="chain-drawn-score-hero" alt="Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over the score frame with its blue piano-roll rectangles, the red glissando and its label, the green held note and the orange playhead, and the box that drew them to the left."}
+// The marks come from the setup transcript's box. Switching the drawing layer on is what Alt-D
+// does; with it on, Excalidraw owns the mouse and keyboard and shows its toolbar.
+ui.eval("window.toggleDrawingLayer(); return window.drawingLayerState()")
+ui.waitForSelector("#field-drawing-layer .excalidraw", 15000.0)
+var ready = ""
+for (i in 0 until 60) {
+    ui.pause(250)
+    ready = ui.eval("""
+        const s = window.drawingLayerState()
+        const tools = document.querySelector("#field-drawing-layer .App-toolbar")
+        const shown = !!tools && tools.getBoundingClientRect().width > 0
+        return (s && s.active && shown) ? "ready" : "waiting: active=" + (s && s.active) + " toolbar=" + shown
+    """.trimIndent()).toString()
+    if (ready.contains("ready")) break
+}
+check(ready.contains("ready")) { "the drawing layer's toolbar never showed: " + ready }
+ui.pause(800)
+```
+
 ## The score, and a playhead through it
 
 `drawnScore()` draws a frame named "score", seven blue rectangles as a piano roll, a red glissando

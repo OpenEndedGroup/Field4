@@ -1,0 +1,19 @@
+name: drawn_score_hero_setup
+description: >
+  Setup for the drawing-layer hero on chain_drawn_score.md (also shown on drawing_and_notation.md):
+  one box that draws the score into the drawing layer with notation { drawnScore() } and cuts it with
+  a playhead, run once. The capture=ui drive then switches the drawing layer on so its toolbar shows.
+operations:
+  - create:
+      box: drawn_score_hero
+      name: drawn score
+      frame: { x: 40, y: 60, w: 180, h: 50 }
+      properties:
+        code: |
+          notation { drawnScore() }
+          val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)
+          notation("playhead") { stroke = "#f08c00"; line(listOf(score.toWorld(4.5, 85.0), score.toWorld(4.5, 47.0))) }
+  - wait:
+      millis: 500
+  - execute: { box: drawn_score_hero, property: code }
+  - await: {}

@@ -4,6 +4,8 @@ Press `alt-d` and the canvas becomes a drawing surface: pens, shapes, arrows and
 
 On its own that is a whiteboard. What makes it Field's is that your code can read the drawing and write to it. Every stroke is data a box can ask about, and every box can draw.
 
+![Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over a score drawn by a box's code, blue rectangles, a red pen-stroke glissando, a green level line and an orange playhead, with the box that drew them to the left](assets/chain_drawn_score/hero.png)
+
 ## A long tradition
 
 Artists and composers spent much of the twentieth century pulling notation apart, and most of what they found is useful here.
