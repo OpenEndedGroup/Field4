@@ -596,15 +596,61 @@ fun componentSizes(graph: PointGraph): List<Int> {
 // window derived from the final frame would frame a different picture from the one the run made.
 val window = doubleArrayOf(-0.60, -0.60, 0.60, 0.60)
 println("points outside that window: ${dynamicGraphOutsideWindow(state.points, window)}")
-val panels = listOf(0.0, 0.5, 1.2, 2.0).map { cut ->
+
+// A force-directed layout of one snapshot: a spring along every edge it kept, repulsion between every
+// pair of points, and a weak pull to the centre so separate components stay on the page. It starts
+// from where the points physically are and sees nothing but the snapshot's edges, so whatever comes
+// apart here came apart in the graph.
+fun relaxed(graph: PointGraph, start: List<Vec3>, iterations: Int = 300): List<Vec3> {
+    val n = graph.pointCount
+    val x = DoubleArray(n) { start[it].x.toDouble() }
+    val y = DoubleArray(n) { start[it].y.toDouble() }
+    val k = 0.04
+    var step = 0.02
+    repeat(iterations) {
+        val fx = DoubleArray(n)
+        val fy = DoubleArray(n)
+        for (i in 0 until n) for (j in i + 1 until n) {
+            val ex = x[i] - x[j]
+            val ey = y[i] - y[j]
+            val f = k * k / maxOf(ex * ex + ey * ey, 1e-6)
+            fx[i] += ex * f; fy[i] += ey * f; fx[j] -= ex * f; fy[j] -= ey * f
+        }
+        for (e in graph.edges) {
+            val ex = x[e.i] - x[e.j]
+            val ey = y[e.i] - y[e.j]
+            val f = Math.sqrt(ex * ex + ey * ey) / k
+            fx[e.i] -= ex * f; fy[e.i] -= ey * f; fx[e.j] += ex * f; fy[e.j] += ey * f
+        }
+        for (i in 0 until n) {
+            fx[i] -= 0.6 * x[i]; fy[i] -= 0.6 * y[i]
+            val len = Math.sqrt(fx[i] * fx[i] + fy[i] * fy[i])
+            if (len > 0) { val s = minOf(len, step) / len; x[i] += fx[i] * s; y[i] += fy[i] * s }
+        }
+        step *= 0.99
+    }
+    // Fit to the same window the physical panels use.
+    val cx = (x.max() + x.min()) / 2; val cy = (y.max() + y.min()) / 2
+    val half = maxOf(x.max() - x.min(), y.max() - y.min()) / 2
+    val s = 0.55 / half
+    return List(n) { Vec3(((x[it] - cx) * s).toFloat(), ((y[it] - cy) * s).toFloat(), 0f) }
+}
+
+// Every threshold is measured; two of them are drawn, each as the run left it and relaxed.
+val panels = listOf(0.0, 0.5, 1.2, 2.0).flatMap { cut ->
     val graph = edges.toPointGraph(minWeight = cut)
     val groups = componentSizes(graph).filter { it > 1 }
     val cross = graph.edges.count { group[it.i] != group[it.j] }
     println("minWeight %.1f -> %4d edges, %3d of them cross a group boundary, components > 1: %s".format(
         cut, graph.edges.size, cross, groups))
+    if (cut != 0.0 && cut != 1.2) return@flatMap emptyList()
     val kept = edges.values().filter { it.weight > cut }
-    "w>%.1f  %de  %d groups".format(cut, graph.edges.size, groups.size) to
-        dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma")
+    listOf(
+        "w>%.1f  as it ran".format(cut) to
+            dynamicGraphFLines(state.points, kept, maxWeight = ceiling, colormap = "magma"),
+        "w>%.1f  relaxed, %d groups".format(cut, groups.size) to
+            dynamicGraphFLines(relaxed(graph, state.points), kept, maxWeight = ceiling, colormap = "magma"),
+    )
 }
 showPlaneGrid(
     *panels.toTypedArray(),
@@ -612,7 +658,7 @@ showPlaneGrid(
 )
 ```
 
-![four snapshots of the same dynamic graph at rising weight thresholds: at the two low thresholds three bright knots are tied into the surrounding background mesh by dim purple streamers, and at the two high thresholds the streamers are gone and the knots float free of the mesh](assets/dynamic_graph_systems_examples/snapshot.png)
+![the same dynamic graph at two weight thresholds, each drawn twice: at w>0.0 the three bright clusters sit on the background mesh tied in by dim purple streamers, and relaxed they stay knots inside one connected net; at w>1.2 the streamers are gone, and relaxed the three clusters drift clear of the mesh as separate compact knots around it](assets/dynamic_graph_systems_examples/snapshot.png)
 
 | minWeight | edges | crossing a group boundary | components with more than one point |
 | --- | --- | --- | --- |
@@ -624,8 +670,14 @@ showPlaneGrid(
 At `minWeight = 1.2` the snapshot contains **zero** edges between groups, and its components are
 exactly the background mesh and the three clusters, at exactly their true sizes. The `group` array in
 the code above is used only to *check* that, never to build the graph, which sees nothing but
-positions and a clock. The dim purple streamers in the top two panels are the entire population of
+positions and a clock. The dim purple streamers in the top row are the entire population of
 transient links, and they are what the threshold removes.
+
+The left-hand panels draw each snapshot where the run left its points, so the clusters sit on top of
+the mesh they have just separated from. The right-hand panels lay the same snapshot out again by
+force: a spring along every kept edge, repulsion between all pairs, starting from those positions.
+Below the threshold the streamers hold the clusters inside one net; above it nothing holds them, and
+they come away from the mesh as three separate knots.
 
 This is the reading a static graph cannot give you. A kNN graph of the final frame has no way to tell
 a point that has been beside you for four seconds from one that arrived last frame; a weighted,
