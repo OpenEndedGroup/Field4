@@ -26,9 +26,10 @@ launch its **window** box, then **5e. Slug filled paths**. The lesson draws a cu
 outline with a square hole. Focus the renderer window and use WASD/arrow keys to
 move, E/C to rise or fall, and R to reset the camera. There is no automatic orbit.
 
-The lesson uses `File("native/field-slug/build/field-slug")`, relative to Field's
-working directory. This is the compiler executable; `SlugPath.compile` creates
-and cleans up its own temporary input/output files.
+The lesson uses `"field-slug".file`. FileManager registers the helper relative to
+Field's loaded installation/checkout; a document or project `files/field-slug` can
+override it. This is the compiler executable; `SlugPath.compile` creates and
+cleans up its own temporary input/output files.
 
 The complete [box code](assets/canonical_graphics/628f3f96-42d0-48dd-93ea-ea4d9f03b865_code_.kt),
 [vertex shader](assets/canonical_graphics/628f3f96-42d0-48dd-93ea-ea4d9f03b865_vertex_.glsl)
@@ -45,7 +46,7 @@ Open contours are closed for filling. All coordinates, including cubic controls,
 must be finite and lie in the XY plane (`z = 0`).
 
 ```diffstatic {data-lang=kotlin}
-val prepared = SlugPath.compile(path, File("native/field-slug/build/field-slug"),
+val prepared = SlugPath.compile(path, "field-slug".file,
     tolerance = 1e-4f)
 val data = SlugBuffer(renderer, prepared)
 ```
