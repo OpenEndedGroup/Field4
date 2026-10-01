@@ -784,6 +784,12 @@ class Vec3SignalRoutingGraphSystem(
  * inside [alphaRadius] and whose area clears [minArea] gets all three of its sides reinforced by the
  * same amount, so the graph this builds is made of *faces*.
  *
+ * @param reinforcePerUnitArea the increment per unit of triangle area, not per triangle: each side gets
+ *   `reinforcePerUnitArea · min(1, area) · compactness · dt`. The other five systems take a plain
+ *   `reinforce`; this one is named differently because a triangle in a cloud one unit across has an
+ *   area of a few thousandths, so the same number here lands about three orders of magnitude lower.
+ *   On the 220-point disc of the docs page, 4.0 reaches 0.3 % of the ceiling where the others reach at
+ *   least a sixth of it; scale it up by ~100× to put this system's weights on their footing.
  * @param minArea the smallest triangle that counts, **in area** — the guard used to compare it
  *   against the *squared* area, which made its effective units area² and the default 1e-5 a rejection
  *   of everything under 3.2e-3, 316× larger than it reads. On a 140-point disc of radius 0.5 with
@@ -793,7 +799,7 @@ class Vec3AlphaEventHypergraphCollapseSystem(
     var neighborhoodK: Int,
     var alphaRadius: Double,
     var ttl: Float,
-    var reinforce: Double,
+    var reinforcePerUnitArea: Double,
     var maxWeight: Double,
     var maxNeighborRadius: Double = Double.POSITIVE_INFINITY,
     var minArea: Double = 1e-5
@@ -843,7 +849,7 @@ class Vec3AlphaEventHypergraphCollapseSystem(
 
                     val compactness = 1.0 / (1.0 + sqrt((dia2 + dib2 + dab2) / 3.0))
                     val areaFactor = min(1.0, sqrt(area2))
-                    val w = reinforce * labelFactor * compactness * areaFactor * dt
+                    val w = reinforcePerUnitArea * labelFactor * compactness * areaFactor * dt
 
                     edges.reinforce(i, ja, w, ttl, maxWeight)
                     edges.reinforce(i, jb, w, ttl, maxWeight)
@@ -1042,9 +1048,9 @@ private fun removeDeadPointsInPlace(
  * Hooke's law along the live edges: each edge pulls its endpoints toward a rest length, damped, with
  * the speed clamped.
  *
- * @param restLengthScale **not a length.** The rest length of an edge is `restLengthScale / weight`,
- *   so a heavily reinforced edge wants to be short and a faint one wants to be long, and the units of
- *   this parameter are length × weight. That matters because the weights these systems actually
+ * @param restLengthTimesWeight the rest length of an edge multiplied by its weight: the rest length is
+ *   `restLengthTimesWeight / weight`, so a heavily reinforced edge wants to be short and a faint one
+ *   wants to be long, and the units are length × weight. That matters because the weights these systems actually
  *   produce are small — `reinforce · dt / (1 + d)` is of order 0.02 — and the default 1.0 therefore
  *   asks for a rest length of **50 world units** in a cloud one unit across, i.e. every spring is a
  *   saturated repulsion. Set it to `desiredRestLength × typicalWeight`.
@@ -1053,7 +1059,7 @@ private fun removeDeadPointsInPlace(
 class SpringMotionProcess(
     var springK: Double = 1.0,
     var damping: Double = 0.15,
-    var restLengthScale: Double = 1.0,
+    var restLengthTimesWeight: Double = 1.0,
     var maxSpeed: Double = 0.25,
     var edgeWeightFloor: Double = 1e-6
 ) : DynamicPointProcess {
@@ -1078,7 +1084,7 @@ class SpringMotionProcess(
             val dir = delta.mul((1.0 / len).toFloat())
             // `edge.weight > edgeWeightFloor` is guaranteed by the skip above, so no clamp is needed
             // here -- the max() this replaces could never take its first branch.
-            val rest = restLengthScale / edge.weight
+            val rest = restLengthTimesWeight / edge.weight
             val magnitude = springK * edge.weight * (len - rest)
             val force = dir.mul(magnitude.toFloat())
 
@@ -1463,12 +1469,9 @@ class RelaxToMidpointProcess(
  * Kills, and then compacts away, every point below [minDegree] incident edges or below [minResource]
  * resource.
  *
- * **Both defaults are near-inert and `minDegree = 0` is exactly inert**, which is worth
- * knowing before you configure one: `degree < 0` cannot hold, and `resource < -Double.MAX_VALUE`
- * cannot hold, so `PruneIsolatedPointsProcess(minDegree = 0)` is a provable no-op — it marks nothing,
- * and `removeDeadPointsInPlace` then returns early. That is how [exampleDynamicMorphogenesisStep] is
- * configured, which is why the growth in [DirectedTipGrowthProcess]'s KDoc runs away: the pipeline it
- * demonstrates pairs a growth rule with a death rule that cannot fire.
+ * The default [minResource] cannot fire (`resource < -Double.MAX_VALUE` never holds), so with the
+ * default the prune is by degree alone. `minDegree = 0` is for pruning by resource alone; with both
+ * left at their inert values (`minDegree = 0` and the default [minResource]) it marks nothing.
  */
 class PruneIsolatedPointsProcess(
     var minDegree: Int = 1,
@@ -1537,17 +1540,16 @@ class DynamicProcessPipeline(
 }
 
 /**
- * One whole frame of morphogenesis: build and decay the graph with [edgeSystem], then run the six
+ * One whole frame of morphogenesis: build and decay the graph with [edgeSystem], then run five
  * standard processes over it in order — diffuse resource and climb its gradient, relax the springs,
- * grow tips, merge what has collided, smooth, prune.
+ * grow tips, merge what has collided, smooth.
  *
- * **Read [DirectedTipGrowthProcess] and [PruneIsolatedPointsProcess] before using this.** The
- * composition below is the family's shop window and it is left as it shipped, which means
- * it pairs an uncapped growth rule with a prune configured (`minDegree = 0`) so that it provably
- * cannot fire. On the 40-point ring in `DynamicGraphSystemsTest` the population is exactly 40 for 109
- * frames and then multiplies by about 1.05 per frame: 3603 points by frame 199. [maxPointCount] is the
- * one knob added to make that bounded; it defaults to no ceiling, so the default call is byte-for-byte
- * the behaviour this function has always described. A real piece is better served by writing its own
+ * **Read [DirectedTipGrowthProcess] before using this.** The composition has a growth rule and no
+ * death rule (it used to end with a `PruneIsolatedPointsProcess(minDegree = 0)`, which could not mark
+ * anything, so removing it changed nothing). On the 40-point ring in `DynamicGraphSystemsTest` the
+ * population is exactly 40 for 109 frames and then multiplies by about 1.05 per frame: 3603 points by
+ * frame 199. [maxPointCount] is the one knob that bounds it; it defaults to no ceiling. Add a
+ * [PruneIsolatedPointsProcess] to your own pipeline if points should die. A real piece is better served by writing its own
  * [DynamicProcessPipeline] — the point of this function is to show what the pieces are and what order
  * they go in.
  *
@@ -1574,8 +1576,7 @@ fun exampleDynamicMorphogenesisStep(
             SpringMotionProcess(),
             DirectedTipGrowthProcess(maxPointCount = maxPointCount),
             MergeClosePointsProcess(),
-            RelaxToMidpointProcess(gain = 0.08),
-            PruneIsolatedPointsProcess(minDegree = 0)
+            RelaxToMidpointProcess(gain = 0.08)
         )
     )
     pipeline.step(dt, state, kinetics, edges, spatialHash)

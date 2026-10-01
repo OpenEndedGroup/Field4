@@ -64,7 +64,7 @@ operations:
                   neighborhoodK = 6, ttl = 10f, reinforce = 1.0, maxWeight = ceiling, routeCount = 1,
                   maxNeighborRadius = 0.10),
               "alpha-event" to Vec3AlphaEventHypergraphCollapseSystem(
-                  neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforce = 4.0, maxWeight = ceiling,
+                  neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforcePerUnitArea = 4.0, maxWeight = ceiling,
                   maxNeighborRadius = 0.09, minArea = 1e-4)
           )
 
@@ -427,9 +427,9 @@ operations:
               for (i in 0 until 16) kinetics.resource[i] = 6.0
               val stages = mutableListOf<DynamicPointProcess>(
                   SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
-                  // restLengthScale is length x weight, NOT a length: rest = restLengthScale / weight.
-                  // 0.075 is a rest length of 0.05 at a typical weight of 1.5.
-                  SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthScale = 0.075, maxSpeed = 0.30)
+                  // rest = restLengthTimesWeight / weight: 0.075 is a rest length of 0.05 at a typical
+                  // weight of 1.5.
+                  SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30)
               )
               if (grow) stages += DirectedTipGrowthProcess(
                   coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,

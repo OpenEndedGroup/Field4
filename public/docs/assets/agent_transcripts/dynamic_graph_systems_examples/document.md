@@ -20,7 +20,7 @@ weight / 4.0 -- the shared ceiling -- so it is a FIXED scale and a dim panel is 
 whose weights genuinely stayed low.
 
 ```edn [field-box id="dgs_six_systems" role="properties"]
-{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 62 "characters" 3515 "sha256" "6860da5bfddfb932c8760b734fd725b4134aad4ea2bb244c2ba3da1204331ddb"}]}
+{"id" "dgs_six_systems" "index" 0 "name" "1 — six ways to propose an edge" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 — six ways to propose an edge" "_tombstone" false "frame" #afield/rect [60.0 60.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_six_systems_code_.kt" "lines" 62 "characters" 3526 "sha256" "29cda6548f79bc9545b48f89bb6d757ca23af6296365d625722562dc236aade2"}]}
 ```
 
 ```kotlin [field-property box="dgs_six_systems" name="code" path="dgs_six_systems_code_.kt"]
@@ -57,7 +57,7 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
         neighborhoodK = 6, ttl = 10f, reinforce = 1.0, maxWeight = ceiling, routeCount = 1,
         maxNeighborRadius = 0.10),
     "alpha-event" to Vec3AlphaEventHypergraphCollapseSystem(
-        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforce = 4.0, maxWeight = ceiling,
+        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforcePerUnitArea = 4.0, maxWeight = ceiling,
         maxNeighborRadius = 0.09, minArea = 1e-4)
 )
 
@@ -261,7 +261,7 @@ smooth, jitter. The right-hand panel is the same pipeline with ONE stage removed
 growth -- so the difference between the panels is that stage and nothing else.
 
 ```edn [field-box id="dgs_morphogenesis" role="properties"]
-{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [1000.0 300.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 79 "characters" 3684 "sha256" "2589f72a905639ecaa319a49d77ff30616cc9364e53da343032287933936e9e5"}]}
+{"id" "dgs_morphogenesis" "index" 3 "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "6 — LAUNCH ME: morphogenesis, and its tip-growth-off twin" "_tombstone" false "frame" #afield/rect [1000.0 300.0 480.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "dgs_morphogenesis_code_.kt" "lines" 79 "characters" 3646 "sha256" "a56127f46c41289fc699852ff07029d12e7611e50c015e2420062ad440eb2bc4"}]}
 ```
 
 ```kotlin [field-property box="dgs_morphogenesis" name="code" path="dgs_morphogenesis_code_.kt"]
@@ -296,9 +296,9 @@ fun morph(grow: Boolean): Morph {
     for (i in 0 until 16) kinetics.resource[i] = 6.0
     val stages = mutableListOf<DynamicPointProcess>(
         SignalDiffusionAndChemotaxisProcess(diffusionRate = 0.5, chemoGain = 0.35, maxSpeed = 0.30),
-        // restLengthScale is length x weight, NOT a length: rest = restLengthScale / weight.
-        // 0.075 is a rest length of 0.05 at a typical weight of 1.5.
-        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthScale = 0.075, maxSpeed = 0.30)
+        // rest = restLengthTimesWeight / weight: 0.075 is a rest length of 0.05 at a typical
+        // weight of 1.5.
+        SpringMotionProcess(springK = 1.2, damping = 3.0, restLengthTimesWeight = 0.075, maxSpeed = 0.30)
     )
     if (grow) stages += DirectedTipGrowthProcess(
         coherenceThreshold = 1.6, spawnDistance = 0.035, localDensityRadius = 0.05,

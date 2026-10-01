@@ -31,7 +31,7 @@ val systems = listOf<Pair<String, DynamicGraphSystem>>(
         neighborhoodK = 6, ttl = 10f, reinforce = 1.0, maxWeight = ceiling, routeCount = 1,
         maxNeighborRadius = 0.10),
     "alpha-event" to Vec3AlphaEventHypergraphCollapseSystem(
-        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforce = 4.0, maxWeight = ceiling,
+        neighborhoodK = 6, alphaRadius = 0.075, ttl = 10f, reinforcePerUnitArea = 4.0, maxWeight = ceiling,
         maxNeighborRadius = 0.09, minArea = 1e-4)
 )
 

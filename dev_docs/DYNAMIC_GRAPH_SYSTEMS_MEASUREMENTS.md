@@ -1,17 +1,26 @@
-# Measurements behind the three misnamed parameters
+# Measurements behind three dynamic-graph parameters
 
-`public/docs/dynamic_graph_systems_examples.md` warns about three parameters whose names describe a
-quantity they are not. The warning states the consequence and the fix; the numbers that establish
-each consequence live here, so the page can stay about configuring the systems.
+`public/docs/dynamic_graph_systems_examples.md` used to carry an aside about three parameters whose
+names described a quantity they were not. On 2026-10-01 (handoff `bee0d51b`) the names were changed
+instead, with no change in behaviour, and the aside was deleted. The numbers that motivated each change
+stay here.
 
-## `PruneIsolatedPointsProcess(minDegree = 0)` marks nothing
+## `SpringMotionProcess.restLengthScale` became `restLengthTimesWeight`
 
-`degree < 0` cannot hold for any point and `resource < -Double.MAX_VALUE` cannot hold for any
-double, so the predicate is unsatisfiable and the process is a provable no-op. That matters because
-`exampleDynamicMorphogenesisStep` configures it exactly that way, so the pipeline it demonstrates
-has an uncapped growth rule and a death rule that cannot fire.
+The rest length of an edge is `restLengthTimesWeight / weight`, so the parameter's units are length ×
+weight. The weights these systems produce per frame are of order 0.02 (an observation across the
+shipped systems, not a guarantee any one makes), so the default `1.0` asks for a rest length of about
+50 world units in a cloud one unit across. The morphogenesis clip uses `0.075`: a rest length of 0.05
+at a typical weight of 1.5. Whether the rest length should depend on the weight at all is still open.
 
-Measured on a 40-point ring:
+## `exampleDynamicMorphogenesisStep` lost its no-op prune
+
+It ended with `PruneIsolatedPointsProcess(minDegree = 0)`. `degree < 0` cannot hold for any point and
+`resource < -Double.MAX_VALUE` cannot hold for any double, so that stage marked nothing; removing it
+changed no output. `minDegree = 0` stays legal, because with a real `minResource` it is a prune by
+resource alone.
+
+Measured on a 40-point ring, with or without the removed stage:
 
 | frame | points | edges |
 |---|---|---|
@@ -20,9 +29,9 @@ Measured on a 40-point ring:
 | 199 | 3603 | 78 360 |
 
 The population is flat for 109 frames and then compounds. `DirectedTipGrowthProcess.maxPointCount`
-is the ceiling that bounds it; nothing in the prune process will.
+is the ceiling that bounds it.
 
-## `Vec3AlphaEventHypergraphCollapseSystem` reinforcement against the other five
+## `Vec3AlphaEventHypergraphCollapseSystem.reinforce` became `reinforcePerUnitArea`
 
 The increment is multiplied by `min(1, area)`, and a triangle in a cloud one unit across has an
 area of a few thousandths, so the system never approaches the shared ceiling the other five reach.
@@ -34,12 +43,5 @@ Measured on the six-system figure on the page, against a shared ceiling of 4.0:
 | `Vec3AlphaEventHypergraphCollapseSystem` | **0.0137** | 0.3 % |
 | the other five | at least a sixth of the ceiling | ≥ ~17 %, two of them at 100 % |
 
-0.3 % against a sixth is the two-orders-of-magnitude gap the page tells you to close with
-`reinforce`. Without it this system's edges render invisible beside its neighbours'.
-
-## Open
-
-- No ground truth exists that would let any of the three be renamed or re-scaled without changing
-  behaviour, which is why all three are documented rather than fixed.
-- The `restLengthScale` note on the page quotes a typical per-frame weight of order 0.02. That is
-  an observation across the ten shipped processes rather than a guarantee any one of them makes.
+0.3 % against a sixth is a gap of about two orders of magnitude. The other choice, normalising the
+area factor so a typical triangle gives about 1, would change the six-system figure; it was not taken.
