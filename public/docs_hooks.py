@@ -856,6 +856,9 @@ class RunnerOptions:
     # so a figure of something only saving makes (document history, backups) needs a real document,
     # and a fixed name would carry every earlier capture's saves into the next one.
     fresh_document: bool = False
+    # `hide-toasts=true` (capture="ui" only): hide Field's toasts for the drive. They stay on screen
+    # once shown, and in a small `viewport=` window they stack over the canvas being recorded.
+    hide_toasts: bool = False
 
 
 def capture_profile_enabled(profile: str | None) -> bool:
@@ -3337,6 +3340,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         viewport=parse_viewport(first_attr(attrs, "viewport")),
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
+        hide_toasts=parse_bool(first_attr(attrs, "hide-toasts", "hide_toasts"), default=False),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -3958,6 +3962,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["clip"] = list(options.clip)
     if options.viewport is not None:
         payload["viewport"] = list(options.viewport)
+    if options.hide_toasts:
+        payload["hideToasts"] = True
     if options.scale is not None:
         payload["scale"] = options.scale
     if options.fresh_document:
@@ -5123,6 +5129,8 @@ def build_backdoor_command(
             drive_op["clipRect"] = list(options.clip)
         if options.viewport is not None:
             drive_op["viewport"] = list(options.viewport)
+        if options.hide_toasts:
+            drive_op["hideToasts"] = True
         if options.warm_completion:
             drive_op["warmCompletion"] = True
         transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"

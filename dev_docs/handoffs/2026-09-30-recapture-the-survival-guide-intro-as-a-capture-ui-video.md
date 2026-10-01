@@ -76,3 +76,16 @@ the new box, types `println("hello world")` and runs it with Alt-Enter, types tw
 runs the box with Alt-0, then checks that `hello world` and `55` were printed. `intro.apng` is gone.
 The keypress display (Toggle Keypress Display) was left off: at this window size its caption sits
 under the persistent notification stack, which the clip leaves out.
+
+## Progress, 2026-10-01 (evening captures session)
+
+Marc said yes to both. The video now ends on a launch: after Alt-0 it types
+`loop { display(frameNumber) }`, presses Alt-Up, and clicks the box's output panel open, where the
+frame count keeps climbing. The keypress display is on for the whole clip (`ui.keypressDisplay(true)`,
+through a new `window.fieldKeycast` in `keycast.js`, without its toast) and the clip is the window
+down to y=512, below the caption. The toasts that covered the caption are hidden by a new fence
+attribute, `hide-toasts=true`, which adds a style before the first frame and removes it after; the
+drive op also switches the keypress display off afterwards, since the capture page outlives the
+fence. A recording also no longer opens on several seconds of the page standing still while the
+fragment compiles: the drive prelude calls `ui.scriptStarted()`, and the recorder keeps half a
+second before it.
