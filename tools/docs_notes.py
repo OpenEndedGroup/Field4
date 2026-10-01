@@ -1434,7 +1434,11 @@ them — a later, interactive pass with a human works through handoffs one at a 
 Write the handoff document with your Write tool under {draft_dir}/ (no title line; the
 command adds one). Say what was asked and why it is bigger than a docs edit; give the evidence,
 with file:line references; propose an approach and its alternatives; list the questions a human
-has to answer; and say what the page needs once it is done. Then file it:
+has to answer; and say what the page needs once it is done. The document lands in dev_docs/, where
+the commit guard (ImpossibilityClaimContractTest, dev_docs/impossibility_claims.md) refuses a heading
+or bolded lead that says something "cannot"/"can't" be done, or is "ruled out", without evidence in the
+same paragraph: cite the code (`File.kt:120#symbol`), or mark what you reasoned but did not measure
+with "(conjecture, <today's date>)". Then file it:
 
   {cli} handoff "short imperative title" --scope project|crosscutting --body-file {draft_dir}/<name>.md \\
       --note <note-id> [--note <note-id> ...] [--page <other affected page> ...] [--blocking] \\
