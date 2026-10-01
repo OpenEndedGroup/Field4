@@ -260,7 +260,9 @@ in `dev_docs/SOUND_PATH_MAP_AGREEMENT.md`.
 
 ## A box that plays the comparison
 
-A loadable Field document is committed at `public/docs/assets/sound_path_map/`. Open
-`public/docs/assets` as the workspace and `sound_path_map` as the document, then run the boxes top
-to bottom: the first prints the map, the second plays the three renders back to back and plots
-their short-time brightness so you can see the filters as well as hear them.
+Open **sound_path_map** from the welcome screen's starting points. It has two boxes: *The map*
+prints this page's tables from `SoundPathMap.PATHS`, and *One buffer, three paths* plays the three
+renders above back to back and plots their short-time brightness, so you can see the filters as well
+as hear them. The second box needs the Dirt-Samples folders once, from `./gradlew fetchDocsDirtSamples`;
+without them it stops and names that command. Or [browse it in the offline
+viewer](offline.html?file=assets/agent_transcripts/sound_path_map/metadata.edn).

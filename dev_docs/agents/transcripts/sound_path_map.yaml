@@ -1,0 +1,65 @@
+name: sound_path_map
+description: >
+  The starting point behind public/docs/sound_paths.md (afield.four.synth/SoundPathMap.kt). Two boxes.
+    1. The map             — every declared way Field has of making, carrying out and bringing in sound,
+       printed from SoundPathMap.PATHS rather than from the page, with which ones share the one realtime
+       `render` signature and which ones no published page mentions.
+    2. One buffer, three paths — `showSoundPathComparison()`: `pat("bd ~ sd ~, hh*8")` played from real
+       Tidal Dirt-Samples one-shots by patRenderStereoDirt, then lowpassed at 900 Hz by the Signal
+       graph's ChamberlinLowpass and by a Faust program compiled at runtime. Three players, a
+       short-time brightness plot, the two filters' waveform similarity, and the gain seam as a number
+       (bit-equal). Rendered offline: no audio device.
+  Box 2 needs the pinned Dirt-Samples subset (`./gradlew fetchDocsDirtSamples`, ~6 MB, checksummed) and
+  stops with that command in its error when it is missing; there is no synth fallback. Its first run pays
+  13-22s of Faust/Truffle warm-up. Both boxes are executed by this transcript.
+operations:
+  - create:
+      box: sound_map_paths
+      name: 1 · The map
+      frame: { x: 60.0, y: 60.0, w: 520.0, h: 150.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // The map, printed from the code rather than from a page: what makes samples, what carries
+          // them out, what brings them in, and which of them meet the one `render` seam.
+          SoundPathMap.Role.values().forEach { role ->
+              println("${role.label}:")
+              SoundPathMap.PATHS.filter { it.role == role }.forEach { p ->
+                  println("  %-20s %-19s %s  needs: %s".format(
+                      p.id, p.timing.label, if (p.onSeam) "[on the seam]" else "[off the seam]", p.needs))
+                  println("      ${p.what}")
+                  println("      ${p.file} — ${p.entryPoint}${if (p.page == null) "   (NO PAGE DOCUMENTS THIS)" else ""}")
+              }
+          }
+          println()
+          println("${SoundPathMap.PATHS.count { it.onSeam }} of ${SoundPathMap.PATHS.size} paths meet AudioPatchSpec.Renderer.render(outL, outR, numFrames, ctx)")
+          println("no published page mentions: ${SoundPathMap.PATHS.filter { it.page == null }.map { it.id }}")
+
+  - create:
+      box: sound_map_compare
+      name: 2 · One buffer, three paths
+      frame: { x: 60.0, y: 240.0, w: 520.0, h: 150.0 }
+      properties:
+        code: |
+          import afield.four.synth.*
+
+          // One buffer, three paths. The dry beat is a real kick, snare and closed hat from Tidal's
+          // Dirt-Samples, mixed offline by patRenderStereoDirt. Then it is lowpassed at 900 Hz twice:
+          // by the Signal graph's own ChamberlinLowpass, and by a Faust program compiled at runtime.
+          // Three players, a brightness plot, and the seam claim as a number.
+          //
+          // The samples are a pinned, checksummed download of a few Dirt-Samples folders. Run
+          // `./gradlew fetchDocsDirtSamples` once; without them this box stops and says so, rather
+          // than playing a synth stand-in.
+          //
+          // The first run pays 13-22s of Truffle warm-up for the Faust compile. The second does not.
+          showSoundPathComparison()
+          displayOpen("path0")
+
+  - execute:
+      box: sound_map_paths
+  - execute:
+      box: sound_map_compare
+  - await:
+      wait: pending

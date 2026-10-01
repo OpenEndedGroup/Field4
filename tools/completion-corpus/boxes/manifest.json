@@ -481,6 +481,8 @@
   {"doc": "solidsl_inverse", "box": "refusals", "codeSha256": "cbaac5f3d6b072a3", "codeLines": 60, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_notation", "box": "solidsl_part", "codeSha256": "cc675aca83b66d60", "codeLines": 95, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "solidsl_notation", "box": "solidsl_shader", "codeSha256": "c53cc13eada5bc71", "codeLines": 61, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "sound_path_map", "box": "sound_map_compare", "codeSha256": "fa80eea703ed351c", "codeLines": 14, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "sound_path_map", "box": "sound_map_paths", "codeSha256": "03fff56f477865da", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_apollonius", "codeSha256": "18bc6f672db02104", "codeLines": 62, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_apollonius_sweep", "codeSha256": "71d0a7b3c2fe7568", "codeLines": 50, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "spatial_geometry_examples", "box": "spatial_clustering", "codeSha256": "0e3d6de7ecb3715f", "codeLines": 75, "receivers": ["afield.Box"], "preamble": ""},
