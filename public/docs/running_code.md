@@ -6,9 +6,8 @@ one, or when a child box cannot see a value its parent set.
 
 - **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
   box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
-  chance to put something into the animation loop and keep going. If none of those keys are muscle
-  memory yet, the [Survival Guide](survivalGuide.md) is where they live, alongside the `?` cheat
-  sheet and the `F1` palette that lists every other way to execute something.
+  chance to put something into the animation loop and keep going. The keys themselves, the `?`
+  cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
   preamble, inheritance from parent boxes, `@exported` — is the rest of this page.
 - **What happens after the last line evaluates**, when what you returned is a `Frames`, is
