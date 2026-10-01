@@ -13,111 +13,27 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The access-control tests for `/api/docs-annotations` and `/api/docs-improvement`.
- *
- * These exist because that second route spawns `codex exec --sandbox workspace-write`
- * — an autonomous coding agent with write access to a source checkout — and because it
- * is installed alongside an SSL connector bound to `0.0.0.0`. Before the branch that
- * added this file it took no credential of any kind.
+ * The access-control predicates behind `/api/docs-annotations` and the documentation
+ * mirror, which the revision pass (`docsPass.kt`) reuses: annotation text is the prompt the
+ * pass hands coding agents with write access to a checkout, and all of it is installed
+ * alongside an SSL connector bound to `0.0.0.0`. The tests for the agent-spawning
+ * `POST /api/docs-improvement` were removed with that route on 2026-10-02.
  *
  * Every test here was watched to fail against the pre-change behaviour. That is not a
  * figure of speech: each guard was locally reverted to what it replaced (for the
- * spawn and the annotation routes, "return null" — permit everything; for the proxy,
+ * annotation routes, "return null" — permit everything; for the proxy,
  * `relative.contains("..")` against the raw path), the suite was run, and the failures
  * were recorded. A security test nobody has seen fail is a test that guards nothing.
  * If you change a guard, do the same again rather than trusting the green.
  *
  * The [DocsAccessPolicy] argument is what makes that cheap. The policy is a value, so
- * "the server as it shipped last week" and "the server with the flag on" are both just
- * arguments, and the tests do not need a running Ktor application to say anything true.
+ * "the hatch shut" and "the hatch open" are both just arguments, and the tests do not
+ * need a running Ktor application to say anything true.
  */
 class DocsAnnotationSecurityTest {
 
-    /** Enabled, tokenised, and otherwise permissive — the *most* open posture that is still hardened. */
-    private val enabled = DocsAccessPolicy(improvementEnabled = true, improvementToken = TOKEN)
-
     /** Exactly what a Field serves with no configuration at all. */
     private val default = DocsAccessPolicy()
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // The spawn
-    // ══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    fun aHostOnTheLanCannotLaunchTheAgentEvenWithEverythingElseCorrect() {
-        // The original attack, in one line: the LAN could reach the port, and the port
-        // would run a coding agent. Enabled and correctly tokenised here so that the
-        // only thing refusing is the address.
-        for (address in listOf("192.168.1.50", "10.0.0.7", "0.0.0.0", "169.254.1.1", "fe80::1")) {
-            val refusal = refuseDocsImprovementLaunch(enabled, address, TOKEN)
-            assertNotNull(refusal, "a launch from $address must be refused")
-            assertEquals(HttpStatusCode.Forbidden, refusal.status, "for $address")
-        }
-    }
-
-    @Test
-    fun theAgentIsOffUntilItIsAskedForAndTheRefusalSaysHow() {
-        val refusal = refuseDocsImprovementLaunch(default, "127.0.0.1", TOKEN)
-        assertNotNull(refusal, "the agent must be disabled by default")
-        assertEquals(HttpStatusCode.Forbidden, refusal.status)
-        // The refusal is a help message, not a wall: by this point the caller is local
-        // and is almost certainly the human wondering why the button did nothing.
-        assertTrue(
-            DOCS_IMPROVEMENT_ENABLE_PROPERTY in refusal.reason && DOCS_IMPROVEMENT_ENABLE_ENV in refusal.reason,
-            "the refusal must name both ways to enable it; was: ${refusal.reason}",
-        )
-    }
-
-    @Test
-    fun anEnabledAgentStillNeedsTheToken() {
-        for (presented in listOf(null, "", "  ", "wrong", TOKEN.dropLast(1), TOKEN + "x", TOKEN.uppercase())) {
-            val refusal = refuseDocsImprovementLaunch(enabled, "127.0.0.1", presented)
-            assertNotNull(refusal, "token '${presented}' must not be accepted")
-            assertEquals(HttpStatusCode.Unauthorized, refusal.status, "for token '$presented'")
-            assertTrue(DOCS_IMPROVEMENT_TOKEN_HEADER in refusal.reason, "the refusal must name the header")
-        }
-    }
-
-    @Test
-    fun misconfiguredIsNotTheSameAsUnauthenticated() {
-        // `resolveDocsAccessPolicy` mints a token whenever the feature is on, so this
-        // state should be unreachable. It is checked anyway, because "enabled but with
-        // an empty expected token" is precisely the shape of an accident that would
-        // otherwise re-open the endpoint to every empty header on loopback.
-        val brokenlyConfigured = DocsAccessPolicy(improvementEnabled = true, improvementToken = "")
-        assertNotNull(refuseDocsImprovementLaunch(brokenlyConfigured, "127.0.0.1", ""))
-        assertNotNull(refuseDocsImprovementLaunch(brokenlyConfigured, "127.0.0.1", null))
-        assertNotNull(refuseDocsImprovementLaunch(brokenlyConfigured, "127.0.0.1", "anything"))
-    }
-
-    @Test
-    fun theRemoteEscapeHatchNeverOpensTheSpawn() {
-        // AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE exists so a tablet can read the docs and
-        // leave notes. If it also let the LAN start a coding agent it would be a hole
-        // with a friendly name, so the spawn guard does not consult it — and this test
-        // is the reason it will stay that way.
-        val hatchOpen = enabled.copy(allowRemoteAnnotations = true)
-        assertNull(refuseDocsAnnotationRequest(hatchOpen, "192.168.1.50"), "annotations are what the hatch opens")
-        val refusal = refuseDocsImprovementLaunch(hatchOpen, "192.168.1.50", TOKEN)
-        assertNotNull(refusal, "the hatch must not reach the agent")
-        assertEquals(HttpStatusCode.Forbidden, refusal.status)
-    }
-
-    @Test
-    fun theHumanCanStillRunItAndTheOrderOfChecksIsWhatIsClaimed() {
-        // The workflow this whole branch is trying not to break.
-        assertNull(refuseDocsImprovementLaunch(enabled, "127.0.0.1", TOKEN))
-        assertNull(refuseDocsImprovementLaunch(enabled, "::1", TOKEN))
-        assertNull(refuseDocsImprovementLaunch(enabled, "127.0.0.5", TOKEN))
-
-        // Loopback is checked first, so an off-machine caller learns nothing about
-        // whether the feature is configured — same refusal either way.
-        assertEquals(
-            refuseDocsImprovementLaunch(default, "192.168.1.50", null)?.reason,
-            refuseDocsImprovementLaunch(enabled, "192.168.1.50", TOKEN)?.reason,
-            "a remote caller must not be able to tell an enabled server from a disabled one",
-        )
-    }
 
     // ══════════════════════════════════════════════════════════════════════════
     // What counts as "this machine"
@@ -131,7 +47,8 @@ class DocsAnnotationSecurityTest {
      * "loopback-only" on the machine you are sitting at. Driving a real Field on port
      * 9492 on 2026-08-11, a request from `curl https://localhost:9492/…` arrived with
      * `request.local.remoteAddress` = `0:0:0:0:0:0:0:1`: the fully expanded IPv6
-     * loopback, neither `127.0.0.1` nor `::1`. Confirmed by the server's own log line,
+     * loopback, neither `127.0.0.1` nor `::1`. Confirmed by the server's own log line from
+     * the since-removed `POST /api/docs-improvement`,
      * `Refused a documentation improvement launch from 0:0:0:0:0:0:0:1: 403 Forbidden` —
      * a refusal from the *disabled* check, which a request only reaches by passing the
      * loopback check first.
@@ -225,7 +142,7 @@ class DocsAnnotationSecurityTest {
             assertTrue(docsFlagEnabled(null, on), "'$on' should enable")
             assertTrue(docsFlagEnabled(on, null), "'$on' should enable as a property")
         }
-        // The empty string is what `AFIELD_DOCS_IMPROVEMENT=` produces, and "off" is the
+        // The empty string is what `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=` produces, and "off" is the
         // only safe reading of it.
         for (off in listOf(null, "", " ", "0", "false", "no", "off", "enabled", "sure")) {
             assertFalse(docsFlagEnabled(null, off), "'$off' should not enable")
@@ -240,7 +157,7 @@ class DocsAnnotationSecurityTest {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // Where the agent is allowed to run
+    // Where the revision pass is allowed to run
     // ══════════════════════════════════════════════════════════════════════════
 
     @Test
@@ -497,10 +414,5 @@ class DocsAnnotationSecurityTest {
         } finally {
             Files.walk(dir).use { paths -> paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists) }
         }
-    }
-
-    private companion object {
-        /** Shaped like a real minted token — 24 random bytes, hex — so length games look realistic. */
-        const val TOKEN = "8f2c1a90b47e35d6c8a10f7be2049d3c5a6b7e8f90123456"
     }
 }

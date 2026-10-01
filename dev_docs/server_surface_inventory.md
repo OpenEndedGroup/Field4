@@ -19,9 +19,9 @@ the category, which is enough to decide whether the new door wanted a guard.
 It is not the whole story of Field's exposure, and two other guards own the parts it leaves
 out:
 
-- **state-changing HTTP routes** — 57 of them, 44 with a named verb and 13 that name no verb
+- **state-changing HTTP routes** — 56 of them, 43 with a named verb and 13 that name no verb
   at all — belong to `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned`, which
-  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 57**). This
+  has pinned them since 2026-08-12 and counts the unguarded remainder (**49 of 56**). This
   page does not duplicate that table, but it does count the thirteen verbless routes below,
   because a door that answers every method has to appear in an inventory of doors;
 - **the CORS block and the three WebSocket channels** belong to the same file's other tests.
@@ -30,7 +30,7 @@ What was uncovered before this page existed, and is what it adds:
 
 | surface | count | previously guarded by |
 | --- | --- | --- |
-| HTTP **read** routes | 46 | nothing — the mutating census skips `get` outright |
+| HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
 | `/ws` **command** names (`handlers`) | 118 | nothing |
@@ -62,11 +62,10 @@ default**. That inversion is the single most useful sentence on either page.
 
 ## HTTP read routes
 
-46 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
-body by the same three-name vocabulary the mutating census uses
-(`docsAnnotations.kt:734#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
-`docsAnnotations.kt:718#fun ApplicationCall.refuseUnlessLocalDocsClient`,
-`docsAnnotations.kt:313#internal fun refuseDocsImprovementLaunch`); there is no `install(Authentication)`
+45 routes, 35 of them with no route-specific guard. `guard` is computed from the handler
+body by the docs-route vocabulary the mutating census also uses
+(`docsAnnotations.kt:739#fun ApplicationCall.refuseUnlessSameSiteDocsClient`,
+`docsAnnotations.kt:723#fun ApplicationCall.refuseUnlessLocalDocsClient`); there is no `install(Authentication)`
 anywhere in the tree, so `none` means precisely none.
 
 Reads matter on their own terms, and it is worth saying why rather than assuming it. A read
@@ -91,7 +90,6 @@ mutation; it is a different one.
 | `GET /api/code-use/unresolved` | `Server.kt` | none |
 | `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
-| `GET /api/docs-improvement` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/handoff` | `docsPass.kt` | loopback + same-site |
@@ -224,7 +222,7 @@ it is also the only member of this table that does anything with its input.
 
 **Open question for the human, not for a nightly agent:** should these thirteen be `get { }`?
 Writing them as `get { }` would cost nothing — no client sends anything but `GET` — and would
-take thirteen rows off the state-changing census, which would then read 44 rather than 57. The
+take thirteen rows off the state-changing census, which would then read 43 rather than 56. The
 reason this branch did not do it: it is a change to `Server.kt`'s behaviour rather than to a
 test's accuracy, the `/vision` block's sibling `POST /vision/stream` shows the prefix is used
 for more than pages, and nothing in the repository records whether any of these was ever
@@ -323,9 +321,9 @@ mode they call the configured AI provider, so a frame can also spend the machine
 The HTTP twins `POST /api/agent-task` and `POST /api/agent-eval` have their own guard
 (`agentRouteAccess.kt`: loopback peer, `Host` of localhost/127.0.0.1/[::1], same-origin), which the
 docs-annotation opt-ins do not loosen. The census pins both as
-`loopback + localhost-host + same-site`; neither has docs-improvement's enabled+token gate, because
-the callers are curl, the backdoor and `field_mcp` on this machine, whose user is already the
-boundary, and the in-route same-site check is what the token was standing in for there.
+`loopback + localhost-host + same-site`; neither has a switch or a token, because the callers are
+curl, the backdoor and `field_mcp` on this machine, whose user is already the boundary, and the
+in-route same-site check stops a web page.
 
 | command | declared in |
 | --- | --- |

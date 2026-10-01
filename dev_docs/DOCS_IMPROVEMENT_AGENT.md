@@ -1,7 +1,7 @@
 # The documentation annotation layer, and the coding agent behind it
 
-Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt` and
-`src/commonMain/resources/docsAnnotations.js`.
+Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`,
+`src/jvmMain/kotlin/afield/server/docsPass.kt` and `src/commonMain/resources/docsAnnotations.js`.
 
 The first is benign and pleasant: `/field-docs/…` mirrors the published documentation
 through Field's own origin and injects a note-taking panel into it. Select a sentence,
@@ -9,21 +9,25 @@ press `Ctrl+Shift+A`, type a note, and it is stored in `~/.afield/docs-annotatio
 by default (or the file selected by `AFIELD_DOCS_ANNOTATIONS_STORE`), with an anchor good
 enough to find the sentence again after the page is rebuilt.
 
-The second is not benign. `POST /api/docs-improvement` takes the queued notes and runs
-the revision harness,
+The second is not benign. The revision pass — `/docs-pass.html`, served by `docsPass.kt` over
+`/api/docs-improvement/pass…` and `/docs-pass-site/…` — takes the queued notes and runs the
+revision harness,
 
 ```
-tools/docs_notes.py revise --agent codex
+tools/docs_notes.py pass revise --agent claude
 ```
 
-in a source checkout, which starts one `codex exec --sandbox workspace-write` (or
-`claude -p`, with `AFIELD_DOCS_IMPROVEMENT_AGENT=claude`) *per documentation page*, in
-parallel. Each is an autonomous coding agent, with write access, steered by text that
-arrived over HTTP. (Until 2026-09-30 it was one `codex exec` over every note, told to edit
-the annotation store itself; how the harness partitions, anchors and records is
-[`docs_notes.md`](../public/docs/docs_notes.md).)
+in a worktree of the checkout, which starts one coding agent (`claude -p`, or
+`codex exec --sandbox workspace-write`) *per documentation page*, in parallel. Each is an
+autonomous coding agent, with write access, steered by text that arrived over HTTP. The pass
+then commits and can fast-forward `main`. How the harness partitions, anchors and records is
+[`docs_notes.md`](../public/docs/docs_notes.md).
 
-This page is about the second one: what it can do, what stops it, and how to turn it on.
+The older route that did the same from a button, `POST /api/docs-improvement`, with its enable
+switch and token, was removed on 2026-10-02. It appears below only where it is part of how
+the current guards came to be.
+
+This page is about the second feature: what it can do and what stops it.
 
 ## Threat model
 
@@ -33,10 +37,11 @@ the local network — and it is not going to change. The consequence is that **e
 Field installs is reachable from the local network**, and a route that must not be has to
 say so itself.
 
-Until 2026-08-11 this one did not. The attack was three requests and no credential:
+Until 2026-08-11 the agent-spawning route of the time did not. The attack was three requests
+and no credential:
 
 1. `POST /api/docs-annotations` with a note containing whatever instructions you like;
-2. `POST /api/docs-improvement`;
+2. `POST /api/docs-improvement` (removed 2026-10-02);
 3. wait.
 
 The agent ran in `Paths.get(".")` — whatever directory `field.sh` was launched from — and
@@ -44,8 +49,8 @@ nothing recorded which one that was, so even after the fact you could not tell f
 logs which tree had been edited.
 
 **The boundary now drawn is "this machine's own user", not "this machine".** A process
-running as you can reach loopback, read the token out of the environment or out of the
-log, and in any case already has every access the coding agent would be handed. Nothing
+running as you can reach loopback, and in any case already has every access the coding
+agents would be handed. Nothing
 here pretends otherwise.
 
 ### The second attack, which the first pass reasoned its way to and did not close
@@ -75,8 +80,8 @@ on loopback. `DELETE` was reachable the same way. `PUT …/resolve` was not, but
 not a defence.
 
 That is a write to the *prompt*. A hostile page could pre-load instructions and simply wait
-for you to press the button yourself, for your own reasons, with a note in the batch you
-did not write. `GET /api/docs-improvement` was readable cross-site too, and it returns
+for you to start a run yourself, for your own reasons, with a note in the batch you did
+not write. `GET /api/docs-improvement` was readable cross-site too, and it returned
 `workingDirectory` and up to 120 KB of the agent's log tail.
 
 Closed 2026-08-12; see the next section.
@@ -114,7 +119,7 @@ is for, and on these routes loopback is still the boundary. It does mean the `cu
 on this page keep working.
 
 `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE=1` re-opens it, with a warning at startup, and —
-like the remote hatch — never opens the spawn.
+like the remote hatch — never opens the revision pass.
 
 The `/field-docs/…` mirror deliberately keeps the machine guard and *not* the site guard: it
 is reached by navigation, and a link to a page from another site is an ordinary way to
@@ -127,7 +132,7 @@ arrive at it.
 | `POST /api/docs-annotations`, `Origin: https://somewhere-else.example`, `Sec-Fetch-Site: cross-site` | **403**, "…are same-site only…" |
 | `DELETE /api/docs-annotations/{id}`, same headers | **403** |
 | `PUT /api/docs-annotations/{id}/resolve`, `Sec-Fetch-Site: cross-site` | **403** |
-| `GET /api/docs-improvement`, same headers | **403**, no `workingDirectory` in the body |
+| `GET /api/docs-improvement` (removed 2026-10-02), same headers | **403**, no `workingDirectory` in the body |
 | `POST` and `DELETE` with `Origin: https://localhost:9492`, `Sec-Fetch-Site: same-origin` | **200** — the panel is unaffected |
 | `GET /api/docs-annotations` with no `Origin` at all (plain `curl`) | **200** |
 | `POST` from `https://192.168.2.125:9492`, the machine's own LAN address | **403**, the *loopback* refusal |
@@ -136,112 +141,42 @@ arrive at it.
 The human's `~/.afield/docs-annotations.json` was checked before and after: 14 notes, no
 note from the cross-site attempt, and the same-origin probe cleaned up after itself.
 
-## Turning it on
+## Running a pass
 
-The agent is off unless asked for. Off means `POST /api/docs-improvement` returns 403
-with a message naming the flag; `GET` still answers, with `"enabled": false`, so a UI can
-grey the control out rather than offer a button that always fails.
-
-```bash
-# minimum: enable it. Field mints a random token and prints it once at startup.
-AFIELD_DOCS_IMPROVEMENT=1 ./field.sh
-
-# or, equivalently, on this JVM's command line (a -D flag beats the environment)
-JAVA_OPTS=-Dafield.docsImprovement.enabled=true ./field.sh
-
-# a stable token, and an explicit checkout, which is what you want if you do this often
-export AFIELD_DOCS_IMPROVEMENT=1
-export AFIELD_DOCS_IMPROVEMENT_TOKEN=$(openssl rand -hex 24)
-export AFIELD_DOCS_IMPROVEMENT_DIR=/Users/you/field4
-./field.sh
-```
-
-At startup Field logs exactly one line saying which of these it is doing — the directory
-the agent would run in, and the token — or one saying the feature is disabled and how to
-enable it. If you cannot find that line, the server you are talking to is not the server
-you think it is.
-
-Launching a run:
-
-```bash
-curl -sk -X POST https://localhost:9092/api/docs-improvement \
-  -H 'Content-Type: application/json' \
-  -H "X-Field-Docs-Improvement-Token: $AFIELD_DOCS_IMPROVEMENT_TOKEN" \
-  -d '{"tags":["docs"]}'
-```
-
-Checking the posture before you do, which is the point of reporting the directory on
-`GET` as well as after a run:
-
-```bash
-curl -sk https://localhost:9092/api/docs-improvement
-# {"running":false,"status":"idle", … ,"enabled":true,"workingDirectory":"/Users/you/field4"}
-```
+Open `/docs-pass.html` — the welcome page's **Revision pass** button opens it — from Field on this
+machine, or run `tools/docs_notes.py pass …` from a terminal; the page only runs those
+commands. There is no switch to turn on and no token.
 
 ## The contract
 
 | variable | default | what it does |
 | --- | --- | --- |
-| `afield.docsImprovement.enabled` (`-D`) | unset | turns the agent-spawning route on. Beats the environment variable when both are set. |
-| `AFIELD_DOCS_IMPROVEMENT` | unset | the same switch, from the environment. `1`, `true`, `yes`, `on`; anything else — **including the empty string** — is off. |
-| `AFIELD_DOCS_IMPROVEMENT_TOKEN` | a fresh random 24-byte hex value, printed once | the value of `X-Field-Docs-Improvement-Token`. Compared with `MessageDigest.isEqual`. |
-| `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the agent may edit. Must exist and be a directory, or the run refuses with a sentence. |
-| `AFIELD_DOCS_IMPROVEMENT_AGENT` | `codex` | the agent the harness runs per page: `codex` or `claude`. Anything else is `codex`. |
-| `AFIELD_DOCS_NOTES_PYTHON` | unset → `uv run --no-project python`, else `python3` | the interpreter the route runs `tools/docs_notes.py` with. The tool is stdlib-only. |
-| `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the spawn. |
-| `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the spawn. |
+| `AFIELD_DOCS_IMPROVEMENT_DIR` | the server's own working directory, canonicalised | the checkout the revision pass works from, and the one notes are attributed to. Must exist and be a directory, or a pass refuses with a sentence. |
+| `AFIELD_DOCS_NOTES_PYTHON` | unset → `uv run --no-project python`, else `python3` | the interpreter the revision pass runs `tools/docs_notes.py` with. The tool is stdlib-only. |
+| `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` | unset | lets **annotation** requests come from other devices. Browser URLs must still use a literal IP (or also opt into cross-site annotations for a custom hostname). Logged as a warning at startup. Never affects the revision pass. `1`, `true`, `yes`, `on`; anything else — **including the empty string** — is off. |
+| `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` | unset | lets **annotation** requests come from other *websites*. A different axis from the row above, and the same rule: warned about at startup, never affects the revision pass. |
 | `AFIELD_DOCS_ANNOTATIONS_STORE` (`-Dafield.docsAnnotations.store`) | `~/.afield/docs-annotations.json` | selects the annotation notebook. Relative paths are resolved from Field's working directory, so automation can use `.field-backdoor/docs-annotations.json` without touching the human's global notes. The property wins over the environment. |
 | `AFIELD_DOCS_MIRROR_SOURCE` (`-Dafield.docsMirror.source`) | unset → `auto` | which copy `/field-docs/…` serves. `auto` is the local build when it exists and the published site when it does not; `local` never falls back; `upstream` is the original always-proxy behaviour. An unrecognised value is `auto` — the startup line prints what was resolved. |
 | `AFIELD_DOCS_MIRROR_DIR` (`-Dafield.docsMirror.dir`) | `public/field4` under Field's working directory | the built site the two local modes serve. Checked per request, so a docs build that finishes while Field is running needs no restart. |
 | `AFIELD_API_REQUIRE_SAME_SITE` (`-Dafield.api.requireSameSite`) | unset | refuses cross-site HTTP writes and browser upgrades to Field's two command WebSockets, not just this feature. Browser URLs must name `localhost` or a literal IP. Off by default; see the last section for what it does and — mostly — does not close. |
 
-Five independent conditions guard the spawn, each separately sufficient to stop the
-attack above:
+Two checks guard the revision pass, each separately sufficient to stop one of the attacks
+above, and one rule keeps them from being loosened:
 
-- **it is off** unless enabled;
-- **the token** must match;
 - **the peer must be loopback**, decided on `call.request.local.remoteAddress`;
-- **the request must be same-site**, decided on `Sec-Fetch-Site` and `Origin`/`Host`
-  (added 2026-08-12; see below for why, given the token already exists);
-- **the directory** must resolve to a real directory, and is logged before the process
-  starts.
+- **the request must be same-site**, decided on `Sec-Fetch-Site` and `Origin`/`Host`. Your own
+  browser is on loopback, so loopback alone does nothing about a page you are visiting in a
+  tab;
+- **both annotation hatches are forced shut** (`docsPassPolicy`), so a variable whose name
+  says "annotations" cannot turn out to have opened the pass.
 
-### Why the token exists even though the route is already loopback-only
+The checkout must also resolve to a real directory, or a pass refuses before it starts.
 
-Because **your own browser is on loopback**. Loopback-only stops another *machine*; it does
-nothing about a page you are visiting in a tab. Field installs Ktor's CORS plugin with
-`anyHost()` and `allowMethod(Post)`, so `https://somewhere-else.example/` can issue
+What the pass gives up by having no token is a backstop for a *future* change to the CORS or
+same-site code. The token the old route used scrolled out of the terminal it was printed in,
+and the page is used from inside Field itself.
 
-```js
-fetch("https://localhost:9092/api/docs-improvement", {method: "POST", …})
-```
-
-and the browser will *send* it. CORS only stops that page reading the reply — the coding
-agent would already have started. That is a textbook CSRF, and the loopback check is
-exactly the wrong shape of defence against it.
-
-A custom request header is the right shape. `X-Field-Docs-Improvement-Token` is not a
-CORS-safelisted header, so the browser must preflight, and the preflight fails: Field's
-CORS config allows `Content-Type` and nothing else. A cross-site page therefore cannot
-send the header at all, never mind guess it.
-
-Since 2026-08-12 this route also asks `isSameSiteRequest` before anything else, which is
-belt and braces on purpose: the argument above is correct, and it depends entirely on six
-lines of CORS configuration in a different file staying exactly as they are. The route's
-own check does not. The annotation hatch is forced shut for this call, for the same reason
-`refuseDocsImprovementLaunch` never reads the remote hatch — a variable whose name says
-"annotations" must not turn out to have opened the spawn.
-
-The consequence, and it is deliberate: **the token is never served over HTTP.** Not from
-an endpoint, not inlined into a page — because with `anyHost()`, anything this origin
-would hand its own pages it would also hand that other website. It lives in the
-environment and in the startup log. Field mints a fresh one on every restart unless you set
-`AFIELD_DOCS_IMPROVEMENT_TOKEN` yourself. (The welcome page's "Improve annotated docs" button
-used to prompt for it and cache it in `localStorage`. It was removed on 2026-10-02; the
-Revision pass card, which drives `/docs-pass.html`, replaced it, so nothing in Field's own
-pages calls this route any more.)
-
-### Two details in the loopback check are load-bearing and easy to undo by accident.
+## Two details in the loopback check are load-bearing and easy to undo by accident
 
 It reads `call.request.local`, not `call.request.origin`. `origin` is the connection
 point as rewritten by `XForwardedHeaders`/`ForwardedHeaders`, out of a header the client
@@ -256,7 +191,7 @@ job is to keep that false.
 ## Annotations are loopback-only too
 
 Not because storing a string is dangerous, but because annotation text is the *input* to
-the agent's prompt. Whoever can write a note can steer a run the human later launches.
+the agents' prompt. Whoever can write a note can steer a run the human later starts.
 
 That sentence was written on 2026-08-11 and is where the second attack came from: it
 answered *which machine* and stopped there, when the thing it names — steering a run — is
@@ -310,7 +245,7 @@ talking to Field over `postMessage`, which is a redesign rather than a hardening
 LAN address rather than `localhost`, you now get a refusal instead of the mirror and your
 notes. The refusal says what to do. `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=1` restores the
 old behaviour for the mirror and the annotations together — they were never really
-independent — and never for the spawn.
+independent — and never for the revision pass.
 
 ## Redirects cannot walk the proxy off the docs site
 
@@ -334,17 +269,15 @@ faithfully follow.
   read-modify-write also takes a POSIX record lock on `<store>.lock`, which
   `tools/docs_notes.py` takes too, so two JVMs, or a JVM and the harness, no longer lose each
   other's notes. `recordedInCheckout` remains attribution, not locking.
-- **Prompt injection is mitigated, not removed.** With the endpoint gated, an attacker
-  can no longer both plant the text and pull the trigger. A note you did not write can
+- **Prompt injection is mitigated, not removed.** With the annotation and pass routes
+  same-site, an attacker can no longer both plant the text and pull the trigger. A note you did not write can
   still end up in a run you did launch — the notes are yours, so this is mostly a
   statement about not annotating pages you do not trust.
-- **The token is visible to your own processes**, in the environment and in the log. See
-  the threat model: that is the boundary, deliberately.
 - **`0.0.0.0` is still `0.0.0.0`.** Narrowing it would break the visionOS shell and
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
 - **The rest of the API is still unauthenticated, and that is the largest thing on this
-  page.** 49 of 57 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
+  page.** 49 of 56 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
   CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
   host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
   asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
@@ -368,7 +301,7 @@ worklog decays and this one should not:
 added, when one is removed, and — the case a count could never see — when one quietly
 loses its guard.
 
-**49 of 57 state-changing HTTP routes have no route-specific access control**, and there is no
+**49 of 56 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
 That was 36 of 40 until 2026-08-22, and the difference is not thirteen new routes — it is
@@ -411,7 +344,7 @@ install(CORS) {
 ```
 
 `anyHost()` means *any website you have open in any tab* may call Field. The surface is
-**57 state-changing HTTP routes**: 42 named method routes (37 POST, 3 DELETE, 2 PUT), the
+**56 state-changing HTTP routes**: 41 named method routes (36 POST, 3 DELETE, 2 PUT), the
 wildcard `POST /field-audio/{...}` and `PUT /field-audio/{...}` routes that the old
 literal-only census missed, and — since 2026-08-22 — the 13 verbless
 `route(…) { handle { … } }` routes that answer every method without naming one.
@@ -420,25 +353,23 @@ allow-listed — which is configuration, not a guard, and is not what `PUT …/r
 on any more. The application-wide same-site switch covers both Field Audio writes because
 its interceptor is not restricted to `/api`; it remains off by default.
 
-Eight of the 57 are guarded: four in `docsAnnotations.kt`, the revision pass's one in `docsPass.kt`
-(2026-09-30; loopback + same-site only, by choice: the token printed at startup scrolls out of
-the terminal, and the page is used from inside Field), the geometry review update in `Server.kt`, and the in-Field agent harness's two routes
-(2026-09-29, `agentRouteAccess.kt`), and the table that says so
-is asserted in `FieldApiCorsExposureTest`:
+Seven of the 56 are guarded: three in `docsAnnotations.kt`, the revision pass's one in
+`docsPass.kt` (loopback + same-site, no switch or token), the geometry review update in
+`Server.kt`, and the in-Field agent harness's two routes (2026-09-29, `agentRouteAccess.kt`),
+and the table that says so is asserted in `FieldApiCorsExposureTest`:
 
 | route | guard |
 | --- | --- |
 | `POST /api/docs-annotations` | loopback + same-site |
 | `PUT /api/docs-annotations/{id}/resolve` | loopback + same-site |
 | `DELETE /api/docs-annotations/{id}` | loopback + same-site |
-| `POST /api/docs-improvement` | loopback + same-site + enabled&token |
 | `POST /api/docs-improvement/pass` | loopback + same-site, both annotation hatches forced shut; no switch or token |
 | `POST /three-review-note` | loopback + same-site |
 | `POST /api/agent-task` | loopback + localhost Host + same-site |
 | `POST /api/agent-eval` | loopback + localhost Host + same-site |
 | `POST /field-audio/{...}` | none (covered only when the application switch is on) |
 | `PUT /field-audio/{...}` | none (covered only when the application switch is on; also absent from CORS) |
-| **the other 34** | **none** |
+| **the other 47** | **none** |
 
 WebSockets are a separate census because their HTTP `GET` upgrade bypasses both CORS and
 the write interceptor's mutating-method branch:
@@ -462,7 +393,7 @@ An attacker page served from `http://127.0.0.1:9493` — a different origin from
 | --- | --- |
 | `GET /api/instance-info` | **read**: `{"repoRoot":"/Users/marc/field4-worktrees/…","pid":4508}` |
 | `GET /api/welcome-changelog` | **read**: the human's recent commit messages, in full |
-| `POST /api/docs-improvement` **with** the token header | `TypeError: Failed to fetch` — preflight refused |
+| `POST /api/docs-improvement` (removed 2026-10-02) **with** its token header | `TypeError: Failed to fetch` — preflight refused |
 | `POST /api/docs-improvement` without it | reached the server, refused there, `401` |
 | `POST /api/shutdown-instance` | **`200` — and Field stopped.** Listener before: `4508`. After: none. |
 
@@ -513,7 +444,7 @@ moment somebody is trying to import a document.
 What 2026-08-12 did instead was cheaper and pushes the decision to where the knowledge is:
 
 - **per-route guards** on the four routes whose exposure is specific and understood — the
-  annotation and improvement routes, above;
+  annotation routes and the since-removed improvement route, above;
 - **`AFIELD_API_REQUIRE_SAME_SITE`**, an application-wide refusal of cross-site HTTP writes
   and command WebSocket browser upgrades, with `/api/import-offline-doc` exempted, **off by
   default**. **As of 2026-08-20 it refuses cross-site *reads* too — see "The read half" below.
@@ -573,10 +504,11 @@ likeliest failure of a switch like this:
 - **`Sec-Fetch-Mode: websocket`.** Upgrades are GETs, and `refuseCrossSiteFieldWebSocket`
   applies this same policy at the upgrade, where it can close with `1008` and a reason a client
   can read instead of a bare 403.
-- **The routes that guard themselves** (`/api/docs-annotations`, `/api/docs-improvement`).
+- **The routes that guard themselves** (`/api/docs-annotations`, `/api/docs-improvement/pass`).
   `DOCS_ANNOTATIONS_ALLOW_CROSS_SITE` is a deliberate opt-in hatch that *permits* cross-site
   annotation reads. A blanket refusal here would have closed it while its own switch still
-  claimed to hold it open — a guard reaching behind another guard's back.
+  claimed to hold it open — a guard reaching behind another guard's back. The pass prefix is
+  listed exactly, so nothing else under `/api/docs-improvement` is exempt.
 
 `OPTIONS` still passes untouched, or the preflight would never reach the CORS plugin.
 
@@ -612,9 +544,9 @@ The same two exposures the write half leaves standing, unchanged:
 
 ## Where the tests are
 
-Six files, 59 tests. Four of them start a real Ktor application; two read source.
+Six files, 60 tests. Four of them start a real Ktor application; two read source.
 
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **15 tests**,
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationRouteSecurityTest.kt` — **17 tests**,
   route-level, through the real CORS configuration. This file exists because of a measured
   gap: delete the guard *call* at the head of `post("/api/docs-annotations")` and the 19
   tests that existed before it **all still pass**, while 6 of the 12 route tests that
@@ -635,14 +567,14 @@ Six files, 59 tests. Four of them start a real Ktor application; two read source
   tests** proving that the default remains compatible, the switch closes a foreign browser
   upgrade with a policy violation, Field's own browser still connects, and a native client
   without browser-origin headers remains compatible.
-- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **18 tests** over the
+- `src/jvmTest/kotlin/afield/server/DocsAnnotationSecurityTest.kt` — **16 tests** over the
   guard functions as pure functions of a `DocsAccessPolicy` value, which is what makes
   reverting one and re-running a two-minute experiment.
-- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **5 tests** pinning
-  decisions rather than behaviour: the CORS block literally, the route→guard table, the
-  fact that `X-Field-Docs-Improvement-Token` is not CORS-allow-listed, and that adding
-  `PUT` to `allowMethod` widens the surface. The fifth inventories every WebSocket and
-  distinguishes the two unguarded command channels from the notification-only channel.
+- `src/jvmTest/kotlin/afield/server/FieldApiCorsExposureTest.kt` — **6 tests** pinning
+  decisions rather than behaviour: the CORS block literally, the route→guard table and every
+  statement of its census, that adding `PUT` to `allowMethod` widens the surface, and that a
+  verbless route answers every method. Another inventories every WebSocket and distinguishes
+  the two unguarded command channels from the notification-only channel.
 
 **If you change a guard, revert it and watch the suite before trusting the green.** Every
 count in those files was observed, not predicted.

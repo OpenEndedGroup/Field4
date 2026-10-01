@@ -190,11 +190,24 @@ class FieldApiReadGuardTest {
      * page served from elsewhere can list them. If this goes red, this guard has closed another
      * switch's hatch behind its back, and `DocsAnnotationRouteSecurityTest` will not notice
      * because the refusal happens before its routes are reached.
+     *
+     * The revision pass (`docsPass.kt`) guards its own reads too, and is exempt by its exact
+     * prefix, `/api/docs-improvement/pass`. The bare `/api/docs-improvement` was the prefix
+     * until its own route was removed on 2026-10-02; the negative control below shows the
+     * exemption did not survive under the shorter name.
      */
     @Test
     fun theSelfGuardingDocsRoutesStillDecideForThemselves() = guardedApp(on = true) {
-        for (path in listOf("/api/docs-annotations", "/api/docs-improvement")) {
+        for (path in listOf(
+            "/api/docs-annotations",
+            "/api/docs-improvement/pass",
+            "/api/docs-improvement/pass/diff",
+            "/api/docs-improvement/pass/handoff",
+        )) {
             assertEquals(HttpStatusCode.OK, get(path) { fromEvilPage() }.status, "for $path")
+        }
+        for (path in listOf("/api/docs-improvement", "/api/docs-improvement/other", "/api/docs-improvement/passage")) {
+            assertEquals(HttpStatusCode.Forbidden, get(path) { fromEvilPage() }.status, "for $path")
         }
     }
 

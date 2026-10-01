@@ -5638,15 +5638,13 @@ fun languageNameForProperty(box: Box, property: String): String {
  * `dev_docs/DOCS_IMPROVEMENT_AGENT.md`: with `anyHost()` standing, every other `/api/…`
  * route — around three dozen of them mutating — is reachable from any page you visit, and
  * a route that must not be has to refuse for itself. `docsAnnotations.kt` is the worked
- * example of doing that: loopback for another machine, `Sec-Fetch-Site`/`Origin` for
- * another *site*, and a non-safelisted header for the one route that spawns an agent.
+ * example of doing that: loopback for another machine, and `Sec-Fetch-Site`/`Origin` for
+ * another *site*.
  *
  * Note what is absent. `allowMethod(HttpMethod.Put)` is not here, which is the only reason
  * `PUT /api/docs-annotations/{id}/resolve` was never cross-site reachable — an accident of
  * configuration, not a defence, and it is not what that route relies on now. `anyHeader()`
- * is not here either, and must never be: `X-Field-Docs-Improvement-Token` not being
- * CORS-allowed is what makes the preflight fail for a web page trying to spawn the coding
- * agent.
+ * is not here either: it would let a web page send any custom header past the preflight.
  */
 internal fun Application.installFieldApiCors() {
     install(CORS) {
@@ -5728,8 +5726,11 @@ internal const val SEC_FETCH_MODE_HEADER = "Sec-Fetch-Mode"
  * A blanket refusal here would quietly close that hatch while its own switch still claimed to
  * hold it open, which is the "guard eats a feature" failure `FieldApiWriteGuardTest` warns is
  * likeliest for a switch like this one. So these paths defer to the route that already decided.
+ *
+ * `/api/docs-improvement/pass…` (`docsPass.kt`) guards its reads the same way, with both
+ * annotation hatches forced shut, so it is listed by its exact prefix too.
  */
-private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement")
+private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement/pass")
 
 /**
  * Whether a *read* should be held to the same-site rule.
@@ -5787,7 +5788,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 57
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 56
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5813,7 +5814,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 57 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 49 of its 56 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +

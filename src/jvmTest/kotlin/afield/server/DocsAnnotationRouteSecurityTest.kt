@@ -63,7 +63,8 @@ import kotlin.test.assertTrue
  *
  *  - **the whole site guard short-circuited to "allowed"** — the posture `main` ships,
  *    where loopback is the only check: **7 of 33** — `aCrossSiteWriteIsRefused…`,
- *    `aSameSiteBrowserBadgeIsNotEnough…`, `aCrossSiteReadOfTheImprovementStatusIsRefused`,
+ *    `aSameSiteBrowserBadgeIsNotEnough…`, `aCrossSiteReadOfTheImprovementStatusIsRefused`
+ *    (removed with its route on 2026-10-02),
  *    `anOriginThatDisagreesWithHost…`, `originNullIsNotAnAuthority…`, `theSecFetchSiteMatrix`,
  *    `theWholeApiSurfaceRefusesACrossSitePost`.
  *  - **the `Sec-Fetch-Site` arm removed**, leaving only `Origin`/`Host`: **2 of 33** —
@@ -106,10 +107,9 @@ class DocsAnnotationRouteSecurityTest {
     /**
      * The finding, as three requests.
      *
-     * On `main` all three of these are `200`. Annotation text is what
-     * `POST /api/docs-improvement` turns into a prompt, so a page that can write a note can
-     * write the instructions a human later presses a button to run — and the token that
-     * guards the button does nothing about the text it is handed.
+     * On `main` all three of these are `200`. Annotation text is what the revision pass
+     * turns into a prompt, so a page that can write a note can write the instructions a
+     * human later starts a pass to run.
      */
     @Test
     fun aCrossSiteWriteIsRefusedOnEveryMutatingAnnotationRoute() = docsApp {
@@ -149,14 +149,6 @@ class DocsAnnotationRouteSecurityTest {
                 jsonBody(UPSERT)
             },
         )
-    }
-
-    /** `GET /api/docs-improvement` reports `workingDirectory` and up to 120 KB of the agent's log. */
-    @Test
-    fun aCrossSiteReadOfTheImprovementStatusIsRefused() = docsApp {
-        val response = get("/api/docs-improvement") { fromEvilPage() }
-        assertRefusedAsCrossSite(response)
-        assertTrue("workingDirectory" !in response.bodyAsText(), "the refusal must not carry the payload")
     }
 
     /**
@@ -297,10 +289,15 @@ class DocsAnnotationRouteSecurityTest {
         )
     }
 
-    /** Every `/api/docs-…` route, so a route added later without the guard is caught by name. */
+    /**
+     * Every `/api/docs-…` route this policy lets past the machine gate, so a route added later
+     * without the guard is caught by name. The revision pass refuses this test engine's peer at
+     * the machine gate, before the site one ([theCrossSiteHatchOpensExactlyTheAnnotationApi],
+     * `DocsPassRouteTest`).
+     */
     @Test
     fun theWholeApiSurfaceRefusesACrossSitePost() = docsApp {
-        for (path in listOf("/api/docs-annotations", "/api/docs-improvement")) {
+        for (path in listOf("/api/docs-annotations")) {
             assertRefusedAsCrossSite(post(path) { fromEvilPage(); jsonBody("{}") }, "for $path")
         }
     }
@@ -338,7 +335,6 @@ class DocsAnnotationRouteSecurityTest {
         assertTrue("Resolved by user" in resolved.bodyAsText())
 
         assertEquals(HttpStatusCode.OK, delete("/api/docs-annotations/$id") { fromThePanel() }.status)
-        assertEquals(HttpStatusCode.OK, get("/api/docs-improvement") { fromThePanel() }.status)
 
         // And it went to the temp store rather than the human's real notebook.
         assertTrue(Files.exists(storeInUse), "the panel's writes must have landed in $storeInUse")
@@ -374,13 +370,13 @@ class DocsAnnotationRouteSecurityTest {
                 post("/api/docs-annotations") { fromEvilPage(); jsonBody(UPSERT) }.status,
             )
         }
-        docsApp(remoteAllowed.copy(allowCrossSiteAnnotations = true, improvementEnabled = true)) {
-            // …and never the spawn. `refuseDocsImprovementLaunch` does not consult either
-            // hatch, so the machine check answers first and the reply is the one a caller
-            // off the machine gets — enabled or not, hatch open or not.
-            val response = post("/api/docs-improvement") { fromThePanel(); jsonBody("{}") }
+        docsApp(remoteAllowed.copy(allowCrossSiteAnnotations = true)) {
+            // …and never the revision pass. `docsPassPolicy` forces both hatches shut, so the
+            // machine check answers first and the reply is the one a caller off the machine
+            // gets, hatches open or not.
+            val response = post("/api/docs-improvement/pass") { fromThePanel(); jsonBody("""{"action":"create"}""") }
             assertEquals(HttpStatusCode.Forbidden, response.status)
-            assertTrue("can only be launched from this machine" in response.bodyAsText(), response.bodyAsText())
+            assertTrue("loopback-only" in response.bodyAsText(), response.bodyAsText())
         }
     }
 
@@ -399,13 +395,12 @@ class DocsAnnotationRouteSecurityTest {
             post("/api/docs-annotations") { fromThePanel(); jsonBody(UPSERT) },
             put("/api/docs-annotations/x/resolve") { fromThePanel(); jsonBody(RESOLVE) },
             delete("/api/docs-annotations/x") { fromThePanel() },
-            get("/api/docs-improvement") { fromThePanel() },
-            post("/api/docs-improvement") { fromThePanel(); jsonBody("{}") },
+            get("/api/docs-improvement/pass") { fromThePanel() },
+            post("/api/docs-improvement/pass") { fromThePanel(); jsonBody("""{"action":"create"}""") },
         )) {
             assertEquals(HttpStatusCode.Forbidden, response.status)
             assertTrue(
-                DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV in response.bodyAsText() ||
-                    "can only be launched from this machine" in response.bodyAsText(),
+                DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV in response.bodyAsText(),
                 "the machine refusal must be the one that answered: ${response.bodyAsText()}",
             )
         }
