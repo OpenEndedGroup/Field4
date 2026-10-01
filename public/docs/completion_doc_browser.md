@@ -10,6 +10,10 @@ forward control with a breadcrumb trail appears so you can retrace your steps.
 Links only appear when they resolve. A `[Symbol]` that Field can't find stays
 plain, bracketed text.
 
+Why the popup lists one candidate above another is a separate question, and an internals one:
+[How completions are ranked](completion_ranking.md) covers it, including how a class of your own
+can promote its members.
+
 ## A worked example
 
 Start typing a value and ask for completions. Here we type `val axis = vec` and

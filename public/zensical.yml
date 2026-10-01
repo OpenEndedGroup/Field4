@@ -27,11 +27,7 @@ nav:
     - A Tour:
       - What Field Is: funFeatures.md
       - Running Code in a Box: running_code.md
-      # The ranking page follows the browser page because it answers the question the browser page
-      # raises: why *this* candidate first. Flat rather than under an "Autocomplete" sub-heading —
-      # this is already the third nav level, and a fourth buys a label at the cost of a click.
       - The Documentation Browser: completion_doc_browser.md
-      - How Completions Are Ranked: completion_ranking.md
       - Drawing with FLines: fline_examples.md
       - Frames and the Animation Loop: animation_time_model.md
       # Quoted: the title has its own colon, and an unquoted one breaks the YAML scanner.
@@ -327,6 +323,12 @@ nav:
   # zero under `dev_docs/`, so a page whose figure comes from a `diffstatic_runner` fence loses its
   # producer the moment it moves, and the figure becomes a committed asset nothing regenerates.
   - Internals:
+    # Moved here out of the Tour, where it followed the documentation browser: it is written for
+    # someone reading `rankItems` in fieldSuggest.js and the priors behind it, not for someone
+    # meeting the editor. The browser page keeps a one-line pointer to it. First in this section,
+    # ahead of the runtime-surface pages, because it is the one Internals page a box author has a
+    # reason to open: `@CommonMembers` is how a class of yours promotes its own members.
+    - How Completions Are Ranked: completion_ranking.md
     - What Field Exposes: server_surface.md
     # Beside server_surface.md rather than three_output.md, the only other page that touches panel
     # sizing: that page tells a `three` caller which knob to turn, this one is the measurement
