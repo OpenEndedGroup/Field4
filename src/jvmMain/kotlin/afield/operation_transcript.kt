@@ -1581,7 +1581,7 @@ object OperationTranscript {
                 // line numbers, but keep them off the author's first line.
                 fun kstr(s: String?) = "\"" + (s ?: "").replace("\\", "\\\\").replace("\"", "\\\"") + "\""
                 val prelude = "val ui: afield.DocsUiDriver = afield.four.modules.fromContext(); " +
-                    "val out: String = ${kstr(screenshotPath)}; val vid: String = ${kstr(videoPath)}\n"
+                    "val out: String = ${kstr(screenshotPath)}; val vid: String = ${kstr(videoPath)}; ui.scriptStarted()\n"
                 // For an overlay still (clipSelector) capture inside the fragment, while the
                 // overlay is still open — it closes on blur before the op's finally runs.
                 val trailer = if (clipSelector != null && screenshotPath != null)
@@ -1618,6 +1618,24 @@ object OperationTranscript {
                     }
                 } else null
 
+                // hideToasts: Field's toasts (notify.js) stay on screen once shown, and in the small
+                // window a `viewport=` drive uses they stack over the canvas the recording is of,
+                // covering the keypress display's caption among other things. Hidden by a style
+                // added before the first frame and removed in the finally below; nothing is dismissed.
+                val hideToasts = payload["hideToasts"].asBooleanOrDefault(false)
+                if (hideToasts) {
+                    runCatching {
+                        runBlocking(playwrightDispatcher) {
+                            page.evaluate(
+                                "() => { if (document.getElementById('docs-capture-hide-toasts')) return;" +
+                                    " const s = document.createElement('style'); s.id = 'docs-capture-hide-toasts';" +
+                                    " s.textContent = '.bubble.field-toast { visibility: hidden !important; }';" +
+                                    " document.head.appendChild(s); }"
+                            )
+                        }
+                    }.onFailure { throw IllegalStateException("drive: could not hide the toasts: ${it.message}", it) }
+                }
+
                 val recorder = if (videoPath != null) {
                     val clip = runCatching {
                         runBlocking(playwrightDispatcher) {
@@ -1627,7 +1645,7 @@ object OperationTranscript {
                             else computeDriveClip(page, capture, captureUid, padding)
                         }
                     }.getOrNull()
-                    DocsUiRecorder(page, clip, fps).also { it.start() }
+                    DocsUiRecorder(page, clip, fps).also { driver.recorder = it; it.start() }
                 } else null
 
                 try {
@@ -1664,6 +1682,18 @@ object OperationTranscript {
                                     )
                                 )
                             }
+                        }
+                    }
+                    if (hideToasts || driver.keypressDisplayTouched) {
+                        runCatching {
+                            runBlocking(playwrightDispatcher) {
+                                page.evaluate(
+                                    "() => { document.getElementById('docs-capture-hide-toasts')?.remove();" +
+                                        " window.fieldKeycast?.disable({ quiet: true }); }"
+                                )
+                            }
+                        }.onFailure {
+                            lprintln("warning,docs", "drive: could not restore the toasts or keypress display: ${it.message}")
                         }
                     }
                     if (originalViewport != null) {

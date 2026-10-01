@@ -2525,11 +2525,24 @@ class DocsUiRecorder(
         }
     }
 
+    @Volatile private var scriptStartFrame: Int = -1
+
+    /**
+     * The drive script has begun to run. Recording starts before the fragment is compiled, so
+     * everything before this is the page sitting still while Kotlin compiles (2–4 s for the
+     * survival-guide intro); [stopAndEncode] keeps only half a second of it as a lead-in.
+     */
+    fun markScriptStart() {
+        if (scriptStartFrame < 0) scriptStartFrame = frames.size
+    }
+
     /** Stop the loop, encode collected frames to [outputPath], return frame count. */
     suspend fun stopAndEncode(outputPath: Path): Int {
         running = false
         job?.join()
-        val captured = frames.toList()
+        val all = frames.toList()
+        val leadIn = (fps.coerceAtLeast(1) / 2).coerceAtLeast(1)
+        val captured = if (scriptStartFrame > leadIn) all.drop(scriptStartFrame - leadIn) else all
         outputPath.parent?.let { Files.createDirectories(it) }
         encodeJpegFramesToMp4(captured, outputPath, fps)
         return captured.size
@@ -2548,6 +2561,12 @@ class DocsUiRecorder(
 class DocsUiDriver internal constructor(
     private val pageProvider: () -> Page,
 ) {
+    /** Set by the drive op when it records; [scriptStarted] tells it the script is running. */
+    internal var recorder: DocsUiRecorder? = null
+
+    /** Called by the drive op's prelude, the script's first statement. */
+    fun scriptStarted() { recorder?.markScriptStart() }
+
     private fun run(request: AgentPlaywrightInputRequest): JsonElement? =
         runBlocking(playwrightDispatcher) {
             performWindowAction(pageProvider(), request).first
@@ -2602,6 +2621,28 @@ class DocsUiDriver internal constructor(
 
     fun eval(script: String): JsonElement? =
         run(AgentPlaywrightInputRequest(action = "pageEval", script = script, scriptMode = "body"))
+
+    /**
+     * True once [keypressDisplay] has switched the display on; the drive op switches it off again
+     * after the script, because the capture page outlives one fence and the next capture would
+     * otherwise show its keys too.
+     */
+    var keypressDisplayTouched: Boolean = false
+        private set
+
+    /**
+     * Switch Field's keypress display (the palette's Toggle Keypress Display, `keycast.js`) [on] or
+     * off, without its toast, so a recording shows each key and click as a caption over the canvas.
+     */
+    fun keypressDisplay(on: Boolean = true) {
+        val result = eval(
+            "const k = window.fieldKeycast; if (!k) return 'missing';" +
+                (if (on) "k.enable({ quiet: true });" else "k.disable({ quiet: true });") +
+                "return k.isEnabled() ? 'on' : 'off';"
+        ).let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+        check(result == (if (on) "on" else "off")) { "keypressDisplay($on): the keypress display answered $result" }
+        if (on) keypressDisplayTouched = true
+    }
 
     /**
      * Make the editor pane [px] CSS pixels tall, as dragging its edge would, and lay the editor out

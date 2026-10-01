@@ -195,15 +195,17 @@
         restartFade();
     }
 
-    function enable() {
+    // `quiet` skips the toast, for a docs capture that switches the display on and off itself
+    // (DocsUiDriver.keypressDisplay): the toasts persist, and would show in the next capture.
+    function enable({ quiet = false } = {}) {
         if (enabled) return;
         enabled = true;
         ensureElements();
         alignOverlay();
-        if (window.notify) window.notify("Keypress display on", "info");
+        if (window.notify && !quiet) window.notify("Keypress display on", "info");
     }
 
-    function disable() {
+    function disable({ quiet = false } = {}) {
         if (!enabled) return;
         enabled = false;
         buffer = "";
@@ -212,7 +214,7 @@
             textEl.textContent = "";
             textEl.style.opacity = "0";
         }
-        if (window.notify) window.notify("Keypress display off", "info");
+        if (window.notify && !quiet) window.notify("Keypress display off", "info");
     }
 
     function toggle() {
@@ -255,6 +257,7 @@
     }
 
     attachListenersOnce();
+    window.fieldKeycast = { enable, disable, isEnabled: () => enabled };
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", registerAction);

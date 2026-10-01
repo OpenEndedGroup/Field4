@@ -65,6 +65,14 @@ class UiClipAndViewportTests(unittest.TestCase):
         self.assertEqual(payload["viewport"], [760, 560])
         self.assertEqual(payload["clip"], [0.0, 0.0, 10.0, 10.0])
 
+    def test_hide_toasts_reaches_the_drive_op_and_the_digest_only_when_set(self):
+        op = _drive_op(_options('capture="ui" region="window" hide-toasts=true video="assets/x.mp4"'))
+        self.assertIs(op["hideToasts"], True)
+        self.assertIs(docs_hooks.options_digest_payload(_options('capture="ui" hide-toasts=true screenshot="assets/x.png"'))["hideToasts"], True)
+        plain = _options('capture="ui" screenshot="assets/x.png"')
+        self.assertNotIn("hideToasts", _drive_op(plain))
+        self.assertNotIn("hideToasts", docs_hooks.options_digest_payload(plain))
+
     def test_a_malformed_viewport_is_refused(self):
         with self.assertRaises(RuntimeError):
             docs_hooks.parse_viewport("760 by 560")
