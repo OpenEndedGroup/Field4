@@ -191,6 +191,11 @@ nav:
     - Neighbors & Graphs Examples: graph_connectivity_examples.md
     - Graphs That Change While You Watch: dynamic_graph_systems_examples.md
   - Small Languages:
+    # Out of Reference, which is generated and this page is not. First here, ahead of Datalog,
+    # because the two are a pair read in this order: this page addresses slots of a live object
+    # graph by path pattern, and Datalog opens by defining itself against it — for the questions
+    # a pattern cannot answer, because they follow a relation rather than a path.
+    - Querying Object Graphs: graph_query.md
     - Datalog in a Box: datalog.md
     - FieldML Cheatsheet: fieldml_cheatsheet.md
     - FieldML Examples: fieldml_examples.md
@@ -327,7 +332,6 @@ nav:
     - Libraries & APIs:
       - Linear Algebra: linear_algebra.md
       - Generated Vector API: linear_algebra_api.md
-      - Querying Object Graphs: graph_query.md
   # Internals: hand-written, and about mechanism rather than task. Read these when you are
   # extending Field or working out why it did something, not when you are writing a box.
   #

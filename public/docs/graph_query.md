@@ -264,3 +264,7 @@ Some behaviours to know about before you point this at something large:
   are read and written like any other.
 - **A throwing getter won't derail a walk**, but reading that one slot
   propagates the real exception rather than reporting null.
+
+A pattern addresses slots; it cannot follow an edge and then follow it again. When the question is
+recursive (what runs downstream of this box, what does nothing feed into), [Datalog in a
+Box](datalog.md) is the next page, and it can take `graphPaths` output as its facts.
