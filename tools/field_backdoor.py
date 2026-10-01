@@ -3654,6 +3654,10 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_task_parser.add_argument("--chat-box", default="", help="Run the task as this box's real AI4 panel turn (live only)")
     agent_task_parser.add_argument("--programs", choices=("", "on", "off"), default="",
                                    help="off withholds RunToolProgramRequest (the tool-program A/B arm)")
+    agent_task_parser.add_argument("--context", choices=("", "legacy"), default="",
+                                   help="legacy sends instructions inside the stored message (the context-pipeline A/B arm)")
+    agent_task_parser.add_argument("--follow-up", dest="follow_ups", action="append", default=[],
+                                   help="A further user turn in the same conversation, after the goal's; repeatable")
     agent_task_parser.add_argument("--timeout", type=float)
 
     agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
@@ -3669,6 +3673,8 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="Withhold ViewBoxOutputRequest from every task (the visual tasks' counterfactual)")
     agent_eval_parser.add_argument("--programs", choices=("", "on", "off"), default="",
                                    help="off withholds RunToolProgramRequest from every task (the tool-program A/B arm)")
+    agent_eval_parser.add_argument("--context", choices=("", "legacy"), default="",
+                                   help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
@@ -4674,6 +4680,8 @@ async def dispatch_command(
             "focusBox": args.focus_box,
             "chatBox": args.chat_box,
             "programs": args.programs,
+            "context": args.context,
+            "followUps": list(args.follow_ups),
         }
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
@@ -4701,6 +4709,7 @@ async def dispatch_command(
             "distil": bool(args.distil),
             "blind": bool(args.blind),
             "programs": args.programs,
+            "context": args.context,
         }
         timeout = args.timeout or max(client.default_timeout, 3600.0)
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)

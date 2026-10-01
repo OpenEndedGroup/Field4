@@ -6,6 +6,7 @@ import com.anthropic.core.JsonValue
 import com.anthropic.errors.AnthropicServiceException
 import com.anthropic.errors.UnauthorizedException
 import com.anthropic.models.messages.Base64ImageSource
+import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.ContentBlockParam
 import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.Message
@@ -101,7 +102,8 @@ class AnthropicBridge(
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult {
         val t0 = System.nanoTime()
         if (imageDataUrls.isNotEmpty()) {
@@ -113,6 +115,11 @@ class AnthropicBridge(
 
         val system = state.initialInstructions.ifBlank { OpenAiIdeCodexBridge.defaultThreadInstructions }
         val messages = history.getOrPut(state.localThreadId) { mutableListOf() }
+        // With a TurnContext: the stable instructions ride in the system prompt (cached), the volatile ones
+        // on the newest message only, and the stored history keeps just the durable prompt.
+        val tc = turnContext
+        val systemBlocks = anthropicSystemBlocks(system, tc?.ephemeralText(Stability.STABLE).orEmpty(), cached = tc != null)
+        val volatilePrefix = tc?.ephemeralText(Stability.VOLATILE).orEmpty()
 
         // Seed the initial file context once per thread (mirrors OpenAiIdeCodexBridge.startThread).
         if (messages.isEmpty() && state.initialFileText.isNotBlank()) {
@@ -134,9 +141,10 @@ class AnthropicBridge(
                 appendLine(fileText)
                 appendLine()
             }
-            appendLine(userPrompt)
+            appendLine(tc?.durablePrompt() ?: userPrompt)
         }
-        messages += userText(inputText)
+        val turnMessageIndex = messages.size
+        messages += userText(if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText")
 
         info("convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} maxOutputTokens=$maxOutputTokens")
 
@@ -172,7 +180,7 @@ class AnthropicBridge(
             }
         }
 
-        val toolDefs = buildToolDefs(ctx)
+        val toolDefs = buildToolDefs(ctx).let { if (tc != null) withToolCacheBreakpoint(it) else it }
         val commentary = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
@@ -195,7 +203,7 @@ class AnthropicBridge(
             else ctx.copy(progress = { line -> onProgress(LlmProgressUpdate(line)) })
         try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs, maxOutputTokens, cacheTail = tc != null))
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
@@ -301,7 +309,7 @@ class AnthropicBridge(
             }
             if (!includeTools) hitToolRoundCap = true
             activePhase = if (includeTools) "model:followup" else "model:forced_final"
-            response = createMessage(buildParams(system, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens))
+            response = createMessage(buildParams(systemBlocks, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens, cacheTail = tc != null))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
@@ -337,7 +345,9 @@ class AnthropicBridge(
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
-            cacheWriteTokens = cacheWriteTokens
+            cacheWriteTokens = cacheWriteTokens,
+            contextReport = tc?.report("system+prefix")
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens, cacheWriteTokens = cacheWriteTokens)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -348,22 +358,30 @@ class AnthropicBridge(
                 "toolElapsedMs" to toolElapsedMs,
                 "exceptionType" to failure::class.java.name, "message" to (failure.message ?: "")))
             throw failure
+        } finally {
+            // The volatile prefix was for this turn's requests only. Whatever happened, the stored message
+            // goes back to the durable text, so the next turn's history does not carry it.
+            if (volatilePrefix.isNotEmpty() && turnMessageIndex < messages.size) messages[turnMessageIndex] = userText(inputText)
         }
     }
 
     // ---- request construction ------------------------------------------------
 
-    private fun buildParams(
-        system: String,
+    internal fun buildParams(
+        system: List<TextBlockParam>,
         messages: List<MessageParam>,
         toolDefs: List<Tool>,
-        maxOutputTokens: Long
+        maxOutputTokens: Long,
+        cacheTail: Boolean = false
     ): MessageCreateParams {
         val builder = MessageCreateParams.builder()
             .model(model)
             .maxTokens(maxOutputTokens)
-            .system(system)
+            .systemOfTextBlockParams(system)
             .messages(messages)
+        // Automatic caching: a breakpoint that moves with the end of the conversation, so each tool round
+        // reads the rounds before it from cache. With the tool and system breakpoints that makes three of four.
+        if (cacheTail) builder.cacheControl(CacheControlEphemeral.builder().build())
         toolDefs.forEach { builder.addTool(it) }
         return builder.build()
     }
@@ -573,3 +591,22 @@ internal fun decodeDataUrl(dataUrl: String): Pair<Base64ImageSource.MediaType, S
     }
     return mediaType to data
 }
+
+/**
+ * The system prompt as blocks: the thread's own instructions, then this turn's stable ephemeral ones. With
+ * [cached], the last block carries a cache breakpoint, so a conversation's every request reads the system
+ * prompt (and the tools before it) from cache until a stable instruction actually changes.
+ */
+internal fun anthropicSystemBlocks(threadInstructions: String, stableInstructions: String, cached: Boolean): List<TextBlockParam> {
+    val texts = listOf(threadInstructions, stableInstructions).filter { it.isNotBlank() }
+    return texts.mapIndexed { index, text ->
+        TextBlockParam.builder().text(text)
+            .apply { if (cached && index == texts.lastIndex) cacheControl(CacheControlEphemeral.builder().build()) }
+            .build()
+    }
+}
+
+/** The tool list with a cache breakpoint on its last definition: tools come first in the prompt, and rarely change. */
+internal fun withToolCacheBreakpoint(defs: List<Tool>): List<Tool> =
+    if (defs.isEmpty()) defs
+    else defs.dropLast(1) + defs.last().toBuilder().cacheControl(CacheControlEphemeral.builder().build()).build()

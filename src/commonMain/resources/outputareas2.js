@@ -1723,6 +1723,7 @@ function ensureAiChat(container, uid, property) {
                         "- `/help` show available commands",
                         "- `/clear` delete this box’s saved conversation and start fresh",
                         "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
+                        "- `/context` show what the last AI turn was told besides the conversation, and its size",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
@@ -1812,6 +1813,18 @@ function ensureAiChat(container, uid, property) {
                 if (command === "screenshot" || command === "shot") {
                         textarea.value = "";
                         captureScreenshotCommand(rest);
+                        return true;
+                }
+
+                if (command === "context") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        // Shown locally like /help: never saved, so never fed back to the model.
+                        sendWithReply("ai-chat-context", {uid: targetUid},
+                                `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
+                                        if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
+                                        return "remove";
+                                });
                         return true;
                 }
 

@@ -141,10 +141,17 @@ class OpenAiIdeCodexBridge(
         maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((ProgressUpdate) -> Unit)? = null
+        onProgress: ((ProgressUpdate) -> Unit)? = null,
+        turnContext: TurnContext? = null
     ): SendResult {
         val t0 = System.nanoTime()
 
+        // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
+        // `instructions` is unverified, so it stays on the one-string prompt.
+        val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
+        // Sent with every request of this turn and never carried to the next: the Responses API does not
+        // carry `instructions` over a previous_response_id, which is exactly what is wanted here.
+        val ephemeralInstructions = tc?.allEphemeralText()?.takeIf { it.isNotBlank() }
         val inputText = buildString {
             if (fileText != null) {
                 appendLine("IDE_FILE_UPDATE:")
@@ -153,7 +160,7 @@ class OpenAiIdeCodexBridge(
                 appendLine(fileText)
                 appendLine()
             }
-            appendLine(userPrompt)
+            appendLine(tc?.durablePrompt() ?: userPrompt)
         }
 
         trace?.log(
@@ -195,7 +202,12 @@ class OpenAiIdeCodexBridge(
                     "vectorStoreIds" to vectorStoreIds,
                     "maxOutputTokens" to maxOutputTokens,
                     "maxToolRounds" to maxToolRounds,
-                    "prompt" to inputText
+                    "prompt" to inputText,
+                    "contextPlacement" to if (ephemeralInstructions != null) "instructions" else "inline",
+                    "instructionsChars" to (ephemeralInstructions?.length ?: 0),
+                    "instructionHash" to tc?.instructionHash(),
+                    "fragments" to tc?.fragments?.map { mapOf("source" to it.source, "retention" to it.retention.name,
+                        "stability" to it.stability.name, "chars" to it.chars) }
                 )
             )
         }.onFailure { throwable ->
@@ -272,6 +284,7 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
+        applyTurnContext(paramsBuilder, ephemeralInstructions, state)
         tools.addAllTo(paramsBuilder, ctx)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
@@ -525,6 +538,7 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
+            applyTurnContext(followupBuilder, ephemeralInstructions, state)
             tools.addAllTo(followupBuilder, ctx)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
@@ -577,7 +591,8 @@ class OpenAiIdeCodexBridge(
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
-                onTextDelta = onTextDelta
+                onTextDelta = onTextDelta,
+                ephemeralInstructions = ephemeralInstructions
             ) }
             if (onTextDelta != null) {
                 info("")
@@ -658,7 +673,9 @@ class OpenAiIdeCodexBridge(
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
             outputTokens = outputTokens,
-            cacheReadTokens = cacheReadTokens
+            cacheReadTokens = cacheReadTokens,
+            contextReport = (turnContext?.report(if (ephemeralInstructions != null) "instructions" else "inline"))
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -703,7 +720,9 @@ class OpenAiIdeCodexBridge(
          */
         val cacheReadTokens: Long? = null,
         /** Input tokens written to the prompt cache this turn (Anthropic only); null when not reported. */
-        val cacheWriteTokens: Long? = null
+        val cacheWriteTokens: Long? = null,
+        /** What the turn sent besides the conversation, and where: see [TurnContext]. Null for a one-string turn. */
+        val contextReport: ContextReport? = null
     )
 
     data class ToolTranscriptEntry(
@@ -859,12 +878,24 @@ class OpenAiIdeCodexBridge(
         )
     }
 
+    /**
+     * The turn's ephemeral instructions, on every request builder of the turn (initial, follow-up, forced
+     * final) because none of them carries over; and a cache key per thread, so consecutive requests of one
+     * conversation land on the same prompt cache.
+     */
+    private fun applyTurnContext(builder: ResponseCreateParams.Builder, ephemeralInstructions: String?, state: ThreadState) {
+        if (ephemeralInstructions == null) return
+        builder.instructions(ephemeralInstructions)
+        builder.promptCacheKey(state.localThreadId)
+    }
+
     private fun createForcedFinalResponse(
         state: ThreadState,
         previousResponse: Response,
         pendingCalls: List<ResponseFunctionToolCall>,
         maxOutputTokens: Long,
-        onTextDelta: ((String) -> Unit)?
+        onTextDelta: ((String) -> Unit)?,
+        ephemeralInstructions: String? = null
     ): Response {
         val inputItems = mutableListOf<ResponseInputItem>()
         pendingCalls.forEach { call ->
@@ -903,6 +934,7 @@ class OpenAiIdeCodexBridge(
         }
         builder.text(textConfig)
         addReasoningIfSupported(builder)
+        applyTurnContext(builder, ephemeralInstructions, state)
         info("creating response (forced-final) <<spinner>>")
         return createResponse(builder.build(), onTextDelta)
     }

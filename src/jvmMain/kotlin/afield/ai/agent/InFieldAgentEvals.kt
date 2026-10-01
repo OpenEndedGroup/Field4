@@ -4,8 +4,9 @@ import afield.ai.core.aiToolMapper
 import kotlinx.serialization.Serializable
 
 /**
- * A small eval suite for Field's own agent: fifteen tasks (five graded by pixels, three made of many similar calls
- * that a tool program does in one), each a goal, the setup it starts from, checks that decide it, and a scripted solution.
+ * A small eval suite for Field's own agent: seventeen tasks (five graded by pixels, three made of many similar calls
+ * that a tool program does in one, two that are several turns of one conversation), each a goal, the setup it starts
+ * from, checks that decide it, and a scripted solution.
  *
  * The scripted solutions are real Kotlin for real Field. Replayed through [ScriptedLlmBridge] against
  * a live Field (`agent-eval --mode scripted`) they test the tools, the execution path and the checkers
@@ -118,6 +119,23 @@ object InFieldAgentEvals {
     val TODO_NOTES = setOf(3, 4, 8, 10, 12)
     fun noteCode(n: Int) = "// note $n" + (if (n in TODO_NOTES) "\n// TODO: tidy this up" else "") + "\nprintln($n)"
     fun noteName(n: Int) = "Note%02d".format(n)
+
+    // ---- multi-turn tasks: one conversation, several requests ---------------------------------------
+    //
+    // These exist to measure where instructions go (the context pipeline): until 2026-10-02 every turn's
+    // full instruction block stayed in the conversation, so a four-turn task resent three stale copies.
+
+    val COUNTER_3 = "println((1..3).toList())"
+    val COUNTER_5 = "println((1..5).toList())"
+    val COUNTER_SQUARES = "println((1..5).map { it * it })"
+    val TOTAL_CODE = "println((1..5).sumOf { it * it })"
+
+    private fun powersTable(n: Int, cubes: Boolean) =
+        "display(\"main\", \"<table>\" + (1..$n).joinToString(\"\") { i -> \"<tr><td>\$i</td><td>\${i * i}</td>" +
+            (if (cubes) "<td>\${i * i * i}</td>" else "") + "</tr>\" } + \"</table>\")"
+    val POWERS_3 = powersTable(3, cubes = false)
+    val POWERS_5 = powersTable(5, cubes = false)
+    val POWERS_5_CUBES = powersTable(5, cubes = true)
 
     private fun program(code: String, purpose: String) =
         call("RunToolProgramRequest", "code" to code.trimIndent(), "purpose" to purpose)
@@ -370,10 +388,55 @@ object InFieldAgentEvals {
             """, "tag every Note box whose code has a TODO"),
                 "Five boxes had a TODO (Note03, Note04, Note08, Note10, Note12); each now starts with // reviewed.")
         ),
+        EvalTask(
+            "four-turns",
+            AgentTaskRequest(
+                goal = "Make a box named Counter that prints the numbers 1 to 3 as one list on one line, and run it.",
+                followUps = listOf(
+                    "Change Counter so that it prints 1 to 5 instead, still as one list, and run it.",
+                    "Now make Counter print the squares of 1 to 5 instead, as one list, and run it.",
+                    "Make a second box named Total that prints the sum of those five squares, and run it.",
+                ),
+                checks = listOf(check("last-run-ok:Counter"), check("output-ints-include:Counter:1,4,9,16,25"),
+                    check("last-run-ok:Total"), check("output-contains:Total:55")),
+                taskId = "four-turns"
+            ),
+            steps(call("NewBoxRequest", "name" to "Counter", "code" to COUNTER_3), call("RunBoxRequest", "box" to "Counter"),
+                "Counter prints 1 to 3.",
+                call("SetBoxPropertyRequest", "box" to "Counter", "value" to COUNTER_5), call("RunBoxRequest", "box" to "Counter"),
+                "Counter prints 1 to 5.",
+                call("SetBoxPropertyRequest", "box" to "Counter", "value" to COUNTER_SQUARES), call("RunBoxRequest", "box" to "Counter"),
+                "Counter prints 1, 4, 9, 16, 25.",
+                call("NewBoxRequest", "name" to "Total", "code" to TOTAL_CODE), call("RunBoxRequest", "box" to "Total"),
+                "Total prints 55.")
+        ),
+        EvalTask(
+            "revise-table",
+            AgentTaskRequest(
+                goal = "Launch a box named Powers that uses display to show an HTML <table> in the output channel \"main\", " +
+                    "with one row for each n in 1..3 holding n and n*n.",
+                followUps = listOf(
+                    "Extend Powers' table to n = 1..5, and launch it again.",
+                    "Add a third column to every row holding n*n*n, and launch Powers again.",
+                ),
+                checks = listOf(check("last-run-ok:Powers"), check("output-contains:Powers:<table"),
+                    check("output-ints-include:Powers:5,25,125"), check("property-contains:Powers:code:display")),
+                taskId = "revise-table"
+            ),
+            steps(call("NewBoxRequest", "name" to "Powers", "code" to POWERS_3), call("LaunchBoxRequest", "box" to "Powers"),
+                "Powers shows n and n*n for 1..3.",
+                call("SetBoxPropertyRequest", "box" to "Powers", "value" to POWERS_5), call("LaunchBoxRequest", "box" to "Powers"),
+                "Powers now goes to 5.",
+                call("SetBoxPropertyRequest", "box" to "Powers", "value" to POWERS_5_CUBES), call("LaunchBoxRequest", "box" to "Powers"),
+                "Powers shows n, n*n and n*n*n for 1..5.")
+        ),
     )
 
     /** Tasks made of many similar calls: what tool programs are for. */
     val manyCallTaskIds = setOf("audit-failing", "sweep-parameter", "tag-todos")
+
+    /** Tasks that are several user turns of one conversation: what the context pipeline is for. */
+    val multiTurnTaskIds = setOf("four-turns", "revise-table")
 
     /** Tasks whose checks read pixels; they need a Field that can capture box output. */
     val visualTaskIds = setOf("swatch-colour", "draw-sun", "bars-visible", "bars-sorted-red", "bars-one-row")
@@ -402,6 +465,8 @@ data class AgentEvalRequest(
     val blind: Boolean = false,
     /** `off` withholds RunToolProgramRequest from every task (the tool-program A/B arm); see [AgentTaskRequest.programs]. */
     val programs: String = "",
+    /** `legacy` puts every task's instructions back inside the stored message; see [AgentTaskRequest.context]. */
+    val context: String = "",
 )
 
 @Serializable
@@ -441,11 +506,13 @@ data class AgentEvalReport(
     val programs: Boolean = false,
     val programCalls: Int = 0,
     val nestedCalls: Int = 0,
+    /** `legacy` when the run put instructions inside the stored message, else blank. */
+    val context: String = "",
 )
 
 object AgentEvalRunner {
     /** Hard caps for a live eval: one run of at most this many tasks, at most this many rounds each. */
-    const val MAX_LIVE_TASKS = 16
+    const val MAX_LIVE_TASKS = 17
     const val MAX_LIVE_ROUNDS = 32
 
     /**
@@ -475,6 +542,7 @@ object AgentEvalRunner {
                 lessons = lessonsPin,
                 blind = request.blind,
                 programs = request.programs,
+                context = request.context,
             ))
         }
         fun sum(f: (AgentTaskResult) -> Long?): Long? = results.mapNotNull(f).takeIf { it.isNotEmpty() }?.sum()
@@ -496,6 +564,7 @@ object AgentEvalRunner {
             lessons = lessonsOn,
             lessonsVersion = lessonsVersion,
             programs = results.any { it.programs },
+            context = request.context,
             programCalls = results.sumOf { it.programCalls },
             nestedCalls = results.sumOf { it.nestedCalls },
         )

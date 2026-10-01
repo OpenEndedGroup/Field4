@@ -45,6 +45,8 @@ class ScriptedLlmBridge(
         val fileText: String?,
         val maxToolRounds: Int,
         val availableTools: List<String>,
+        /** The turn in parts, when the caller built one; [prompt] is then its legacy one-string form. */
+        val turnContext: TurnContext? = null,
     )
 
     private val tools = ToolRegistry().also(::registerBuiltInAgentTools)
@@ -72,12 +74,13 @@ class ScriptedLlmBridge(
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult {
         val available = tools.describe(ctx).mapNotNull {
             ((it as? kotlinx.serialization.json.JsonObject)?.get("name") as? kotlinx.serialization.json.JsonPrimitive)?.content
         }
-        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available)
+        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available, turnContext)
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
         val callCtx = if (ctx.progress != null || onProgress == null) ctx

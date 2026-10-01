@@ -44,6 +44,12 @@ private data class AiBoxChatRequest(val uid: String, val clear: Boolean = false)
 @kotlinx.serialization.Serializable
 private data class AiBoxChatReply(val uid: String, val history: String, val error: String = "")
 
+@kotlinx.serialization.Serializable
+private data class AiChatContextRequest(val uid: String)
+
+@kotlinx.serialization.Serializable
+private data class AiChatContextReply(val uid: String, val markdown: String)
+
 private val ai4Scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 internal fun macroRunToolResult(
@@ -538,6 +544,8 @@ fun installAi4() {
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
+    /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
+    val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
     var bridgeRevision = aiProviderConfigRevision()
 
     fun invalidateBridgesAfterSettingsChange() {
@@ -745,6 +753,17 @@ fun installAi4() {
                 activeBoxChats.remove(key)
             }
         }
+        Handled.yes
+    })
+
+    // `/context` in a box's chat: what the last turn sent besides the conversation, as a table.
+    handlers["ai-chat-context"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatContextRequest>(message.payload!!)
+        val report = lastContextByBox["${thisSessionInfo.get().filename}\u0000${request.uid}"]
+        val markdown = report?.toMarkdown()
+            ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
+                "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
+        reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
         Handled.yes
     })
 
@@ -1992,6 +2011,7 @@ fun installAi4() {
                 return@launch
             }
 
+            (chatResult?.contextReport ?: editResult?.contextReport)?.let { lastContextByBox["$docPath\u0000${box.id}"] = it }
             inMain {
                 if (chatResult != null) {
                     chatResult.modelIdentity?.let { turnModel = it }

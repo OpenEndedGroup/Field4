@@ -76,7 +76,11 @@ interface LlmBridge {
         maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((LlmProgressUpdate) -> Unit)? = null
+        onProgress: ((LlmProgressUpdate) -> Unit)? = null,
+        // The turn's prompt in parts (TurnContext). A bridge that understands it sends the ephemeral
+        // instructions per request and stores only TurnContext.durablePrompt; one that does not sends
+        // userPrompt, which callers set to TurnContext.legacyPrompt. Null: userPrompt is everything.
+        turnContext: TurnContext? = null
     ): LlmSendResult
 }
 
@@ -105,7 +109,8 @@ class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult =
         inner.send(
             state,
@@ -117,6 +122,7 @@ class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
             maxToolRounds,
             imageDataUrls,
             onTextDelta,
-            onProgress
+            onProgress,
+            turnContext
         )
 }

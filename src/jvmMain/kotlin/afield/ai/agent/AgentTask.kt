@@ -62,6 +62,16 @@ data class AgentTaskRequest(
      * [afield.ai.core.program.ToolPrograms.enabled].
      */
     val programs: String = "",
+    /**
+     * `legacy` sends this task's instructions the pre-2026-10-02 way, inside the stored message, instead of
+     * as ephemeral per-request context ([afield.ai.core.TurnContext]): the context-pipeline A/B arm.
+     */
+    val context: String = "",
+    /**
+     * Further user turns, sent in order in the same conversation after the goal's turn finishes. The checks
+     * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
+     */
+    val followUps: List<String> = emptyList(),
 )
 
 /**
@@ -184,6 +194,10 @@ data class AgentTaskResult(
     val programs: Boolean = false,
     val programCalls: Int = 0,
     val nestedCalls: Int = 0,
+    /** User turns in the conversation: 1 + [AgentTaskRequest.followUps]. */
+    val turns: Int = 1,
+    /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
+    val contextPlacement: String = "",
 )
 
 /**
@@ -269,9 +283,16 @@ object AgentTaskRunner {
                         .joinToString(", ") { it.name.ifBlank { it.id } }.ifBlank { "(none)" })
                 appendLine("You have at most $budget tool rounds.")
             }
-            val sent = afield.ai.core.IdeChatHelpers(b).chatGeneral(
+            val helpers = afield.ai.core.IdeChatHelpers(b,
+                ephemeralInstructions = request.context != "legacy" && afield.ai.core.ContextPipeline.enabledByDefault)
+            var sent = helpers.chatGeneral(
                 thread, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
+            for (followUp in request.followUps) {
+                sent = mergeTurns(sent, helpers.chatGeneral(
+                    sent.threadState, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
+                    maxToolRounds = budget, extraInstructions = extra))
+            }
 
             val shots = HashMap<String, BoxOutputShot>()
             val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots) }
@@ -300,6 +321,8 @@ object AgentTaskRunner {
                 programs = request.programs != "off" && afield.ai.core.program.ToolPrograms.enabled,
                 programCalls = calls.count { it.tool == afield.ai.core.program.RUN_TOOL_PROGRAM },
                 nestedCalls = calls.count { it.parent.isNotEmpty() },
+                turns = 1 + request.followUps.size,
+                contextPlacement = sent.contextReport?.placement ?: "inline",
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")
@@ -427,6 +450,22 @@ object AgentTaskRunner {
         }
         "live" -> if (request.model.isNotBlank()) createLlmBridge(model = request.model) else createIdeBridge()
         else -> throw IllegalArgumentException("mode must be 'live' or 'scripted', not '${request.mode}'")
+    }
+
+    /** Two consecutive turns of one conversation as one result: counts summed, the later turn's text and thread. */
+    private fun mergeTurns(a: LlmSendResult, b: LlmSendResult): LlmSendResult {
+        fun sum(x: Long?, y: Long?) = if (x == null && y == null) null else (x ?: 0L) + (y ?: 0L)
+        return b.copy(
+            commentary = a.commentary + b.commentary,
+            conversationAdditions = a.conversationAdditions + b.conversationAdditions,
+            toolTranscript = a.toolTranscript + b.toolTranscript,
+            rounds = a.rounds.coerceAtLeast(0) + b.rounds.coerceAtLeast(0),
+            hitToolRoundCap = a.hitToolRoundCap || b.hitToolRoundCap,
+            inputTokens = sum(a.inputTokens, b.inputTokens),
+            outputTokens = sum(a.outputTokens, b.outputTokens),
+            cacheReadTokens = sum(a.cacheReadTokens, b.cacheReadTokens),
+            cacheWriteTokens = sum(a.cacheWriteTokens, b.cacheWriteTokens),
+        )
     }
 
     private fun records(sent: LlmSendResult): List<AgentToolCallRecord> =
