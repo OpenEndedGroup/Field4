@@ -89,6 +89,10 @@ uv run --project . --group backdoor python tools/run_ui_regressions.py \
 
 ## Current Implemented Coverage
 
+- `three-idle-rendering` and `three-idle-animation`
+  - Check zero idle draws, coalesced visibility updates, and redraws for light, section,
+    insertion, camera, iframe resize and incoming animated geometry using ordinary meshes.
+
 - `three-parts`
   - Covers hierarchical Parts, shared drawable buffers, mixed-state folders, Select all,
     reversible Shift-click solo, saved/API visibility, consistent toolbar type and narrow layouts.

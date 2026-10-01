@@ -1,9 +1,9 @@
 #version 460
 
-{{ Particle.all }}
+{{ Vertex.all }}
 
 layout(push_constant) uniform Push {
-    ParticleArray particles;
+    VertexArray vertices;
     uint count;
 } pc;
 
@@ -12,8 +12,8 @@ layout(location = 0) out vec4 fcol;
 void main()
 {
     uint i = uint(gl_VertexIndex);
-    Particle p = pc.particles.elements[i];
+    Vertex vertex = pc.vertices.elements[i];
 
-    gl_Position = vec4(p.position, 1.0);
-    fcol = p.color * float(pc.count > 0u);
+    gl_Position = vec4(vertex.position, 1.0);
+    fcol = vertex.color * float(pc.count > 0u);
 }

@@ -4,57 +4,96 @@
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
     <title>Documentation Revision Pass</title>
-    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
+    <style>
+        @font-face {
+            font-family: "Iosevka Web";
+            font-display: swap;
+            font-weight: 300;
+            font-stretch: semi-condensed;
+            font-style: normal;
+            src: url("/woff2/iosevka-semicondensedlight.woff2") format("woff2");
+        }
+    </style>
     <link rel="stylesheet" href="/iosevka.css">
     <style>
+        /* The look of /welcome, which links here: same palette, panels, buttons and background. */
         :root {
-            --bg: rgb(12, 12, 12);
-            --panel: rgb(25, 25, 25);
-            --panel-2: rgb(19, 19, 19);
-            --border: rgba(230, 240, 245, 0.14);
-            --border-strong: rgba(230, 240, 245, 0.32);
-            --text: rgba(235, 242, 246, 0.95);
-            --soft: rgba(168, 183, 192, 0.95);
+            --field-bg: rgb(20, 20, 20);
+            --field-panel-strong: rgba(0, 0, 0, 0.52);
+            --field-border: rgba(72, 201, 255, 0.18);
+            --field-border-strong: rgba(72, 201, 255, 0.45);
+            --field-cyan: rgb(72, 201, 255);
+            --field-text: rgba(220, 235, 244, 0.95);
+            --field-text-soft: rgba(164, 193, 210, 0.95);
+            --field-danger: #ff6f6f;
+            --radius: 10px;
+            --panel: #222;
+            --panel-2: rgba(0, 0, 0, 0.35);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: var(--field-border-strong);
+            --text: var(--field-text);
+            --soft: var(--field-text-soft);
             --accent: rgb(224, 241, 249);
             --warn: rgb(255, 241, 118);
-            --danger: rgb(255, 120, 120);
+            --danger: var(--field-danger);
             --ok: rgb(174, 240, 198);
-            --cyan: rgb(72, 201, 255);
+            --cyan: var(--field-cyan);
         }
         * { box-sizing: border-box; }
-        html, body { margin: 0; background: var(--bg); color: var(--text); font-family: "Iosevka Web", ui-monospace, monospace; font-weight: 300; font-size: 13px; }
-        main { width: min(1180px, calc(100vw - 40px)); margin: 20px auto 60px; display: grid; gap: 12px; }
-        header, section { border: 1px solid var(--border); background: var(--panel); border-radius: 8px; padding: 14px; }
+        html, body { margin: 0; background: var(--field-bg); color: var(--text); font-family: "Iosevka Web", system-ui, sans-serif; font-weight: 300; font-size: 13px; }
+        *:focus, *:focus-visible { outline: none !important; box-shadow: none !important; }
+        main { position: relative; z-index: 1; width: min(1180px, 96vw); margin: 18px auto 60px; padding: 14px; display: grid; gap: 12px; }
+        header, section { border: 5px solid black; border-radius: var(--radius); background: var(--panel); backdrop-filter: blur(4px); padding: 16px 18px; }
         header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
         h1, h2 { margin: 0; font-weight: 400; }
-        h1 { font-size: 20px; }
-        h2 { font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); margin-bottom: 10px; display: flex; gap: 10px; align-items: baseline; }
+        h1 { font-size: clamp(18px, 2.4vw, 26px); color: var(--field-cyan); }
+        h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); margin-bottom: 12px; display: flex; gap: 10px; align-items: baseline; }
         h2 .count { color: var(--text); text-transform: none; letter-spacing: 0; }
-        p { margin: 6px 0; color: var(--soft); line-height: 1.5; }
-        a { color: var(--cyan); }
+        p { margin: 8px 0; color: var(--soft); line-height: 1.5; }
+        a { color: inherit; text-decoration: none; border-bottom: 1px dashed rgba(180, 220, 245, 0.42); }
         code { color: var(--accent); }
-        button, select, input { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 10px; }
-        button { cursor: pointer; }
-        button:hover:not(:disabled) { border-color: var(--accent); }
+        button {
+            font-family: inherit; font-size: 12px; color: var(--field-text);
+            background: var(--field-panel-strong); border: 1px solid var(--field-border); border-radius: 8px;
+            padding: 8px 14px; cursor: pointer; transition: border-color 120ms ease;
+        }
+        button:hover:not(:disabled) { border-color: var(--field-border-strong); }
         button:disabled { opacity: .35; cursor: default; }
-        button.danger { border-color: rgba(255, 120, 120, .5); color: var(--danger); }
-        button.primary { border-color: var(--cyan); }
-        input[type=number] { width: 5em; }
-        .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-        .row label { color: var(--soft); display: flex; gap: 6px; align-items: center; }
+        button.danger { color: var(--field-danger); border-color: rgba(255, 111, 111, 0.45); }
+        button.danger:hover:not(:disabled) { border-color: rgba(255, 111, 111, 0.8); }
+        button.primary { border-color: var(--field-border-strong); }
+        button.primary:hover:not(:disabled) { border-color: var(--field-cyan); }
+        input, select {
+            font: inherit; font-size: 12px; color: var(--field-cyan); background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 7px 10px;
+        }
+        input::placeholder { color: rgba(164, 193, 210, 0.8); }
+        input:focus, select:focus { border-color: var(--field-cyan); }
+        select {
+            appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='rgb(72,201,255)' stroke-width='1.3'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 11px center;
+        }
+        input[type=number] { width: 5.5em; }
+        .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 12px 0; }
+        .row label { color: var(--soft); display: flex; gap: 8px; align-items: center; }
         .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-        .chip { border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--soft); }
+        .chip { border: 1px solid var(--field-border); border-radius: 999px; padding: 3px 10px; color: var(--soft); }
         .chip b { color: var(--text); font-weight: 400; }
-        .notice { border: 1px solid rgba(255, 241, 118, .4); color: var(--warn); border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
-        .notice.bad { border-color: rgba(255, 120, 120, .5); color: var(--danger); }
+        .notice { border: 1px solid rgba(255, 241, 118, .4); color: var(--warn); border-radius: 7px; padding: 8px 10px; margin-top: 8px; }
+        .notice.bad { border-color: rgba(255, 111, 111, .5); color: var(--danger); }
         table { width: 100%; border-collapse: collapse; }
-        th, td { text-align: left; padding: 5px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+        th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: top; }
         th { color: var(--soft); font-weight: 300; border-top: none; }
         td.num { text-align: right; white-space: nowrap; }
+        td button { padding: 5px 10px; }
         .state-running, .state-stopping { color: var(--cyan); }
         .state-done, .state-finished { color: var(--ok); }
         .state-interrupted, .state-killed, .state-died { color: var(--danger); }
         .state-pending, .state-not-started, .state-stopped { color: var(--soft); }
+        .state-waiting, .state-rate-limited { color: var(--warn); }
+        .state-failed { color: var(--danger); }
         .badge { font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; color: var(--soft); white-space: nowrap; }
         .badge.blocking { border-color: var(--warn); color: var(--warn); }
         .badge.crosscutting { color: var(--cyan); }
@@ -67,18 +106,26 @@
         .add-count { color: var(--ok); } .del-count { color: var(--danger); }
         #changes td:first-child, #handoffs td:nth-child(2) { max-width: 0; width: 100%; }
         .expand { overflow-x: auto; }
+        .batch { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .batch h3 { margin: 0; font-weight: 400; font-size: 14px; color: var(--field-cyan); display: flex; gap: 10px; align-items: baseline; }
+        .batch h3 .count { color: var(--soft); font-size: 12px; }
+        .session { display: grid; gap: 6px; width: 100%; }
+        pre.command { background: rgba(0, 0, 0, 0.6); border: 1px solid var(--field-border); border-radius: 7px; padding: 8px 10px; color: var(--accent); white-space: pre-wrap; word-break: break-all; }
+        td select { padding: 4px 26px 4px 8px; background-position: right 8px center; }
         #dialog { position: fixed; inset: 0; background: rgba(0, 0, 0, .6); display: flex; align-items: center; justify-content: center; z-index: 10; }
         #dialog[hidden] { display: none; }
-        #dialog .box { width: min(560px, calc(100vw - 40px)); background: var(--panel); border: 1px solid var(--border-strong); border-radius: 8px; padding: 16px; display: grid; gap: 10px; }
+        #dialog .box { width: min(560px, calc(100vw - 40px)); background: var(--panel); border: 5px solid black; border-radius: var(--radius); padding: 18px; display: grid; gap: 12px; }
         #dialog .message { white-space: pre-wrap; line-height: 1.5; }
-        #dialog textarea, #dialog input { width: 100%; font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 8px; }
+        #dialog textarea, #dialog input { width: 100%; font: inherit; font-size: 12px; color: var(--field-cyan); background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 7px 10px; }
         #dialog textarea { min-height: 70px; resize: vertical; }
         #dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
         .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body>
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
 <main>
     <header>
         <div>
@@ -121,7 +168,8 @@
 
     <section>
         <h2>3 · Handoffs <span class="count" id="handoff-count"></span></h2>
-        <p class="muted">Work an agent judged too big for a page: code (<em>project</em>) or across pages (<em>crosscutting</em>). A blocking handoff holds its page's notes until it is closed. Work through these separately, with a person: open the document in an interactive session.</p>
+        <p class="muted">Work an agent judged too big for a page, worked through in batches, in order: decisions first, because they change what the navigation work is; navigation next, because it moves the pages captures and code land on. <em>Start session</em> makes a worktree for one batch with a brief listing its handoffs, and gives you the <code>claude</code> command to run there. A blocking handoff holds its page's notes until it is closed.</p>
+        <div class="row"><button id="group-handoffs" type="button">Group handoffs into batches</button><span class="muted" id="group-hint"></span></div>
         <div id="handoffs"></div>
     </section>
 
@@ -233,23 +281,52 @@
         if (!progress) { $("progress").innerHTML = ""; return; }
         const parts = progress.partitions || [];
         const done = parts.filter(p => p.state === "done").length;
-        const head = `<p>Run <code>${esc(progress.runId)}</code> · <span class="state-${esc(progress.state)}">${esc(progress.state)}</span>${progress.stopRequested ? " · stop requested" : ""} · ${done}/${parts.length} page(s) done · ${esc(progress.agent)}, ${progress.jobs} at a time</p>`;
+        const limited = parts.filter(p => p.state === "rate-limited").length;
+        const failed = parts.filter(p => p.state === "failed").length;
+        const until = progress.resumeAtEpochMs ? new Date(progress.resumeAtEpochMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+        const head = `<p>Run <code>${esc(progress.runId)}</code> · <span class="state-${esc(progress.state)}">${esc(progress.state)}${progress.state === "waiting" && until ? ` for the usage limit, until ${esc(until)}` : ""}</span>`
+            + `${progress.stopRequested ? " · stop requested" : ""} · ${done}/${parts.length} page(s) done`
+            + `${limited ? ` · ${limited} queued again after the limit` : ""}${failed ? ` · <span class="state-failed">${failed} failed</span>` : ""} · ${esc(progress.agent)}, ${progress.jobs} at a time</p>`
+            + (progress.state === "waiting" && progress.limit ? `<p class="muted">The agent said: <code>${esc(progress.limit)}</code>. Nothing is lost: the pages it did not finish start again when the limit resets. Stop works while waiting.</p>` : "");
         const rows = parts.map(p => `<tr><td>${esc(p.pages.join(", "))}</td><td class="num">${p.notes}</td><td class="state-${esc(String(p.state).replace(" ", "-"))}">${esc(p.state)}</td>`
             + `<td class="num">${p.resolved ?? ""}</td><td class="num">${p.questions ?? ""}</td><td class="num">${p.handoffs ?? ""}</td><td class="num">${p.changed ? p.changed.length : ""}</td><td class="num">${p.seconds != null ? p.seconds + "s" : ""}</td></tr>`).join("");
         $("progress").innerHTML = head + `<table><tr><th>page</th><th class="num">notes</th><th>state</th><th class="num">resolved</th><th class="num">asked</th><th class="num">handoffs</th><th class="num">files</th><th class="num">time</th></tr>${rows}</table>`;
     };
 
+    const BATCH_KEYS = ["decisions", "navigation", "captures", "site", "code"];
+    const renderHandoffRow = h => {
+        const open = view.openHandoffs.get(h.id);
+        const options = BATCH_KEYS.map(k => `<option value="${k}"${k === h.batch ? " selected" : ""}>${k}</option>`).join("");
+        return `<tr data-handoff="${esc(h.id)}"><td>${h.blocking ? `<span class="badge blocking">blocking ${h.waiting}</span> ` : ""}<span class="badge ${esc(h.scope)}">${esc(h.scope)}</span> <span class="badge">${esc(h.state)}</span></td>`
+            + `<td>${esc(h.title)}<div class="muted">${esc(h.page || "")} · <code>${esc(h.path || "")}</code></div>`
+            + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p></div>` : "") + `</td>`
+            + `<td class="num"><select data-act="batch" title="move to another batch">${options}</select> <button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
+    };
     const renderHandoffs = (status) => {
         const items = (status.handoffs || []).filter(h => h.state === "open" || h.state === "taken" || view.openHandoffs.has(h.id));
+        const byId = new Map(items.map(h => [h.id, h]));
         $("handoff-count").textContent = items.length ? `${items.length} open` : "";
+        const unchosen = items.filter(h => !h.batchChosen).length;
+        $("group-hint").textContent = unchosen ? `${unchosen} handoff(s) are in a batch by rule only; grouping stores it, so it stays put` : "";
         if (!items.length) { $("handoffs").innerHTML = `<p class="muted">None open.</p>`; return; }
-        $("handoffs").innerHTML = `<table>${items.map(h => {
-            const open = view.openHandoffs.get(h.id);
-            return `<tr data-handoff="${esc(h.id)}"><td>${h.blocking ? `<span class="badge blocking">blocking ${h.waiting}</span> ` : ""}<span class="badge ${esc(h.scope)}">${esc(h.scope)}</span> <span class="badge">${esc(h.state)}</span></td>`
-                + `<td>${esc(h.title)}<div class="muted">${esc(h.page || "")} · <code>${esc(h.path || "")}</code></div>`
-                + (open ? `<div class="expand"><pre>${esc(open.text)}</pre><p class="muted">${esc(open.file)}</p></div>` : "") + `</td>`
-                + `<td class="num"><button data-act="read">${open ? "hide" : "read"}</button> <button data-act="taken">taken</button> <button data-act="done">done…</button> <button data-act="dropped" class="danger">drop…</button></td></tr>`;
-        }).join("")}</table>`;
+        $("handoffs").innerHTML = (status.batches || []).map(batch => {
+            const rows = batch.handoffs.map(id => byId.get(id)).filter(Boolean);
+            if (!rows.length && !batch.session) return "";
+            const openRows = rows.filter(h => h.state === "open");
+            let action;
+            if (batch.session) {
+                action = `<div class="session"><span class="muted">session in <code>${esc(batch.session.worktree)}</code> — run:</span>`
+                    + `<pre class="command">${esc(batch.session.command)}</pre>`
+                    + `<button data-act="copy" data-batch="${esc(batch.key)}">Copy command</button> <button data-act="end-session" data-batch="${esc(batch.key)}">End session</button> <button data-act="abandon-session" data-batch="${esc(batch.key)}" class="danger">Abandon session</button></div>`;
+            } else {
+                const blocked = batch.notLanded.length ? `land the revision pass first: ${batch.notLanded.length} of these documents are not on main yet`
+                    : !openRows.length ? "every handoff here is taken" : "";
+                action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>Start session</button>`
+                    + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "");
+            }
+            return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span></h3><p class="muted">${esc(batch.how)}</p>`
+                + `<div class="row">${action}</div>` + (rows.length ? `<table>${rows.map(renderHandoffRow).join("")}</table>` : "") + `</div>`;
+        }).join("");
     };
 
     const colourPatch = patch => esc(patch).split("\n").map(line =>
@@ -305,6 +382,8 @@
         set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !busy && !draining);
         set("cancel-job", busy);
         document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = busy || draining; });
+        document.querySelectorAll('#handoffs [data-act="start-session"]').forEach(b => { if (busy) b.disabled = true; });
+        set("group-handoffs", !busy);
     };
 
     let refreshing = false;
@@ -349,10 +428,29 @@
         }
     });
 
+    $("group-handoffs").onclick = () => act("group-handoffs");
+    $("handoffs").addEventListener("change", async event => {
+        const select = event.target.closest('select[data-act="batch"]'); if (!select) return;
+        await act("set-batch", { id: select.closest("[data-handoff]").dataset.handoff, batch: select.value });
+    });
     $("handoffs").addEventListener("click", async event => {
         const button = event.target.closest("button"); if (!button) return;
-        const id = button.closest("[data-handoff]").dataset.handoff;
         const kind = button.dataset.act;
+        const batch = button.dataset.batch ? (view.status.batches || []).find(b => b.key === button.dataset.batch) : null;
+        if (kind === "start-session") {
+            const warning = batch.earlierOpen.length ? `\n\nStill open in earlier batches: ${batch.earlierOpen.join(", ")}. The order is there because their outcome changes this batch's work.` : "";
+            if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${batch.handoffs.length} handoff(s), which are marked taken.${warning}`)) await act("start-session", { batch: batch.key });
+            return;
+        }
+        if (kind === "copy") {
+            const text = batch.session.command;
+            try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; setTimeout(() => { button.textContent = "Copy command"; }, 1500); }
+            catch (_) { await tell(text); }
+            return;
+        }
+        if (kind === "end-session") { if (await confirmed(`Remove the ${batch.title} session's worktree? Its branch must be merged into main; handoffs it did not close go back to open.`)) await act("end-session", { batch: batch.key }); return; }
+        if (kind === "abandon-session") { if (await confirmed(`Throw the ${batch.title} session away: remove its worktree and delete its branch, merged or not?`, true)) await act("end-session", { batch: batch.key, abandon: true }); return; }
+        const id = button.closest("[data-handoff]").dataset.handoff;
         if (kind === "read") {
             if (view.openHandoffs.has(id)) { view.openHandoffs.delete(id); renderHandoffs(view.status); setButtons(); return; }
             const response = await fetch(`/api/docs-improvement/pass/handoff?id=${encodeURIComponent(id)}`, { cache: "no-store" });

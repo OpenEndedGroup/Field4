@@ -647,6 +647,217 @@ class PassTest(unittest.TestCase):
         self.assertTrue(any("stopped before recording an outcome" in e["text"] for e in stopped))
 
 
+LIMITED_AGENT = textwrap.dedent("""\
+    import os, re, subprocess, sys
+    prompt = open(sys.argv[1], encoding="utf-8").read()
+    cli = re.search(r"^  (.+?) resolve <note-id>", prompt, re.M).group(1)
+    ids = re.findall(r"^### note (\\S+)", prompt, re.M)
+    marker = sys.argv[2]
+    if not os.path.exists(marker):
+        open(marker, "w").write("1")
+        subprocess.run(cli + f" resolve {ids[0]} 'first, before the limit'", shell=True, check=True)
+        print("working...")
+        print("You've hit your session limit · resets 7:30pm (Europe/Paris)")
+        sys.exit(1)
+    for note_id in ids:
+        subprocess.run(cli + f" resolve {note_id} 'after the reset'", shell=True, check=True)
+    """)
+
+
+class UsageLimitTest(unittest.TestCase):
+    MESSAGE = "You've hit your session limit · resets 7:30pm (Europe/Paris)"
+
+    def test_the_reset_time_is_read_in_its_own_zone(self) -> None:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        paris = ZoneInfo("Europe/Paris")
+        now = datetime(2026, 9, 30, 18, 15, tzinfo=paris).timestamp()
+        self.assertEqual(datetime.fromtimestamp(dn.limit_resets_at(self.MESSAGE, now), paris).strftime("%d %H:%M"), "30 19:31")
+        later = datetime(2026, 9, 30, 20, 0, tzinfo=paris).timestamp()
+        self.assertEqual(datetime.fromtimestamp(dn.limit_resets_at(self.MESSAGE, later), paris).strftime("%d %H:%M"), "01 19:31")
+
+    def test_an_unparseable_limit_waits_the_fallback(self) -> None:
+        with mock.patch.dict(os.environ, {dn.LIMIT_FALLBACK_ENV: "600"}):
+            self.assertAlmostEqual(dn.limit_resets_at("rate limit exceeded", 1000.0), 1600.0)
+
+    def test_the_limit_line_is_found_at_the_end_of_the_log(self) -> None:
+        with TemporaryDirectory() as tmp:
+            log = Path(tmp) / "a.log"
+            log.write_text("$ claude\nWarning: no stdin data received in 3s\n" + self.MESSAGE + "\n")
+            self.assertEqual(dn.limit_message(log), self.MESSAGE)
+            log.write_text("$ claude\nI changed the rate limit section of the page.\nDone.\n" * 1)
+            self.assertEqual(dn.limit_message(log), "", "prose that mentions rate limits is not a limit")
+
+    def test_a_limited_page_waits_and_is_retried_and_nothing_is_recorded_twice(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", LIMITED_AGENT)
+            repo.commit("docs")
+            store_path = repo.root / "store.json"
+            store_path.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "one", "anchor": {"exact": "says hello"}},
+                {"id": "22222222-b", "pageUrl": PAGE, "note": "two", "anchor": {"exact": "Install the thing"}}]}))
+            marker = repo.root / "limited-once"
+            # The fake reset time is hours away; the wait is what is under test, not its length.
+            with mock.patch.object(dn, "limit_resets_at", lambda message, now=None: time.time() + 1.0), \
+                    mock.patch("builtins.print"):
+                code = dn.main(["--store", str(store_path), "--repo", str(repo.root), "revise", "--jobs", "1",
+                                "--agent-command", f"{sys.executable} {repo.root / 'agent.py'} {{prompt_file}} {marker}"])
+            self.assertEqual(code, 0)
+            notes = {n["id"]: n for n in json.loads(store_path.read_text())["annotations"]}
+            for note in notes.values():
+                self.assertEqual(dn.note_state(note), "resolved")
+                self.assertEqual(sum(1 for e in note["thread"] if e["kind"] == "resolution"), 1, note["thread"])
+                self.assertFalse([e for e in note["thread"] if e["kind"] == "run"], "no 'left no outcome' noise")
+            self.assertEqual({n["resolution"] for n in notes.values()}, {"first, before the limit", "after the reset"})
+            progress = dn.latest_progress(repo.root)
+            self.assertEqual(progress["state"], "finished")
+            run_dir = next((repo.root / ".field-backdoor/docs-notes/runs").iterdir())
+            self.assertTrue(list(run_dir.glob("*.attempt-1.log")), "the limited attempt's log is kept")
+            self.assertIn("session limit", next(run_dir.glob("*.attempt-1.log")).read_text())
+        finally:
+            repo.close()
+
+
+class DetachTest(unittest.TestCase):
+    """A drain started by Field must outlive Field: its own session, and no dependence on stdout."""
+
+    def test_a_drain_without_a_terminal_leaves_the_launchers_group_and_survives_a_closed_pipe(self) -> None:
+        repo = TempRepo()
+        try:
+            repo.write("public/docs/guide.md", GUIDE)
+            repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+            repo.write("agent.py", FAKE_AGENT)
+            repo.write("sleepy.py", SLEEPY_AGENT)
+            repo.commit("docs")
+            store = repo.root / "store.json"
+            store.write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "11111111-a", "pageUrl": PAGE, "note": "reword", "anchor": {"exact": "then continue to the next step"}}]}))
+            worktree = Path(repo._dir.name + "-wt")
+            base = [sys.executable, str(Path(dn.__file__)), "--store", str(store), "--repo", str(repo.root)]
+            subprocess.run(base + ["pass", "create", "--path", str(worktree)], check=True, capture_output=True)
+            agent = f"{sys.executable} {worktree / 'sleepy.py'} {{prompt_file}} 3"
+            process = subprocess.Popen(base + ["pass", "revise", "--jobs", "1", "--agent-command", agent],
+                                       stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            deadline = time.time() + 20
+            while time.time() < deadline and not dn.latest_progress(worktree):
+                time.sleep(0.1)
+            self.assertNotEqual(os.getpgid(process.pid), os.getpgid(0), "the drain is in its own process group")
+            process.stdout.close()  # Field quits: its end of the pipe is gone
+            self.assertEqual(process.wait(timeout=60), 0)
+            progress = dn.latest_progress(worktree)
+            self.assertEqual(progress["state"], "finished")
+            run_dir = next((worktree / ".field-backdoor/docs-notes/runs").iterdir())
+            self.assertIn("done public/docs/guide.md", (run_dir / "harness.log").read_text())
+        finally:
+            subprocess.run(["rm", "-rf", str(Path(repo._dir.name + "-wt"))], check=False)
+            repo.close()
+
+
+class BatchTest(unittest.TestCase):
+    def h(self, title: str, scope: str = "project", blocking: bool = False) -> dict:
+        return {"id": "x", "kind": "handoff", "note": title, "handoff": {"scope": scope, "blocking": blocking}}
+
+    def test_the_rules_sort_real_titles_from_the_first_pass(self) -> None:
+        cases = {
+            ("Decide whether to fold Spatial Navigation into another page", "crosscutting", True): "decisions",
+            ("Give the Underfit Mancini page real audio, or retire it", "project", True): "decisions",
+            ("Move Linear Algebra out of Reference in the nav", "crosscutting", False): "navigation",
+            ("Shorten the keyframes page's sidebar title", "crosscutting", False): "navigation",
+            ("Capture the MuScriptor piano roll for the transcription page", "project", False): "captures",
+            ("Add a path-traced render of the mounted photo plaque", "project", False): "captures",
+            ("Give mid-page h1 headings more space above than below", "crosscutting", False): "site",
+            ("Auto-link repo source paths in docs to GitHub", "crosscutting", False): "site",
+            ("Rename or rescale the three misnamed dynamic-graph parameters", "project", False): "code",
+            ("Add two-keystroke chord sequences to keybindings", "project", False): "code",
+        }
+        for (title, scope, blocking), expected in cases.items():
+            self.assertEqual(dn.classify_handoff(self.h(title, scope, blocking)), expected, title)
+
+    def test_a_chosen_batch_wins_and_survives_grouping(self) -> None:
+        with TemporaryDirectory() as tmp:
+            store = dn.Store(Path(tmp) / "s.json")
+            (Path(tmp) / "s.json").write_text(json.dumps({"version": 1, "annotations": [
+                {"id": "aaaa0001", "kind": "handoff", "pageUrl": PAGE, "note": "Move Linear Algebra out of Reference in the nav",
+                 "handoff": {"scope": "crosscutting", "state": "open"}}]}))
+            dn.set_handoff_batch(store, "aaaa", "code")
+            self.assertEqual(dn.group_handoffs(store), 0)
+            self.assertEqual(dn.handoff_batch(store.notes()[0]), "code")
+            self.assertEqual(dn.group_handoffs(store, force=True), 1)
+            self.assertEqual(dn.handoff_batch(store.notes()[0]), "navigation")
+
+
+class SessionTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.repo = TempRepo()
+        self.repo.write("public/docs/guide.md", GUIDE)
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
+        self.repo.write("dev_docs/handoffs/2026-10-01-move-it.md", "# Move it\n\nbody\n")
+        self.repo.commit("docs")
+        self.store_path = self.repo.root / "store.json"
+        self.store_path.write_text(json.dumps({"version": 1, "annotations": [
+            {"id": "aaaa0001", "kind": "handoff", "pageUrl": PAGE, "note": "Move the guide in the nav",
+             "handoff": {"scope": "crosscutting", "state": "open", "path": "dev_docs/handoffs/2026-10-01-move-it.md", "page": "guide.md"}},
+            {"id": "bbbb0002", "kind": "handoff", "pageUrl": PAGE, "note": "Rename the guide page title",
+             "handoff": {"scope": "crosscutting", "state": "open", "path": "dev_docs/handoffs/2026-10-01-not-landed.md"}}]}))
+        self.store = dn.Store(self.store_path)
+        self.git = dn.Git(self.repo.root)
+
+    def tearDown(self) -> None:
+        for session in dn.load_sessions(self.repo.root):
+            subprocess.run(["rm", "-rf", session["worktree"]], check=False)
+        self.repo.close()
+
+    def overview(self) -> dict:
+        return {b["key"]: b for b in dn.batch_overview(self.git, self.store.notes())}
+
+    def test_a_session_waits_until_every_document_is_on_main(self) -> None:
+        navigation = self.overview()["navigation"]
+        self.assertEqual(navigation["notLanded"], ["bbbb0002"])
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.start_session(self.git, self.store, "navigation")
+        self.assertIn("land the revision pass first", str(refused.exception))
+
+    def test_start_and_end_a_session(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        brief = (worktree / "HANDOFF_SESSION.md").read_text()
+        self.assertIn("Navigation and page structure", brief)
+        self.assertIn("dev_docs/handoffs/2026-10-01-move-it.md", brief)
+        self.assertIn("handoff-close", brief)
+        self.assertIn("claude", session["command"])
+        self.assertEqual(dn.Git(worktree).status_paths(), {}, "the brief is excluded, not an uncommitted file")
+        self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"taken"})
+        self.assertEqual(self.overview()["navigation"]["session"]["branch"], session["branch"])
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit):
+            dn.start_session(self.git, self.store, "navigation")  # everything in it is taken
+        # Nothing was committed on the session branch, so it counts as merged: ending it is clean.
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(worktree.exists())
+        self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"open"},
+                         "handoffs the session did not close go back to open")
+
+    def test_an_unmerged_session_is_only_ended_by_abandoning_it(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        (worktree / "public/docs/guide.md").write_text("changed\n")
+        subprocess.run(["git", "commit", "-qam", "work"], cwd=worktree, check=True)
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit):
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        with mock.patch("builtins.print"):
+            dn.end_session(self.git, self.store, "navigation", abandon=True)
+        self.assertFalse(worktree.exists())
+
+
 class KotlinSchemaTest(unittest.TestCase):
     """Every key this tool writes must exist on the Kotlin side, or the server's next write drops it."""
 

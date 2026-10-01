@@ -5701,6 +5701,7 @@
     }
     document.getElementById("open-docs-pass")?.addEventListener("click", () => window.open("/docs-pass.html", "_blank", "noopener"));
     refreshDocsPassState();
+    setInterval(() => { if (!document.hidden) refreshDocsPassState(); }, 20000);
 
     async function runCompletionDocPolish() {
         window.open("/completion-doc-polish.html", "_blank", "noopener");
