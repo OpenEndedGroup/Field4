@@ -6,7 +6,7 @@ import afield.graphics.FLine
 import afield.graphics.slug.*
 import afield.stdlib.linalg.*
 import org.lwjgl.vulkan.VK10.*
-import java.io.File
+import afield.stdlib.file
 
 name = "5e. Slug filled paths"
 // Build the optional helper once: bash native/field-slug/build.sh
@@ -16,7 +16,7 @@ val path = FLine().moveTo(-1, -1).lineTo(1, -1)
     .lineTo(-1, 1).close()
 // Clockwise inner contour cuts a hole in the counterclockwise outer contour.
 path.moveTo(-0.3, -0.3).lineTo(-0.3, 0.3).lineTo(0.3, 0.3).lineTo(0.3, -0.3).close()
-val prepared = SlugPath.compile(path, File("native/field-slug/build/field-slug"))
+val prepared = SlugPath.compile(path, "field-slug".file)
 
 //%-
 val module = moduleHere {
