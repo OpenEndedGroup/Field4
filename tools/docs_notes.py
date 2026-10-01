@@ -2666,7 +2666,18 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
                   f"- id `{item['id']}` · {info.get('scope', 'project')}" + (f" · **blocking**, holding {held} note(s)" if info.get("blocking") else
                                                                             (f" · holding {held} note(s)" if held else "")),
                   f"- from `{info.get('page') or item.get('pageUrl')}`" + (f", also {', '.join(info.get('pages', []))}" if info.get("pages") else ""),
-                  f"- document: `{info.get('path')}`", ""]
+                  f"- document: `{info.get('path')}`"]
+        # The human's decisions, and what earlier sessions found, live on the handoff's thread.
+        # A session that only read the document would redo a question already answered.
+        said = [e for e in item.get("thread", []) if e.get("kind") in ("reply", "comment", "question", "memory")
+                and not str(e.get("text", "")).startswith("taken in a ")]
+        if said:
+            lines.append("- on this handoff so far:")
+            for entry in said:
+                who = "the human" if entry.get("author") == "human" else entry.get("author", "?")
+                lines.append(f"  - {entry.get('kind')} from {who}, {fmt_time(entry.get('atEpochMs'))}: "
+                             + str(entry.get("text", "")).strip().replace("\n", " "))
+        lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

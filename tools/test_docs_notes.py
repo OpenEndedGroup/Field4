@@ -823,6 +823,8 @@ class SessionTest(unittest.TestCase):
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
         self.repo.commit("land")
+        self.store.mutate(lambda notes: dn.apply_op(notes, {"op": "reply", "id": "aaaa0001", "author": "human",
+                                                            "text": "Decision: merge it into the tour."}))
         with mock.patch("builtins.print"):
             session = dn.start_session(self.git, self.store, "navigation")
         worktree = Path(session["worktree"])
@@ -830,6 +832,8 @@ class SessionTest(unittest.TestCase):
         self.assertIn("Navigation and page structure", brief)
         self.assertIn("dev_docs/handoffs/2026-10-01-move-it.md", brief)
         self.assertIn("handoff-close", brief)
+        self.assertIn("reply from the human", brief)
+        self.assertIn("Decision: merge it into the tour.", brief)
         self.assertIn("claude", session["command"])
         self.assertEqual(dn.Git(worktree).status_paths(), {}, "the brief is excluded, not an uncommitted file")
         self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"taken"})
