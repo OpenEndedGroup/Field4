@@ -5,22 +5,9 @@ _Field·4_ is a place for writing, running, debugging, understanding code — qu
 The cheat-sheet can be accessed by pressing the '?' key. Every shortcut on it is yours to change, and
 the card shows whatever you have bound rather than these defaults — [Keyboard
 Shortcuts](keybindings.md) is the whole story. Right now it looks like this:
-<hr>
-<span class="leftKey">n</span> <span class="rightKey">creates a <b>new box</b></span><br>
-<span class="leftKey">(select)</span> <span class="rightKey">selecting a box shows an <b>editor</b> for the code inside it</span><br><br>
-<span class="leftKey">F1</span> <span class="rightKey">opens a searchable <b>command menu</b> for <i>everything else</i></span><br><br>
-<span class="leftKey">alt-0</span> <span class="rightKey"><b>executes all code</b> in a box</span><br>
-<span class="leftKey">alt-click</span> <span class="rightKey"><b>launches</b> a box</span><br>
-<span class="leftKey">alt-up</span> <span class="rightKey">also <b>launches</b> a box</span><br>
-<span class="leftKey">alt-down</span> <span class="rightKey"><b>stops</b> a launched box</span><br>
-<span class="leftKey">alt-return</span> <span class="rightKey">executes the <b>current line</b> / block of code</span><br>
-<span class="leftKey">alt-drag</span> <span class="rightKey">executes <b>multiple boxes</b> in a "strum"</span><br><br>
-<span class="leftKey">esc-esc</span> <span class="rightKey"><b>clear newest output</b> annotation from the current editor</span><br>
-<span class="leftKey">esc-esc-esc</span> <span class="rightKey"><b>clear all outputs</b> from the current editor</span><br><br>
-<span class="leftKey">command-space</span> <span class="rightKey">opens <b>autocomplete</b></span><br><br>
-<span class="leftKey">g</span> <span class="rightKey"><b>groups</b> two selected boxes</span><br>
-<span class="leftKey">u</span> <span class="rightKey"><b>ungroups</b> boxes</span><br>
-<hr>
+
+![Field's ? cheatsheet card with the default bindings: Basics (N for a new box, select a box for its editor), Search and Help, Run (Opt-0 runs the whole box, Opt-click and Opt-Up launch, Opt-Down stops, Opt-Enter runs the current line), Editor, and Graph](assets/keybindings/cheatsheet.png)
+
 Using these keyboard shortcuts, you should be able to write and execute some code in Field:
 
 ![intro](assets/intro.apng)
