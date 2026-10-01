@@ -33,6 +33,7 @@ What happens when a box ends on a value, which is most of what working in Field 
 
 ## Drawing from data
 
+- [Linear Algebra](linear_algebra.md) comes first because everything after it uses it: the vector, matrix and quaternion vocabulary underneath movement, cameras, meshes and spatial data.
 - [Functions Examples](functions_examples.md) turns `Functions` stacks into graphs and parametric FLines, and [Functions Domains](functions_domains.md) covers the domain algebra that governs how an `Fn` is sampled.
 - [Values Over Time](interpolants_examples.md) draws interpolants, `KeyframeScope` parameter and code morphs, rolling correlations, and Kalman and particle-filter estimation, all as FLines or live plots.
 - [Timeseries Examples](timeseries_examples.md) keeps raw signals next to filtered and event-detected ones.
@@ -82,7 +83,7 @@ Two pages you might expect here are on the Tour instead, because both are about 
 
 Neither section is a worked example. The reference is for looking something up; the internals are for understanding how Field works underneath.
 
-[What's Already in the Box](reference/index.md) is generated from the KDoc in `src/`, not written: every public declaration in Field's standard library, grouped the same way the editor's autocomplete groups it, and — where a page has earned one by calling enough of a file's entry points — a *Used in* link back to the page here that works it. It is the fastest way to find out whether something already exists. Beside it, *Libraries & APIs* holds two companions to that tree: [Linear Algebra](linear_algebra.md) for the vocabulary underneath movement, cameras and meshes, and the [Generated Vector API](linear_algebra_api.md) emitted from the same model that emits those vector types.
+[What's Already in the Box](reference/index.md) is generated from the KDoc in `src/`, not written: every public declaration in Field's standard library, grouped the same way the editor's autocomplete groups it, and — where a page has earned one by calling enough of a file's entry points — a *Used in* link back to the page here that works it. It is the fastest way to find out whether something already exists. Beside it is the [Generated Vector API](linear_algebra_api.md), emitted from the same model that emits Field's vector types.
 
 *Internals* is the other extreme: hand-written prose about mechanism, for when you are extending Field or working out why it did something, rather than writing a box. [What Field Exposes](server_surface.md) is the one to start from — the HTTP and WebSocket surface your own editor is already a client of — and [What a Document Is on Disk](document_on_disk.md) is the one to read before editing a document by hand, because it says which of the files in that directory wins when Field loads.
 

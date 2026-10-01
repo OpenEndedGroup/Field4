@@ -103,6 +103,11 @@ nav:
     - DataFrames in a Box: dataframe.md
     - Interactive Guides: interactive_guides.md
   - Drawing From Data:
+    # First in the section, ahead of the groups: it is the small vocabulary underneath movement,
+    # cameras, lighting, meshes, simulation and spatial data, so every group below uses it. Moved
+    # out of Reference, which is generated, and this page is written; the generated API it
+    # describes (linear_algebra_api.md) stays there.
+    - Linear Algebra: linear_algebra.md
     - Functions & Derivatives:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
@@ -329,9 +334,9 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Machine learning: reference/machine-learning.md
-    - Libraries & APIs:
-      - Linear Algebra: linear_algebra.md
-      - Generated Vector API: linear_algebra_api.md
+    # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
+    # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
+    - Generated Vector API: linear_algebra_api.md
   # Internals: hand-written, and about mechanism rather than task. Read these when you are
   # extending Field or working out why it did something, not when you are writing a box.
   #
