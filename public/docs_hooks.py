@@ -847,6 +847,10 @@ class RunnerOptions:
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
     # at a legible scale.
     viewport: tuple[int, int] | None = None
+    # `scale="3"` (capture="box" only): device pixels per CSS pixel for this still; the capture
+    # page's own is 2. For a narrow output panel the page wants to show wider than its CSS size
+    # without upscaling the raster.
+    scale: float | None = None
 
 
 def capture_profile_enabled(profile: str | None) -> bool:
@@ -3264,6 +3268,8 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
     open_outputs = parse_bool(
         first_attr(attrs, "open-outputs", "open_outputs"), default=expect_outputs == "panel"
     )
+    if first_attr(attrs, "scale") is not None and capture != "box":
+        raise RuntimeError(f"{page_path}:{line_number} scale= applies to capture=\"box\" stills only, not capture={capture!r}")
     wait_output = parse_bool(first_attr(attrs, "wait-output", "wait_output", "waitForOutput", "wait-for-output"), default=False)
     wait_output_kind = (first_attr(attrs, "wait-output-kind", "wait_output_kind") or "display").strip().lower()
     if wait_output_kind not in {"inline", "display", "all"}:
@@ -3324,6 +3330,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
         viewport=parse_viewport(first_attr(attrs, "viewport")),
+        scale=parse_capture_scale(first_attr(attrs, "scale")),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -3945,6 +3952,8 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         payload["clip"] = list(options.clip)
     if options.viewport is not None:
         payload["viewport"] = list(options.viewport)
+    if options.scale is not None:
+        payload["scale"] = options.scale
     if options.wait_output:
         payload.update({
             "waitOutput": True,
@@ -4576,6 +4585,19 @@ def parse_clip(value: str | None) -> tuple[float, float, float, float] | None:
     if w <= 0 or h <= 0:
         raise ValueError(f"clip width and height must be positive (got {value!r})")
     return (x, y, w, h)
+
+
+def parse_capture_scale(value: str | None) -> float | None:
+    """`scale="3"` -> 3.0 device pixels per CSS pixel, between 1 and 4."""
+    if value is None or not value.strip():
+        return None
+    try:
+        scale = float(value)
+    except ValueError:
+        raise RuntimeError(f"scale={value!r} must be a number of device pixels per CSS pixel, e.g. 3")
+    if not (1.0 <= scale <= 4.0):
+        raise RuntimeError(f"scale={value!r} must be between 1 and 4")
+    return scale
 
 
 def parse_viewport(value: str | None) -> tuple[int, int] | None:
@@ -5406,6 +5428,8 @@ def build_backdoor_command(
             if options.open_outputs:
                 parts.append("--open-outputs")
             parts.extend(["--expect-outputs", options.expect_outputs])
+            if options.scale is not None:
+                parts.extend(["--scale", str(options.scale)])
             backdoor_commands.append(shlex.join(parts))
         elif capture_mode == "editor":
             target_uid = default_target_uid

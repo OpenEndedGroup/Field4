@@ -325,7 +325,7 @@ asymmetry is the other easy mistake: the `-window` commands take the box through
 | --- | --- | --- |
 | `screenshot-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --wait-ms --preserve-selection --include-notifications --timeout` |
 | `screenshot-editor` | `uid path` | `--property --padding --open-outputs --expect-outputs --no-pan --timeout` |
-| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --preserve-selection --include-notifications --timeout` |
+| `screenshot-box` | `uid path` | `--padding --open-outputs --no-open-outputs --expect-outputs --no-pan --preserve-selection --include-notifications --scale --timeout` |
 | `native-screenshot` | `path` | `--uid --wait-frames --timeout` |
 | `wait-native-renderer` | `[uid]` | `--frames --timeout` |
 | `record-window` | `path` | `--uid --property --with-editor --open-outputs --expect-outputs --no-pan --duration --fps --frame-synchronous --restart-target --timeout` |
@@ -345,7 +345,9 @@ What each family actually captures:
   select a box, show its editor, and open outputs.
 - `screenshot-editor`, `record-editor`: the visible Monaco pane. Call
   `editor-open` before execution when inline editor visualizers must exist.
-- `screenshot-box`, `record-box`: one box and its disclosures.
+- `screenshot-box`, `record-box`: one box and its disclosures. `screenshot-box --scale 3`
+  rasterises that one still at 3 device pixels per CSS pixel (the page's own is 2) through
+  Chromium's `Page.captureScreenshot`; the docs fence attribute is `scale="3"`.
 - `native-screenshot`: the native renderer window rather than browser DOM. Needs a
   live native renderer, so `wait-native-renderer <uid> --frames 3` first.
 - `page-eval`: JSON-serializable DOM probes. Use `--file` for anything with

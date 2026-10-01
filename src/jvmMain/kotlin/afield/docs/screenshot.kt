@@ -1441,12 +1441,17 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
     outputPath.parent?.let { Files.createDirectories(it) }
 
     return runCatching {
-        page.screenshot(
-            Page.ScreenshotOptions()
-                .setPath(outputPath)
-                .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
-                .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
-        )
+        val scale = request.deviceScaleFactor
+        if (scale != null) {
+            captureClipAtScale(page, outputPath, Clip(clip.x, clip.y, clip.w, clip.h), scale)
+        } else {
+            page.screenshot(
+                Page.ScreenshotOptions()
+                    .setPath(outputPath)
+                    .setTimeout(PLAYWRIGHT_SCREENSHOT_TIMEOUT_MS)
+                    .setClip(Clip(clip.x, clip.y, clip.w, clip.h))
+            )
+        }
         postProcessScreenshot(outputPath)
         AgentScreenshotResponse(
             ok = true,
@@ -1469,6 +1474,39 @@ suspend fun captureBoxScreenshot(info: SessionInformation, request: AgentBoxScre
             uid = request.uid,
             message = it.message ?: "Playwright screenshot failed"
         )
+    }
+}
+
+/**
+ * A clipped screenshot at [scale] device pixels per CSS pixel rather than the page's own.
+ *
+ * Playwright fixes the scale per browser context, and overriding the device metrics from a second
+ * CDP session does not reach Playwright's own screenshot (and clearing it afterwards left the page
+ * at a scale of 1). So this asks Chromium directly: `Page.captureScreenshot` with a clip whose
+ * `scale` is output pixels per CSS pixel, which Chromium rasterises at that density rather than
+ * enlarging the page's pixels. The layout is untouched; the clip is the same CSS rectangle.
+ */
+private fun captureClipAtScale(page: Page, outputPath: Path, clip: Clip, scale: Double) {
+    require(scale.isFinite() && scale >= 1.0 && scale <= 4.0) { "deviceScaleFactor $scale is outside 1..4" }
+    val cdp = page.context().newCDPSession(page)
+    try {
+        val params = com.google.gson.JsonObject().apply {
+            addProperty("format", "png")
+            addProperty("captureBeyondViewport", false)
+            add("clip", com.google.gson.JsonObject().apply {
+                addProperty("x", clip.x)
+                addProperty("y", clip.y)
+                addProperty("width", clip.width)
+                addProperty("height", clip.height)
+                // In output pixels per CSS pixel, whatever the page's own density.
+                addProperty("scale", scale)
+            })
+        }
+        val reply = cdp.send("Page.captureScreenshot", params)
+        val data = reply.get("data")?.asString ?: error("Page.captureScreenshot returned no data")
+        Files.write(outputPath, java.util.Base64.getDecoder().decode(data))
+    } finally {
+        runCatching { cdp.detach() }
     }
 }
 

@@ -1260,7 +1260,13 @@ data class AgentBoxScreenshot(
     val preserveSelection: Boolean = false,
     val includeNotifications: Boolean = false,
     /** One of [ExpectedOutputs]; what this capture asserts the box's output is. */
-    val expectOutputs: String = ExpectedOutputs.PANEL
+    val expectOutputs: String = ExpectedOutputs.PANEL,
+    /**
+     * Device pixels per CSS pixel for this one screenshot; null keeps the capture page's own (2).
+     * A docs figure of a narrow output panel takes a higher one so it can be shown wider than its
+     * CSS size and stay sharp.
+     */
+    val deviceScaleFactor: Double? = null
 )
 
 @Serializable
