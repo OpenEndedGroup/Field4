@@ -2473,6 +2473,40 @@ class DocsUiDriver internal constructor(
         run(AgentPlaywrightInputRequest(action = "dragBox", uid = uid, dx = dx, dy = dy, steps = steps, hold = hold))
     }
     fun mouseUp() { run(AgentPlaywrightInputRequest(action = "mouseUp")) }
+
+    /** Move the real mouse to ([x], [y]) in CSS px, in [steps] steps, as a hand would (canvas hover state, `n`'s drop point). */
+    fun moveMouse(x: Double, y: Double, steps: Int = 1) {
+        runBlocking(playwrightDispatcher) {
+            pageProvider().mouse().move(x, y, com.microsoft.playwright.Mouse.MoveOptions().setSteps(steps.coerceAtLeast(1)))
+        }
+    }
+
+    /** Click the real mouse at ([x], [y]) in CSS px, with the [modifiers] (`"Alt"`, `"Shift"`, ...) held. */
+    fun clickAt(x: Double, y: Double, vararg modifiers: String) {
+        runBlocking(playwrightDispatcher) {
+            val page = pageProvider()
+            modifiers.forEach { page.keyboard().down(it) }
+            try {
+                page.mouse().click(x, y)
+            } finally {
+                modifiers.reversed().forEach { page.keyboard().up(it) }
+            }
+        }
+    }
+
+    /**
+     * Type [text] one key at a time, [delayMs] apart, so a recording shows the typing. Each key is
+     * its own trip to the Playwright thread and the wait between keys is [pause], so the recorder
+     * (on that same thread) keeps grabbing frames and the runloop keeps turning; one long
+     * `keyboard.type(text, delay)` would hold the Playwright thread and freeze the video.
+     */
+    fun typeSlowly(text: String, delayMs: Long = 70L) {
+        for (ch in text) {
+            if (ch == '\n') press("Enter") else run(AgentPlaywrightInputRequest(action = "typeText", script = ch.toString()))
+            idle(delayMs)
+        }
+    }
+
     fun eval(script: String): JsonElement? =
         run(AgentPlaywrightInputRequest(action = "pageEval", script = script, scriptMode = "body"))
 

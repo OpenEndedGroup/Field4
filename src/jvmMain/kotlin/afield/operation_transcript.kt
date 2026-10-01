@@ -1566,6 +1566,14 @@ object OperationTranscript {
                     ?: if (capture == "box" || capture == "editor" || capture == "window-editor") target.id else null
                 // Clip to an arbitrary overlay (command palette, popup, AI panel) that is not a box.
                 val clipSelector = payload["clipSelector"]?.toString()?.takeIf { it.isNotBlank() }
+                // Clip to a fixed CSS-px rectangle of the viewport (a fence's clip="x,y,w,h"), for a
+                // frame no single element owns: a box and its editor, or a scene under the drawing
+                // layer's toolbar. Used for the recording and, with no clipSelector, for the still,
+                // which is then taken as the page stands rather than after a screenshot re-prep.
+                val clipRect = (payload["clipRect"] as? List<*>)
+                    ?.mapNotNull { (it as? Number)?.toDouble() ?: it?.toString()?.toDoubleOrNull() }
+                    ?.takeIf { it.size == 4 && it[2] > 0.0 && it[3] > 0.0 }
+                    ?.let { Rect(it[0], it[1], it[2], it[3]) }
 
                 // Prepend the driver binding + resolved output paths (fully-qualified, so no
                 // import is required in the doc fence body). Scripts capture transient overlays
@@ -1588,10 +1596,33 @@ object OperationTranscript {
                     strand = "default"
                 )
 
+                // viewport=[w, h]: lay the page out at this size for the drive (Field's layout follows
+                // the window), restored in the finally below, after the still is taken.
+                val requestedViewport = (payload["viewport"] as? List<*>)
+                    ?.mapNotNull { (it as? Number)?.toInt() ?: it?.toString()?.toDoubleOrNull()?.toInt() }
+                    ?.takeIf { it.size == 2 && it[0] > 0 && it[1] > 0 }
+                val originalViewport = if (requestedViewport != null) {
+                    runBlocking(playwrightDispatcher) {
+                        // A page with no fixed viewport is restored to the capture page's own size.
+                        val before = page.viewportSize()
+                            ?: com.microsoft.playwright.options.ViewportSize(PLAYWRIGHT_VIEWPORT_WIDTH, PLAYWRIGHT_VIEWPORT_HEIGHT)
+                        page.setViewportSize(requestedViewport[0], requestedViewport[1])
+                        before
+                    }.also {
+                        // Let the frontend's resize handlers lay the canvas and editor out again.
+                        val until = System.currentTimeMillis() + 800L
+                        while (System.currentTimeMillis() < until) {
+                            if (Runloop.isMainThread) Runloop.runLoop.main.frame()
+                            Thread.sleep(5L)
+                        }
+                    }
+                } else null
+
                 val recorder = if (videoPath != null) {
                     val clip = runCatching {
                         runBlocking(playwrightDispatcher) {
-                            if (clipSelector != null) computeSelectorClip(page, clipSelector, padding)
+                            if (clipRect != null) clipRect
+                            else if (clipSelector != null) computeSelectorClip(page, clipSelector, padding)
                                 ?: computeDriveClip(page, capture, captureUid, padding)
                             else computeDriveClip(page, capture, captureUid, padding)
                         }
@@ -1617,6 +1648,7 @@ object OperationTranscript {
                     if (screenshotPath != null && clipSelector == null) {
                         runBlocking(playwrightDispatcher) {
                             when {
+                                clipRect != null -> captureClippedScreenshot(page, java.nio.file.Path.of(screenshotPath), clipRect)
                                 capture == "box" -> captureBoxScreenshot(
                                     info,
                                     AgentBoxScreenshot(uid = captureUid ?: target.id, path = screenshotPath, padding = padding)
@@ -1632,6 +1664,15 @@ object OperationTranscript {
                                     )
                                 )
                             }
+                        }
+                    }
+                    if (originalViewport != null) {
+                        runCatching {
+                            runBlocking(playwrightDispatcher) {
+                                page.setViewportSize(originalViewport.width, originalViewport.height)
+                            }
+                        }.onFailure {
+                            lprintln("warning,docs", "drive: could not restore the viewport: ${it.message}")
                         }
                     }
                     target.properties.remove("__docsUiDriver")

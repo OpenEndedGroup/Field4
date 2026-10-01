@@ -1652,8 +1652,8 @@ var globalLoopbackHttpPort: Int? = null
 private const val PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 12_000.0
 private const val PLAYWRIGHT_READY_TIMEOUT_MS = 45_000.0
 private const val PLAYWRIGHT_ATTACH_ATTEMPTS = 3
-private const val PLAYWRIGHT_VIEWPORT_WIDTH = 2200
-private const val PLAYWRIGHT_VIEWPORT_HEIGHT = 2800
+internal const val PLAYWRIGHT_VIEWPORT_WIDTH = 2200
+internal const val PLAYWRIGHT_VIEWPORT_HEIGHT = 2800
 private const val PLAYWRIGHT_DEVICE_SCALE_FACTOR = 2.0
 private val playwrightExecutor = Executors.newSingleThreadExecutor { runnable ->
     Thread(runnable, "afield-playwright").apply {

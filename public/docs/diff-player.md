@@ -161,7 +161,9 @@ Runner attributes, by what they decide. Hyphenated names also answer to an under
 - `capture="native-window"` — an `afield.four` renderer window.
 - `capture="ui"` — runs the fence body as a `drive` transcript scripting the live editor through Playwright.
 - `region="window-editor"` — what a `ui` capture is clipped to: `box`, `window`, `window-editor` (the default) or `editor`.
-- `clip-selector="#some-id"` — clips a `ui` capture to a CSS selector instead, for an overlay that no box owns.
+- `clip-selector="#some-id"` — clips a `ui` capture to a CSS selector instead, for an overlay that no box owns. A selector that matches nothing fails the capture.
+- `clip="x,y,w,h"` — on a `ui` capture, clips the recording and the still to this rectangle of the page, in CSS pixels, for a frame no single element owns (a box and its editor). On other captures it crops the finished screenshot.
+- `viewport="760x560"` — lays the page out at this size for a `ui` capture, then puts it back. Field's layout follows the window, so a smaller one shows a box and its editor together at a readable scale.
 - `padding="16"` — insets a `box` or `editor` crop.
 - `trim=true` — crops the uniform background off any finished capture.
 - `trim-native=true` — the older, narrower form of the same thing, and only for a `native-window` graphics capture.

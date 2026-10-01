@@ -459,6 +459,11 @@ class RunnerOptions:
     # figures of something drawn on the canvas, where the capture viewport is far larger than the
     # drawing and `trim` cannot see past the dot grid.
     clip: tuple[float, float, float, float] | None = None
+    # `viewport="WxH"` (capture="ui" only): the capture page's size in CSS pixels for this drive,
+    # set before the recording starts and restored after it. Field's layout follows the window
+    # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
+    # at a legible scale.
+    viewport: tuple[int, int] | None = None
 
 
 def capture_profile_enabled(profile: str | None) -> bool:
@@ -2935,6 +2940,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
+        viewport=parse_viewport(first_attr(attrs, "viewport")),
         box_name=first_attr(attrs, "name") or f"{page_path.stem}-{block_index}",
         box_x=parse_float(first_attr(attrs, "x"), default=24.0),
         box_y=parse_float(first_attr(attrs, "y"), default=24.0),
@@ -3551,6 +3557,11 @@ def options_digest_payload(options: RunnerOptions) -> dict[str, Any]:
         "clipSelector": options.clip_selector,
         "warmCompletion": options.warm_completion,
     }
+    # Present only when set, so every other fence hashes byte-identically.
+    if options.clip is not None:
+        payload["clip"] = list(options.clip)
+    if options.viewport is not None:
+        payload["viewport"] = list(options.viewport)
     if options.wait_output:
         payload.update({
             "waitOutput": True,
@@ -4184,6 +4195,19 @@ def parse_clip(value: str | None) -> tuple[float, float, float, float] | None:
     return (x, y, w, h)
 
 
+def parse_viewport(value: str | None) -> tuple[int, int] | None:
+    """`viewport="1280x800"` -> (1280, 800), in CSS pixels."""
+    if value is None or not value.strip():
+        return None
+    match = re.fullmatch(r"\s*(\d+)\s*[x,]\s*(\d+)\s*", value)
+    if not match:
+        raise RuntimeError(f"viewport={value!r} must be WIDTHxHEIGHT in CSS pixels, e.g. 1280x800")
+    width, height = int(match.group(1)), int(match.group(2))
+    if width < 320 or height < 240:
+        raise RuntimeError(f"viewport={value!r} is smaller than 320x240")
+    return width, height
+
+
 def clip_screenshot(*, screenshot_path: Path, options: RunnerOptions, backdoor_stdout: str) -> None:
     """Crop a finished capture to `clip`, a rectangle in CSS pixels.
 
@@ -4671,6 +4695,12 @@ def build_backdoor_command(
             drive_op["captureUid"] = capture_uid
         if options.clip_selector:
             drive_op["clipSelector"] = options.clip_selector
+        if options.clip is not None:
+            # capture="ui" clips in Field, at capture time, to this CSS-px viewport rectangle (the
+            # recording too); clip_screenshot's post-crop is the screenshot path's, not this one's.
+            drive_op["clipRect"] = list(options.clip)
+        if options.viewport is not None:
+            drive_op["viewport"] = list(options.viewport)
         if options.warm_completion:
             drive_op["warmCompletion"] = True
         transcript_name = f"{safe_transcript_id(options.box_name)}_ui_drive"
