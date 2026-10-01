@@ -37,7 +37,7 @@ class FnIntervalTest {
                 else -> cos(num(0.1, 3.0), amplitude = num(0.2, 2.0), offset = num(-1.0, 1.0))
             }
         }
-        when (r.nextInt(if (valueOnly) 35 else 33)) {
+        when (r.nextInt(if (valueOnly) 38 else 33)) {
             0 -> sub() + sub()
             1 -> sub() - sub()
             2 -> sub() * sub()
@@ -75,6 +75,12 @@ class FnIntervalTest {
             32 -> if (!valueOnly) identity(unbounded) * sub() // the pre-2026-09-23 draw, unchanged
                 else step(if (r.nextBoolean()) c(num(-2.0, 2.0), unbounded) else small(), unbounded)
             33 -> sub().sign()
+            // The piecewise oscillators (2026-10-01), drawn only in the valueOnly population so the
+            // ratchet population is the one it was measured on. A zero period reaches the IfZero guard,
+            // and a signal phase moves the fract argument by more than one cell.
+            34 -> saw(period = if (r.nextInt(6) == 0) c(0.0, unbounded) else c(num(0.2, 2.0), unbounded), phase = small(), amplitude = small(), offset = c(num(-1.0, 1.0), unbounded))
+            35 -> triangle(period = c(num(-2.0, 2.0), unbounded), phase = c(num(-1.0, 1.0), unbounded), amplitude = small(), offset = small())
+            36 -> square(period = c(num(0.2, 2.0), unbounded), phase = small(), duty = if (r.nextBoolean()) c(num(-0.2, 1.2), unbounded) else small(), amplitude = small(), offset = c(num(-1.0, 1.0), unbounded))
             else -> identity(unbounded) * sub()
         }
     }
@@ -526,6 +532,30 @@ class FnIntervalTest {
         }
         println("FN INTERVAL TEETH: the endpoint-only bound is violated on $violations of 200 graphs")
         assertTrue(violations >= 50, "the endpoint-only bound was violated on only $violations graphs")
+    }
+
+    /**
+     * The piecewise oscillators enclose tightly in one shot, which is the point of recognising
+     * `t - floor(t)`: taken as two unrelated numbers, `fract` over a hundred periods would be
+     * `[-100, 100]` and a saw's one-shot bound a hundred times its amplitude. Inside one cell the
+     * fraction is endpoint-exact, so a quarter-period of saw encloses as exactly its ramp.
+     */
+    @Test
+    fun piecewiseOscillatorsEncloseAsTheirAmplitudeAcrossManyPeriods() = with(Functions) {
+        for ((name, fn) in listOf("saw" to saw(0.5), "triangle" to triangle(0.5), "square" to square(0.5, duty = 0.3))) {
+            val e = fn.enclose(-17.3, 83.9)
+            assertTrue(e.certified, "$name refused: ${e.refusal}")
+            assertEquals(-1.0, e.lo, "$name lo")
+            assertEquals(1.0, e.hi, "$name hi")
+        }
+        val quarter = saw(1.0).enclose(2.0, 2.25)
+        assertEquals(saw(1.0).eval(2.0), quarter.lo)
+        assertEquals(saw(1.0).eval(2.25), quarter.hi)
+        // A tiny negative t rounds t + 1 to exactly 1.0, so the cell-crossing bound must be closed at 1.
+        assertEquals(1.0, -1e-20 - kotlin.math.floor(-1e-20))
+        assertTrue(1.0 in FnRangeMath.fract(FnRange(-1e-20, 0.0)))
+        assertTrue(FnRangeMath.fract(FnRange(0.0, Double.POSITIVE_INFINITY)).maybeNaN)
+        assertTrue(FnIntervals.supports(saw(1.0) + square(0.25) * triangle(2.0)))
     }
 
     companion object {

@@ -27,6 +27,9 @@ package afield.stacksl.cpu
  * delegates to `glslMul`, `glslConstruct`, `glslSwizzle` and `GlslBuiltins.call` unchanged.
  */
 
+/** A condition's verdict: decided either way, or (only for a set-valued algebra) not decided. */
+internal enum class GlslTruth { TRUE, FALSE, UNKNOWN }
+
 /**
  * Everything the interpreter asks of a value: lifting, arithmetic, construction, swizzles,
  * component writes and the builtin table. One implementation per scalar type.
@@ -56,6 +59,26 @@ internal interface GlslScalars<V> {
      * everywhere except at the switch-over itself. `autodiff.kt` states the same convention.
      */
     fun asBool(v: V): Boolean
+
+    /**
+     * Read a value as a condition that may be undecided. Every point algebra answers TRUE or FALSE,
+     * exactly as [asBool]; the interval algebra answers UNKNOWN when its range holds both, and the
+     * machine then runs both arms and [join]s them.
+     */
+    fun truth(v: V): GlslTruth = if (asBool(v)) GlslTruth.TRUE else GlslTruth.FALSE
+
+    /** A `bool` from a three-valued truth. Only an algebra that can say UNKNOWN is handed one. */
+    fun boolOfTruth(t: GlslTruth): V = when (t) {
+        GlslTruth.TRUE -> boolOf(true)
+        GlslTruth.FALSE -> boolOf(false)
+        GlslTruth.UNKNOWN -> throw IllegalStateException("a point algebra cannot hold an undecided bool")
+    }
+
+    /** `==` as a three-valued truth; [equalComponents] for every point algebra. */
+    fun equalTruth(a: V, b: V): GlslTruth = if (equalComponents(a, b)) GlslTruth.TRUE else GlslTruth.FALSE
+
+    /** The smallest value holding both — what an undecided branch leaves behind. Never called on a point algebra. */
+    fun join(a: V, b: V): V = throw IllegalStateException("only an interval algebra joins two branches")
 
     /** Read a value as an array/matrix index or a `textureGather` channel. Also derivative-free. */
     fun asInt(v: V): Int

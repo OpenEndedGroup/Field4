@@ -86,6 +86,7 @@ nav:
       - Functions Examples: functions_examples.md
       - Functions Domains: functions_domains.md
       - Differentiating Functions: autodiff_examples.md
+      - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
       # Directly after the interpolants page, which is the other half of the same subject: that

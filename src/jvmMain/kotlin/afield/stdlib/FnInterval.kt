@@ -141,7 +141,7 @@ object FnIntervalRules {
         "Child" to "the child's own enclosure over the same x interval",
         "Alpha" to "(x − min)/length on the op's finite domain: monotone, endpoint-exact; refused when the domain is unbounded",
         "Add" to "endpoint sums; round-to-nearest is monotone so no widening; NaN when +inf and −inf can meet",
-        "Sub" to "Add of the negation — fl(a − b) is fl(a + (−b)) exactly",
+        "Sub" to "Add of the negation — fl(a − b) is fl(a + (−b)) exactly; the fract shape t − floor(t) is bounded as one value: endpoint-exact inside a unit cell, [0, 1] across a boundary",
         "Mul" to "min/max of the four corner products (square rule when both factors are the same subexpression; the monotone rule for the t·t·(3 − 2t) smoothstep shape); NaN when 0 can meet ±inf",
         "Div" to "corner quotients when the divisor excludes 0; everything otherwise",
         "Neg" to "[−hi, −lo], exact",
@@ -162,7 +162,7 @@ object FnIntervalRules {
         "CoerceIn" to "monotone in all three; refused when the range may invert, because Fn.eval throws there",
         "IfZero" to "the taken branch when the test is certainly zero or certainly not; the hull of both otherwise",
         "IfEq" to "the taken branch when the comparison is decided (a subexpression against itself: equal unless NaN); the hull of both otherwise",
-        "IfLt" to "the taken branch when the comparison is decided (a subexpression against itself: never less); the hull of both otherwise",
+        "IfLt" to "the taken branch when the comparison is decided (a subexpression against itself: never less); otherwise the hull of both, each arm walked with a narrowed to the side of b that selects it",
         "AtX" to "the body over the enclosure of the moved position",
     )
 }
@@ -255,6 +255,20 @@ object FnRangeMath {
     }
 
     fun floor(a: FnRange): FnRange = unary(a) { FnRange(Math.floor(it.lo), Math.floor(it.hi)) }
+
+    /**
+     * `t - floor(t)` for one value drawn from [a] — the fractional part, which [sub] of [a] and
+     * [floor] of [a] cannot see: over `[0, 10]` those give `[-10, 10]`.
+     *
+     * Inside one unit cell `floor` is a constant `k`, and `fl(t - k)` is monotone in `t`, so the
+     * endpoints are exact. Across a cell boundary the answer is `[0, 1]` — closed at 1, because a
+     * tiny negative `t` rounds `t + 1` up to exactly `1.0`. An infinite `t` gives `inf - inf`, NaN.
+     */
+    fun fract(a: FnRange): FnRange = unary(a) {
+        if (hasInfinity(it)) return@unary FnRange(0.0, 1.0, true)
+        val k = Math.floor(it.lo)
+        if (k == Math.floor(it.hi)) FnRange(it.lo - k, it.hi - k) else FnRange(0.0, 1.0)
+    }
 
     /**
      * True when some `c + 2πk` may lie in `[lo, hi]` — generous by a hair, since including an
@@ -481,9 +495,11 @@ fun evalFormulaInterval(
     expr: FnExpr,
     x: FnRange,
     alpha: (FnRange) -> FnRange,
-    childRange: (role: String, at: FnRange) -> FnRange
+    childRange: (role: String, at: FnRange) -> FnRange,
+    known: Map<FnExpr, FnRange> = emptyMap()
 ): FnRange {
-    fun walk(e: FnExpr): FnRange = evalFormulaInterval(e, x, alpha, childRange)
+    if (known.isNotEmpty()) known[expr]?.let { return it }
+    fun walk(e: FnExpr, facts: Map<FnExpr, FnRange> = known): FnRange = evalFormulaInterval(e, x, alpha, childRange, facts)
     fun branch(decided: Decided, then: FnExpr, otherwise: FnExpr): FnRange = when (decided) {
         Decided.THEN -> walk(then)
         Decided.OTHERWISE -> walk(otherwise)
@@ -495,7 +511,12 @@ fun evalFormulaInterval(
         is FnExpr.Child -> childRange(expr.role, x)
         is FnExpr.Alpha -> alpha(x)
         is FnExpr.Add -> FnRangeMath.add(walk(expr.a), walk(expr.b))
-        is FnExpr.Sub -> FnRangeMath.sub(walk(expr.a), walk(expr.b))
+        // `t - floor(t)` is one value's fractional part, not a difference of two unrelated numbers.
+        is FnExpr.Sub -> if (expr.b is FnExpr.Floor && (expr.b as FnExpr.Floor).a == expr.a) {
+            FnRangeMath.fract(walk(expr.a))
+        } else {
+            FnRangeMath.sub(walk(expr.a), walk(expr.b))
+        }
         // The same subexpression twice is the same double twice, so its product is a square.
         is FnExpr.Mul -> smoothstepArgument(expr)?.let { FnRangeMath.cubicSmoothstep(walk(it)) }
             ?: if (expr.a == expr.b) FnRangeMath.square(walk(expr.a)) else FnRangeMath.mul(walk(expr.a), walk(expr.b))
@@ -540,8 +561,21 @@ fun evalFormulaInterval(
             val b = walk(expr.b)
             val maybeLess = !a.isEmpty && !b.isEmpty && a.lo < b.hi
             val maybeNotLess = a.maybeNaN || b.maybeNaN || a.isEmpty || b.isEmpty || a.hi >= b.lo
-            branch(decide(maybeLess, maybeNotLess), expr.then, expr.otherwise)
+            when (decide(maybeLess, maybeNotLess)) {
+                Decided.THEN -> walk(expr.then)
+                Decided.OTHERWISE -> walk(expr.otherwise)
+                // Each arm is walked knowing the comparison that selects it: wherever `then` runs,
+                // the value of `a` is below `b.hi`, and wherever `otherwise` runs it is at least
+                // `b.lo` (or NaN). Without this, triangle's `if (t < 0.5) 2t else 2 - 2t` bounds
+                // each arm over all of `t` and the wave encloses as [-1, 3].
+                Decided.BOTH -> {
+                    val below = FnRange(a.lo, minOf(a.hi, Math.nextDown(b.hi)))
+                    val atOrAbove = FnRange(maxOf(a.lo, b.lo), a.hi, a.maybeNaN)
+                    walk(expr.then, known + (expr.a to below)).hull(walk(expr.otherwise, known + (expr.a to atOrAbove)))
+                }
+            }
         }
+        // A moved position invalidates every fact learned at the old one.
         is FnExpr.AtX -> evalFormulaInterval(expr.body, walk(expr.newX), alpha, childRange)
     }
 }
@@ -797,6 +831,16 @@ data class FnCertifiedRange(
 
 private class Piece(val lo: Double, val hi: Double, val range: FnRange)
 
+/** Which extreme a branch-and-bound search was looking for. */
+enum class FnSearchSide { MIN, MAX }
+
+/**
+ * One enclosure a [certifiedRange] search computed: every value on `[lo, hi]` is in [range].
+ * [kept] when the piece could still hold a better extreme than the one already reached, so the
+ * search queued it for splitting; a piece that is not kept was pruned by its bound.
+ */
+data class FnSearchPiece(val lo: Double, val hi: Double, val range: FnRange, val side: FnSearchSide, val kept: Boolean)
+
 private fun midpoint(lo: Double, hi: Double): Double = lo + (hi - lo) * 0.5
 
 /**
@@ -811,8 +855,12 @@ private fun searchExtremum(
     tolerance: Double,
     maxEnclosures: Int,
     sign: Double,
-    stop: (best: Double, topUpper: Double) -> Boolean = { _, _ -> false }
+    stop: (best: Double, topUpper: Double) -> Boolean = { _, _ -> false },
+    onEnclosure: ((FnSearchPiece) -> Unit)? = null
 ): FnExtremum {
+    fun enclosed(lo: Double, hi: Double, r: FnRange, kept: Boolean) {
+        onEnclosure?.invoke(FnSearchPiece(lo, hi, r, if (sign > 0) FnSearchSide.MAX else FnSearchSide.MIN, kept))
+    }
     fun upper(r: FnRange) = if (r.isEmpty) Double.NEGATIVE_INFINITY else if (sign > 0) r.hi else -r.lo
     var best = Double.NEGATIVE_INFINITY
     var witness = a
@@ -824,6 +872,7 @@ private fun searchExtremum(
     probe(a); probe(b); probe(midpoint(a, b))
     val queue = PriorityQueue<Piece>(compareByDescending { upper(it.range) })
     queue += Piece(a, b, FnIntervals.range(fn, FnRange(a, b)))
+    enclosed(a, b, queue.peek().range, true)
     var enclosures = 1
     var settledBound = Double.NEGATIVE_INFINITY
     while (queue.isNotEmpty()) {
@@ -845,7 +894,9 @@ private fun searchExtremum(
             val r = FnIntervals.range(fn, FnRange(lo, hi))
             enclosures++
             probe(midpoint(lo, hi))
-            if (upper(r) > best + tolerance) queue += Piece(lo, hi, r)
+            val kept = upper(r) > best + tolerance
+            enclosed(lo, hi, r, kept)
+            if (kept) queue += Piece(lo, hi, r)
             else settledBound = maxOf(settledBound, upper(r))
         }
     }
@@ -860,20 +911,24 @@ private fun searchExtremum(
  *
  * [maxEnclosures] caps the work per side; a search that hits it returns what it has with
  * `certified = false` and the remaining gap, rather than pretending.
+ *
+ * [onEnclosure], when given, is told about every piece either search encloses, in the order it
+ * encloses them — the raw material of [intervalPicture], which draws where the proof spent its work.
  */
 fun Functions.Fn.certifiedRange(
     a: Double,
     b: Double,
     tolerance: Double = 1e-6,
-    maxEnclosures: Int = 200_000
+    maxEnclosures: Int = 200_000,
+    onEnclosure: ((FnSearchPiece) -> Unit)? = null
 ): FnCertifiedRange {
     val whole = enclose(a, b)
     if (!whole.certified) return FnCertifiedRange(a, b, null, null, false, whole.refusal)
     return try {
         FnCertifiedRange(
             a, b,
-            min = searchExtremum(this, a, b, tolerance, maxEnclosures, -1.0),
-            max = searchExtremum(this, a, b, tolerance, maxEnclosures, 1.0),
+            min = searchExtremum(this, a, b, tolerance, maxEnclosures, -1.0, onEnclosure = onEnclosure),
+            max = searchExtremum(this, a, b, tolerance, maxEnclosures, 1.0, onEnclosure = onEnclosure),
             maybeNaN = whole.maybeNaN
         )
     } catch (refusal: FnIntervalRefusal) {
@@ -1017,7 +1072,7 @@ fun Functions.Fn.certifiedReaches(level: Double, a: Double, b: Double, maxEnclos
     val whole = enclose(a, b)
     if (!whole.certified) return FnVerdict(FnVerdictKind.UNDECIDED, claim, refusal = whole.refusal)
     return try {
-        val max = searchExtremum(this, a, b, 0.0, maxEnclosures, 1.0) { best, top -> best >= level || top < level }
+        val max = searchExtremum(this, a, b, 0.0, maxEnclosures, 1.0, stop = { best, top -> best >= level || top < level })
         when {
             max.value >= level -> FnVerdict(FnVerdictKind.PROVEN, claim, max.witness, max.value, max.enclosures)
             max.bound < level -> FnVerdict(FnVerdictKind.REFUTED, claim, max.witness, max.value, max.enclosures)

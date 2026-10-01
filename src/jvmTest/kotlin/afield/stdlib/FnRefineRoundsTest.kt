@@ -195,14 +195,15 @@ class FnRefineRoundsTest {
 
     @Test
     fun aSeedTheExactPathCannotTouchStillRunsUnderAuto() = with(Functions) {
-        // saw has no formula (see FnNonDifferentiable), so every round must fall back.
-        val target = saw(1.0, amplitude = 0.8)
-        val seed = saw(1.6, amplitude = 1.4)
+        // pulseTrain has no formula (see FnNonDifferentiable), so every round must fall back. (This
+        // was saw until saw gained one on 2026-10-01.)
+        val target = pulseTrain(1.0, amplitude = 0.8)
+        val seed = pulseTrain(1.6, amplitude = 1.4)
         val run = fitEvolveRounds(target, seed, domain = domain, rounds = 2, rngSeed = 3L)
         assertTrue(run.bestError <= run.seedError, "the loop should not make things worse")
         assertTrue(
             run.rounds.any { !it.usedExactGradient },
-            "a saw-rooted search cannot be all-exact"
+            "a pulseTrain-rooted search cannot be all-exact"
         )
         for (round in run.rounds.filter { !it.usedExactGradient }) {
             assertTrue(round.refusal != null, "round ${round.round} must say why it fell back")
