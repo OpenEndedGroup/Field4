@@ -95,6 +95,7 @@ CARRIER_PAGES = {
     "public/docs/pure_data.md",
     "public/docs/rectsl_examples.md",
     "public/docs/solid_notation.md",
+    "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",
     "public/docs/three_output.md",
     "public/docs/vision_geometry.md",
