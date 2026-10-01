@@ -163,7 +163,9 @@ nav:
       # After the two engines Field talks to, because it is the general form of what they do: OSC
       # in and out of a box, for any peer — a phone, SuperCollider, Max, a touch table over TUIO.
       - OSC and TUIO: osc.md
-    - Lighting:
+      # After OSC because it is the same shape of page: a box talking a wire protocol to an outside
+      # peer, with Field acting as a node — here Art-Net and sACN over UDP to lighting hardware. It
+      # was a one-page "Lighting" group of its own; the only other lighting page is a chain.
       - "Driving Lights: Art-Net and sACN": dmx_lighting.md
     - Audio AI:
       - Field Audio AI: field_audio_ai.md
