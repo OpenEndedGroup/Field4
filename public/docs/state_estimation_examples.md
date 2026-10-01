@@ -593,5 +593,5 @@ estimate has settled.
 ---
 
 For raw and filtered *signals* rather than these derived quantities, continue with
-[Timeseries examples](timeseries_examples.md); for interpolation, keyframes, and
+[the time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves); for interpolation, keyframes, and
 correlation, see [Values over time](interpolants_examples.md).

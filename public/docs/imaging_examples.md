@@ -4,8 +4,8 @@
 family has a single value type, `Img`, and around it a set of operations that turn a raster into
 structure, from convolution and gradients up through edges, corners, lines, blobs, pyramids, warps
 and motion. It is the raster counterpart to the time-domain
-[timeseries toolkit](timeseries_examples.md) and the frequency-domain
-[spectral family](spectral_examples.md), and it is built the same way: pure Kotlin, no external
+[timeseries toolkit](spectral_examples.md#filter-chains-as-layered-curves) and the frequency-domain
+[spectral family](spectral_examples.md#from-time-to-frequency), and it is built the same way: pure Kotlin, no external
 dependency, works headless in a box.
 
 Every detector here reduces pixels to *geometry*, and geometry in Field is an

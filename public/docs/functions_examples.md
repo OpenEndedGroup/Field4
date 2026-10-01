@@ -132,7 +132,7 @@ Here the pulse train is the raw material. A slower sine bends it, a blur softens
 
 ![](assets/functions_examples/pulse_stack_window.png)
 
-The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see [Timeseries examples](timeseries_examples.md).
+The three traces separate cleanly: one jagged, one softened, one quantized into holds. That side-by-side picture helps when shaping sequencer data, stepped motion, triggers, or control-rate material. For statistical views of similar time-varying data, see the [time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves).
 
 ## 1D stack: fit a graph to a target (differentiable)
 

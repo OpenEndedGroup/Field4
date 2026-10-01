@@ -125,10 +125,13 @@ nav:
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
       - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
-      - Timeseries Examples: timeseries_examples.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
-      - Spectral Examples: spectral_examples.md
+      # One page for both halves of signal processing: timeseries_examples.md (filters and
+      # distribution-fit event detectors, in the time domain) was merged into the top of this one,
+      # which already called itself that page's frequency-domain companion. The filename stays
+      # spectral_examples.md so its inbound links and transcript keep working.
+      - Signal Examples: spectral_examples.md
     # Two pages whose input is an unordered set of points rather than a series or a function, and
     # which were each a one-page group of their own ("Distances & Projections", "Clouds &
     # Deformations") until they were put together here. Not under "Time & Signals": the input to a

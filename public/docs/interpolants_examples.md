@@ -550,5 +550,5 @@ see [Neighbors & graph connectivity examples](graph_connectivity_examples.md).
 Three families, one habit: whether a value eases, morphs, or correlates, draw the
 motion. For recovering a hidden value from noisy measurements, see
 [State estimation](state_estimation_examples.md); for raw and filtered *signals*
-rather than these derived quantities, continue with
-[Timeseries examples](timeseries_examples.md).
+rather than these derived quantities, continue with the
+[time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves).

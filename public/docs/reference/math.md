@@ -1916,7 +1916,7 @@ Bluestein (chirp-z) fallback so arbitrary (non-power-of-two) lengths transform e
 
 `src/jvmMain/kotlin/afield/stdlib/spectral.kt` — [read the source](source/jvmMain/afield/stdlib/spectral/)
 
-**Used in:** [Spectral examples](../spectral_examples.md)
+**Used in:** [Signal examples: time and frequency](../spectral_examples.md)
 
 ### Top-level functions { #spectral-kt-functions }
 
@@ -2439,7 +2439,7 @@ window-based ones allocate their ring buffer up front from `windowSize`.
 
 `src/jvmMain/kotlin/afield/stdlib/timeseries.kt` — [read the source](source/jvmMain/afield/stdlib/timeseries/)
 
-**Used in:** [Timeseries examples](../timeseries_examples.md), [Spectral examples](../spectral_examples.md)
+**Used in:** [Signal examples: time and frequency](../spectral_examples.md)
 
 ### Top-level functions { #timeseries-kt-functions }
 
@@ -2619,7 +2619,7 @@ Rescales a non-negative, skewed stream onto `targetMin..targetMax` by its fitted
 
 [<code class="highlight"><span class="k">class</span> <span class="nf">GammaEventDetector</span><span class="p">(</span><span class="k">val</span> <span class="n">windowSize</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">var</span> <span class="n">tailProbabilityThreshold</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">0.01f</span><span class="p">,</span> <span class="k">var</span> <span class="n">influence</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mi">0f</span><span class="p">,</span> <span class="k">var</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="nc">DISTRIBUTION&#95;EPSILON</span><span class="p">)</span> <span class="p">:</span> <span class="nc">FloatFilter</span></code>](source/jvmMain/afield/stdlib/timeseries/#L947)
 
-Fires when a sample lands in the upper tail of the gamma distribution the preceding window fits. The general-purpose distribution-aware onset detector in this file: it copes with the skewed, non-negative streams — magnitudes, energies, `abs()` of a motion signal — where a z-score's assumption of symmetry makes it over-fire on the low side. This is the detector the published `timeseries_examples` page reaches for.
+Fires when a sample lands in the upper tail of the gamma distribution the preceding window fits. The general-purpose distribution-aware onset detector in this file: it copes with the skewed, non-negative streams — magnitudes, energies, `abs()` of a motion signal — where a z-score's assumption of symmetry makes it over-fire on the low side. This is the detector the published signal examples page (`spectral_examples`) reaches for.
 
 | Declaration | Summary |
 | --- | --- |

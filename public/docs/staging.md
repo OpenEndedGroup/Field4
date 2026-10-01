@@ -36,7 +36,7 @@ What happens when a box ends on a value, which is most of what working in Field 
 - [Linear Algebra](linear_algebra.md) comes first because everything after it uses it: the vector, matrix and quaternion vocabulary underneath movement, cameras, meshes and spatial data.
 - [Functions Examples](functions_examples.md) turns `Functions` stacks into graphs and parametric FLines, and [Functions Domains](functions_domains.md) covers the domain algebra that governs how an `Fn` is sampled.
 - [Values Over Time](interpolants_examples.md) draws interpolants, `KeyframeScope` parameter and code morphs, rolling correlations, and Kalman and particle-filter estimation, all as FLines or live plots.
-- [Timeseries Examples](timeseries_examples.md) keeps raw signals next to filtered and event-detected ones.
+- [Signal Examples](spectral_examples.md) keeps raw signals next to filtered and event-detected ones, then turns to what they are made of in frequency: spectra, spectrograms, mel bands and resonators.
 - [Colors Examples](colors_examples.md) compares colour helpers on actual geometry.
 
 The geometry, sound and audio-AI groups in that section are larger than this list suggests; open the section itself for the full set.

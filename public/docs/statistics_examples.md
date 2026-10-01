@@ -674,6 +674,6 @@ document, each box printing the numbers above so a re-run checks itself. Change 
 size, a target distribution or an `n` and re-run one.
 
 For the signals themselves rather than these derived quantities, see
-[Timeseries examples](timeseries_examples.md); for recovering a hidden state from noisy
+[the time-domain signal examples](spectral_examples.md#filter-chains-as-layered-curves); for recovering a hidden state from noisy
 measurements, [State estimation](state_estimation_examples.md); and for the rolling-dependence
 fences in their original setting, [Values Over Time](interpolants_examples.md).

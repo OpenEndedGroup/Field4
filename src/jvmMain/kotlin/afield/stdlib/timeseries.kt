@@ -937,7 +937,7 @@ class GammaNormalizer(
  * The general-purpose distribution-aware onset detector in this file: it copes with the skewed,
  * non-negative streams — magnitudes, energies, `abs()` of a motion signal — where a z-score's
  * assumption of symmetry makes it over-fire on the low side. This is the detector the published
- * `timeseries_examples` page reaches for.
+ * signal examples page (`spectral_examples`) reaches for.
  *
  * Output is a flag: `1f` on the sample that fired, `0f` otherwise, including throughout the
  * `windowSize`-sample warm-up. Negatives are clamped to 0 and counted in [clippedNegativeCount].
