@@ -68,46 +68,11 @@ number of other ways of executing code…") can stay as it is.
 
 ## Progress, 2026-10-01 (overnight captures session)
 
-The capture system now has what this needs: `viewport="WxH"` and `clip="x,y,w,h"` on a `capture="ui"` fence, and `ui.moveMouse`, `ui.clickAt`, `ui.typeSlowly` on the drive. The draft fence below ran end to end in the docs runner: `n` makes a box under the mouse, a click opens its editor, Alt-Enter prints `hello world`, Alt-0 prints `55`, and the closing `check` passed. It is not on the page yet, for two reasons seen in the frames: the recording ends (15.1 s) before the `55` shows, so the last pause needs lengthening or the recorder is losing frames at the end; and the editor opens in the lower half of the window, so `clip` cuts it at 380 px. The Toggle Keypress Display command would be good here, but its caption sits under the persistent notification stack at this window size. The capture was blocked from going further by the docs runner's 8 GiB disk floor.
-
-~~~~text
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x560" clip="0,0,760,380" video="assets/survival_intro.mp4" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="survival-intro" alt="The mouse moves onto the empty canvas and n makes a new box there; a click selects it and opens its empty editor. A println of hello world is typed one key at a time and Alt-Enter runs that line, printing hello world underneath it. Two more lines are typed, val total = (1..10).sum() and println(total), and Alt-0 runs the whole box, printing 55 under the last line."}
-// Lay the editor pane out for this window, as a user's browser would: screenshot prep pins it
-// to a fixed size and place, which at this window size would cover the canvas. The clip stops
-// above the notification stack in the bottom-left corner.
-ui.eval("""
-    const c = document.querySelector(".monaco-editor-container")
-    if (!c) throw new Error("no editor container")
-    for (const k of ["width", "height", "top", "right", "left", "bottom", "transform"]) c.style[k] = ""
-    if (window.globalEditor && window.globalEditor.layout) window.globalEditor.layout()
-    return c.getBoundingClientRect().left
-""".trimIndent())
-ui.pause(1000)
-ui.moveMouse(170.0, 130.0, 12)
-ui.pause(500)
-ui.press("n")
-ui.pause(900)
-ui.moveMouse(180.0, 140.0, 4)
-ui.clickAt(180.0, 140.0)
-ui.pause(900)
-ui.clickSelector(".monaco-editor")
-ui.pause(400)
-ui.typeSlowly("println(\"hello world\")", 70)
-ui.press("Escape")
-ui.pause(500)
-ui.press("Alt+Enter")
-ui.pause(1800)
-ui.press("End")
-ui.press("Enter")
-ui.typeSlowly("val total = (1..10).sum()", 70)
-ui.press("Escape")
-ui.press("Enter")
-ui.typeSlowly("println(total)", 70)
-ui.press("Escape")
-ui.pause(500)
-ui.press("Alt+0")
-ui.pause(2500)
-val text = ui.eval("return document.querySelector('.monaco-editor-container').innerText").toString()
-check("hello world" in text && "55" in text) { "the intro's runs did not print hello world and 55: " + text.take(400) }
-```
-~~~~
+Done as a `capture="ui"` video fence (`name="survival-intro"`) in `public/docs/survivalGuide.md`,
+writing `assets/survival_intro.mp4` (1520x760, about 15 s). It needed capture-system work, now
+committed: `viewport="WxH"` and `clip="x,y,w,h"` on a `ui` fence, and `ui.moveMouse`, `ui.clickAt`,
+`ui.typeSlowly` on the drive. The fence runs in a 760x560 window, presses `n` on the canvas, clicks
+the new box, types `println("hello world")` and runs it with Alt-Enter, types two more lines and
+runs the box with Alt-0, then checks that `hello world` and `55` were printed. `intro.apng` is gone.
+The keypress display (Toggle Keypress Display) was left off: at this window size its caption sits
+under the persistent notification stack, which the clip leaves out.
