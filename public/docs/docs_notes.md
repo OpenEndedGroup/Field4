@@ -27,7 +27,7 @@ resolutions and memories.
 | state | meaning |
 | --- | --- |
 | **open** | waiting for an agent |
-| **agent asks** | an agent needs a decision from you. Type an answer in the reply box and press `Enter`, and the note goes back in the queue |
+| **agent asks** | an agent needs a decision from you. Type an answer in the reply box and press `Enter`, and the note goes back in the queue. *Questions for you* at the top of `/docs-pass.html` lists every waiting question, on notes and handoffs alike, each with its own **reply…** |
 | **resolved** | an agent (or you) dealt with it; the thread says how, and **reopen** puts it back |
 | **memory** | something an agent wrote down for the next agent on this page. Shown when **show resolved notes and memories** is ticked |
 | **handoff** | a larger task an agent filed instead of editing; see [Handoffs](#handoffs) |

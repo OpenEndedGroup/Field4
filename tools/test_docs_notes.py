@@ -529,6 +529,21 @@ class PassTest(unittest.TestCase):
     def status(self) -> dict:
         return dn.pass_status(dn.Git(self.repo.root), dn.Store(self.store_path))
 
+    def test_status_lists_waiting_questions_until_answered(self) -> None:
+        self.assertEqual(self.cli("question", "11111111-a", "Which step is next?"), 0)
+        self.assertEqual(self.cli("question", "33333333-c", "Keep the sentence?"), 0)
+        self.assertEqual(self.cli("reply", "33333333-c", "keep it"), 0)
+        questions = self.status()["questions"]
+        self.assertEqual([q["id"] for q in questions], ["11111111-a"], "an answered question is not waiting")
+        self.assertEqual(questions[0]["question"], "Which step is next?")
+        self.assertEqual(questions[0]["quote"], "then continue to the next step")
+        self.assertEqual(questions[0]["kind"], "note")
+        self.assertEqual(self.cli("reply", "11111111-a", "the install step"), 0)
+        self.assertEqual(self.status()["questions"], [])
+        # Asking again after an answer makes it wait again: the latest question is the one shown.
+        self.assertEqual(self.cli("question", "11111111-a", "And after that?"), 0)
+        self.assertEqual([q["question"] for q in self.status()["questions"]], ["And after that?"])
+
     def test_create_revise_review_commit_land_finish(self) -> None:
         self.assertEqual(self.cli("pass", "create", "--path", str(self.worktree)), 0)
         self.assertTrue(self.worktree.is_dir())
