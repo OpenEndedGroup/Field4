@@ -159,16 +159,6 @@ if (!report.contains("overlay-settled")) {
 }
 ```
 
-### How the four are chosen
-
-Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
-further to the left than it is above counts as west, and so on. Within each direction it takes the
-nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
-that is slightly off-axis does not beat one that is directly ahead.
-
-Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
-are hidden, deleted, or drawn at zero size are not candidates.
-
 ## Bookmarks
 
 Arrows reach neighbours. For everywhere else there are nine numbered slots.
@@ -176,7 +166,7 @@ Arrows reach neighbours. For everywhere else there are nine numbered slots.
 - Save the current view: `Cmd+Shift+F1` through `Cmd+Shift+F9`
 - Restore a saved view: `Shift+F1` through `Shift+F9`
 
-`cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
+`Cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
 `save-bookmark-N` and `restore-bookmark-N`, and both appear in the command palette as
 `Save Bookmark N` and `Restore Bookmark N`. See [Keyboard Shortcuts](keybindings.md).
 
@@ -197,16 +187,23 @@ options: *restore view*, *restore selection*, and *close unrecorded panels*. Tha
 any output panel the slot did not record, rather than leaving it as it is. Saving over a slot keeps
 its name and options.
 
-Bring up the navigation overlay and every box on screen that a slot points at wears an `F` chip
-with that slot's number. A box can wear more than one if several slots were saved on it. So the
-arrows tell you what is next to you, and the chips tell you which of the nine keys reaches what
-is not.
-
-The number on a chip is a slot, so `F3` means the view saved in slot 3, reached with `Shift+F3`.
+While the navigation overlay is up, every box on screen that a slot points at wears an `F` chip
+with that slot's number: `F3` is the view saved in slot 3, reached with `Shift+F3`. A box wears
+more than one chip if several slots were saved on it.
 
 Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
 document state. They survive a reload, and they travel with the document rather than with your
 browser session.
+
+## How the neighbours are chosen
+
+Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
+further to the left than it is above counts as west, and so on. Within each direction it takes the
+nearest, counting sideways distance as a fifth of distance along the direction of travel, so a box
+that is slightly off-axis does not beat one that is directly ahead.
+
+Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
+are hidden, deleted, or drawn at zero size are not candidates.
 
 ## Limits
 
@@ -214,7 +211,6 @@ browser session.
 - a slot stores the pan position but not the zoom level, and a single selected box, so a
   multi-selection is not restored as a set
 - there are nine slots and the numbering is fixed
-- restoring a slot changes the view and never the document content
 - restoring a slot you have not set yet shows a notification and leaves the view alone
 
 ## Related features
