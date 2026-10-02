@@ -263,7 +263,7 @@ class LuaExecution(val inside: Box) : BoxExecution {
             val name = pair.getOrNull(0)?.toString() ?: return@forEach
             if (name == "__box") {
                 val box = findBox(inside, pair.getOrNull(1)?.toString() ?: return@forEach) ?: return@forEach
-                (listOf("id", "name", "frame", "children", "parents") + box.properties.keys.map { it.toString() })
+                (listOf("id", "name", "frame", "children", "parents") + box.properties.keys)
                     .distinct().forEach { out += Triple(it, "property", "a property of ${box.name.ifEmpty { box.id }}") }
             } else {
                 val entry = LuaCatalog.lookup(path, name)

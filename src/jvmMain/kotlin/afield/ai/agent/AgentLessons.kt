@@ -248,9 +248,11 @@ that run's tool calls (AgentLessons.distil); review it with git diff like any ot
 
     data class DistilOutcome(val written: Boolean, val path: String, val version: Int, val lessons: List<Lesson>, val message: String)
 
+    private val reportJson = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
     /** A saved [AgentEvalReport] (the JSON `agent-eval` returned), for re-distilling without re-running. */
     fun readReport(path: String): AgentEvalReport =
-        kotlinx.serialization.json.Json { ignoreUnknownKeys = true }.decodeFromString(AgentEvalReport.serializer(), File(path).readText())
+        reportJson.decodeFromString(AgentEvalReport.serializer(), File(path).readText())
 
     /** Distil [report] and write the file. Refuses when there is no writable source file. */
     fun distilAndWrite(report: AgentEvalReport): DistilOutcome {
