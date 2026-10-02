@@ -135,7 +135,7 @@ class CsoundLanguageTest {
         val missing = csoundLineNote(CsdDocument.parse(csd.replace("i 2 0 0.1", "i 9 0 0.1")), lineOf("i 2 0"), null)!!
         assertEquals("no instrument 9 in this orchestra", missing.caption)
         val chan = csoundLineNote(doc, lineOf("chnget \"cutoff\""), null)!!
-        assertTrue(chan.volatile && chan.meta!!.contains("not playing"), "${chan.caption} ${chan.meta}")
+        assertTrue(chan.volatile && chan.meta.contains("not playing"), "${chan.caption} ${chan.meta}")
     }
 
     @Test fun aLiveChannelNoteReadsThePlayingCsound() {
