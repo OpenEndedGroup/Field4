@@ -181,6 +181,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples so the two estimators are always compared at the same budget. Needs a GPU.
 - `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
   four values over fixed geometry. Needs a GPU.
+- `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
+  `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
+  fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
+  Pure CPU. Moved up from `docs_capture/` on 2026-10-02 to become a starting point.
 - `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
   gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level

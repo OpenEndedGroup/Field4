@@ -362,6 +362,11 @@ object DemoTranscriptExecSmokeTest {
         // ends in `animate { }`, which registers an animation rather than blocking, as with the two
         // parameter sweeps in spatial_geometry_examples.
         "typography_worked_example",
+        // The companion to animation_time_model.md: four pure-CPU boxes that start, stop, re-run and
+        // clean up a frame loop through lines() and markdown(). The three it launches end in
+        // `animate { }`, which registers an animation rather than blocking; box 4 is left for the
+        // reader to drive.
+        "frames_lifecycle",
         // Two pure-CPU Ceres boxes: a canonical realization whose per-face planes are free variables in
         // the residual expression VM, and a sphere fit whose unknowns are not points at all. Both are
         // FFM calls into the native wrapper plus threeLines(), so no Window and no Renderer. Both

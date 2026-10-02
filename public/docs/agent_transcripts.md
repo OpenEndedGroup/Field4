@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 170 transcripts on every build, at three
-depths. 89 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 171 transcripts on every build, at three
+depths. 90 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -427,6 +427,23 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### frames_lifecycle
+
+**A frame loop, from start to cleanup.** The companion to
+[Frames and the Animation Loop](animation_time_model.md), in four boxes. Box 1 is an `animate { }`
+with no end condition: a disc travels a Lissajous figure until you press stop. Box 2 is the same
+loop with `if (elapsed >= 6.0) end()` and an `.end { }` that repaints the last frame in red, so you
+see it move and then see it stop. Box 3 shows that re-running a box replaces its loop rather than
+adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
+frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
+its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
+runs when the loop is cancelled, not when it finishes.
+
+Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
+loop runs thousands of frames a second and drawing each one floods the output.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
 
 ### pitch_transcription_roundtrip
 
