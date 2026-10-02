@@ -47,6 +47,7 @@ import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -2214,11 +2215,131 @@ private fun registerCanvasZoomActions() {
     reset.run = { resetCanvasZoom() }
     val builtin = allActions.builtin ?: js("[]")
     builtin.push(reset)
+    val frame: dynamic = js("({})")
+    frame.id = "frame-selected"
+    frame.label = "Frame Selected"
+    frame.detail = "Bring the selected boxes and their open output panels into view, clear of the editor"
+    frame.keys = "alt+f"
+    frame.run = { frameSelected() }
+    builtin.push(frame)
     allActions.builtin = builtin
     updateActions()
+    window.asDynamic().frameSelected = ::frameSelected
     window.asDynamic().setCanvasZoom = ::setCanvasZoom
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
     window.asDynamic().canvasZoom = { mainZoom }
+}
+
+/** Overlays [frameSelected] keeps the selection out from under, in screen space. */
+private val FRAME_OCCLUDERS = listOf(
+    ".monaco-editor-container", ".docs-iframe-container", "#document-guide",
+    ".field-panel.is-visible", ".macro-recorder-panel.is-visible"
+)
+
+/**
+ * The screen rectangles of [box] and of each of its open output panels.
+ */
+private fun frameRectsFor(box: HTMLElement): List<Rect> {
+    val rects = mutableListOf<Rect>()
+    val r = box.getBoundingClientRect()
+    if (r.width > 0.0 && r.height > 0.0) rects += Rect(r.left, r.top, r.width, r.height)
+    val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
+    if (outputArea != null && window.getComputedStyle(outputArea).visibility != "hidden") {
+        outputArea.querySelectorAll(".disclosure").asList().forEach { node ->
+            val d = (node as? HTMLElement)?.getBoundingClientRect() ?: return@forEach
+            if (d.width > 0.0 && d.height > 0.0) rects += Rect(d.left, d.top, d.width, d.height)
+        }
+    }
+    return rects
+}
+
+/**
+ * The parts of the window not covered by [FRAME_OCCLUDERS]: each overlay splits every free
+ * rectangle it touches into the strips left, right, above and below it.
+ */
+private fun frameFreeSpaces(padding: Double = 16.0, gap: Double = 14.0): List<Rect> {
+    var spaces = listOf(Rect(padding, padding, window.innerWidth - 2 * padding, window.innerHeight - 2 * padding))
+    for (selector in FRAME_OCCLUDERS) {
+        document.querySelectorAll(selector).asList().forEach { node ->
+            val overlay = node as? HTMLElement ?: return@forEach
+            if (!isOverlayVisible(overlay)) return@forEach
+            val r = overlay.getBoundingClientRect()
+            if (r.width <= 0.0 || r.height <= 0.0) return@forEach
+            val o = Rect(r.left - gap, r.top - gap, r.width + 2 * gap, r.height + 2 * gap)
+            spaces = spaces.flatMap { a ->
+                if (o.x >= a.x + a.w || o.x + o.w <= a.x || o.y >= a.y + a.h || o.y + o.h <= a.y) listOf(a)
+                else listOf(
+                    Rect(a.x, a.y, o.x - a.x, a.h),
+                    Rect(o.x + o.w, a.y, a.x + a.w - (o.x + o.w), a.h),
+                    Rect(a.x, a.y, a.w, o.y - a.y),
+                    Rect(a.x, o.y + o.h, a.w, a.y + a.h - (o.y + o.h))
+                ).filter { it.w >= 120 && it.h >= 120 }
+            }
+        }
+    }
+    return spaces
+}
+
+private var frameAnimationGeneration = 0
+
+/**
+ * Frames the selection: the selected boxes and their open output panels are moved into the
+ * largest part of the window the editor, the docs overlay and Field's panels leave uncovered,
+ * zooming out if they do not fit (and back towards 100% if the canvas was zoomed out further
+ * than needed; never further in than that). When no uncovered part can show them at even half
+ * the size the whole window could, the whole window is used and the editor is allowed to cover
+ * some of it.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun frameSelected() {
+    val boxes = selected.toList()
+    if (boxes.isEmpty()) {
+        notify("Select a box to frame", "command")
+        return
+    }
+    val rects = boxes.flatMap { frameRectsFor(it) }
+    if (rects.isEmpty()) return
+    val z0 = mainZoom
+    val t0x = mainTranslation[0]
+    val t0y = mainTranslation[1]
+    // The target in world coordinates, so the fit does not depend on the zoom we start from.
+    val wx = (rects.minOf { it.x } - t0x) / z0
+    val wy = (rects.minOf { it.y } - t0y) / z0
+    val ww = (rects.maxOf { it.x + it.w } - t0x) / z0 - wx
+    val wh = (rects.maxOf { it.y + it.h } - t0y) / z0 - wy
+
+    val ceiling = max(z0, 1.0)
+    fun zoomFor(space: Rect) = min(ceiling, 0.94 * min(space.w / ww, space.h / wh)).coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
+    val whole = Rect(16.0, 16.0, window.innerWidth - 32.0, window.innerHeight - 32.0)
+    val free = frameFreeSpaces().maxWithOrNull(compareBy<Rect>({ zoomFor(it) }, { it.w * it.h }))
+    val space = if (free != null && zoomFor(free) >= 0.5 * zoomFor(whole)) free else whole
+    val z1 = zoomFor(space)
+    val t1x = space.x + space.w / 2 - (wx + ww / 2) * z1
+    val t1y = space.y + space.h / 2 - (wy + wh / 2) * z1
+
+    cancelNavigationPanAnimation()
+    val generation = ++frameAnimationGeneration
+    val start = window.performance.now()
+    val duration = 420.0
+    // The target's centre travels in a straight line on screen while zoom moves geometrically.
+    val cx = wx + ww / 2
+    val cy = wy + wh / 2
+    val s0x = cx * z0 + t0x
+    val s0y = cy * z0 + t0y
+    val s1x = cx * z1 + t1x
+    val s1y = cy * z1 + t1y
+    fun step(now: Double) {
+        if (generation != frameAnimationGeneration) return
+        val u = ((now - start) / duration).coerceIn(0.0, 1.0)
+        val e = if (u < 0.5) 4 * u * u * u else 1 - (-2 * u + 2).let { it * it * it } / 2
+        val z = z0 * (z1 / z0).pow(e)
+        val sx = s0x + (s1x - s0x) * e
+        val sy = s0y + (s1y - s0y) * e
+        applyViewportTranslation(sx - cx * z, sy - cy * z, panning = u < 1.0, syncServer = u >= 1.0, zoom = z)
+        if (u < 1.0) window.requestAnimationFrame { step(it) } else bumpBackgroundVisibility()
+    }
+    window.requestAnimationFrame { step(it) }
 }
 
 private fun cancelNavigationPanAnimation() {
@@ -3451,6 +3572,7 @@ fun setVisibleLayers(layers: Set<String>, animated: Boolean = false, duration: D
         )
     )
     send(Message("set-visible-layers").payload(SetVisibleLayers(layers.toList(), animated, duration)))
+    refreshLayersPanel()
     if (animated) {
         updateAllBoxVisibility(animated = true, duration = duration)
         setTimeout({ canvasGestures.rebuildConnectionGroup() }, duration.toInt() + 30)
@@ -3478,6 +3600,7 @@ fun setActiveLayer(layer: String?, animated: Boolean = false, duration: Double =
         )
     )
     send(Message("set-active-layer").payload(SetActiveLayer(layer, animated, duration)))
+    refreshLayersPanel()
 }
 
 /** Read layer names currently represented in browser box properties, returning `default` if empty. */
@@ -7209,6 +7332,7 @@ suspend fun main() {
         initializeBookmarkSystem()
         initializeDrawingLayer()
         registerCanvasZoomActions()
+        registerLayersPanelAction()
         initializeDocumentSearch()
         hideMonaco()
 
