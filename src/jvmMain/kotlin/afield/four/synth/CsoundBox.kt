@@ -63,6 +63,8 @@ private fun requireCsound() {
  * @param gain applied on the way into the audio engine
  * @param printToBox send what Csound prints to this box's output
  * @param input feeds `ins`/`inch`, which makes the orchestra an effect on a Field signal
+ * @param audioIn Field signals fed into a-rate channels: `mapOf("in" to SawOsc(Param(110f)))` is
+ *   read in the orchestra with `ain chnget "in"`. Delayed by one control period (`ksmps` frames)
  * @throws CsoundCompileError when the code does not compile; the errors are also marked on the box
  */
 fun Box.csound(
@@ -72,13 +74,14 @@ fun Box.csound(
     printToBox: Boolean = true,
     input: StereoRenderable? = null,
     ksmps: Int = 32,
+    audioIn: Map<String, Signal> = emptyMap(),
 ): CsoundLaunch {
     requireCsound()
     val engine = FieldAudioEngine.shared()
     val instance = compileForBox(orchestra) {
         CsoundInstance(orchestra, score, sampleRate = engine.sampleRate, ksmps = ksmps, inputs = if (input != null) 2 else 0)
     }
-    return CsoundLaunch(instance, orchestra, gain, if (printToBox) this else null, input)
+    return CsoundLaunch(instance, orchestra, gain, if (printToBox) this else null, input, audioIn)
 }
 
 /** Build a [CsoundInstance], marking any compile error on the box line it belongs to. */
@@ -146,10 +149,42 @@ class CsoundLaunch internal constructor(
     val gain: Float,
     private val printBox: Box?,
     private val input: StereoRenderable? = null,
+    private val audioIn: Map<String, Signal> = emptyMap(),
 ) : Closeable {
 
     /** What joins the audio engine. */
-    val node: afield.csound.CsoundNode by lazy { csound.node(input) }
+    val node: afield.csound.CsoundNode by lazy { csound.node(input, audioIn) }
+
+    /** The a-rate channel the orchestra `chnset`s into [name], as a Field signal. */
+    fun audioOut(name: String): Signal = node.audioOut(name)
+
+    /** Csound's left and right `outs` as Field signals. */
+    val outL: Signal get() = node.outL
+    val outR: Signal get() = node.outR
+
+    /** Write string channel [name]. */
+    fun setString(name: String, value: String) = csound.setStringChannel(name, value)
+
+    /** Read string channel [name]. */
+    fun getString(name: String): String = csound.stringChannel(name)
+
+    /** Call [callback] on the main thread with what `outvalue "name", …` sends (a Double or a String). */
+    fun onOutvalue(name: String, callback: (Any) -> Unit): Closeable = csound.onOutvalue(name, callback)
+
+    /** Set what `invalue "name"` reads. */
+    fun setInvalue(name: String, value: Number) = csound.setInvalue(name, value)
+
+    /** Function table [number]'s values. */
+    fun table(number: Int): DoubleArray? = csound.table(number)
+
+    /** Overwrite function table [number]; the next block reads it. */
+    fun writeTable(number: Int, values: FloatArray) = csound.writeTable(number, values)
+
+    /** A note on to `massign`ed instruments, 0-based channel. */
+    fun noteOn(channel: Int, pitch: Int, velocity: Int) = csound.noteOn(channel, pitch, velocity)
+
+    /** A note off, 0-based channel. */
+    fun noteOff(channel: Int, pitch: Int) = csound.noteOff(channel, pitch)
 
     private val printing: Closeable? = printBox?.let { box -> csound.onMessage { line -> runCatching { box.println("Csound: $line") } } }
 
@@ -243,7 +278,11 @@ fun csoundChannels(orchestra: String): List<CsoundChannel> {
  * @return how many sliders were made
  */
 fun Box.csoundControls(launch: CsoundLaunch, channel: String = "controls"): Int {
-    val channels = csoundChannels(launch.orchestra).filter { it.isInput }
+    // The range comes from Csound's own record of the declaration (csoundGetControlChannelHints);
+    // the text is only read for which channels there are and in what order.
+    val channels = csoundChannels(launch.orchestra).filter { it.isInput }.map { c ->
+        launch.csound.hints(c.name)?.let { h -> c.copy(default = h.default, min = h.min, max = h.max) } ?: c
+    }
     if (channels.isEmpty()) return 0
     for (c in channels) launch.set(c.name, c.default)
     controlGroup(channel) {
@@ -290,4 +329,61 @@ fun registerCsoundLaunchReturnValue() {
         }
         true
     }
+}
+
+/**
+ * The playing Csound of the Csound box named [name] in this box's document, so Kotlin can talk to
+ * it: `csoundOf("drone").csound.setChannel("cutoff", 900)`.
+ *
+ * @throws IllegalStateException when no box (or more than one) has that name, it is not a Csound
+ *   box, or it is not playing
+ */
+fun Box.csoundOf(name: String): afield.csound.CsoundExecution.Running {
+    val seen = HashSet<Box>()
+    val fringe = ArrayDeque(listOf(root))
+    val found = ArrayList<Box>()
+    while (fringe.isNotEmpty()) {
+        val next = fringe.removeFirst()
+        if (!seen.add(next)) continue
+        if (next.name == name && next.getPropertyRaw("_tombstone") != true) found += next
+        fringe.addAll(next.children)
+    }
+    val box = when (found.size) {
+        1 -> found[0]
+        0 -> throw IllegalStateException("no box is named '$name'")
+        else -> throw IllegalStateException("${found.size} boxes are named '$name'; rename one")
+    }
+    val execution = box.ke as? afield.csound.CsoundExecution
+        ?: throw IllegalStateException("'$name' is not a Csound box: put it under a box whose Main Language is Csound")
+    return execution.running ?: throw IllegalStateException("'$name' is not playing: launch it, then talk to it")
+}
+
+
+/**
+ * Render [signals] side by side, offline, in [block]-frame audio blocks — what the audio thread
+ * would hear, without a device. All of them advance through the same cycles, so a graph they share
+ * (a [afield.csound.CsoundNode] and the signals taken from it) is rendered once per block, as live.
+ *
+ * ```kotlin
+ * val (dry, wet) = renderSignalsOffline(1.0, saw, node.audioOut("wet"))
+ * ```
+ *
+ * @return one array per signal, `seconds * sampleRate` frames each
+ */
+fun renderSignalsOffline(seconds: Double, vararg signals: Signal, sampleRate: Int = 48_000, block: Int = 256): List<FloatArray> {
+    val frames = (seconds * sampleRate).toInt().coerceAtLeast(1)
+    val ctx = SynthContext(sampleRate.toFloat(), block)
+    val outs = signals.map { FloatArray(frames) }
+    val buf = FloatArray(block)
+    var at = 0
+    while (at < frames) {
+        val n = minOf(block, frames - at)
+        ctx.advanceCycle()
+        for ((k, s) in signals.withIndex()) {
+            s.render(buf, n, ctx)
+            System.arraycopy(buf, 0, outs[k], at, n)
+        }
+        at += n
+    }
+    return outs
 }

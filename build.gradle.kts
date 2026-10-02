@@ -3541,6 +3541,20 @@ val buildCsoundNative = tasks.register("buildCsoundNative") {
     }
 }
 
+// Write src/commonMain/resources/csound-vocabulary.json from libcsound's own opcode list
+// (csoundNewOpcodeList): what a Csound box completes against. Needs a built libcsound
+// (buildCsoundNative); CsoundVocabularyTest fails when the committed file has drifted from it.
+tasks.register<JavaExec>("generateCsoundVocabulary") {
+    group = "documentation"
+    description = "Regenerates csound-vocabulary.json from the built libcsound's opcode list."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.csound.CsoundVocabulary")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+    workingDir = projectDir
+}
+
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
 // one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
 // carries /opt/homebrew in its load commands, so it is not the one to ship (see

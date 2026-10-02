@@ -1803,14 +1803,19 @@ built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and cap
 
 ### csound_demo
 
-**Csound inside Field.** Five Kotlin boxes, each holding a Csound orchestra and score. **offline
-sine** renders a 440 Hz sine with no audio device and prints 439 upward zero crossings in the first
-second (the envelope starts at zero) at a peak of 0.250, with a player and a waveform. **drone** is a
-filtered sawtooth whose `chn_k` lines become two sliders; launched, it prints its level once a second
-from the audio thread. **events** has no score of its own: Kotlin sends a note every quarter second
-with `every(0.25) { event(...) }`. **an error** has `oscilx` on line 4, which is marked there. Needs
-libcsound, built once with `./gradlew buildCsoundNative`. The build does not own that, so CI
-compiles the boxes; every box was run by hand against a built Csound on 2026-10-02.
+**Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
+five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
+and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
+back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
+prints as `Key 62`, `Key 65`, … **Field into fx** feeds a Field sawtooth into an a-rate channel and
+plays the reverb tail back as a Field signal. **through Csound, measured** prints a gain of 0.2420
+for a 1 kHz Field sine through `butterlp 500` (a Butterworth gives 0.2425), and **a table from
+Kotlin** writes a 4096-point ftable and reads it back equal. Needs libcsound, built once with
+`./gradlew buildCsoundNative`. The build does not own that, so CI compiles the Kotlin boxes and
+skips the Csound ones; every box was run by hand against a built Csound on 2026-10-02.
 [Csound](csound.md) has the walkthrough.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)

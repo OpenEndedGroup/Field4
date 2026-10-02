@@ -84,6 +84,15 @@ class CsoundDataPlaneTest {
         }
     }
 
+    @Test fun renderSignalsOfflineAdvancesSharedGraphsTogether() {
+        if (!available()) return
+        CsoundInstance("instr Thru\n ain chnget \"in\"\n chnset ain * 0.5, \"half\"\nendin", "i \"Thru\" 0 z").use { cs ->
+            val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(500f))))
+            val (dry, half) = afield.four.synth.renderSignalsOffline(0.1, SineOsc(Param(500f)), node.audioOut("half"))
+            for (i in cs.ksmps until dry.size) assertEquals(dry[i - cs.ksmps] * 0.5f, half[i], 1e-6f)
+        }
+    }
+
     @Test fun outsComeBackAsFieldSignals() {
         if (!available()) return
         val orc = """
@@ -113,6 +122,7 @@ class CsoundDataPlaneTest {
         CsoundInstance(orc, "i \"Probe\" 0 z").use { cs ->
             val sine = cs.table(1)!!
             assertEquals(1024, sine.size)
+            assertEquals(1024, cs.tableLength(1))
             assertEquals(1.0, sine[256], 1e-9)
             val ramp = DoubleArray(1024) { it / 1024.0 }
             cs.writeTable(1, ramp)

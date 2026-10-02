@@ -232,6 +232,12 @@ class CsoundInstance(
         CsoundNative.setMidiInClose(cs, stub("onMidiClose", CsoundNative.MIDI_CLOSE))
     }
 
+    /** Run [block] with the raw CSOUND* under the perform lock. For this package's own bindings. */
+    internal fun <T> withHandle(block: (MemorySegment) -> T): T = lock.withLock {
+        check(!closed) { "this CsoundInstance is closed" }
+        block(cs)
+    }
+
     /** Csound's version as a number: 6181 is 6.18.1. */
     val version: Int get() = CsoundNative.version()
 
@@ -692,7 +698,7 @@ class CsoundInstance(
                 val line = raw.trim()
                 val isError = line.startsWith("error:", ignoreCase = true) || line.contains("syntax error") ||
                     line.startsWith("INIT ERROR") || line.contains("not found")
-                if (!isError || line.startsWith("Parsing failed")) continue
+                if (!isError || line.contains("Parsing failed")) continue
                 val lookahead = (k until minOf(printed.size, k + 6)).map { printed[it] }
                 val n = lookahead.firstNotNullOfOrNull { lineRe.find(it.lowercase())?.groupValues?.get(1)?.toIntOrNull() } ?: -1
                 out += Problem(line.removePrefix("error:").trim(), n)
@@ -724,8 +730,9 @@ class CsoundCompileError(message: String, val problems: List<CsoundInstance.Prob
 class CsoundNode(
     val csound: CsoundInstance,
     private val input: StereoRenderable? = null,
-    private val audioIn: Map<String, afield.four.synth.Signal> = emptyMap(),
+    audioIn: Map<String, afield.four.synth.Signal> = emptyMap(),
 ) : StereoNode() {
+    private val audioIn = java.util.concurrent.ConcurrentHashMap(audioIn)
     private var inL = FloatArray(0)
     private var inR = FloatArray(0)
     private var scratch = FloatArray(0)
@@ -736,6 +743,20 @@ class CsoundNode(
 
     init {
         for (name in audioIn.keys) csound.declareAudioInput(name)
+    }
+
+    /**
+     * Feed [signal] into a-rate channel [name] from the next block on, replacing what fed it before.
+     * Safe from any thread; the signal is rendered on the audio thread, as part of this node's block.
+     */
+    fun connect(name: String, signal: afield.four.synth.Signal) {
+        csound.declareAudioInput(name)
+        audioIn[name] = signal
+    }
+
+    /** Stop feeding channel [name]; the orchestra reads silence there. */
+    fun disconnect(name: String) {
+        audioIn.remove(name)
     }
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {

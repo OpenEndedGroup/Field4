@@ -1,74 +1,104 @@
-# Csound in Field — design notes
+# Csound in Field: design notes
 
-Landed from nightly 2026-10-02 (branch `nightly/2026-10-02/1-csound-bridge`). User page:
-`public/docs/csound.md`. Demo: `dev_docs/agents/transcripts/csound_demo.yaml`.
+Nightly 2026-10-02 (branch `nightly/2026-10-02/1-csound-bridge`), round two after review: a
+first-class box language with a data plane to match libpd's. User page: `public/docs/csound.md`.
+Demo: `dev_docs/agents/transcripts/csound_demo.yaml`.
 
-## Shape
+## Files
 
-The libpd bridge (`afield.pd`, `afield/four/synth/PdBox.kt`) is the template, piece for piece:
+| Piece | File |
+| --- | --- |
+| native build | `tools/build_csound_native.py`, `./gradlew buildCsoundNative` |
+| discovery + FFM (downcalls, plus four upcalls) | `afield/csound/CsoundNative.kt` |
+| engine + data plane + audio node | `afield/csound/CsoundInstance.kt` (`CsoundInstance`, `CsoundNode`) |
+| `.csd` reading | `afield/csound/CsdDocument.kt` |
+| box language, Alt-Enter, completion, line notes | `afield/csound/CsoundLanguage.kt` |
+| generated vocabulary | `afield/csound/CsoundVocabulary.kt`, `src/commonMain/resources/csound-vocabulary.json`, `./gradlew generateCsoundVocabulary` |
+| highlighting | `src/commonMain/resources/csound.js` (`bithero/csound`, in `FIELD_LANGUAGE_MODULES`; `csound` in fieldSuggest's `DEFAULT_LANGUAGES`) |
+| Kotlin-box API | `afield/four/synth/CsoundBox.kt` (`csound`, `csoundOf`, `csoundControls`, `csoundOffline`, `renderSignalsOffline`) |
+| docs prerequisite | `csound` in `tools/build_zensical_docs.py` `NATIVE_PREREQUISITES`, `tools/field_languages.py` |
+| tests | `src/jvmTest/kotlin/afield/csound/` (`CsoundTest`, `CsoundDataPlaneTest`, `CsoundLanguageTest`, `CsoundBoxApiTest`) |
 
-| Piece | Csound | Pd counterpart |
+## Decisions
+
+- **The box holds a `.csd`, in `code`.** Not separate orc/sco properties. The `.csd` is the format
+  Csound users have written since the late 1990s, it keeps the score next to the instruments it plays
+  (line notes count events across the two), and it is one property, as a Pd box's patch is.
+  `CsdDocument` records each section's first line, which is how Csound's line numbers and the
+  cursor's line become box lines. Text with no `<CsInstruments>` is a bare orchestra.
+- **One Csound per launch.** It plays through `FieldAudioEngine` as a `CsoundNode` and is freed on
+  stop. `csoundPerformKsmps` runs only inside `CsoundInstance.render`, under the instance lock.
+- **Orchestra and score go in as CSD text** (`csoundCompileCsdText`), then `csoundStart`. Csound
+  then counts orchestra lines from where the CSD put them (two lines of wrapping), for the first
+  compile and for every live `csoundCompileOrc` after it, hence `CSD_ORC_LINE`.
+- **No `-ffast-math`.** Csound marks a named p1 with a NaN, and fast-math lets clang assume NaNs
+  cannot happen, so every `i "Name"` event became "instr 0 undefined". Reproduced in plain C against
+  the library. The build script presets `HAS_FAST_MATH=OFF`.
+
+## Alt-Enter dispatch (`CsoundExecution.dispatchFor`, pure and unit-tested)
+
+| Cursor or selection | Action |
+| --- | --- |
+| inside `instr … endin` | `compileNow(that instrument's text)`; errors placed from its `instr` line |
+| a selection of whole instruments | `compileNow(selection)` |
+| orchestra, outside any instrument | `compileNow(line or selection)`, as global code |
+| `<CsScore>` | `scoreNow(text)`, which is `csoundReadScore`; start times relative to now |
+| `<CsOptions>` | nothing; the box says so |
+
+`compileNow` and `scoreNow` take the perform lock, so a live compile holds the next audio block for
+as long as it takes (milliseconds).
+
+## Data plane (matches `afield.pd`)
+
+| Direction | Mechanism | Thread |
 | --- | --- | --- |
-| native build | `tools/build_csound_native.py`, `./gradlew buildCsoundNative` | `build_libpd_native.py` |
-| discovery | `CsoundLibrary` (`-Dafield.csound.library`, `AFIELD_CSOUND_LIBRARY`, `build/field-csound/build/…`, installed framework / `.so`) | `PdLibrary` |
-| FFM | `CsoundNative` — downcalls only | `PdNative` (has upcall hooks) |
-| engine | `CsoundInstance` | `PdInstance` |
-| audio node | `CsoundNode` (a `StereoNode`) | `PdNode` |
-| box API | `csound(orc, sco)` → `CsoundLaunch`, `csoundControls`, `csoundOffline` | `pd(...)`, `pdControls`, `pdWaveform` |
-| return value | `registerCsoundLaunchReturnValue` | `registerPdLaunchReturnValue` |
+| k-channels both ways | `csoundSet/GetControlChannel` | any; Csound locks the bus |
+| S-channels both ways | `csoundSet/GetStringChannel` (+ `GetChannelDatasize`) | any |
+| channel hints | `csoundGetControlChannelHints` (struct read at fixed offsets) | under lock |
+| `outvalue` → Kotlin | output-channel upcall stores; `poll` delivers on main (k: once per poll on change; S: on change) | upcall on render thread, callback on main |
+| Kotlin → `invalue` | input-channel upcall reads a map; numbers only (no buffer size is passed for S) | render thread |
+| score events | `csoundInputMessage`, queued to the next block | render thread |
+| tables | `GetTable`, `TableLength`, `TableCopyIn` | under lock |
+| MIDI in | host-implemented MIDI (`-+rtmidi=hostbased -M0`), read upcall drains a byte queue | render thread |
+| audio in | `CsoundNode.connect(name, signal)` → FIFO → `csoundSetAudioChannel` per k-block | audio thread |
+| audio out | `csoundGetAudioChannel` per k-block → FIFO → `audioOut(name)`; `outL`/`outR` from `spout` | audio thread |
 
-Not done: Csound as a box *Main Language* (`PdExecution` / `LuaLanguage`), line notes, completion.
+No upcall throws: each catches everything, because an exception through an FFM upcall kills the VM.
 
-## Build
+**Latency.** Audio into Csound (a-channels and `spin`) is delayed by exactly `ksmps` frames,
+pre-filled silence in the FIFO, so that a render of any length always has a whole block of input.
+`CsoundDataPlaneTest` checks that a pass-through channel is the input delayed by exactly 32 frames.
+Output is in step with the requested block.
 
-Csound 6.18.1 from the GitHub tag tarball, sha256 pinned in the script, cached under
-`native_download_cache("csound")`. Everything optional is off (frontends, utilities, drivers,
-interfaces, OSC/DSSI/FluidSynth plugins). On macOS the product is `CsoundLib64.framework`; the target
-name is `CsoundLib64` there, `libcsound64` on Linux. It links Homebrew's libsndfile by absolute path
-(`/opt/homebrew/opt/libsndfile/lib/libsndfile.1.dylib`), so this build is not redistributable. A
-Linux build is untested; Windows is refused by the script (use an installed `csound64.dll`).
-System flex/bison (bison 2.3 on macOS) are enough for 6.18. Csound 7 needs bison 3.
+## Vocabulary
 
-`CsoundNative.ensureInitialised` calls `csoundInitialize(NO_SIGNAL_HANDLER | NO_ATEXIT)`, because the
-JVM owns both, and points `OPCODE6DIR64` at an empty temp directory so an installed Csound's plugin
-opcodes are never loaded into this library.
-
-## Threading (AGENTS.md "Runloop vs audio loop")
-
-- `csoundPerformKsmps` runs only inside `CsoundInstance.render`, under the instance lock. Live, that
-  is the `FieldAudioEngine` thread via `CsoundNode`; offline, the caller.
-- `event`/`compile` are queued and delivered at the top of the next `render`.
-- Control channels go straight to `csoundSetControlChannel` / `csoundGetControlChannel`, which
-  Csound guards itself. Channel name C strings are cached in the instance's shared arena.
-- Messages: `csoundCreateMessageBuffer(cs, 0)` and polling. No upcall stubs, so nothing can throw
-  through native frames on the audio thread. `poll` joins fragments into lines.
-- `CsoundLaunch.every` runs on the launch's main-thread loop (the same loop that polls).
-
-## Rate header
-
-The constructor passes `-n -d -m0 --sample-rate --ksmps --nchnls --nchnls_i --0dbfs=1` as options,
-which override anything the orchestra sets. Output is read from `spout` and divided by `0dbfs`.
-
-## Errors and line numbers
-
-`CsoundCompileError.problems` are placed by scanning the printed lines after an `error:` (or
-`syntax error`, `INIT ERROR`, `not found`) line for `line N` / `Line: N` within the next five lines.
-Syntax errors print ` line 3:` on the following line, unknown opcodes `Line: 2` four lines down.
-`normalise` keeps leading blank lines (only the indentation is trimmed), so a box's
-`csound("""⏎instr 1…` reports lines of the string as written, and `inferFaustLineOffset` maps them
-to box lines.
-
-## Quirks observed
-
-- A score ends a few k-blocks after its last event: `i1 0 1` renders 48128 frames at 48 kHz,
-  ksmps 32.
-- With no score, Csound stops at once. `f0 z` keeps it running, which is `csound()`'s default.
-- `rms(a1)` reads in channel units: 0.2 sine → 0.1407 measured live through `FieldAudioEngine`.
+`csoundNewOpcodeList` returns `opcodeListEntry {char *opname, *outypes, *intypes; int flags}` (32
+bytes on 64-bit). Names not starting with a letter are dropped. 1220 opcodes and 1906 signatures for
+6.18.1. `CsoundVocabulary.describe` spells type letters as arguments (`aSig`, `[ij=-1]`, …). There
+are no descriptions: libcsound carries none. `CsoundLanguageTest` regenerates the vocabulary when
+libcsound is present and fails on drift.
 
 ## Verification (2026-10-02)
 
-- `./gradlew jvmTest --tests 'afield.csound.*'`: 12/12 tests, none skipped.
-- Backdoor, port 9611: every box of the demo was run. `offline sine` printed 439 crossings and peak
-  0.250. `drone` launched and printed `level 0.033` once a second from the audio thread until it
-  was stopped. `an error` was marked at `code:4`. A scratch box registered `cs.node` with
-  `FieldAudioEngine` and saw 100864 frames rendered in 2.01 s.
+- jvmTest `afield.csound.*`: all green, none skipped (CsoundTest 12, CsoundDataPlaneTest 8,
+  CsoundLanguageTest 7, CsoundBoxApiTest 3). Filter test: a Field 1 kHz unit sine through `butterlp
+  500` gives rms 0.17115, theory 0.17150.
+- Headless browser on 9611: `bithero/csound` loads, `csoundGrammarState()` reports 1220 opcodes, and
+  `monaco.editor.tokenize` gives keyword, type (opcode), variable, variable.parameter, string,
+  comment, tag and score-operator tokens. The first cut used `next: "pop"`, which Monarch rejects
+  (`'@pop'` is the spelling); the per-module loader kept the editor alive, and the probe caught it.
+  Real Ctrl-Space in the live editor shows `poscil`/`poscil3` with signatures.
+- Docs runner captures `public/docs/assets/csound/{editor,completion,error}.png`, inspected.
+- Live through the backdoor: every demo box run one at a time.
+
+## Not done / limits
+
+- No per-opcode descriptions in completion or hover (libcsound has none, and copying the manual
+  would be hand-typed vocabulary).
+- Line-note event counts are static (from the score text).
+- `invalue` strings are not supported (no buffer size from Csound).
+- The macOS build links Homebrew libsndfile by absolute path, so it is not redistributable. Linux
+  is untested.
+- The Field-into-fx path is verified numerically offline (`renderSignalsOffline`, same code path)
+  and ran live without error, but its live output was not measured.
+- Csound MIDI is in only; MIDI out (`midiout`) is not routed to Field.
