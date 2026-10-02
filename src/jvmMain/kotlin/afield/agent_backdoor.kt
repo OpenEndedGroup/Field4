@@ -846,7 +846,7 @@ private fun agentPropertyString(box: Box, property: String): String =
  * are intentionally not recorded here — the UI does not record those either; the transcript
  * tracks property edits, moves, and execution, and this closes the property-edit gap.
  */
-internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
+internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement, origin: String = "") {
     if (property == "frame") {
         applyAgentProperty(box, property, value)
         return
@@ -854,7 +854,7 @@ internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonE
     val from = agentPropertyString(box, property)
     applyAgentProperty(box, property, value)
     val to = agentPropertyString(box, property)
-    OperationTranscript.recordEdit(box, property, from, to)
+    OperationTranscript.recordEdit(box, property, from, to, origin)
 }
 
 private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Boolean> {

@@ -972,6 +972,33 @@ pre code {
     color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
+/* Rewind / edit-and-resend on a request: quiet until the turn is hovered. The server refuses them while a turn runs. */
+.ai-chat-turn-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.ai-chat-turn.you:hover .ai-chat-turn-actions,
+.ai-chat-turn.you:focus-within .ai-chat-turn-actions {
+    opacity: 1;
+}
+
+.ai-chat-turn-action {
+    font: inherit;
+    font-size: 11px;
+    font-style: normal;
+    padding: 0 6px;
+    min-height: 18px;
+    border: 1px solid var(--field-border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--field-fg-muted, var(--field-fg));
+    cursor: pointer;
+}
+
 .ai-chat-turn.ai .ai-chat-markdown {
     text-align: left;
     color: var(--ai-chat-ai-fg, var(--field-fg));

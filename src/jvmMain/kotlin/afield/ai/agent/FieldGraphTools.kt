@@ -301,6 +301,11 @@ class FieldGraphTools(
      * the same visual task with the model unable to look.
      */
     val seesOutput: Boolean = true,
+    /**
+     * The OperationTranscript origin this turn's edits are recorded under (`ai4:<turn>`), so a rewound turn's
+     * edits can be undone without touching anyone else's. Blank: recorded like a person's.
+     */
+    val origin: String = "",
 ) {
     companion object {
         /**
@@ -308,8 +313,8 @@ class FieldGraphTools(
          * property its reply rewrites; the document chat, `chatGeneral` and `AgentTaskRunner` pass
          * none.
          */
-        fun forTurn(info: SessionInformation, replyOwnedBox: Box? = null, replyOwnedProperty: String = "code"): FieldGraphTools =
-            FieldGraphTools(info, replyOwned = replyOwnedBox?.let { setOf(it.id to replyOwnedProperty) }.orEmpty())
+        fun forTurn(info: SessionInformation, replyOwnedBox: Box? = null, replyOwnedProperty: String = "code", origin: String = ""): FieldGraphTools =
+            FieldGraphTools(info, replyOwned = replyOwnedBox?.let { setOf(it.id to replyOwnedProperty) }.orEmpty(), origin = origin)
     }
 
     private fun refuseReplyOwned(box: Box, property: String): FieldGraphResult? =
@@ -405,7 +410,7 @@ class FieldGraphTools(
         require(req.value.length <= 2_000_000) { "Value is too large." }
         check(!info.readOnly) { "This document is read-only." }
         val value = if (req.property == "code") unwrapEditorScript(req.value) else req.value
-        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(value))
+        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(value), origin)
         needsResync.add(box to req.property)
         doResync()
         FieldGraphResult(true, "Set ${req.property} on '${box.name}' (${req.value.length} chars). Not run.",
@@ -464,7 +469,7 @@ class FieldGraphTools(
             else -> return@onOwner FieldGraphResult(false, "Give either `find` (with `replace`) or `startLine` (with `endLine` and `replacement`).",
                 uid = box.id, name = box.name, property = req.property)
         }
-        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(after))
+        applyAgentPropertyRecorded(box, req.property, JsonPrimitive(after), origin)
         needsResync.add(box to req.property)
         doResync()
         FieldGraphResult(true, "Patched ${req.property} on '${box.name}' (${before.length} -> ${after.length} chars). Not run.",
@@ -523,7 +528,7 @@ class FieldGraphTools(
                 return@onOwner Pair(null, box to code)
             }
             if (code != null) {
-                applyAgentPropertyRecorded(box, "code", JsonPrimitive(code))
+                applyAgentPropertyRecorded(box, "code", JsonPrimitive(code), origin)
                 needsResync.add(box to "code")
                 doResync()
             }

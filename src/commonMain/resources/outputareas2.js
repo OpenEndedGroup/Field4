@@ -1554,6 +1554,15 @@ function ensureAiChat(container, uid, property) {
         messages.addEventListener("click", (event) => {
                 const target = event.target;
                 if (!(target instanceof HTMLElement)) return;
+                const turnAction = target.closest(".ai-chat-turn-action");
+                if (turnAction) {
+                        const turn = turnAction.closest("[data-ai-turn]");
+                        if (!turn) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        rewindConversation(Number(turn.dataset.aiTurn), turn.dataset.aiText || "", turnAction.dataset.aiAction === "edit");
+                        return;
+                }
                 const button = target.closest(".ai-chat-copy");
                 if (!button) return;
                 const block = button.closest(".ai-chat-code-block");
@@ -1724,10 +1733,56 @@ function ensureAiChat(container, uid, property) {
                         "- `/clear` delete this box’s saved conversation and start fresh",
                         "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
                         "- `/context` show what the last AI turn was told besides the conversation, and its size",
+                        "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
                 ].join("\n");
+        }
+
+        // Rewind (or edit and resend) to before user turn `ordinal`. The server keeps everything after it as a
+        // branch (AiSessionTree), rebuilds the provider thread and agent memory from the new head, and says what
+        // of the document the abandoned turns changed; undoing that is a second, explicit question.
+        function rewindConversation(ordinal, expectedText, edit) {
+                if (!Number.isInteger(ordinal) || ordinal < 0) return;
+                const question = edit
+                        ? "Edit this message and send it again? The conversation from here on is kept as a branch (/branches)."
+                        : "Rewind to before this message? The conversation from here on is kept as a branch (/branches).";
+                if (!window.confirm(question)) return;
+                const targetUid = chatUid();
+                setCommandBusy(true);
+                sendWithReply("ai-chat-history", {uid: targetUid, rewindTo: ordinal, expectedText},
+                        `ai-chat-rewind-${targetUid}-${Date.now()}`, (_message, response) => {
+                                setCommandBusy(false);
+                                if (response?.error) {
+                                        window.notify?.(response.error, "AI4");
+                                        return "remove";
+                                }
+                                if (chatUid() !== targetUid) return "remove";
+                                aiChatUpdate(container, targetUid, response?.history || "");
+                                if (edit && response?.userText) {
+                                        textarea.value = response.userText;
+                                        textarea.focus();
+                                }
+                                const edits = response?.undoableEdits || 0;
+                                const boxes = response?.undoableBoxes || 0;
+                                const turns = Array.isArray(response?.abandonedTurns) ? response.abandonedTurns : [];
+                                if ((edits > 0 || boxes > 0) && turns.length > 0) {
+                                        const parts = [];
+                                        if (edits > 0) parts.push(`${edits} document edit${edits === 1 ? "" : "s"}`);
+                                        if (boxes > 0) parts.push(`${boxes} new box${boxes === 1 ? "" : "es"}`);
+                                        const undo = window.confirm(`The rewound turns made ${parts.join(" and ")}. Undo those too? ` +
+                                                "Anything changed since is left alone.");
+                                        if (undo) {
+                                                sendWithReply("ai-chat-rewind-world", {uid: targetUid, turns},
+                                                        `ai-chat-rewind-world-${targetUid}-${Date.now()}`, (_m, result) => {
+                                                                appendLocalChatTurn("ai", `_${result?.message || "Undo finished."}_`);
+                                                                return "remove";
+                                                        });
+                                        }
+                                }
+                                return "remove";
+                        });
         }
 
         function captureScreenshotCommand(target) {
@@ -1813,6 +1868,28 @@ function ensureAiChat(container, uid, property) {
                 if (command === "screenshot" || command === "shot") {
                         textarea.value = "";
                         captureScreenshotCommand(rest);
+                        return true;
+                }
+
+                if (command === "branches" || command === "branch") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        const index = command === "branch" ? Number.parseInt(rest, 10) : NaN;
+                        if (command === "branch" && !Number.isInteger(index)) {
+                                appendLocalChatTurn("ai", "_Usage: `/branch <#>`, with a number from `/branches`._");
+                                return true;
+                        }
+                        const payload = command === "branches" ? {uid: targetUid, listBranches: true} : {uid: targetUid, switchTo: index};
+                        sendWithReply("ai-chat-history", payload, `ai-chat-branches-${targetUid}-${Date.now()}`, (_message, response) => {
+                                if (chatUid() !== targetUid) return "remove";
+                                if (response?.error) {
+                                        appendLocalChatTurn("ai", `_${response.error}_`);
+                                        return "remove";
+                                }
+                                if (command === "branch") aiChatUpdate(container, targetUid, response?.history || "");
+                                if (response?.message) appendLocalChatTurn("ai", response.message);
+                                return "remove";
+                        });
                         return true;
                 }
 

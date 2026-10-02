@@ -384,6 +384,9 @@ fun aiChatHistoryToHtml(history: String?): String {
     if (turns.isEmpty()) return ""
     val html = StringBuilder()
     var statusRowOpen = false
+    // The server's session tree numbers user turns the same way (AiSessionTree.userTurns); the text goes with
+    // the ordinal so a rewind from a stale panel is refused rather than applied to the wrong turn.
+    var userOrdinal = 0
     for (turn in turns) {
         val progress = turn.role.startsWith("progress")
         val lines = turn.content.lines()
@@ -410,7 +413,16 @@ fun aiChatHistoryToHtml(history: String?): String {
                 val title = turn.model?.description() ?: "This older chat entry did not record its provider or model."
                 "<div class=\"ai-chat-model\" title=\"${escapeHtml(title)}\">${escapeHtml(label)}</div>"
             } else ""
-            html.append("<div class=\"ai-chat-turn ${turn.role}\">" + badge + aiChatMarkdownToHtml(turn.content) + "</div>")
+            val turnAttrs = if (turn.role == "you") {
+                " data-ai-turn=\"${userOrdinal++}\" data-ai-text=\"${escapeHtml(turn.content)}\""
+            } else ""
+            val actions = if (turn.role == "you") {
+                "<span class=\"ai-chat-turn-actions\">" +
+                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"edit\" title=\"Edit this message and send it again (the rest is kept as a branch)\">edit</button>" +
+                    "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
+                    "</span>"
+            } else ""
+            html.append("<div class=\"ai-chat-turn ${turn.role}\"$turnAttrs>" + badge + aiChatMarkdownToHtml(turn.content) + actions + "</div>")
         }
     }
     if (statusRowOpen) html.append("</div>")

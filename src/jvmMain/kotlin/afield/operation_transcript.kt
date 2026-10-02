@@ -98,7 +98,9 @@ object OperationTranscript {
         var pendingEdit: PendingEdit? = null,
         var lastRecordedFrame: Long? = null,
         var loaded: Boolean = false,
-        var dirty: Boolean = false
+        var dirty: Boolean = false,
+        /** Entries before this index are never merged into (an AI turn's boundary; in memory only). */
+        var mergeBarrier: Int = 0
     )
 
     private data class PendingEdit(
@@ -106,7 +108,9 @@ object OperationTranscript {
         val property: String,
         val from: String,
         var to: String,
-        var lastFrame: Long
+        var lastFrame: Long,
+        /** Who made it: blank for a person, `ai4:<turn>` for an AI turn's tools. Never merged across. */
+        val origin: String = ""
     )
 
     private data class MacroLocation(
@@ -746,7 +750,7 @@ object OperationTranscript {
         )
     }
 
-    fun recordEdit(box: Box, property: String, from: String?, to: String?) {
+    fun recordEdit(box: Box, property: String, from: String?, to: String?, origin: String = "") {
         if (from == to) return
         if (property.endsWith("_editorState")) return
         val documentPath = documentPathFor(box) ?: return
@@ -759,6 +763,7 @@ object OperationTranscript {
                 pending != null &&
                     pending.box == box.id &&
                     pending.property == property &&
+                    pending.origin == origin &&
                     frame - pending.lastFrame <= COALESCE_FRAMES
             ) {
                 pending.to = to.orEmpty()
@@ -772,10 +777,44 @@ object OperationTranscript {
                 property = property,
                 from = from.orEmpty(),
                 to = to.orEmpty(),
-                lastFrame = frame
+                lastFrame = frame,
+                origin = origin
             )
             state.dirty = true
         }
+    }
+
+    /**
+     * Mark an AI turn's start or end: flush the pending edit and forbid merging into anything recorded so far.
+     * Returns the cursor (the number of entries), which the session tree keeps as the turn's `op.from`/`op.to`.
+     */
+    fun turnBoundary(documentPath: String): Int {
+        if (documentPath.isBlank()) return -1
+        val state = stateFor(documentPath)
+        return synchronized(state.lock) {
+            ensureLoaded(state)
+            flushPendingEdit(state)
+            state.mergeBarrier = state.entries.size
+            state.entries.size
+        }
+    }
+
+    /** How many recorded edits were made under one of [origins]. */
+    fun countOrigins(documentPath: String, origins: Set<String>): Int {
+        if (documentPath.isBlank() || origins.isEmpty()) return 0
+        return transcriptSnapshot(documentPath).count { ((it["edit"] as? Map<*, *>)?.get("origin")?.toString()) in origins }
+    }
+
+    /**
+     * Undo every recorded edit made under one of [origins] (AI turns being rewound), newest first, strictly:
+     * an edit whose property has changed since is skipped and reported, never overwritten.
+     */
+    fun undoOrigins(documentPath: String, origins: Set<String>): MacroResult {
+        if (documentPath.isBlank() || origins.isEmpty()) return MacroResult(false, "Nothing to undo.")
+        val snapshot = transcriptSnapshot(documentPath)
+        val indices = snapshot.indices.filter { i -> ((snapshot[i]["edit"] as? Map<*, *>)?.get("origin")?.toString()) in origins }
+        if (indices.isEmpty()) return MacroResult(true, "Those turns recorded no document edits.", direction = "undo")
+        return undoTranscriptSelection(documentPath, indices, strict = true)
     }
 
     fun recordMove(box: Box, from: Rect, to: Rect) {
@@ -897,7 +936,7 @@ object OperationTranscript {
             return
         }
         val index = state.entries.size
-        state.entries += editEntry(pending.box, pending.property, pending.from, pending.to)
+        state.entries += editEntry(pending.box, pending.property, pending.from, pending.to, pending.origin)
         state.lastRecordedFrame = pending.lastFrame
         val appendLog =
             "append #$index edit ${pending.box}/${pending.property} from=${pending.from.length} chars to=${pending.to.length} chars frame=${pending.lastFrame}"
@@ -905,14 +944,14 @@ object OperationTranscript {
         lprintln("info,operation-transcript", appendLog)
     }
 
-    private fun editEntry(box: String, property: String, from: String, to: String): LinkedHashMap<String, Any?> =
+    private fun editEntry(box: String, property: String, from: String, to: String, origin: String = ""): LinkedHashMap<String, Any?> =
         linkedMapOf(
-            "edit" to linkedMapOf(
+            "edit" to linkedMapOf<String, Any?>(
                 "box" to box,
                 "property" to property,
                 "from" to from,
                 "to" to to
-            )
+            ).also { if (origin.isNotBlank()) it["origin"] = origin }
         )
 
     private fun moveEntry(box: String, from: Rect, to: Rect): LinkedHashMap<String, Any?> =
@@ -926,8 +965,12 @@ object OperationTranscript {
 
     private fun mergePendingEditIntoPrevious(state: DocumentState, pending: PendingEdit): Boolean {
         val editIndex = previousEditableIndexFor(state.entries, pending.box, pending.property) ?: return false
+        // Never across a turn boundary, and never across hands: a person's edit and an AI turn's edit of the
+        // same property stay two entries, so undoing one (a rewound turn) leaves the other alone.
+        if (editIndex < state.mergeBarrier) return false
         @Suppress("UNCHECKED_CAST")
         val payload = state.entries[editIndex]["edit"] as? MutableMap<String, Any?> ?: return false
+        if ((payload["origin"]?.toString() ?: "") != pending.origin) return false
         payload["to"] = pending.to
         removeTrailingWaitsAfter(state.entries, editIndex)
         val mergeLog =
