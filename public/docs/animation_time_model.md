@@ -214,6 +214,8 @@ loop {
 
 Run it yourself and the count in the title will be different, and different again the second time.
 There is no frame *rate* in that plot to schedule against, which is why motion goes on the clock.
+Box 3 of the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting point prints the
+same rate live while it animates, so you can watch it change from run to run.
 
 ## What happens when you stop { #what-happens-when-you-stop }
 
@@ -1003,6 +1005,5 @@ Every public name in `Phased.kt`, grouped by what it is for.
 `afield.stdlib`, `afield.visualization` and `afield.four.synth`, and `Phased.kt` sits in `afield`
 itself, one layer below. This page is its reference instead.
 
-To see it running rather than read about it, replay
-`dev_docs/agents/transcripts/docs_capture/frames_lifecycle.yaml` into a fresh Field — it builds four
-boxes that between them start, stop, re-run and clean up a frame loop.
+To see it running, open the [`frames_lifecycle`](agent_transcripts.md#frames_lifecycle) starting
+point from the welcome screen. Its four boxes start, stop, re-run and clean up a frame loop.

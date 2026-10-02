@@ -362,6 +362,21 @@ object DemoTranscriptExecSmokeTest {
         // ends in `animate { }`, which registers an animation rather than blocking, as with the two
         // parameter sweeps in spatial_geometry_examples.
         "typography_worked_example",
+        // The companion to animation_time_model.md: four pure-CPU boxes that start, stop, re-run and
+        // clean up a frame loop through lines() and markdown(). The three it launches end in
+        // `animate { }`, which registers an animation rather than blocking; box 4 is left for the
+        // reader to drive.
+        "frames_lifecycle",
+        // The two fline_examples.md documents, promoted from saved documents in public/docs/assets.
+        // threeInspect writes a three.js viewer into an output and inspect() writes an SVG with
+        // click handlers; neither needs a Window or a Renderer. three_inspector_wall's code is also
+        // that page's captured fence, which ThreeInspectorDemoDriftTest holds character for character.
+        "three_inspector_wall",
+        "fline_hit_records",
+        // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
+        // into inline players, so no audio device; with no Dirt-Samples on the build machine every
+        // token falls back to patVoice, which is box 3's subject anyway.
+        "sound_render_path",
         // Two pure-CPU Ceres boxes: a canonical realization whose per-face planes are free variables in
         // the residual expression VM, and a sphere fit whose unknowns are not points at all. Both are
         // FFM calls into the native wrapper plus threeLines(), so no Window and no Renderer. Both

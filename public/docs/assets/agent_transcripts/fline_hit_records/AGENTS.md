@@ -22,13 +22,15 @@ format. What comes back is what happened: the box's own output, its compile erro
 exceptions, and the pixels it drew.
 
 The tooling lives in the Field repository (`tools/field_backdoor.py`); run these from the
-repo root. They attach to the running Field and operate on **this document** (its name is
-this folder's name, relative to the workspace root).
+repo root. With `--attach-existing` they attach to the running Field (port `$PORT`, else 9092)
+and operate on **this document** (its name is this folder's name, relative to that Field's
+workspace). Without it the backdoor starts a private Field of its own on a free port, whose
+workspace does not contain this document.
 
 **Run a box and read its output:**
 
 ```bash
-uv run --project . --group backdoor python tools/field_backdoor.py --json --document THIS_DOC \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --attach-existing --document THIS_DOC \
   --command 'macro write run_it --content "operations: [ {launch: {box: BOX_ID}} ]"' \
   --command 'macro run run_it'
 ```
@@ -58,7 +60,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --scra
 **Capture a picture** (attach the browser first with `--with-playwright`):
 
 ```bash
-uv run --project . --group backdoor python tools/field_backdoor.py --json --with-playwright --document THIS_DOC \
+uv run --project . --group backdoor python tools/field_backdoor.py --json --attach-existing --with-playwright --document THIS_DOC \
   --command 'screenshot-box BOX_ID /tmp/box.png --padding 16'
 ```
 

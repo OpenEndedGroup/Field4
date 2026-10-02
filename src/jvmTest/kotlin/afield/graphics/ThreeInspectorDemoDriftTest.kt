@@ -10,8 +10,9 @@ import kotlin.test.assertTrue
  *
  * A demo artifact has a characteristic failure that no test in this repo was catching: it is written
  * once, it is never executed by anything, and six weeks later it does not compile. `brief_house_demo`
- * and `fline_hit_records_demo` are both in that position today — referenced from prose, verified by
- * nobody.
+ * was in that position when this was written, referenced from prose and verified by nobody.
+ * (`fline_hit_records_demo` was too, until it became the `fline_hit_records` transcript on
+ * 2026-10-02 and `DemoTranscriptExecSmokeTest` started running it.)
  *
  * The dodge here is cheap and total. The demo's Kotlin is *also* the body of a `diffstatic_runner`
  * fence in `public/docs/fline_examples.md`, so the docs build compiles it, runs it in a real box and
@@ -25,42 +26,18 @@ import kotlin.test.assertTrue
  */
 class ThreeInspectorDemoDriftTest {
 
-    private val demo = File("public/docs/assets/three_inspector_demo/metadata.edn")
+    private val demo = File("public/docs/assets/agent_transcripts/three_inspector_wall/three-inspector-wall_code_.kt")
     private val page = File("public/docs/fline_examples.md")
     private val screenshot = "assets/three_inspector_demo/opened.png"
 
     /**
-     * The `:code` string of the demo document's single box, unescaped.
-     *
-     * A hand-rolled reader rather than an EDN parser: the repo has no EDN dependency on the JVM test
-     * classpath, and the three escapes the writer emits — backslash, quote, newline — are the three this
-     * needs to undo. It throws on any other escape rather than passing it through, so a future demo that
-     * needs `\t` fails loudly here instead of comparing unequal for a reason nobody can see.
+     * The demo box's code, as the starting point ships it. The bundle is materialized from
+     * `dev_docs/agents/transcripts/three_inspector_wall.yaml`, and `checkAgentTranscripts` fails if
+     * it no longer matches that yaml, so this file stands for both.
      */
     private fun demoCode(): String {
         assertTrue(demo.isFile, "the demo artifact is missing at ${demo.path}")
-        val text = demo.readText()
-        val start = text.indexOf(":code \"")
-        assertTrue(start >= 0, "the demo has no :code property")
-        val builder = StringBuilder()
-        var i = start + ":code \"".length
-        while (i < text.length) {
-            val c = text[i]
-            if (c == '"') break
-            if (c == '\\') {
-                when (val escape = text[i + 1]) {
-                    'n' -> builder.append('\n')
-                    '"' -> builder.append('"')
-                    '\\' -> builder.append('\\')
-                    else -> error("the demo's :code uses an escape this reader does not know: \\$escape")
-                }
-                i += 2
-            } else {
-                builder.append(c)
-                i += 1
-            }
-        }
-        return builder.toString()
+        return demo.readText()
     }
 
     /** The body of the runner fence that produces [screenshot], with its `:::static` marker removed. */
@@ -87,7 +64,7 @@ class ThreeInspectorDemoDriftTest {
             val at = (0 until maxOf(a.size, b.size)).firstOrNull { a.getOrNull(it) != b.getOrNull(it) }
             error(
                 "the demo artifact and its docs capture have drifted at line ${at?.plus(1)}:\n" +
-                    "  metadata.edn: ${a.getOrNull(at ?: 0)}\n" +
+                    "  starting point: ${a.getOrNull(at ?: 0)}\n" +
                     "  fline_examples.md: ${b.getOrNull(at ?: 0)}\n" +
                     "Regenerate one from the other; the screenshot has to be a picture of the artifact " +
                     "the human would actually open."

@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 170 transcripts on every build, at three
-depths. 89 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 174 transcripts on every build, at three
+depths. 93 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -427,6 +427,64 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### frames_lifecycle
+
+**A frame loop, from start to cleanup.** The companion to
+[Frames and the Animation Loop](animation_time_model.md), in four boxes. Box 1 is an `animate { }`
+with no end condition: a disc travels a Lissajous figure until you press stop. Box 2 is the same
+loop with `if (elapsed >= 6.0) end()` and an `.end { }` that repaints the last frame in red, so you
+see it move and then see it stop. Box 3 shows that re-running a box replaces its loop rather than
+adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
+frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
+its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
+runs when the loop is cancelled, not when it finishes.
+
+Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
+loop runs thousands of frames a second and drawing each one floods the output.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/frames_lifecycle_stops.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="120" padding="12" name="gallery-frames-lifecycle" alt="Box 2 after its six seconds: the disc stopped on its track and the progress bar full, all redrawn in red by the .end block" macro-file="../../dev_docs/agents/transcripts/frames_lifecycle.yaml" capture-box="frames_lifecycle_stops"}
+// The transcript builds all four boxes and launches three; this is box 2 after it has stopped itself.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
+
+### three_inspector_wall
+
+**The three.js output as an instrument.** One box draws a wall detail, four skins and five conduit
+runs, with the three controls `threeInspect` adds to the viewer's toolbar: a ruler that measures the
+closest approach between two things you click, a section plane, and an explode slider. It is the
+complete example from [Drawing with FLines](fline_examples.md), the same code that page captures.
+
+![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
+
+### fline_hit_records
+
+**What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and
+the output names it, says whether you hit its face, an edge or a corner, and where on it, in the
+wall's own coordinates. Click the amber ridge line and you get its position along its length. Every
+hit is also printed, so the box's text output becomes a log of what you clicked. From the hit-record
+section of [Drawing with FLines](fline_examples.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_hit_records.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-hit-records" alt="A card reading Click a part of the figure, above a wall of fifteen panels in three rows and five columns, drawn at a slant in teal to violet, with an amber ridge line along its top edge" macro-file="../../dev_docs/agents/transcripts/fline_hit_records.yaml" capture-box="fline-hit-records-wall"}
+// The transcript builds and runs the box; this is its output before anything is clicked.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
+
+### sound_render_path
+
+**One beat, three ways of sounding it.** The companion to the real-drums section of
+[Sound: the Pattern → Audio Path](sound.md). Box 0 draws the beat as a piano roll. Box 1 plays it
+through the synth stand-in and box 2 through the Dirt samples: play them back to back. Box 3 shows
+the per-event fallback, where a sample name the library does not have is voiced by the synth and
+mixed in with the rest. Box 4 reports where Field looked for the sample library and what it found.
+
+![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sound_render_path/metadata.edn)
 
 ### pitch_transcription_roundtrip
 

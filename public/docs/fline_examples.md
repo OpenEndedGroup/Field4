@@ -424,7 +424,7 @@ The section clips everything: fills, strokes and points.
 
 #### A complete example
 
-This box draws a wall detail with four skins and five conduit runs, two dimensions, and all three controls live. Run it and drag the explode slider. The same box is in `public/docs/assets/three_inspector_demo/metadata.edn`.
+This box draws a wall detail with four skins and five conduit runs, two dimensions, and all three controls live. Run it and drag the explode slider. The same box is the [`three_inspector_wall`](agent_transcripts.md#three_inspector_wall) starting point on the welcome screen.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -581,8 +581,8 @@ renderer fills in the same record, working in each face's own plane.
 
 `lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
 part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
-names whatever you click. `public/docs/assets/fline_hit_records_demo/metadata.edn` is a document to
-try it in.
+names whatever you click. The [`fline_hit_records`](agent_transcripts.md#fline_hit_records) starting
+point is a wall of panels to try it on.
 
 #### 2D callbacks
 
