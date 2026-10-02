@@ -33,7 +33,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-Most of the day-to-day magic is built on these five steps. That covers `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers. Everything below is that machinery, in the order the steps run.
+These five steps are what make `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers work. The rest of the page takes them in order.
 
 Two distinct "code that writes code" mechanisms are involved, and they run at different times:
 
@@ -157,7 +157,7 @@ Two things have to be true for a child to use a parent's value:
 
 Both the preamble gather and the value walk follow `parents`. Connecting a child under a parent (`parent.connect(child)`, or selecting the parent and pressing `g` in the UI) is what puts the parent into the child's ancestor chain.
 
-This is the classic graphics gotcha: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
+This is the commonest graphics mistake: a freshly created box whose only parent is the document root is a **sibling** of the renderer box, not a descendant. It will *not* inherit `renderer`: the accessor never gathers into it, and the value walk never reaches it. Only after you connect it **beneath the renderer box** does the next run gather the accessor and resolve the live `Renderer`. (The [RectSL examples](rectsl_examples.md) are built this way: one `window + renderer` box, with every example connected beneath it.)
 
 When a value comes from a box you did not expect, [Why does this value resolve here?](why.md) shows how to ask Field which box supplied it, by what path, and which other boxes it shadowed.
 
@@ -251,7 +251,7 @@ useThe(a)
 
 Fragments are **partially-editable chunks**, and they run in order with **expand → compile → evaluate interleaved per fragment**: fragment N+1 is macro-expanded only *after* fragment N has finished running. Between fragments, the preamble/setup blocks are re-run too.
 
-That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The canonical case is seeding a shader for `moduleHere`:
+That ordering matters because macro expansion is not pure (see **Macros** above): sometimes a later fragment's macro needs a value an earlier fragment set at runtime. The usual case is seeding a shader for `moduleHere`:
 
 ```diffstatic {data-lang=kotlin}
 once.vertex   { RECT_ANIMATION_VERTEX_SHADER }
@@ -266,14 +266,14 @@ val module = moduleHere {           // reads the box's vertex/fragment PROPERTIE
 }
 ```
 
-Walk it through:
+What happens in each case:
 
 - **Without** the `//%-`, both are one compilation unit. All of its macros expand first, then it runs. So `moduleHere` expands — reading the box's shaders, finding none, seeding the **default `in vec3 pos`** shader and generating accessors for *that* — *before* `once.vertex` has ever run. The result: the module uses the wrong shader (and, for RectSL, the mesh's vertex attributes won't match the shader's inputs).
 - **With** the `//%-`, fragment 1 runs first: `once.vertex`/`once.fragment` set the box's real shader source. Then fragment 2 is expanded, and `moduleHere` now sees the shader you supplied and generates the correct accessors and module.
 
-So `//%-` is what makes "set some state, then run a macro that reads it" work. Interactive execution expands and evaluates fragments in sequence. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
+So `//%-` is how you set some state and then run a macro that reads it. A single Kotlin box launched through the transcript/multi-box path is also awaited fragment by fragment; mixed-language launch groups do not promise the same first-frame ordering across boxes.
 
-**A second worked example, on the preamble half rather than the macro half.** `runLaunchSetupBlocks(box)` is called from *inside* the fragment loop in `execution.kt`, not before it, which is why the preamble and setup blocks are re-run between fragments. A fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
+The preamble and setup blocks also re-run between fragments, so a fragment that *writes* to the box's preamble at runtime has therefore published a real source declaration by the time the next fragment is compiled. That is how `DataFrame.typed("People")` makes typed columns survive into the second half of the same execution; see [DataFrames in a Box](dataframe.md#fragment-marker).
 
 ---
 
