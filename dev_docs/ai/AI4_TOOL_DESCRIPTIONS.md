@@ -48,8 +48,9 @@ Population: the 6 held-out tasks (stop-ticker, wire-two, fix-runtime-error, draw
 bars-sorted-red), **3 repeats per setup** (18 task runs each), openai gpt-6-astra, lessons off, max 24
 rounds, 2026-10-02, port 9621. Only the descriptions differ between setups: "base" is `Tools.kt` and
 `FieldGraphTools.kt` checked out from `bb5624f3c` on top of the cached-token accounting. Uncached input =
-`inputTokens - cachedInputTokens` (OpenAI `input_tokens_details.cached_tokens`, newly reported by
-`AgentEvalReport`). Numbers are in `dev_docs/ai/evidence/ai4_tool_descriptions_2026-10-02.json`.
+`inputTokens - cachedInputTokens` (OpenAI `input_tokens_details.cached_tokens`). The runs used this
+branch's own field, `cachedInputTokens`; since the merge of `claude/ai4-chat-field-plan-164d81` the same
+number is reported as `cacheReadTokens` (plus `cacheWriteTokens` for Anthropic). Numbers are in `dev_docs/ai/evidence/ai4_tool_descriptions_2026-10-02.json`.
 
 | setup | pass | rounds (rep 1 / 2 / 3) | input tokens | uncached input | misuse | CaptureRenderWindow calls |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -81,7 +82,7 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
   --command "$C" --command "$C" --command "$C" > after.json
 ```
 
-Each `data` object carries `rounds`, `inputTokens`, `cachedInputTokens`, `misuseCalls` (omitted when
+Each `data` object carries `rounds`, `inputTokens`, `cacheReadTokens`, `misuseCalls` (omitted when
 0) and per-task `toolCalls`. For a "base", check out the two description files from the base commit,
 rerun, and restore them. The backdoor rebuilds when source changed. Three repeats of six tasks take
 about 7 minutes.
@@ -91,5 +92,5 @@ about 7 minutes.
 - Rewrite the 37 tools in `NOT_YET_REWRITTEN`. The held-out tasks do not exercise them (only
   `ListContents` and `CodeUseQuery` appeared, once each in the base runs), so these held-out tasks
   cannot measure them; they need tasks that use them.
-- Anthropic reports cache reads outside `input_tokens`, so `cachedInputTokens` is null on that
-  bridge. Uncached cost there would need its own definition.
+- Anthropic reports cache reads separately from `input_tokens`, so on that bridge uncached input is
+  `inputTokens` itself, not the difference.

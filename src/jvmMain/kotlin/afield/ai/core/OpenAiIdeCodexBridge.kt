@@ -141,10 +141,33 @@ class OpenAiIdeCodexBridge(
         maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((ProgressUpdate) -> Unit)? = null
+        onProgress: ((ProgressUpdate) -> Unit)? = null,
+        turnContext: TurnContext? = null
     ): SendResult {
         val t0 = System.nanoTime()
 
+        // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
+        // `instructions` is unverified, so it stays on the one-string prompt.
+        val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
+        // Stable instructions go into the conversation once, as a developer message, and again only when
+        // they change. Measured 2026-10-02: sent instead as every request's `instructions`, they never
+        // formed a prompt-cache prefix shared between conversations — each task's first request paid ~8k
+        // uncached tokens instead of ~4k, and the cached share of single-turn eval tasks fell from 86% to
+        // 74%. As the conversation's own opening message they are the same prefix in every conversation,
+        // and a long conversation still holds one copy, not one per turn.
+        val stableInstructions = tc?.ephemeralText(Stability.STABLE)?.takeIf { it.isNotBlank() }
+        val stableHash = stableInstructions?.let { sha256(it).take(16) }
+        val stableItem = if (stableInstructions != null && stableHash != state.stableInstructionsHash) {
+            val text = if (state.stableInstructionsHash == null) stableInstructions
+                else "Updated tool and context instructions; they replace the earlier ones.\n\n$stableInstructions"
+            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, text)
+        } else null
+        // The volatile rest (guide and tool catalogues, ~2k chars) goes in front of the user message, and so is
+        // stored with it. Not as the request's `instructions`, though that would never be stored: measured on
+        // four tasks in one build, any `instructions` parameter at all left every conversation's first request
+        // cold (~7.5k uncached tokens each), where the same text in the input let conversations share their
+        // cached prefix (~4k).
+        val volatileText = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
         val inputText = buildString {
             if (fileText != null) {
                 appendLine("IDE_FILE_UPDATE:")
@@ -153,7 +176,11 @@ class OpenAiIdeCodexBridge(
                 appendLine(fileText)
                 appendLine()
             }
-            appendLine(userPrompt)
+            if (volatileText != null) {
+                appendLine(volatileText)
+                appendLine()
+            }
+            appendLine(tc?.durablePrompt() ?: userPrompt)
         }
 
         trace?.log(
@@ -195,7 +222,14 @@ class OpenAiIdeCodexBridge(
                     "vectorStoreIds" to vectorStoreIds,
                     "maxOutputTokens" to maxOutputTokens,
                     "maxToolRounds" to maxToolRounds,
-                    "prompt" to inputText
+                    "prompt" to inputText,
+                    "contextPlacement" to if (tc != null) "developer-once+input" else "inline",
+                    "volatileChars" to (volatileText?.length ?: 0),
+                    "stableInstructionsSent" to (stableItem != null),
+                    "stableInstructionsChars" to (stableInstructions?.length ?: 0),
+                    "instructionHash" to tc?.instructionHash(),
+                    "fragments" to tc?.fragments?.map { mapOf("source" to it.source, "retention" to it.retention.name,
+                        "stability" to it.stability.name, "chars" to it.chars) }
                 )
             )
         }.onFailure { throwable ->
@@ -222,7 +256,7 @@ class OpenAiIdeCodexBridge(
         var activeToolStarted: Long? = null
         var inputTokens: Long? = null
         var outputTokens: Long? = null
-        var cachedInputTokens: Long? = null
+        var cacheReadTokens: Long? = null
         fun <T> modelRequest(phase: String, action: () -> T): T {
             activePhase = "model:$phase"
             toolIo("model_request", mapOf("phase" to phase))
@@ -235,7 +269,9 @@ class OpenAiIdeCodexBridge(
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
-                        cachedInputTokens = (cachedInputTokens ?: 0L) + usage.inputTokensDetails().cachedTokens()
+                        runCatching { usage.inputTokensDetails().cachedTokens() }.getOrNull()?.let { cached ->
+                            cacheReadTokens = (cacheReadTokens ?: 0L) + cached
+                        }
                     }
                 }
             } finally {
@@ -245,8 +281,12 @@ class OpenAiIdeCodexBridge(
             }
         }
 
+        val callCtx = ctx.copy(
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
+        )
         try {
-        val promptItems = buildPromptItems(inputText, imageDataUrls)
+        val promptItems = listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -254,7 +294,7 @@ class OpenAiIdeCodexBridge(
 
         if (runtimeConfig.isOpenRouter) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
-        } else if (imageDataUrls.isEmpty()) {
+        } else if (imageDataUrls.isEmpty() && stableItem == null) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
@@ -268,13 +308,14 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
-        tools.addAllTo(paramsBuilder, ctx)
+        tools.addAllTo(paramsBuilder, callCtx)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
 
         info("running prompt <<spinner>>")
         var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta) }
+        if (stableItem != null) state.stableInstructionsHash = stableHash
         if (onTextDelta != null) {
             info("")
         }
@@ -362,7 +403,7 @@ class OpenAiIdeCodexBridge(
                 val toolStarted = System.nanoTime()
                 activeToolStarted = toolStarted
                 val toolResult: Any = try {
-                    tools.execute(ctx, call)
+                    tools.execute(callCtx, call)
                 } catch (e: Exception) {
                     if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=${call.name()} msg=${e.message}")
@@ -397,8 +438,10 @@ class OpenAiIdeCodexBridge(
                     callId = call.callId(),
                     argumentsJson = call.arguments(),
                     resultSummary = toolResultSummary,
-                    resultJson = toolResultJson
+                    resultJson = toolResultJson,
+                    elapsedMs = toolMs
                 )
+                toolTranscript += afield.ai.core.program.nestedTranscriptEntries(call.callId(), toolResult)
 
                 trace?.log(
                     "TOOL_OUTPUT",
@@ -425,10 +468,12 @@ class OpenAiIdeCodexBridge(
                             ((toolResult as? CarriesToolImages)?.toolImages?.map { it.caption } ?: emptyList())
                     )
                 )
+                afield.ai.core.program.nestedToolIoEvents(rounds + 1, call.callId(), toolResult)
+                    .forEach { (event, fields) -> toolIo(event, fields) }
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",
-                        body = if (toolFailed) toolResultSummary else "",
+                        body = afield.ai.core.program.nestedTraceMarkdown(toolResult) ?: if (toolFailed) toolResultSummary else "",
                         phase = "tool_result"
                     )
                 )
@@ -517,7 +562,7 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
-            tools.addAllTo(followupBuilder, ctx)
+            tools.addAllTo(followupBuilder, callCtx)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
@@ -650,7 +695,9 @@ class OpenAiIdeCodexBridge(
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
             outputTokens = outputTokens,
-            cachedInputTokens = cachedInputTokens
+            cacheReadTokens = cacheReadTokens,
+            contextReport = (turnContext?.report(if (tc != null) "developer-once+input" else "inline"))
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -690,11 +737,14 @@ class OpenAiIdeCodexBridge(
         val inputTokens: Long? = null,
         val outputTokens: Long? = null,
         /**
-         * The part of [inputTokens] served from the provider's prompt cache (OpenAI
-         * `input_tokens_details.cached_tokens`); null when the bridge does not report it. Uncached
-         * input, the cost that layouts and descriptions are judged by, is the difference.
+         * Input tokens served from the provider's prompt cache, summed over the turn (a subset of
+         * [inputTokens] on OpenAI; reported separately by Anthropic). Null when the provider did not say.
          */
-        val cachedInputTokens: Long? = null
+        val cacheReadTokens: Long? = null,
+        /** Input tokens written to the prompt cache this turn (Anthropic only); null when not reported. */
+        val cacheWriteTokens: Long? = null,
+        /** What the turn sent besides the conversation, and where: see [TurnContext]. Null for a one-string turn. */
+        val contextReport: ContextReport? = null
     )
 
     data class ToolTranscriptEntry(
@@ -702,7 +752,14 @@ class OpenAiIdeCodexBridge(
         val callId: String,
         val argumentsJson: String,
         val resultSummary: String,
-        val resultJson: String
+        val resultJson: String,
+        /** Wall time the handler took; -1 when the bridge did not measure it. */
+        val elapsedMs: Long = -1,
+        /**
+         * The call this one ran inside, or "" for a call the model made itself. A tool program's
+         * nested calls carry the program call's id here, and their own id is `<parent>/<n>`.
+         */
+        val parentCallId: String = ""
     )
 
     data class ProgressUpdate(
@@ -719,7 +776,17 @@ class OpenAiIdeCodexBridge(
         val initialInstructions: String = "",
         val initialFileText: String = "",
         var previousResponseId: String? = null
-    )
+    ) {
+        /**
+         * Deferred tools this conversation has loaded (DescribeToolsRequest). Thread-local on purpose: a new
+         * provider thread — a fresh conversation, or a rewound branch — starts with only the DIRECT tools.
+         */
+        val promotedTools: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        /** The hash of the stable instructions this conversation already holds as a developer message. */
+        @Volatile
+        var stableInstructionsHash: String? = null
+    }
 
     /* ------------------------- Conversations helpers ------------------------ */
 

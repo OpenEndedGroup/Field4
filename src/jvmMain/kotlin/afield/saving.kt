@@ -63,7 +63,8 @@ internal const val INLINE_SIDECAR_LIMIT = 256 * 1024
 
 /** Whether [property]'s sidecar, holding [contents], is referenced from `metadata.edn` rather than inlined. */
 internal fun referencesSidecar(property: String, contents: String): Boolean =
-    property == afield.ai.core.AiBoxConversation.PROPERTY || contents.length > INLINE_SIDECAR_LIMIT
+    property == afield.ai.core.AiBoxConversation.PROPERTY || property == afield.ai.core.AiSessionTree.PROPERTY ||
+        contents.length > INLINE_SIDECAR_LIMIT
 
 /** [properties] as `metadata.edn` carries them: large sidecars as references, everything else as is. */
 private fun referencingLargeSidecars(properties: Map<String, Any?>): Map<String, Any?> =

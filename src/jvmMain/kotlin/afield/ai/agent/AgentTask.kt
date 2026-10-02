@@ -57,6 +57,21 @@ data class AgentTaskRequest(
     val lessons: String = "",
     /** Withhold [ViewBoxOutputRequest] — the counterfactual for a visual task: can it be done without looking? */
     val blind: Boolean = false,
+    /**
+     * `off` withholds `RunToolProgramRequest` (the tool-program A/B arm); `on` or blank leaves it to
+     * [afield.ai.core.program.ToolPrograms.enabled].
+     */
+    val programs: String = "",
+    /**
+     * `legacy` sends this task's instructions the pre-2026-10-02 way, inside the stored message, instead of
+     * as ephemeral per-request context ([afield.ai.core.TurnContext]): the context-pipeline A/B arm.
+     */
+    val context: String = "",
+    /**
+     * Further user turns, sent in order in the same conversation after the goal's turn finishes. The checks
+     * run after the last. What makes a task multi-turn — the case where instructions used to pile up.
+     */
+    val followUps: List<String> = emptyList(),
 )
 
 /**
@@ -74,6 +89,9 @@ data class AgentTaskRequest(
  * - `output-colour` [box] [text] = `#rrggbb` [fraction] — at least that share of the capture is within 48 of that colour
  * - `output-rising` [box] [text] = `#c1,#c2,…` [fraction] = minimum bar count — the bars drawn in those colours
  *   rise strictly left to right, and (with more than one colour) the last, tallest bar is mostly the last colour
+ * - `effects-absent` / `effects-present` [text] = a [afield.ai.core.ToolEffect] — over every call the turn made,
+ *   a program's nested calls included; a call with undeclared effects fails `effects-absent`
+ * - `tool-used` [text] = a tool name — the turn called it (directly or from a program)
  */
 @Serializable
 data class AgentCheck(
@@ -107,6 +125,11 @@ data class AgentCheck(
                 }
                 "connected" -> AgentCheck(kind, parent = rest.substringBefore(':'), child = rest.substringAfter(':', ""))
                 "output-picture" -> AgentCheck(kind, box = rest)
+                "effects-absent", "effects-present" -> {
+                    afield.ai.core.ToolEffect.valueOf(rest.trim())
+                    AgentCheck(kind, text = rest.trim())
+                }
+                "tool-used" -> AgentCheck(kind, text = rest.trim())
                 "output-colour" -> {
                     val parts = rest.split(':')
                     require(parts.size == 3) { "output-colour:<box>:#rrggbb:<fraction>" }
@@ -136,6 +159,8 @@ data class AgentToolCallRecord(
     /** The tool's own verdict: false when it threw or returned `success: false` / `error: true`. */
     val ok: Boolean,
     val result: String,
+    /** The call this one ran inside — a tool program's — or blank for a call the model made itself. */
+    val parent: String = "",
 )
 
 @Serializable
@@ -156,8 +181,9 @@ data class AgentTaskResult(
     val elapsedMs: Long,
     val inputTokens: Long? = null,
     val outputTokens: Long? = null,
-    /** Of [inputTokens], how many the provider served from its prompt cache; null if unreported. */
-    val cachedInputTokens: Long? = null,
+    /** Input tokens the provider served from its prompt cache (see [afield.ai.core.LlmSendResult.cacheReadTokens]). */
+    val cacheReadTokens: Long? = null,
+    val cacheWriteTokens: Long? = null,
     val documentName: String,
     val createdBoxes: List<String> = emptyList(),
     val setupCalls: List<AgentToolCallRecord> = emptyList(),
@@ -172,6 +198,14 @@ data class AgentTaskResult(
     val lessons: Boolean = false,
     /** The document as file refs spell it (`afield://<documentRef>/<uid>/code`): its directory's name. */
     val documentRef: String = "",
+    /** Whether `RunToolProgramRequest` was offered, how often the model called it, and the calls those programs made. */
+    val programs: Boolean = false,
+    val programCalls: Int = 0,
+    val nestedCalls: Int = 0,
+    /** User turns in the conversation: 1 + [AgentTaskRequest.followUps]. */
+    val turns: Int = 1,
+    /** Where the last turn's instructions went: `instructions`, `system+prefix`, or `inline` (the legacy arm). */
+    val contextPlacement: String = "",
 )
 
 /**
@@ -223,7 +257,9 @@ object AgentTaskRunner {
         )
 
         return try {
-            val ctx = contextFor(info, graph, request.focusBox.ifBlank { null })
+            val ctx = contextFor(info, graph, request.focusBox.ifBlank { null }).let { base ->
+                if (request.programs == "off") base.copy(withheld = base.withheld + afield.ai.core.program.RUN_TOOL_PROGRAM) else base
+            }
 
             if (request.setup.isNotBlank()) {
                 val setup = ScriptedLlmBridge(ScriptedLlmBridge.parse(request.setup), "setup")
@@ -255,31 +291,46 @@ object AgentTaskRunner {
                         .joinToString(", ") { it.name.ifBlank { it.id } }.ifBlank { "(none)" })
                 appendLine("You have at most $budget tool rounds.")
             }
-            val sent = afield.ai.core.IdeChatHelpers(b).chatGeneral(
+            val helpers = afield.ai.core.IdeChatHelpers(b,
+                ephemeralInstructions = request.context != "legacy" && afield.ai.core.ContextPipeline.enabledByDefault)
+            var sent = helpers.chatGeneral(
                 thread, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = prompt, ctx = ctx,
                 maxToolRounds = budget, extraInstructions = extra)
+            for (followUp in request.followUps) {
+                sent = mergeTurns(sent, helpers.chatGeneral(
+                    sent.threadState, code = "", lang = afield.ai.core.KOTLIN_SCRIPT, userPrompt = followUp, ctx = ctx,
+                    maxToolRounds = budget, extraInstructions = extra))
+            }
 
             val shots = HashMap<String, BoxOutputShot>()
-            val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots) }
+            val calls = records(sent)
+            val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots, calls, ctx) }
             val verdict = when {
                 outcomes.isEmpty() -> "unchecked"
                 outcomes.all { it.passed } -> "pass"
                 sent.hitToolRoundCap -> "budget-exhausted"
                 else -> "fail"
             }
-            val calls = records(sent)
             AgentTaskResult(
                 taskId = taskId, goal = request.goal, mode = request.mode,
                 provider = sent.modelIdentity?.provider ?: b.modelIdentity?.provider.orEmpty(),
                 model = sent.modelIdentity?.let { it.responseModel?.takeIf { m -> m.isNotBlank() } ?: it.requestedModel } ?: b.modelIdentity?.requestedModel.orEmpty(),
                 verdict = verdict, checks = outcomes, toolCalls = calls, finalText = sent.text,
                 rounds = sent.rounds, maxToolRounds = budget, hitToolRoundCap = sent.hitToolRoundCap,
-                elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens, cachedInputTokens = sent.cachedInputTokens,
+                elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens,
+                cacheReadTokens = sent.cacheReadTokens, cacheWriteTokens = sent.cacheWriteTokens,
                 documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog,
                 misuseCalls = calls.count(AgentLessons::isMisuse),
-                imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },
+                // Only the model's own calls: a picture a program's nested call took reached the model
+                // only if the program show()ed it, and then it rode on the program's result.
+                imagesSeen = sent.toolTranscript.count { it.parentCallId.isEmpty() && it.resultJson.contains("\"imageAttached\":true") },
                 lessons = graph.lessons,
                 documentRef = java.io.File(info.filename).name,
+                programs = request.programs != "off" && afield.ai.core.program.ToolPrograms.enabled,
+                programCalls = calls.count { it.tool == afield.ai.core.program.RUN_TOOL_PROGRAM },
+                nestedCalls = calls.count { it.parent.isNotEmpty() },
+                turns = 1 + request.followUps.size,
+                contextPlacement = sent.contextReport?.placement ?: "inline",
             )
         } catch (t: Throwable) {
             failure("${t.javaClass.simpleName}: ${t.message}")
@@ -409,11 +460,27 @@ object AgentTaskRunner {
         else -> throw IllegalArgumentException("mode must be 'live' or 'scripted', not '${request.mode}'")
     }
 
+    /** Two consecutive turns of one conversation as one result: counts summed, the later turn's text and thread. */
+    private fun mergeTurns(a: LlmSendResult, b: LlmSendResult): LlmSendResult {
+        fun sum(x: Long?, y: Long?) = if (x == null && y == null) null else (x ?: 0L) + (y ?: 0L)
+        return b.copy(
+            commentary = a.commentary + b.commentary,
+            conversationAdditions = a.conversationAdditions + b.conversationAdditions,
+            toolTranscript = a.toolTranscript + b.toolTranscript,
+            rounds = a.rounds.coerceAtLeast(0) + b.rounds.coerceAtLeast(0),
+            hitToolRoundCap = a.hitToolRoundCap || b.hitToolRoundCap,
+            inputTokens = sum(a.inputTokens, b.inputTokens),
+            outputTokens = sum(a.outputTokens, b.outputTokens),
+            cacheReadTokens = sum(a.cacheReadTokens, b.cacheReadTokens),
+            cacheWriteTokens = sum(a.cacheWriteTokens, b.cacheWriteTokens),
+        )
+    }
+
     private fun records(sent: LlmSendResult): List<AgentToolCallRecord> =
         sent.toolTranscript.mapIndexed { index, entry ->
             val node = runCatching { afield.ai.core.aiToolMapper.readTree(entry.resultJson) }.getOrNull()
             val ok = node == null || !(node.get("success")?.asBoolean(true) == false || node.get("error")?.asBoolean(false) == true)
-            AgentToolCallRecord(index + 1, entry.name, entry.argumentsJson.take(4000), ok, entry.resultJson.take(4000))
+            AgentToolCallRecord(index + 1, entry.name, entry.argumentsJson.take(4000), ok, entry.resultJson.take(4000), parent = entry.parentCallId)
         }
 
     // ---- checks -----------------------------------------------------------------------------
@@ -427,13 +494,39 @@ object AgentTaskRunner {
         BoxOutputLog.since(box.id, marker).entries.filter { it.kind == "out" || it.kind == "display" }
 
     internal fun evaluate(check: AgentCheck, info: SessionInformation, graph: FieldGraphTools, marker: Long,
-                          shots: MutableMap<String, BoxOutputShot> = HashMap()): AgentCheckOutcome {
+                          shots: MutableMap<String, BoxOutputShot> = HashMap(),
+                          calls: List<AgentToolCallRecord>? = null,
+                          ctx: ToolExecutionContext? = null): AgentCheckOutcome {
         fun pass(detail: String) = AgentCheckOutcome(check, true, detail)
         fun fail(detail: String) = AgentCheckOutcome(check, false, detail)
         fun box(token: String): Box? = find(info, token)
         // One capture per box per verdict: several picture checks on one box look at the same pixels.
         fun shot(b: Box): BoxOutputShot = shots.getOrPut(b.id) { graph.captureOutput(b, settleMs = 500) }
+        // The effects a call declared (ToolMeta.kt), looked up in the shared registry plus this task's box tools.
+        fun effectsOf(call: AgentToolCallRecord): Set<afield.ai.core.ToolEffect> =
+            (afield.ai.core.Ai4BackdoorTools.registry.metaOf(ctx ?: ToolExecutionContext(), call.tool) ?: afield.ai.core.ToolMeta.DEFAULT).effects
         return when (check.kind) {
+            "effects-absent", "effects-present" -> {
+                val log = calls ?: return fail("no per-call tool log for this task (a --chat-box task keeps it in the panel)")
+                val effect = afield.ai.core.ToolEffect.valueOf(check.text)
+                val having = log.filter { effect in effectsOf(it) }
+                if (check.kind == "effects-present") {
+                    if (having.isNotEmpty()) pass("${having.size} call(s) with $effect, first ${having.first().tool}")
+                    else fail("no call had $effect (${log.size} calls)")
+                } else {
+                    val undeclared = log.filter { afield.ai.core.ToolEffect.UNDECLARED in effectsOf(it) }
+                    when {
+                        having.isNotEmpty() -> fail("${having.size} call(s) with $effect: " + having.take(3).joinToString { it.tool })
+                        undeclared.isNotEmpty() -> fail("undeclared effects, so $effect cannot be ruled out: " + undeclared.take(3).joinToString { it.tool })
+                        else -> pass("no call had $effect (${log.size} calls)")
+                    }
+                }
+            }
+            "tool-used" -> {
+                val log = calls ?: return fail("no per-call tool log for this task")
+                val hit = log.firstOrNull { it.tool == check.text || it.tool == check.text + "Request" }
+                if (hit != null) pass("call ${hit.index} was ${hit.tool}") else fail("${check.text} was never called (${log.size} calls)")
+            }
             "box-exists" -> box(check.box)?.let { pass("found ${it.id}") } ?: fail("no unique live box '${check.box}'")
             "output-contains" -> {
                 val boxes = if (check.box.isBlank()) info.boxes.values.toList() else listOfNotNull(box(check.box))

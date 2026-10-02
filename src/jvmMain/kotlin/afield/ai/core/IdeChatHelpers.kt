@@ -2,10 +2,17 @@ package afield.ai.core
 
 class IdeChatHelpers(
     private val bridge: LlmBridge,
-    private val log: LogSink = StdoutLog
+    private val log: LogSink = StdoutLog,
+    /**
+     * Send the instructions as ephemeral per-request context ([TurnContext]) rather than inside the stored
+     * message. Off puts every turn back on the one-string prompt; an agent task's `context=legacy` is the A/B arm.
+     */
+    private val ephemeralInstructions: Boolean = ContextPipeline.enabledByDefault
 ) {
     /** Backward-compatible constructor: existing call sites pass the concrete OpenAI bridge. */
     constructor(bridge: OpenAiIdeCodexBridge, log: LogSink = StdoutLog) : this(OpenAiLlmBridge(bridge), log)
+
+    private fun turn(fragments: List<ContextFragment>, rest: String) = TurnContext(fragments, rest)
 
     private fun info(message: String) = log.log("info,ai.chat", message)
 
@@ -31,7 +38,8 @@ class IdeChatHelpers(
         val commentary: List<String>,
         val rawResponseId: String,
         val threadState: OpenAiIdeCodexBridge.ThreadState,
-        val toolTranscript: List<OpenAiIdeCodexBridge.ToolTranscriptEntry> = emptyList()
+        val toolTranscript: List<OpenAiIdeCodexBridge.ToolTranscriptEntry> = emptyList(),
+        val contextReport: ContextReport? = null
     )
 
     fun chatFile(
@@ -96,23 +104,18 @@ class IdeChatHelpers(
             fieldGraph = fieldGraph
         )
 
-        val instructions = buildDynamicInstructions(
-            mode = InstructionMode.General,
-            lang = lang,
-            userPrompt = userPrompt,
-            errorMessage = null,
-            lineNumber = null,
-            ctx = ctx
+        val tc = turn(
+            buildInstructionFragments(InstructionMode.General, lang, userPrompt, null, null, ctx),
+            "$userPrompt\n\n${lang.wrap(code)}"
         )
-
-        val wrapped = lang.wrap(code)
         val result = bridge.send(
             state,
-            "$instructions\n\n$userPrompt\n\n$wrapped",
+            tc.legacyPrompt(),
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta,
-            onProgress = onProgress
+            onProgress = onProgress,
+            turnContext = tc.takeIf { ephemeralInstructions }
         )
         val unwrapped = lang.unwrap(result.text)
 
@@ -124,7 +127,8 @@ class IdeChatHelpers(
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
             threadState = result.threadState,
-            toolTranscript = result.toolTranscript
+            toolTranscript = result.toolTranscript,
+            contextReport = result.contextReport
         )
     }
 
@@ -216,33 +220,15 @@ class IdeChatHelpers(
         onTextDelta: ((String) -> Unit)? = null,
         onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
     ): OpenAiIdeCodexBridge.SendResult {
-        val instructions = buildDynamicInstructions(
-            mode = InstructionMode.Chat,
-            lang = lang,
-            userPrompt = userPrompt,
-            errorMessage = null,
-            lineNumber = null,
-            ctx = ctx
-        )
-
         val attachmentNote = attachmentContextNote(ctx.attachments)
-        val prompt = buildString {
-            append(instructions)
-            if (extraInstructions.isNotBlank()) {
-                append("\n\n")
-                append(extraInstructions)
-            }
-            if (attachmentNote.isNotBlank()) {
-                append("\n\n")
-                append(attachmentNote)
-            }
-            append("\n\n")
-            append(userPrompt)
-        }
+        val fragments = buildInstructionFragments(InstructionMode.Chat, lang, userPrompt, null, null, ctx).toMutableList()
+        if (extraInstructions.isNotBlank()) fragments += ContextFragment("extra", "\n\n$extraInstructions")
+        if (attachmentNote.isNotBlank()) fragments += ContextFragment("attachments", "\n\n$attachmentNote", stability = Stability.VOLATILE)
+        val tc = turn(fragments, userPrompt)
 
         return bridge.send(
             state,
-            prompt,
+            tc.legacyPrompt(),
             fileText = code,
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
@@ -250,7 +236,8 @@ class IdeChatHelpers(
             onTextDelta = onTextDelta,
             onProgress = onProgress,
             maxOutputTokens = 10000,
-            maxToolRounds = maxToolRounds
+            maxToolRounds = maxToolRounds,
+            turnContext = tc.takeIf { ephemeralInstructions }
         )
     }
 
@@ -317,27 +304,22 @@ class IdeChatHelpers(
             fieldGraph = fieldGraph
         )
 
-        val instructions = buildDynamicInstructions(
-            mode = InstructionMode.Inline,
-            lang = lang,
-            userPrompt = userPrompt,
-            errorMessage = null,
-            lineNumber = lineNumber,
-            ctx = ctx
-        )
+        val fragments = buildInstructionFragments(InstructionMode.Inline, lang, userPrompt, null, lineNumber, ctx)
 
         val wrappedLines = lang.wrap(code).split("\n").toMutableList()
         val insertAt = (lineNumber + 1).coerceIn(0, wrappedLines.size)
         wrappedLines.add(insertAt, "<help>")
         val withHelp = wrappedLines.joinToString("\n")
 
+        val tc = turn(fragments, withHelp)
         val result = bridge.send(
             state,
-            "$instructions\n\n$withHelp",
+            tc.legacyPrompt(),
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta,
-            onProgress = onProgress
+            onProgress = onProgress,
+            turnContext = tc.takeIf { ephemeralInstructions }
         )
         val unwrapped = lang.unwrap(result.text)
 
@@ -349,7 +331,8 @@ class IdeChatHelpers(
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
             threadState = result.threadState,
-            toolTranscript = result.toolTranscript
+            toolTranscript = result.toolTranscript,
+            contextReport = result.contextReport
         )
     }
 
@@ -415,23 +398,15 @@ class IdeChatHelpers(
             fieldGraph = fieldGraph
         )
 
-        val instructions = buildDynamicInstructions(
-            mode = InstructionMode.Error,
-            lang = lang,
-            userPrompt = null,
-            errorMessage = errorMessage,
-            lineNumber = null,
-            ctx = ctx
-        )
-
-        val wrapped = lang.wrap(code)
+        val tc = turn(buildInstructionFragments(InstructionMode.Error, lang, null, errorMessage, null, ctx), lang.wrap(code))
         val result = bridge.send(
             state,
-            "$instructions\n\n$wrapped",
+            tc.legacyPrompt(),
             ctx = ctx,
             vectorStoreIds = vectorStoreIds,
             onTextDelta = onTextDelta,
-            onProgress = onProgress
+            onProgress = onProgress,
+            turnContext = tc.takeIf { ephemeralInstructions }
         )
         val unwrapped = lang.unwrap(result.text)
 
@@ -443,7 +418,8 @@ class IdeChatHelpers(
             commentary = result.commentary,
             rawResponseId = result.rawResponseId,
             threadState = result.threadState,
-            toolTranscript = result.toolTranscript
+            toolTranscript = result.toolTranscript,
+            contextReport = result.contextReport
         )
     }
 }
