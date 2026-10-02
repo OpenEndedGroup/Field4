@@ -484,7 +484,10 @@ class CsoundInstance(
 
     // ---- messages from Csound ---------------------------------------------------------------
 
-    /** Call [callback] with every whole line Csound prints. Delivered by [poll]. */
+    /**
+     * Call [callback] with every whole line Csound prints, except its routine end-of-performance
+     * chatter ([isRoutineChatter]), which only [console] keeps. Delivered by [poll].
+     */
     fun onMessage(callback: (String) -> Unit): Closeable {
         listeners += callback
         return Closeable { listeners -= callback }
@@ -536,6 +539,7 @@ class CsoundInstance(
         lines += drainMessages()
         for (l in lines) {
             remember(l)
+            if (isRoutineChatter(l)) continue   // kept in [console], not shown
             for (cb in listeners) runCatching { cb(l) }
         }
         return lines.size + n
@@ -682,6 +686,30 @@ class CsoundInstance(
         fun normalise(text: String): String {
             val leading = text.lines().takeWhile { it.isBlank() }.size.coerceAtMost(text.lines().size - 1)
             return "\n".repeat(leading) + text.trimIndent() + "\n"
+        }
+
+        private val CHATTER = listOf(
+            Regex("""^Score finished in csoundPerformKsmps\(\)( with \d+)?\.?$"""),
+            Regex("""^SECTION \d+:$"""),
+            Regex("""^end of (score|section \d+)\.?.*$"""),
+            Regex("""^new alloc for instr .*$"""),
+            Regex("""^inactive allocs returned to freespace$"""),
+            Regex("""^overall amps:.*$"""),
+            Regex("""^\s*overall samples out of range:.*$"""),
+            Regex("""^\d+ errors in performance$"""),
+            Regex("""^\s*B\s+[\d.]+\s+(\.\.|-)\s*[\d.]+\s+T\s+[\d.]+.*$"""),
+            Regex("""^\s*rtevent:\s+T\s+[\d.]+.*$"""),
+        )
+
+        /**
+         * Csound's routine report on a performance going as planned — "Score finished in
+         * csoundPerformKsmps() with 2.", "SECTION 1:", section and score ends, allocation notes, the
+         * per-section amplitude lines. Warnings, errors and everything an orchestra prints itself
+         * (`prints`, `printks`) are not chatter.
+         */
+        fun isRoutineChatter(line: String): Boolean {
+            val t = line.trim()
+            return t.isEmpty() || CHATTER.any { it.matches(t) }
         }
 
         /** Lines of CSD wrapping before the orchestra's first line. */

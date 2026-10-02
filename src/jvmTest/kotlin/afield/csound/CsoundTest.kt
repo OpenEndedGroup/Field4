@@ -204,4 +204,41 @@ class CsoundTest {
         assertEquals(listOf(CsoundInstance.Problem("Parsing failed due to 1 syntax error!\nStopping on parser failure", -1)),
             CsoundInstance.problemsIn(listOf("Parsing failed due to 1 syntax error!", "Stopping on parser failure")))
     }
+
+    @Test fun routineChatterIsDroppedAndWarningsAndPrintsAreKept() {
+        val dropped = listOf(
+            "Score finished in csoundPerformKsmps() with 2.",
+            "SECTION 1:",
+            "end of score.\t\t   overall amps:  0.25000  0.25000",
+            "new alloc for instr Pluck:",
+            "inactive allocs returned to freespace",
+            "overall amps:  0.24998  0.24998",
+            "\t   overall samples out of range:        0        0",
+            "0 errors in performance",
+            " B  0.000 ..  1.000 T  1.000 TT  1.000 M:  0.25000  0.25000",
+            "rtevent:\t   T  0.500 TT  0.500 M:  0.00000  0.00000",
+            "",
+        )
+        val kept = listOf(
+            "WARNING: instr Pluck not found",
+            "INIT ERROR in instr 1 (opcode poscil.kk) line 3: table not found",
+            "hello from csound",
+            "level 0.033",
+            "Key 62",
+        )
+        for (l in dropped) assertTrue(CsoundInstance.isRoutineChatter(l), "should drop: $l")
+        for (l in kept) assertTrue(!CsoundInstance.isRoutineChatter(l), "should keep: $l")
+    }
+
+    @Test fun printedLinesStillReachTheCallbackButTheScoreEndDoesNot() {
+        if (!available()) return
+        val lines = ArrayList<String>()
+        CsoundInstance("instr 1\n prints \"hello\\n\"\nendin", "i1 0 0.1").use { cs ->
+            cs.onMessage { lines += it }
+            cs.renderOffline()
+            assertTrue(cs.console.any { it.startsWith("Score finished") }, "the console keeps everything: ${cs.console}")
+        }
+        assertTrue(lines.contains("hello"), "$lines")
+        assertTrue(lines.none { it.startsWith("Score finished") }, "$lines")
+    }
 }

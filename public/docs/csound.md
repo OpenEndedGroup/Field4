@@ -45,7 +45,7 @@ instr Pluck                       ; p4 MIDI note, p5 level in dBFS
   kcut  chnget    "cutoff"
   asig  butterlp  asig, kcut
   aenv  linsegr   1, p3, 1, 0.3, 0
-        outs      asig * aenv, asig * aenv
+  outs      asig * aenv, asig * aenv
 endin
 </CsInstruments>
 <CsScore>
@@ -136,6 +136,31 @@ Rest the cursor on a line to see its note:
 The event count comes from the score text, so events sent later with Alt-Enter or from Kotlin are
 not counted.
 
+With the cursor on `instr Pluck`, the note at the editor's foot counts the score's events for it:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/csound/line-note-instr.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/csound_line_notes.yaml" capture-box="csound_doc_pluck" padding="10" wait="0" timeout="120" embed=true hidden=true name="csound-line-note-instr" alt="The Pluck .csd in Field's editor with the cursor on line 5, instr Pluck. At the editor's foot the line note reads instr Pluck: 3 events in the score, and under it, lines 15, 16, 17."}
+ui.openEditor("csound_doc_pluck")
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.pause(1000)
+ui.editorHeight(470)
+ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 5, column: 1}); e.revealLine(5); return 'ok';")
+ui.waitForSelector(".afield-line-note", 10000.0)
+ui.pause(600)
+```
+
+On a score line it names the instrument the line plays and where that is defined. The `.` on line
+16 carries `"Pluck"` down from the line above:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="editor" clip-selector=".monaco-editor-container" screenshot="assets/csound/line-note-score.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/csound_line_notes.yaml" capture-box="csound_doc_pluck" padding="10" wait="0" timeout="120" embed=true hidden=true name="csound-line-note-score" alt="The same .csd with the cursor on line 16, the score line i . + . 60 . At the editor's foot the line note reads plays instr Pluck · line 5, with Alt-Enter sends it now under it."}
+ui.openEditor("csound_doc_pluck")
+ui.waitForSelector(".monaco-editor", 15000.0)
+ui.pause(1000)
+ui.editorHeight(470)
+ui.eval("var e = window.globalEditor; e.focus(); e.setPosition({lineNumber: 16, column: 1}); e.revealLine(16); return 'ok';")
+ui.waitForSelector(".afield-line-note", 10000.0)
+ui.pause(600)
+```
+
 ### Errors
 
 ```diffstatic_runner {data-lang=csound screenshot="assets/csound/error.png" capture="editor" outputs="inline" expect-error=true requires="csound" wait="4" padding="10" timeout="180" embed=true name="csound-error" w="900" h="300" alt="A Csound box whose instr Beep uses oscilx. Under that line, on line 4, one red marker holds Csound's whole diagnostic: Unable to find opcode entry for 'oscilx' with matching argument types:, then Found: a oscilx cc, then asig oscilx 0.2 …. Nothing is repeated below the box."}
@@ -143,7 +168,7 @@ not counted.
 <CsInstruments>
 instr Beep
   asig  oscilx  0.2, 440
-        outs    asig, asig
+  outs    asig, asig
 endin
 </CsInstruments>
 <CsScore>

@@ -19,31 +19,31 @@ instr Pluck                             ; p4 MIDI note, p5 level in dBFS
   asig  butterlp  asig, kcut
   aenv  linsegr   1, p3, 1, 0.3, 0
   asig  =         asig * aenv
-        chnmix    asig * 0.25, "reverb"
-        outs      asig, asig
+  chnmix    asig * 0.25, "reverb"
+  outs      asig, asig
 endin
 
 instr Key
   inote notnum
-        prints    "Key %d\n", inote
+  prints    "Key %d\n", inote
   icps  cpsmidi
   iamp  ampmidi   0.3
   asig  pluck     iamp, icps, icps, 0, 1
   aenv  madsr     0.005, 0.1, 0.6, 0.4
-        chnmix    asig * aenv * 0.25, "reverb"
-        outs      asig * aenv, asig * aenv
+  chnmix    asig * aenv * 0.25, "reverb"
+  outs      asig * aenv, asig * aenv
 endin
 
 instr Reverb
   ain     chnget    "reverb"
   aL, aR  reverbsc  ain, ain, 0.85, 10000
-          outs      aL, aR
-          chnclear  "reverb"
+  outs      aL, aR
+  chnclear  "reverb"
   krms    rms       aL + ain
-          chnset    krms, "level"
-          outvalue  "level", krms
+  chnset    krms, "level"
+  outvalue  "level", krms
   Svoice  chnget    "voice"
-          outvalue  "said", Svoice
+  outvalue  "said", Svoice
 endin
 </CsInstruments>
 <CsScore>
