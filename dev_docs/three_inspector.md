@@ -6,7 +6,7 @@
 | the Kotlin surface | `src/jvmMain/kotlin/afield/graphics/ThreeJsInspector.kt` |
 | the payload | `src/jvmMain/kotlin/afield/graphics/ThreeJsViewer.kt` |
 | the harness | `src/jvmTest/kotlin/afield/graphics/ViewerJavaScript.kt` |
-| the demo | `public/docs/assets/three_inspector_demo/metadata.edn` |
+| the demo | `dev_docs/agents/transcripts/three_inspector_wall.yaml` (a starting point; bundle in `public/docs/assets/agent_transcripts/three_inspector_wall/`) |
 | the user-facing docs | `public/docs/fline_examples.md`, "The 3D output area as an instrument" |
 
 ## Why

@@ -17,6 +17,7 @@ from build_zensical_docs import (  # noqa: E402
     tetgen_library_path,
     dirt_samples_root_path,
     libpd_library_path,
+    csound_library_path,
     jep_python_candidates,
     resolve_jep_python,
 )
@@ -174,6 +175,27 @@ class LibpdLibraryPathTests(unittest.TestCase):
         resolve, how_to_build = NATIVE_PREREQUISITES["libpd"]
         self.assertIs(resolve, libpd_library_path)
         self.assertEqual("./gradlew buildLibpdNative", how_to_build)
+
+
+class CsoundLibraryPathTests(unittest.TestCase):
+    """libpd's properties for libcsound, kept in step with `afield.csound.CsoundLibrary.searchedPaths`."""
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_CSOUND_LIBRARY"] = "/somewhere/libcsound64.so"
+        self.addCleanup(os.environ.pop, "AFIELD_CSOUND_LIBRARY", None)
+        self.assertEqual(csound_library_path(Path("/repo")), Path("/somewhere/libcsound64.so"))
+
+    def test_the_default_is_where_build_csound_native_writes(self):
+        os.environ.pop("AFIELD_CSOUND_LIBRARY", None)
+        resolved = csound_library_path(Path("/nonexistent-repo"))
+        if sys.platform.startswith("win"):
+            return
+        self.assertTrue(str(resolved).startswith("/nonexistent-repo/build/field-csound/build/"), resolved)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["csound"]
+        self.assertIs(resolve, csound_library_path)
+        self.assertEqual("./gradlew buildCsoundNative", how_to_build)
 
 
 class NativePrerequisiteTests(unittest.TestCase):

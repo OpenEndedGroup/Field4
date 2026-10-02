@@ -43,7 +43,15 @@ data class Bookmark(
     val editedProperty: String? = null,
     val cursorLine: Int? = null,
     val cursorColumn: Int? = null,
-    val nestingState: Map<String, NestingInfo>? = null
+    val nestingState: Map<String, NestingInfo>? = null,
+    /** box uid -> output channel -> open. Channels absent here are left alone on restore. */
+    val outputAreaState: Map<String, Map<String, Boolean>>? = null,
+    /** Restore the canvas pan. */
+    val restoreView: Boolean = true,
+    /** Restore the selected box, the property open in Monaco and the cursor. */
+    val restoreSelection: Boolean = true,
+    /** Also close every output panel the bookmark did not record (not just recorded-closed ones). */
+    val closeUnrecordedOutputs: Boolean = false
 )
 
 @Serializable
@@ -142,6 +150,74 @@ fun captureNestingState(): Map<String, NestingInfo> {
     return state
 }
 
+private fun disclosureApiFor(box: HTMLElement): dynamic {
+    val contain = box.querySelector(".outputArea .disclosure-group") ?: return null
+    val di = js("window.disclosureInterface") ?: return null
+    return di(contain)
+}
+
+/**
+ * Captures the open/closed state of every output channel of every box. The "nested"
+ * disclosure is left to [captureNestingState].
+ */
+fun captureOutputAreaState(): Map<String, Map<String, Boolean>> {
+    val state = mutableMapOf<String, Map<String, Boolean>>()
+    try {
+        val boxes = document.body?.getElementsByClassName("box")?.asList() ?: emptyList()
+        boxes.forEach { rawBox ->
+            val box = rawBox as? HTMLElement ?: return@forEach
+            val uid = box.asDynamic().uid as? String ?: return@forEach
+            val inter = disclosureApiFor(box) ?: return@forEach
+            val ids = (inter.ids() as Array<String>).filter { it != "nested" }
+            if (ids.isEmpty()) return@forEach
+            state[uid] = ids.associateWith { inter.isOpen(it) as Boolean }
+        }
+    } catch (e: dynamic) {
+        console.warn("Error capturing output area state:", e)
+    }
+    return state
+}
+
+/**
+ * Opens or closes the recorded output channels. Channels and boxes the bookmark does not
+ * mention, and recorded channels that no longer exist, are left untouched.
+ */
+fun restoreOutputAreaState(state: Map<String, Map<String, Boolean>>, closeUnrecorded: Boolean = false) {
+    try {
+        if (closeUnrecorded) {
+            val boxes = document.body?.getElementsByClassName("box")?.asList() ?: emptyList()
+            boxes.forEach { rawBox ->
+                val box = rawBox as? HTMLElement ?: return@forEach
+                val uid = box.asDynamic().uid as? String ?: return@forEach
+                val inter = disclosureApiFor(box) ?: return@forEach
+                val recorded = state[uid].orEmpty()
+                (inter.ids() as Array<String>).forEach { channel ->
+                    if (channel != "nested" && channel !in recorded && inter.isOpen(channel) as Boolean) {
+                        inter.close(channel)
+                    }
+                }
+            }
+        }
+        state.forEach { (boxId, channels) ->
+            val box = findBoxByUid(boxId) ?: return@forEach
+            val inter = disclosureApiFor(box) ?: return@forEach
+            val existing = (inter.ids() as Array<String>).toSet()
+            channels.forEach { (channel, open) ->
+                if (channel !in existing || channel == "nested") return@forEach
+                if (open == (inter.isOpen(channel) as Boolean)) return@forEach
+                if (open) {
+                    (box.querySelector(".outputArea") as? HTMLElement)?.style?.visibility = "visible"
+                    inter.open(channel)
+                } else {
+                    inter.close(channel)
+                }
+            }
+        }
+    } catch (e: dynamic) {
+        console.warn("Error restoring output area state:", e)
+    }
+}
+
 /**
  * Captures complete current state as a bookmark
  */
@@ -158,7 +234,8 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
         editedProperty = captureEditedProperty(),
         cursorLine = cursor?.first,
         cursorColumn = cursor?.second,
-        nestingState = captureNestingState()
+        nestingState = captureNestingState(),
+        outputAreaState = captureOutputAreaState()
     )
 }
 
@@ -268,10 +345,16 @@ fun restoreBookmark(bookmark: Bookmark) {
         bookmarkDebug(bookmark.toString())
 
         // Restore scroll position
-        bookmark.scrollPosition?.let { restoreScrollPosition(it) }
+        if (bookmark.restoreView) bookmark.scrollPosition?.let { restoreScrollPosition(it) }
 
         // Restore nesting state first (before selecting boxes)
         bookmark.nestingState?.let { restoreNestingState(it) }
+        restoreOutputAreaState(bookmark.outputAreaState.orEmpty(), bookmark.closeUnrecordedOutputs)
+
+        if (!bookmark.restoreSelection) {
+            notify("Restored ${bookmark.name}", "bookmarks")
+            return
+        }
 
         // Restore selected box and edited property
         bookmark.selectedBox?.let { boxId ->
@@ -358,13 +441,23 @@ fun saveBookmarkSlot(bookmarkNumber: Int) {
 
     try {
         val bookmarkData = loadBookmarks()
-        val newBookmark = captureBookmark(bookmarkNumber)
+        val previous = bookmarkData.bookmarks.find { it.id == "bookmark_$bookmarkNumber" }
+        // Re-saving a slot keeps its name and options; only the captured state changes.
+        val newBookmark = captureBookmark(bookmarkNumber).let { fresh ->
+            if (previous == null) fresh else fresh.copy(
+                name = previous.name,
+                restoreView = previous.restoreView,
+                restoreSelection = previous.restoreSelection,
+                closeUnrecordedOutputs = previous.closeUnrecordedOutputs
+            )
+        }
 
         // Remove existing bookmark with same id, then add new one
         val updatedBookmarks = bookmarkData.bookmarks.filter { it.id != newBookmark.id } + newBookmark
 
         saveBookmarks(BookmarkData(version = 1, bookmarks = updatedBookmarks))
-        notify("Saved Bookmark $bookmarkNumber", "bookmarks")
+        notify("Saved ${newBookmark.name}", "bookmarks")
+        refreshBookmarksPanel()
     } catch (e: dynamic) {
         console.warn("Error saving bookmark slot:", e)
         notify("Error saving bookmark", "error")
@@ -406,6 +499,17 @@ fun registerBookmarkShortcuts() {
     fun handler(event: dynamic) {
         // Matched here rather than via canvasKeybinding because this listener runs in the capture
         // phase, so the F-keys reach us even when Monaco has focus.
+        // Both listeners below see a real keystroke; handle it once (a toggle run twice is a no-op).
+        if (event.__fieldBookmarkHandled == true) return
+        event.__fieldBookmarkHandled = true
+        if (Keybindings.matches(event, "show-bookmarks")) {
+            // Consumed, as the drawing layer's Alt+D is: the palette action shares this id, and a
+            // rebinding in keybindings.yaml would otherwise also fire it from the canvas.
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            toggleBookmarksPanel()
+            return
+        }
         for (slot in 1..9) {
             if (Keybindings.matches(event, "save-bookmark-$slot")) {
                 event.preventDefault()
@@ -450,6 +554,14 @@ fun registerBookmarkActions() {
         bookmarkActions.push(restoreAction)
     }
 
+    val panelAction = js("{}")
+    panelAction.id = "show-bookmarks"
+    panelAction.label = "Show Bookmarks"
+    panelAction.detail = "List the saved bookmarks, with their options and save/restore buttons"
+    // No `keys`: alt+b is matched in registerBookmarkShortcuts, like the F-keys.
+    panelAction.run = { toggleBookmarksPanel() }
+    bookmarkActions.push(panelAction)
+
     // Add to builtin actions
     val existingBuiltin = allActions.builtin ?: js("[]")
     for (i in 0 until bookmarkActions.length) {
@@ -473,4 +585,230 @@ fun initializeBookmarkSystem() {
     registerBookmarkActions()
 
     console.info("[bookmarks] initialized")
+}
+
+// ── Bookmarks panel ─────────────────────────────────────────────────────────────────────────
+
+private var bookmarksPanel: FieldPanel? = null
+private var bookmarksPanelTimer: Int? = null
+private var bookmarksPanelRenderedJson: String? = null
+
+private fun ensureBookmarksPanel(): FieldPanel = bookmarksPanel ?: FieldPanel("bookmarks-panel", "Bookmarks") {
+    bookmarksPanelTimer?.let { window.clearInterval(it) }
+    bookmarksPanelTimer = null
+}.also { bookmarksPanel = it }
+
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun toggleBookmarksPanel() {
+    val panel = ensureBookmarksPanel()
+    if (panel.isVisible) {
+        panel.hide()
+        return
+    }
+    panel.show()
+    refreshBookmarksPanel(force = true)
+    // Another client (or an undo) can change the root's bookmarks; re-render when the JSON moves.
+    bookmarksPanelTimer = window.setInterval({ refreshBookmarksPanel() }, 1000)
+}
+
+private fun currentBookmarksJson(): String =
+    (document.body?.getElementsByClassName("box")?.asList()
+        ?.firstOrNull { it.asDynamic().uid == "root" }?.asDynamic()?.bookmarks as? String)
+        ?: cachedBookmarksJson ?: ""
+
+fun refreshBookmarksPanel(force: Boolean = false) {
+    val panel = bookmarksPanel ?: return
+    if (!panel.isVisible) return
+    val jsonNow = currentBookmarksJson()
+    if (!force && jsonNow == bookmarksPanelRenderedJson) return
+    // Never pull a name field out from under the user while they type in it.
+    if (!force && panel.root.contains(document.activeElement) && document.activeElement?.tagName == "INPUT") return
+    bookmarksPanelRenderedJson = jsonNow
+
+    val slots = loadBookmarks().bookmarks.associateBy { it.id }
+    panel.status.textContent = "${slots.size} of 9 slots saved · Shift+F1–F9 restores, Cmd+Shift+F1–F9 saves"
+    panel.body.innerHTML = ""
+    for (slot in 1..9) {
+        panel.body.appendChild(bookmarkCard(slot, slots["bookmark_$slot"]))
+    }
+}
+
+private fun updateBookmark(slot: Int, change: (Bookmark) -> Bookmark) {
+    val data = loadBookmarks()
+    saveBookmarks(data.copy(bookmarks = data.bookmarks.map { if (it.id == "bookmark_$slot") change(it) else it }))
+    refreshBookmarksPanel(force = true)
+}
+
+private fun deleteBookmark(slot: Int) {
+    val data = loadBookmarks()
+    saveBookmarks(data.copy(bookmarks = data.bookmarks.filter { it.id != "bookmark_$slot" }))
+    refreshBookmarksPanel(force = true)
+}
+
+private fun panelButton(label: String, title: String, action: () -> Unit): HTMLElement =
+    FieldPanel.el("button", text = label).also {
+        it.setAttribute("type", "button")
+        it.title = title
+        it.addEventListener("click", { action() })
+    }
+
+private fun bookmarkCard(slot: Int, bookmark: Bookmark?): HTMLElement {
+    val el = FieldPanel::el
+    val card = el("div", "field-panel-card" + if (bookmark == null) " is-empty" else "", null)
+    val head = el("div", "field-panel-card-head", null)
+    head.appendChild(el("span", "field-panel-pill" + if (bookmark != null) " is-accent" else "", "F$slot"))
+    if (bookmark == null) {
+        head.appendChild(el("span", "field-panel-meta", "empty"))
+        head.appendChild(el("span", "", ""))
+    } else {
+        val name = document.createElement("input") as org.w3c.dom.HTMLInputElement
+        name.type = "text"
+        name.value = bookmark.name
+        name.title = "Rename this bookmark"
+        name.addEventListener("change", {
+            val next = name.value.trim().ifEmpty { "Bookmark $slot" }
+            updateBookmark(slot) { it.copy(name = next) }
+        })
+        name.addEventListener("keydown", { event -> if (event.asDynamic().key == "Enter") name.blur() })
+        head.appendChild(name)
+        head.appendChild(el("span", "field-panel-meta", savedAgo(bookmark.timestamp)))
+    }
+    val actions = el("div", "field-panel-actions", null)
+    if (bookmark != null) {
+        actions.appendChild(panelButton("Restore", "Restore this bookmark (Shift+F$slot)") { restoreBookmarkSlot(slot) })
+    }
+    actions.appendChild(panelButton(if (bookmark == null) "Save here" else "Save", "Save the current view to slot $slot (Cmd+Shift+F$slot)") { saveBookmarkSlot(slot) })
+    if (bookmark != null) {
+        actions.appendChild(panelButton("×", "Delete this bookmark") { deleteBookmark(slot) })
+    }
+    head.appendChild(actions)
+    card.appendChild(head)
+    if (bookmark == null) return card
+
+    val detail = el("div", "bookmark-detail", null)
+    detail.appendChild(bookmarkMinimap(bookmark))
+    val summary = el("div", "bookmark-summary", null)
+    fun line(label: String, value: String) {
+        val l = el("div", "bookmark-summary-line", "$label ")
+        l.appendChild(el("strong", "", value))
+        summary.appendChild(l)
+    }
+    bookmark.scrollPosition?.let { line("view", "(${it.x.toInt()}, ${it.y.toInt()})") }
+    val selected = bookmark.selectedBox?.let { boxLabel(it) }
+    when {
+        selected == null -> line("selection", "none")
+        bookmark.editedProperty != null -> line(
+            "editing",
+            "${bookmark.editedProperty} of $selected" + (bookmark.cursorLine?.let { ", line $it" } ?: "")
+        )
+        else -> line("selected", selected)
+    }
+    val outputs = bookmark.outputAreaState.orEmpty()
+    val open = outputs.values.sumOf { channels -> channels.count { it.value } }
+    val closed = outputs.values.sumOf { channels -> channels.count { !it.value } }
+    line("output panels", "$open open, $closed closed")
+    val pills = el("div", "bookmark-pills", null)
+    outputs.forEach { (uid, channels) ->
+        channels.filter { it.value }.keys.forEach { channel ->
+            pills.appendChild(el("span", "field-panel-pill", "${boxLabel(uid)} · $channel"))
+        }
+    }
+    if (pills.childElementCount > 0) summary.appendChild(pills)
+    detail.appendChild(summary)
+    card.appendChild(detail)
+
+    val options = el("div", "bookmark-options", null)
+    fun option(label: String, title: String, value: Boolean, change: (Bookmark, Boolean) -> Bookmark) {
+        val wrap = el("label", "field-panel-toggle", null)
+        wrap.title = title
+        val box = document.createElement("input") as org.w3c.dom.HTMLInputElement
+        box.type = "checkbox"
+        box.checked = value
+        box.addEventListener("change", { updateBookmark(slot) { change(it, box.checked) } })
+        wrap.appendChild(box)
+        wrap.appendChild(el("span", "", label))
+        options.appendChild(wrap)
+    }
+    option("restore view", "Pan the canvas back to where it was", bookmark.restoreView) { b, v -> b.copy(restoreView = v) }
+    option("restore selection", "Reselect the box and reopen its editor and cursor", bookmark.restoreSelection) { b, v -> b.copy(restoreSelection = v) }
+    option(
+        "close unrecorded panels",
+        "Also close output panels that did not exist when this bookmark was saved",
+        bookmark.closeUnrecordedOutputs
+    ) { b, v -> b.copy(closeUnrecordedOutputs = v) }
+    card.appendChild(options)
+    return card
+}
+
+private fun boxLabel(uid: String): String {
+    val box = findBoxByUid(uid) ?: return "missing box"
+    return (box.asDynamic().name as? String)?.trim()?.takeIf { it.isNotEmpty() } ?: uid.take(8)
+}
+
+private fun savedAgo(timestamp: Double): String {
+    val seconds = ((js("Date.now()") as Double) - timestamp) / 1000.0
+    return when {
+        seconds < 60 -> "just now"
+        seconds < 3600 -> "${(seconds / 60).toInt()} min ago"
+        seconds < 86400 -> "${(seconds / 3600).toInt()} h ago"
+        else -> js("new Date(timestamp).toLocaleDateString()") as String
+    }
+}
+
+/**
+ * The document's boxes as they stand now, with the rectangle the bookmark's pan would show at
+ * the current zoom and window size. Boxes with a recorded-open panel are lighter; the selected
+ * box takes the accent.
+ */
+private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
+    val ns = "http://www.w3.org/2000/svg"
+    val svg = document.createElementNS(ns, "svg")
+    svg.setAttribute("class", "bookmark-map")
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet")
+    data class R(val x: Double, val y: Double, val w: Double, val h: Double, val uid: String?)
+    val rects = mutableListOf<R>()
+    (document.body?.getElementsByClassName("box")?.asList() ?: emptyList()).forEach { raw ->
+        val box = raw as? HTMLElement ?: return@forEach
+        val uid = box.asDynamic().uid as? String ?: return@forEach
+        if (uid == "root") return@forEach
+        val r = box.getBoundingClientRect()
+        if (r.width <= 0.0 || r.height <= 0.0) return@forEach
+        rects += R(
+            (r.left - mainTranslation[0]) / mainZoom, (r.top - mainTranslation[1]) / mainZoom,
+            r.width / mainZoom, r.height / mainZoom, uid
+        )
+    }
+    val view = bookmark.scrollPosition?.let {
+        R(-it.x / mainZoom, -it.y / mainZoom, window.innerWidth / mainZoom, window.innerHeight / mainZoom, null)
+    }
+    val all = rects + listOfNotNull(view)
+    if (all.isEmpty()) return svg
+    val minX = all.minOf { it.x }
+    val minY = all.minOf { it.y }
+    val maxX = all.maxOf { it.x + it.w }
+    val maxY = all.maxOf { it.y + it.h }
+    val pad = maxOf(maxX - minX, maxY - minY) * 0.04
+    svg.setAttribute("viewBox", "${minX - pad} ${minY - pad} ${maxX - minX + 2 * pad} ${maxY - minY + 2 * pad}")
+    val openBoxes = bookmark.outputAreaState.orEmpty().filterValues { channels -> channels.values.any { it } }.keys
+    rects.forEach { r ->
+        val rect = document.createElementNS(ns, "rect")
+        rect.setAttribute("x", "${r.x}"); rect.setAttribute("y", "${r.y}")
+        rect.setAttribute("width", "${r.w}"); rect.setAttribute("height", "${r.h}")
+        val cls = buildString {
+            append("bm-box")
+            if (r.uid in openBoxes) append(" has-open")
+            if (r.uid == bookmark.selectedBox) append(" is-selected")
+        }
+        rect.setAttribute("class", cls)
+        svg.appendChild(rect)
+    }
+    view?.let { v ->
+        val rect = document.createElementNS(ns, "rect")
+        rect.setAttribute("x", "${v.x}"); rect.setAttribute("y", "${v.y}")
+        rect.setAttribute("width", "${v.w}"); rect.setAttribute("height", "${v.h}")
+        rect.setAttribute("class", "bm-view")
+        svg.appendChild(rect)
+    }
+    return svg
 }

@@ -3,28 +3,15 @@
 `pat("bd ~ sd ~")` is a schedule. It says *kick, rest, snare, rest* and it says exactly
 when — but a schedule makes no sound. Something has to turn each event into samples.
 
-Field has **three** things that turn a *pattern's* events into samples, offline, with no audio device
-and no realtime engine, and they sound nothing alike. One is a tiny synthesiser that ships in the
-source tree. The second is the genuine Tidal drum library, if you happen to have it. The third is a
-**Faust program compiled at runtime and played polyphonically**: a pattern's notes become
-`freq`/`gate`/`gain` writes on a bank of voices, scheduled to the sample. This page follows one
-pattern all the way down the **first two**, and **every audio figure below says which of them
-produced it.** The third has a page of its own,
-[Faust: a box that is a signal processor](faust.md#a-pattern-plays-it).
+This page follows one pattern through the two voices that render it without an audio device: a
+small built-in synthesiser, and the Tidal drum library if you have it installed. Every audio figure
+below says which of them produced it.
 
-Three counts the pattern voices that can render **offline**. There is a fourth that cannot, and it is
-excluded from the sentence above by the "no audio device, no realtime engine" clause rather than by
-being less of a voice: `patSpatial` plays a pattern through dough and places each `spat` group in
-space with Steam Audio's HRTF, in realtime only. Where it puts a note is written in the pattern as an
-`az`/`dist` tag, which is the thing about it worth reading — see
-[A pattern in space](pat_spatial.md).
-
-Nine things in Field make samples by one route or another, and
-[Making a sound in Field: every path there is](sound_paths.md) maps all nine and helps you pick.
-
-**Two thirds** of the audio published elsewhere in these docs is the first voice below, and the
-rest is not. [Most of the audio in these docs is the
-stand-in](#most-of-the-audio-in-these-docs-is-the-stand-in) says which is which.
+Other pages cover the other voices. A pattern can play a
+[Faust program](faust.md#a-pattern-plays-it) as a polyphonic instrument, or be placed in space with
+[`patSpatial`](pat_spatial.md), which plays in realtime only.
+[How to make sound in Field](sound_paths.md) lists every way Field makes sound and helps you pick
+one.
 
 ---
 
@@ -46,69 +33,6 @@ The pattern language itself is documented on [its own page](pattern_language.md)
 does not restate it. All that carries over here is that a pattern is a *function from a query to
 a list of events*, and that both voices below consume exactly the same list.
 
-The last two rows run the path backwards. `patTranscribe` takes a finite buffer and returns pitched
-note events plus the mini-notation that reproduces them, so the output of analysis is the same kind
-of object as the input to synthesis, and you can feed it straight back to the renderer.
-
-It is monophonic and says so: a triad is reported as `POLYPHONIC` and named as nothing rather than
-reported as its loudest note, while a sawtooth's full harmonic stack is not refused, because timbre
-is not polyphony.
-
-One parameter dominates all the thresholds: **the register you declare.** It sets the analysis
-window and therefore the shortest note that can be resolved, and on identical audio the difference
-between declaring it and not is onset recall 0.91 against 0.03. If you cannot declare one, call
-`patTranscribeAuto`, which estimates it from a cheap wide first pass; estimating is about as good
-as being told, and much better than leaving the wide default in place. It refuses rather than
-transcribing when the first pass says the material is not one line.
-
-A wrong output carries a warning naming where it is wrong, and any case carrying a warning is
-classified as a refusal. So the guarantee is a narrow one, and worth stating exactly: an error is
-never silent. Act on that one — a plausible parseable wrong answer gets believed where a flagged
-one does not.
-
-`dev_docs/pitch_transcription_roundtrip.md` has the per-case accuracy table, the four-hop round
-trip, the classification of every corpus case, and which figures are held against an asserted floor
-and which are single observations. The runnable version is the
-[pitch_transcription_roundtrip](agent_transcripts.md) starting point.
-
-### What that looks like
-
-Every panel below plots the notation you wrote as a **hollow outline** and what the detector heard back
-out of the render as a **solid bar**, on one shared MIDI axis, so the exceptions are the only thing you
-have to look at. Vertical position and left edge are measurements; bar *length* is not, because a
-recovered note ends where its pitch stopped being stable, and that reaches into the previous note's
-decay.
-
-The clean case first: a stepped scale, wide leaps over three octaves, and a run detuned by 25/50/75/50
-cents. The bars sit on the outlines, and in the third panel they sit off them by exactly the detuning.
-
-![Three panels of notated-against-recovered piano rolls: a stepped scale at 15 of 16 notes recovered, wide leaps at 16 of 16 with the pitch order intact, and a detuned run at 8 of 8 whose bars sit slightly off their outlines](assets/pat_transcription/pat-transcription-roundtrip.svg)
-
-Segmentation is harder, and the two available criteria fail in **opposite** directions rather than
-one being better than the other. A flat-envelope Dough render has no energy transients to cut on
-(energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
-twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
-
-![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
-
-A **refusal** looks like this. Three simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC`
-verdict and `pat("~")`: the outlines have no bars in them at all, and that is the correct answer
-rather than a failure. The same audio at 31 ms per
-note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not, because the analysis
-window is then longer than the notes; the output is again `pat("~")` rather than a plausible parseable
-wrong one:
-
-![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
-
-Those three are **committed captures** from the `synth.pat.transcription` FIELD_TEST, which asserts
-that every rectangle in each file corresponds to a reference note, a recovered note or a declined
-span, that no coordinate is non-finite, and that the panels which are supposed to disagree do:
-
-```diffstatic {data-lang=bash}
-PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
-```
-
----
 
 ## The events, before anything makes a sound
 
@@ -167,14 +91,8 @@ Here is the beat:
 **Voice: the stand-in synth (`patVoice`).** No sample library was used.
 
 That is not a drum machine. It is a sine and some filtered white noise, arranged in the shape
-of a drum machine. It is nonetheless the **default**, for a good reason: it needs no assets. It
-renders identically on a clean checkout, in CI, on a machine that has never heard of
-SuperCollider, and it is deterministic, so a committed `.wav` regenerates byte-stably. A figure
-that always works and sounds approximate beats a figure that sounds right on one laptop.
-
-It is a *measurement* target before it is a musical one. `PatSoundDocs`' scenes verify pitch,
-onset count, stereo decorrelation and swing ratios against the rendered audio, and a plain sine
-is a much easier thing to measure a pitch in than a sampled kick.
+of a drum machine. It is the default because it needs nothing installed and sounds the same on
+every machine, every time.
 
 ---
 
@@ -213,17 +131,13 @@ being triggered:
 3. `~/.local/share/SuperCollider/downloaded-quarks/Dirt-Samples` (Linux);
 4. `~/Dirt-Samples`.
 
-Dirt-Samples ships as a SuperCollider *quark*, so anybody who has ever run Tidal already has
-it at one of those. That is why `dirtSampleRoot()` goes looking instead of asking you for a
-path. The library is **not vendored**: roughly 400MB of third-party audio with mixed
-per-folder licensing has no business inside this repository. The probe is not cached, so
-setting `FIELD_DIRT_SAMPLES` and rendering in the same session gets you what you asked for.
+Dirt-Samples ships as a SuperCollider *quark*, so if you have run Tidal you already have it in
+one of those places. Field does not include the library itself. Setting `FIELD_DIRT_SAMPLES`
+takes effect on the next render, with no restart.
 
 ---
 
 ## Two fallbacks, at different granularities
-
-The two are easy to confuse and they mean very different things.
 
 **No library on this machine: the whole render falls back.** `patRenderStereoDirt` returns
 the `patRenderStereo` render exactly, the same samples rather than an approximation, and
@@ -262,28 +176,18 @@ synth voice (no Dirt-Samples found; set FIELD_DIRT_SAMPLES to use real samples)
 
 ---
 
-## Most of the audio in these docs is the stand-in
+## What you hear on the other pages
 
-On most of the site, the stand-in synth *is* what you are hearing, and the mini-notation cards on
-[Patterns & Rhythm](pattern_language.md) are most of that on their own. The reason is the one given
-above: a primer that plays `bd*4` and `bd(3,8)` and `{bd hh cp}%8` needs a voice that renders
-identically on a clean checkout with no sample library anywhere near it, and whose onsets can be
-*counted out of the rendered audio* and checked against the schedule.
+Most audio clips in these docs, including the mini-notation cards on
+[Patterns & Rhythm](pattern_language.md), use the stand-in synth, because it renders the same on any
+machine.
 
-Where another page publishes something else, it is not standing in for anything.
-`DoughDspSoundDocs` runs a plate reverb, a phaser, a resonant lowpass and a soft clipper on real
-signals, and a plate reverb ringing down *is* the thing [that page](dough_dsp_sound.md) is about; a
-few are a Faust program compiled at runtime, two of those a pattern playing it as a polyphonic
-instrument on
-[Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one). The clips on
-[A pattern in space](pat_spatial.md) are **half a path** — the mono source Steam Audio is handed,
-not the spatialised output, because that half is realtime-only and needs a binary this repository
-does not carry. And the drums on [How to make sound in Field](sound_paths.md#one-buffer-three-paths)
-and [Boolean network music examples](boolean_network_music_examples.md) are the real Tidal
-one-shots, rendered from a pinned, checksummed copy of the few Dirt-Samples folders they use.
-
-The clip-by-clip census, and the one piece of audio no code can regenerate, are in
-`dev_docs/DOCS_AUDIO_PROVENANCE_AGREEMENT.md`.
+The rest use other voices. The effects on [DoughDSP Sound Examples](dough_dsp_sound.md) run on real
+signals, and [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) plays its own
+instruments. The clips on [A pattern in space](pat_spatial.md) are the mono source before
+spatialisation, since the spatialised output plays in realtime only. The drums on
+[How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
+[Boolean network music examples](boolean_network_music_examples.md) are real Tidal samples.
 
 ---
 
@@ -316,9 +220,67 @@ If you want to be sure, force it:
 FIELD_DIRT_SAMPLES=/path/to/Dirt-Samples ./field.sh
 ```
 
-A loadable Field document with all of this side by side is committed at
-`public/docs/assets/sound_render_path/`. Open `public/docs/assets` as the workspace and
-`sound_render_path` as the document, then play box 1 and box 2 back to back.
+The [`sound_render_path`](agent_transcripts.md#sound_render_path) starting point has all of this
+side by side. Open it from the welcome screen, then play box 1 and box 2 back to back.
+
+---
+
+## From audio back to a pattern
+
+The last rows of [the path](#the-path) go the other way. `patTranscribe` takes a finite buffer and returns pitched
+note events plus the mini-notation that reproduces them, so the output of analysis is the same kind
+of object as the input to synthesis, and you can feed it straight back to the renderer.
+
+It is monophonic and says so: a triad is reported as `POLYPHONIC` and named as nothing rather than
+reported as its loudest note, while a sawtooth's full harmonic stack is not refused, because timbre
+is not polyphony.
+
+One parameter dominates all the thresholds: **the register you declare.** It sets the analysis
+window and therefore the shortest note that can be resolved, and on identical audio the difference
+between declaring it and not is onset recall 0.91 against 0.03. If you cannot declare one, call
+`patTranscribeAuto`, which estimates it from a cheap wide first pass; estimating is about as good
+as being told, and much better than leaving the wide default in place. It refuses rather than
+transcribing when the first pass says the material is not one line.
+
+It does not promise a correct answer, but it never gives a wrong one silently: a wrong output
+carries a warning that says where it is wrong. Check the warnings before you trust the result.
+
+To try it, open the [pitch_transcription_roundtrip](agent_transcripts.md) starting point.
+
+### What that looks like
+
+Every panel below plots the notation you wrote as a **hollow outline** and what the detector heard back
+out of the render as a **solid bar**, on one shared MIDI axis, so the exceptions are the only thing you
+have to look at. Vertical position and left edge are measurements; bar *length* is not, because a
+recovered note ends where its pitch stopped being stable, and that reaches into the previous note's
+decay.
+
+The clean case first: a stepped scale, wide leaps over three octaves, and a run detuned by 25/50/75/50
+cents. The bars sit on the outlines, and in the third panel they sit off them by exactly the detuning.
+
+![Three panels of notated-against-recovered piano rolls: a stepped scale at 15 of 16 notes recovered, wide leaps at 16 of 16 with the pitch order intact, and a detuned run at 8 of 8 whose bars sit slightly off their outlines](assets/pat_transcription/pat-transcription-roundtrip.svg)
+
+Splitting audio into notes is harder. The two ways of finding where a note starts fail on
+opposite material. A flat-envelope Dough render has no energy transients to cut on
+(energy recall 0.13) but clean pitch steps (0.86); a line that strikes each pitch
+twice has the transients but no pitch change at half of them (energy 0.13, pitch 0.81, 0.88 merged):
+
+![Two panels: a legato Dough render where the energy detector finds almost nothing while the pitch steps are clean, and a repeated-pitch line where the reverse holds](assets/pat_transcription/pat-transcription-opposite-failures.svg)
+
+A **refusal** looks like this. Three simultaneous pitches gives 0 of 12 notes, a `POLYPHONIC`
+verdict and `pat("~")`: the outlines have no bars in them at all, which is the correct answer. The same audio at 31 ms per
+note recovers 23 of 32 when it is *told* its register and 0 of 32 when it is not, because the analysis
+window is then longer than the notes; the output is again `pat("~")` rather than a plausible parseable
+wrong one:
+
+![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
+
+To regenerate these three figures:
+
+```diffstatic {data-lang=bash}
+PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
+```
+
 
 <a id="what-a-voice-caption-promises"></a>
 

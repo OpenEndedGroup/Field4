@@ -63,6 +63,7 @@ nav:
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
+    - A Drawn Morph, Heard: chain_drawn_morph.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
@@ -171,6 +172,7 @@ nav:
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md
+      - Csound: csound.md
       # After the two engines Field talks to, because it is the general form of what they do: OSC
       # in and out of a box, for any peer — a phone, SuperCollider, Max, a touch table over TUIO.
       - OSC and TUIO: osc.md

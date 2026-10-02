@@ -559,7 +559,7 @@ fun evalFormulaInterval(
         is FnExpr.Alpha -> alpha(x)
         is FnExpr.Add -> FnRangeMath.add(walk(expr.a), walk(expr.b))
         // `t - floor(t)` is one value's fractional part, not a difference of two unrelated numbers.
-        is FnExpr.Sub -> if (expr.b is FnExpr.Floor && (expr.b as FnExpr.Floor).a == expr.a) {
+        is FnExpr.Sub -> if (expr.b is FnExpr.Floor && expr.b.a == expr.a) {
             FnRangeMath.fract(walk(expr.a))
         } else {
             FnRangeMath.sub(walk(expr.a), walk(expr.b))

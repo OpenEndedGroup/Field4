@@ -76,6 +76,13 @@ object Keybindings {
             detail = "Show the keyboard shortcut cheatsheet overlay",
             defaults = listOf("?"),
             group = "Global"
+        ),
+        CommandBinding(
+            id = "show-bookmarks",
+            label = "Show Bookmarks",
+            detail = "Open or close the bookmarks panel",
+            defaults = listOf("alt+b"),
+            group = "Bookmarks"
         )
     ) + (1..9).flatMap { slot ->
         listOf(

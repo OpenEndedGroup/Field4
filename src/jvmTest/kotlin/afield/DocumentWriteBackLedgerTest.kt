@@ -484,7 +484,8 @@ class DocumentWriteBackLedgerTest {
          * All of it is `public/docs/assets/`, and `rectsl_gallery/` is a complete instance of the
          * bug: someone opened the gallery document, Field wrote five kinds of derived file beside
          * it including a four-window screenshot JPG, and it all went in with the commit. Pinned so
-         * that a fourteenth entry fails rather than joining them.
+         * that a new entry fails rather than joining them. (`sound_render_path/`'s two left on
+         * 2026-10-02, when that document became a transcript-built starting point.)
          */
         private val KNOWN_COMMITTED_SPILL = sortedSetOf(
             "public/docs/assets/rectsl_gallery/backups/history_metrics_backup_00000.edn",
@@ -495,9 +496,7 @@ class DocumentWriteBackLedgerTest {
             "public/docs/assets/rectsl_gallery/history_metrics.edn",
             "public/docs/assets/rectsl_gallery/history_screenshots/four-window/v00001_1783801210737.jpg",
             "public/docs/assets/rectsl_gallery/operations.yaml",
-            "public/docs/assets/rectsl_gallery/transcript.edn",
-            "public/docs/assets/sound_render_path/history_metrics.edn",
-            "public/docs/assets/sound_render_path/transcript.edn"
+            "public/docs/assets/rectsl_gallery/transcript.edn"
         )
     }
 }

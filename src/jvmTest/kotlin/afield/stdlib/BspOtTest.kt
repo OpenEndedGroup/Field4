@@ -255,4 +255,20 @@ class BspOtTest {
         assertEquals(listOf(to[1], to[2], to[0]), r.reorder(to))
         assertEquals(0.75, r.squaredCost, 1e-9)
     }
+
+    @Test
+    fun resampleByLengthSpacesPointsEvenlyWhateverTheInputSpacing() {
+        // An L whose first leg has 2 points and second leg 40: by length the samples split evenly.
+        val l = listOf(vec(0, 0), vec(10, 0)) + (1..40).map { vec(10, it * 0.25) }
+        val r = l.resampleByLength(21)
+        assertEquals(21, r.size)
+        assertEquals(0f, r.first().x); assertEquals(10f, r.last().y, 1e-5f)
+        val gaps = r.zipWithNext { a, b -> sqrt(((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)).toDouble()) }
+        gaps.forEach { assertEquals(1.0, it, 1e-4) }
+        // Closed: a unit square of 4 corners, 8 samples, no repeat of the start.
+        val sq = listOf(vec(0, 0), vec(1, 0), vec(1, 1), vec(0, 1)).resampleByLength(8, closed = true)
+        assertEquals(8, sq.size)
+        assertEquals(vec(0.5, 0.0), sq[1]); assertEquals(vec(0.0, 0.5), sq[7])
+        assertEquals(List(3) { vec(2, 2) }, listOf(vec(2, 2), vec(2, 2)).resampleByLength(3))
+    }
 }
