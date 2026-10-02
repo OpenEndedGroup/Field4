@@ -298,6 +298,9 @@ until you do, and the classification you pick here is what it checks the page ag
 `dev_docs/agent_transcript_index.md` for the contract and for why that page is hand-written rather
 than generated.
 
+- `open_dlss_nr_cubes.yaml`: editable raster cubes/plane, optional native NR, grading and frame recorder.
+- `open_dlss_nr.yaml`: optional Linux/NVIDIA native NR image study. An editable animated ink shader feeds source / NR / graded views at 768 × 768 each. The record clip child exports 180 consecutive GPU frames; the source and grade remain usable without weights. See `public/docs/open_dlss_nr.md`.
+
 ## Starting points and the docs gallery
 
 Each transcript here is also **materialized into an openable Field document** so it can surface as a

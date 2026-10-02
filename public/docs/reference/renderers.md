@@ -629,17 +629,17 @@ Ordered post-processing stack for Fabricate, following Three.js' EffectComposer 
 
 ### FabricatePostEffect { #fabricatepoststack-kt-fabricateposteffect }
 
-[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricatePostEffect</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="p">,</span> <span class="k">val</span> <span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span> <span class="o">=</span> <span class="nc">Kind</span><span class="p">.</span><span class="nc">SHADER</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostStack/#L76)
+[<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">FabricatePostEffect</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span><span class="p">,</span> <span class="k">val</span> <span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span> <span class="o">=</span> <span class="nc">Kind</span><span class="p">.</span><span class="nc">SHADER</span><span class="p">)</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostStack/#L75)
 
-One pass in a [`FabricatePostStack`](renderers.md#fabricatepoststack-kt-fabricatepoststack): the name it is addressed by, the target it renders into, the module holding its pipeline, and a kind tag.
+One pass in a [`FabricatePostStack`](renderers.md#fabricatepoststack-kt-fabricatepoststack): its name, output target, optional shader module and kind. Shader effects own a module. Native effects record compute from their target and leave module null. [`FabricateFrameGraph`](renderers.md#fabricateframegraph-kt-fabricateframegraph) gives motion blur and anti-aliasing their reserved names in the standard pass order; other effects use their own name. Native effects are excluded from shader inspection and reload.
 
 | Declaration | Summary |
 | --- | --- |
 | <code class="highlight"><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">RenderToTexture</span></code> |  |
-| <code class="highlight"><span class="k">val</span> <span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">module</span><span class="p">:</span> <span class="nc">ModulePointer</span><span class="o">?</span></code> |  |
 | <code class="highlight"><span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">Kind</span></code> |  |
-| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Kind</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostStack/#L83) | Which reserved slot in the standard pass order this pass claims, if any. |
+| [<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">Kind</span></code>](source/jvmMain/afield/four/fabricated/FabricatePostStack/#L85) | Which reserved slot in the standard pass order this pass claims, if any. |
 
 ## FabricateRenderPlan.kt { #fabricaterenderplan-kt }
 

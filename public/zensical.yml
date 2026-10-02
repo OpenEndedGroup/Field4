@@ -269,6 +269,7 @@ nav:
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
       - Direct Lighting: direct_lighting.md
+      - Neural Image Rendering: open_dlss_nr.md
       - Neural Reconstruction: neural_reconstruction.md
       - Ray Reconstruction: ray_reconstruction.md
       - Path-Traced Reconstruction: path_traced_reconstruction.md

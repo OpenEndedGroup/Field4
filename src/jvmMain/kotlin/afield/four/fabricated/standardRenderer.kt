@@ -731,7 +731,7 @@ object StandardRenderer {
 			// reference to it both stay valid. Building a fresh `Module` here instead would leave the
 			// old pipeline registered on a reused target and render the pass twice.
 			val module = if (existing != null && reusable != null) {
-				existing.module.also { it.reload(moduleParameters) }
+				requireNotNull(existing.module) { "Cannot replace a native post effect with a shader in place" }.also { it.reload(moduleParameters) }
 			} else {
 				Module(moduleParameters).pointer().also { target += name to it }
 			}

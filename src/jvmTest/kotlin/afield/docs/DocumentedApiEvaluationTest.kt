@@ -174,6 +174,14 @@ class DocumentedApiEvaluationTest {
         // The 2026-09-27 origin landing (computed Mega Geometry, GPU shader learning), merged into a
         // main that already had this guard. Both pages need an NVIDIA device: cooperative-vector
         // training for the first, Mega Geometry cluster acceleration structures for the second.
+        // The 2026-10-02 origin landing (OpenDLSS-NR). Both transcripts are in the compile set: the
+        // study needs a live renderer and its GPU frame targets.
+        "objectPoint" to
+            "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
+                "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
+        "saveFrame" to
+            "open_dlss_nr.md; the study's saveFrame writes a frame read back from live GPU targets, " +
+                "so it needs a renderer; the page's transcripts compile the call.",
         "sourceDigest" to
             "gpu_shader_learning.md; ShaderTraining.sourceDigest names the source a saved fit came from. " +
                 "It is taught beside GPU training, which needs NVIDIA cooperative vectors; the page's " +

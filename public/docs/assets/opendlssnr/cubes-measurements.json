@@ -1,0 +1,36 @@
+{
+  "transcript": "dev_docs/agents/transcripts/open_dlss_nr_cubes.yaml",
+  "captureBox": "nr_record",
+  "frames": 180,
+  "fps": 30,
+  "panelSize": [
+    768,
+    768
+  ],
+  "comparisonSize": [
+    2304,
+    832
+  ],
+  "nativeWindowCaptureSize": [
+    3917,
+    1414
+  ],
+  "style": 1,
+  "tone": 0,
+  "structure": 10,
+  "intensity": 1,
+  "seed": 1,
+  "temporal": false,
+  "grade": [
+    0.65,
+    1.1,
+    1.4
+  ],
+  "source": "editable Field raster geometry",
+  "meanAbsoluteSrgbCodeChange": 9.842020930665353,
+  "minimumFrameSrgbCodeChange": 8.536266817159849,
+  "meanGradeCodeChange": 9.750879353246985,
+  "minimumConsecutiveSourceCodeChange": 6.437497166920511,
+  "frameReadback": "Field RenderToTexture.readPixelsAsync after frame GPU completion",
+  "encode": "libx264, crf 16, yuv420p, no scaling"
+}

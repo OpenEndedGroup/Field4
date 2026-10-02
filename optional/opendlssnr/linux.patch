@@ -1,0 +1,205 @@
+diff --git a/src/kernels.cpp b/src/kernels.cpp
+index 62bb8c3..771eb13 100644
+--- a/src/kernels.cpp
++++ b/src/kernels.cpp
+@@ -39,6 +39,8 @@ void check(bool condition, const char* message) {
+ }
+ }  // namespace
+ 
++Kernels::Chain Kernels::emptyChain() { return {}; }
++
+ Kernels::Kernels(vk::Context& context, const std::string& shaderDirectory) : context_(context) {
+   ptxDirectory_ = getenv("DLSS5VK_PTX_DIR") ? getenv("DLSS5VK_PTX_DIR") : shaderDirectory + "/../ptx";
+   for (const char* name : {"gemm_fp8", "gemm_f16", "ops", "window_normalize", "window_attend", "global_normalize",
+diff --git a/src/kernels.h b/src/kernels.h
+index 472bd36..d104450 100644
+--- a/src/kernels.h
++++ b/src/kernels.h
+@@ -210,13 +210,14 @@ class Kernels {
+   // w2 tile-major [e][4][32][32], w3 tile-major [K/32][K][32].
+   static bool ptxFfnEnabled();
+   static uint32_t ffnRowTiles(uint32_t channels);          // PTX expert FFN: 16-row tiles per workgroup (its chaining signals cover 16 * tiles rows)
+-  void expertFfnPtx(VkCommandBuffer commands, const ExpertFfnArgs& args, const Chain& chain = Chain());
++  static Chain emptyChain();
++  void expertFfnPtx(VkCommandBuffer commands, const ExpertFfnArgs& args, const Chain& chain = emptyChain());
+ 
+   // Fused QKV projection + normalize + attention (qkv_attention.comp): E4 input in, E4 attended out.
+   void qkvAttention(VkCommandBuffer commands, const Activation& input, const vk::Buffer& weights, uint32_t Nmatrix,
+                     const Tensor& tensor, uint32_t scaleByteOffset, const vk::Buffer& prior, Activation& attended,
+                     uint32_t width, uint32_t height, uint32_t heads, uint32_t shiftX, uint32_t shiftY,
+-                    const Chain& chain = Chain());
++                    const Chain& chain = emptyChain());
+   void windowNormalize(VkCommandBuffer commands, const Activation& qkv, const Tensor& tensor,
+                        uint32_t scaleByteOffset, Activation& normalized, uint32_t tokens, uint32_t heads);
+   void windowAttend(VkCommandBuffer commands, const Activation& normalized, const vk::Buffer& prior,
+diff --git a/src/nr_model.cpp b/src/nr_model.cpp
+index 9f4eb9f..1177a8d 100644
+--- a/src/nr_model.cpp
++++ b/src/nr_model.cpp
+@@ -1,4 +1,6 @@
+ #include "nr_model.h"
++#include <algorithm>
++#include <cctype>
+ 
+ #include <cassert>
+ #include <fstream>
+@@ -83,7 +85,10 @@ Model::Model(vk::Context& context, const std::string& directory, bool verifyHash
+       throw std::runtime_error("stage size mismatch: " + loaded.id);
+     if (verifyHashes) {
+       std::string digest = sha256Hex(loaded.bytes.data(), loaded.bytes.size());
+-      if (digest != stage["sha256"].str()) throw std::runtime_error("stage SHA-256 mismatch: " + loaded.id);
++      std::string expected = stage["sha256"].str();
++      std::transform(expected.begin(), expected.end(), expected.begin(),
++                     [](unsigned char c) { return (char)std::toupper(c); });
++      if (digest != expected) throw std::runtime_error("stage SHA-256 mismatch: " + loaded.id);
+     }
+     stages_.push_back(std::move(loaded));
+   }
+diff --git a/src/nr_model.h b/src/nr_model.h
+index 867c97e..c5ca292 100644
+--- a/src/nr_model.h
++++ b/src/nr_model.h
+@@ -7,6 +7,7 @@
+ #include <vector>
+ 
+ #include "vk_context.h"
++#include <cstring>
+ 
+ namespace nr {
+ 
+diff --git a/src/vk_context.cpp b/src/vk_context.cpp
+index 5b02732..3c29073 100644
+--- a/src/vk_context.cpp
++++ b/src/vk_context.cpp
+@@ -29,7 +29,7 @@ VkBool32 VKAPI_PTR onDebugMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severit
+ uint32_t Context::validationErrors() { return g_validationErrors.load(); }
+ 
+ Context::Context() {
+-  if (volkInitialize() != VK_SUCCESS) throw std::runtime_error("vulkan-1.dll unavailable");
++  if (volkInitialize() != VK_SUCCESS) throw std::runtime_error("Vulkan loader unavailable");
+ 
+   VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};
+   app.pApplicationName = "dlss5-vulkan";
+@@ -163,7 +163,7 @@ Context::Context() {
+ }
+ 
+ Context::Context(VkInstance instance, VkPhysicalDevice physical, VkDevice device, uint32_t queueFamily, uint32_t queueIndex) {
+-  if (volkInitialize() != VK_SUCCESS) throw std::runtime_error("vulkan-1.dll unavailable");
++  if (volkInitialize() != VK_SUCCESS) throw std::runtime_error("Vulkan loader unavailable");
+   instance_ = instance; physical_ = physical; device_ = device; queueFamily_ = queueFamily; queueIndex_ = queueIndex; owned_ = false;
+   volkLoadInstance(instance_);
+   volkLoadDevice(device_);
+diff --git a/src/vk_context.h b/src/vk_context.h
+index 13a19e9..ed55929 100644
+--- a/src/vk_context.h
++++ b/src/vk_context.h
+@@ -6,6 +6,7 @@
+ 
+ #include <array>
+ #include <cstdint>
++#include <cstring>
+ #include <cstdio>
+ #include <stdexcept>
+ #include <string>
+diff --git a/src/main.cpp b/src/main.cpp
+index 6d57e3a..ff32178 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -564,6 +564,77 @@ int runParity(int argc, char** argv) {
+   return failures ? 1 : 0;
+ }
+ 
++int runRender(int argc, char** argv) {
++  const std::string modelDir = argValue(argc, argv, "--model");
++  const std::string proxyFile = argValue(argc, argv, "--proxy");
++  const std::string output = argValue(argc, argv, "--output");
++  const uint32_t width = (uint32_t)atoi(argValue(argc, argv, "--width", "0").c_str());
++  const uint32_t height = (uint32_t)atoi(argValue(argc, argv, "--height", "0").c_str());
++  if (modelDir.empty() || proxyFile.empty() || output.empty() || width < 33 || height < 33) {
++    fprintf(stderr, "usage: dlss5vk render --model <dir> --proxy <RGBA f32 file> --width W --height H --output <prefix>\n");
++    return 2;
++  }
++  const auto proxy = readFile(proxyFile);
++  if (proxy.size() != (uint64_t)width * height * 16) throw std::runtime_error("proxy byte size mismatch");
++  for (size_t i = 0; i < proxy.size(); i += 4) {
++    float value; memcpy(&value, proxy.data() + i, 4);
++    if (!std::isfinite(value) || value < 0 || value > 1) throw std::runtime_error("proxy values must be finite in 0..1");
++  }
++  vk::Context context;
++  printf("device: %s\n", context.deviceName().c_str());
++  nr::Model model(context, modelDir, true);
++  nr::Kernels kernels(context, argValue(argc, argv, "--shaders", executableDirectory(argv[0]) + "/shaders"));
++  kernels.setSiluTable(ref::siluTable());
++  const nr::Geometry geometry = nr::Geometry::fromValid(width, height);
++  nr::Graph graph(context, model, kernels, geometry, {.fusedBlocks = fusedBlocksEnabled()});
++  nr::Activation* features = graph.allocate("render features", geometry.fullWidth * geometry.fullHeight, 16, nr::Format::F32);
++  vk::Buffer proxyBuffer = context.createBuffer(proxy.size(), false, "render proxy");
++  context.upload(proxyBuffer, proxy.data(), proxy.size());
++  nr::Kernels::PreprocessArgs preprocess{geometry.fullWidth, geometry.fullHeight, width, height, width, height,
++      (uint32_t)atoi(argValue(argc, argv, "--seed", "1").c_str()), false,
++      (float)atof(argValue(argc, argv, "--tone", "1").c_str()),
++      (float)atof(argValue(argc, argv, "--structure", "1").c_str()),
++      (float)atof(argValue(argc, argv, "--skin", "1").c_str()),
++      (float)atof(argValue(argc, argv, "--style", "1").c_str())};
++  VkCommandBuffer commands = context.beginCommands();
++  kernels.preprocessFromProxy(commands, proxyBuffer, *features, preprocess);
++  graph.record(commands, *features);
++  context.endAndSubmit(commands, true);
++  checkChainTimeouts(kernels);
++  const auto head = context.download(graph.head().buffer, graph.head().validBytes());
++  const auto input = context.download(features->buffer, features->validBytes());
++  for (size_t i = 0; i < head.size(); i += 4) {
++    float value; memcpy(&value, head.data() + i, 4);
++    if (!std::isfinite(value)) throw std::runtime_error("network produced a non-finite head value");
++  }
++  std::vector<uint8_t> pixels((size_t)width * height * 3);
++  double difference = 0;
++  for (uint32_t y = 0; y < height; ++y)
++    for (uint32_t x = 0; x < width; ++x)
++      for (uint32_t c = 0; c < 3; ++c) {
++        const size_t padded = (size_t)y * geometry.fullWidth + x;
++        const size_t pixel = (size_t)y * width + x;
++        float h, centred, original;
++        memcpy(&h, head.data() + (padded * 4 + c) * 4, 4);
++        memcpy(&centred, input.data() + (padded * 16 + 4 + c) * 4, 4);
++        memcpy(&original, proxy.data() + (pixel * 4 + c) * 4, 4);
++        const float result = composed(h, centred);
++        difference += std::abs(result - original);
++        pixels[pixel * 3 + c] = (uint8_t)std::floor(result * 255 + 0.5f);
++      }
++  std::ofstream image(output + ".ppm", std::ios::binary);
++  image << "P6\n" << width << " " << height << "\n255\n";
++  image.write(reinterpret_cast<const char*>(pixels.data()), pixels.size());
++  std::ofstream raw(output + ".head.f32", std::ios::binary);
++  raw.write(reinterpret_cast<const char*>(head.data()), head.size());
++  if (!image || !raw) throw std::runtime_error("cannot write render outputs");
++  context.destroyBuffer(proxyBuffer);
++  printf("rendered %ux%u (padded %ux%u), %u dispatches, finite head; mean RGB change %.6f\n",
++         width, height, geometry.fullWidth, geometry.fullHeight, kernels.dispatchCount(), difference / pixels.size());
++  printf("saved %s.ppm and %s.head.f32\n", output.c_str(), output.c_str());
++  return 0;
++}
++
+ int runBench(int argc, char** argv) {
+   std::string modelDir = argValue(argc, argv, "--model");
+   std::string shaderDir = argValue(argc, argv, "--shaders", executableDirectory(argv[0]) + "/shaders");
+@@ -731,13 +802,18 @@ int runProfile(int argc, char** argv) {
+ }
+ }  // namespace
+ 
++int runSelftest(const std::string& shaderDir);
++
+ int runCommand(int argc, char** argv) {
++  if (argc >= 2 && !strcmp(argv[1], "render")) return runRender(argc, argv);
++  if (argc >= 2 && !strcmp(argv[1], "selftest"))
++    return runSelftest(argValue(argc, argv, "--shaders", executableDirectory(argv[0]) + "/shaders"));
+   if (argc >= 2 && !strcmp(argv[1], "verify")) return runVerify(argc, argv);
+   if (argc >= 2 && !strcmp(argv[1], "shaderinfo")) return runShaderInfo(argc, argv);
+   if (argc >= 2 && !strcmp(argv[1], "profile")) return runProfile(argc, argv);
+   if (argc >= 2 && !strcmp(argv[1], "parity")) return runParity(argc, argv);
+   if (argc >= 2 && !strcmp(argv[1], "bench")) return runBench(argc, argv);
+-  fprintf(stderr, "usage: dlss5vk parity|verify|bench|profile|shaderinfo --model <dir> ...\n");
++  fprintf(stderr, "usage: dlss5vk selftest | render|parity|verify|bench|profile|shaderinfo --model <dir> ...\n");
+   return 2;
+ }
+ 
