@@ -118,6 +118,45 @@ class AstraBridgeContractTest {
         assertEquals("resp_2", requests[2]["previous_response_id"].asText())
     }
 
+    /**
+     * Where a TurnContext's parts go on the Responses wire: the stable instructions once, as a developer
+     * message the conversation keeps (again only if they change); the volatile ones as each request's
+     * `instructions`; and the stored user message only the durable prompt.
+     */
+    @Test
+    fun stableInstructionsAreSentOncePerConversationAndVolatileOnesPerRequest() = withServer { server, requests, bridge ->
+        server.createContext("/v1/responses") { exchange ->
+            requests.add(mapper.readTree(exchange.requestBody))
+            val body = finalResponse("resp_${requests.size}")
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
+            exchange.responseBody.use { it.write(body.toByteArray()) }
+        }
+        fun tc(stable: String) = TurnContext(listOf(
+            ContextFragment("core.contract", stable),
+            ContextFragment("guides", "\n\nVOLATILE-CATALOGUE", stability = Stability.VOLATILE),
+        ), "the user's words")
+        val state = OpenAiIdeCodexBridge.ThreadState("placement", "conv_test", "test", previousResponseId = "resp_old")
+        val first = tc("STABLE-ONE")
+        bridge.send(state, first.legacyPrompt(), turnContext = first)
+        bridge.send(state, first.legacyPrompt(), turnContext = first)
+        val changed = tc("STABLE-TWO")
+        bridge.send(state, changed.legacyPrompt(), turnContext = changed)
+
+        val inputs = requests.map { it["input"].toString() }
+        assertTrue(inputs[0].contains("STABLE-ONE") && inputs[0].contains("\"developer\""), inputs[0])
+        assertTrue(inputs[0].contains("the user's words") && !inputs[0].contains("VOLATILE-CATALOGUE"))
+        assertFalse(inputs[1].contains("STABLE-ONE"), "the conversation already holds them")
+        assertTrue(inputs[2].contains("STABLE-TWO") && inputs[2].contains("replace the earlier ones"), inputs[2])
+        requests.forEach { assertEquals("VOLATILE-CATALOGUE", it["instructions"].asText()) }
+        assertFalse(requests.any { it.has("prompt_cache_key") })
+
+        // Without a TurnContext the request is the one-string prompt, as before.
+        bridge.send(state, first.legacyPrompt())
+        assertFalse(requests.last().has("instructions"))
+        assertTrue(requests.last()["input"].toString().contains("STABLE-ONE"))
+    }
+
     @Test
     fun returnedModelIsPreservedWhenItDiffersFromRequestedModel() = withServer { server, _, bridge ->
         server.createContext("/v1/responses") { exchange ->

@@ -149,9 +149,22 @@ class OpenAiIdeCodexBridge(
         // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
         // `instructions` is unverified, so it stays on the one-string prompt.
         val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
-        // Sent with every request of this turn and never carried to the next: the Responses API does not
-        // carry `instructions` over a previous_response_id, which is exactly what is wanted here.
-        val ephemeralInstructions = tc?.allEphemeralText()?.takeIf { it.isNotBlank() }
+        // Stable instructions go into the conversation once, as a developer message, and again only when
+        // they change. Measured 2026-10-02: sent instead as every request's `instructions`, they never
+        // formed a prompt-cache prefix shared between conversations — each task's first request paid ~8k
+        // uncached tokens instead of ~4k, and the cached share of single-turn eval tasks fell from 86% to
+        // 74%. As the conversation's own opening message they are the same prefix in every conversation,
+        // and a long conversation still holds one copy, not one per turn.
+        val stableInstructions = tc?.ephemeralText(Stability.STABLE)?.takeIf { it.isNotBlank() }
+        val stableHash = stableInstructions?.let { sha256(it).take(16) }
+        val stableItem = if (stableInstructions != null && stableHash != state.stableInstructionsHash) {
+            val text = if (state.stableInstructionsHash == null) stableInstructions
+                else "Updated tool and context instructions; they replace the earlier ones.\n\n$stableInstructions"
+            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, text)
+        } else null
+        // The volatile rest (guide and tool catalogues) is small and per request: the Responses API does not
+        // carry `instructions` over a previous_response_id, so it is never stored.
+        val ephemeralInstructions = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
         val inputText = buildString {
             if (fileText != null) {
                 appendLine("IDE_FILE_UPDATE:")
@@ -203,8 +216,10 @@ class OpenAiIdeCodexBridge(
                     "maxOutputTokens" to maxOutputTokens,
                     "maxToolRounds" to maxToolRounds,
                     "prompt" to inputText,
-                    "contextPlacement" to if (ephemeralInstructions != null) "instructions" else "inline",
+                    "contextPlacement" to if (tc != null) "developer-once+instructions" else "inline",
                     "instructionsChars" to (ephemeralInstructions?.length ?: 0),
+                    "stableInstructionsSent" to (stableItem != null),
+                    "stableInstructionsChars" to (stableInstructions?.length ?: 0),
                     "instructionHash" to tc?.instructionHash(),
                     "fragments" to tc?.fragments?.map { mapOf("source" to it.source, "retention" to it.retention.name,
                         "stability" to it.stability.name, "chars" to it.chars) }
@@ -264,7 +279,7 @@ class OpenAiIdeCodexBridge(
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
         try {
-        val promptItems = buildPromptItems(inputText, imageDataUrls)
+        val promptItems = listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -272,7 +287,7 @@ class OpenAiIdeCodexBridge(
 
         if (runtimeConfig.isOpenRouter) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
-        } else if (imageDataUrls.isEmpty()) {
+        } else if (imageDataUrls.isEmpty() && stableItem == null) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
@@ -294,6 +309,7 @@ class OpenAiIdeCodexBridge(
 
         info("running prompt <<spinner>>")
         var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta) }
+        if (stableItem != null) state.stableInstructionsHash = stableHash
         if (onTextDelta != null) {
             info("")
         }
@@ -676,7 +692,7 @@ class OpenAiIdeCodexBridge(
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
-            contextReport = (turnContext?.report(if (ephemeralInstructions != null) "instructions" else "inline"))
+            contextReport = (turnContext?.report(if (tc != null) "developer-once+instructions" else "inline"))
                 ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
@@ -762,6 +778,10 @@ class OpenAiIdeCodexBridge(
          * provider thread — a fresh conversation, or a rewound branch — starts with only the DIRECT tools.
          */
         val promotedTools: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        /** The hash of the stable instructions this conversation already holds as a developer message. */
+        @Volatile
+        var stableInstructionsHash: String? = null
     }
 
     /* ------------------------- Conversations helpers ------------------------ */
@@ -887,19 +907,13 @@ class OpenAiIdeCodexBridge(
     }
 
     /**
-     * The turn's ephemeral instructions, on every request builder of the turn (initial, follow-up, forced
-     * final) because none of them carries over.
-     *
-     * The cache key is the instructions' hash, not the thread: the instructions are the start of every
-     * request, so conversations with the same tools share a prefix, and a key routes requests that share
-     * it to the same cache. A per-thread key (the first cut, 2026-10-02) did the opposite — every new
-     * conversation started cold — and the measured cache-hit share of single-turn eval tasks fell from
-     * 86% to 74%, nearly doubling the uncached input.
+     * The turn's volatile instructions, on every request builder of the turn (initial, follow-up, forced
+     * final), because none of them carries over. No prompt_cache_key: two first cuts set one (per thread,
+     * then per instruction hash) and neither recovered the cache-hit share the default routing gets.
      */
     private fun applyTurnContext(builder: ResponseCreateParams.Builder, ephemeralInstructions: String?) {
         if (ephemeralInstructions == null) return
         builder.instructions(ephemeralInstructions)
-        builder.promptCacheKey("afield-ai4-" + sha256(ephemeralInstructions).take(16))
     }
 
     private fun createForcedFinalResponse(
