@@ -33,7 +33,7 @@ When you run a box, Field does **not** hand your text straight to the Kotlin com
 4. compiles and evaluates the fragment,
 5. and folds some of what just ran (`@exported` declarations) back into the preamble.
 
-These five steps are what make `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers work. The rest of the page takes them in order.
+These five steps are what make `prop`, `once`, inherited `renderer`/`window`, the typed accessors you get from `moduleHere { }`, and `@exported` helpers work.
 
 Two distinct "code that writes code" mechanisms are involved, and they run at different times:
 
