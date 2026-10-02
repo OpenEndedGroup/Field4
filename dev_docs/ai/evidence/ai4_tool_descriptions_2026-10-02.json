@@ -1,5 +1,5 @@
 {
- "note": "Live agent-eval, 2026-10-02, openai gpt-6-astra, held-out tasks, lessons off, max 24 rounds, 3 repeats per setup. Derived from the backdoor reports (kept out of git). uncached = inputTokens - cachedInputTokens.",
+ "note": "Live agent-eval, 2026-10-02, openai gpt-6-astra, held-out tasks, lessons off, max 24 rounds, 3 repeats per setup. Derived from the backdoor reports (kept out of git). uncached = inputTokens - cachedInputTokens. 'rewrite-v2-after-merge' ran after merging claude/ai4-chat-field-plan-164d81 (instructions sent once per conversation, deferred tools); its cachedInputTokens is the report's cacheReadTokens.",
  "setups": {
   "base": [
    {
@@ -661,6 +661,218 @@
       "cached": 31928,
       "tools": [
        "ListContentsRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     }
+    }
+   }
+  ],
+  "rewrite-v2-after-merge": [
+   {
+    "passed": 6,
+    "population": 6,
+    "rounds": 17,
+    "inputTokens": 199343,
+    "cachedInputTokens": 165743,
+    "captureRenderWindowCalls": 0,
+    "misuseCalls": 0,
+    "tasks": {
+     "stop-ticker": {
+      "rounds": 1,
+      "in": 16180,
+      "cached": 8025,
+      "tools": [
+       "StopBoxRequest"
+      ]
+     },
+     "wire-two": {
+      "rounds": 2,
+      "in": 24497,
+      "cached": 20486,
+      "tools": [
+       "NewBoxRequest",
+       "NewBoxRequest"
+      ]
+     },
+     "fix-runtime-error": {
+      "rounds": 3,
+      "in": 37667,
+      "cached": 31173,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "CodeUseQueryRequest",
+       "RunBoxRequest"
+      ]
+     },
+     "draw-sun": {
+      "rounds": 3,
+      "in": 33865,
+      "cached": 29186,
+      "tools": [
+       "NewBoxRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-visible": {
+      "rounds": 4,
+      "in": 43176,
+      "cached": 38129,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "PatchBoxTextRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-sorted-red": {
+      "rounds": 4,
+      "in": 43958,
+      "cached": 38744,
+      "tools": [
+       "ListContentsRequest",
+       "SetBoxPropertyRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     }
+    }
+   },
+   {
+    "passed": 6,
+    "population": 6,
+    "rounds": 17,
+    "inputTokens": 200222,
+    "cachedInputTokens": 170636,
+    "captureRenderWindowCalls": 0,
+    "misuseCalls": 0,
+    "tasks": {
+     "stop-ticker": {
+      "rounds": 1,
+      "in": 16173,
+      "cached": 12334,
+      "tools": [
+       "StopBoxRequest"
+      ]
+     },
+     "wire-two": {
+      "rounds": 2,
+      "in": 24483,
+      "cached": 20481,
+      "tools": [
+       "NewBoxRequest",
+       "NewBoxRequest"
+      ]
+     },
+     "fix-runtime-error": {
+      "rounds": 3,
+      "in": 37687,
+      "cached": 31183,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "CodeUseQueryRequest",
+       "RunBoxRequest"
+      ]
+     },
+     "draw-sun": {
+      "rounds": 3,
+      "in": 33795,
+      "cached": 29140,
+      "tools": [
+       "NewBoxRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-visible": {
+      "rounds": 5,
+      "in": 53152,
+      "cached": 47664,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "ViewBoxOutputRequest",
+       "PatchBoxTextRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-sorted-red": {
+      "rounds": 3,
+      "in": 34932,
+      "cached": 29834,
+      "tools": [
+       "ListContentsRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     }
+    }
+   },
+   {
+    "passed": 6,
+    "population": 6,
+    "rounds": 17,
+    "inputTokens": 199480,
+    "cachedInputTokens": 170131,
+    "captureRenderWindowCalls": 0,
+    "misuseCalls": 0,
+    "tasks": {
+     "stop-ticker": {
+      "rounds": 1,
+      "in": 16176,
+      "cached": 12335,
+      "tools": [
+       "StopBoxRequest"
+      ]
+     },
+     "wire-two": {
+      "rounds": 2,
+      "in": 24494,
+      "cached": 20486,
+      "tools": [
+       "NewBoxRequest",
+       "NewBoxRequest"
+      ]
+     },
+     "fix-runtime-error": {
+      "rounds": 3,
+      "in": 37675,
+      "cached": 31177,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "CodeUseQueryRequest",
+       "RunBoxRequest"
+      ]
+     },
+     "draw-sun": {
+      "rounds": 3,
+      "in": 33882,
+      "cached": 29186,
+      "tools": [
+       "NewBoxRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-visible": {
+      "rounds": 4,
+      "in": 43179,
+      "cached": 38133,
+      "tools": [
+       "GetBoxPropertyRequest",
+       "PatchBoxTextRequest",
+       "RunBoxRequest",
+       "ViewBoxOutputRequest"
+      ]
+     },
+     "bars-sorted-red": {
+      "rounds": 4,
+      "in": 44074,
+      "cached": 38814,
+      "tools": [
+       "ListContentsRequest",
+       "SetBoxPropertyRequest",
        "RunBoxRequest",
        "ViewBoxOutputRequest"
       ]

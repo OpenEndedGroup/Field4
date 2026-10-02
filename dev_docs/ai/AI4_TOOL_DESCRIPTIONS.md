@@ -57,6 +57,7 @@ number is reported as `cacheReadTokens` (plus `cacheWriteTokens` for Anthropic).
 | base | 18/18 | 21 / 20 / 20 | 222k / 215k / 214k | 31.0k / 27.9k / 26.7k | 1 / 1 / 0 | 1 / 1 / 0 |
 | rewrite v1 | 18/18 | 22 / 23 / 24 | 252k / 261k / 271k | 31.8k / 27.3k / 27.4k | 0 / 0 / 0 | 0 / 0 / 0 |
 | **rewrite v2 (committed)** | 18/18 | **16 / 17 / 15** | **197k / 206k / 187k** | 30.7k / 26.0k / 25.3k | 0 / 0 / 0 | 0 / 0 / 0 |
+| v2, after merging `claude/ai4-chat-field-plan-164d81` | 18/18 | 17 / 17 / 17 | 199k / 200k / 199k | 33.6k / 29.6k / 29.3k | 0 / 0 / 0 | 0 / 0 / 0 |
 
 Per task, averaged: base 3.4 rounds, 36.1k input, 4.75k uncached; v2 2.7 rounds, 32.8k input,
 4.55k uncached.
@@ -72,6 +73,12 @@ Per task, averaged: base 3.4 rounds, 36.1k input, 4.75k uncached; v2 2.7 rounds,
   `stop-ticker` dropped to one round (StopBox alone; its description now says `success=true` means
   stopped). **A "when to use it" clause is an instruction the model follows literally; write it as a
   condition, never as an order of operations.**
+
+The last row is a different harness, so compare it with v2, not with base. The merged branch sends
+the stable instructions once per conversation and defers rarely used tools behind
+`DescribeToolsRequest`. Rounds and misuse hold (17 per run, none). Uncached input rose by about 3.5k
+per run (27.3k → 30.8k); that is the merged context pipeline, not the descriptions, which did not
+change between the two rows. It is not explained here.
 
 ## Re-running it
 
