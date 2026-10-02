@@ -24,4 +24,5 @@ public class UnixFdPassNative {
     }
 
     public static native boolean sendFds(String socketPath, int[] fds);
+    public static native void closeFd(int fd);
 }
