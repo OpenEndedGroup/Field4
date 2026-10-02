@@ -86,6 +86,35 @@ import kotlin.math.sqrt
  */
 
 /**
+ * Exactly [count] points spaced evenly along this polyline by arc length, first and last point
+ * included — the step that turns two strokes with different numbers of unevenly spaced points (a
+ * hand slows into a corner) into two lists [matchPoints] can pair. With [closed], the polyline
+ * returns to its first point and the samples go round the loop without repeating it.
+ */
+fun List<Vec2>.resampleByLength(count: Int, closed: Boolean = false): List<Vec2> {
+    require(count >= 1) { "resampleByLength needs count >= 1, got $count" }
+    require(isNotEmpty()) { "resampleByLength needs at least one point" }
+    val path = if (closed && size > 1) this + this[0] else this
+    val cumulative = DoubleArray(path.size)
+    for (i in 1 until path.size) {
+        val dx = (path[i].x - path[i - 1].x).toDouble(); val dy = (path[i].y - path[i - 1].y).toDouble()
+        cumulative[i] = cumulative[i - 1] + sqrt(dx * dx + dy * dy)
+    }
+    val total = cumulative.last()
+    if (total == 0.0) return List(count) { vec(path[0].x.toDouble(), path[0].y.toDouble()) }
+    val steps = if (closed) count else max(count - 1, 1)
+    var seg = 1
+    return List(count) { k ->
+        val s = total * k / steps
+        while (seg < path.size - 1 && cumulative[seg] < s) seg++
+        val span = cumulative[seg] - cumulative[seg - 1]
+        val u = if (span == 0.0) 0.0 else ((s - cumulative[seg - 1]) / span).coerceIn(0.0, 1.0)
+        val a = path[seg - 1]; val b = path[seg]
+        vec(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u)
+    }
+}
+
+/**
  * Matches [from] onto [to] one-to-one with [BspOt2D]; both lists must be the same size.
  *
  * [initial], if given, must be a permutation (for instance the [BspOt2D.Result.targetOfSource] of a
