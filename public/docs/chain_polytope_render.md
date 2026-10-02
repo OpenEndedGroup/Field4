@@ -1,6 +1,6 @@
 # A polytope, cut open, and traced
 
-This page takes one shape through three parts of Field. `afield.stdlib.polytope` builds polyhedra
+One shape passes through three parts of Field here. `afield.stdlib.polytope` builds polyhedra
 with Conway operators and remembers where each face came from. `afield.manifold` does exact Booleans
 on closed solids. `afield.four.fabricated` runs a GPU path tracer. The three are independent, and
 the page shows what to pass from one to the next.
