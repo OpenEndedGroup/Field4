@@ -6,9 +6,8 @@ pairs every point of the circle with a point of the heart. Moving each point tow
 a morph. The size of the cloud as it moves is a number per step, and played as pitch it is a tune
 you can hear the shape change in.
 
-The two strokes here are written by code, so the page can be rebuilt without anyone holding a pen.
-The reading does not know that: two strokes you draw by hand and name "from" and "to" are read the
-same way.
+The two strokes on this page are drawn by code, but two strokes you draw by hand and name "from" and
+"to" are read the same way.
 
 ## Two strokes, paired
 
@@ -109,7 +108,7 @@ showSignals(
 To hear it, the morph goes out to the heart and back in 32 steps, a quarter of a beat each. Each
 step is a note: MIDI 72 when the cloud is the circle's size, an octave lower for every halving of
 it. `patTimed` makes the notes a pattern of eight beats, and `patRenderStereo` plays it through
-`patVoice`, the stand-in synth the pattern pages use:
+`patVoice`, a simple triangle-wave synth voice:
 
 ```diffstatic {data-lang=kotlin}
 val notes = mutableListOf<TimedNote>()
@@ -137,10 +136,7 @@ The same loop with `to` in place of `partner`, the points paired by index:
 
 The heart is smaller than the circle, so the first falls steadily to the heart's pitch and climbs
 back. The second falls about twice as far and climbs back before it reaches the heart, which is the
-fold in the bottom row of the morph above. The renderer opens a document of its own, draws the same two
-strokes, and runs the loop above; `DrawnMorphPageTest` fails if the loop on this page and the one
-the renderer runs drift apart, and the `synth.drawn.morph` smoke test fails if matching stops at
-least halving the travel or the index-order morph stops dipping at least twice as far.
+fold in the bottom row of the morph above.
 
 The pitch the box computes, step by step, for both:
 
@@ -159,7 +155,7 @@ markdown("dips", "lowest note, matched: %.2f  \nlowest note, by list index: %.2f
 
 ## Drawing your own
 
-Open **drawn_morph** from the welcome screen's starting points and run `shapes`, then `paired`,
+Open drawn_morph from the welcome screen's starting points and run `shapes`, then `paired`,
 `morph` and `play`. To morph your own shapes, press `alt-d` and draw two closed strokes with the
 pen (`p`), then replace `morphShapes()` in `shapes` with a line that names the two strokes you drew
 last:
