@@ -6,7 +6,7 @@ import afield.four.modules.*
 import afield.four.targets.SideBySideStereoTarget
 import afield.four.texture.TextureSampler
 import afield.four.util.Window
-import afield.four.util.forever
+import afield.four.util.updateForever
 import afield.stdlib.fromViews
 import imgui.ImGui
 import afield.stdlib.linalg.Matrix4f
@@ -99,7 +99,7 @@ class ImGuiStereoQuadExample(
                 rewind()
             }
 
-            mesh.update["mvp"] = forever {
+            mesh.update["mvp"] = updateForever {
                 val view = sbs.currentEyeViewMatrix(Matrix4f())
                 val proj = sbs.currentEyeProjectionMatrix(Matrix4f())
                 val mvp = proj.mul(view.mul(Matrix4f(model)))

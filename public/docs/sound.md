@@ -275,11 +275,12 @@ wrong one:
 
 ![Three panels: a chord triad recovering zero of twelve notes and emitting pat tilde, a fast line recovering 23 of 32 when told its register, and the same audio recovering zero of 32 when not told, its whole span struck out by a declined band](assets/pat_transcription/pat-transcription-refusals-and-limits.svg)
 
-To regenerate these three figures:
+??? aside "Regenerating the transcription figures"
+    The three figures above come from the `synth.pat.transcription` smoke test:
 
-```diffstatic {data-lang=bash}
-PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
-```
+    ```diffstatic {data-lang=bash}
+    PAT_TRANSCRIPTION_DIR=/tmp/pat-transcription python3 tools/run_field_tests.py --id synth.pat.transcription
+    ```
 
 
 <a id="what-a-voice-caption-promises"></a>
