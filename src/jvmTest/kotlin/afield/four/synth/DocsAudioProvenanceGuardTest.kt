@@ -59,8 +59,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 41,
-            Origin.DIRT_SAMPLES to 6,
+            Origin.STAND_IN_SYNTH to 40,
+            Origin.DIRT_SAMPLES to 9,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 9,
             Origin.FAUST to 3,
@@ -232,13 +232,20 @@ class DocsAudioProvenanceGuardTest {
          * pentatonic scale), and plays them through [patTimed] and [patRenderStereo]. Its FIELD_TEST
          * finds every strike and every pitch in both renders and holds them against the notes.
          *
+         * Two more are `chain_drawn_morph.md`'s (2026-10-02), [Origin.STAND_IN_SYNTH]:
+         * [DrawnMorphDocs] plays the size of a point cloud morphing between two drawn strokes, paired
+         * by `matchPoints`, as pitch through [patTimed] and [patRenderStereo].
+         *
          * The four newest are `boolean_network_music_examples.md`'s, and they are
          * [Origin.DIRT_SAMPLES]: [BooleanNetworkSoundDocs] plays each fence's note stream through
          * the pinned Dirt-Samples subset with no fallback. In the same change (2026-10-01)
          * `sound_paths.md`'s dry comparison clip moved from [Origin.STAND_IN_SYNTH] to
          * [Origin.DIRT_SAMPLES], because its input became real one-shots; the total did not move
          * for that one, the split did.
+         *
+         * `chain_ca_sound.md`'s three moved the same way (2026-10-02): [CaSoundDocs] now plays its
+         * rows as `click`, `hh` and pitched `arpy` one-shots from the pinned subset.
          */
-        const val EXPECTED_FENCE_COUNT = 62
+        const val EXPECTED_FENCE_COUNT = 64
     }
 }

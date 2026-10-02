@@ -1,0 +1,43 @@
+name: csound_line_notes
+description: |
+  Setup for the `csound.md` line-note captures. A Csound language root and one Csound box holding
+  the page's Pluck `.csd`. Nothing is launched: the notes on an `instr` line and on a score line are
+  read from the text. The capture's drive script puts the cursor on the line and photographs the note
+  the editor shows for it.
+operations:
+  - create:
+      box: csound_doc_root
+      name: "csound"
+      frame: { x: 40.0, y: 40.0, w: 160.0, h: 80.0 }
+      properties:
+        mainLanguage: csound
+        isCsoundRoot: true
+        code: |
+          // Children of this box are Csound.
+  - create:
+      box: csound_doc_pluck
+      name: "pluck"
+      frame: { x: 40.0, y: 180.0, w: 300.0, h: 120.0 }
+      properties:
+        code_language: Csound
+        code: |
+          <CsoundSynthesizer>
+          <CsInstruments>
+          chn_k "cutoff", 1, 3, 2400, 200, 8000
+
+          instr Pluck                       ; p4 MIDI note, p5 level in dBFS
+            icps  =         cpsmidinn(p4)
+            asig  pluck     ampdbfs(p5), icps, icps, 0, 1
+            kcut  chnget    "cutoff"
+            asig  butterlp  asig, kcut
+            aenv  linsegr   1, p3, 1, 0.3, 0
+            outs  asig * aenv, asig * aenv
+          endin
+          </CsInstruments>
+          <CsScore>
+          i "Pluck" 0   0.5  57  -12
+          i .       +   .    60  .
+          i .       +   1.5  64  -9
+          </CsScore>
+          </CsoundSynthesizer>
+  - connect: { parent: csound_doc_root, child: csound_doc_pluck }

@@ -189,7 +189,7 @@ AI4 still needs the same provider credentials and configuration it uses on the d
 
 ## Select, then edit
 
-Open **Select** whenever you want to move elsewhere in the document. The search field's font is 16 pixels, which is the size at which mobile Safari stops zooming the page as you focus an input; rows have touch-sized targets, and the desktop preview column is omitted so results have room beside the on-screen keyboard.
+Open **Select** whenever you want to move elsewhere in the document. It searches the same things as the desktop panel, with larger rows and no preview column, so the results fit above the on-screen keyboard.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-mobile-controller-select" screenshot="assets/mobile_controllers/select.png" alt="Open Anything in the Field mobile controller at iPhone size" padding="0" wait="0" timeout="120" embed=true hidden=true name="mobile-controller-select"}
 ui.eval("""
@@ -225,4 +225,4 @@ Tap a result to select its box and property. The controller switches to **Edit**
 5. Adjust live parameters in **Group**, check the result in **Outputs**, or use **Chat** for a larger change.
 6. Use **Edit** for a small direct correction, then **Pad** to launch or stop the selected box.
 
-Landscape works, but portrait is the primary layout, and it is laid out for the short viewport a raised keyboard leaves as well as for a whole phone screen. `tools/run_ui_regressions.py` is what holds it to all three.
+Landscape works, but the controller is laid out for portrait, and it stays usable with the keyboard raised.

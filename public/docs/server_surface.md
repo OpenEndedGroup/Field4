@@ -138,22 +138,17 @@ The offline document viewer needs that: it posts a document back to
 `POST /api/import-offline-doc` from whatever origin its bundle was served from, and
 `/api/import-offline-doc` is the one path explicitly exempted from the same-site guard below.
 
-This configuration stops exactly two things:
+This configuration stops exactly one thing:
 
 - **`PUT` is not allow-listed.** A cross-origin `PUT` never reaches a handler. That is
   configuration rather than a guard: it protects every `PUT` by accident, and a future
   developer adding `allowMethod(HttpMethod.Put)` for an unrelated endpoint would silently
   remove it from all of them. A test says so.
-- **`X-Field-Docs-Improvement-Token` is not allow-listed.** The documentation-improvement
-  endpoint can spawn a coding agent with write access to your checkout. It requires that
-  header, and because the header is not CORS-safelisted and not in `allowHeader`, a web
-  page's preflight fails before the request is sent. `anyHeader()` in that block would
-  turn an agent-spawning endpoint into something a web page can reach, with nothing in the
-  diff to say so.
 
 ??? aside "Pinned by"
-    `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs`, and
-    `theImprovementTokenHeaderIsNotReachableFromAWebPage` for the second bullet.
+    `FieldApiCorsExposureTest.theCorsConfigurationIsExactlyWhatWeThinkItIs`. Until 2026-10-02
+    a second bullet here said a custom token header was kept off the allow-list; the route
+    that needed it, `POST /api/docs-improvement`, was removed that day.
 
 ## Defence 2 — the read/write split
 
@@ -173,7 +168,7 @@ ordinary page load) and is also why reads need saying separately:
 > leaks the path of your checkout *and* the path of the workspace your documents live in,
 > `GET /api/welcome-changelog` leaks your commit messages, and
 > `GET /api/source` and `GET /api/workspace-search` reach source text. **The only read routes
-> carrying a guard of their own are the documentation-annotation ones under Defence 5**; every
+> carrying a guard of their own are the documentation ones under Defence 5**; every
 > other read route has none, and the same-site switch does not cover them. They are listed one
 > by one, with their guards, in `dev_docs/server_surface_inventory.md`.
 
@@ -283,16 +278,16 @@ from.
 
 ## Defence 5 — route isolation for the documentation-annotation feature
 
-Four routes carry guards of their own rather than relying on the global switch, because their
-exposure is specific and understood. They are the annotation notebook
-(`POST`/`PUT`/`DELETE /api/docs-annotations…`) and `POST /api/docs-improvement`, which can
-spawn a coding agent with write access to your checkout.
+Two groups of routes carry guards of their own rather than relying on the global switch,
+because their exposure is specific and understood. They are the annotation notebook
+(`GET`/`POST`/`PUT`/`DELETE /api/docs-annotations…`) and the documentation revision pass
+(`/api/docs-improvement/pass…` and `/docs-pass-site/…`), which runs coding agents with write
+access to your checkout, commits, and can fast-forward `main`.
 
-That last one is guarded by **five independent conditions, each separately sufficient** to
-stop it: the feature must be switched on, a random per-run token must match (compared with
-`MessageDigest.isEqual`), the request must be from loopback, it must be same-site, and the
-target directory must exist and be a directory. Its token header is kept off the CORS
-allow-list, so a web page's preflight fails before any of that is reached.
+Both refuse a request that is not from loopback or not same-site. The annotation routes have
+two opt-in hatches, `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` and
+`AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE`, for taking notes from a tablet or another site. The
+revision pass ignores both, so neither can let another device or another website start agents.
 
 The same file's documentation *mirror* is `GET /field-docs/{...}`, which fetches
 `openendedgroup.com` and serves it back from Field's own origin so an injected annotation

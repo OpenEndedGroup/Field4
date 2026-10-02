@@ -38,13 +38,9 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
-import java.security.MessageDigest
-import java.security.SecureRandom
 import java.time.Duration
-import java.util.HexFormat
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
 
 private const val DOCS_ORIGIN = "https://openendedgroup.com"
 private const val DOCS_ROOT = "/field4/"
@@ -53,40 +49,33 @@ private const val PROXY_ROOT = "/field-docs/"
 // ─────────────────────────────────────────────────────────────────────────────
 // Access control
 //
-// `POST /api/docs-improvement` spawns `codex exec --sandbox workspace-write` — an
-// autonomous coding agent with write access to a source checkout — and the prompt it
-// is handed is assembled out of annotation notes that arrive over `POST
-// /api/docs-annotations`. Both routes are installed into the same Ktor application as
-// an SSL connector that binds `0.0.0.0` (see `Server.kt`, `httpsHost`), because Field
-// genuinely does serve browsers and the visionOS shell on other devices. Until this
-// file grew the block below, that added up to: anything on the LAN could POST its own
-// instructions and then POST a button that ran them against the human's source tree,
-// with no credential of any kind.
+// Two groups of routes are installed here, into the same Ktor application as an SSL
+// connector that binds `0.0.0.0` (see `Server.kt`, `httpsHost`), because Field genuinely
+// does serve browsers and the visionOS shell on other devices:
 //
-// So the capability is now opt-in, token-authenticated, loopback-only, and attributed
-// to a directory that is written down rather than inherited from wherever the JVM
-// happened to be launched.
+//  - the annotation routes, `/api/docs-annotations…`. A note is not a private notepad: it
+//    is the prompt the revision pass hands its agents, so whoever can write one can steer
+//    a run the human later starts. Loopback + same-site by default, with two hatches
+//    (`AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE`, `AFIELD_DOCS_ANNOTATIONS_ALLOW_CROSS_SITE`)
+//    that re-open them to other devices and other websites respectively;
+//  - the revision pass, `/api/docs-improvement/pass…` and `/docs-pass-site/…`
+//    (`docsPass.kt`), which runs coding agents with write access to the checkout written
+//    down in [docsImprovementCheckout]. Loopback + same-site with both hatches forced shut
+//    ([docsPassPolicy]), so a hatch named for annotations can never open it.
+//
+// The older agent-spawning route, `POST /api/docs-improvement`, and its enable switch and
+// token were removed on 2026-10-02.
 //
 // What this deliberately does *not* claim to defend against: another process running
-// as the same user on the same machine. It can reach loopback, read the token out of
-// the environment or the log, and in any case already has whatever access the coding
-// agent would be given. The boundary drawn here is "this machine's own user", not
-// "this machine".
+// as the same user on the same machine. It can reach loopback, and in any case already
+// has whatever access the coding agents would be given. The boundary drawn here is
+// "this machine's own user", not "this machine".
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** System property that turns the agent-spawning route on. Env fallback: [DOCS_IMPROVEMENT_ENABLE_ENV]. */
-internal const val DOCS_IMPROVEMENT_ENABLE_PROPERTY = "afield.docsImprovement.enabled"
-
-/** Environment variable that turns the agent-spawning route on. Property equivalent: [DOCS_IMPROVEMENT_ENABLE_PROPERTY]. */
-internal const val DOCS_IMPROVEMENT_ENABLE_ENV = "AFIELD_DOCS_IMPROVEMENT"
-
-/** Shared secret for the agent-spawning route. Unset means "mint one at startup and print it once". */
-internal const val DOCS_IMPROVEMENT_TOKEN_ENV = "AFIELD_DOCS_IMPROVEMENT_TOKEN"
-
-/** The checkout the spawned agent is allowed to edit. Unset means the server's own working directory. */
+/** The checkout the revision pass is allowed to edit. Unset means the server's own working directory. */
 internal const val DOCS_IMPROVEMENT_DIRECTORY_ENV = "AFIELD_DOCS_IMPROVEMENT_DIR"
 
-/** Escape hatch that re-opens the *annotation* routes to non-loopback clients. Never re-opens the spawn. */
+/** Escape hatch that re-opens the *annotation* routes to non-loopback clients. Never re-opens the revision pass. */
 internal const val DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV = "AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE"
 
 /** Escape hatch that re-opens the annotation *API* to other websites. A different axis from the one above. */
@@ -97,12 +86,6 @@ internal const val DOCS_ANNOTATIONS_STORE_PROPERTY = "afield.docsAnnotations.sto
 
 /** Annotation notebook path. Unset preserves the shared `~/.afield/docs-annotations.json` default. */
 internal const val DOCS_ANNOTATIONS_STORE_ENV = "AFIELD_DOCS_ANNOTATIONS_STORE"
-
-/** Which coding agent the revision harness runs per page: `codex` (the default) or `claude`. */
-internal const val DOCS_IMPROVEMENT_AGENT_ENV = "AFIELD_DOCS_IMPROVEMENT_AGENT"
-
-/** Header carrying [DOCS_IMPROVEMENT_TOKEN_ENV] on a launch request. */
-internal const val DOCS_IMPROVEMENT_TOKEN_HEADER = "X-Field-Docs-Improvement-Token"
 
 /** System property choosing where `/field-docs/…` reads from. Env fallback: [DOCS_MIRROR_SOURCE_ENV]. */
 internal const val DOCS_MIRROR_SOURCE_PROPERTY = "afield.docsMirror.source"
@@ -120,18 +103,15 @@ internal const val DOCS_MIRROR_DIRECTORY_ENV = "AFIELD_DOCS_MIRROR_DIR"
 internal const val DEFAULT_DOCS_MIRROR_DIRECTORY = "public/field4"
 
 /**
- * The resolved configuration the two guards below are written against.
+ * The resolved configuration the guards below are written against.
  *
- * It is a value rather than a set of `System.getenv` calls precisely so that the
- * *pre-change* posture — everything permitted, no token — is expressible as an
- * instance and can be pointed at the same tests, which is the only way to know the
- * tests would have failed before.
+ * It is a value rather than a set of `System.getenv` calls precisely so that a posture
+ * — the hatches open, the hatches shut — is expressible as an instance and can be pointed
+ * at the same tests, which is the only way to know the tests would have failed before.
  */
 internal data class DocsAccessPolicy(
-    val improvementEnabled: Boolean = false,
     val allowRemoteAnnotations: Boolean = false,
     val allowCrossSiteAnnotations: Boolean = false,
-    val improvementToken: String = "",
 )
 
 /** A refusal, as the status and the body the route should send. `null` from a guard means "allowed". */
@@ -174,8 +154,8 @@ internal fun isLoopbackDocsClient(remoteAddress: String?): Boolean {
  * `Server.kt` treats `-D` flags: a flag on this specific JVM's command line is a more
  * specific statement of intent than a variable inherited from a login shell. Anything
  * that is not one of the affirmatives — including the empty string that
- * `AFIELD_DOCS_IMPROVEMENT=` produces — is off, because the failure this whole file is
- * about is the one where you *think* something is off.
+ * `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE=` produces — is off, because the failure this
+ * whole file is about is the one where you *think* something is off.
  */
 internal fun docsFlagEnabled(property: String?, environment: String?): Boolean {
     val chosen = property?.takeIf { it.isNotBlank() } ?: environment
@@ -185,7 +165,7 @@ internal fun docsFlagEnabled(property: String?, environment: String?): Boolean {
 /**
  * The guard for reading and writing annotations.
  *
- * Annotation text is the *input* to the coding agent's prompt, so it is not merely a
+ * Annotation text is the *input* to the revision agents' prompt, so it is not merely a
  * private notepad: whoever can write it can steer a run the human later launches. That
  * is why it is loopback-only by default even though nothing about storing a string is
  * itself dangerous.
@@ -193,7 +173,7 @@ internal fun docsFlagEnabled(property: String?, environment: String?): Boolean {
  * [DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV] exists because reading the documentation mirror
  * on a tablet is a real use of this codebase, and a hardening pass that quietly breaks
  * it would be traded away the first time it got in the way. Note what the hatch does
- * *not* do: [refuseDocsImprovementLaunch] never consults it.
+ * *not* do: the revision pass never honours it ([docsPassPolicy]).
  */
 internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress: String?): DocsAccessRefusal? {
     if (policy.allowRemoteAnnotations || isLoopbackDocsClient(remoteAddress)) return null
@@ -213,12 +193,10 @@ internal fun refuseDocsAnnotationRequest(policy: DocsAccessPolicy, remoteAddress
  * This is the hole the branch that wrote [refuseDocsAnnotationRequest] reasoned its way to
  * and then did not close. Its own KDoc, and two dev_docs, say the sentence correctly:
  * **loopback does not stop a cross-site POST, because your own browser is on loopback.**
- * It was applied to `POST /api/docs-improvement`, whose token header is not CORS-safelisted
- * so the preflight fails — and not to the annotation routes one screen above it, whose only
- * header is `Content-Type: application/json`. That header *is* in Field's `allowHeader`,
- * `Post` and `Delete` *are* in its `allowMethod`, and `anyHost()` covers the origin. So the
- * preflight succeeded and any page you had open could write annotation notes — which are
- * the improvement agent's prompt input, i.e. the exact asset the token exists to protect.
+ * The annotation routes' only header is `Content-Type: application/json`. That header *is*
+ * in Field's `allowHeader`, `Post` and `Delete` *are* in its `allowMethod`, and `anyHost()`
+ * covers the origin. So the preflight succeeded and any page you had open could write
+ * annotation notes — which are the revision agents' prompt input.
  *
  * The fix is not to narrow the CORS block. `POST /api/import-offline-doc` is a real
  * cross-origin consumer (`offline-viewer.js`), the plugin's configuration is
@@ -314,82 +292,14 @@ internal fun refuseCrossSiteDocsRequest(
     return DocsAccessRefusal(
         HttpStatusCode.Forbidden,
         "Field documentation annotations are same-site only: this request came from another website, and " +
-            "annotation text is the prompt the documentation improvement agent is handed. Use the panel Field " +
+            "annotation text is the prompt the documentation revision agents are handed. Use the panel Field " +
             "injects into https://localhost:<port>/field-docs/…, or set " +
             "$DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV=1 before starting Field if you meant this.",
     )
 }
 
 /**
- * The guard for spawning the coding agent. Three independent conditions, checked in
- * order of how little they reveal to a caller who should not be here at all.
- *
- * Loopback first: a caller off this machine learns only that the route is loopback-only,
- * not whether the feature is configured or what the header is called. Then the enable
- * flag, whose refusal is a *help message* because by then the caller is local and is
- * almost certainly the human wondering why the button did nothing. Then the token.
- *
- * A blank `improvementToken` refuses. There is no path in [resolveDocsAccessPolicy]
- * that produces one — an enabled server without a configured token mints a random one —
- * but "misconfigured" must not mean "unauthenticated", so it is checked anyway.
- */
-internal fun refuseDocsImprovementLaunch(
-    policy: DocsAccessPolicy,
-    remoteAddress: String?,
-    presentedToken: String?,
-): DocsAccessRefusal? {
-    if (!isLoopbackDocsClient(remoteAddress)) {
-        return DocsAccessRefusal(
-            HttpStatusCode.Forbidden,
-            "The documentation improvement agent can only be launched from this machine.",
-        )
-    }
-    if (!policy.improvementEnabled) {
-        return DocsAccessRefusal(
-            HttpStatusCode.Forbidden,
-            "The documentation improvement agent is disabled. It spawns a coding agent with write access to a " +
-                "source checkout, so it is off unless you ask for it: restart Field with " +
-                "-D$DOCS_IMPROVEMENT_ENABLE_PROPERTY=true (or $DOCS_IMPROVEMENT_ENABLE_ENV=1).",
-        )
-    }
-    if (!docsTokensMatch(policy.improvementToken, presentedToken.orEmpty())) {
-        return DocsAccessRefusal(
-            HttpStatusCode.Unauthorized,
-            "Missing or incorrect $DOCS_IMPROVEMENT_TOKEN_HEADER. The expected value is " +
-                "$DOCS_IMPROVEMENT_TOKEN_ENV, or the token Field printed to the log at startup.",
-        )
-    }
-    return null
-}
-
-/**
- * Compares in time independent of *content*, via [MessageDigest.isEqual] — deliberately,
- * though constant-time comparison turns out not to be load-bearing here.
- *
- * Worth working out rather than cargo-culting, because the answer is "probably doesn't
- * matter". A timing oracle needs someone who can submit guesses and observe the outcome,
- * and neither caller who can reach this line can:
- *
- *  - a **cross-site page** — the case the token actually exists for — never arrives.
- *    `X-Field-Docs-Improvement-Token` is not CORS-safelisted, so the browser preflights,
- *    and Field's CORS config allows only `Content-Type`. Measured 2026-08-11: the
- *    preflight gets `403 Forbidden` and the page gets `TypeError: Failed to fetch`. No
- *    request reaches the handler, so there is no timing to measure.
- *  - a **local process running as this user** can reach loopback, but it can equally read
- *    the token out of the environment or the startup log, so it has no reason to guess.
- *
- * So: the cheap correct default, not a defence anything rests on. The residual weakness
- * is stated rather than papered over — `isEqual` returns early on a length mismatch, so
- * token *length* leaks to anyone positioned to time it. Nobody so positioned needs it.
- */
-private fun docsTokensMatch(expected: String, presented: String): Boolean =
-    expected.isNotEmpty() && MessageDigest.isEqual(
-        expected.toByteArray(StandardCharsets.UTF_8),
-        presented.toByteArray(StandardCharsets.UTF_8),
-    )
-
-/**
- * The checkout the agent is pointed at, decided once and written down.
+ * The checkout the revision pass is pointed at, decided once and written down.
  *
  * The old code passed `Paths.get(".")` straight to `ProcessBuilder.directory`, so the
  * blast radius of a run was "whatever directory someone happened to `cd` into before
@@ -412,25 +322,11 @@ internal fun resolveDocsImprovementDirectory(configured: String?, serverDirector
     return DocsImprovementDirectory(resolved)
 }
 
-/** Reads the ambient configuration into a [DocsAccessPolicy], minting a token if the feature is on without one. */
-private fun resolveDocsAccessPolicy(): DocsAccessPolicy {
-    val enabled = docsFlagEnabled(
-        System.getProperty(DOCS_IMPROVEMENT_ENABLE_PROPERTY),
-        System.getenv(DOCS_IMPROVEMENT_ENABLE_ENV),
-    )
-    val configuredToken = System.getenv(DOCS_IMPROVEMENT_TOKEN_ENV)?.trim().orEmpty()
-    val token = when {
-        !enabled -> ""
-        configuredToken.isNotEmpty() -> configuredToken
-        else -> HexFormat.of().formatHex(ByteArray(24).also(SecureRandom()::nextBytes))
-    }
-    return DocsAccessPolicy(
-        improvementEnabled = enabled,
-        allowRemoteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV)),
-        allowCrossSiteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV)),
-        improvementToken = token,
-    )
-}
+/** Reads the ambient configuration into a [DocsAccessPolicy]. */
+private fun resolveDocsAccessPolicy(): DocsAccessPolicy = DocsAccessPolicy(
+    allowRemoteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV)),
+    allowCrossSiteAnnotations = docsFlagEnabled(null, System.getenv(DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV)),
+)
 
 @Serializable
 data class DocsAnnotationAnchor(
@@ -546,30 +442,6 @@ internal fun DocsAnnotation.isQueued(): Boolean {
     val lastTurn = thread.lastOrNull { it.kind == "question" || it.kind == "reply" || it.kind == "reopen" }
     return lastTurn?.kind != "question"
 }
-@Serializable data class DocsImprovementLaunchRequest(val tags: List<String> = emptyList())
-@Serializable data class DocsImprovementStatus(
-    val running: Boolean = false,
-    val status: String = "idle",
-    val runId: String = "",
-    val message: String = "",
-    val startedAtEpochMs: Long = 0,
-    val finishedAtEpochMs: Long = 0,
-    val exitCode: Int? = null,
-    val logTail: String = "",
-    /**
-     * Whether a launch would even be considered. Reported on `GET` so a UI can grey the
-     * control out and say why, instead of offering a button that always 403s.
-     */
-    val enabled: Boolean = false,
-    /**
-     * The canonical directory the agent is (or would be) run in — the single fact that
-     * makes a run attributable to a checkout. Reported on `GET` as well as after a run,
-     * so you can check it *before* pressing the button rather than reading it out of a
-     * postmortem.
-     */
-    val workingDirectory: String = "",
-)
-
 /**
  * Resolves the notebook once at startup without requiring it to exist yet.
  *
@@ -732,7 +604,7 @@ internal fun <T> withDocsAnnotationStoreAt(path: Path, block: () -> T): T {
 }
 
 /**
- * The `@tag` vocabulary a note carries, which is also the filter the improvement agent
+ * The `@tag` vocabulary a note carries, which is also the filter the revision pass
  * selects notes by — so what counts as a tag decides what a run is handed.
  *
  * The lookbehind is the interesting part: `(?<![\w@])` means an `@` that follows a word
@@ -755,7 +627,7 @@ internal fun docsAnnotationTags(note: String, supplied: List<String>): List<Stri
  * `ATOMIC_MOVE` is only guaranteed within a filesystem, and a temp file under
  * `java.io.tmpdir` can easily be on a different one, which turns the move into a
  * copy-then-delete with a window where the file is half-written. This matters more than
- * it looks — the improvement agent is told to edit this very file while a human may be
+ * it looks — `tools/docs_notes.py` rewrites this very file while a human may be
  * adding notes through the panel, so a torn write loses annotations.
  *
  * Extracted from the store object so a test can point it at a temporary directory. What
@@ -799,77 +671,6 @@ internal fun docsNotesPython(): List<String> {
         listOf(Paths.get("/opt/homebrew/bin/uv"), Paths.get("/usr/local/bin/uv"), Paths.get(System.getProperty("user.home"), ".local", "bin", "uv"))
     val uv = searched.firstOrNull { Files.isExecutable(it) }
     return if (uv != null) listOf(uv.toString(), "run", "--no-project", "python") else listOf("python3")
-}
-
-private object DocsImprovementTask {
-    private val lock = Any()
-    private var state = DocsImprovementStatus(enabled = docsAccessPolicy.improvementEnabled, workingDirectory = docsImprovementDirectory.display)
-    fun status() = synchronized(lock) { state }
-    fun start(tags: List<String>): DocsImprovementStatus = synchronized(lock) {
-        if (state.running) return state
-        // The directory is resolved before anything else, because an unusable one means
-        // the run has no defined blast radius and must not begin at all.
-        val directory = docsImprovementDirectory.path
-            ?: return idle("Cannot run: ${docsImprovementDirectory.problem}. Set $DOCS_IMPROVEMENT_DIRECTORY_ENV to a checkout.")
-        val selected = DocsAnnotationStore.list().filter { it.isQueued() && (tags.isEmpty() || it.tags.any(tags::contains)) }
-        if (selected.isEmpty()) return idle("No unresolved annotations match this filter.")
-        val runId = UUID.randomUUID().toString()
-        // Loud, and on the server's own log rather than only in an HTTP response: a run
-        // that edits a source tree should be visible to whoever is watching the terminal,
-        // not only to whoever launched it.
-        lprintln(
-            "docs-annotations",
-            "Launching documentation improvement agent: run=$runId directory=$directory notes=${selected.size} " +
-                "tags=${tags.ifEmpty { listOf("<all>") }}",
-        )
-        state = DocsImprovementStatus(
-            running = true, status = "running", runId = runId,
-            message = "Starting documentation improvement task in $directory.",
-            startedAtEpochMs = System.currentTimeMillis(),
-            enabled = true, workingDirectory = directory.toString(),
-        )
-        thread(name = "docs-annotation-improvement", isDaemon = true) { run(runId, tags, directory) }
-        state
-    }
-
-    /** A refusal that leaves no run behind, while still reporting the posture the caller asked about. */
-    private fun idle(message: String) = DocsImprovementStatus(
-        message = message,
-        enabled = docsAccessPolicy.improvementEnabled,
-        workingDirectory = docsImprovementDirectory.display,
-    )
-
-    /**
-     * Runs the revision harness, `tools/docs_notes.py revise`, rather than one agent over every
-     * note. The harness associates each note with its source lines, partitions the queue per
-     * page, runs one agent per page in parallel, and applies what each agent recorded to this
-     * store itself — so the agents are never told to edit the store, which the old single prompt
-     * did, and which a sandboxed agent outside `~/.afield` could not do anyway.
-     *
-     * The agent is [DOCS_IMPROVEMENT_AGENT_ENV] (`codex` unless set, as it always was here).
-     * Nothing is committed: `--commit` is for a human running the harness by hand.
-     */
-    private fun run(runId: String, tags: List<String>, directory: Path) {
-        val agent = System.getenv(DOCS_IMPROVEMENT_AGENT_ENV)?.trim()?.takeIf { it in setOf("codex", "claude") } ?: "codex"
-        val command = docsNotesPython() + listOf(
-            "tools/docs_notes.py", "--store", DocsAnnotationStore.path.toString(), "--repo", directory.toString(),
-            "revise", "--agent", agent,
-        ) + tags.flatMap { listOf("--tag", it) }
-        lprintln("docs-annotations", "Documentation improvement run=$runId: ${command.joinToString(" ")}")
-        val log = StringBuilder()
-        var code = -1
-        try {
-            val process = ProcessBuilder(command).directory(directory.toFile()).redirectErrorStream(true).start()
-            process.inputStream.bufferedReader().useLines { lines -> lines.forEach { if (log.length < 120_000) log.appendLine(it) } }
-            code = process.waitFor()
-            finish(runId, code, if (code == 0) "Documentation revision finished in $directory." else "Documentation revision in $directory exited with $code.", log.toString())
-        } catch (error: Exception) {
-            finish(runId, code, "Could not run the documentation revision harness: ${error.message}", log.appendLine(error.toString()).toString())
-        }
-    }
-    private fun finish(runId: String, code: Int, message: String, log: String) = synchronized(lock) {
-        if (state.runId == runId) state = state.copy(running = false, status = if (code == 0) "succeeded" else "failed", message = message, finishedAtEpochMs = System.currentTimeMillis(), exitCode = code, logTail = log.takeLast(120_000))
-    }
 }
 
 private val docsProxyClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8))
@@ -977,26 +778,12 @@ internal fun Route.installDocsAnnotationRoutes(
             "local build ${mirror.directory} (${if (Files.isRegularFile(mirror.directory.resolve("index.html"))) "built" else "not built yet"}), " +
             "published site $DOCS_ORIGIN$DOCS_ROOT. Change with $DOCS_MIRROR_SOURCE_ENV / $DOCS_MIRROR_DIRECTORY_ENV.",
     )
-    if (policy.improvementEnabled) {
-        lprintln(
-            "docs-annotations",
-            "Documentation improvement agent ENABLED for ${docsImprovementDirectory.display}. " +
-                "POST /api/docs-improvement requires header $DOCS_IMPROVEMENT_TOKEN_HEADER: " +
-                "${policy.improvementToken} (from loopback only).",
-        )
-    } else {
-        lprintln(
-            "docs-annotations",
-            "Documentation improvement agent disabled. It spawns a coding agent with write access to a checkout; " +
-                "enable with -D$DOCS_IMPROVEMENT_ENABLE_PROPERTY=true or $DOCS_IMPROVEMENT_ENABLE_ENV=1.",
-        )
-    }
     if (policy.allowRemoteAnnotations) {
         lprintln(
             "warning,docs-annotations",
             "$DOCS_ANNOTATIONS_ALLOW_REMOTE_ENV is set: documentation annotations accept network peers that " +
                 "can reach this port. Browser requests must still use localhost or a literal IP and be same-origin " +
-                "unless $DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV is also set. The improvement agent stays " +
+                "unless $DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV is also set. The revision pass stays " +
                 "loopback-only regardless.",
         )
     }
@@ -1004,8 +791,8 @@ internal fun Route.installDocsAnnotationRoutes(
         lprintln(
             "warning,docs-annotations",
             "$DOCS_ANNOTATIONS_ALLOW_CROSS_SITE_ENV is set: documentation annotations accept writes from any " +
-                "website open in your browser, and annotation text is the improvement agent's prompt. The " +
-                "improvement agent still needs its token regardless.",
+                "website open in your browser, and annotation text is the revision agents' prompt. The " +
+                "revision pass stays same-site regardless.",
         )
     }
 
@@ -1036,34 +823,6 @@ internal fun Route.installDocsAnnotationRoutes(
         if (call.refuseUnlessSameSiteDocsClient(policy)) return@delete
         if (DocsAnnotationStore.delete(call.parameters["id"].orEmpty())) call.respond(mapOf("ok" to true))
         else call.respond(HttpStatusCode.NotFound, "annotation not found")
-    }
-    get("/api/docs-improvement") {
-        if (call.refuseUnlessSameSiteDocsClient(policy)) return@get
-        call.respond(DocsImprovementTask.status())
-    }
-    post("/api/docs-improvement") {
-        // Belt and braces on the one route where the cost of being wrong is a coding agent.
-        // The token already stops a web page — its header is not CORS-safelisted, so the
-        // preflight fails — but that argument rests on six lines of CORS configuration in
-        // another file staying exactly as they are. This check does not.
-        //
-        // `allowCrossSiteAnnotations` is forced shut here, for the same reason
-        // [refuseDocsImprovementLaunch] never reads `allowRemoteAnnotations`: a hatch whose
-        // name says "annotations" must not turn out to have opened the spawn.
-        if (call.refuseUnlessSameSiteDocsClient(policy.copy(allowCrossSiteAnnotations = false))) return@post
-        val refusal = refuseDocsImprovementLaunch(
-            policy,
-            call.request.local.remoteAddress,
-            call.request.headers[DOCS_IMPROVEMENT_TOKEN_HEADER],
-        )
-        if (refusal != null) {
-            lprintln(
-                "warning,docs-annotations",
-                "Refused a documentation improvement launch from ${call.request.local.remoteAddress}: ${refusal.status}",
-            )
-            return@post call.respond(refusal.status, refusal.reason)
-        }
-        call.respond(DocsImprovementTask.start(call.receive<DocsImprovementLaunchRequest>().tags.map(String::lowercase)))
     }
     installDocsPassRoutes(policy)
     installDocsSourceFileRoute(policy)

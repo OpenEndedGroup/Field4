@@ -833,12 +833,32 @@ class SessionTest(unittest.TestCase):
     def overview(self) -> dict:
         return {b["key"]: b for b in dn.batch_overview(self.git, self.store.notes())}
 
-    def test_a_session_waits_until_every_document_is_on_main(self) -> None:
+    def test_a_handoff_not_on_main_waits_and_the_rest_start(self) -> None:
+        # The unlanded document lives on the branch that wrote it, as a nightly sweep's would.
+        self.repo.git("checkout", "-q", "-b", "docs/language-test")
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Not landed\n")
+        self.repo.commit("sweep files a handoff")
+        self.repo.git("checkout", "-q", "main")
         navigation = self.overview()["navigation"]
         self.assertEqual(navigation["notLanded"], ["bbbb0002"])
+        self.assertEqual(navigation["notLandedDetail"][0]["branches"], ["docs/language-test"])
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        self.assertEqual(session["handoffs"], ["aaaa0001"])
+        brief = (Path(session["worktree"]) / "HANDOFF_SESSION.md").read_text()
+        self.assertNotIn("Rename the guide page title", brief)
+        states = {n["id"]: (n.get("handoff") or {}).get("state") for n in self.store.notes()}
+        self.assertEqual(states, {"aaaa0001": "taken", "bbbb0002": "open"})
+
+    def test_a_session_with_nothing_on_main_names_the_branch(self) -> None:
+        self.store.mutate(lambda notes: notes.remove(next(n for n in notes if n["id"] == "aaaa0001")))
+        self.repo.git("checkout", "-q", "-b", "docs/language-test")
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Not landed\n")
+        self.repo.commit("sweep files a handoff")
+        self.repo.git("checkout", "-q", "main")
         with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
             dn.start_session(self.git, self.store, "navigation")
-        self.assertIn("land the revision pass first", str(refused.exception))
+        self.assertIn("docs/language-test", str(refused.exception))
 
     def test_the_overview_says_who_is_already_running_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
@@ -868,6 +888,7 @@ class SessionTest(unittest.TestCase):
         self.assertIn("handoff-close", brief)
         self.assertIn("reply from the human", brief)
         self.assertIn("Decision: merge it into the tour.", brief)
+        self.assertIn("dev_docs/agents/DOCS_WRITING_RULES.md", brief)
         self.assertIn("claude", session["command"])
         self.assertEqual(dn.Git(worktree).status_paths(), {}, "the brief is excluded, not an uncommitted file")
         self.assertEqual({(n.get("handoff") or {}).get("state") for n in self.store.notes()}, {"taken"})
@@ -929,6 +950,13 @@ class OutcomesFileTest(unittest.TestCase):
             self.assertIn("memory", [e["kind"] for e in note["thread"]])
         finally:
             repo.close()
+
+
+class WritingRulesTest(unittest.TestCase):
+    def test_both_prompts_name_a_rules_file_that_exists(self) -> None:
+        rules = "dev_docs/agents/DOCS_WRITING_RULES.md"
+        self.assertIn(rules, dn.AGENT_PROMPT)
+        self.assertTrue((Path(__file__).resolve().parent.parent / rules).is_file(), rules)
 
 
 class KotlinSchemaTest(unittest.TestCase):

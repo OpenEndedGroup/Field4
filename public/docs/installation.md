@@ -32,16 +32,16 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
     in a browser. The development certificate is self-signed, so the browser may require an
     explicit local-certificate exception.
 
-    That URL is a real web server, running inside Field and listening on your machine. If you share
-    a network with anyone else, read [What Field Exposes, and What Stops It](server_surface.md) for
-    what it exposes and what does, and does not, protect it.
+    That URL is a web server running inside Field on your machine. If you share a network with
+    anyone else, [What Field Exposes, and What Stops It](server_surface.md) says what it serves and
+    who can reach it.
 
 ## The welcome page
 
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons to open the welcome document, open the docs with notes, improve annotated docs, and shut Field down, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons to open the welcome document, open the docs with notes, and shut Field down, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
 // /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
 // window's size, against the runner's fresh checkout-local workspace: what a new user sees.
 ui.eval("""
@@ -109,19 +109,16 @@ git pull
 and then start it again, which rebuilds whatever changed.
 
 The command palette (`Cmd-Shift-P`, or `Ctrl-Shift-P` on Windows and Linux; `F1` also works) includes **Check for updates**, which tells you whether that is worth
-doing. It asks `origin` what it has on your branch with one `git ls-remote`, fetching nothing at
-all if you are already level, and reports how many commits you are behind, along with any local
-commits of your own that `origin` does not have.
+doing. It reports how many commits you are behind `origin`, and any local commits of your own that
+`origin` does not have.
 
-It will not pull, merge, rebase or write anything into your working tree; only you know whether
-that checkout has work in it. If the answer is "7 new commits on origin/main", the `git pull` is
-yours to run when you are ready.
+It does not pull or change your checkout. If the answer is "7 new commits on origin/main", run
+`git pull` when you are ready.
 
 ![Field's command palette open over the canvas: an empty search box above four commands — New Box, Delete Box, Insert document from workspace, and Check for updates, that last one highlighted in blue as the selected row](assets/screenshot_17.png)
 
-The command says when it cannot answer. If you unpacked Field from an archive instead
-of cloning it, if `HEAD` is detached, if there is no `origin`, or if the network is down, it says
-which of those happened rather than reporting that you are up to date.
+If it cannot answer (Field was unpacked from an archive, `HEAD` is detached, there is no `origin`,
+or the network is down) it says which, rather than reporting that you are up to date.
 
 ??? aside "For maintainers: making an update announce itself"
     Most commits should pass without comment — the count is enough. When a commit needs everyone

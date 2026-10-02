@@ -33,6 +33,8 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
         val maxDescriptorSetAccelerationStructures: Int
     )
 
+    val openDlssNrFeatureFailure: String?
+
     val vkDevice: VkDevice
     val supportsPushDescriptors: Boolean
     val pushDescriptorMax: Int
@@ -361,6 +363,10 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 }
 
             }
+            val nrPlanResult=afield.four.neuralrendering.OpenDlssNrSupport.prepare(instance.vkInstance.address(),physicalDevice.vkPhysicalDevice.address())
+            val nrPlan=nrPlanResult.getOrNull()
+            openDlssNrFeatureFailure=nrPlanResult.exceptionOrNull()?.message
+            nrPlan?.let { extNames.addAll(it.native.required()) }
             extNames.addAll(afield.four.reconstruction.NgxSupport.deviceExtensions(instance, physicalDevice.vkPhysicalDevice.address(), supportedExtensions))
             val dedupedExtNames = extNames.distinct()
             enabledExtensions = dedupedExtNames.toSet()
@@ -604,12 +610,14 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, perf.address()); tail = perf.address()
             }
 
-            if (profilingEnabled && hasHostQueryReset) {
+            if (profilingEnabled && hasHostQueryReset && (nrPlan==null || useSplitVulkan12Features)) {
                 val hostReset = VkPhysicalDeviceHostQueryResetFeatures.calloc(stack)
                     .sType(EXTHostQueryReset.VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT)
                     .hostQueryReset(true)
                 memPutAddress(tail + VkBaseOutStructure.PNEXT, hostReset.address()); tail = hostReset.address()
             }
+
+            nrPlan?.apply(features.address())
 
             // Enable all queue families.
             val qProps = physicalDevice.vkQueueFamilyProps
@@ -628,13 +636,15 @@ class Device(val physicalDevice: PhysicalDevice, private val instance: Instance)
                 .pQueueCreateInfos(qInfos)
                 .pNext(features.address())
 
-            if (Options.enableVR && Instance.hasOpenXRBootstrap()) {
-                vkDevice = Instance.createVkDeviceViaXR(ci, instance.vkInstance, physicalDevice.vkPhysicalDevice)
-            } else {
-                val pDev = stack.mallocPointer(1)
-                vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
-                vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
-            }
+            try {
+                if (Options.enableVR && Instance.hasOpenXRBootstrap()) {
+                    vkDevice = Instance.createVkDeviceViaXR(ci, instance.vkInstance, physicalDevice.vkPhysicalDevice)
+                } else {
+                    val pDev = stack.mallocPointer(1)
+                    vkCheck(vkCreateDevice(physicalDevice.vkPhysicalDevice, ci, null, pDev), "Failed to create device")
+                    vkDevice = VkDevice(pDev[0], physicalDevice.vkPhysicalDevice, ci)
+                }
+            } finally { nrPlan?.close() }
 
             // Query push-descriptor limits (0 if unsupported)
             pushDescriptorMax = if (hasPushDescriptor) {

@@ -1212,7 +1212,15 @@ function disclosureInterface(container) {
                 });
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo };
+        function isOpen(id) {
+                return disclosures.has(id) && !!(states.get(id) && states.get(id).open);
+        }
+
+        function ids() {
+                return Array.from(disclosures.keys());
+        }
+
+        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids };
         container.__disclosureAPI = api;
         return api;
 }

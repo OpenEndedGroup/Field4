@@ -40,11 +40,10 @@ import kotlin.concurrent.thread
 // Every route here is loopback + same-site and nothing else: a browser on this machine, on one of
 // Field's own pages. That is the boundary drawn in DOCS_IMPROVEMENT_AGENT.md ("this machine's own
 // user"), and it is what stops the two real attacks — another device on the network, and a web
-// page open in your browser. Unlike `POST /api/docs-improvement` there is no feature switch and no
-// token: both were dropped here on 2026-09-30, because the token scrolls out of the terminal it is
-// printed in, and the page is used from inside Field itself. What that gives up is the
-// backstop for a *future* change to the CORS or same-site code; the checks themselves are the
-// ones `DocsAnnotationRouteSecurityTest` pins.
+// page open in your browser. There is no feature switch and no token, because a token scrolls out
+// of the terminal it is printed in, and the page is used from inside Field itself. What that gives
+// up is a backstop for a *future* change to the CORS or same-site code; the checks themselves are
+// the ones `DocsAnnotationRouteSecurityTest` pins.
 //
 // Both annotation hatches are forced shut for these routes (see [docsPassPolicy]). With only two
 // checks left, `AFIELD_DOCS_ANNOTATIONS_ALLOW_REMOTE` — set for taking notes from a tablet — must

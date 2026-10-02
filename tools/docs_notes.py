@@ -1415,7 +1415,9 @@ Several agents are working in this checkout at once, one per page. You own exact
 
 Edit nothing else. Do not commit, stash, reset, or run the docs build or Gradle: the harness that
 started you commits and verifies after every agent has finished. Read {root}/AGENTS.md (section 8,
-"Docs authoring") before writing prose.
+"Docs authoring") and {root}/dev_docs/agents/DOCS_WRITING_RULES.md before writing prose. The rules
+file is what the human's earlier notes asked for, page after page; a note on your page is often one
+of them broken again, and the rest apply to whatever you write while fixing it.
 
 The brief below lists the human's open notes on your page(s), each with its current location in
 the source (line numbers are live — they were computed from `git blame` against the working tree
@@ -2731,6 +2733,19 @@ def on_base(git: Git, path: str, base: str = "main") -> bool:
     return subprocess.run(["git", "cat-file", "-e", f"{base}:{path}"], cwd=git.root, capture_output=True).returncode == 0
 
 
+def branches_carrying(git: Git, path: str) -> list[str]:
+    """Local branches whose tip has the file, for a handoff document that is not on main yet.
+
+    A document lands on main only with the branch that wrote it (a revision pass, a session, or the
+    nightly language sweep), so naming that branch is the useful half of "not on main".
+    """
+    if not path:
+        return []
+    out = git.run("for-each-ref", "--format=%(refname:short)", "refs/heads/", check=False)
+    return [b for b in out.split() if b != "main" and subprocess.run(
+        ["git", "cat-file", "-e", f"{b}:{path}"], cwd=git.root, capture_output=True).returncode == 0]
+
+
 def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Each batch, in order, with its open handoffs and why its session can or cannot start yet."""
     open_items = open_handoffs(notes)
@@ -2740,10 +2755,14 @@ def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]
         items = sorted((h for h in open_items if handoff_batch(h) == batch["key"]),
                        key=lambda h: (not (h.get("handoff") or {}).get("blocking"), h.get("createdAtEpochMs", 0)))
         not_landed = [h["id"] for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
+        not_landed_detail = [{"id": h["id"], "title": h.get("note", ""), "path": (h.get("handoff") or {}).get("path", ""),
+                              "branches": branches_carrying(git, (h.get("handoff") or {}).get("path", ""))}
+                             for h in items if h["id"] in not_landed]
         earlier = [b["title"] for b in BATCHES if b["order"] < batch["order"]
                    and any(handoff_batch(h) == b["key"] for h in open_items)]
         overview.append({**{k: batch[k] for k in ("key", "order", "title", "how")},
-                         "handoffs": [h["id"] for h in items], "notLanded": not_landed, "earlierOpen": earlier,
+                         "handoffs": [h["id"] for h in items], "notLanded": not_landed,
+                         "notLandedDetail": not_landed_detail, "earlierOpen": earlier,
                          "session": ({**sessions[batch["key"]], "occupants": session_occupants(sessions[batch["key"]]["worktree"])}
                                      if batch["key"] in sessions else None)})
     return overview
@@ -2756,6 +2775,8 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
              "the documentation revision agents filed. This is an interactive session: ask before a decision that is "
              "the human's, and say what you are doing as you go.", "",
              batch["session"], "",
+             "Any prose you write under `public/docs/` follows `dev_docs/agents/DOCS_WRITING_RULES.md`: the rules the "
+             "human's notes asked for, page after page.", "",
              "For each handoff, in the order below: read its document, do the work (or get the decision), then close it:", "",
              f"    {cli} handoff-close <id> \"what happened, in a sentence the page's next agent can use\"",
              f"    {cli} handoff-close <id> --state dropped \"why not\"", "",
@@ -2816,10 +2837,18 @@ def start_session(git: Git, store: Store, batch_key: str, driver: str = "") -> d
     items = [h for h in open_handoffs(notes) if handoff_batch(h) == batch_key and (h.get("handoff") or {}).get("state", "open") == "open"]
     if not items:
         raise SystemExit(f"no open handoffs in {batch['title']}")
+    # A handoff whose document is not on main stays open for a later session; the rest start now.
+    # The session works from main, so a document still on its branch is not there to read.
     missing = [h for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
-    if missing:
-        raise SystemExit(f"{len(missing)} of these handoffs' documents are not on main yet: land the revision pass first "
-                         "(Commit, then Land on main), so the session starts from the pages the pass rewrote.")
+    items = [h for h in items if h not in missing]
+    if not items:
+        where = "; ".join(f"{h.get('note', '').strip()} is on {', '.join(branches_carrying(git, (h.get('handoff') or {}).get('path', ''))) or 'no local branch'}"
+                          for h in missing)
+        raise SystemExit(f"none of these handoffs' documents are on main yet: land the branch that wrote them first ({where}).")
+    for h in missing:
+        carried = branches_carrying(git, (h.get("handoff") or {}).get("path", ""))
+        print(f"left for a later session (its document is not on main yet{': on ' + ', '.join(carried) if carried else ''}): "
+              f"{h.get('note', '').strip()}", flush=True)
     stamp = time.strftime("%Y%m%d-%H%M")
     branch = f"handoffs/{batch_key}-{stamp}"
     worktree = default_pass_path(git.root, stamp).with_name(f"handoffs-{batch_key}-{stamp}")

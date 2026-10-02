@@ -95,6 +95,16 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
+- `point_matching.yaml`: BSP-OT one-to-one matching (`matchPoints`, `BspOt2D` in
+  `afield/stdlib/bspot.kt`) as three pure-CPU boxes, smallest first. `match_hello` draws a disc's
+  600 points matched onto a ring beside the same lists paired by index; `square_to_heart` is a
+  **launched** morph loop, matched beside unmatched; `million_pixels` matches every pixel of a
+  1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
+  The two still boxes execute and the morph is launched for 90 frames and stopped.
+- `paint_canvas.yaml`: three pure-CPU boxes that paint and draw FLines through
+  `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
+  blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
+  without it every box says so and stops.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
@@ -175,6 +185,19 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples so the two estimators are always compared at the same budget. Needs a GPU.
 - `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
   four values over fixed geometry. Needs a GPU.
+- `three_inspector_wall.yaml`: **the three.js output as an instrument** — ruler, section plane and
+  explode slider on a wall detail. Its code is `fline_examples.md`'s captured fence, held equal by
+  `ThreeInspectorDemoDriftTest` against the materialized sidecar. Promoted from
+  `public/docs/assets/three_inspector_demo/metadata.edn` on 2026-10-02.
+- `fline_hit_records.yaml`: **what a click on a figure returns** — `Box.inspect` on a wall of panels.
+  Promoted from `public/docs/assets/fline_hit_records_demo/` on 2026-10-02.
+- `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
+  samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
+  `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
+  `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
+  fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
+  Pure CPU. Moved up from `docs_capture/` on 2026-10-02 to become a starting point.
 - `kolakoski_euclid.yaml`: **Kolakoski counts, Euclid places** — the word says how many hits a group
   gets, `bjorklund` says where inside it they sit. A flat bar of twelve onsets rolled against
   `euclid(12,24)` at the same density, the same rule run recursively as a branching tree whose level
@@ -274,6 +297,9 @@ whose `verified-by` marker matches the bucket you chose. `checkAgentTranscriptIn
 until you do, and the classification you pick here is what it checks the page against — see
 `dev_docs/agent_transcript_index.md` for the contract and for why that page is hand-written rather
 than generated.
+
+- `open_dlss_nr_cubes.yaml`: editable raster cubes/plane, optional native NR, grading and frame recorder.
+- `open_dlss_nr.yaml`: optional Linux/NVIDIA native NR image study. An editable animated ink shader feeds source / NR / graded views at 768 × 768 each. The record clip child exports 180 consecutive GPU frames; the source and grade remain usable without weights. See `public/docs/open_dlss_nr.md`.
 
 ## Starting points and the docs gallery
 

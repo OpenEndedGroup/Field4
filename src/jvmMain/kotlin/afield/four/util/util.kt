@@ -4,7 +4,8 @@ import afield.Runloop
 import org.lwjgl.vulkan.VK10
 import afield.four.device.PhysicalDevice
 
-fun forever(function: () -> Boolean) = sequence {
+/** A `Sequence` that calls [function] once per step, for `mesh.update["name"] = updateForever { ... }`. */
+fun updateForever(function: () -> Boolean) = sequence {
     while (true) {
         function()
         yield(true)

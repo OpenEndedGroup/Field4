@@ -1,0 +1,76 @@
+--- a/src/vk_context.h
++++ b/src/vk_context.h
+@@ -121,6 +121,9 @@
+   VkDescriptorSet allocateSet(const Buffer* const bindings[kGenericBindings],
+                               const VkDeviceSize offsets[kGenericBindings] = nullptr,
+                               const VkDeviceSize ranges[kGenericBindings] = nullptr);
++  // Field captures graph sets once and releases them after its completion fence.
++  std::vector<VkDescriptorSet>* descriptorCapture = nullptr;
++  VkDescriptorPool descriptorPool() const { return descriptorPool_; }
+   void resetDescriptorPool();              // advance to the next pool and reset it
+   void resetDescriptorPool(uint32_t slot); // reset and use a specific pool (the caller's frame-in-flight slot)
+ 
+--- a/src/vk_context.cpp
++++ b/src/vk_context.cpp
+@@ -264,6 +264,7 @@
+ 
+   VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 8192 * kGenericBindings};
+   VkDescriptorPoolCreateInfo descriptorPoolInfo{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
++  descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+   descriptorPoolInfo.maxSets = 8192;
+   descriptorPoolInfo.poolSizeCount = 1;
+   descriptorPoolInfo.pPoolSizes = &poolSize;
+@@ -277,7 +278,7 @@
+ 
+ Context::~Context() {
+   if (!device_) return;
+-  vkDeviceWaitIdle(device_);
++  if (owned_) vkDeviceWaitIdle(device_);
+   for (VkShaderModule module : modules_) vkDestroyShaderModule(device_, module, nullptr);
+   destroyBuffer(dummy_);
+   destroyBuffer(staging_);
+@@ -495,6 +496,7 @@
+     writes[index].pBufferInfo = &infos[index];
+   }
+   vkUpdateDescriptorSets(device_, kGenericBindings, writes, 0, nullptr);
++  if (descriptorCapture) descriptorCapture->push_back(set);
+   return set;
+ }
+ 
+--- a/src/vk_context.h
++++ b/src/vk_context.h
+@@ -26,6 +26,7 @@
+   VkBuffer buffer = VK_NULL_HANDLE;
+   VkDeviceMemory memory = VK_NULL_HANDLE;
+   VkDeviceSize size = 0;
++  VkDeviceSize allocationBytes = 0;
+   bool hostVisible = false;
+   void* mapped = nullptr;
+   const char* label = "";
+@@ -78,6 +79,7 @@
+   // are not destroyed by this object.
+   Context(VkInstance instance, VkPhysicalDevice physical, VkDevice device, uint32_t queueFamily, uint32_t queueIndex = 0);
+   ~Context();
++  uint64_t allocatedBufferBytes = 0;
+   uint32_t queueFamily() const { return queueFamily_; }
+   uint32_t queueIndex() const { return queueIndex_; }
+   VkInstance instance() const { return instance_; }
+--- a/src/vk_context.cpp
++++ b/src/vk_context.cpp
+@@ -326,6 +326,8 @@
+                   : VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+   VK_CHECK(vkAllocateMemory(device_, &allocateInfo, nullptr, &result.memory));
+   VK_CHECK(vkBindBufferMemory(device_, result.buffer, result.memory, 0));
++  result.allocationBytes = requirements.size;
++  allocatedBufferBytes += result.allocationBytes;
+   if (hostVisible) VK_CHECK(vkMapMemory(device_, result.memory, 0, VK_WHOLE_SIZE, 0, &result.mapped));
+   return result;
+ }
+@@ -334,6 +336,7 @@
+   if (buffer.mapped) vkUnmapMemory(device_, buffer.memory);
+   if (buffer.buffer) vkDestroyBuffer(device_, buffer.buffer, nullptr);
+   if (buffer.memory) vkFreeMemory(device_, buffer.memory, nullptr);
++  allocatedBufferBytes -= buffer.allocationBytes;
+   buffer = Buffer{};
+ }
+ 

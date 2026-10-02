@@ -24,7 +24,7 @@ import kotlin.test.assertTrue
  * The opt-in refusal of cross-site writes across the whole API.
  *
  * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` establishes the number:
- * 49 of 57 state-changing HTTP routes have no route-specific access control at all, and Field's CORS config
+ * 49 of 56 state-changing HTTP routes have no route-specific access control at all, and Field's CORS config
  * says `anyHost()`, so any website you have open can call every one of them. That number is
  * not something a nightly agent gets to fix by changing a default — turning a refusal on
  * across 49 routes is exactly how you find out which of them the human's own tooling was

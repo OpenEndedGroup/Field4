@@ -9,7 +9,7 @@ import afield.four.targets.RenderTarget
 import afield.four.texture.LoadedTexture
 import afield.four.util.Projection
 import afield.four.util.Window
-import afield.four.util.forever
+import afield.four.util.updateForever
 import java.util.Random
 
 
@@ -116,10 +116,10 @@ class NewMain7_dynamicNumberOfVerts {
         module += "innerRectangle" to innerRectangle
 
         var frame = 0
-        innerRectangle.update["resize"] = forever {
+        innerRectangle.update["resize"] = updateForever {
 
             frame++
-            if (frame>10) return@forever true
+            if (frame>10) return@updateForever true
 
             val layers = (frame / 50) % 10 + 1
 
@@ -157,7 +157,7 @@ class NewMain7_dynamicNumberOfVerts {
             true
         }
 
-        innerRectangle.update["rot"] = forever {
+        innerRectangle.update["rot"] = updateForever {
             innerRectangle.push.get<Matrix4f>("modelMatrix").rotate(0.01f, Vector3f(1f, 0.8f, 0.3f))
             true
         }

@@ -175,9 +175,8 @@ class ServerSurfaceLedgerTest {
     private val guardAtoms = mapOf(
         "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
         "refuseUnlessLocalDocsClient" to listOf("loopback"),
-        "refuseDocsImprovementLaunch" to listOf("loopback", "enabled+token"),
     )
-    private val guardOrder = listOf("loopback", "same-site", "enabled+token")
+    private val guardOrder = listOf("loopback", "same-site")
 
     private data class Surface(
         /** `GET /api/source` -> (`Server.kt`, `none`). */

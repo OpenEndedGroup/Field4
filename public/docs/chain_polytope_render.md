@@ -1,18 +1,18 @@
 # A polytope, cut open, and traced
 
-Three parts of Field, one object. `afield.stdlib.polytope` keeps a ranked incidence topology and the
-Conway operator algebra over it. `afield.manifold` does exact Booleans on closed solids, over
-Manifold's C ABI. `afield.four.fabricated` runs a GPU path tracer. None of the three knows the other
-two exist, and this page sends one shape through all of them, checking each hop against the next.
+One shape passes through three parts of Field here. `afield.stdlib.polytope` builds polyhedra
+with Conway operators and remembers where each face came from. `afield.manifold` does exact Booleans
+on closed solids. `afield.four.fabricated` runs a GPU path tracer. The three are independent, and
+the page shows what to pass from one to the next.
 
 The shape is `bD`: bevel of the dodecahedron, better known as the truncated icosidodecahedron. It has
-62 faces, which is small enough to count and rich enough that a mistake anywhere shows.
+62 faces, few enough to count and enough that a mistake shows.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/lineage.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="lineage study converged" embed=true hidden=true timeout="240" name="chain-polytope-lineage" alt="A path-traced truncated icosidodecahedron over a pale floor with the Venice lagoon behind it: twelve brushed-gold decagons, twenty deep blue hexagons, thirty transparent squares" macro-file="../../dev_docs/agents/transcripts/polytope_path_trace_lineage.yaml" capture-box="polytope_lineage_trace"}
 // Built and launched from dev_docs/agents/transcripts/polytope_path_trace_lineage.yaml.
 ```
 
-Gold, blue and glass are not decoration. Each face of `bD` descends from exactly one element of the
+The colours come from the shape's history. Each face of `bD` descends from exactly one element of the
 dodecahedron it was built from, and the **rank** of that one element picks the material: a face over a
 pentagon is gold, a face over an edge is glass, a face over a vertex is blue. So the twelve decagons,
 the thirty squares and the twenty hexagons in that picture are the dodecahedron's twelve faces,
@@ -166,11 +166,14 @@ a closed shell has two boundary components, two spheres give χ = 4, and *g* = (
 
 ## Through the Booleans, and back out to the tracer
 
+The second render erodes `bD` into a shell of constant thickness, cuts it in half with a plane, and
+traces the lower half as a bowl.
+
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_polytope_render/shell.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="shell study converged" embed=true hidden=true timeout="300" name="chain-polytope-shell" alt="A path-traced terracotta bowl: the lower half of a constant-thickness shell of the truncated icosidodecahedron, its rim thickness visible all the way round and its interior facets rounded" macro-file="../../dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml" capture-box="polytope_manifold_trace"}
 // Built and launched from dev_docs/agents/transcripts/polytope_manifold_path_trace.yaml.
 ```
 
-The rim has constant thickness — the same the whole way round, which distinguishes an erosion from a scale. The interior facets are rounded where the exterior ones are
+The rim is the same thickness the whole way round, which is how an erosion differs from a scale. The interior facets are rounded where the exterior ones are
 sharp, because eroding by a ball cannot reproduce a concave corner tighter than the ball.
 
 Two details of the last hop are worth copying:
@@ -186,9 +189,8 @@ println("${added.triangleCount} triangles appended, ${added.degenerateCount} dro
 
 The dropped count is not zero. Manifold's output of a Boolean followed by a plane trim contains a
 few triangles of zero area, and `PathTraceScene.triangle` rejects those outright, which would abort
-a scene of half a million for the sake of three. `importTriMesh` counts and skips them instead, and
-reports what it skipped. That is most of the reason the bridge exists rather than being a call to
-`PathTraceScene.mesh` with a list comprehension in front of it.
+the whole scene. `importTriMesh` skips them instead and reports how many it skipped, so use it rather
+than feeding triangles to `PathTraceScene` yourself.
 
 ## One mesh to measure, another to draw
 

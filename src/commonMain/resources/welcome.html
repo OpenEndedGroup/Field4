@@ -1946,7 +1946,6 @@
         <div class="button-row">
             <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
             <a class="button-link" href="/field-docs/">/docs + notes</a>
-            <button id="run-docs-annotation-improvement" type="button">Improve annotated docs</button>
             <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
         <div id="vulkan-notice" class="vulkan-notice" hidden>
@@ -6275,7 +6274,6 @@
         const projectNameInput = document.getElementById("new-project-name");
         const searchInput = document.getElementById("recent-search");
         const shutdownButton = document.getElementById("shutdown-instance");
-        const docsImprovementButton = document.getElementById("run-docs-annotation-improvement");
         const workspaceInput = document.getElementById("workspace-path");
         const defaultWorkspaceButton = document.getElementById("default-workspace");
         const chooseWorkspaceButton = document.getElementById("choose-workspace");
@@ -6605,85 +6603,6 @@
                 shutdownButton.disabled = false;
                 shutdownButton.textContent = "shutdown this instance of Field";
                 setCreateStatus("Could not shutdown this Field instance.", true);
-            }
-        });
-
-        // This button starts `codex exec --sandbox workspace-write` in a source checkout.
-        // The server now requires an X-Field-Docs-Improvement-Token header, and the token
-        // is deliberately not obtainable over HTTP — Field installs CORS with anyHost(),
-        // so anything this page could fetch, some other website you happen to be visiting
-        // could fetch too. That is also why the header exists at all: the loopback check
-        // does not stop a cross-site POST, because *your own browser* is on loopback. A
-        // custom header cannot be sent cross-origin without a preflight the server refuses.
-        //
-        // So the token is typed once, from Field's startup log, and kept in localStorage,
-        // which is origin-scoped and therefore not readable by that other website.
-        const DOCS_IMPROVEMENT_TOKEN_KEY = "field.docsImprovementToken";
-        const askForDocsImprovementToken = (reason) => {
-            const entered = window.prompt(
-                reason + "\n\nPaste the token Field printed at startup (\"Documentation improvement agent ENABLED …\"), "
-                + "or the value of AFIELD_DOCS_IMPROVEMENT_TOKEN:",
-                "");
-            if (entered === null) return "";
-            const trimmed = entered.trim();
-            if (!trimmed) return "";
-            try { localStorage.setItem(DOCS_IMPROVEMENT_TOKEN_KEY, trimmed); } catch (ignored) { /* private mode */ }
-            return trimmed;
-        };
-
-        docsImprovementButton?.addEventListener("click", async () => {
-            // Ask the server its posture first, so a disabled Field says so plainly rather
-            // than collecting tags and a token and then refusing.
-            let posture = {};
-            try {
-                const probe = await fetch("/api/docs-improvement", { cache: "no-store" });
-                if (probe.ok) posture = await probe.json().catch(() => ({}));
-                if (posture.enabled === false) {
-                    window.alert(
-                        "The documentation improvement agent is disabled.\n\n"
-                        + "It spawns a coding agent with write access to a source checkout, so it is off unless "
-                        + "you ask for it. Restart Field with AFIELD_DOCS_IMPROVEMENT=1 (or "
-                        + "-Dafield.docsImprovement.enabled=true).\n\nSee dev_docs/DOCS_IMPROVEMENT_AGENT.md.");
-                    return;
-                }
-            } catch (ignored) { /* fall through; the POST will report the real problem */ }
-
-            const rawTags = window.prompt(
-                "Improve all unresolved notes, or enter @tags separated by spaces.\n\n"
-                + "This runs a coding agent with write access in:\n" + (posture.workingDirectory || "(unknown checkout)"),
-                "");
-            if (rawTags === null) return;
-            const tags = rawTags.split(/\s+/).map(tag => tag.replace(/^@/, "").toLowerCase()).filter(Boolean);
-
-            let token = "";
-            try { token = localStorage.getItem(DOCS_IMPROVEMENT_TOKEN_KEY) || ""; } catch (ignored) { token = ""; }
-            if (!token) token = askForDocsImprovementToken("This action needs Field's documentation-improvement token.");
-            if (!token) return;
-
-            docsImprovementButton.disabled = true;
-            docsImprovementButton.textContent = "Launching...";
-            const launch = (withToken) => fetch("/api/docs-improvement", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Field-Docs-Improvement-Token": withToken },
-                body: JSON.stringify({ tags })
-            });
-            try {
-                let response = await launch(token);
-                if (response.status === 401) {
-                    // A stale cached token is much the likeliest cause: Field mints a fresh
-                    // one on every restart unless you set one yourself. Drop it and re-ask.
-                    try { localStorage.removeItem(DOCS_IMPROVEMENT_TOKEN_KEY); } catch (ignored) { /* private mode */ }
-                    const retry = askForDocsImprovementToken("That token was not accepted.");
-                    if (!retry) throw new Error("Token rejected");
-                    response = await launch(retry);
-                }
-                if (!response.ok) throw new Error((await response.text()) || `HTTP ${response.status}`);
-                const payload = await response.json().catch(() => ({}));
-                docsImprovementButton.textContent = payload.running ? "Improvement running" : (payload.message || "Nothing to improve");
-            } catch (error) {
-                docsImprovementButton.textContent = error?.message || "Launch failed";
-            } finally {
-                setTimeout(() => { docsImprovementButton.disabled = false; docsImprovementButton.textContent = "Improve annotated docs"; }, 4000);
             }
         });
 

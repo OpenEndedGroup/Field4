@@ -42,7 +42,7 @@ open class LoadedTexture protected constructor(
     requestedMipLevels: Int = 1,
     private val generateMipmaps: Boolean = false,
     private val mipFilter: Int = VK10.VK_FILTER_LINEAR
-) : HasImageView, HasDefaultTextureSampler {
+) : HasImageView, HasDefaultTextureSampler, PreparesSampledImages {
     protected data class DecodedMip(val data: ByteBuffer, val width: Int, val height: Int)
     protected data class DecodedImage(
         val data: ByteBuffer,
@@ -583,7 +583,7 @@ open class LoadedTexture protected constructor(
         } else if (oldLayout == VK10.VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
             srcStage = VK10.VK_PIPELINE_STAGE_TRANSFER_BIT
             srcAccessMask = VK10.VK_ACCESS_TRANSFER_WRITE_BIT
-            dstStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+            dstStage = VK10.VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT or VK10.VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
             dstAccessMask = VK10.VK_ACCESS_SHADER_READ_BIT
         } else {
             throw RuntimeException("Unsupported layout transition")
@@ -593,6 +593,7 @@ open class LoadedTexture protected constructor(
         barrier.dstAccessMask(dstAccessMask)
 
         VK10.vkCmdPipelineBarrier(cmd.vkCommandBuffer, srcStage, dstStage, 0, null, null, barrier)
+        image.setLayoutFor(cmd.vkCommandBuffer.address(),newLayout)
     }
 
     private fun generateMipChain(stack: MemoryStack, cmd: CommandBuffer) {
@@ -722,6 +723,10 @@ open class LoadedTexture protected constructor(
         }
     }
 
+    override fun prepareSampledImagesFor(command: CommandBuffer) {
+        recordTextureTransition(command)
+    }
+
     fun recordTextureTransition(cmd: CommandBuffer) {
         if (stgBuffer != null && !recordedTransition) {
             recordedTransition = true
@@ -738,7 +743,7 @@ open class LoadedTexture protected constructor(
                     )
                 }
             }
-        } else {
+            image.setLayoutFor(cmd.vkCommandBuffer.address(),VK10.VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
         }
     }
 

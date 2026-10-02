@@ -116,6 +116,25 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def paint_library_path(repo_root: Path) -> Path:
+    """Where `afield.paint.PaintLibrary.resolvedPath` will look, from Python.
+
+    One candidate, where `./gradlew buildPaintNative` writes (cargo's `--target-dir`
+    `build/field-paint`, release profile). As with TetGen only the environment override
+    is honoured; the JVM property is invisible from here.
+    """
+    override = os.environ.get("AFIELD_PAINT_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_paint_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_paint_jvm.dylib"
+    else:
+        name = "libfield_paint_jvm.so"
+    return repo_root / "build" / "field-paint" / "release" / name
+
+
 def libpd_library_path(repo_root: Path) -> Path:
     """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
 
@@ -137,6 +156,30 @@ def libpd_library_path(repo_root: Path) -> Path:
         repo_root / "build" / "field-libpd" / "build" / "libs" / name,
         repo_root / "build" / "field-libpd" / "build" / "libs" / "Release" / name,
     ]
+    return next((c for c in candidates if c.exists()), candidates[0])
+
+
+def csound_library_path(repo_root: Path) -> Path:
+    """Where `afield.csound.CsoundLibrary.resolvedPath` will look, from Python.
+
+    libpd's shape: `tools/build_csound_native.py` builds libcsound into this repo's `build/`
+    (a framework on macOS), and an installed Csound is the fallback. Only the environment override
+    is honoured; `-Dafield.csound.library` is a JVM property this process cannot see.
+    """
+    override = os.environ.get("AFIELD_CSOUND_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    build = repo_root / "build" / "field-csound" / "build"
+    if sys.platform == "darwin":
+        candidates = [build / "CsoundLib64.framework" / "CsoundLib64",
+                      Path("/Library/Frameworks/CsoundLib64.framework/CsoundLib64")]
+    elif sys.platform.startswith("win"):
+        candidates = [Path("C:/Program Files/Csound6_x64/bin/csound64.dll")]
+    else:
+        candidates = [build / "libcsound64.so"] + [
+            Path(d) / "libcsound64.so.6.0"
+            for d in ("/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64", "/usr/lib", "/usr/local/lib")
+        ]
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
@@ -340,7 +383,9 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
+    "csound": (csound_library_path, "./gradlew buildCsoundNative"),
     "luajit": (luajit_library_path, "brew install luajit (or apt install libluajit-5.1-2)"),
     "browser-bridge": (browser_bridge_library_path, "./gradlew buildFieldBrowserBridge"),
     "electron-runtime": (electron_runtime_path, "./gradlew electronInstall"),

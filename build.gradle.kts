@@ -508,6 +508,7 @@ fun requiredRunJvmArgs(): List<String> {
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
         if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
         if (!onWindowsOrLinux) {
@@ -815,6 +816,7 @@ kotlin {
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
                 args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
+                args += "-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}"
                 args += steamAudioJvmArg()
 
                 applicationDefaultJvmArgs.set(args)
@@ -3428,6 +3430,30 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation)
+// behind a flat C ABI, for afield.paint.PaintCanvas.
+//
+// Optional and not wired into `check`: it needs cargo, and the first build fetches the crate's
+// repository by its pinned revision (in native/field-paint/Cargo.toml). The docs page
+// (public/docs/paint_canvas.md) declares `requires="paint"`, so buildDocsNativePrerequisites builds it. The
+// output is build/field-paint/release, which PaintLibrary searches; -Dafield.paint.library or
+// AFIELD_PAINT_LIBRARY point elsewhere.
+//
+//     ./gradlew buildPaintNative
+//     ./gradlew jvmTest --tests 'afield.paint.PaintCanvasTest'
+val buildPaintNative = tasks.register<Exec>("buildPaintNative") {
+    group = "build"
+    description = "Builds native/field-paint into build/field-paint (needs cargo and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-paint")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-paint/release"))
+    commandLine(
+        "cargo", "build", "--release", "--locked",
+        "--manifest-path", sourceDir.file("Cargo.toml").asFile.absolutePath,
+        "--target-dir", layout.buildDirectory.dir("field-paint").get().asFile.absolutePath,
+    )
+}
+
 // Fetch the pinned subset of tidalcycles/Dirt-Samples the docs' sample clips are rendered from.
 //
 // Not a native library, but the same kind of dependency: third-party, too large to vendor (~400MB
@@ -3503,6 +3529,56 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
         }
         logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
     }
+}
+
+// Build libcsound — Csound as a C library — into build/field-csound, for afield.csound.
+//
+// No wrapper: afield.csound binds csound.h directly through FFM. The script downloads one pinned,
+// checksummed Csound release tarball into the per-user native download cache and builds only the
+// library (no frontends, drivers or plugin opcodes). Needs cmake, flex, bison and libsndfile.
+// Optional like libpd and not wired into `check`; the Csound tests skip without it.
+//
+//     ./gradlew buildCsoundNative
+//     ./gradlew jvmTest --tests 'afield.csound.*'
+val buildCsoundNative = tasks.register("buildCsoundNative") {
+    group = "build"
+    description = "Builds libcsound into build/field-csound (needs cmake, flex, bison, libsndfile and, once, the network)."
+
+    val script = layout.projectDirectory.file("tools/build_csound_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-csound/build"))
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
+// Write src/commonMain/resources/csound-vocabulary.json from libcsound's own opcode list
+// (csoundNewOpcodeList): what a Csound box completes against. Needs a built libcsound
+// (buildCsoundNative); CsoundVocabularyTest fails when the committed file has drifted from it.
+tasks.register<JavaExec>("generateCsoundVocabulary") {
+    group = "documentation"
+    description = "Regenerates csound-vocabulary.json from the built libcsound's opcode list."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.csound.CsoundVocabulary")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+    workingDir = projectDir
 }
 
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
@@ -3608,7 +3684,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 
@@ -3884,4 +3960,23 @@ tasks.named("jvmDistTar") {
 
 tasks.named("jvmDistZip") {
     enabled = false
+}
+
+// Explicit optional preparation: ordinary compilation/startup never downloads NR assets.
+tasks.register<Exec>("fetchOpenDlssNrWeights") {
+    group="build"
+    description="Fetch and verify the pinned OpenDLSS-NR model into the shared native cache"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py","--weights-only")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register<Exec>("buildOpenDlssNrNative") {
+    group="build"
+    description="Build the optional Vulkan OpenDLSS-NR adapter and kernels"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register("buildOpenDlssNr") {
+    group="build"
+    description="Prepare the optional OpenDLSS-NR library, kernels and weights"
+    dependsOn("buildOpenDlssNrNative")
 }

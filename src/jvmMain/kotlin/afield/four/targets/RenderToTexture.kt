@@ -334,7 +334,7 @@ open class RenderToTexture(
         }
     }
 
-    private fun recordPendingFileSaves(command: CommandBuffer) {
+    protected fun recordPendingFileSaves(command: CommandBuffer) {
         val requests = dequeueFileSaves()
         if (requests.isEmpty()) return
 

@@ -7,7 +7,7 @@ import afield.four.modules.parameters
 import afield.four.modules.pointer
 import afield.four.targets.SideBySideStereoTarget
 import afield.four.texture.TextureSampler
-import afield.four.util.forever
+import afield.four.util.updateForever
 import afield.stdlib.fromViews
 import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
@@ -97,7 +97,7 @@ class PuppetBrowserVrPanel(
             mesh.v[1]!!.mapAndWrite { uvs.forEach(::put); rewind() }
             mesh.t!!.mapAndWrite_ints { indices.forEach(::put); rewind() }
 
-            mesh.update["mvp"] = forever {
+            mesh.update["mvp"] = updateForever {
                 mesh.push["mvp"] = panel.panelMvp(
                     stereo.currentEyeViewMatrix(Matrix4f()),
                     stereo.currentEyeProjectionMatrix(Matrix4f()),

@@ -184,9 +184,18 @@ A slot stores a view rather than a box reference. Restoring one reapplies, in th
 
 - the canvas pan position
 - the open or closed state of the nested disclosures, before anything is selected
+- the open or closed state of each box's output panels. A panel that did not exist when the slot
+  was saved, or no longer exists, is left as it is
 - the selected box, when exactly one box was selected at save time
 - the property that was open in Monaco
 - the editor cursor line and column
+
+`Alt+B` (or **Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel listing all nine slots. Each saved slot
+shows a small map of the canvas with the saved view outlined, what was selected or being edited, and
+which output panels were open. It has Restore, Save and delete buttons, a name you can edit, and three
+options: *restore view*, *restore selection*, and *close unrecorded panels*. That last one also closes
+any output panel the slot did not record, rather than leaving it as it is. Saving over a slot keeps
+its name and options.
 
 Bring up the navigation overlay and every box on screen that a slot points at wears an `F` chip
 with that slot's number. A box can wear more than one if several slots were saved on it. So the

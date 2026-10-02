@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 167 transcripts on every build, at three
-depths. 87 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 177 transcripts on every build, at three
+depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-73 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+76 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -169,6 +169,18 @@ audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
 
+### drawn_morph
+
+A drawn morph, heard, as five boxes. `shapes` draws a circle named "from" and a heart named "to" on
+the drawing layer; `paired` reads both strokes back, gives each 240 points evenly spaced by arc
+length with `resampleByLength`, pairs them with `matchPoints` and draws the pairs, matched and by
+list index; `morph` draws five steps of each pairing; `spread` plots how big the cloud is through
+the morph; `play` turns the morph, out and back, into 32 notes whose pitch is that size and renders
+both pairings into audio players. Draw two strokes of your own and follow the comment in `shapes`.
+The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
+
 ### studies_rings
 
 A study in three boxes. `rings` holds three numbers in a property, a ring count, the brightness of
@@ -262,6 +274,30 @@ one coroutine at a time, so a plain `var` per control is enough. All three are `
 launches them, advances 90 frames, and stops them.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/inertial_movement/metadata.edn)
+
+### point_matching
+
+One-to-one matching between point clouds, a million points a side, with `matchPoints` and the
+`BspOt2D` matcher behind it, in three boxes that get bigger in that order. `match_hello` pairs 600
+points in a disc with 600 on a ring around it and draws every pair twice: matched, which comes out
+as a sunburst, and paired by list index, which is a tangle of chords through the middle.
+`square_to_heart` is a launched loop that flows 4000 points from a square into a heart and back,
+the matched version beside the index-order one. Each point keeps the colour of where it started, so
+on the left the colours stay in their sectors and on the right they turn to grey mush half way.
+`million_pixels` makes every pixel of a 1024 x 1024 square a source point, scatters a million
+targets through three discs, and paints each pixel with where its target sits in its disc: hue for
+the angle, lightness for the distance from the centre. The result is three colour wheels, each
+stretched over the part of the square that drains into it. The seams between them are the BSP
+splits; where the eight merged trees disagree, the edge goes grainy. The matcher splits along
+Gaussian-guided directions as the reference implementation does, and on these shapes it lands a few
+percent above the exact optimum (`BspOtTest` measures it against the Hungarian answer). CI executes
+the two still boxes, launches the morph for 90 frames, and stops it.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/point_matching/million_pixels.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="rms travel" embed=true hidden=true timeout="300" padding="12" name="point-matching-million" alt="A square filled edge to edge with three large distorted colour wheels: one covering the upper left and centre, a smaller one at the upper right, and one across the bottom. Each wheel's hues run all the way round a dark centre and pale towards its rim. Where two wheels meet the boundary is a straight or gently curved seam, ragged and speckled in places" macro-file="../../dev_docs/agents/transcripts/point_matching.yaml" capture-box="million_pixels"}
+// The transcript builds and runs all three boxes; this is million_pixels' output.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/point_matching/metadata.edn)
 
 ### shared_types_demo
 
@@ -391,6 +427,64 @@ replaces the first.
 ![Piano roll of the hybrid above euclid(12,24) and kolakoski(24) at the same density: the hybrid bunches its onsets into pairs where the Euclidean lane alternates evenly](assets/pattern_language/kolakoski-euclid.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/kolakoski_euclid/metadata.edn)
+
+### frames_lifecycle
+
+**A frame loop, from start to cleanup.** The companion to
+[Frames and the Animation Loop](animation_time_model.md), in four boxes. Box 1 is an `animate { }`
+with no end condition: a disc travels a Lissajous figure until you press stop. Box 2 is the same
+loop with `if (elapsed >= 6.0) end()` and an `.end { }` that repaints the last frame in red, so you
+see it move and then see it stop. Box 3 shows that re-running a box replaces its loop rather than
+adding a second one: run it twice and the counter restarts in a new colour. It also prints its own
+frame rate, which is a different number on every machine. Box 4 is yours to drive: stop it inside
+its eight seconds, let it run out, or re-run it, and compare which cleanup lines appear. `.end { }`
+runs when the loop is cancelled, not when it finishes.
+
+Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
+loop runs thousands of frames a second and drawing each one floods the output.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/frames_lifecycle_stops.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="120" padding="12" name="gallery-frames-lifecycle" alt="Box 2 after its six seconds: the disc stopped on its track and the progress bar full, all redrawn in red by the .end block" macro-file="../../dev_docs/agents/transcripts/frames_lifecycle.yaml" capture-box="frames_lifecycle_stops"}
+// The transcript builds all four boxes and launches three; this is box 2 after it has stopped itself.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
+
+### three_inspector_wall
+
+**The three.js output as an instrument.** One box draws a wall detail, four skins and five conduit
+runs, with the three controls `threeInspect` adds to the viewer's toolbar: a ruler that measures the
+closest approach between two things you click, a section plane, and an explode slider. It is the
+complete example from [Drawing with FLines](fline_examples.md), the same code that page captures.
+
+![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
+
+### fline_hit_records
+
+**What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and
+the output names it, says whether you hit its face, an edge or a corner, and where on it, in the
+wall's own coordinates. Click the amber ridge line and you get its position along its length. Every
+hit is also printed, so the box's text output becomes a log of what you clicked. From the hit-record
+section of [Drawing with FLines](fline_examples.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_hit_records.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-hit-records" alt="A card reading Click a part of the figure, above a wall of fifteen panels in three rows and five columns, drawn at a slant in teal to violet, with an amber ridge line along its top edge" macro-file="../../dev_docs/agents/transcripts/fline_hit_records.yaml" capture-box="fline-hit-records-wall"}
+// The transcript builds and runs the box; this is its output before anything is clicked.
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
+
+### sound_render_path
+
+**One beat, three ways of sounding it.** The companion to the real-drums section of
+[Sound: the Pattern → Audio Path](sound.md). Box 0 draws the beat as a piano roll. Box 1 plays it
+through the synth stand-in and box 2 through the Dirt samples: play them back to back. Box 3 shows
+the per-event fallback, where a sample name the library does not have is voiced by the synth and
+mixed in with the rest. Box 4 reports where Field looked for the sample library and what it found.
+
+![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sound_render_path/metadata.edn)
 
 ### pitch_transcription_roundtrip
 
@@ -1194,6 +1288,21 @@ same shape through Field's own `marchingCubes` and names the difference.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
 
+### paint_canvas
+
+Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
+canvas, a brush, three strokes* loads a filbert twice and then drags it through a three-pass zigzag
+without reloading, so you can see the brush run dry. *Strokes along a flow field* paints 260 short
+strokes that follow a field of directions. It reloads the brush before each one with `wipe = 0.4`,
+so some of the last colour stays in the bristles and neighbouring strokes blend. *Pencil, hatching
+and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chalk line under it, on a
+20 cm sheet so the pencil reads at screen size. All three need the optional paint library
+(`./gradlew buildPaintNative`). Without it they say where they looked and stop.
+
+![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
+
 ### photo_to_solid_chain
 
 A photograph becomes a printable solid, as four pure-compute boxes — the loadable version of
@@ -1764,6 +1873,25 @@ boxes and skips the three Pd ones, as it skips Python cells; every box was run b
 built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
+### csound_demo
+
+**Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
+five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
+and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
+back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
+prints as `Key 62`, `Key 65`, … **Field into fx** feeds a Field sawtooth into an a-rate channel and
+plays the reverb tail back as a Field signal. **through Csound, measured** prints a gain of 0.2420
+for a 1 kHz Field sine through `butterlp 500` (a Butterworth gives 0.2425), and **a table from
+Kotlin** writes a 4096-point ftable and reads it back equal. Needs libcsound, built once with
+`./gradlew buildCsoundNative`. The build does not own that, so CI compiles the Kotlin boxes and
+skips the Csound ones; every box was run by hand against a built Csound on 2026-10-02.
+[Csound](csound.md) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
 ### marf_demo
 
@@ -2361,6 +2489,30 @@ The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with
 ![Direct lighting with sixteen area emitters](assets/direct_lighting/rtxdi-reconstructed.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
+
+### open_dlss_nr
+
+Draw animated ink in an editable Field fragment shader, pass it through OpenDLSS-NR at
+tone 0 / structure 10, then grade the result independently. Three labeled 768 × 768 panels
+keep the source visible. The **record clip** child exports six seconds of consecutive GPU frames
+from the live study. Source and grading work without the optional native dependency.
+See [Neural image rendering](open_dlss_nr.md) for preparation, all scene code and the captured video.
+
+![Field shader source, native NR and graded output](assets/opendlssnr/study.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr/metadata.edn)
+
+### open_dlss_nr_cubes
+
+Rasterize two rotating colored cubes on a checkerboard plane, with thin crossing bars, a moving
+camera and light. Compare SOURCE, OpenDLSS-NR at tone 0 / structure 10, and independently graded
+output in three labeled 768 × 768 panels. Both shaders are editable; **record clip** captures
+six seconds at 30 fps from the live GPU targets. Source and grading work without the optional backend.
+See [Neural image rendering](open_dlss_nr.md) for the complete scene code and video.
+
+![Rasterized cubes, native NR and graded output](assets/opendlssnr/cubes.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn)
 
 ### neural_reconstruction
 

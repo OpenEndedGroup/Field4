@@ -52,8 +52,8 @@ import kotlin.test.assertTrue
  *
  * ## And the part that measurement did not reach
  *
- * That session concluded that `POST /api/docs-improvement` needed a credential and gave it
- * one. It did not follow the same sentence one screen up the same file: `POST` and `DELETE`
+ * That session concluded that `POST /api/docs-improvement` (removed on 2026-10-02) needed a
+ * credential and gave it one. It did not follow the same sentence one screen up the same file: `POST` and `DELETE`
  * `/api/docs-annotations` were reachable from that page too, because their only guard was
  * a loopback check and the attacking page is in a browser that is on loopback. As of
  * 2026-08-12 those routes refuse a cross-site request themselves; see
@@ -99,33 +99,6 @@ class FieldApiCorsExposureTest {
     }
 
     /**
-     * The invariant the documentation-improvement token actually rests on.
-     *
-     * Loopback-only does not stop a cross-site POST, because the human's own browser is on
-     * loopback. What stops it is that `X-Field-Docs-Improvement-Token` is not a
-     * CORS-safelisted header and is not in `allowHeader`, so the preflight fails — 403,
-     * observed, and `TypeError: Failed to fetch` in the page.
-     *
-     * `anyHeader()`, or an `allowHeader` for this header, would silently convert the
-     * agent-spawning endpoint back into something a web page can reach.
-     */
-    @Test
-    fun theImprovementTokenHeaderIsNotReachableFromAWebPage() {
-        val block = Regex("""install\(CORS\)\s*\{([^}]*)\}""").find(serverSource)?.groupValues?.get(1).orEmpty()
-        assertFalse(
-            "anyHeader()" in block,
-            "anyHeader() in the CORS config would let any website send $DOCS_IMPROVEMENT_TOKEN_HEADER, " +
-                "which is one of the two things standing between a web page and `codex exec --sandbox " +
-                "workspace-write`. The other is the route's own same-site check, added 2026-08-12.",
-        )
-        assertFalse(
-            DOCS_IMPROVEMENT_TOKEN_HEADER.lowercase() in block.lowercase(),
-            "$DOCS_IMPROVEMENT_TOKEN_HEADER must never be CORS-allowed; the preflight failing is one layer " +
-                "of the CSRF defence.",
-        )
-    }
-
-    /**
      * `PUT` is absent from `allowMethod`, and this test says so — but not for the reason
      * the comment that used to sit here gave.
      *
@@ -136,8 +109,7 @@ class FieldApiCorsExposureTest {
      * earlier:
      *
      *  - the loopback check was **not** a guard against a cross-site request at all, for
-     *    exactly the reason `theImprovementTokenHeaderIsNotReachableFromAWebPage` gives —
-     *    the attacking page is in a browser, and the browser is on loopback. `POST` and
+     *    a simple reason: the attacking page is in a browser, and the browser is on loopback. `POST` and
      *    `DELETE` on the same routes were cross-site writable the whole time this comment
      *    claimed otherwise;
      *  - so `PUT`'s absence from `allowMethod` was not a footnote to a real defence, it was
@@ -179,7 +151,7 @@ class FieldApiCorsExposureTest {
      * ## What it is measuring, and what it cannot
      *
      * Two literals per route, read out of the source: the declaration, and whether one of
-     * the four known guard calls appears in the handler that follows it. The guard names
+     * the three known guard calls appears in the handler that follows it. The guard names
      * are the vocabulary of `docsAnnotations.kt` plus `agentRouteAccess.kt`; there is no other
      * access control in the tree, because there is no `install(Authentication)` in it either.
      * A new guard function has to be added to `guardAtoms`, or its routes read as `"none"`. So `"none"` here
@@ -234,12 +206,11 @@ class FieldApiCorsExposureTest {
         val guardAtoms = mapOf(
             "refuseUnlessSameSiteDocsClient" to listOf("loopback", "same-site"),
             "refuseUnlessLocalDocsClient" to listOf("loopback"),
-            "refuseDocsImprovementLaunch" to listOf("loopback", "enabled+token"),
             // agentRouteAccess.kt. Its own policy, so the docs-annotation opt-ins cannot loosen it;
             // the Host allowlist is the DNS-rebinding check the docs guards do not make.
             "agentRouteRefusal" to listOf("loopback", "localhost-host", "same-site"),
         )
-        val order = listOf("loopback", "localhost-host", "same-site", "enabled+token")
+        val order = listOf("loopback", "localhost-host", "same-site")
 
         val found = sortedMapOf<String, String>()
         var verbless = 0
@@ -543,10 +514,10 @@ class FieldApiCorsExposureTest {
             "DELETE /api/maven-dependencies" to "none",
             "DELETE /api/maven-repositories" to "none",
             // The in-Field agent harness (2026-09-29): runs code in Field's JVM and, in live mode,
-            // spends model tokens. No enabled+token gate, unlike docs-improvement: its callers are
-            // curl, the backdoor and field_mcp on this machine, the boundary is this machine's user
-            // (DOCS_IMPROVEMENT_AGENT.md, threat model), and the token's job there — CSRF that
-            // survives a CORS change — is done here by the route's own same-site check.
+            // spends model tokens. No switch or token: its callers are curl, the backdoor and
+            // field_mcp on this machine, the boundary is this machine's user
+            // (DOCS_IMPROVEMENT_AGENT.md, threat model), and CSRF is stopped by the route's own
+            // same-site check.
             "POST /api/agent-eval" to "loopback + localhost-host + same-site",
             "POST /api/agent-task" to "loopback + localhost-host + same-site",
             "POST /api/agent-worktrees/delete" to "none",
@@ -558,9 +529,8 @@ class FieldApiCorsExposureTest {
             "POST /api/code-use/analyze" to "none",
             "POST /api/completion-doc-polish" to "none",
             "POST /api/docs-annotations" to "loopback + same-site",
-            "POST /api/docs-improvement" to "loopback + same-site + enabled+token",
-            // /docs-pass.html (docsPass.kt): the same agents as the route above, plus commit and a
-            // fast-forward of main. Loopback + same-site with both annotation hatches forced shut,
+            // /docs-pass.html (docsPass.kt): coding agents with write access to the checkout, plus
+            // commit and a fast-forward of main. Loopback + same-site with both annotation hatches forced shut,
             // and deliberately no switch or token (2026-09-30; see docsPass.kt's header and
             // DocsPassRouteTest).
             "POST /api/docs-improvement/pass" to "loopback + same-site",

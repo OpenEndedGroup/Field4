@@ -61,10 +61,6 @@ uv run python tools/docs_notes.py revise --jobs 4 --commit
   `Docs-Note:` line for each note it resolves. Without `--commit` the edits stay in your working
   tree for you to review.
 
-The **Improve annotated docs** button on the welcome page runs the same thing using Codex, and
-never commits. It is off unless Field was started with `AFIELD_DOCS_IMPROVEMENT=1`, because it
-starts coding agents with write access to your checkout.
-
 A run keeps each agent's prompt, complete log and recorded outcomes in
 `.field-backdoor/docs-notes/runs/<run>/`.
 

@@ -223,9 +223,11 @@ class DocumentDirectoryWriterLedgerTest {
                 9,
                 "Paths come from Path.of(request.path) — explicit agent/tool-chosen export targets."
             ),
+            // Arrived with AI4's ViewBoxOutputRequest (`f5ccdb6a8`). `info.filename` is only the key
+            // of the held-page map; the one write is a capture PNG under `captureDir`.
             "src/jvmMain/kotlin/afield/ai/agent/BoxOutputCapture.kt" to exempt(
                 1,
-                "PNG evidence under captureDir (~/.afield/logs/ai4_box_captures); SessionInformation.filename is only a page key."
+                "Capture evidence under AFIELD_AI4_CAPTURE_DIR or ~/.afield/logs, not a document directory."
             ),
             "src/jvmMain/kotlin/afield/ai/SemanticRetrievalService.kt" to exempt(
                 2,
