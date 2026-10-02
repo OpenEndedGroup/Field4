@@ -151,6 +151,11 @@ and `/branches` marking the current position. Two bugs that run found are fixed 
   request; a reply was made against that text, and those threads are reset on every kind switch.
 - **Checkpoints are recorded, not used**: nothing yet replays a turn under its checkpoint or warns when
   the tool set has changed since.
+- **A turn cancelled while a tool program's GraalJS context is being built can miss the
+  cancellation**: the interrupt seems to be consumed there (seen once under full-suite load in
+  `ToolProgramTest`). The program then runs until it ends or reaches its own timeout (60 s by default);
+  a cancellation during the program's tool calls or JS is caught (conjecture, 2026-10-02: the window is
+  the context build, not measured further).
 - **`ai4_blobs` is never pruned.** An image a deleted branch referred to stays in the folder.
 - **Hooks see views, not the registry.** A hook gets a `ToolCallView` and a `ToolResultView`, which hold
   neither the registry nor the result object, so a hook neither calls tools nor changes what the model

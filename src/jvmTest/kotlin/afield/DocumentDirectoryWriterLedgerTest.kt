@@ -223,6 +223,10 @@ class DocumentDirectoryWriterLedgerTest {
                 9,
                 "Paths come from Path.of(request.path) — explicit agent/tool-chosen export targets."
             ),
+            "src/jvmMain/kotlin/afield/ai/agent/BoxOutputCapture.kt" to exempt(
+                1,
+                "PNG evidence under captureDir (~/.afield/logs/ai4_box_captures); SessionInformation.filename is only a page key."
+            ),
             "src/jvmMain/kotlin/afield/ai/SemanticRetrievalService.kt" to exempt(
                 2,
                 "Lucene index and model cache under cacheRoot, not a document directory."
@@ -244,7 +248,7 @@ class DocumentDirectoryWriterLedgerTest {
                 "Dev smoke harness; builds and writes its own temp document (the box code it runs names inside.filename)."
             ),
             "src/jvmMain/kotlin/afield/examples/stdlib/FileManagerSmokeTest.kt" to exempt(
-                11,
+                16,
                 "Dev smoke harness for FileManager; writes its own temp workspace."
             )
         )

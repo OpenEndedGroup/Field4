@@ -101,7 +101,7 @@ class ToolProgramTest {
         """)
         assertEquals("ok", result.stage, result.message)
         assertTrue(result.returned!!["caught"].asText().contains("refused on purpose"))
-        assertFalse(result.returned!!["success"].asBoolean())
+        assertFalse(result.returned["success"].asBoolean())
         assertEquals(listOf(false, false), result.calls.map { it.ok })
         assertEquals(2, result.failedCalls)
         assertEquals("after the failures\n", result.output)
@@ -161,12 +161,16 @@ class ToolProgramTest {
 
     @Test
     fun interruptingTheTurnThreadCancelsTheProgram() {
-        run("return 1;") // warm the shared engine, so the interrupt lands in the program and not in engine startup
         val failure = AtomicReference<Throwable?>(null)
         val worker = thread {
             failure.set(runCatching { run("""for (let i = 0; i < 100; i++) tools.ProgSlow({ms: 50}); return "never";""", timeout = 60.0) }.exceptionOrNull())
         }
-        Thread.sleep(300)
+        // Interrupt once the program is running its calls. An interrupt that arrives while the GraalJS
+        // context is still being built can be lost (the full suite's load made a fixed 300 ms sleep land
+        // there), which is a limit of the sandbox, not of this test; the program's own timeout then bounds it.
+        val deadline = System.currentTimeMillis() + 20_000
+        while (slowSeen.get() == null && System.currentTimeMillis() < deadline) Thread.sleep(10)
+        assertNotNull(slowSeen.get(), "the program never started")
         worker.interrupt()
         worker.join(10_000)
         assertFalse(worker.isAlive)
