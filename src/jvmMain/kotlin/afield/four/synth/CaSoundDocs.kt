@@ -8,6 +8,7 @@ import afield.stdlib.elementaryCa
 import afield.stdlib.longestRunLength
 import java.io.File
 import kotlin.math.abs
+import kotlin.math.pow
 
 /*
 FIELD_TEST
@@ -27,7 +28,8 @@ expect:
  *
  * The route is four steps and each one belongs to a different part of Field: an elementary rule is
  * stepped by `alife_ca.kt`, one of its rows becomes a step mask, [patCondense] finds the shortest
- * mini-notation that plays that mask, and [patRenderStereo] plays the notation through [patVoice].
+ * mini-notation that plays that mask, and [patRenderStereoDirt] plays the notation from the pinned
+ * Dirt-Samples subset.
  * So the sound is not "a sonification of a CA" in the loose sense. It is the CA's row, spelled as
  * something a musician would have typed, and then played.
  *
@@ -211,15 +213,10 @@ object CaSoundDocs {
             cycles = 4,
             cps = 1.0,
             render = { cycles, cps ->
-                patRenderStereo(
-                    gasketBar(20).pattern,
-                    cycles = cycles, cps = cps,
-                    // A short decay on purpose: the bar's last onset is at step 20 of 21 and the
-                    // next cycle's first is at step 0, so at 1 cps they are 48 ms apart. A tail
-                    // longer than that runs the two together, which a listener hears as a flam and
-                    // an onset detector reads as one strike.
-                    voice = patVoice(wave = PatWave.SQUARE, baseHz = 784.0, decay = 0.008, sustain = 0.04),
-                )
+                // `click:0` because it is the shortest hit in the pinned set (110 ms): the bar's
+                // last onset is at step 20 of 21 and the next cycle's first is at step 0, so at
+                // 1 cps they are 48 ms apart, and a long tail runs the two together into a flam.
+                playDirt(gasketBar(20).pattern, "click:0", cycles, cps)
             },
             verify = { audio ->
                 val bar = gasketBar(20)
@@ -246,14 +243,10 @@ object CaSoundDocs {
             cycles = 3,
             cps = 0.5,
             render = { cycles, cps ->
-                patRenderStereo(
-                    rule30Bar(32).pattern,
-                    cycles = cycles, cps = cps,
-                    // `x` rather than `hh` as the atom, in both bars, because compression is a
-                    // ratio of character counts and a two-character atom moves it. The voice
-                    // decides what it sounds like; the atom only has to be the same one.
-                    voice = patVoice(wave = PatWave.NOISE, baseHz = 5200.0, decay = 0.008, sustain = 0.05),
-                )
+                // `x` rather than `hh` as the atom, in both bars, because compression is a
+                // ratio of character counts and a two-character atom moves it. [playDirt] swaps
+                // the atom for the sample at render time; the notation is untouched.
+                playDirt(rule30Bar(32).pattern, "hh:0", cycles, cps)
             },
             verify = { audio ->
                 val bar = rule30Bar(32)
@@ -271,9 +264,15 @@ object CaSoundDocs {
                     "rule 30 condensed to ${bar.compression} against rule 90's $gasket, " +
                         "which is not the gap this scene is about"
                 }
-                val onsets = PatSoundDocs.onsetPeaks(audio.mono, threshold = 0.05)
-                check(onsets.size >= bar.onsets * cycles - 2) {
-                    "expected about ${bar.onsets * cycles} hats, found ${onsets.size}"
+                // Asked at each scheduled step rather than counted blind: adjacent steps are 62 ms
+                // apart and a sampled hat rings longer than that, so peaks merge into one envelope.
+                val mono = audio.mono
+                val scheduled = (0 until cycles).flatMap { c ->
+                    bar.mask.indices.filter { bar.mask[it] }.map { k -> (c + k / 32.0) / cps }
+                }
+                val heard = scheduled.count { BooleanNetworkSoundDocs.audibleAt(mono, it) }
+                check(heard >= scheduled.size - 2) {
+                    "expected about ${scheduled.size} hats, heard $heard"
                 }
                 println(
                     "    ${bar.onsets} of 32 steps, longest run $runs, " +
@@ -292,12 +291,11 @@ object CaSoundDocs {
             cycles = 2,
             cps = 0.25,
             render = { cycles, cps ->
-                val notes = gasketScale()
-                patRenderStereo(
-                    pat(notes.joinToString(" ")),
-                    cycles = cycles, cps = cps,
-                    voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.05, sustain = 0.3),
-                )
+                // One arpy hit per note, pitched by playback speed: the root plays at speed 1 and
+                // each semitone above it at 2^(1/12) times faster.
+                playDirt(pat(gasketScale().joinToString(" ")), "arpy:0", cycles, cps) { note ->
+                    2.0.pow((note.toInt() - 45) / 12.0)
+                }
             },
             verify = { audio ->
                 val notes = gasketScale()
@@ -321,6 +319,30 @@ object CaSoundDocs {
     )
 
     private val byName: Map<String, Scene> = SCENES.associateBy { it.name }
+
+    /**
+     * Plays every onset of [pattern] as the Dirt sample [token], strictly from the pinned subset.
+     *
+     * The pattern's own values are kept out of the token so the condensed notation stays what was
+     * measured; [speed] turns a value into a playback rate for the pitched scene.
+     */
+    fun playDirt(
+        pattern: PatPattern<String>,
+        token: String,
+        cycles: Int,
+        cps: Double,
+        speed: (String) -> Double = { 1.0 },
+    ): PatSoundDocs.Stereo {
+        val played = PatPattern { arc ->
+            pattern.events(arc).map { e ->
+                e.copy(value = token, annotations = e.annotations + ("speed" to speed(e.value).toString()))
+            }
+        }
+        return patRenderStereoDirt(
+            played, cycles = cycles, cps = cps,
+            library = DirtRender.requirePinnedLibrary(), strict = true,
+        ).audio
+    }
 
     /** Offline-render scene [name] and write a stereo 16-bit PCM WAV to [outPath]. */
     fun renderWav(name: String, outPath: String) {
