@@ -443,6 +443,10 @@ runs when the loop is cancelled, not when it finishes.
 Every box redraws on a clock, 30 times a second at most, rather than on every frame, because the
 loop runs thousands of frames a second and drawing each one floods the output.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/frames_lifecycle_stops.png" capture="box" open-outputs="true" wait="8.0" embed=true hidden=true timeout="120" padding="12" name="gallery-frames-lifecycle" alt="Box 2 after its six seconds: the disc stopped on its track and the progress bar full, all redrawn in red by the .end block" macro-file="../../dev_docs/agents/transcripts/frames_lifecycle.yaml" capture-box="frames_lifecycle_stops"}
+// The transcript builds all four boxes and launches three; this is box 2 after it has stopped itself.
+```
+
 [Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
 
 ### three_inspector_wall
@@ -463,6 +467,10 @@ the output names it, says whether you hit its face, an edge or a corner, and whe
 wall's own coordinates. Click the amber ridge line and you get its position along its length. Every
 hit is also printed, so the box's text output becomes a log of what you clicked. From the hit-record
 section of [Drawing with FLines](fline_examples.md).
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/agent_transcripts_gallery/fline_hit_records.png" capture="box" open-outputs="true" wait="3.0" embed=true hidden=true timeout="120" padding="12" name="gallery-fline-hit-records" alt="A card reading Click a part of the figure, above a wall of fifteen panels in three rows and five columns, drawn at a slant in teal to violet, with an amber ridge line along its top edge" macro-file="../../dev_docs/agents/transcripts/fline_hit_records.yaml" capture-box="fline-hit-records-wall"}
+// The transcript builds and runs the box; this is its output before anything is clicked.
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
 
