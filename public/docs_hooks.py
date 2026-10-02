@@ -31,7 +31,11 @@ TOOLS_DIR = Path(__file__).resolve().parent.parent / "tools"
 if str(TOOLS_DIR) not in sys.path:
     sys.path.insert(0, str(TOOLS_DIR))
 from verification_runtime import (
+    DEFAULT_MANAGED_STARTUP_CEILING,
+    MANAGED_STARTUP_CEILING_ENV,
+    ManagedStartupWatch,
     automation_server_environment,
+    env_seconds,
     automation_workspace,
     field_instance_info,
     field_instance_problem,
@@ -105,9 +109,12 @@ RUNNER_SUBPROCESS_GRACE_SEC = float(os.environ.get("FIELD_DOCS_SUBPROCESS_GRACE"
 # screenshot take substantially longer than 1/fps without making the capture unhealthy.
 VIDEO_CAPTURE_SETUP_HEADROOM_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_SETUP_HEADROOM", "150"))
 VIDEO_CAPTURE_PER_FRAME_BUDGET_SEC = float(os.environ.get("FIELD_DOCS_VIDEO_PER_FRAME_BUDGET", "2"))
-# A shared Field server gets one generous startup deadline. If it cannot become healthy inside that
-# window, fail with its log rather than concealing the lifecycle defect behind another cold boot.
-SERVER_START_DEADLINE_SEC = float(os.environ.get("AFIELD_DOCS_SERVER_START_TIMEOUT", "120"))
+# A shared Field server gets one start attempt. If it cannot become healthy, fail with its log rather
+# than concealing the lifecycle defect behind another cold boot. This is the JVM's budget, counted from
+# Gradle's `> Task :runJvm`; the build before that line (all of it, from a fresh worktree) is bounded
+# by AFIELD_BACKDOOR_STARTUP_TIMEOUT instead (`ManagedStartupWatch` in tools/verification_runtime.py).
+SERVER_START_TIMEOUT_ENV = "AFIELD_DOCS_SERVER_START_TIMEOUT"
+SERVER_START_DEADLINE_SEC = float(os.environ.get(SERVER_START_TIMEOUT_ENV, "120"))
 # Kept consistent with tools/field_backdoor.py: the first Playwright attach on a
 # machine may download browser binaries. While that marker is absent, give the
 # capture subprocess enough headroom to finish the download instead of killing it
@@ -1645,6 +1652,7 @@ class RunnerState:
         else:
             popen_kwargs["start_new_session"] = True
 
+        ceiling = env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
         LOG.info("Field docs runner starting shared Field server on port %s", self.backdoor_port)
         self._shared_field_process = subprocess.Popen(cmd, **popen_kwargs)
         self._shared_field_started_by_runner = True
@@ -1654,15 +1662,28 @@ class RunnerState:
         self._shared_field_stop_reason = None
         self.server_starts += 1
 
-        deadline = time.monotonic() + SERVER_START_DEADLINE_SEC
-        while time.monotonic() < deadline:
+        watch = ManagedStartupWatch(
+            self.shared_log_path,
+            ceiling=ceiling,
+            jvm_timeout=SERVER_START_DEADLINE_SEC,
+            ceiling_knob=MANAGED_STARTUP_CEILING_ENV,
+            jvm_knob=SERVER_START_TIMEOUT_ENV,
+        )
+        announced_jvm = False
+        while True:
             if self._capture_environment_check is not None:
                 self._capture_environment_check()
             process = self._shared_field_process
             if process is None:
                 return "start process handle was cleared"
+            watch.observe()
+            if watch.phase == "jvm" and not announced_jvm:
+                announced_jvm = True
+                LOG.info("Field docs runner: Gradle built in %.0fs; starting the Field JVM", watch.elapsed())
             if process.poll() is not None:
-                return f"process exited with code {process.returncode}"
+                return f"process exited with code {process.returncode} {watch.exit_context()}"
+            if watch.expired():
+                return watch.timeout_reason()
             if self._http_health_ok(self.backdoor_port):
                 LOG.info("Field docs runner shared Field server ready on port %s", self.backdoor_port)
                 # The JVM is a child of the gradle wrapper, so its PID differs from
@@ -1673,8 +1694,6 @@ class RunnerState:
                 self._shared_field_jvm_pid = listeners[0] if listeners else None
                 return None
             time.sleep(0.5)
-
-        return f"timed out after {SERVER_START_DEADLINE_SEC:.0f}s waiting for health"
 
     def _kill_shared_field_process(self) -> None:
         """Best-effort teardown of a shared Field process whose start failed.

@@ -1,13 +1,15 @@
-"""The managed-server startup wait in `tools/field_backdoor.py`, exercised without starting Field.
+"""The `./gradlew runJvm` startup wait, exercised without starting Field.
 
-The wait used to be a flat 120 s, so the first `./gradlew runJvm` in a fresh worktree -- the whole
-Kotlin JVM + JS compile and webpack -- always lost the race and every backdoor command failed with
-"did not become healthy ... within 120 seconds" while Gradle was still compiling. These tests
-drive `ManagedStartupWatch` and `FieldBackdoor.wait_for_managed_server` with a fake clock, a
-temporary managed log, a fake process and a patched health check.
+The wait used to be flat (120 s in the backdoor and the docs runner, 180 s in the smoke prewarm),
+so the first `./gradlew runJvm` in a fresh worktree -- the whole Kotlin JVM + JS compile and
+webpack -- always lost the race and failed with "did not become healthy" while Gradle was still
+compiling. These tests drive `ManagedStartupWatch` (tools/verification_runtime.py),
+`FieldBackdoor.wait_for_managed_server` and the docs runner's `_start_shared_field_server_once`
+with a fake clock, a temporary log, a fake process and a patched health check.
 """
 
 import asyncio
+import functools
 import os
 import sys
 import tempfile
@@ -18,6 +20,9 @@ from unittest import mock
 REPO_PATH = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_PATH))
 sys.path.insert(0, str(REPO_PATH / "tools"))
+sys.path.insert(0, str(REPO_PATH / "public"))
+
+import docs_hooks  # noqa: E402
 
 from tools.field_backdoor import (  # noqa: E402
     MANAGED_JVM_START_TIMEOUT_ENV,
@@ -252,6 +257,86 @@ class WaitForManagedServerTests(_Fixture):
             self.run_wait(self.watch(ceiling=900.0))
         self.assertIn("Gradle build was still running when the 900s startup ceiling", str(raised.exception))
         self.assertIn(":compileKotlinJvm", str(raised.exception))
+
+
+class DocsRunnerStartupTests(_Fixture):
+    """`docs_hooks.RunnerState._start_shared_field_server_once`, the docs build's own `runJvm` start.
+
+    It returns None when the server is healthy and a reason string otherwise; the caller turns the
+    string into the build's error.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        runner = object.__new__(docs_hooks.RunnerState)
+        runner.repo_root = REPO_PATH
+        runner.shared_log_path = self.log_path
+        runner.backdoor_port = 9477
+        runner._ensure_semantic_sidecar = lambda: None
+        runner._http_health_ok = lambda _port: self.healthy_after is not None and self.elapsed() >= self.healthy_after
+        runner._listener_pids = lambda: [4243]
+        runner.server_starts = 0
+        runner._capture_environment_check = None
+        self.runner = runner
+        self.process = _Process()
+        self.script: list[tuple[float, str]] = []
+        self.healthy_after: float | None = None
+        self.dies_at: float | None = None
+        self.start = self.clock.now
+
+    def elapsed(self) -> float:
+        return self.clock.now - self.start
+
+    def fake_sleep(self, seconds: float) -> None:
+        """Each poll sleeps five fake seconds, during which the fake Gradle may print or die."""
+        self.clock.now += 5.0
+        while self.script and self.script[0][0] <= self.elapsed():
+            self.append(self.script.pop(0)[1])
+        if self.dies_at is not None and self.elapsed() >= self.dies_at:
+            self.process.returncode = 1
+
+    def start_server(self, env: dict[str, str] | None = None) -> str | None:
+        watch = functools.partial(docs_hooks.ManagedStartupWatch, clock=self.clock)
+        with (
+            mock.patch.dict(os.environ, {docs_hooks.RUNNER_WORKSPACE_ENV: "", **(env or {})}),
+            mock.patch.object(docs_hooks.subprocess, "Popen", return_value=self.process) as spawn,
+            mock.patch.object(docs_hooks, "ManagedStartupWatch", watch),
+            mock.patch.object(docs_hooks.time, "sleep", side_effect=self.fake_sleep),
+        ):
+            try:
+                return self.runner._start_shared_field_server_once()
+            finally:
+                spawn.call_args.kwargs["stdout"].close()
+
+    def test_a_cold_build_longer_than_the_jvm_budget_still_starts(self) -> None:
+        self.script = [(5, "> Task :compileKotlinJvm\n"), (300, "> Task :runJvm\n")]
+        self.healthy_after = 330
+        self.assertIsNone(self.start_server())
+        self.assertEqual(self.runner._shared_field_jvm_pid, 4243)
+        self.assertGreaterEqual(self.elapsed(), 330)
+
+    def test_a_jvm_that_never_answers_names_the_docs_knob(self) -> None:
+        self.script = [(5, "> Task :compileKotlinJvm\n"), (300, "> Task :runJvm\n")]
+        reason = self.start_server()
+        assert reason is not None
+        self.assertIn("120s start budget (AFIELD_DOCS_SERVER_START_TIMEOUT)", reason)
+        # 120 s from :runJvm at 300 s, give or take one 5 s poll.
+        self.assertGreaterEqual(self.elapsed(), 420)
+        self.assertLess(self.elapsed(), 430)
+
+    def test_a_build_that_dies_reports_the_task(self) -> None:
+        self.script = [(5, "> Task :compileKotlinJs\n")]
+        self.dies_at = 60
+        reason = self.start_server()
+        self.assertEqual(reason, "process exited with code 1 during the Gradle build (last task :compileKotlinJs)")
+        self.assertLess(self.elapsed(), 70)
+
+    def test_the_build_ceiling_is_the_backdoors_setting(self) -> None:
+        self.script = [(5, "> Task :compileKotlinJvm\n")]
+        reason = self.start_server({MANAGED_STARTUP_CEILING_ENV: "600"})
+        assert reason is not None
+        self.assertIn("Gradle build was still running when the 600s startup ceiling", reason)
+        self.assertIn(f"raise it with {MANAGED_STARTUP_CEILING_ENV})", reason)
 
 
 class EnsureServerBudgetTests(unittest.TestCase):

@@ -341,15 +341,26 @@ def _start_persistent_field(port: int, timeout: float) -> subprocess.Popen[Any]:
         start_new_session=True,
     )
     ssl_ctx = fb.make_unverified_ssl_context()
-    deadline = time.monotonic() + 180.0
-    while time.monotonic() < deadline:
+    watch = fb.ManagedStartupWatch(
+        log_path,
+        ceiling=fb.env_seconds(fb.MANAGED_STARTUP_CEILING_ENV, fb.DEFAULT_MANAGED_STARTUP_CEILING),
+        jvm_timeout=180.0,
+        ceiling_knob=fb.MANAGED_STARTUP_CEILING_ENV,
+        jvm_knob="the bench's fixed 180 s",
+    )
+    while True:
+        watch.observe()
         if proc.poll() is not None:
-            raise RuntimeError(f"persistent Field exited early (code {proc.returncode}); see {log_path}")
+            raise RuntimeError(
+                f"persistent Field exited early (code {proc.returncode}) {watch.exit_context()}; see {log_path}"
+            )
+        if watch.expired():
+            break
         if fb.health_check(port, ssl_ctx):
             return proc
         time.sleep(0.5)
     proc.terminate()
-    raise RuntimeError(f"persistent Field did not become healthy on port {port} within 180s; see {log_path}")
+    raise RuntimeError(f"persistent Field did not become healthy on port {port}: {watch.timeout_reason()}; see {log_path}")
 
 
 def _stop_persistent_field(proc: subprocess.Popen[Any]) -> None:

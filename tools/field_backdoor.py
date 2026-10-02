@@ -34,12 +34,18 @@ if __name__ == "__main__":
 
 import websockets  # noqa: E402
 from verification_runtime import (  # noqa: E402
+    DEFAULT_MANAGED_JVM_START_TIMEOUT,
+    DEFAULT_MANAGED_STARTUP_CEILING,
+    MANAGED_JVM_START_TIMEOUT_ENV,
+    MANAGED_STARTUP_CEILING_ENV,
+    ManagedStartupWatch,
     automation_server_environment,
     automation_workspace,
     field_instance_info,
     field_instance_problem,
     select_automation_port,
 )
+from verification_runtime import env_seconds as _env_seconds  # noqa: E402
 
 try:
     import yaml
@@ -106,19 +112,6 @@ GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
 GRADLE_WRAPPER = REPO_ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew")
 GRADLE_JVMARGS = "-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-# Startup budget for a Field this process launches with `./gradlew runJvm`. The wait used to be a
-# flat 120 s, which covers a warm build plus JVM boot but not the first build in a fresh worktree
-# (the whole Kotlin JVM + JS compile and webpack), so every backdoor command there failed while
-# Gradle was still compiling. Now the build phase -- everything before Gradle prints
-# `> Task :runJvm` -- is bounded only by the ceiling, and the JVM gets its own short budget from
-# that line. See `ManagedStartupWatch`.
-MANAGED_STARTUP_CEILING_ENV = "AFIELD_BACKDOOR_STARTUP_TIMEOUT"
-MANAGED_JVM_START_TIMEOUT_ENV = "AFIELD_BACKDOOR_JVM_START_TIMEOUT"
-DEFAULT_MANAGED_STARTUP_CEILING = 1800.0
-DEFAULT_MANAGED_JVM_START_TIMEOUT = 120.0
-GRADLE_TASK_LINE = re.compile(r"^> Task (:\S+)")
-GRADLE_LOCK_WAIT_PREFIX = "WAIT gradle: verification lock held"
-GRADLE_LOCK_RELEASED_PREFIX = "gradle: verification lock released"
 
 
 class BackdoorError(RuntimeError):
@@ -126,119 +119,11 @@ class BackdoorError(RuntimeError):
 
 
 def env_seconds(name: str, default: float) -> float:
-    """A positive number of seconds from the environment, or `default` when unset or blank."""
-    raw = os.environ.get(name)
-    if raw is None or not raw.strip():
-        return default
+    """`verification_runtime.env_seconds`, failing as a BackdoorError so the CLI reports it plainly."""
     try:
-        value = float(raw)
-    except ValueError:
-        raise BackdoorError(f"{name}={raw!r} is not a number of seconds") from None
-    if value <= 0:
-        raise BackdoorError(f"{name}={raw!r} must be a positive number of seconds")
-    return value
-
-
-class ManagedStartupWatch:
-    """How long to keep waiting for a managed `./gradlew runJvm` to answer `/health`.
-
-    The managed log tells the two phases apart. Until Gradle prints `> Task :runJvm` the
-    process is still building, and the wait is bounded only by `ceiling`. Once that line
-    appears the JVM is booting, and it gets `jvm_timeout` more (never past the ceiling). A
-    process that exits ends the wait in either phase; that check belongs to the caller's loop,
-    which also owns the health probe.
-
-    `observe()` reads only the bytes appended since the last call, so polling a long log every
-    half second stays cheap. `clock` is injectable for tests.
-    """
-
-    def __init__(
-        self,
-        log_path: Path | str,
-        *,
-        ceiling: float,
-        jvm_timeout: float,
-        clock: Any = time.monotonic,
-    ) -> None:
-        self.log_path = Path(log_path)
-        self.ceiling = ceiling
-        self.jvm_timeout = jvm_timeout
-        self.clock = clock
-        self.started_at = clock()
-        self.jvm_started_at: float | None = None
-        self.last_task: str | None = None
-        # The latest `WAIT gradle: verification lock held ...` line, cleared when Gradle says
-        # the lock was released. A build stuck behind another verification is not a slow build.
-        self.lock_wait: str | None = None
-        self._offset = 0
-        self._partial = b""
-
-    @property
-    def phase(self) -> str:
-        return "build" if self.jvm_started_at is None else "jvm"
-
-    def elapsed(self) -> float:
-        return self.clock() - self.started_at
-
-    def observe(self) -> None:
-        try:
-            with self.log_path.open("rb") as handle:
-                handle.seek(self._offset)
-                chunk = handle.read()
-        except OSError:
-            return
-        if not chunk:
-            return
-        self._offset += len(chunk)
-        lines = (self._partial + chunk).split(b"\n")
-        self._partial = lines.pop()
-        for raw in lines:
-            line = raw.decode("utf-8", errors="replace").rstrip("\r")
-            match = GRADLE_TASK_LINE.match(line)
-            if match:
-                self.last_task = match.group(1)
-                if self.jvm_started_at is None and self.last_task.endswith(":runJvm"):
-                    self.jvm_started_at = self.clock()
-            elif line.startswith(GRADLE_LOCK_WAIT_PREFIX):
-                self.lock_wait = line
-            elif line.startswith(GRADLE_LOCK_RELEASED_PREFIX):
-                self.lock_wait = None
-
-    def deadline(self) -> float:
-        ceiling = self.started_at + self.ceiling
-        if self.jvm_started_at is None:
-            return ceiling
-        return min(ceiling, self.jvm_started_at + self.jvm_timeout)
-
-    def expired(self) -> bool:
-        return self.clock() >= self.deadline()
-
-    def describe(self) -> dict[str, Any]:
-        """The fields worth logging on each health poll."""
-        return {
-            "startupPhase": self.phase,
-            "lastGradleTask": self.last_task,
-            "elapsedSeconds": round(self.elapsed(), 3),
-            "lockWait": self.lock_wait is not None,
-        }
-
-    def timeout_reason(self) -> str:
-        elapsed = self.elapsed()
-        if self.jvm_started_at is not None and self.jvm_started_at + self.jvm_timeout <= self.started_at + self.ceiling:
-            since = self.clock() - self.jvm_started_at
-            return (
-                f"Gradle reached :runJvm {since:.0f}s ago and the JVM did not answer within its "
-                f"{self.jvm_timeout:.0f}s start budget ({MANAGED_JVM_START_TIMEOUT_ENV})"
-            )
-        phase = "the Gradle build was still running" if self.jvm_started_at is None else "the JVM was still starting"
-        reason = (
-            f"{phase} when the {self.ceiling:.0f}s startup ceiling ran out after {elapsed:.0f}s "
-            f"(last Gradle task {self.last_task or 'none yet'}; raise it with "
-            f"{MANAGED_STARTUP_CEILING_ENV} or --startup-timeout)"
-        )
-        if self.lock_wait is not None:
-            reason += f"; Gradle was waiting on this checkout's verification lock: {self.lock_wait}"
-        return reason
+        return _env_seconds(name, default)
+    except ValueError as exc:
+        raise BackdoorError(str(exc)) from None
 
 
 class CommandParseError(BackdoorError):
@@ -997,14 +882,9 @@ class FieldBackdoor:
                     managedLog=str(self.managed_log_path),
                     **watch.describe(),
                 )
-                during = (
-                    f"during the Gradle build (last task {watch.last_task or 'none yet'})"
-                    if watch.phase == "build"
-                    else "after Gradle started the JVM"
-                )
                 raise BackdoorError(
                     f"Managed Field server exited early with code {self.managed_process.returncode} "
-                    f"{during}. See {self.managed_log_path}."
+                    f"{watch.exit_context()}. See {self.managed_log_path}."
                 )
             if watch.expired():
                 break
