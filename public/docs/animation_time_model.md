@@ -166,16 +166,10 @@ Motion written as a function of `frameNumber` runs at a different speed on a dif
 at a different speed again while a shader is compiling. Write it against
 `AnimationClock.nowSeconds()` instead.
 
-`AnimationClock.nowSeconds()`, in `Runloop.kt`, is ordinarily monotonic wall time. Its second mode
-is the reason it exists:
-
-> A frame-synchronous video capture installs a token that advances by exactly `1 / fps` only after a
-> Field frame has been painted and copied into the movie. Code using `nowSeconds` therefore becomes
-> frame-indexed during offline capture without changing its live, interactive pacing.
-
-During an offline capture, real time runs at whatever rate the capture takes while `nowSeconds()`
-advances by exactly `1 / fps` per captured frame, so motion written against it comes out identical
-every time, including in the video at the top of this page.
+Live, `AnimationClock.nowSeconds()` is wall-clock time. When you record a video, it advances by
+exactly `1 / fps` per recorded frame, however long each frame takes to capture, so motion written
+against it plays back at the right speed in the video, and comes out the same every time. The video
+at the top of this page was made that way.
 
 Live, the rate is whatever the machine can manage. Here is a frame body that does nothing but stamp
 the clock, for two seconds, with the gaps between the stamps plotted:
@@ -218,11 +212,8 @@ loop {
 
 ![A per-frame interval plot titled 1,407 frames in 1.95 s. A dense band of gaps filling everything between zero and about 1,700 microseconds, five spikes reaching 2,500 to 3,500, and a 100-frame running mean that wanders between 1,200 and 1,500 rather than holding any constant value](assets/animation_time_model/cadence.png)
 
-The number in the title is a property of one machine, one build, and whatever else the loop happened
-to be carrying, which here was a browser attached and other boxes idle in the same process. Run the
-[demo document](#where-this-lives) and you will get a different one, and a different one again on
-the second run. There is no frame *rate* in that plot to schedule against, which is why motion goes
-on the clock.
+Run it yourself and the count in the title will be different, and different again the second time.
+There is no frame *rate* in that plot to schedule against, which is why motion goes on the clock.
 
 ## What happens when you stop { #what-happens-when-you-stop }
 
@@ -302,20 +293,16 @@ it.
 
 ## A physics system in the loop
 
-The disc at the top of this page is written against `AnimationClock.nowSeconds()`, so that it means
-the same thing live and under capture whatever rate frames arrive at. An integrator is the opposite
-case. `cloth.step(dt = 1f / 60f, ...)` hands the solver a **fixed** dt, so one turn of the loop is
-one tick of physics and the frame boundary and the integration step become the same event.
+A physics simulation is the exception to putting motion on the clock. This cloth sheet calls
+`cloth.step(dt = 1f / 60f, ...)` once a frame with a **fixed** dt, so each frame is one step of
+physics.
 
-A fixed dt is what this solve wants. It is force-based, with positions advancing by
-`v * damping + a * dt²`, so a dt that jittered with the frame rate would change the sheet's own
-stiffness and damping from frame to frame. The stability limit lives in
-`stiffness × iterations × dt²`: measured at dt = 1/60, `60 × 16` settles and `150 × 16` diverges to
-NaN, so the same setting with a dt half again as large lands in the band that already blew up. A
-constant dt is something the solver can be tuned against. The cost is that it does not track
-wall-clock: recorded at 20 fps below, this sheet moves slower than it does live while behaving
-*identically* in simulation time. Anything coupled to the simulation has to be on the simulation's
-clock too, which is why the drag is driven by the step count and not by `nowSeconds()`.
+The solver needs that. Its stiffness and damping depend on dt, so a dt that followed the frame rate
+would make the sheet stiffer or floppier from frame to frame, and a large enough dt makes it blow up
+(at dt = 1/60, stiffness `60` with `16` iterations settles and `150` diverges). The price is that
+the sheet runs in simulation time rather than wall-clock time: recorded at 20 fps below, it moves
+more slowly than it does live. Anything that pushes on the simulation goes on the simulation's
+clock too, which is why the drag here is driven by the step count and not by `nowSeconds()`.
 
 ```diffstatic_runner {data-lang=kotlin video="assets/animation_time_model/cloth_loop.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="8" fps="20" timeout="300" w="960" h="120" embed=true name="animation-cloth-loop" alt="a wireframe cloth of 20 by 10 particles hanging from five red pins along its top edge, drawn as cyan constraint segments with pale dots at the particles and short green velocity whiskers; an invisible hand drags its bottom-right corner in a slow loop, and the sheet stretches, swings and folds after it while the caption counts frames upward"}
 :::static
@@ -377,22 +364,18 @@ loop {
 ```
 
 Everything above except the grab and the two lines that drive it is
-[`cloth_simdverlet_start`](agent_transcripts.md), which is an openable document rather than a
-snippet: take it from the welcome screen and the sheet is already hanging. `Cloth` is the builder
-(it puts a grid of particles into a `SimdVerlet` you already have, including the curvature force),
-and `SimdVerlet.debugLines()` is the view of the solver's own state that makes a mis-wired
-constraint or an unpinned pin obvious.
+the [`cloth_simdverlet_start`](agent_transcripts.md) starting point: open it from the welcome screen
+and the sheet is already hanging. `addCloth` builds a `Cloth`, a grid of particles inside the
+`SimdVerlet` you already have, and `SimdVerlet.debugLines()` draws the solver's own state, so a mis-wired constraint
+or a missing pin is easy to see.
 
-[Particles, Cloth & Constraints](physics.md) is the page about the solver rather than about the
-loop, and it is where the two numbers above come from. It also carries a result this page only
-gestures at: the constraint solve accumulates all of its `iterations` into the same force
-accumulator without moving anything in between, so N iterations at stiffness k are one iteration at
-stiffness N·k, and the sheet can only feel the product. `iterations` is a stiffness multiplier, not
-a convergence knob. That page runs the equivalence four ways and measures the gap.
+See also [Particles, Cloth & Constraints](physics.md), the page about the solver itself. It explains
+why `iterations` behaves as a stiffness multiplier: 16 iterations at stiffness k feel the same as
+one at stiffness 16·k.
 
 ## The generator layer
 
-`Phased.kt` carries a second, quite different mechanism. A `Generator` is a Python-style coroutine
+Field also has a second, quite different mechanism. A `Generator` is a Python-style coroutine
 you drive by hand: `start()` runs it to its first `yield`, and `next(input)` resumes it with a value
 and runs it to the next one. No dispatcher, no `Job`, no frame boundary; the caller decides when a
 step happens.
@@ -916,8 +899,7 @@ was still running at stop or had already exited. The epoch mechanism and the cal
 
 ### Every name in `Phased.kt`
 
-The whole vocabulary, in one place, and complete: the table is checked against `Phased.kt` in both
-directions, so a name on one side and not the other is a build failure.
+Every public name in `Phased.kt`, grouped by what it is for.
 
 <!-- phased-surface -->
 
