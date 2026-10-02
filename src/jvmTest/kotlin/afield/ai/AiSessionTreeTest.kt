@@ -81,6 +81,8 @@ class AiSessionTreeTest {
         say(box, "three", "c", memory)
 
         val rewound = AiSessionTree.rewind(box, ordinal = 1, expectedText = "two")
+        assertTrue(AiSessionTree.branches(box).lines().any { it.contains("| 1 | ") && it.contains("**current**") },
+            "after a rewind the current position is listed even though it has later turns: " + AiSessionTree.branches(box))
         assertEquals(afterOne, rewound.markdown)
         assertEquals(afterOne, AiBoxConversation.read(box))
         assertEquals("after turn one", rewound.restoredMemory!!.scratchpad)

@@ -203,16 +203,19 @@ internal fun nestedToolIoEvents(round: Int, parentCallId: String, result: Any): 
  */
 internal fun nestedTraceMarkdown(result: Any): String? {
     val program = result as? RunToolProgramResult ?: return null
+    // A markdown list, one call per item, the tool and its arguments as code spans so a `*` in box code
+    // stays a `*` (the panel renders this as markdown).
+    fun code(text: String) = "`" + text.replace("`", "'") + "`"
     return buildString {
         program.calls.forEach { call ->
             val args = call.args.replace("\n", " ").take(80)
-            append(if (call.ok) "✓ " else "✗ ").append(call.tool.removeSuffix("Request")).append(' ').append(args)
+            append("- ").append(if (call.ok) "✓ " else "✗ ").append(code(call.tool.removeSuffix("Request"))).append(' ').append(code(args))
             append(" — ").append(call.elapsedMs).append(" ms")
             if (!call.ok && call.error != null) append(" — ").append(call.error.take(120))
             append('\n')
         }
-        if (program.totalCalls > program.calls.size) append("… ").append(program.totalCalls - program.calls.size).append(" more\n")
-        append("program ").append(program.stage).append(": ").append(program.totalCalls).append(" call(s), ")
+        if (program.totalCalls > program.calls.size) append("- … ").append(program.totalCalls - program.calls.size).append(" more\n")
+        append("\nprogram ").append(program.stage).append(": ").append(program.totalCalls).append(" call(s), ")
             .append(program.failedCalls).append(" failed, ").append(program.elapsedMs).append(" ms")
         if (program.message.isNotBlank()) append(" — ").append(program.message.take(200))
     }

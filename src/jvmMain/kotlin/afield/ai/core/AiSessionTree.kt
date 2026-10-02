@@ -100,6 +100,18 @@ object AiSessionTree {
             return lines.filter { it.str("t") in NODE_TYPES.split(',') && it.str("id") !in parents }
         }
 
+        /**
+         * The places a conversation can be switched to, as `/branches` numbers them: every tip, and the head
+         * itself when a rewind has left it with turns after it (it is then no tip, but it is where you are).
+         */
+        fun branchPoints(): List<JsonObject> {
+            val tips = tips()
+            val head = head() ?: return tips
+            if (tips.any { it.str("id") == head }) return tips
+            val headNode = nodes()[head] ?: return tips
+            return tips + headNode
+        }
+
         fun text(): String = lines.joinToString("\n") { it.toString() } + "\n"
     }
 
@@ -334,7 +346,7 @@ object AiSessionTree {
     fun switchTo(box: Box, index: Int): Rewind = synchronized(lock) {
         val session = load(box)
         reconcile(box, session, AiBoxConversation.read(box))
-        val tip = session.tips().getOrNull(index) ?: throw IllegalArgumentException("No branch $index.")
+        val tip = session.branchPoints().getOrNull(index) ?: throw IllegalArgumentException("No branch $index.")
         val id = (tip["id"] as JsonPrimitive).content
         val markdown = AiImageBlobs.inline(session.renderRaw(id), box)
         setHead(session, id, markdown)
@@ -347,8 +359,8 @@ object AiSessionTree {
     fun branches(box: Box): String = synchronized(lock) {
         val session = load(box)
         val head = session.head()
-        val tips = session.tips()
-        if (tips.isEmpty()) return "_No conversation recorded for this box yet._"
+        val tips = session.branchPoints()
+        if (tips.isEmpty()) return "No conversation recorded for this box yet."
         buildString {
             appendLine("| # | turns | last request | |")
             appendLine("| ---: | ---: | --- | --- |")
@@ -360,7 +372,7 @@ object AiSessionTree {
                     Regex("(?m)^<<you>>\\n").findAll(md).map { userText(md.substring(it.range.first)) }.toList()
                 }
                 val last = requests.lastOrNull().orEmpty().replace('\n', ' ').replace("|", "\\|").take(80)
-                appendLine("| $i | ${requests.size} | $last | ${if (session.path(head).lastOrNull()?.get("id") == tip["id"]) "**current**" else ""} |")
+                appendLine("| $i | ${requests.size} | $last | ${if ((tip["id"] as? JsonPrimitive)?.contentOrNull == head) "**current**" else ""} |")
             }
             append("\nSwitch with `/branch <#>`.")
         }

@@ -206,8 +206,8 @@ class ToolProgramTest {
         val result = run("""tools.ProgEcho({text: "one"}); try { tools.ProgThrow({}); } catch (e) {} return 1;""")
         val trace = nestedTraceMarkdown(result)!!
         val lines = trace.lines()
-        assertTrue(lines[0].startsWith("✓ ProgEcho {\"text\":\"one\"} — "), trace)
-        assertTrue(lines[1].startsWith("✗ ProgThrow") && lines[1].contains("refused on purpose"), trace)
+        assertTrue(lines[0].startsWith("- ✓ `ProgEcho` `{\"text\":\"one\"}` — "), trace)
+        assertTrue(lines[1].startsWith("- ✗ `ProgThrow`") && lines[1].contains("refused on purpose"), trace)
         assertTrue(lines.last().startsWith("program ok: 2 call(s), 1 failed"), trace)
         assertEquals(null, nestedTraceMarkdown(mapOf("not" to "a program")))
     }

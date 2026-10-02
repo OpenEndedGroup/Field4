@@ -1776,7 +1776,7 @@ function ensureAiChat(container, uid, property) {
                                         if (undo) {
                                                 sendWithReply("ai-chat-rewind-world", {uid: targetUid, turns},
                                                         `ai-chat-rewind-world-${targetUid}-${Date.now()}`, (_m, result) => {
-                                                                appendLocalChatTurn("ai", `_${result?.message || "Undo finished."}_`);
+                                                                appendLocalChatTurn("ai", result?.message || "Undo finished.");
                                                                 return "remove";
                                                         });
                                         }
