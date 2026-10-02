@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 168 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 169 transcripts on every build, at three
 depths. 88 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-73 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+74 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1788,6 +1788,20 @@ boxes and skips the three Pd ones, as it skips Python cells; every box was run b
 built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
+### csound_demo
+
+**Csound inside Field.** Five Kotlin boxes, each holding a Csound orchestra and score. **offline
+sine** renders a 440 Hz sine with no audio device and prints 439 upward zero crossings in the first
+second (the envelope starts at zero) at a peak of 0.250, with a player and a waveform. **drone** is a
+filtered sawtooth whose `chn_k` lines become two sliders; launched, it prints its level once a second
+from the audio thread. **events** has no score of its own: Kotlin sends a note every quarter second
+with `every(0.25) { event(...) }`. **an error** has `oscilx` on line 4, which is marked there. Needs
+libcsound, built once with `./gradlew buildCsoundNative`. The build does not own that, so CI
+compiles the boxes; every box was run by hand against a built Csound on 2026-10-02.
+[Csound](csound.md) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
 ### marf_demo
 

@@ -171,6 +171,7 @@ nav:
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md
+      - Csound: csound.md
       # After the two engines Field talks to, because it is the general form of what they do: OSC
       # in and out of a box, for any peer — a phone, SuperCollider, Max, a touch table over TUIO.
       - OSC and TUIO: osc.md

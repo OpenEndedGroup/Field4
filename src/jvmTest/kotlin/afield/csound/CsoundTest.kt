@@ -131,6 +131,14 @@ class CsoundTest {
         assertTrue(e.problems.any { it.line == 2 }, "problems: ${e.problems}")
     }
 
+    @Test fun aLeadingBlankLineStillCounts() {
+        if (!available()) return
+        // A box writes `csound("""` and starts the orchestra on the next line; Csound's line numbers
+        // must be lines of the string as written.
+        val e = assertFailsWith<CsoundCompileError> { CsoundInstance("\n  instr 1\n    a1 oscilx 0.2, 440\n  endin\n", "i1 0 1") }
+        assertTrue(e.problems.any { it.line == 3 }, "problems: ${e.problems}")
+    }
+
     @Test fun renderToWavWritesAStereoFile() {
         if (!available()) return
         val dir = kotlin.io.path.createTempDirectory("csound-wav").toFile()

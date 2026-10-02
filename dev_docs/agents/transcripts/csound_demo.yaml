@@ -1,0 +1,96 @@
+name: csound_demo
+description: |
+  **Csound inside Field.** Five Kotlin boxes that hold Csound orchestras and scores. Needs libcsound:
+  `./gradlew buildCsoundNative` once (cmake, flex, bison, libsndfile, and the network the first time).
+
+    - **status** — where libcsound was found, or how to build it.
+    - **offline sine** — renders a 440 Hz sine with no audio device, measures it from the samples,
+      writes a `.wav` and shows a player and a waveform.
+    - **drone** (launch) — a filtered sawtooth. Its `chn_k` lines declare the channels, so
+      `csoundControls` makes the Pitch and Cutoff sliders with Csound's own ranges. The orchestra
+      prints its level once a second, which is how you can tell the audio thread is running it.
+    - **events** (launch) — an orchestra with no score of its own (`f0 z`), played by Kotlin: a
+      score line every quarter second, until you stop the box.
+    - **an error** — `oscilx` for `oscili`: Csound's complaint is marked on that line.
+operations:
+  - create:
+      box: cs_status
+      name: "status"
+      frame: { x: 40.0, y: 40.0, w: 420.0, h: 80.0 }
+      properties:
+        code: |
+          println(afield.csound.CsoundLibrary.describe())
+  - create:
+      box: cs_offline
+      name: "offline sine"
+      frame: { x: 40.0, y: 160.0, w: 160.0, h: 80.0 }
+      properties:
+        code: |
+          // One second of a 440 Hz sine, rendered without an audio device, then measured.
+          val (left, right) = csoundOffline("""
+          instr 1
+            aenv linen 0.25, 0.01, p3, 0.05
+            a1 oscili aenv, 440
+            outs a1, a1
+          endin
+          """, "i1 0 1", wav = java.io.File(System.getProperty("java.io.tmpdir"), "csound_sine.wav"))
+          val ups = (1 until 48000).count { left[it - 1] < 0f && left[it] >= 0f }
+          val peak = left.maxOf { abs(it) }
+          println("$ups upward zero crossings in the first second, peak ${"%.3f".format(peak)}, channels equal: ${left.contentEquals(right)}")
+  - create:
+      box: cs_drone
+      name: "drone"
+      frame: { x: 230.0, y: 160.0, w: 160.0, h: 80.0 }
+      properties:
+        code: |
+          // Launch it, then move the sliders. chn_k declares each channel's default and range.
+          val drone = csound("""
+          chn_k "pitch", 1, 2, 110, 55, 440
+          chn_k "cutoff", 1, 2, 1200, 200, 6000
+          instr 1
+            kf chnget "pitch"
+            kc chnget "cutoff"
+            kf port kf, 0.05
+            kc port kc, 0.05
+            a1 vco2 0.12, kf
+            a1 moogladder a1, kc, 0.3
+            outs a1, a1
+            printks "level %.3f\n", 1, rms(a1)
+          endin
+          """, "i1 0 z")
+          csoundControls(drone)
+          drone
+  - create:
+      box: cs_events
+      name: "events"
+      frame: { x: 420.0, y: 160.0, w: 160.0, h: 80.0 }
+      properties:
+        code: |
+          // Launch it: Kotlin writes the score, one note every quarter second.
+          val cs = csound("""
+          instr 1
+            aenv expseg 0.001, 0.005, 0.2, p3, 0.001
+            a1 oscili aenv, cpsmidinn(p4)
+            outs a1, a1
+            prints "note %d\n", p4
+          endin
+          """)
+          val notes = listOf(57, 60, 64, 67, 69, 67, 64, 60)
+          var i = 0
+          cs.every(0.25) { event('i', 1, 0, 0.4, notes[i++ % notes.size]) }
+          cs
+  - create:
+      box: cs_error
+      name: "an error"
+      frame: { x: 610.0, y: 160.0, w: 160.0, h: 80.0 }
+      properties:
+        code: |
+          // oscilx is not an opcode (oscili is). Run it: the error is marked on line 4.
+          csoundOffline("""
+          instr 1
+            a1 oscilx 0.2, 440
+            outs a1, a1
+          endin
+          """, "i1 0 1")
+  - execute: { box: cs_status, property: code }
+  - await: {}

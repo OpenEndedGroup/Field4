@@ -168,8 +168,38 @@ class CsoundLaunch internal constructor(
     /** Compile more instruments into the running Csound. */
     fun compile(orchestra: String) = csound.compile(orchestra)
 
-    /** Deliver what Csound has printed since the last call. The launch loop does this every frame. */
-    fun poll(): Int = csound.poll()
+    private class Ticker(val periodNanos: Long, var next: Long, val block: CsoundLaunch.() -> Unit)
+    private val tickers = java.util.concurrent.CopyOnWriteArrayList<Ticker>()
+
+    /**
+     * Call [block] every [seconds] while the launch plays, on the box's main-thread loop — the place to
+     * write a score from Kotlin: `cs.every(0.25) { event('i', 1, 0, 0.4, 60) }`. The first call is
+     * on the first frame. Timing is the main loop's (a frame or so of jitter); for sample-accurate
+     * rhythm, put the timing in the score and let Kotlin choose the notes.
+     */
+    fun every(seconds: Double, block: CsoundLaunch.() -> Unit): Closeable {
+        require(seconds > 0.0) { "seconds must be positive" }
+        val t = Ticker((seconds * 1e9).toLong(), 0L, block)
+        tickers += t
+        return Closeable { tickers -= t }
+    }
+
+    /**
+     * Deliver what Csound has printed since the last call and run any [every] blocks that are due.
+     * The launch loop does this every frame.
+     */
+    fun poll(): Int {
+        val now = System.nanoTime()
+        for (t in tickers) {
+            if (t.next == 0L) t.next = now
+            if (now >= t.next) {
+                runCatching { t.block(this) }.onFailure { e -> printBox?.let { b -> runCatching { b.println("every: ${e.message}") } } }
+                t.next += t.periodNanos
+                if (t.next < now) t.next = now + t.periodNanos
+            }
+        }
+        return csound.poll()
+    }
 
     override fun close() {
         runCatching { printing?.close() }

@@ -503,6 +503,10 @@ object DemoTranscriptExecSmokeTest {
         // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
         // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
         "pure_data_demo",
+        // Csound: every box needs libcsound built (./gradlew buildCsoundNative), which the build does not
+        // own, so the five Kotlin boxes are compiled here; afield.csound.CsoundTest and CsoundBoxApiTest
+        // run the calls against a real Csound when one is built. Every box was run by hand on 2026-10-02.
+        "csound_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen

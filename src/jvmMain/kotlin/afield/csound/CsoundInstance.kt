@@ -352,8 +352,14 @@ class CsoundInstance(
     }
 
     companion object {
-        /** Common indentation removed, so a `"""` literal can sit indented in a box. Line count is kept. */
-        fun normalise(text: String): String = text.trimIndent() + "\n"
+        /**
+         * Common indentation removed, so a `"""` literal can sit indented in a box. Leading blank
+         * lines are kept, so the line numbers Csound reports are lines of [text] as written.
+         */
+        fun normalise(text: String): String {
+            val leading = text.lines().takeWhile { it.isBlank() }.size.coerceAtMost(text.lines().size - 1)
+            return "\n".repeat(leading) + text.trimIndent() + "\n"
+        }
 
         private val lineRe = Regex("""line:?\s*(\d+)""")
 
