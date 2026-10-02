@@ -392,10 +392,12 @@ class CsoundInstance(
         before.forEach { pushLine(it) }
         val status = Arena.ofConfined().use { a -> CsoundNative.compileOrc(cs, a.allocateFrom(normalise(orchestra))) }
         val printed = drainMessages()
-        printed.forEach { pushLine(it) }
         // Csound keeps counting orchestra lines from where the CSD's orchestra began, so a live
         // compile's lines are offset by the same CSD_ORC_LINE as the first one's.
-        CompileResult(status == 0, problemsIn(printed).map { if (it.line > CSD_ORC_LINE) it.copy(line = it.line - CSD_ORC_LINE) else it }, printed)
+        val problems = problemsIn(printed).map { if (it.line > CSD_ORC_LINE) it.copy(line = it.line - CSD_ORC_LINE) else it }
+        // An error that has its own line marker is not printed a second time below the box.
+        if (problems.none { it.line > 0 }) printed.forEach { pushLine(it) }
+        CompileResult(status == 0, problems, printed)
     }
 
     /** Read score text into the running Csound now: its events start relative to the current score time. */
@@ -694,15 +696,34 @@ class CsoundInstance(
          */
         fun problemsIn(printed: List<String>): List<Problem> {
             val out = ArrayList<Problem>()
-            for ((k, raw) in printed.withIndex()) {
-                val line = raw.trim()
-                val isError = line.startsWith("error:", ignoreCase = true) || line.contains("syntax error") ||
-                    line.startsWith("INIT ERROR") || line.contains("not found")
-                if (!isError || line.contains("Parsing failed")) continue
-                val lookahead = (k until minOf(printed.size, k + 6)).map { printed[it] }
-                val n = lookahead.firstNotNullOfOrNull { lineRe.find(it.lowercase())?.groupValues?.get(1)?.toIntOrNull() } ?: -1
-                out += Problem(line.removePrefix("error:").trim(), n)
+            val summaries = ArrayList<String>()
+            fun isStart(t: String) = t.startsWith("error:", ignoreCase = true) || t.startsWith("INIT ERROR") ||
+                (t.contains("syntax error") && !t.contains("Parsing failed"))
+            fun isSummary(t: String) = t.contains("Parsing failed") || t.startsWith("Stopping on parser failure")
+            var k = 0
+            while (k < printed.size) {
+                val first = printed[k].trim()
+                if (isSummary(first)) { summaries += first.substringAfter("),").trim(); k++; continue }
+                if (!isStart(first) && !first.contains("not found")) { k++; continue }
+                // One diagnostic: the error line and its continuation lines, up to the next error or
+                // the parser's summary. The line number is read from them and not repeated in the text.
+                val body = ArrayList<String>()
+                body += first.removePrefix("error:").trim()
+                var n = lineRe.find(first.lowercase())?.groupValues?.get(1)?.toIntOrNull() ?: -1
+                k++
+                while (k < printed.size) {
+                    val t = printed[k].trim()
+                    if (isStart(t) || isSummary(t)) break
+                    k++
+                    if (t.isEmpty()) continue
+                    val ln = lineRe.find(t.lowercase())?.groupValues?.get(1)?.toIntOrNull()
+                    if (ln != null && n < 0) n = ln
+                    if (Regex("""^(line:?\s*\d+:?|from file .*)$""", RegexOption.IGNORE_CASE).matches(t)) continue
+                    body += t
+                }
+                out += Problem(body.joinToString("\n"), n)
             }
+            if (out.isEmpty() && summaries.isNotEmpty()) out += Problem(summaries.distinct().joinToString("\n"), -1)
             return out.distinctBy { it.message to it.line }
         }
     }

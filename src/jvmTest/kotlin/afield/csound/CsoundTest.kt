@@ -174,4 +174,34 @@ class CsoundTest {
         assertEquals(afield.four.synth.CsoundChannel("freq", 1, 220.0, 55.0, 880.0), chans[0])
         assertTrue(chans[0].isInput && !chans[1].isInput)
     }
+
+    @Test fun oneDiagnosticIsOneProblemOnItsLine() {
+        // Csound 6.18.1's own output for `asig oscilx 0.2, 440` on line 4, as the typo demo box prints it.
+        val printed = listOf(
+            "error:  Unable to find opcode entry for 'oscilx' with matching argument types:",
+            "",
+            "Found: a oscilx cc",
+            "       asig oscilx 0.2 ...",
+            "Line: 4",
+            " from file *string* (1),Parsing failed due to syntax errors",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem(
+            "Unable to find opcode entry for 'oscilx' with matching argument types:\nFound: a oscilx cc\nasig oscilx 0.2 ...", 4)),
+            CsoundInstance.problemsIn(printed))
+    }
+
+    @Test fun aSyntaxErrorKeepsItsOffendingTextAndTheSummaryOnlyWhenNothingIsPlaced() {
+        val syntax = listOf(
+            "error: syntax error, unexpected '*'  (token \"* \")",
+            " line 3:",
+            " >>>   a2 = a1 +*  <<<",
+            "Parsing failed due to 1 syntax error!",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem("syntax error, unexpected '*'  (token \"* \")\n>>>   a2 = a1 +*  <<<", 3)),
+            CsoundInstance.problemsIn(syntax))
+        assertEquals(listOf(CsoundInstance.Problem("Parsing failed due to 1 syntax error!\nStopping on parser failure", -1)),
+            CsoundInstance.problemsIn(listOf("Parsing failed due to 1 syntax error!", "Stopping on parser failure")))
+    }
 }

@@ -138,7 +138,7 @@ not counted.
 
 ### Errors
 
-```diffstatic_runner {data-lang=csound screenshot="assets/csound/error.png" capture="editor" outputs="inline" expect-error=true requires="csound" wait="4" padding="10" timeout="180" embed=true name="csound-error" w="900" h="300" alt="A Csound box whose instr Beep uses oscilx. Under that line, on line 4, a red marker reads: Unable to find opcode entry for 'oscilx' with matching argument types. Csound's own messages are printed below the box."}
+```diffstatic_runner {data-lang=csound screenshot="assets/csound/error.png" capture="editor" outputs="inline" expect-error=true requires="csound" wait="4" padding="10" timeout="180" embed=true name="csound-error" w="900" h="300" alt="A Csound box whose instr Beep uses oscilx. Under that line, on line 4, one red marker holds Csound's whole diagnostic: Unable to find opcode entry for 'oscilx' with matching argument types:, then Found: a oscilx cc, then asig oscilx 0.2 …. Nothing is repeated below the box."}
 <CsoundSynthesizer>
 <CsInstruments>
 instr Beep
