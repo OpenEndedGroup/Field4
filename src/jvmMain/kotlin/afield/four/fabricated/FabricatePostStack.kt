@@ -66,24 +66,28 @@ class FabricatePostStack(
 }
 
 /**
- * One pass in a [FabricatePostStack]: the name it is addressed by, the target it renders into, the
- * module holding its pipeline, and a kind tag.
- *
- * The tag carries no behaviour of its own. It exists so [FabricateFrameGraph] can give motion blur
- * and anti-aliasing their reserved names in the standard pass order, and name everything else after
- * the effect.
+ * One pass in a [FabricatePostStack]: its name, output target, optional shader module and kind.
+ * Shader effects own a module. Native effects record compute from their target and leave module null.
+ * [FabricateFrameGraph] gives motion blur and anti-aliasing their reserved names in the standard
+ * pass order; other effects use their own name. Native effects are excluded from shader inspection
+ * and reload.
  */
 data class FabricatePostEffect(
     val name: String,
     val target: RenderToTexture,
-    val module: ModulePointer,
+    val module: ModulePointer?,
     val kind: Kind = Kind.SHADER
 ) {
+    init {
+        require((kind==Kind.NATIVE)==(module==null)) { "Native effects have no shader module; shader effects require one" }
+    }
     /** Which reserved slot in the standard pass order this pass claims, if any. */
     enum class Kind {
         SHADER,
         MOTION_BLUR,
         FXAA,
-        CUSTOM
+        CUSTOM,
+        /** Target records a native compute pass outside a render pass. No fragment module. */
+        NATIVE
     }
 }

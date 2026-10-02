@@ -508,6 +508,7 @@ fun requiredRunJvmArgs(): List<String> {
         add("--enable-native-access=ALL-UNNAMED")
         add("-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}")
         add("-Dafield.ceres.library=${ceresNative.asFile.absolutePath}")
+        add("-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}")
         add(steamAudioJvmArg())
         if (hasPersonalLayer) add("-D$personalLayerProperty=${personalLayerJar.absolutePath}")
         if (!onWindowsOrLinux) {
@@ -815,6 +816,7 @@ kotlin {
                 args += "--enable-native-access=ALL-UNNAMED"
                 args += "-Dableton.link.library=${abletonLinkNative.asFile.absolutePath}"
                 args += "-Dafield.ceres.library=${ceresNative.asFile.absolutePath}"
+                args += "-Dafield.opendlssnr.root=${layout.buildDirectory.dir("native/field-opendlssnr").get().asFile.absolutePath}"
                 args += steamAudioJvmArg()
 
                 applicationDefaultJvmArgs.set(args)
@@ -3934,4 +3936,23 @@ tasks.named("jvmDistTar") {
 
 tasks.named("jvmDistZip") {
     enabled = false
+}
+
+// Explicit optional preparation: ordinary compilation/startup never downloads NR assets.
+tasks.register<Exec>("fetchOpenDlssNrWeights") {
+    group="build"
+    description="Fetch and verify the pinned OpenDLSS-NR model into the shared native cache"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py","--weights-only")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register<Exec>("buildOpenDlssNrNative") {
+    group="build"
+    description="Build the optional Vulkan OpenDLSS-NR adapter and kernels"
+    commandLine(rootPythonCommand+listOf("tools/build_opendlssnr.py")+
+        if(gradle.startParameter.isOffline)listOf("--offline") else emptyList())
+}
+tasks.register("buildOpenDlssNr") {
+    group="build"
+    description="Prepare the optional OpenDLSS-NR library, kernels and weights"
+    dependsOn("buildOpenDlssNrNative")
 }

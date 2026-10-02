@@ -1,0 +1,33 @@
+{
+  "source": {
+    "url": "https://codeload.github.com/maanHimself/OpenDLSS-NR/tar.gz/9d08f4184bbcb9d858e2fb7a7834ec0837a9d2f1",
+    "revision": "9d08f4184bbcb9d858e2fb7a7834ec0837a9d2f1",
+    "sha256": "1301bfc9ee8e3868e9df579d7c9bfeb537a82b4be97c164e0c7925661d787125",
+    "file": "source.tar.gz"
+  },
+  "headers": {
+    "url": "https://codeload.github.com/KhronosGroup/Vulkan-Headers/tar.gz/v1.4.363",
+    "revision": "v1.4.363",
+    "sha256": "cbaf687d3c59b9666fe080e7f8396b6b4f4d344a768ee6b337c59852f4526b68",
+    "file": "headers.tar.gz"
+  },
+  "volk": {
+    "url": "https://codeload.github.com/zeux/volk/tar.gz/vulkan-sdk-1.4.357.0",
+    "revision": "vulkan-sdk-1.4.357.0",
+    "sha256": "6400c7b23e24d17e4f04bac49b55b06c4e87677d33398e90344743ec73560ca6",
+    "file": "volk.tar.gz"
+  },
+  "weights": {
+    "url": "https://github.com/RankFTW/rhi-repo/releases/download/dlssnr-310.8.Lecram/nvngx_dlssnr_310.8.Lecram.zip",
+    "file": "nvngx_dlssnr_310.8.Lecram.zip",
+    "sha256": "ddb64e5545ba3f217c32555d2eb8fdfe76b9510d2256f13e8a5ecb1a9650ca54",
+    "dllSha256": "f95feb54137ea11979f9b4ec4f00afd84b5c98a5624d3388fbf6a87714a39fcc",
+    "stageSha256": "b7b90fa00e54b4aac46acec47aeb24298a06d7b211a48180e9de48f46b5423ec"
+  },
+  "glslang": {
+    "url": "https://codeload.github.com/KhronosGroup/glslang/tar.gz/16.3.0",
+    "revision": "16.3.0",
+    "sha256": "efff5a15258dce1ca2d323bf64c974f5fca03778174615dbc30c8d36db645bf5",
+    "file": "glslang.tar.gz"
+  }
+}
