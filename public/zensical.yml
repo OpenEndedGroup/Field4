@@ -63,6 +63,7 @@ nav:
     - A Function, Played and Read Back: chain_fn_sound_roundtrip.md
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
+    - A Drawn Morph, Heard: chain_drawn_morph.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old

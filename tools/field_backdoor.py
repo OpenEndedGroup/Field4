@@ -106,10 +106,139 @@ GRAPHICS_CONTEXT_WAIT_SEC = 0.5
 GRAPHICS_CONTEXT_BOX_NAME = "renderer"
 GRADLE_WRAPPER = REPO_ROOT / ("gradlew.bat" if os.name == "nt" else "gradlew")
 GRADLE_JVMARGS = "-Xmx8g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+# Startup budget for a Field this process launches with `./gradlew runJvm`. The wait used to be a
+# flat 120 s, which covers a warm build plus JVM boot but not the first build in a fresh worktree
+# (the whole Kotlin JVM + JS compile and webpack), so every backdoor command there failed while
+# Gradle was still compiling. Now the build phase -- everything before Gradle prints
+# `> Task :runJvm` -- is bounded only by the ceiling, and the JVM gets its own short budget from
+# that line. See `ManagedStartupWatch`.
+MANAGED_STARTUP_CEILING_ENV = "AFIELD_BACKDOOR_STARTUP_TIMEOUT"
+MANAGED_JVM_START_TIMEOUT_ENV = "AFIELD_BACKDOOR_JVM_START_TIMEOUT"
+DEFAULT_MANAGED_STARTUP_CEILING = 1800.0
+DEFAULT_MANAGED_JVM_START_TIMEOUT = 120.0
+GRADLE_TASK_LINE = re.compile(r"^> Task (:\S+)")
+GRADLE_LOCK_WAIT_PREFIX = "WAIT gradle: verification lock held"
+GRADLE_LOCK_RELEASED_PREFIX = "gradle: verification lock released"
 
 
 class BackdoorError(RuntimeError):
     pass
+
+
+def env_seconds(name: str, default: float) -> float:
+    """A positive number of seconds from the environment, or `default` when unset or blank."""
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        raise BackdoorError(f"{name}={raw!r} is not a number of seconds") from None
+    if value <= 0:
+        raise BackdoorError(f"{name}={raw!r} must be a positive number of seconds")
+    return value
+
+
+class ManagedStartupWatch:
+    """How long to keep waiting for a managed `./gradlew runJvm` to answer `/health`.
+
+    The managed log tells the two phases apart. Until Gradle prints `> Task :runJvm` the
+    process is still building, and the wait is bounded only by `ceiling`. Once that line
+    appears the JVM is booting, and it gets `jvm_timeout` more (never past the ceiling). A
+    process that exits ends the wait in either phase; that check belongs to the caller's loop,
+    which also owns the health probe.
+
+    `observe()` reads only the bytes appended since the last call, so polling a long log every
+    half second stays cheap. `clock` is injectable for tests.
+    """
+
+    def __init__(
+        self,
+        log_path: Path | str,
+        *,
+        ceiling: float,
+        jvm_timeout: float,
+        clock: Any = time.monotonic,
+    ) -> None:
+        self.log_path = Path(log_path)
+        self.ceiling = ceiling
+        self.jvm_timeout = jvm_timeout
+        self.clock = clock
+        self.started_at = clock()
+        self.jvm_started_at: float | None = None
+        self.last_task: str | None = None
+        # The latest `WAIT gradle: verification lock held ...` line, cleared when Gradle says
+        # the lock was released. A build stuck behind another verification is not a slow build.
+        self.lock_wait: str | None = None
+        self._offset = 0
+        self._partial = b""
+
+    @property
+    def phase(self) -> str:
+        return "build" if self.jvm_started_at is None else "jvm"
+
+    def elapsed(self) -> float:
+        return self.clock() - self.started_at
+
+    def observe(self) -> None:
+        try:
+            with self.log_path.open("rb") as handle:
+                handle.seek(self._offset)
+                chunk = handle.read()
+        except OSError:
+            return
+        if not chunk:
+            return
+        self._offset += len(chunk)
+        lines = (self._partial + chunk).split(b"\n")
+        self._partial = lines.pop()
+        for raw in lines:
+            line = raw.decode("utf-8", errors="replace").rstrip("\r")
+            match = GRADLE_TASK_LINE.match(line)
+            if match:
+                self.last_task = match.group(1)
+                if self.jvm_started_at is None and self.last_task.endswith(":runJvm"):
+                    self.jvm_started_at = self.clock()
+            elif line.startswith(GRADLE_LOCK_WAIT_PREFIX):
+                self.lock_wait = line
+            elif line.startswith(GRADLE_LOCK_RELEASED_PREFIX):
+                self.lock_wait = None
+
+    def deadline(self) -> float:
+        ceiling = self.started_at + self.ceiling
+        if self.jvm_started_at is None:
+            return ceiling
+        return min(ceiling, self.jvm_started_at + self.jvm_timeout)
+
+    def expired(self) -> bool:
+        return self.clock() >= self.deadline()
+
+    def describe(self) -> dict[str, Any]:
+        """The fields worth logging on each health poll."""
+        return {
+            "startupPhase": self.phase,
+            "lastGradleTask": self.last_task,
+            "elapsedSeconds": round(self.elapsed(), 3),
+            "lockWait": self.lock_wait is not None,
+        }
+
+    def timeout_reason(self) -> str:
+        elapsed = self.elapsed()
+        if self.jvm_started_at is not None and self.jvm_started_at + self.jvm_timeout <= self.started_at + self.ceiling:
+            since = self.clock() - self.jvm_started_at
+            return (
+                f"Gradle reached :runJvm {since:.0f}s ago and the JVM did not answer within its "
+                f"{self.jvm_timeout:.0f}s start budget ({MANAGED_JVM_START_TIMEOUT_ENV})"
+            )
+        phase = "the Gradle build was still running" if self.jvm_started_at is None else "the JVM was still starting"
+        reason = (
+            f"{phase} when the {self.ceiling:.0f}s startup ceiling ran out after {elapsed:.0f}s "
+            f"(last Gradle task {self.last_task or 'none yet'}; raise it with "
+            f"{MANAGED_STARTUP_CEILING_ENV} or --startup-timeout)"
+        )
+        if self.lock_wait is not None:
+            reason += f"; Gradle was waiting on this checkout's verification lock: {self.lock_wait}"
+        return reason
 
 
 class CommandParseError(BackdoorError):
@@ -608,9 +737,15 @@ class FieldBackdoor:
         logger: SessionLogger,
         attach_existing: bool = False,
         allow_unverified_workspace: bool = False,
+        startup_timeout: float | None = None,
+        jvm_start_timeout: float | None = None,
     ) -> None:
         self.port = port
         self.allow_unverified_workspace = allow_unverified_workspace
+        # Budgets for a server this session launches; None defers to the environment
+        # (`AFIELD_BACKDOOR_STARTUP_TIMEOUT`, `AFIELD_BACKDOOR_JVM_START_TIMEOUT`) at launch time.
+        self.startup_timeout = startup_timeout
+        self.jvm_start_timeout = jvm_start_timeout
         # A backdoor-managed Field is automation, even when the caller omitted
         # --workspace. Never let it inherit the machine-global interactive
         # preference, which may name a deleted sibling worktree.
@@ -829,23 +964,50 @@ class FieldBackdoor:
         else:
             popen_kwargs["start_new_session"] = True
 
-        self.logger.log("managed_server_spawn", command=cmd, managedLog=str(self.managed_log_path))
+        ceiling = self.startup_timeout or env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
+        jvm_timeout = self.jvm_start_timeout or env_seconds(
+            MANAGED_JVM_START_TIMEOUT_ENV, DEFAULT_MANAGED_JVM_START_TIMEOUT
+        )
+        self.logger.log(
+            "managed_server_spawn",
+            command=cmd,
+            managedLog=str(self.managed_log_path),
+            startupCeilingSeconds=ceiling,
+            jvmStartTimeoutSeconds=jvm_timeout,
+        )
         self.managed_process = subprocess.Popen(cmd, **popen_kwargs)
+        watch = ManagedStartupWatch(self.managed_log_path, ceiling=ceiling, jvm_timeout=jvm_timeout)
+        await self.wait_for_managed_server(watch)
 
-        deadline = time.monotonic() + 120.0
+    async def wait_for_managed_server(self, watch: ManagedStartupWatch, *, poll_interval: float = 0.5) -> None:
+        """Poll `/health` until the managed server answers, exits, or `watch` runs out."""
+        assert self.managed_process is not None
         attempt = 0
-        while time.monotonic() < deadline:
+        announced_phase = watch.phase
+        while True:
             attempt += 1
+            watch.observe()
+            if watch.phase != announced_phase:
+                announced_phase = watch.phase
+                self.logger.log("managed_server_jvm_starting", **watch.describe())
             if self.managed_process.poll() is not None:
                 self.logger.log(
                     "managed_server_exited_early",
                     returnCode=self.managed_process.returncode,
                     managedLog=str(self.managed_log_path),
+                    **watch.describe(),
+                )
+                during = (
+                    f"during the Gradle build (last task {watch.last_task or 'none yet'})"
+                    if watch.phase == "build"
+                    else "after Gradle started the JVM"
                 )
                 raise BackdoorError(
-                    f"Managed Field server exited early with code {self.managed_process.returncode}. "
-                    f"See {self.managed_log_path}."
+                    f"Managed Field server exited early with code {self.managed_process.returncode} "
+                    f"{during}. See {self.managed_log_path}."
                 )
+            if watch.expired():
+                break
             healthy = health_check(self.port, self.ssl_context)
             self.logger.log(
                 "health_check",
@@ -853,7 +1015,7 @@ class FieldBackdoor:
                 port=self.port,
                 healthy=healthy,
                 attempt=attempt,
-                elapsedSeconds=round(120.0 - (deadline - time.monotonic()), 3),
+                **watch.describe(),
             )
             if healthy:
                 # Read the workspace back even on the path that supplied it. `--args=--workspace`
@@ -868,15 +1030,18 @@ class FieldBackdoor:
                     requestedWorkspace=self.requested_workspace,
                 )
                 return
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(poll_interval)
 
+        reason = watch.timeout_reason()
         self.logger.log(
             "managed_server_health_timeout",
             port=self.port,
             managedLog=str(self.managed_log_path),
+            reason=reason,
+            **watch.describe(),
         )
         raise BackdoorError(
-            f"Field server did not become healthy on https://localhost:{self.port}/health within 120 seconds. "
+            f"Field server did not become healthy on https://localhost:{self.port}/health: {reason}. "
             f"See {self.managed_log_path}."
         )
 
@@ -4869,12 +5034,25 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
     )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument(
+        "--startup-timeout",
+        type=float,
+        default=None,
+        help=(
+            "Ceiling in seconds on starting a managed Field, Gradle build included (default "
+            f"${MANAGED_STARTUP_CEILING_ENV} or {DEFAULT_MANAGED_STARTUP_CEILING:.0f}). Once Gradle "
+            f"reaches :runJvm the JVM gets ${MANAGED_JVM_START_TIMEOUT_ENV} "
+            f"(default {DEFAULT_MANAGED_JVM_START_TIMEOUT:.0f}) seconds to answer /health."
+        ),
+    )
+    parser.add_argument(
         "--allow-unverified-workspace",
         action="store_true",
         help="with --attach-existing, accept a server that does not report its workspace",
     )
     parser.add_argument("single_command", nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
+    if args.startup_timeout is not None and args.startup_timeout <= 0:
+        parser.error("--startup-timeout must be a positive number of seconds")
     args.port, port_source = resolve_cli_port(args.port, attach_existing=args.attach_existing)
     if port_source == "automation-default":
         print(
@@ -4896,6 +5074,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         port=args.port,
         portSource=port_source,
         timeout=args.timeout,
+        startupTimeout=args.startup_timeout,
         singleCommand=args.single_command,
     )
 
@@ -4906,6 +5085,7 @@ async def async_main(argv: list[str], logger: SessionLogger) -> int:
         logger=logger,
         attach_existing=args.attach_existing,
         allow_unverified_workspace=args.allow_unverified_workspace,
+        startup_timeout=args.startup_timeout,
     )
     client.port_source = port_source
     client.graphics_context_enabled = bool(args.graphics_context)

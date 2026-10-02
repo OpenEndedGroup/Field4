@@ -11,7 +11,7 @@ that are easy to misunderstand. It is not a second command reference.
   `tools/field_backdoor.py`, especially `build_command_parser()`,
   `parse_command()`, and `dispatch_command()`.
 - Managed-server startup and JDWP environment:
-  `BackdoorSession.ensure_server()` in the same file.
+  `FieldBackdoor.ensure_server()` and `ManagedStartupWatch` in the same file.
 - Server RPC handlers used by Playwright, native captures, and JVM entrypoints:
   `src/jvmMain/kotlin/afield/Server.kt`.
 - Semantic document operations and their guarantees:
@@ -56,6 +56,18 @@ given. Automated servers also decline to update the interactive
 `~/.afield/last-workspace.txt` preference. This is deliberate: a machine-global
 preference can name a deleted sibling worktree, while scratch state belongs to
 the checkout that launched it.
+
+A Field the backdoor starts is `./gradlew runJvm`, so the first launch from a fresh
+worktree compiles everything (Kotlin JVM + JS, webpack) before the JVM exists. The
+startup wait follows the managed-server log (`ManagedStartupWatch`). While Gradle is
+building, the process is given up to the startup ceiling: `--startup-timeout` or
+`AFIELD_BACKDOOR_STARTUP_TIMEOUT`, default 1800 s. Once Gradle prints `> Task :runJvm`,
+the JVM has `AFIELD_BACKDOOR_JVM_START_TIMEOUT` (default 120 s) to answer `/health`. A
+process that exits fails the command at once, and the error names the last Gradle task.
+A timeout says which phase ran out, and whether Gradle was waiting on the checkout's
+verification lock. You don't need to prebuild with
+`./gradlew jvmMainClasses jsBrowserDevelopmentWebpack`. The smoke runner's prewarm
+uses the same watch and the same ceiling, with a 180 s JVM budget.
 
 Do not point isolated verification at 9092: a *fresh* same-checkout server there is
 reused (a stale or foreign one is refused), and it holds human work. Reuse one custom
