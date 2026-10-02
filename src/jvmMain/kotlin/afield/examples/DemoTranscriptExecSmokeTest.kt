@@ -390,6 +390,11 @@ object DemoTranscriptExecSmokeTest {
         // — and the first one draws the same shape through Field's own marchingCubes instead, with the
         // difference named, rather than failing.
         "manifold_solids",
+        // Three pure-CPU boxes that paint and draw FLines through afield.paint (FFM into the optional
+        // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
+        // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
+        // takes — they print where they looked and stop, rather than failing.
+        "paint_canvas",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the

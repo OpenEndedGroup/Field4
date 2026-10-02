@@ -3428,6 +3428,30 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     }
 }
 
+// Build native/field-paint: claude-paint's `paint` crate (a bristle-brush oil-paint simulation)
+// behind a flat C ABI, for afield.paint.PaintCanvas.
+//
+// Optional and not wired into `check`: it needs cargo, and the first build fetches the crate's
+// repository by its pinned revision (in native/field-paint/Cargo.toml). The docs page
+// (public/docs/paint_canvas.md) declares `requires="paint"`, so buildDocsNativePrerequisites builds it. The
+// output is build/field-paint/release, which PaintLibrary searches; -Dafield.paint.library or
+// AFIELD_PAINT_LIBRARY point elsewhere.
+//
+//     ./gradlew buildPaintNative
+//     ./gradlew jvmTest --tests 'afield.paint.PaintCanvasTest'
+val buildPaintNative = tasks.register<Exec>("buildPaintNative") {
+    group = "build"
+    description = "Builds native/field-paint into build/field-paint (needs cargo and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-paint")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-paint/release"))
+    commandLine(
+        "cargo", "build", "--release", "--locked",
+        "--manifest-path", sourceDir.file("Cargo.toml").asFile.absolutePath,
+        "--target-dir", layout.buildDirectory.dir("field-paint").get().asFile.absolutePath,
+    )
+}
+
 // Fetch the pinned subset of tidalcycles/Dirt-Samples the docs' sample clips are rendered from.
 //
 // Not a native library, but the same kind of dependency: third-party, too large to vendor (~400MB
@@ -3658,7 +3682,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

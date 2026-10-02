@@ -1,0 +1,19 @@
+[package]
+name = "field_paint_jvm"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "claude-paint's `paint` crate behind a flat C ABI, for afield.paint"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Pinned by revision: a painting replays with the engine it was painted with, and so should ours.
+# MIT, https://github.com/aliceisjustplaying/claude-paint/tree/main/crates/paint
+paint = { git = "https://github.com/aliceisjustplaying/claude-paint", rev = "8e78df09e08faa754665a8822da8db6a1d78fc47" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+panic = "unwind"

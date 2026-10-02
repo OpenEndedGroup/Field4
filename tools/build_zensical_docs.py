@@ -116,6 +116,25 @@ def tetgen_library_path(repo_root: Path) -> Path:
     return next((c for c in candidates if c.exists()), candidates[0])
 
 
+def paint_library_path(repo_root: Path) -> Path:
+    """Where `afield.paint.PaintLibrary.resolvedPath` will look, from Python.
+
+    One candidate, where `./gradlew buildPaintNative` writes (cargo's `--target-dir`
+    `build/field-paint`, release profile). As with TetGen only the environment override
+    is honoured; the JVM property is invisible from here.
+    """
+    override = os.environ.get("AFIELD_PAINT_LIBRARY", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("win"):
+        name = "field_paint_jvm.dll"
+    elif sys.platform == "darwin":
+        name = "libfield_paint_jvm.dylib"
+    else:
+        name = "libfield_paint_jvm.so"
+    return repo_root / "build" / "field-paint" / "release" / name
+
+
 def libpd_library_path(repo_root: Path) -> Path:
     """Where `afield.pd.PdLibrary.resolvedPath` will look, from Python.
 
@@ -364,6 +383,7 @@ NATIVE_PREREQUISITES: dict[str, tuple[Any, str]] = {
     "ceres": (ceres_library_path, "./gradlew buildCeresRedistributable"),
     "manifold": (manifold_library_path, "brew install manifold"),
     "tetgen": (tetgen_library_path, "./gradlew buildTetgenNative"),
+    "paint": (paint_library_path, "./gradlew buildPaintNative"),
     "libpd": (libpd_library_path, "./gradlew buildLibpdNative"),
     "csound": (csound_library_path, "./gradlew buildCsoundNative"),
     "luajit": (luajit_library_path, "brew install luajit (or apt install libluajit-5.1-2)"),

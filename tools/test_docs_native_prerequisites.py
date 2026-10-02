@@ -15,6 +15,7 @@ from build_zensical_docs import (  # noqa: E402
     ceres_library_path,
     check_native_prerequisites,
     tetgen_library_path,
+    paint_library_path,
     dirt_samples_root_path,
     libpd_library_path,
     csound_library_path,
@@ -155,6 +156,27 @@ class TetgenLibraryPathTests(unittest.TestCase):
         resolve, how_to_build = NATIVE_PREREQUISITES["tetgen"]
         self.assertIs(resolve, tetgen_library_path)
         self.assertEqual("./gradlew buildTetgenNative", how_to_build)
+
+
+class PaintLibraryPathTests(unittest.TestCase):
+    """TetGen's three properties for the paint wrapper, kept in step with
+    `afield.paint.PaintLibrary.searchedPaths` by hand."""
+
+    def test_the_environment_override_wins(self):
+        os.environ["AFIELD_PAINT_LIBRARY"] = "/somewhere/libfield_paint_jvm.dylib"
+        self.addCleanup(os.environ.pop, "AFIELD_PAINT_LIBRARY", None)
+        self.assertEqual(paint_library_path(Path("/repo")), Path("/somewhere/libfield_paint_jvm.dylib"))
+
+    def test_the_default_is_where_build_paint_native_writes(self):
+        os.environ.pop("AFIELD_PAINT_LIBRARY", None)
+        resolved = paint_library_path(Path("/repo"))
+        self.assertEqual(resolved.parent, Path("/repo/build/field-paint/release"))
+        self.assertIn("field_paint_jvm", resolved.name)
+
+    def test_it_is_registered_so_a_fence_may_declare_it(self):
+        resolve, how_to_build = NATIVE_PREREQUISITES["paint"]
+        self.assertIs(resolve, paint_library_path)
+        self.assertEqual("./gradlew buildPaintNative", how_to_build)
 
 
 class LibpdLibraryPathTests(unittest.TestCase):

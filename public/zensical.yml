@@ -149,6 +149,7 @@ nav:
       - Flow Matching: flow_matching.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
+      - Paint and Pencil from FLines: paint_canvas.md
       - Imaging & Computer Vision: imaging_examples.md
       - Depth & CLIP (ONNX): onnx.md
     - Geometry & Solids:

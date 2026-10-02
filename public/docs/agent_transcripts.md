@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 174 transcripts on every build, at three
-depths. 93 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 175 transcripts on every build, at three
+depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -1287,6 +1287,21 @@ same shape through Field's own `marchingCubes` and names the difference.
 ![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
+
+### paint_canvas
+
+Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
+canvas, a brush, three strokes* loads a filbert twice and then drags it through a three-pass zigzag
+without reloading, so you can see the brush run dry. *Strokes along a flow field* paints 260 short
+strokes that follow a field of directions. It reloads the brush before each one with `wipe = 0.4`,
+so some of the last colour stays in the bristles and neighbouring strokes blend. *Pencil, hatching
+and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chalk line under it, on a
+20 cm sheet so the pencil reads at screen size. All three need the optional paint library
+(`./gradlew buildPaintNative`). Without it they say where they looked and stop.
+
+![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
 
 ### photo_to_solid_chain
 
