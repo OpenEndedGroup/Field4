@@ -5,17 +5,15 @@ to ask it the question you actually want to ask: *how many separate things are l
 `LIFE3D_BLOB` for eight generations, turns the surviving cells into a Manifold solid, asks that
 question with one call, and traces the answer.
 
-Three parts of Field, and the middle one is what makes the question answerable. `alife_ca.kt` owns
-the automaton, `afield.manifold` owns closed solids and the operations over them, and the GPU path
-tracer draws whatever it is handed.
+`alife_ca.kt` runs the automaton, `afield.manifold` turns it into closed solids and counts them,
+and the GPU path tracer draws the result.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_life3d_render/clusters.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="life3d study converged" embed=true hidden=true timeout="300" name="chain-life3d-clusters" alt="Several dozen small blue faceted lumps floating in a loose constellation over a pale floor with the Venice lagoon behind, with one larger lump near the centre rendered in gold" macro-file="../../dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml" capture-box="life3d_manifold_trace"}
 // Built and launched from dev_docs/agents/transcripts/life3d_manifold_path_trace.yaml.
 ```
 
-Every blue lump is a separate closed solid and the gold one is the largest. They are separate in the
-sense that matters: `decompose()` returned them as independent solids, each with its own volume, and
-their volumes sum to the volume of the thing they came from.
+Every blue lump is a separate closed solid and the gold one is the largest. `decompose()` returned them as
+independent solids, each with its own volume, and their volumes add up to the volume of the whole.
 
 Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 [Fabricate demo assets](assets/fabricate_demo/ATTRIBUTION.md).
@@ -113,7 +111,8 @@ markdown("spacing", "#### The same field at three spacings each way\n\n" + sweep
 
 ## Why the two marchers disagree about genus
 
-Both numbers are right about different things.
+The readout marches the field twice, once with Field's `marchingCubes` and once with
+Manifold's `levelSet`, and the two report different genus. Both are right about different things.
 
 Field's `genus()` reads one Euler characteristic and solves `χ = 2 − 2g`, which is the genus of a
 **connected** surface. Handed forty-eight disjoint closed surfaces it returns the genus of the one it
@@ -123,15 +122,11 @@ Manifold's `genus` is computed over the whole boundary, and for a set of *k* dis
 spheres χ is `2k`, so `g = 1 − k`. A negative genus is therefore not an error and not a hole count:
 it is a component count in disguise, and `1 − 48 = −47` is the arithmetic the readout shows.
 
-`decompose()` is the operation that turns it back into the number you wanted, sorted largest first.
-That is what makes "how many separate things survived, and how big is each" a one-line question of a
-cellular automaton, and it is the thing the Boolean layer adds that a mesh library does not have.
+`decompose()` turns that back into the number you wanted: the separate pieces, sorted largest
+first, each with its own volume. Because Manifold computes each volume independently, the pieces
+adding up to the whole is a check that no cluster was lost or counted twice.
 
-The volumes summing to the whole is the check on all of it. Each component's volume is integrated
-independently by Manifold; nothing shares an intermediate; and a decomposition that lost or
-double-counted a cluster would not add up.
-
-### The count is a question about the surface, not only about the automaton
+### The count depends on the sampling
 
 Both the volume and the number of clusters depend on how finely the field is sampled, which the
 second panel of the readout above measures: the same field, both marchers, three spacings each.
@@ -142,15 +137,13 @@ fine one, so the cluster count falls as the triangles get bigger. And a trilinea
 direction, and at comparable spacings they land within a few percent of each other. Neither number
 is "the" volume of the automaton.
 
-So a census wants its spacing stated beside it, which is what the readout's parameters are for. What
-is *not* resolution-dependent is the identity between the genus and the component count, and the
-components summing to the whole: those hold at every spacing, because they are arithmetic about
-whatever surface was produced rather than measurements of the field.
+So report the spacing beside any count. The relation between genus and component count, and the
+pieces adding up to the whole, hold at every spacing, because they describe whatever surface was
+produced.
 
 !!! warning "`parallel = true` is nondeterministic"
 
-    The readout above uses `parallel = false`, and the reason is not caution. Marched repeatedly on
-    one identical field the parallel path varies in triangle count, in volume, and in how many
+    The readout above uses `parallel = false`. Marched repeatedly on one field, the parallel path varies in triangle count, in volume, and in how many
     components it finds; the sequential path returns the same three numbers every time. Clusters an
     edge-length across are marginal, and which way a marginal one goes depends on the order the
     samples arrive in.
@@ -169,7 +162,7 @@ whatever surface was produced rather than measurements of the field.
 
 ## What the render is framed on
 
-The camera is placed from what the geometry turned out to be rather than from the grid it came from.
+The camera is placed from the bounds of the geometry, not of the grid it came from.
 `importTriMesh` returns the world-space bounds of what it appended, so the transcript unions those
 over the forty-eight imports and derives the target, the distance and the floor height from the
 result. Eight generations of a decaying rule leave a cloud a little over half the width of the volume
@@ -180,8 +173,8 @@ val added = scene.importTriMesh(part.toTriMesh(normals = true, minSharpAngle = 2
 if (added.triangleCount > 0) { sceneLo.min(added.boundsMin); sceneHi.max(added.boundsMax) }
 ```
 
-Fourteen of the level set's triangles come back with zero area and are skipped rather than aborting
-the scene; [A polytope, cut open, and traced](chain_polytope_render.md) has the rest of that story.
+A few of the level set's triangles have zero area; the tracer skips them rather than failing the
+scene (see [A polytope, cut open, and traced](chain_polytope_render.md)).
 
 ## Where each piece is documented
 

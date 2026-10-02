@@ -2507,7 +2507,7 @@ is what reaches [`FieldAudioEngine`](synthesis.md#fieldaudioengine-kt-fieldaudio
 
 `src/jvmMain/kotlin/afield/four/synth/Signal.kt` — [read the source](source/jvmMain/afield/four/synth/Signal/)
 
-**Used in:** [How to make sound in Field](../sound_paths.md), [A pattern that moves particles](../chain_pattern_particles.md), [Faust](../faust.md)
+**Used in:** [How to make sound in Field](../sound_paths.md), [Faust](../faust.md), [A pattern that moves particles](../chain_pattern_particles.md)
 
 ### Top-level functions { #signal-kt-functions }
 
