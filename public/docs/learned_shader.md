@@ -316,7 +316,7 @@ Prepare the optional shader toolchain once from the Field checkout:
 ./gradlew buildLearnedShaders
 ```
 
-This uses the same optional-build and shared download-cache mechanism as Field's native dependencies. It initializes the pinned [RTX Neural Shading SDK](https://github.com/NVIDIA-RTX/RTXNS/tree/f309ae68677a67060cc6ded2d0af925a3931435f) Git submodule at **`optional/lighting/RTXNS`**, fetches Field’s shared Slang 2026.18.3 compiler with a verified SHA-256 checksum, and builds both inference variants plus the optional GPU-training entry points. The upstream sample’s compiler pin remains independently recorded. There is no need to configure or build NVIDIA's sample renderer.
+This uses the same optional-build and shared download-cache mechanism as Field's native dependencies. It initializes the pinned [RTX Neural Shading SDK](https://github.com/NVIDIA-RTX/RTXNS/tree/f309ae68677a67060cc6ded2d0af925a3931435f) Git submodule at **`optional/lighting/RTXNS`**, fetches Field’s shared Slang 2026.19 compiler with a verified SHA-256 checksum, and builds both inference variants plus the optional GPU-training entry points. The upstream sample’s compiler pin remains independently recorded. There is no need to configure or build NVIDIA's sample renderer.
 
 SDK source lives outside `build/`. Compiler downloads live in Field's per-user native cache, shared across checkouts; `AFIELD_NATIVE_DOWNLOAD_CACHE` can relocate it. Generated SPIR-V and its provenance go to **`build/lighting/learned-shader/`**. After `clean`, run the same task again: it reuses the source checkout and cached compiler. Once prepared, `./gradlew buildLearnedShaders --offline` also works.
 
