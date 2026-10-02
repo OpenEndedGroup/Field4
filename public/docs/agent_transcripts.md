@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 177 transcripts on every build, at three
-depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 178 transcripts on every build, at three
+depths. 95 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -1287,6 +1287,20 @@ same shape through Field's own `marchingCubes` and names the difference.
 ![A gyroid-thickened torus drawn as a pale wireframed surface, its rim rippling in and out where the gyroid cuts it, captioned 14869 verts, 29738 tris, chi=0 genus 1, watertight, volume 17750.1245, and "29738 triangles, genus 1, guaranteed closed"](assets/manifold/levelset.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
+
+### ai4_paint_studio
+
+A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on
+an easel and gives the chat agent eleven tools to paint on it: strokes, dabs, whole regions worked
+the way a painter blocks in, glazes, pencil lines, hatching, stippling, drying time, a fresh canvas,
+and *hang*, which keeps a finished painting in the document's gallery. The canvas belongs to the
+conversation, so rewinding the chat to a request brings back the canvas from before it. Open the
+box's AI panel and ask for a painting; [AI4 paints](ai4_painting.md) shows three made this way. It
+needs the paint library (`./gradlew buildPaintNative`) and an AI provider.
+
+![three paintings of one harbour made in the studio by AI4: at dusk, at night, and in a storm](assets/ai4_painting/three.jpg)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_paint_studio/metadata.edn)
 
 ### paint_canvas
 

@@ -105,6 +105,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
+- `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
+  `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
+  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it. The transcript only
+  runs the box; painting needs a person (or `agent-task --chat-box Studio`) and a provider.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.

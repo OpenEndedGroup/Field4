@@ -395,6 +395,10 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        // One pure-CPU box over the same paint canvas that registers an agentExtension (paint tools,
+        // context, commands, the canvas as branch state) and shows the bare canvas. No model is called;
+        // without the paint library it says so and stops, like paint_canvas.
+        "ai4_paint_studio",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the

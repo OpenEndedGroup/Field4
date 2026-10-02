@@ -285,7 +285,9 @@ request means a dozen similar calls (run every box, try eight values, tag every
 note that has a TODO), the model can send one short JavaScript program instead,
 and only what the program returns comes back into the conversation. Your tools
 are callable from those programs like the built-in ones: `tools.MeasureRoom({...})`,
-or `tools["echo.box"]({...})` for a box-authored tool with a dot in its name. In
+or `tools.echo_box({...})` for a box-authored tool named `echo.box`. The model sees
+a box tool's name with every character other than letters, digits, `_` and `-`
+turned into `_`, because the model providers accept no others. In
 the panel, a program's line opens to show each call it made and how long it took.
 
 Programs run in a sandbox that reaches the tools and nothing else: no files,
@@ -314,7 +316,8 @@ box removes all of it. It applies to conversations about its own document. Each
 hook has a quarter of a second; one that throws or takes longer is skipped and
 reported in the log, so a broken hook cannot stop the agent. Context arrives marked
 as coming from the document rather than as instructions, at most 4,000 characters a
-part. `/help` lists the commands extensions add.
+part. `/help` lists the commands extensions add. [AI4 paints](ai4_painting.md)
+is a whole studio built this way.
 
 Some state belongs to the conversation rather than to the document: a canvas the
 agent paints on, a simulation it is steering. `branchState` hands that state to the
