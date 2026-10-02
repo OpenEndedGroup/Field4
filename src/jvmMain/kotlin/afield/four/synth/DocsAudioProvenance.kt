@@ -104,9 +104,9 @@ object DocsAudioProvenance {
     val ORIGIN_BY_RENDERER: Map<String, Origin> = mapOf(
         "afield.four.synth.PatSoundDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.PatMiniNotation" to Origin.STAND_IN_SYNTH,
-        // Both of these drive patVoice too: CaSoundDocs through patRenderStereo, and PatSynthDocs
-        // through a PatSynthBank rendered block by block.
-        "afield.four.synth.CaSoundDocs" to Origin.STAND_IN_SYNTH,
+        // CaSoundDocs plays its CA rows through patRenderStereoDirt, strictly from the pinned subset.
+        "afield.four.synth.CaSoundDocs" to Origin.DIRT_SAMPLES,
+        // PatSynthDocs drives patVoice through a PatSynthBank rendered block by block.
         "afield.four.synth.PatSynthDocs" to Origin.STAND_IN_SYNTH,
         // patRenderStereo again, on a step mask that came out of an interaction-net reduction
         // rather than out of a cellular automaton: the same family as CaSoundDocs with a different
