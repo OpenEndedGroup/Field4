@@ -58,9 +58,8 @@ try {
 
 The `Vec2` in the documentation is underlined: that is the code-link. The same
 sentence ends *"…converting each component to [Float]."*, and there `[Float]`
-stays literal. `Float` is a classpath-only type that this build's source index
-can't resolve, so Field leaves it unlinked rather than offer a link that would
-go nowhere. The `source …:line` line at the very bottom of the card is a link
+stays literal: `Float` comes from the Kotlin standard library, whose source
+Field does not index, so there is nothing to link to. The `source …:line` line at the very bottom of the card is a link
 too, pointing at the definition's location in the source.
 
 ## Following a link
@@ -84,14 +83,13 @@ separate UI and retrieval path; see [Semantic retrieval](semantic_index.md).
 
 ## Local completion history
 
-Field keeps a local, append-only history of autocomplete interactions, so the completion helper can
-be measured against real use. A record includes the complete unsaved source,
+Field keeps a local history of what you do with autocomplete. Each record includes the complete unsaved source,
 the edited and related code properties, caret position, each distinct completion ordering shown in the
 popup, and whether a row was accepted or the popup was dismissed. Accepted rows retain their visible
 rank and the resulting source.
 
 The files live under `~/.afield/logs/completion_interactions/`, one JSONL file per UTC day. They are not
-uploaded by this feature. Because they contain full source, treat them with the same privacy and backup
+uploaded anywhere. Because they contain full source, treat them with the same privacy and backup
 care as the Field documents themselves. `AFIELD_COMPLETION_INTERACTION_LOG_PATH` can redirect the log
 directory.
 
@@ -99,6 +97,5 @@ directory.
 
 The panel resolves symbols; it doesn't list them, so it can't help with a
 question you can't yet name. [What's already in the box](reference/index.md) is
-the index for that: the same declarations, read out of the source by the same
-parser this panel uses, laid out to browse. Anything listed there resolves
-here.
+the index for that: the same declarations, laid out to browse. Anything listed
+there links here too.
