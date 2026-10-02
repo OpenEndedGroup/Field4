@@ -174,4 +174,71 @@ class CsoundTest {
         assertEquals(afield.four.synth.CsoundChannel("freq", 1, 220.0, 55.0, 880.0), chans[0])
         assertTrue(chans[0].isInput && !chans[1].isInput)
     }
+
+    @Test fun oneDiagnosticIsOneProblemOnItsLine() {
+        // Csound 6.18.1's own output for `asig oscilx 0.2, 440` on line 4, as the typo demo box prints it.
+        val printed = listOf(
+            "error:  Unable to find opcode entry for 'oscilx' with matching argument types:",
+            "",
+            "Found: a oscilx cc",
+            "       asig oscilx 0.2 ...",
+            "Line: 4",
+            " from file *string* (1),Parsing failed due to syntax errors",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem(
+            "Unable to find opcode entry for 'oscilx' with matching argument types:\nFound: a oscilx cc\nasig oscilx 0.2 ...", 4)),
+            CsoundInstance.problemsIn(printed))
+    }
+
+    @Test fun aSyntaxErrorKeepsItsOffendingTextAndTheSummaryOnlyWhenNothingIsPlaced() {
+        val syntax = listOf(
+            "error: syntax error, unexpected '*'  (token \"* \")",
+            " line 3:",
+            " >>>   a2 = a1 +*  <<<",
+            "Parsing failed due to 1 syntax error!",
+            "Stopping on parser failure",
+        )
+        assertEquals(listOf(CsoundInstance.Problem("syntax error, unexpected '*'  (token \"* \")\n>>>   a2 = a1 +*  <<<", 3)),
+            CsoundInstance.problemsIn(syntax))
+        assertEquals(listOf(CsoundInstance.Problem("Parsing failed due to 1 syntax error!\nStopping on parser failure", -1)),
+            CsoundInstance.problemsIn(listOf("Parsing failed due to 1 syntax error!", "Stopping on parser failure")))
+    }
+
+    @Test fun routineChatterIsDroppedAndWarningsAndPrintsAreKept() {
+        val dropped = listOf(
+            "Score finished in csoundPerformKsmps() with 2.",
+            "SECTION 1:",
+            "end of score.\t\t   overall amps:  0.25000  0.25000",
+            "new alloc for instr Pluck:",
+            "inactive allocs returned to freespace",
+            "overall amps:  0.24998  0.24998",
+            "\t   overall samples out of range:        0        0",
+            "0 errors in performance",
+            " B  0.000 ..  1.000 T  1.000 TT  1.000 M:  0.25000  0.25000",
+            "rtevent:\t   T  0.500 TT  0.500 M:  0.00000  0.00000",
+            "",
+        )
+        val kept = listOf(
+            "WARNING: instr Pluck not found",
+            "INIT ERROR in instr 1 (opcode poscil.kk) line 3: table not found",
+            "hello from csound",
+            "level 0.033",
+            "Key 62",
+        )
+        for (l in dropped) assertTrue(CsoundInstance.isRoutineChatter(l), "should drop: $l")
+        for (l in kept) assertTrue(!CsoundInstance.isRoutineChatter(l), "should keep: $l")
+    }
+
+    @Test fun printedLinesStillReachTheCallbackButTheScoreEndDoesNot() {
+        if (!available()) return
+        val lines = ArrayList<String>()
+        CsoundInstance("instr 1\n prints \"hello\\n\"\nendin", "i1 0 0.1").use { cs ->
+            cs.onMessage { lines += it }
+            cs.renderOffline()
+            assertTrue(cs.console.any { it.startsWith("Score finished") }, "the console keeps everything: ${cs.console}")
+        }
+        assertTrue(lines.contains("hello"), "$lines")
+        assertTrue(lines.none { it.startsWith("Score finished") }, "$lines")
+    }
 }

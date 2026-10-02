@@ -3,7 +3,7 @@ val cs = afield.csound.CsoundInstance("""
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
-        outs    asig, asig
+  outs    asig, asig
 endin
 """, "i \"Play\" 0 0.1")
 val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14)     // odd harmonics: a square-ish wave

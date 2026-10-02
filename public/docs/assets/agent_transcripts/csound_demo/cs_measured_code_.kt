@@ -3,7 +3,7 @@ val cs = afield.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
-        chnset    alow, "low"
+  chnset    alow, "low"
 endin
 """, "i \"Filter\" 0 z")
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))

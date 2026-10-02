@@ -92,7 +92,8 @@ class CsoundExecution(val inside: Box) : BoxExecution {
             val state = try {
                 open(inside, doc)
             } catch (e: CsoundCompileError) {
-                for (line in e.printed) runCatching { inside.println(line) }
+                // One error, one message: a diagnostic placed on a line is not printed again below.
+                if (e.problems.none { it.line > 0 }) for (line in e.printed) runCatching { inside.println(line) }
                 for (p in e.problems) {
                     runCatching { inside.error(p.message, "code", if (p.line > 0) doc.orchestra.firstLine + p.line else execute.line + 1) }
                 }
