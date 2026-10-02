@@ -105,6 +105,9 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
+        // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
+        "drawn_morph",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.

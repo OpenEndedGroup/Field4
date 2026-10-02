@@ -115,6 +115,9 @@ object DocsAudioProvenance {
         // patRenderStereo once more, on notes read out of the document's drawing by
         // notation.space and the loop chain_drawn_score.md shows (patTimed makes the pattern).
         "afield.four.synth.DrawnScoreDocs" to Origin.STAND_IN_SYNTH,
+        // patRenderStereo on notes whose pitch is the size of a point cloud morphing between two
+        // strokes read from the drawing, paired by matchPoints. See chain_drawn_morph.md.
+        "afield.four.synth.DrawnMorphDocs" to Origin.STAND_IN_SYNTH,
         "afield.four.synth.DoughDspSoundDocs" to Origin.DOUGH_DSP,
         // A SineOsc whose amplitude or frequency is a Functions.Fn, through FnSignal: the same
         // Kotlin signal graph DoughDspSoundDocs renders. See chain_fn_sound_roundtrip.md.
