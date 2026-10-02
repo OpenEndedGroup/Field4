@@ -95,10 +95,25 @@ class CsoundLanguageTest {
         val (_, rows) = ex.completions(code, pos)!!
         val poscil = rows.firstOrNull { it.text == "poscil" }
         assertNotNull(poscil, "poscil is offered: ${rows.map { it.text }}")
-        assertEquals("aSig poscil aSig, aSig, [ij=-1], [io=0]  —  High precision oscillator.", poscil.tail)
-        assertTrue(poscil.documentation.startsWith("High precision oscillator."), poscil.documentation)
-        assertTrue(poscil.documentation.contains("kVal poscil kVal, kVal, [ij=-1], [io=0]"), poscil.documentation)
-        assertTrue(poscil.documentation.endsWith("https://csound.com/docs/manual/poscil.html"), poscil.documentation)
+        assertEquals("ares poscil aamp, acps [, ifn, iphs]", poscil.tail)
+        assertEquals(CsoundExecution.OPCODE_CATEGORY, poscil.category)
+        assertEquals("""
+            High precision oscillator.
+
+            ```csound
+            ares poscil aamp, acps [, ifn, iphs]
+            ares poscil aamp, kcps [, ifn, iphs]
+            ares poscil kamp, acps [, ifn, iphs]
+            ares poscil kamp, kcps [, ifn, iphs]
+            ires poscil kamp, kcps [, ifn, iphs]
+            kres poscil kamp, kcps [, ifn, iphs]
+            ```
+        """.trimIndent(), poscil.documentation.substringBefore("\n\n- "))
+        assertTrue(poscil.documentation.contains("- `ifn` — (optional) function table number."), poscil.documentation)
+        assertTrue(poscil.documentation.endsWith("[csound.com/docs/manual/poscil.html](https://csound.com/docs/manual/poscil.html)"), poscil.documentation)
+        // An opcode the manual lacks falls back to libcsound's spelled-out signature.
+        val maxtab = CsoundExecution.opcodeTail(CsoundVocabulary.byName.getValue("maxtab"))
+        assertEquals(CsoundVocabulary.describe("maxtab", CsoundVocabulary.byName.getValue("maxtab").signatures.first()), maxtab)
 
         val chan = csd.indexOf("chnget \"cutoff\"") + "chnget \"cu".length
         val (_, chans) = ex.completions(csd, chan)!!

@@ -240,11 +240,11 @@ class CsoundExecution(val inside: Box) : BoxExecution {
         val (start, rows) = completions(completionRequest.allCode, completionRequest.position) ?: return
         if (rows.isEmpty()) return
         reply(Message("complete").payload(Completion(boundsStart = start, boundsEnd = completionRequest.position.coerceIn(0, completionRequest.allCode.length),
-            metadata = rows.map { r -> Metadata(icon = r.kind, tail = r.tail, documentation = r.documentation, text = r.text, displayText = r.text) })))
+            metadata = rows.map { r -> Metadata(icon = r.kind, tail = r.tail, documentation = r.documentation, text = r.text, displayText = r.text, category = r.category) })))
     }
 
     /** One completion row. */
-    data class Row(val text: String, val kind: String, val tail: String, val documentation: String)
+    data class Row(val text: String, val kind: String, val tail: String, val documentation: String, val category: String = "")
 
     /** The rows for the cursor at [position] in [code], and where the replaced word starts. */
     fun completions(code: String, position: Int): Pair<Int, List<Row>>? {
@@ -287,8 +287,7 @@ class CsoundExecution(val inside: Box) : BoxExecution {
         ORCHESTRA_KEYWORDS.filter { it.startsWith(prefix) && it != prefix }.forEach { rows += Row(it, "keyword", "keyword", "Csound keyword") }
         for (op in CsoundVocabulary.committed.opcodes) {
             if (!op.name.startsWith(prefix) || op.name == prefix) continue
-            val sigs = op.signatures.map { CsoundVocabulary.describe(op.name, it) }
-            rows += Row(op.name, "opcode", sigs.first() + (op.description?.let { "  —  $it" } ?: ""), opcodeDocumentation(op, sigs))
+            rows += Row(op.name, "opcode", opcodeTail(op), opcodeDocumentation(op), OPCODE_CATEGORY)
         }
         return start to rows.sortedWith(compareBy({ it.text.length }, { it.text })).take(200)
     }
@@ -300,17 +299,37 @@ class CsoundExecution(val inside: Box) : BoxExecution {
     }
 
     companion object {
+        /** The completion group Csound opcodes are listed under. Not in fieldSuggest's CATEGORY_WEIGHT, so it ranks as "other" did. */
+        const val OPCODE_CATEGORY = "csound-opcodes"
+
         /**
-         * A completion row's detail: the manual's one-line description first, then libcsound's
-         * signatures, the manual's arguments and its page. Opcodes the manual does not describe show
-         * their signatures alone.
+         * The row's detail: the manual's shortest syntax line, which names its arguments the way the
+         * manual's argument notes do (`ares poscil aamp, acps [, ifn, iphs]`); libcsound's spelled-out
+         * signature when the manual has no entry.
          */
-        fun opcodeDocumentation(op: CsoundVocabulary.Opcode, signatures: List<String>): String = buildList {
-            op.description?.let { add(it) }
-            add(signatures.joinToString(";  "))
-            if (op.arguments.isNotEmpty()) add(op.arguments.take(4).joinToString(";  ") { "${it.name}: ${it.text.removeSuffix(".")}" })
-            op.page?.let { add(CsoundVocabulary.manualUrl(it)) }
-        }.joinToString("  ·  ")
+        fun opcodeTail(op: CsoundVocabulary.Opcode): String =
+            op.syntax.minByOrNull { it.length } ?: CsoundVocabulary.describe(op.name, op.signatures.first())
+
+        /**
+         * The detail panel, as markdown (fieldSuggest renders it with aiChatMarkdownToHtml, as it does
+         * every language's documentation): the description, the syntax lines in a code block, the
+         * arguments one per line, the manual's section and the link to the page.
+         */
+        fun opcodeDocumentation(op: CsoundVocabulary.Opcode): String = buildString {
+            op.description?.let { append(it).append("\n\n") }
+            val syntax = op.syntax.ifEmpty { op.signatures.map { CsoundVocabulary.describe(op.name, it) } }
+            append("```csound\n").append(syntax.joinToString("\n")).append("\n```\n\n")
+            if (op.arguments.isNotEmpty()) {
+                for (a in op.arguments.take(6)) append("- `").append(a.name).append("` — ").append(a.text).append("\n")
+                append("\n")
+            }
+            if (op.page != null) {
+                op.category?.let { append(it).append(" · ") }
+                append("[").append(CsoundVocabulary.manualUrl(op.page).removePrefix("https://")).append("](").append(CsoundVocabulary.manualUrl(op.page)).append(")")
+            } else {
+                append("Not in the Csound manual ").append(CsoundVocabulary.MANUAL_TAG).append("; signatures from libcsound.")
+            }
+        }.trimEnd()
 
         /** Flags that pick an audio or MIDI device or a file; Field's engine is the device. */
         val DEVICE_FLAGS = listOf("-o", "-i", "-+rtaudio", "-+rtmidi", "-M", "-Q", "-b", "-B", "--output", "--input", "-W", "-A", "-n", "-d")

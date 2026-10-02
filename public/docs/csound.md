@@ -79,12 +79,16 @@ own messages, are marked on the box line they belong to.
 
 ### Completion
 
-Ctrl-Space offers Csound's opcodes, each with its signature in Csound's type letters: `a` audio,
-`k` control, `i` init, `S` string, `x` audio or control, and bracketed optional arguments with their
-defaults. Inside a quoted string after `chnget`, `chnset`, `invalue` or `outvalue`, it offers the
-orchestra's channel names. In the score it offers instrument numbers and names.
+Ctrl-Space offers Csound's opcodes under the heading **Csound opcodes**. Each row shows the
+manual's shortest syntax line for it, named the way the manual names arguments. The panel beside
+the list shows the manual's one-line description, every syntax line, the arguments with a
+sentence each, the manual section and a link to the page. An opcode the manual does not describe
+shows libcsound's signature instead, in Csound's type letters: `a` audio, `k` control, `i` init,
+`S` string, `x` audio or control, with bracketed optional arguments and their defaults. Inside a
+quoted string after `chnget`, `chnset`, `invalue` or `outvalue`, it offers the orchestra's channel
+names. In the score it offers instrument numbers and names.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/csound/completion.png" transcript="assets/transcripts/csound_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="csound-completion" alt="Field's completion popup in a Csound box at the prefix posc. The rows are poscil and poscil3, each with its signature and the manual's one-line description underneath: aSig poscil aSig, aSig, [ij=-1], [io=0] — High precision oscillator. The panel beside them repeats the description, lists every signature poscil has, its arguments as the manual describes them, and the link to its manual page."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/csound/completion.png" transcript="assets/transcripts/csound_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="csound-completion" alt="Field's completion popup in a Csound box at the prefix posc, under the header CSOUND OPCODES. The rows are poscil and poscil3, each with the manual's shortest syntax line underneath: ares poscil aamp, acps [, ifn, iphs]. The panel beside them reads High precision oscillator., then the six syntax lines of poscil in a code block, then a list of its arguments — ifn, iphs, ares, kamp, kcps — each with one sentence from the manual, and last the manual's section, Signal Generators: Basic Oscillators, and a link to csound.com/docs/manual/poscil.html."}
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor("csound_completion")
 ui.pause(900)

@@ -49,6 +49,7 @@ object CsoundVocabulary {
         val syntax: List<String> = emptyList(),
         val arguments: List<Argument> = emptyList(),
         val page: String? = null,
+        val category: String? = null,
     )
 
     /** Where the descriptions came from, and under what terms they are shipped. */
@@ -68,7 +69,7 @@ object CsoundVocabulary {
     fun manualUrl(page: String): String = "https://csound.com/docs/manual/$page.html"
 
     /** What the manual says about one name. */
-    data class ManualEntry(val page: String, val description: String?, val syntax: List<String>, val arguments: List<Argument>)
+    data class ManualEntry(val page: String, val description: String?, val syntax: List<String>, val arguments: List<Argument>, val category: String? = null)
 
     private fun clean(xml: String): String = xml
         .replace(Regex("<[^>]+>"), "")
@@ -103,7 +104,7 @@ object CsoundVocabulary {
                 for (para in Regex("""<para>\s*<emphasis>([^<]+)</emphasis>(.*?)</para>""", RegexOption.DOT_MATCHES_ALL).findAll(sec.groupValues[2])) {
                     val name = clean(para.groupValues[1])
                     val rest = clean(para.groupValues[2])
-                    if (name.isEmpty() || name.contains(' ') || args.any { it.name == name }) continue
+                    if (name.isEmpty() || name.contains(' ') || name in names || name == id || args.any { it.name == name }) continue  // the opcode itself is not an argument
                     // "-- text", or ", ifoo -- text" when several are described together.
                     val text = rest.substringAfter("--", rest).substringAfter("–", rest.substringAfter("--", rest))
                     val sentence = firstSentence(text)
@@ -111,7 +112,9 @@ object CsoundVocabulary {
                     if (args.size >= 8) break
                 }
             }
-            val entry = ManualEntry(id, purpose, syntax.take(6), args)
+            val category = Regex("""<refentryinfo>\s*<title>(.*?)</title>""", RegexOption.DOT_MATCHES_ALL).find(xml)
+                ?.let { clean(it.groupValues[1]).replace(":", ": ").replace(Regex("\\s+"), " ").trim() }?.takeIf { it.isNotEmpty() }
+            val entry = ManualEntry(id, purpose, syntax.take(6), args, category)
             for (n in names) out.putIfAbsent(n, entry)
             // A page documents more names than its refname says: `chn` covers chn_k, chn_a and chn_S,
             // and some pages carry a stale refname. The `<command>` of each syntax line is the name
@@ -128,7 +131,7 @@ object CsoundVocabulary {
     fun describe(library: Vocabulary, manual: Map<String, ManualEntry>): Vocabulary {
         val opcodes = library.opcodes.map { op ->
             val m = manual[op.name] ?: return@map op
-            op.copy(description = m.description, syntax = m.syntax, arguments = m.arguments, page = m.page)
+            op.copy(description = m.description, syntax = m.syntax, arguments = m.arguments, page = m.page, category = m.category)
         }
         val undescribed = opcodes.filter { it.description == null }.map { it.name }
         return Vocabulary(library.csoundVersion, opcodes,
