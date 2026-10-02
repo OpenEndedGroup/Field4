@@ -177,7 +177,7 @@ data class EditFileResponse(val success: Boolean, val message: String? = null)
 
 /** Agentic verification tools --------------------------------------------- */
 
-@JsonClassDescription("Compile Kotlin for the current Field box or an afield://.../code file ref. Call this after editing Kotlin and before finishing the turn; fix errors and rerun until success. (RunBoxRequest/LaunchBoxRequest compile by themselves; you do not need this before them.)")
+@JsonClassDescription("Compile Kotlin for a Field box without running it. Returns success and diagnostics (severity, message, line, column). Use it only when the code must not run yet; RunBoxRequest/LaunchBoxRequest compile by themselves and report the same errors, so do not call this before them. Fails when `file` names no box; e.g. file = `Primes`, or empty for the box this chat belongs to.")
 data class CompileKotlinRequest(
     @JsonPropertyDescription("Which box: its name or uid, or its file ref afield://<document>/<box uid>/code exactly as ListContents reports it. Empty = the box this chat belongs to, where there is one.")
     val file: String = "",
@@ -269,11 +269,14 @@ data class ReloadShadersResult(
 /** Looking at the render window ---------------------------------------------- */
 
 @JsonClassDescription(
-    "Capture the live afield.four render window and attach it as an image, so you can see what the " +
-        "running code is actually drawing. Use it for any visual request: once before editing to see " +
-        "the starting point, and again afterwards to check the result. Unlike ReloadShaders' " +
-        "visualCheck this needs no shader edit and no successful reload, so it also works when a " +
-        "reload just failed — which is when looking is most useful."
+    "Capture a live afield.four (Vulkan) render window and attach it as an image, so you can see " +
+        "what a renderer box is actually drawing. Returns success, the window title and size, and the " +
+        "picture. Use it ONLY for boxes under a Renderer that opened a native window (meshes, shaders, " +
+        "frames {}); for anything a box shows with display(...), lines(...), HTML, SVG or a chart, use " +
+        "ViewBoxOutputRequest instead. A box with no render window fails with success=false: do not " +
+        "retry it, switch to ViewBoxOutputRequest. Look " +
+        "once before editing and again after; unlike ReloadShaders' visualCheck it needs no successful " +
+        "reload. e.g. uid empty (this chat's box), settleMs = 500, note = `is the cube lit from the left?`"
 )
 data class CaptureRenderWindowRequest(
     @JsonPropertyDescription(
@@ -941,6 +944,14 @@ internal class ToolRegistry {
         extensionOwned.add(name)
         true
     }
+
+    /**
+     * Every core (non-extension) request class, regardless of its availability gate. Read by the
+     * description audit (`ToolDescriptionRubricTest`), which must see tools whose providers a test
+     * context does not wire.
+     */
+    internal fun coreToolClasses(): List<Class<*>> =
+        handlers.entries.filter { it.key !in extensionOwned }.map { it.value.cls }.sortedBy { it.simpleName }
 
     /** True if [registerExtension] would accept [name] — i.e. core does not already hold it. */
     internal fun acceptsExtensionNamed(name: String): Boolean =

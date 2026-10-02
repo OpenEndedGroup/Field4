@@ -48,10 +48,10 @@ import java.util.concurrent.TimeoutException
 // back as `success: false` with its diagnostics. Never a silent ok.
 // =============================================================================================
 
-@JsonClassDescription("List every box in this Field document: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run.")
+@JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it first, to learn the names other tools accept (e.g. box = `Sun`); it takes no arguments and cannot fail, but an empty list means the document has no boxes yet.")
 data class ListBoxesRequest(val unused: Int = 0)
 
-@JsonClassDescription("Create a new box in this Field document. Optionally give it Kotlin code (not run until RunBox/LaunchBox) and a parent box (uid or name) to connect it under. Returns the new box's uid.")
+@JsonClassDescription("Create a new box in this Field document. Returns the new box's uid. Use it when the task needs a box that does not exist yet; optionally give it Kotlin code (not run until RunBox/LaunchBox) and a parent (uid or name, e.g. parent = `Settings`) to connect it under. Fails if the parent is unknown or ambiguous.")
 data class NewBoxRequest(
     @JsonPropertyDescription("Box name, shown on the canvas. Prefer unique names; tools accept a unique name wherever they take a box.")
     val name: String,
@@ -61,10 +61,10 @@ data class NewBoxRequest(
     val parent: String = "",
 )
 
-@JsonClassDescription("Delete a box (and anything nested in it) from this Field document.")
+@JsonClassDescription("Delete a box (and anything nested in it) from this Field document. Returns success and the deleted box's uid and name. Use it only when the task asks for a box to go; to change a box, edit it instead. box is a uid or unique name, e.g. `Scratch`. An unknown or ambiguous box fails with the list of known boxes.")
 data class DeleteBoxRequest(val box: String)
 
-@JsonClassDescription("Set a text property on a box, most often `code`. Does not run it: call RunBox or LaunchBox afterwards.")
+@JsonClassDescription("Replace a whole text property on a box, most often `code`, e.g. property = `code`, value = `println(1)`. Returns success and the length set. Use it for a rewrite; for a small change prefer PatchBoxTextRequest, which resends nothing else. Does not run it: call RunBox or LaunchBox afterwards. An unknown or ambiguous box fails with the list of known boxes.")
 data class SetBoxPropertyRequest(
     val box: String,
     @JsonPropertyDescription("Property name; `code` for Kotlin source, `name` to rename.")
@@ -72,7 +72,7 @@ data class SetBoxPropertyRequest(
     val value: String,
 )
 
-@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; matches are counted without overlap; `occurrence` N = the Nth match, 0 = every match; the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts `replacement` before startLine instead of replacing). Recorded like SetBoxPropertyRequest. Does not run it.")
+@JsonClassDescription("Edit part of a box's text property in place, without resending the whole text. Either find/replace (`find` must match exactly; matches are counted without overlap; `occurrence` N = the Nth match, 0 = every match; the call fails if `find` is absent or, with occurrence 1, ambiguous unless allowMultiple) or a line range (`startLine`..`endLine`, 1-based, inclusive, replaced by `replacement`; endLine 0 means endLine = startLine; `insert` = true inserts `replacement` before startLine instead of replacing). Returns success and the length before and after. Recorded like SetBoxPropertyRequest. Does not run it.")
 data class PatchBoxTextRequest(
     val box: String,
     val property: String = "code",
@@ -86,16 +86,16 @@ data class PatchBoxTextRequest(
     val insert: Boolean = false,
 )
 
-@JsonClassDescription("Read a text property of a box, most often `code`.")
+@JsonClassDescription("Read a text property of a box, most often `code` (e.g. box = `Primes`, property = `code`). Returns its text as `value`; a property the box does not have, or one that is not text, fails with success=false. Use it before editing a box you have not read this turn. An unknown or ambiguous box fails with the list of known boxes.")
 data class GetBoxPropertyRequest(val box: String, val property: String = "code")
 
-@JsonClassDescription("Connect two boxes: `child` becomes a child of `parent`. Children inherit properties and can see their parents' context.")
+@JsonClassDescription("Connect two boxes: `child` becomes a child of `parent` (e.g. parent = `Settings`, child = `Plot`). Children inherit properties and can see their parents' variables. Returns success and the child's uid and name. Use it when one box must read another's values; the child sees them on its next run. Fails if either box is unknown or ambiguous.")
 data class ConnectBoxesRequest(val parent: String, val child: String)
 
-@JsonClassDescription("Remove the parent→child connection between two boxes.")
+@JsonClassDescription("Remove the parent→child connection between two boxes (e.g. parent = `Settings`, child = `Plot`). Returns success and the child's uid and name. Use it when a box should stop inheriting from another. Fails if either box is unknown or ambiguous.")
 data class DisconnectBoxesRequest(val parent: String, val child: String)
 
-@JsonClassDescription("Run a box's code once to completion (like the Run command) and wait for its verdict. Returns success=false with compile/runtime errors when it fails, plus what it printed and displayed during the run. If `code` is given it replaces the box's code first.")
+@JsonClassDescription("Run a box's code once to completion (like the Run command) and wait for its verdict. It compiles the code itself, so there is no need to compile first. Returns success, what it printed and displayed, and on failure success=false with the compile/runtime errors and their lines. Use it for code that finishes; for loops or animations that keep running use LaunchBoxRequest. If `code` is given it replaces the box's code first (e.g. code = `println((1..5).toList())`). An unknown or ambiguous box fails with the list of known boxes.")
 data class RunBoxRequest(
     val box: String,
     @JsonPropertyDescription("Optional replacement source; omitted or blank = run the box's current code.")
@@ -103,7 +103,7 @@ data class RunBoxRequest(
     val timeoutSeconds: Double = 30.0,
 )
 
-@JsonClassDescription("Launch a box (like the Launch command): run its setup, which may start loops or animations that keep running. Waits for setup to complete or fail, then reports whether it is still running and what it said so far.")
+@JsonClassDescription("Launch a box (like the Launch command): run its setup, which may start loops or animations that keep running. Waits for setup to complete or fail, then returns whether it is still running and what it said so far; compile or setup errors come back as success=false. Use it for code with `start {}`/frame loops; use RunBoxRequest for code that finishes, and StopBoxRequest to end it. e.g. box = `Ticker`, settleSeconds = 1. An unknown or ambiguous box fails with the list of known boxes.")
 data class LaunchBoxRequest(
     val box: String,
     val code: String? = null,
@@ -112,10 +112,10 @@ data class LaunchBoxRequest(
     val settleSeconds: Double = 0.5,
 )
 
-@JsonClassDescription("Stop a running box and everything it launched.")
+@JsonClassDescription("Stop a running box and everything it launched (e.g. box = `Ticker`). Returns success=true once it has stopped, success=false if it is still running. Use it when a task asks for a loop or animation to end, or before relaunching. Stopping a box that is not running is not an error. An unknown or ambiguous box fails with the list of known boxes.")
 data class StopBoxRequest(val box: String)
 
-@JsonClassDescription("Read what a box has printed, displayed, or reported since a marker (0 = everything retained). Optionally wait until the output contains some text. Returns a new marker to pass next time.")
+@JsonClassDescription("Read what a box has printed, displayed, or reported since a marker (0 = everything retained). Returns the entries as text plus a new marker to pass next time. Use it to follow a launched box's output, optionally waiting until it contains some text (e.g. contains = `done`, waitSeconds = 5); a wait that times out returns what there was, not an error. To see what a box draws, use ViewBoxOutputRequest. An unknown or ambiguous box fails with the list of known boxes.")
 data class ReadBoxOutputRequest(
     val box: String,
     @JsonPropertyDescription("Return entries after this marker; use the marker from a previous RunBox/LaunchBox/ReadBoxOutput result.")
@@ -126,7 +126,7 @@ data class ReadBoxOutputRequest(
     val maxEntries: Int = 60,
 )
 
-@JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture, attached for you to inspect, with measured facts (size, dominant colours, how much of it is not background). Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. Printed text is not in the picture: read that with ReadBoxOutputRequest.")
+@JsonClassDescription("Look at what a box SHOWS: capture its output area (the panels its display(...) calls fill) as a picture. Returns the picture, attached for you to inspect, plus measured facts (size, dominant colours, how much of it is not background). Use it after RunBox/LaunchBox whenever a box displays HTML, SVG, a table, a chart or any drawing, to check that it looks the way it was asked to; fix it if it does not. This, not CaptureRenderWindowRequest, is the tool for display(...) output. Printed text is not in the picture: read that with ReadBoxOutputRequest. A box with no panel fails with that said, and a mostly empty capture says BLANK. e.g. box = `Swatch`, note = `is the square red?`")
 data class ViewBoxOutputRequest(
     val box: String,
     @JsonPropertyDescription("Milliseconds to wait before capturing, for a late script or an animation; clamped to 0..5000. 0 = a short default.")
