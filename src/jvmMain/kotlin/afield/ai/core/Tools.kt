@@ -1098,17 +1098,39 @@ internal class ToolRegistry {
         if (meta.mutates && ctx.documentReadOnly()) {
             throw IllegalStateException("This document is read-only, and '$name' changes it.")
         }
-        if (h != null) {
-            if (!h.offeredUnder(ctx)) {
-                throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
-            }
-            @Suppress("UNCHECKED_CAST")
-            val handler = h as Handler<Any>
-            return handler.fn(ctx, typedArgs(handler.cls))
+        if (h != null && !h.offeredUnder(ctx)) {
+            throw IllegalStateException("Tool '$name' is not available in this context (its provider is not wired).")
         }
-        // Fall through to a document-authored tool with this name.
-        val tool = dynamicToolsIn(ctx).first { it.name == name }
-        return tool.runBlockingFromToolLoop(ctx, rawArgs())
+        // The document's agent extensions (agentExtension { beforeTool / afterTool }) see every call, a tool
+        // program's nested ones included; a refusal becomes the result the model reads.
+        val documentKey = ctx.extensionDocumentKey()
+        val hooked = AgentExtensionRegistry.hooksFor(documentKey).isNotEmpty()
+        val view = if (hooked) ToolCallView(name, runCatching { rawArgs() }.getOrDefault("{}"), origin.name, meta.effects.map { it.name }.toSet()) else null
+        if (view != null) AgentExtensionRegistry.before(documentKey, view)?.let { return it }
+        val started = System.nanoTime()
+        val result: Any = try {
+            if (h != null) {
+                @Suppress("UNCHECKED_CAST")
+                val handler = h as Handler<Any>
+                handler.fn(ctx, typedArgs(handler.cls))
+            } else {
+                // Fall through to a document-authored tool with this name.
+                dynamicToolsIn(ctx).first { it.name == name }.runBlockingFromToolLoop(ctx, rawArgs())
+            }
+        } catch (e: Exception) {
+            if (view != null && !isAiTurnCancellation(e)) {
+                AgentExtensionRegistry.after(documentKey, view, ToolResultView(false, e.message ?: e::class.java.simpleName, (System.nanoTime() - started) / 1_000_000))
+            }
+            throw e
+        }
+        if (view != null) {
+            val summary = (result as? SummarisesForToolLog)?.toolLogSummary()
+                ?: runCatching { aiToolMapper.writeValueAsString(result) }.getOrDefault(result.toString()).take(200)
+            val json = runCatching { aiToolMapper.readTree(aiToolMapper.writeValueAsString(result)) }.getOrNull()
+            val ok = json == null || !(json.get("success")?.asBoolean(true) == false || json.get("error")?.asBoolean(false) == true)
+            AgentExtensionRegistry.after(documentKey, view, ToolResultView(ok, summary, (System.nanoTime() - started) / 1_000_000))
+        }
+        return result
     }
 
     /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */

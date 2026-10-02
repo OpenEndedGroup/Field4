@@ -120,11 +120,12 @@ class AstraBridgeContractTest {
 
     /**
      * Where a TurnContext's parts go on the Responses wire: the stable instructions once, as a developer
-     * message the conversation keeps (again only if they change); the volatile ones as each request's
-     * `instructions`; and the stored user message only the durable prompt.
+     * message the conversation keeps (again only if they change); the small volatile ones in front of each
+     * turn's user message; and never an `instructions` parameter, which measurably stopped conversations
+     * sharing a prompt-cache prefix.
      */
     @Test
-    fun stableInstructionsAreSentOncePerConversationAndVolatileOnesPerRequest() = withServer { server, requests, bridge ->
+    fun stableInstructionsAreSentOncePerConversationAndVolatileOnesPerTurn() = withServer { server, requests, bridge ->
         server.createContext("/v1/responses") { exchange ->
             requests.add(mapper.readTree(exchange.requestBody))
             val body = finalResponse("resp_${requests.size}")
@@ -145,11 +146,11 @@ class AstraBridgeContractTest {
 
         val inputs = requests.map { it["input"].toString() }
         assertTrue(inputs[0].contains("STABLE-ONE") && inputs[0].contains("\"developer\""), inputs[0])
-        assertTrue(inputs[0].contains("the user's words") && !inputs[0].contains("VOLATILE-CATALOGUE"))
+        assertTrue(inputs[0].contains("the user's words") && inputs[0].contains("VOLATILE-CATALOGUE"))
         assertFalse(inputs[1].contains("STABLE-ONE"), "the conversation already holds them")
+        assertTrue(inputs[1].contains("VOLATILE-CATALOGUE"))
         assertTrue(inputs[2].contains("STABLE-TWO") && inputs[2].contains("replace the earlier ones"), inputs[2])
-        requests.forEach { assertEquals("VOLATILE-CATALOGUE", it["instructions"].asText()) }
-        assertFalse(requests.any { it.has("prompt_cache_key") })
+        assertFalse(requests.any { it.has("instructions") || it.has("prompt_cache_key") })
 
         // Without a TurnContext the request is the one-string prompt, as before.
         bridge.send(state, first.legacyPrompt())

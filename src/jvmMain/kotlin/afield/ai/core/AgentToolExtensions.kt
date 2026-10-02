@@ -144,8 +144,25 @@ object AgentToolExtensions {
             )
         }
         registrations.removeAll { it.toolClass.simpleName == name && it.scope == scope }
-        registrations.add(Registration(toolClass, available, handler, scope, meta))
+        val registration = Registration(toolClass, available, handler, scope, meta)
+        registrations.add(registration)
         publish(name, live, "register")
+        // Registered from a running box: the run owns it, like an aiTool — a re-run replaces it, a re-run that
+        // stops registering it drops it, deleting the box retires it. Released by identity, so a newer
+        // registration of the same name is never the one removed. Registrations from compiled code (a
+        // personal package's init) stay process-global, as before.
+        afield.RunScope.executingBox()?.let { owner ->
+            afield.LifecycleLedger.claim(
+                "agent-tool-extension",
+                "$name:${System.identityHashCode(scope)}",
+                slot = afield.LedgerSlot(registrations, name to scope),
+                owner = owner,
+                scope = afield.RunScope.currentFor(owner),
+                live = { registrations.any { it === registration } },
+                policy = afield.ReleasePolicy.ACCUMULATING,
+                release = { if (registrations.removeIf { it === registration }) publish(name, bound(), "release") },
+            )
+        }
     }
 
     /** The registrations of [name], oldest first. */

@@ -1551,6 +1551,9 @@ import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 import afield.ai.core.aiTool
+import afield.ai.core.agentExtension
+import afield.ai.core.ToolEffect
+import afield.ai.core.ToolExposure
 import afield.rectsl.registerRectslStudioTools
 import afield.rectsl.renderRectslToImages
 """

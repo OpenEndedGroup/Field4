@@ -162,15 +162,22 @@ class OpenAiIdeCodexBridge(
                 else "Updated tool and context instructions; they replace the earlier ones.\n\n$stableInstructions"
             buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, text)
         } else null
-        // The volatile rest (guide and tool catalogues) is small and per request: the Responses API does not
-        // carry `instructions` over a previous_response_id, so it is never stored.
-        val ephemeralInstructions = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
+        // The volatile rest (guide and tool catalogues, ~2k chars) goes in front of the user message, and so is
+        // stored with it. Not as the request's `instructions`, though that would never be stored: measured on
+        // four tasks in one build, any `instructions` parameter at all left every conversation's first request
+        // cold (~7.5k uncached tokens each), where the same text in the input let conversations share their
+        // cached prefix (~4k).
+        val volatileText = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
         val inputText = buildString {
             if (fileText != null) {
                 appendLine("IDE_FILE_UPDATE:")
                 appendLine("key: ${state.fileKey}")
                 appendLine("content:")
                 appendLine(fileText)
+                appendLine()
+            }
+            if (volatileText != null) {
+                appendLine(volatileText)
                 appendLine()
             }
             appendLine(tc?.durablePrompt() ?: userPrompt)
@@ -216,8 +223,8 @@ class OpenAiIdeCodexBridge(
                     "maxOutputTokens" to maxOutputTokens,
                     "maxToolRounds" to maxToolRounds,
                     "prompt" to inputText,
-                    "contextPlacement" to if (tc != null) "developer-once+instructions" else "inline",
-                    "instructionsChars" to (ephemeralInstructions?.length ?: 0),
+                    "contextPlacement" to if (tc != null) "developer-once+input" else "inline",
+                    "volatileChars" to (volatileText?.length ?: 0),
                     "stableInstructionsSent" to (stableItem != null),
                     "stableInstructionsChars" to (stableInstructions?.length ?: 0),
                     "instructionHash" to tc?.instructionHash(),
@@ -301,7 +308,6 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
-        applyTurnContext(paramsBuilder, ephemeralInstructions)
         tools.addAllTo(paramsBuilder, callCtx)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
@@ -556,7 +562,6 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
-            applyTurnContext(followupBuilder, ephemeralInstructions)
             tools.addAllTo(followupBuilder, callCtx)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
@@ -609,8 +614,7 @@ class OpenAiIdeCodexBridge(
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
-                onTextDelta = onTextDelta,
-                ephemeralInstructions = ephemeralInstructions
+                onTextDelta = onTextDelta
             ) }
             if (onTextDelta != null) {
                 info("")
@@ -692,7 +696,7 @@ class OpenAiIdeCodexBridge(
             inputTokens = inputTokens,
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
-            contextReport = (turnContext?.report(if (tc != null) "developer-once+instructions" else "inline"))
+            contextReport = (turnContext?.report(if (tc != null) "developer-once+input" else "inline"))
                 ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
@@ -906,23 +910,12 @@ class OpenAiIdeCodexBridge(
         )
     }
 
-    /**
-     * The turn's volatile instructions, on every request builder of the turn (initial, follow-up, forced
-     * final), because none of them carries over. No prompt_cache_key: two first cuts set one (per thread,
-     * then per instruction hash) and neither recovered the cache-hit share the default routing gets.
-     */
-    private fun applyTurnContext(builder: ResponseCreateParams.Builder, ephemeralInstructions: String?) {
-        if (ephemeralInstructions == null) return
-        builder.instructions(ephemeralInstructions)
-    }
-
     private fun createForcedFinalResponse(
         state: ThreadState,
         previousResponse: Response,
         pendingCalls: List<ResponseFunctionToolCall>,
         maxOutputTokens: Long,
-        onTextDelta: ((String) -> Unit)?,
-        ephemeralInstructions: String? = null
+        onTextDelta: ((String) -> Unit)?
     ): Response {
         val inputItems = mutableListOf<ResponseInputItem>()
         pendingCalls.forEach { call ->
@@ -961,7 +954,6 @@ class OpenAiIdeCodexBridge(
         }
         builder.text(textConfig)
         addReasoningIfSupported(builder)
-        applyTurnContext(builder, ephemeralInstructions)
         info("creating response (forced-final) <<spinner>>")
         return createResponse(builder.build(), onTextDelta)
     }

@@ -267,6 +267,9 @@ $includeGuidance
     }
     fragments += ContextFragment("guidance.${mode.name.lowercase()}", "\n\nGuidance:\n$guidance")
     if (lessons.isNotEmpty()) fragments += ContextFragment("lessons", lessons)
+    // What the document's own boxes want the agent to know this turn (agentExtension { context(...) }).
+    fragments += AgentExtensionRegistry.contextFragments(ctx.extensionDocumentKey(),
+        ContextTurnView(mode.name.lowercase(), userPrompt.orEmpty(), ctx.focus?.box?.name))
     return fragments
 }
 

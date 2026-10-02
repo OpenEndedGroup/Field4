@@ -67,6 +67,12 @@ private data class AiBoxChatReply(
 )
 
 @kotlinx.serialization.Serializable
+private data class AiChatCommandRequest(val uid: String, val name: String, val args: String = "")
+
+@kotlinx.serialization.Serializable
+private data class AiChatCommandReply(val uid: String, val known: Boolean, val markdown: String)
+
+@kotlinx.serialization.Serializable
 private data class AiChatRewindWorldRequest(val uid: String, val turns: List<String>)
 
 @kotlinx.serialization.Serializable
@@ -818,6 +824,23 @@ fun installAi4() {
             append(" Box creation, deletion and provisional edits accepted since are not undone.")
         }
         reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, text, undone.success)))
+        Handled.yes
+    })
+
+    // A slash command the panel does not know: an agentExtension { command(...) } in this document may.
+    // `__help` lists them, for /help.
+    handlers["ai-chat-command"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatCommandRequest>(message.payload!!)
+        val target = thisSessionInfo.get().boxes[request.uid]
+        val payload = when {
+            target == null -> AiChatCommandReply(request.uid, false, "")
+            request.name == "__help" -> AgentExtensionRegistry.commandHelp(target).let { lines ->
+                AiChatCommandReply(request.uid, lines.isNotEmpty(), if (lines.isEmpty()) "" else "**From this document's agent extensions**\n" + lines.joinToString("\n"))
+            }
+            else -> AgentExtensionRegistry.runCommand(target, request.name, request.args)
+                ?.let { AiChatCommandReply(request.uid, true, it) } ?: AiChatCommandReply(request.uid, false, "")
+        }
+        reply(Message("ai-chat-command").payload(payload))
         Handled.yes
     })
 

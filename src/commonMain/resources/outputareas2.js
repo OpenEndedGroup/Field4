@@ -1842,6 +1842,11 @@ function ensureAiChat(container, uid, property) {
                 if (command === "help" || command === "?") {
                         textarea.value = "";
                         appendLocalChatTurn("ai", commandHelpMarkdown());
+                        const helpUid = chatUid();
+                        sendWithReply("ai-chat-command", {uid: helpUid, name: "__help"}, `ai-chat-help-${helpUid}-${Date.now()}`, (_m, response) => {
+                                if (response?.known && response.markdown && chatUid() === helpUid) appendLocalChatTurn("ai", response.markdown);
+                                return "remove";
+                        });
                         return true;
                 }
 
@@ -1910,7 +1915,16 @@ function ensureAiChat(container, uid, property) {
                 }
 
                 textarea.value = "";
-                appendLocalChatTurn("ai", `_Unknown command: /${command}. Type \`/help\` for available commands._`);
+                // Not built in: this document's agent extensions may define it (agentExtension { command(...) }).
+                const commandUid = chatUid();
+                sendWithReply("ai-chat-command", {uid: commandUid, name: command, args: rest},
+                        `ai-chat-command-${commandUid}-${Date.now()}`, (_m, response) => {
+                                if (chatUid() !== commandUid) return "remove";
+                                appendLocalChatTurn("ai", response?.known
+                                        ? (response.markdown || "_(no output)_")
+                                        : `_Unknown command: /${command}. Type \`/help\` for available commands._`);
+                                return "remove";
+                        });
                 return true;
         }
 
