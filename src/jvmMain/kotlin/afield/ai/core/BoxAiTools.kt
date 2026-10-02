@@ -80,6 +80,9 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
     return tool
 }
 
+/** [BoxTool.wireName]: a tool name the model providers accept. */
+internal fun wireToolName(name: String): String = name.replace(Regex("[^A-Za-z0-9_-]"), "_").take(64)
+
 /** The document-registry key for a box (full document path; blank for unsaved docs). */
 internal fun documentKeyFor(box: Box): String =
     runCatching { box.inside.filename }.getOrNull().orEmpty()
@@ -270,6 +273,13 @@ class BoxTool internal constructor(
     /** A hash of the registering box's code when it registered this, for capability checkpoints. */
     val sourceRevision: String = "",
 ) {
+    /**
+     * The name a model sees and calls: [name] with every character outside `[A-Za-z0-9_-]` made `_`
+     * (`paint.look` → `paint_look`), because OpenAI and Anthropic refuse any other tool name. The registry
+     * answers to either.
+     */
+    val wireName: String get() = wireToolName(name)
+
     /** JSON-Schema for the parameters (kotlinx form), reusing the static-tool emitter. */
     val parametersSchema: JsonObject by lazy { buildParamsSchema(params) }
 
@@ -282,7 +292,7 @@ class BoxTool internal constructor(
             paramsBuilder.putAdditionalProperty(key, JsonValue.fromJsonNode(aiToolMapper.readTree(element.toString())))
         }
         val builder = FunctionTool.builder()
-            .name(name)
+            .name(wireName)
             .parameters(paramsBuilder.build())
             // Not strict: our schema does not guarantee additionalProperties:false + all-required.
             .strict(false)

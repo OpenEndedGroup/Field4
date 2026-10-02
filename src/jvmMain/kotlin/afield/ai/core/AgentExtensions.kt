@@ -70,6 +70,19 @@ class AgentExtensionBuilder internal constructor(private val box: Box, private v
     /** A chat command, `/name args`; the returned markdown is shown in the panel, not saved. */
     fun command(name: String, help: String = "", body: (CommandScope) -> String) =
         AgentExtensionRegistry.register(box, AgentExtensionRegistry.CommandHook(box, id, name.removePrefix("/"), help, body))
+
+    /**
+     * State of this box's that belongs to the conversation rather than the document — a canvas the agent
+     * paints on, a simulation it is steering. Field calls [save] (into a file it gives you) before and
+     * after every chat turn in this document, keeps each snapshot with that turn in the chat's session
+     * tree, and calls [restore] when the conversation moves: rewinding to a message restores the state from
+     * before that message, switching branch the state at that branch's end. [restore] gets `null` where
+     * the conversation has no snapshot (before the extension existed): start fresh, or keep what you have.
+     * The file is deleted when [restore] returns, so read it there. The first time a document's box registers it in a Field process — the document has just opened — the
+     * snapshot at the head of the document's latest conversation is restored at once, so the work carries on.
+     */
+    fun branchState(name: String, save: (java.io.File) -> Unit, restore: (java.io.File?) -> Unit) =
+        AgentExtensionRegistry.register(box, AgentExtensionRegistry.BranchStateHook(box, id, name, save, restore))
 }
 
 /** What a context hook is told about the turn about to start. */
@@ -121,6 +134,9 @@ object AgentExtensionRegistry {
     class CommandHook(box: Box, extension: String, name: String, val help: String, val body: (CommandScope) -> String) :
         Hook(box, extension, name) { override val kind = "command" }
 
+    class BranchStateHook(box: Box, extension: String, name: String, val save: (java.io.File) -> Unit, val restore: (java.io.File?) -> Unit) :
+        Hook(box, extension, name) { override val kind = "branch" }
+
     private val byDocument = ConcurrentHashMap<String, ConcurrentHashMap<String, Hook>>()
 
     private val runner = Executors.newCachedThreadPool { r -> Thread(r, "ai4-agent-extension-hook").apply { isDaemon = true } }
@@ -129,7 +145,8 @@ object AgentExtensionRegistry {
     internal fun register(box: Box, hook: Hook) {
         val documentKey = documentKeyFor(box)
         val hooks = byDocument.computeIfAbsent(documentKey) { ConcurrentHashMap() }
-        hooks[hook.key] = hook
+        val first = hooks.put(hook.key, hook) == null
+        if (first && hook is BranchStateHook) resumeBranchState(hook)
         afield.LifecycleLedger.claim(
             KIND,
             "$documentKey:${hook.key}",
@@ -208,6 +225,64 @@ object AgentExtensionRegistry {
         }
     }
 
+    /**
+     * Snapshot every branch state in [chatBox]'s document: hook key to the content hash of what its `save`
+     * wrote, the bytes kept in [AiStateBlobs]. Runs the hooks on the Runloop, where box code runs; a hook
+     * that fails is reported and left out.
+     */
+    fun snapshotBranchStates(chatBox: Box): Map<String, String> {
+        val hooks = hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
+        if (hooks.isEmpty()) return emptyMap()
+        return hooks.mapNotNull { hook ->
+            val tmp = java.io.File.createTempFile("ai4-branch-", ".state")
+            try {
+                // Only the save is box code; hashing and compressing a large state stay off the Runloop.
+                runCatching {
+                    onRunloop(hook.box) { hook.save(tmp) }
+                    hook.key to AiStateBlobs.put(tmp, chatBox)
+                }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) save failed: ${it.message}") }
+                    .getOrNull()
+            } finally { tmp.delete() }
+        }.toMap()
+    }
+
+    /** Restore every branch state in [chatBox]'s document from [states] (missing keys get `null`). Returns the restored hooks' labels. */
+    fun restoreBranchStates(chatBox: Box, states: Map<String, String>): List<String> {
+        val hooks = hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
+        if (hooks.isEmpty()) return emptyList()
+        return hooks.mapNotNull { hook ->
+            val file = states[hook.key]?.let { AiStateBlobs.get(it, chatBox) }
+            try {
+                runCatching {
+                    onRunloop(hook.box) { hook.restore(file) }
+                    "${hook.label}/${hook.name}"
+                }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) restore failed: ${it.message}") }
+                    .getOrNull()
+            } finally { file?.delete() }
+        }
+    }
+
+    // On the Runloop with the hook's box as context, as aiTool bodies run; inline when no Runloop is running (tests).
+    /**
+     * A branch state registered for the first time in this process (the document has just opened, or the
+     * box has just been added) takes the snapshot at the head of the document's latest conversation, so a
+     * painting carries on where its chat left it. With none, the box keeps the state it made. Runs in the
+     * registering box's own run, so on its thread.
+     */
+    internal fun resumeBranchState(hook: BranchStateHook) {
+        val boxes = runCatching { hook.box.inside.boxes.values.toList() }.getOrNull() ?: return
+        val sha = runCatching { AiSessionTree.currentBranchStates(boxes)[hook.key] }.getOrNull() ?: return
+        val file = AiStateBlobs.get(sha, hook.box) ?: return
+        try {
+            runCatching { hook.restore(file) }
+                .onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) resume failed: ${it.message}") }
+        } finally { file.delete() }
+    }
+
+    private fun <T> onRunloop(box: Box, block: () -> T): T =
+        if (afield.Runloop.isMainThread || afield.Runloop.mainThread == null) block()
+        else kotlinx.coroutines.runBlocking(afield.Runloop.runLoop.main + Box.boxContextElement(box)) { block() }
+
     /** The commands extensions add in [chatBox]'s document, as `/help` lines. */
     fun commandHelp(chatBox: Box): List<String> =
         hooksFor(documentKeyFor(chatBox)).filterIsInstance<CommandHook>()
@@ -216,3 +291,46 @@ object AgentExtensionRegistry {
 
 /** Where a conversation's extensions are looked up: the document it is about. */
 internal fun ToolExecutionContext.extensionDocumentKey(): String? = focus?.document ?: fieldGraph?.info?.filename
+
+/**
+ * Branch-state snapshots ([AgentExtensionBuilder.branchState]), stored once per content: `<document>/ai4_blobs/state/`
+ * for a document that writes to disk, a per-process temporary folder otherwise.
+ */
+object AiStateBlobs {
+    private val scratch: java.io.File by lazy {
+        java.nio.file.Files.createTempDirectory("afield-ai4-state").toFile().apply { deleteOnExit() }
+    }
+
+    private fun dir(box: Box): java.io.File =
+        runCatching { box.inside.takeIf { it.writesToDisk }?.filename?.let { java.io.File(it, "ai4_blobs/state") } }.getOrNull() ?: scratch
+
+    /**
+     * Keep [file]'s bytes, gzipped, under their content hash, and return the hash. A paint canvas's state is
+     * tens of megabytes and its ground texture does not compress much (49 MB to 28 MB measured), so each
+     * turn that changes it costs that much disk; nothing prunes the folder yet.
+     */
+    fun put(file: java.io.File, box: Box): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val folder = dir(box).apply { mkdirs() }
+        val tmp = java.io.File.createTempFile("state-", ".gz.tmp", folder)
+        try {
+            java.security.DigestInputStream(file.inputStream().buffered(), digest).use { input ->
+                object : java.util.zip.GZIPOutputStream(tmp.outputStream().buffered(1 shl 16), 1 shl 16) {
+                    init { def.setLevel(java.util.zip.Deflater.BEST_SPEED) }
+                }.use { input.copyTo(it, 1 shl 16) }
+            }
+            val sha = digest.digest().joinToString("") { "%02x".format(it) }.take(24)
+            val target = java.io.File(folder, "$sha.state.gz")
+            if (!target.exists()) java.nio.file.Files.move(tmp.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            return sha
+        } finally { tmp.delete() }
+    }
+
+    /** The state stored under [sha], unpacked into a temporary file the caller deletes; null if it is not here. */
+    fun get(sha: String, box: Box): java.io.File? {
+        val packed = java.io.File(dir(box), "$sha.state.gz").takeIf { it.isFile } ?: return null
+        val out = java.io.File.createTempFile("ai4-branch-", ".state")
+        java.util.zip.GZIPInputStream(packed.inputStream().buffered(1 shl 16), 1 shl 16).use { input -> out.outputStream().use { input.copyTo(it, 1 shl 16) } }
+        return out
+    }
+}

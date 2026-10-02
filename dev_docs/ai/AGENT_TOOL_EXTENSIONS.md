@@ -82,7 +82,10 @@ start { println(echo("hi", 3)) }                      // the handle is directly 
 It does not go through `ToolRegistry`'s handler map at all. Tools live in the per-document
 `DocumentToolRegistry`, reach a request as `ToolExecutionContext.dynamicTools` (the in-app chat and
 the MCP backdoor both fill it), and `ToolRegistry` honours that list in `addAllTo`/`execute`/
-`describe`/`executeByName`, with built-in names winning a collision. A result implementing
+`describe`/`executeByName`, with built-in names winning a collision. A model sees a tool by its
+`BoxTool.wireName`, the name with every character outside `[A-Za-z0-9_-]` made `_` (`echo.box` is
+`echo_box`), and the registry answers to either. Until 2026-10-03 the dotted name went out as it was,
+and OpenAI refused every request in a document that registered one. A result implementing
 `CarriesToolImages` (`BoxToolScope.image(...)` returns one) reaches both bridges' image paths.
 
 Each registration is an `ai-tool` ownership in the `LifecycleLedger`, owned `ACCUMULATING` by the
@@ -357,3 +360,12 @@ measurements and the reasoning are in [AI4_PI_LESSONS.md](AI4_PI_LESSONS.md).
   `afterTool` (observe only) and `command` (`/name args` in the chat). Every part is an
   `agent-extension` ownership with the same rules as `aiTool`. Hooks have 250 ms; one that throws or
   overruns is skipped and logged. `AgentExtensionsTest` covers the hooks and the run lifecycle.
+- **`branchState(name, save, restore)`** puts state the box owns (a paint canvas) on the conversation.
+  The `ai-assist` handler snapshots every branch state in the chat's document at turn start and end
+  (`AgentExtensionRegistry.snapshotBranchStates`, on the Runloop with the box as context). The bytes
+  go content-addressed to `<doc>/ai4_blobs/state/`, a temp folder for an unsaved document, and their
+  hashes onto the turn node as `branch {before, after}`. A rewind restores the rewound turn's
+  `before`; a switch restores the latest `after` along the new path (`AiSessionTree.Rewind.branchStates`).
+  A hook registered for the first time in the process restores the head of the document's most
+  recently active conversation (`AiSessionTree.currentBranchStates`), so reopening a document resumes.
+  Headless `agent-task` turns bypass the panel and record no snapshots.

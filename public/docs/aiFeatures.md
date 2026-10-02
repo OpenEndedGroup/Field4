@@ -316,6 +316,27 @@ reported in the log, so a broken hook cannot stop the agent. Context arrives mar
 as coming from the document rather than as instructions, at most 4,000 characters a
 part. `/help` lists the commands extensions add.
 
+Some state belongs to the conversation rather than to the document: a canvas the
+agent paints on, a simulation it is steering. `branchState` hands that state to the
+chat, which keeps a copy with every turn:
+
+```diffstatic {data-lang=kotlin}
+agentExtension("studio") {
+    branchState("canvas",
+        save = { file -> canvas.saveState(file.path) },
+        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() })
+}
+```
+
+Field calls `save` before and after every chat turn in the document and keeps
+each copy once, by content, in the document's `ai4_blobs/state` folder. Rewinding
+the chat to a request calls `restore` with the state from just before that request.
+Switching to another branch with `/branch` restores the state at the end of that
+branch. `restore` gets `null` when the conversation has no copy, for example a
+conversation that began before the extension existed. When a document opens, the
+first run of the box restores the state where the document's latest conversation
+left it.
+
 ### Returning something the model can read — and see
 
 Two optional interfaces, both worth implementing:

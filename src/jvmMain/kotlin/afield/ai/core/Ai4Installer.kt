@@ -875,6 +875,8 @@ fun installAi4() {
                     agentMemoryByKey.keys.removeIf { it.startsWith(key) }
                     moved.restoredMemory?.let { snap -> agentMemoryByKey[key + "code"] = AgentMemoryState().also { it.restore(snap) } }
                     lastContextByBox.remove("${info.filename}\u0000${target.id}")
+                    // An extension's own world (a canvas, a simulation) follows the conversation too.
+                    AgentExtensionRegistry.restoreBranchStates(target, moved.branchStates)
                     send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", moved.markdown)))
                     val origins = moved.abandoned.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
                     AiBoxChatReply(request.uid, moved.markdown, userText = moved.userText,
@@ -1752,7 +1754,11 @@ fun installAi4() {
         // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
         val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
         val opFrom = OperationTranscript.turnBoundary(docPath)
+        // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
+        // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
+        val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
         ai4Scope.launch {
+            branchBefore.set(runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
             val streamActive = AtomicBoolean(false)
@@ -2249,16 +2255,20 @@ fun installAi4() {
                 }
             }.join()
         }.invokeOnCompletion {
-            AiBoxConversation.running(box, false)
-            // A failed or cancelled turn is recorded too: its partial reply is in the transcript.
+            // A failed or cancelled turn is recorded too: its partial reply is in the transcript. The box stops
+            // being "running" only once the turn is recorded; clearing it first let the next request (a person's,
+            // or agent-task's, which waits on it) arrive while the turn still held the box, and be refused.
             runCatching {
                 val opTo = OperationTranscript.turnBoundary(docPath)
                 val meta = (turnMeta.get() ?: AiSessionTree.TurnMeta(kind = exec.kind, property = exec.property, memory = agentMemory.snapshot()))
                     .copy(opFrom = opFrom, opTo = opTo, origin = turnOrigin,
-                        createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct())
+                        createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct(),
+                        branchBefore = branchBefore.get(),
+                        branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
                 AiSessionTree.recordTurn(box, savedHistory, history(), meta)
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
             activeBoxChats.remove(boxChatKey)
+            AiBoxConversation.running(box, false)
         }
         Handled.yes
     })

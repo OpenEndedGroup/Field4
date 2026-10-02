@@ -140,6 +140,30 @@ eight calls and their times; `/context`; **rewind** on the second request, then 
 after which `property-lacks:Cell1:code:100` passed; **edit**, which put the request back in the input;
 and `/branches` marking the current position. Two bugs that run found are fixed (`0078c138d`).
 
+## A test: a painting world (2026-10-03)
+
+A Studio box over the paint simulator (`afield.paint`): an `agentExtension` with eleven box-authored
+`paint.*` tools (stroke, dab, work, glaze, draw, hatch, stipple, wait, fresh, hang, and a DEFERRED
+crack), a `canvas` context fragment (size, coordinates, wetness), a stable `craft` fragment (how to
+paint, the tube names), `/canvas`, `/palette` and `/gallery`, and the canvas itself as a
+`branchState`. Driven live through the panel (`agent-task --chat-box Studio`, gpt-6-astra): dusk
+(182 s), night on the same canvas (201 s), a rewind to before the night request, a stormy morning from
+there (168 s), and `/branch 0`. Hanging the canvas after the rewind gave a PNG byte-identical to
+*Harbour at dusk*; after the switch back, byte-identical to *Harbour at night*. The model used tool
+programs to batch strokes without being told to, and recovered from a glaze that turned the canvas
+almost black after seeing it.
+
+It found three bugs, all fixed:
+
+- **A dotted `aiTool` name failed every OpenAI request in its document** (`tools[n].name` must match
+  `^[a-zA-Z0-9_-]+$`); box tools now go out under `BoxTool.wireName` (`paint_look`), and the registry
+  answers to either name.
+- **The panel cleared "running" before the turn was recorded.** A request sent in that gap (seconds,
+  with a 49 MB canvas to save) was refused as "already has an AI turn running", and a Field shut down
+  in it saved the document without the turn's session-tree node. "Running" now ends after recording.
+- **The turn-start snapshot ran in the message handler**; it now runs in the turn's coroutine, and
+  hashing and gzip happen off the Runloop (only the box's `save` runs there).
+
 ## Not done
 
 - **Anthropic was not measured live.** Its placement (cached system blocks, a volatile prefix stripped
@@ -161,3 +185,10 @@ and `/branches` marking the current position. Two bugs that run found are fixed 
   neither the registry nor the result object, so a hook neither calls tools nor changes what the model
   reads; giving them either would be a new decision, not a fix.
 - **The eval suite is small**: 17 tasks, mostly one run per arm.
+- **Branch-state snapshots are large and never pruned.** A 900 px oil canvas's state is 49 MB and
+  gzips to 28 MB (the ground's texture is noise); every turn that changes it stores one. The four in
+  the painting test came to 114 MB. A Field shut down while a turn is still recording can still lose
+  that turn's node.
+- **Box-chat transcripts keep tool images inline.** `ai4_chat_history` holds each image a turn showed
+  as a data URL (the session tree moves them to `ai4_blobs`, the markdown does not), so the painting
+  test's three turns made an 18 MB transcript.

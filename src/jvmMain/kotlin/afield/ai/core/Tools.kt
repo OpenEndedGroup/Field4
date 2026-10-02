@@ -1057,7 +1057,7 @@ internal class ToolRegistry {
 
     /** The metadata of [name] under [ctx] (built-in, extension or box-authored), or null if unknown. */
     fun metaOf(ctx: ToolExecutionContext, name: String): ToolMeta? =
-        handlers[name]?.meta ?: ctx.dynamicTools.firstOrNull { it.name == name }?.meta
+        handlers[name]?.meta ?: dynamicTool(ctx.dynamicTools, name)?.meta
 
     fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
         handlers.values.forEach { h ->
@@ -1067,7 +1067,7 @@ internal class ToolRegistry {
             }
         }
         // Document-authored tools (box aiTool DSL). Built-ins win on name collision.
-        dynamicToolsIn(ctx).filter { shown(it.name, it.meta, ToolFace.MODEL, ctx) }.forEach { tool ->
+        dynamicToolsIn(ctx).filter { shown(it.wireName, it.meta, ToolFace.MODEL, ctx) }.forEach { tool ->
             builder.addTool(tool.toFunctionTool())
         }
     }
@@ -1090,7 +1090,7 @@ internal class ToolRegistry {
     ): Any {
         check(name !in ctx.withheld) { "Tool '$name' is not available in this conversation." }
         val h = handlers[name]
-        val meta = h?.meta ?: dynamicToolsIn(ctx).firstOrNull { it.name == name }?.meta
+        val meta = h?.meta ?: dynamicTool(dynamicToolsIn(ctx), name)?.meta
             ?: throw IllegalArgumentException("No tool registered for: $name")
         if (meta.exposure == ToolExposure.HIDDEN && origin != CallOrigin.BACKDOOR) {
             throw IllegalStateException("Tool '$name' is not offered to agents.")
@@ -1115,7 +1115,7 @@ internal class ToolRegistry {
                 handler.fn(ctx, typedArgs(handler.cls))
             } else {
                 // Fall through to a document-authored tool with this name.
-                dynamicToolsIn(ctx).first { it.name == name }.runBlockingFromToolLoop(ctx, rawArgs())
+                dynamicTool(dynamicToolsIn(ctx), name)!!.runBlockingFromToolLoop(ctx, rawArgs())
             }
         } catch (e: Exception) {
             if (view != null && !isAiTurnCancellation(e)) {
@@ -1132,6 +1132,10 @@ internal class ToolRegistry {
         }
         return result
     }
+
+    /** The box tool called [name], by its own name or the [BoxTool.wireName] a model calls it by. */
+    private fun dynamicTool(tools: List<BoxTool>, name: String): BoxTool? =
+        tools.firstOrNull { it.name == name } ?: tools.firstOrNull { it.wireName == name }
 
     /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */
     private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> =
@@ -1173,14 +1177,14 @@ internal class ToolRegistry {
                     ToolSchema.forClass(h.cls), h.meta))
             }
         dynamicToolsIn(ctx)
-            .filter { shown(it.name, it.meta, face, ctx) }
-            .sortedBy { it.name }
-            .forEach { tool -> add(descriptor(tool.name, tool.description, tool.parametersSchema, tool.meta)) }
+            .filter { shown(it.wireName, it.meta, face, ctx) }
+            .sortedBy { it.wireName }
+            .forEach { tool -> add(descriptor(tool.wireName, tool.description, tool.parametersSchema, tool.meta)) }
     }
 
     /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. Exposure aside: a deferred tool is available. */
     fun isAvailable(ctx: ToolExecutionContext, name: String): Boolean =
-        handlers[name]?.offeredUnder(ctx) == true || dynamicToolsIn(ctx).any { it.name == name }
+        handlers[name]?.offeredUnder(ctx) == true || dynamicTool(dynamicToolsIn(ctx), name) != null
 
     /** The descriptor [describe] would give for [name] under [ctx] on [face], or null if it is not offered there. */
     fun describeOne(ctx: ToolExecutionContext, name: String, face: ToolFace = ToolFace.PROGRAM): JsonObject? =
@@ -1191,7 +1195,7 @@ internal class ToolRegistry {
         // Exposure first: DescribeToolsRequest's own gate calls this, so asking every gate here would recurse.
         val names = handlers.values.filter { it.meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(it.cls.simpleName) != true && it.offeredUnder(ctx) }
             .map { it.meta.namespace to it.cls.simpleName } +
-            dynamicToolsIn(ctx).filter { it.meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(it.name) != true }.map { it.meta.namespace to it.name }
+            dynamicToolsIn(ctx).filter { it.meta.exposure == ToolExposure.DEFERRED && ctx.promoted?.contains(it.wireName) != true }.map { it.meta.namespace to it.wireName }
         return names.groupBy({ it.first }, { it.second }).mapValues { (_, v) -> v.sorted() }.toSortedMap()
     }
 
@@ -1216,7 +1220,7 @@ internal class ToolRegistry {
             val notVisible = h.meta.exposure == ToolExposure.DEFERRED || (h.meta.exposure == ToolExposure.PROGRAM && programsOffered(ctx))
             if (notVisible || name in extensionOwned) entries += Entry(h.meta.namespace, label(name, h.meta))
         }
-        dynamicToolsIn(ctx).filter { it.meta.exposure != ToolExposure.HIDDEN }.forEach { entries += Entry(it.meta.namespace, label(it.name, it.meta)) }
+        dynamicToolsIn(ctx).filter { it.meta.exposure != ToolExposure.HIDDEN }.forEach { entries += Entry(it.meta.namespace, label(it.wireName, it.meta)) }
         if (entries.isEmpty()) return ""
         return buildString {
             append("- Tool catalogue beyond the schemas above (* = schema not loaded: call DescribeToolsRequest with the namespace or names first; ")

@@ -3,6 +3,8 @@ package afield.ai
 import afield.*
 import afield.ai.core.AgentExtensionRegistry
 import afield.ai.core.AgentToolExtensions
+import afield.ai.core.DocumentToolRegistry
+import afield.ai.core.ToolEffect
 import afield.ai.core.InstructionMode
 import afield.ai.core.KOTLIN_SCRIPT
 import afield.ai.core.ToolExecutionContext
@@ -91,6 +93,41 @@ class AgentExtensionsTest {
         assertEquals("**96 bpm** please", AgentExtensionRegistry.runCommand(box, "tempo", "please"))
         assertNull(AgentExtensionRegistry.runCommand(box, "nope", ""))
         assertEquals(listOf("- `/tempo` show the tempo"), AgentExtensionRegistry.commandHelp(box))
+    }
+
+    @Test
+    fun aDottedBoxToolNameReachesTheModelAsAWireName() = inDocument { session, box, ctx ->
+        box.agentExtension("studio") {
+            tool("paint.look") { describe("look"); effects(ToolEffect.CAPTURE_IMAGE); action { "seen" } }
+        }
+        val withTools = ctx.copy(dynamicTools = DocumentToolRegistry.toolsFor(session.filename))
+        val names = registry.describe(withTools).map { (it as kotlinx.serialization.json.JsonObject)["name"].toString().trim('"') }
+        // OpenAI and Anthropic refuse a tool name outside [A-Za-z0-9_-]; one dotted name failed every request.
+        assertTrue("paint_look" in names && "paint.look" !in names, names.toString())
+        assertTrue(registry.isAvailable(withTools, "paint_look") && registry.isAvailable(withTools, "paint.look"))
+        assertEquals(setOf(ToolEffect.CAPTURE_IMAGE), registry.metaOf(withTools, "paint_look")?.effects)
+    }
+
+    @Test
+    fun branchStateIsSnapshottedByContentAndRestored() = inDocument { _, box, _ ->
+        var canvas = "blank"
+        val restored = mutableListOf<String?>()
+        box.agentExtension("studio") {
+            branchState("canvas", save = { it.writeText(canvas) }, restore = { f -> restored += f?.readText(); canvas = f?.readText() ?: "fresh" })
+        }
+        val first = AgentExtensionRegistry.snapshotBranchStates(box)
+        assertEquals(listOf("branch:${box.id}:studio:canvas"), first.keys.toList())
+        canvas = "a sky"
+        val second = AgentExtensionRegistry.snapshotBranchStates(box)
+        assertNotEquals(first, second)
+        canvas = "blank"
+        assertEquals(first, AgentExtensionRegistry.snapshotBranchStates(box), "the same state is the same snapshot")
+
+        assertEquals(listOf("Studio/studio/canvas"), AgentExtensionRegistry.restoreBranchStates(box, second))
+        assertEquals("a sky", canvas)
+        AgentExtensionRegistry.restoreBranchStates(box, emptyMap())
+        assertEquals("fresh", canvas, "a conversation with no snapshot restores null")
+        assertEquals(listOf("a sky", null), restored)
     }
 
     @Test
