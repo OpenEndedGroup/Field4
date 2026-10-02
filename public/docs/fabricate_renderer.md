@@ -322,8 +322,6 @@ In this comparison the left half removes `std-ao` from the pass graph; the right
 
 ```diffstatic {data-lang=kotlin}
 val frameGraph = bundle.frameGraph()
-frameGraph.attachTo(renderer)
-
 val aoPass = frameGraph.remove(FabricateFrameGraph.PASS_AO)!!
 frameGraph.attachTo(renderer)
 // capture AO-off result

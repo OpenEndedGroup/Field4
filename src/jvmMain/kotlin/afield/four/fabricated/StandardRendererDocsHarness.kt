@@ -142,12 +142,11 @@ object StandardRendererDocsHarness {
     ): File {
         val bundle = StandardRenderer.build(renderer)
         val frameGraph = bundle.frameGraph()
+        val aoPass = frameGraph.remove(FabricateFrameGraph.PASS_AO)
+            ?: error("standard frame graph missing ${FabricateFrameGraph.PASS_AO}")
         frameGraph.attachTo(renderer)
         configureGroundedTorusScene(bundle, renderer)
         bundle.present(renderer = renderer)
-
-        val aoPass = frameGraph.remove(FabricateFrameGraph.PASS_AO)
-            ?: error("standard frame graph missing ${FabricateFrameGraph.PASS_AO}")
 
         val aoOff = captureScene(tempPng("fabricate-frame-graph-ao-off"), bundle, renderer) {
             frameGraph.attachTo(renderer)
