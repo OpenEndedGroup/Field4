@@ -156,6 +156,8 @@ data class AgentTaskResult(
     val elapsedMs: Long,
     val inputTokens: Long? = null,
     val outputTokens: Long? = null,
+    /** Of [inputTokens], how many the provider served from its prompt cache; null if unreported. */
+    val cachedInputTokens: Long? = null,
     val documentName: String,
     val createdBoxes: List<String> = emptyList(),
     val setupCalls: List<AgentToolCallRecord> = emptyList(),
@@ -272,7 +274,7 @@ object AgentTaskRunner {
                 model = sent.modelIdentity?.let { it.responseModel?.takeIf { m -> m.isNotBlank() } ?: it.requestedModel } ?: b.modelIdentity?.requestedModel.orEmpty(),
                 verdict = verdict, checks = outcomes, toolCalls = calls, finalText = sent.text,
                 rounds = sent.rounds, maxToolRounds = budget, hitToolRoundCap = sent.hitToolRoundCap,
-                elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens,
+                elapsedMs = elapsed(), inputTokens = sent.inputTokens, outputTokens = sent.outputTokens, cachedInputTokens = sent.cachedInputTokens,
                 documentName = info.documentName, createdBoxes = graph.created.toList(), setupCalls = setupLog,
                 misuseCalls = calls.count(AgentLessons::isMisuse),
                 imagesSeen = sent.toolTranscript.count { it.resultJson.contains("\"imageAttached\":true") },

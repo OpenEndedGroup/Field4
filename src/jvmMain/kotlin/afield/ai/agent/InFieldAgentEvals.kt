@@ -317,6 +317,8 @@ data class AgentEvalReport(
     val elapsedMs: Long,
     val inputTokens: Long?,
     val outputTokens: Long?,
+    /** Sum of [AgentTaskResult.cachedInputTokens]; uncached input is [inputTokens] minus this. */
+    val cachedInputTokens: Long? = null,
     val error: String = "",
     /** Sum of [AgentTaskResult.misuseCalls]. */
     val misuseCalls: Int = 0,
@@ -382,6 +384,7 @@ object AgentEvalRunner {
             elapsedMs = (System.nanoTime() - started) / 1_000_000,
             inputTokens = sum { it.inputTokens },
             outputTokens = sum { it.outputTokens },
+            cachedInputTokens = sum { it.cachedInputTokens },
             misuseCalls = results.sumOf { it.misuseCalls },
             imagesSeen = results.sumOf { it.imagesSeen },
             rounds = results.sumOf { it.rounds.coerceAtLeast(0) },

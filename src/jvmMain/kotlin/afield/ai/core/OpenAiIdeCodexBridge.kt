@@ -222,6 +222,7 @@ class OpenAiIdeCodexBridge(
         var activeToolStarted: Long? = null
         var inputTokens: Long? = null
         var outputTokens: Long? = null
+        var cachedInputTokens: Long? = null
         fun <T> modelRequest(phase: String, action: () -> T): T {
             activePhase = "model:$phase"
             toolIo("model_request", mapOf("phase" to phase))
@@ -234,6 +235,7 @@ class OpenAiIdeCodexBridge(
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
+                        cachedInputTokens = (cachedInputTokens ?: 0L) + usage.inputTokensDetails().cachedTokens()
                     }
                 }
             } finally {
@@ -647,7 +649,8 @@ class OpenAiIdeCodexBridge(
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            cachedInputTokens = cachedInputTokens
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -685,7 +688,13 @@ class OpenAiIdeCodexBridge(
         val hitToolRoundCap: Boolean = false,
         /** Summed over every model request in the turn; null when the provider did not report usage. */
         val inputTokens: Long? = null,
-        val outputTokens: Long? = null
+        val outputTokens: Long? = null,
+        /**
+         * The part of [inputTokens] served from the provider's prompt cache (OpenAI
+         * `input_tokens_details.cached_tokens`); null when the bridge does not report it. Uncached
+         * input, the cost that layouts and descriptions are judged by, is the difference.
+         */
+        val cachedInputTokens: Long? = null
     )
 
     data class ToolTranscriptEntry(
