@@ -31,6 +31,24 @@ whole turns); saved images remain visible but must be attached again for fresh i
 Existing conversations from versions before this feature need to be exported before restarting
 those versions, because their transcripts lived only in memory.
 
+### Going back
+
+Hover over one of your messages and two buttons appear. **rewind** takes the
+conversation back to just before that message; **edit** does the same and puts
+the message back in the input, so you can change it and send it again. Nothing
+is thrown away: the turns after that point stay as a branch. `/branches` lists
+the branches and `/branch 1` switches to one.
+
+If the turns you rewound changed the document, Field asks whether to undo those
+changes too. It undoes the box edits those turns made, and only those, and
+deletes the boxes they created. An edit someone has changed since is left alone.
+The shape of the conversation is kept in `<box-id>_ai4_session_.jsonl` beside the
+transcript, with its images in the document's `ai4_blobs` folder.
+
+`/context` shows what the last turn sent besides the conversation itself: each
+part of the instructions, its size, and whether it stays in the conversation or
+is sent fresh with every request.
+
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
@@ -240,6 +258,63 @@ AgentToolExtensions.register(
 
 A closed gate removes the tool from the list the model is shown, rather than
 leaving it visible and failing when called.
+
+A tool most conversations never need can be listed by name only. Its schema is
+sent the first time the model asks for it, and stays for the rest of that
+conversation:
+
+```diffstatic {data-lang=kotlin}
+aiTool("survey.export") {
+    describe("Write the survey as CSV.")
+    exposure(ToolExposure.DEFERRED)
+    effects(ToolEffect.FILESYSTEM_WRITE)
+    action { /* … */ }
+}
+```
+
+`effects(...)` says what a call does. A tool that declares
+`ToolEffect.MUTATE_DOCUMENT` is refused on a read-only document before its action
+runs, and MCP clients see the declaration as `readOnlyHint` and `destructiveHint`.
+For `AgentToolExtensions.register` the same two settings are
+`meta = ToolMeta(namespace, exposure, effects)`.
+
+### Many calls at once
+
+The chat has a tool for writing small programs over its other tools. When a
+request means a dozen similar calls (run every box, try eight values, tag every
+note that has a TODO), the model can send one short JavaScript program instead,
+and only what the program returns comes back into the conversation. Your tools
+are callable from those programs like the built-in ones: `tools.MeasureRoom({...})`,
+or `tools["echo.box"]({...})` for a box-authored tool with a dot in its name. In
+the panel, a program's line opens to show each call it made and how long it took.
+
+Programs run in a sandbox that reaches the tools and nothing else: no files,
+network, timers or Java. Edits a program makes are applied as it goes, exactly as
+the same calls made one at a time would be, so a program that fails halfway leaves
+its earlier edits in place, undoable like any other.
+
+### More than a tool: `agentExtension`
+
+A box can give the agent more than tools. Inside `agentExtension { }` it can add
+context the agent reads at the start of every turn, look at each tool call before
+it runs and refuse it, look at the result afterwards, and add chat commands:
+
+```diffstatic {data-lang=kotlin}
+agentExtension("studio") {
+    context("tempo") { "The piece is at 96 bpm; keep edits in time." }
+    beforeTool({ it == "DeleteBoxRequest" }) { refuse("Ask before deleting boxes in this document.") }
+    afterTool { call, result -> if (!result.ok) println("${call.name} failed: ${result.summary}") }
+    command("tempo", "show the tempo") { "**96 bpm**" }
+}
+```
+
+An extension follows the same rules as `aiTool`: re-running the box replaces the
+whole extension, a run that no longer declares a part removes it, and deleting the
+box removes all of it. It applies to conversations about its own document. Each
+hook has a quarter of a second; one that throws or takes longer is skipped and
+reported in the log, so a broken hook cannot stop the agent. Context arrives marked
+as coming from the document rather than as instructions, at most 4,000 characters a
+part. `/help` lists the commands extensions add.
 
 ### Returning something the model can read — and see
 

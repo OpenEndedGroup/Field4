@@ -133,7 +133,7 @@ asserts both halves.
 |---|---|---|
 | `OpenAiIdeCodexBridge` (OpenAI, OpenRouter) | **yes** — a following user-role message (`:433`) | yes |
 | `AnthropicBridge` | **yes**, since 2026-08-11 — inside the `tool_result` | **no** — `imageDataUrls` is warned and dropped (`:100`) |
-| MCP backdoor (`agent-ai-tool-call`) | **no** — the reply is `aiToolMapper` JSON, from which `@get:JsonIgnore` correctly removes them | n/a |
+| MCP backdoor (`agent-ai-tool-call`) | **yes**, up to eight, as a separate `images` list beside the `aiToolMapper` JSON (from which `@get:JsonIgnore` still removes them) | n/a |
 
 The Anthropic row was "no" until this branch, and it was the interesting kind of no.
 `CarriesToolImages`' KDoc said "the bridge appends the images to the conversation"; there are two
@@ -326,3 +326,34 @@ python3 tools/run_field_tests.py --id ai.tool-extensions.demo   # drift-checks i
 The artefacts are byte-reproducible: the rasteriser is deterministic CPU code and the absolute repo
 path is redacted to `<repo>` on the way out, so the drift check is meaningful on a machine that is not
 this one.
+
+## Metadata, exposure and `agentExtension` (2026-10-02)
+
+What AI4 took from Pi added three things a registration can say and one larger face for box code. The
+measurements and the reasoning are in [AI4_PI_LESSONS.md](AI4_PI_LESSONS.md).
+
+- **Metadata.** `@AgentToolMeta(namespace, exposure, effects)` on a request class,
+  `aiTool { namespace(); exposure(); effects() }` for a box tool, or
+  `AgentToolExtensions.register(meta = ToolMeta(...))` (`ai/core/ToolMeta.kt`). Without any, a tool is
+  namespace `core`, DIRECT, with effects UNDECLARED, which an `effects-absent` eval check treats as
+  "cannot rule it out". Every core tool declares both; `ToolMetaPinTest` pins that and the DEFERRED list.
+- **Exposure.** DIRECT tools send their schema with every request. DEFERRED ones appear by name in the
+  instructions' tool catalogue and send their schema after the model calls `DescribeToolsRequest`, for
+  the rest of that thread. PROGRAM ones are left to tool programs (and become DIRECT when a conversation
+  has none). HIDDEN ones answer only `CallOrigin.BACKDOOR`. MCP clients and programs see everything but
+  HIDDEN; the MCP descriptors carry `annotations {readOnlyHint, destructiveHint}` and `x-field`.
+- **The catalogue** (`ToolRegistry.catalogue`) also lists every extension and box-authored tool, which
+  the hand-written tool adverts in `Instructions.kt` never mention.
+- **One dispatch.** `execute` (OpenAI) and `executeByName` share `ToolRegistry.dispatch`: the withheld
+  set, the gate (the OpenAI path used to skip it), HIDDEN, and the refusal of a MUTATE_DOCUMENT tool on a
+  read-only document.
+- **Ledger ownership.** `AgentToolExtensions.register` called from a running box is now an
+  `agent-tool-extension` ownership of that run, released by identity: re-running replaces it, a run that
+  stops registering it drops it, retiring the box removes it. Registrations from compiled code (a
+  personal package's init) stay process-global and unregister by hand, as before.
+- **`agentExtension { }`** (`ai/core/AgentExtensions.kt`) is the larger face: `tool` (an `aiTool`),
+  `context` (text computed at the start of each turn, framed as document data, 4k characters each and
+  12k in all), `beforeTool` (proceed or refuse; a refusal is the tool result the model reads),
+  `afterTool` (observe only) and `command` (`/name args` in the chat). Every part is an
+  `agent-extension` ownership with the same rules as `aiTool`. Hooks have 250 ms; one that throws or
+  overruns is skipped and logged. `AgentExtensionsTest` covers the hooks and the run lifecycle.
