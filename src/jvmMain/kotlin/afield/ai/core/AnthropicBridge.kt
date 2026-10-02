@@ -351,6 +351,7 @@ class AnthropicBridge(
             cacheWriteTokens = cacheWriteTokens,
             contextReport = tc?.report("system+prefix")
                 ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens, cacheWriteTokens = cacheWriteTokens)
+                ?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)

@@ -588,6 +588,24 @@ class AgentMemoryState {
     private val checklist = mutableListOf<ChecklistItem>()
     private var nextChecklistId = 1
 
+    /**
+     * The scratchpad and checklist as they are, for the session tree: memory is branch state, so a rewound
+     * conversation gets back the memory of the turn it was rewound to (AiSessionTree).
+     */
+    data class Snapshot(val scratchpad: String, val checklistJson: String)
+
+    fun snapshot(): Snapshot = lock.read { Snapshot(scratchpad, aiToolMapper.writeValueAsString(checklist)) }
+
+    fun restore(snapshot: Snapshot) = lock.write {
+        scratchpad = snapshot.scratchpad
+        checklist.clear()
+        runCatching {
+            checklist += aiToolMapper.readValue(snapshot.checklistJson.ifBlank { "[]" },
+                aiToolMapper.typeFactory.constructCollectionType(List::class.java, ChecklistItem::class.java)) as List<ChecklistItem>
+        }
+        nextChecklistId = (checklist.mapNotNull { it.id.toIntOrNull() }.maxOrNull() ?: 0) + 1
+    }
+
     fun readScratchpad(): ScratchpadResult = lock.read {
         ScratchpadResult(
             success = true,

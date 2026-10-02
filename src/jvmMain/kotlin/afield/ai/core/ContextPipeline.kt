@@ -105,6 +105,18 @@ data class ContextReport(
     val cacheReadTokens: Long? = null,
     val cacheWriteTokens: Long? = null,
     val inputTokens: Long? = null,
+    /** The tools whose schemas the model was sent, by name. */
+    val tools: List<String> = emptyList(),
+    /** Box-authored tools in the conversation, with the box that registered each and its source revision then. */
+    val dynamicTools: List<DynamicToolInfo> = emptyList(),
+)
+
+data class DynamicToolInfo(val name: String, val box: String, val sourceRevision: String)
+
+/** The tool part of a report for [ctx]: what [registry] offers a model, and the box tools with their owners. */
+internal fun ContextReport.withTools(registry: ToolRegistry, ctx: ToolExecutionContext): ContextReport = copy(
+    tools = registry.describe(ctx).mapNotNull { (it as? kotlinx.serialization.json.JsonObject)?.get("name")?.let { n -> (n as? kotlinx.serialization.json.JsonPrimitive)?.content } },
+    dynamicTools = ctx.dynamicTools.map { DynamicToolInfo(it.name, it.boxId, it.sourceRevision) },
 )
 
 /**

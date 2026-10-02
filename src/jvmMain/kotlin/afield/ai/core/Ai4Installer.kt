@@ -780,6 +780,7 @@ fun installAi4() {
         if (key !in activeBoxChats) AiBoxConversation.recoverInterrupted(target)
         if (request.clear && !busy) {
             AiBoxConversation.write(target, "")
+            AiSessionTree.clear(target)
             threadByKey.keys.removeIf { it.startsWith(key) }
             chatThreadByKey.keys.removeIf { it.startsWith(key) }
             agentMemoryByKey.keys.removeIf { it.startsWith(key) }
@@ -1638,6 +1639,8 @@ fun installAi4() {
         currentThreads.keys.removeIf { it.startsWith(boxChatKey) && it != conversationKey }
         otherThreads.keys.removeIf { it.startsWith(boxChatKey) }
         val savedHistory = history()
+        // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
+        val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
         ai4Scope.launch {
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
@@ -2012,6 +2015,18 @@ fun installAi4() {
             }
 
             (chatResult?.contextReport ?: editResult?.contextReport)?.let { lastContextByBox["$docPath\u0000${box.id}"] = it }
+            turnMeta.set(AiSessionTree.TurnMeta(
+                kind = exec.kind, property = exec.property,
+                context = chatResult?.contextReport ?: editResult?.contextReport,
+                model = chatResult?.modelIdentity ?: turnModel,
+                inputTokens = chatResult?.inputTokens, outputTokens = chatResult?.outputTokens,
+                cacheReadTokens = chatResult?.cacheReadTokens, rounds = chatResult?.rounds ?: -1,
+                memory = agentMemory.snapshot(),
+                world = mapOf(
+                    "historyVersion" to runCatching { afield.HistoryMetrics.currentVersionIndex(docPath).toLong() }.getOrDefault(-1L),
+                    "topologyGeneration" to sessionInfo.topologyGeneration.toLong(),
+                ),
+            ))
             inMain {
                 if (chatResult != null) {
                     chatResult.modelIdentity?.let { turnModel = it }
@@ -2124,6 +2139,11 @@ fun installAi4() {
             }.join()
         }.invokeOnCompletion {
             AiBoxConversation.running(box, false)
+            // A failed or cancelled turn is recorded too: its partial reply is in the transcript.
+            runCatching {
+                AiSessionTree.recordTurn(box, savedHistory, history(),
+                    turnMeta.get() ?: AiSessionTree.TurnMeta(kind = exec.kind, property = exec.property, memory = agentMemory.snapshot()))
+            }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
             activeBoxChats.remove(boxChatKey)
         }
         Handled.yes

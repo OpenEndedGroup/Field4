@@ -73,6 +73,7 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
             exposure = builder.exposure,
             effects = builder.effects ?: setOf(ToolEffect.UNDECLARED),
         ),
+        sourceRevision = afield.sourceRevision((getPropertyRaw("code") as? String).orEmpty()).take(16),
     )
     DocumentToolRegistry.register(documentKeyFor(this), tool)
     runCatching { notify("Registered AI tool '$name'", "AI tools") }
@@ -266,6 +267,8 @@ class BoxTool internal constructor(
     internal val params: List<BoxToolArg<*>>,
     internal val body: suspend BoxToolScope.() -> Any?,
     val meta: ToolMeta = ToolMeta(namespace = name.substringBefore('.', "doc").ifBlank { "doc" }),
+    /** A hash of the registering box's code when it registered this, for capability checkpoints. */
+    val sourceRevision: String = "",
 ) {
     /** JSON-Schema for the parameters (kotlinx form), reusing the static-tool emitter. */
     val parametersSchema: JsonObject by lazy { buildParamsSchema(params) }

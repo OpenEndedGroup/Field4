@@ -550,6 +550,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_auto_name_signature",
             "ai4_chat_history",
             "ai4_chat_running",
+            // The same conversation as a tree with checkpoints (afield.ai.core.AiSessionTree).
+            "ai4_session",
             "fileManagerAccessHistory"
         )
 
@@ -597,6 +599,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // which now requires every key here to have a matching ioPersistentProperties pattern.
             "notes" to "md",
             "ai4_chat_history" to "md",
+            "ai4_session" to "jsonl",
             "metadata" to "yaml"
         )
 

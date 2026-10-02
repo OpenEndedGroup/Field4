@@ -677,7 +677,7 @@ class OpenAiIdeCodexBridge(
             outputTokens = outputTokens,
             cacheReadTokens = cacheReadTokens,
             contextReport = (turnContext?.report(if (ephemeralInstructions != null) "instructions" else "inline"))
-                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
