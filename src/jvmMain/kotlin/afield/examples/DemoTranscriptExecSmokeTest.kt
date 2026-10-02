@@ -424,6 +424,8 @@ object DemoTranscriptExecSmokeTest {
         "audio_ai_underfit_mancini",
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
+        "open_dlss_nr", // Optional native network; live transcript and GPU recording verified separately.
+        "open_dlss_nr_cubes", // Same native pass, with editable raster geometry and its GPU recorder.
         "neural_reconstruction", // Optional NGX evaluation is covered by ReconstructionSmoke on the NVIDIA machine.
         "ray_reconstruction", // Real NGX/RTXDI evaluation: RayReconstructionSmoke.
         "path_traced_reconstruction", // PathTracedReconstructionSmoke; optional NGX.
