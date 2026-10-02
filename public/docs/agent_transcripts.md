@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 168 transcripts on every build, at three
-depths. 88 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 169 transcripts on every build, at three
+depths. 89 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -168,6 +168,18 @@ after `score` again. The replay runs all five headless: the drawing is data on t
 audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
+
+### drawn_morph
+
+A drawn morph, heard, as five boxes. `shapes` draws a circle named "from" and a heart named "to" on
+the drawing layer; `paired` reads both strokes back, gives each 240 points evenly spaced by arc
+length with `resampleByLength`, pairs them with `matchPoints` and draws the pairs, matched and by
+list index; `morph` draws five steps of each pairing; `spread` plots how big the cloud is through
+the morph; `play` turns the morph, out and back, into 32 notes whose pitch is that size and renders
+both pairings into audio players. Draw two strokes of your own and follow the comment in `shapes`.
+The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
 
 ### studies_rings
 

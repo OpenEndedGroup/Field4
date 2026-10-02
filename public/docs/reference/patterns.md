@@ -4,7 +4,7 @@
 
 Musical time, as a value. A `PatPattern<A>` is a function from a span of cycles to the events inside it, so it is queried rather than stored, and a pattern that never repeats costs no more to hold than one that does. Time is kept as an exact rational (`PatQ`, `BigInteger` over `BigInteger`) all the way through the transforms and is only converted to seconds at the boundary where something has to be scheduled, which is why a third of a cycle survives `fast`, `rev` and `every` without drifting. The notation and much of the vocabulary is Tidal's — `pat("bd [hh hh] sd")`, `stack`, `jux`, `off`, `degradeBy`, the `|+|` operator family — but an atom here means whatever you want it to mean, not a sample name, which is what lets the same pattern drive a note process, a Field `Fn`, a set of signal-graph parameters or an arbitrary side effect. `Sequencing.kt` is the note-and-piano-roll layer patterns bridge into, and `BeatLaunch.kt` is `.onBeat { … }`, which holds any launchable value until the next musical boundary. [Patterns: writing rhythm as a function of time](../pattern_language.md) is the prose for all of it.
 
-36 source file(s), 1217 public symbol(s), 658 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+37 source file(s), 1239 public symbol(s), 671 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -232,6 +232,47 @@ The three cellular-automaton scenes, their oracles, and the renderer that writes
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/CaSoundDocs/#L337) |  |
 | [<code class="highlight"><span class="k">val</span> <span class="nc">CONDENSATION&#95;SURVEY</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/CaSoundDocs/#L405) | The rules the survey covers. 90 and 150 are the additive ones, 30 and 45 the two usually called chaotic, 110 the universal one, and 250 is here because its centre column is periodic with period two from a single seed, which is the shortest interesting answer there is. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">centreColumnBar</span><span class="p">(</span><span class="n">rule</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">generations</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">on</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;x&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">CaBar</span></code>](source/jvmMain/afield/four/synth/CaSoundDocs/#L408) | The centre column of `rule` over `generations` steps, as a bar. Used by the survey and the docs page. |
+
+## DrawnMorphDocs.kt { #drawnmorphdocs-kt }
+
+`src/jvmMain/kotlin/afield/four/synth/DrawnMorphDocs.kt` — [read the source](source/jvmMain/afield/four/synth/DrawnMorphDocs/)
+
+**Used in:** [A Drawn Morph, Heard](../chain_drawn_morph.md)
+
+### Top-level functions { #drawnmorphdocs-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">morphBetween</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">to</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L174) | The in-between cloud: point `i` a fraction `t` of the way from `from`i`` to `to`i``. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">spreadOf</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L178) | How big a cloud is: the root-mean-square distance of its points from their centroid. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">NotationBuilder</span><span class="p">.</span><span class="nf">morphShapes</span><span class="p">(</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L185) | The two strokes `chain_drawn_morph.md` reads: a circle named "from" and a heart named "to". Call it inside `notation { }`. |
+
+### DrawnMorphDocs { #drawnmorphdocs-kt-drawnmorphdocs }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">DrawnMorphDocs</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L47)
+
+A drawn morph, heard — the harness behind `public/docs/chain_drawn_morph.md`.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">SR</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L49) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">N</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L52) | Points per shape after resampling. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CX</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L55) | Where both shapes are centred on the canvas, and their size, in world units. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CY</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L56) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">R</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L57) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">BEATS</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L60) | One cycle is eight beats; at a quarter cycle a second the morph out and back takes four seconds. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CPS</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L61) |  |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">CYCLES</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L62) |  |
+| [<code class="highlight"><span class="k">val</span> <span class="nc">VOICE</span><span class="p">:</span> <span class="nc">PatVoiceSpec</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L64) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">circle</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L67) | The circle, as a hand would draw it: from the right, anticlockwise on screen, bunched at the start. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">heart</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L74) | The heart, from its bottom point, clockwise on screen (y grows down). |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">shapes</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L82) | The resampled pair the page's boxes read back from the drawing. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">morphNotes</span><span class="p">(</span><span class="n">from</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">partner</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Vec2</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TimedNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L93) | The morph played as pitch, word for word the loop on the page (`DrawnMorphPageTest` compares them): 32 steps out to `partner` and back, each step a quarter beat at a pitch that is MIDI 72 when the cloud is the circle's size and falls an octave for every halving of it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">notes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TimedNote</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">PatSoundDocs</span><span class="p">.</span><span class="nc">Stereo</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L104) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">headless</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="nc">Box</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L108) | Runs `block` with a box in an ephemeral document whose drawing holds `morphShapes`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">sceneNotes</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">TimedNote</span><span class="p">&gt;</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L129) | The notes each published clip plays. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderWav</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">outPath</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L138) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">:</span> <span class="nc">Array</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/four/synth/DrawnMorphDocs/#L145) |  |
 
 ## DrawnScoreDocs.kt { #drawnscoredocs-kt }
 
@@ -1113,7 +1154,7 @@ implementation breaks and a type check does not.
 
 `src/jvmMain/kotlin/afield/four/synth/NotationPatterns.kt` — [read the source](source/jvmMain/afield/four/synth/NotationPatterns/)
 
-**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md)
+**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [A Drawn Morph, Heard](../chain_drawn_morph.md)
 
 ### Top-level functions { #notationpatterns-kt-functions }
 
@@ -2267,7 +2308,7 @@ Add a sound by appending one `Scene` to `SCENES`.
 
 `src/jvmMain/kotlin/afield/four/synth/PatSoundDocs.kt` — [read the source](source/jvmMain/afield/four/synth/PatSoundDocs/)
 
-**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [Sound: from a pattern to something you can hear](../sound.md), [Patterns: writing rhythm as a function of time](../pattern_language.md)
+**Used in:** [A Drawn Score, Heard](../chain_drawn_score.md), [Sound: from a pattern to something you can hear](../sound.md), [A Drawn Morph, Heard](../chain_drawn_morph.md)
 
 ### Top-level functions { #patsounddocs-kt-functions }
 
