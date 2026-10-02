@@ -28,7 +28,16 @@ from PIL import Image, ImageChops, ImageStat
 
 from completion_sidecar import SIDECAR_URL_ENV, SidecarLease
 from discover_field_tests import DEFAULT_ROOTS, discover
-from field_backdoor import gradle_command, health_check, make_unverified_ssl_context
+from field_backdoor import (
+    DEFAULT_MANAGED_STARTUP_CEILING,
+    MANAGED_JVM_START_TIMEOUT_ENV,
+    MANAGED_STARTUP_CEILING_ENV,
+    ManagedStartupWatch,
+    env_seconds,
+    gradle_command,
+    health_check,
+    make_unverified_ssl_context,
+)
 from field_languages import needs_language_root
 from verification_environment import VerificationEnvironment, VerificationEnvironmentError
 from verification_runtime import (
@@ -802,7 +811,7 @@ def ensure_persistent_field(
     port: int,
     *,
     workspace: str | None = None,
-    boot_timeout: float = 180.0,
+    boot_timeout: float | None = None,
     check_environment: Any = None,
     sidecar_url: str | None = None,
 ) -> subprocess.Popen[Any] | None:
@@ -873,24 +882,32 @@ def ensure_persistent_field(
         popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
     else:
         popen_kwargs["start_new_session"] = True
+    ceiling = env_seconds(MANAGED_STARTUP_CEILING_ENV, DEFAULT_MANAGED_STARTUP_CEILING)
+    # 180 s rather than the backdoor's 120: this JVM boots under a full smoke run's load.
+    jvm_timeout = boot_timeout or env_seconds(MANAGED_JVM_START_TIMEOUT_ENV, 180.0)
     proc = subprocess.Popen(command, **popen_kwargs)
-    deadline = time.monotonic() + boot_timeout
-    while time.monotonic() < deadline:
+    # The Gradle build before `> Task :runJvm` is bounded only by the ceiling (a fresh worktree
+    # compiles everything first); `jvm_timeout` is the JVM's own budget from that line.
+    watch = ManagedStartupWatch(log_path, ceiling=ceiling, jvm_timeout=jvm_timeout)
+    while True:
         if check_environment is not None:
             try:
                 check_environment()
             except BaseException:
                 stop_persistent_field(proc, port=port)
                 raise
+        watch.observe()
         if proc.poll() is not None:
             raise SystemExit(f"Prewarm Field exited early (code {proc.returncode}); see {log_path}")
+        if watch.expired():
+            break
         if health_check(port, ctx):
             return proc
         time.sleep(0.5)
     terminate_process_tree(proc)
     if health_check(port, ctx):
         recycle_field(port, ctx)
-    raise SystemExit(f"Prewarm Field did not become healthy on port {port} within {boot_timeout:.0f}s; see {log_path}")
+    raise SystemExit(f"Prewarm Field did not become healthy on port {port}: {watch.timeout_reason()}; see {log_path}")
 
 
 def stop_persistent_field(proc: subprocess.Popen[Any] | None, *, port: int) -> None:

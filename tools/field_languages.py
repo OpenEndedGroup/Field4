@@ -18,12 +18,13 @@ box. Add a language here once running a snippet in it needs nothing but a root a
 prerequisite rather than something a harness arranges: a fence declares it with
 `requires="libpd"`, and without the library the box reports how to build it. `lua`
 (`afield.lua.LuaExecution`, over LuaJIT) is the same shape: `requires="luajit"`, and without LuaJIT
-the box says `brew install luajit`.
+the box says `brew install luajit`. `csound` (`afield.csound.CsoundExecution`) is libpd's shape
+again: `requires="csound"`, built with `./gradlew buildCsoundNative`.
 """
 
 from __future__ import annotations
 
-MAIN_LANGUAGE_ROOT_LANGUAGES: tuple[str, ...] = ("fieldml", "python", "datalog", "clojure", "pd", "lua")
+MAIN_LANGUAGE_ROOT_LANGUAGES: tuple[str, ...] = ("fieldml", "python", "datalog", "clojure", "pd", "lua", "csound")
 
 
 def needs_language_root(language: str | None) -> bool:

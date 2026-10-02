@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 168 transcripts on every build, at three
-depths. 88 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 170 transcripts on every build, at three
+depths. 89 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-73 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+74 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -168,6 +168,18 @@ after `score` again. The replay runs all five headless: the drawing is data on t
 audio an offline buffer. See [A Drawn Score, Heard](chain_drawn_score.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_score/metadata.edn)
+
+### drawn_morph
+
+A drawn morph, heard, as five boxes. `shapes` draws a circle named "from" and a heart named "to" on
+the drawing layer; `paired` reads both strokes back, gives each 240 points evenly spaced by arc
+length with `resampleByLength`, pairs them with `matchPoints` and draws the pairs, matched and by
+list index; `morph` draws five steps of each pairing; `spread` plots how big the cloud is through
+the morph; `play` turns the morph, out and back, into 32 notes whose pitch is that size and renders
+both pairings into audio players. Draw two strokes of your own and follow the comment in `shapes`.
+The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
 
 ### studies_rings
 
@@ -1788,6 +1800,25 @@ boxes and skips the three Pd ones, as it skips Python cells; every box was run b
 built libpd on 2026-09-28. [Pure Data](pure_data.md) has the walkthrough and captures.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn)
+
+### csound_demo
+
+**Csound inside Field.** A Kotlin root whose `mainLanguage` makes three Csound boxes under it, and
+five Kotlin boxes that talk to Csound. **pluck** is a `.csd` with a plucked string, a MIDI-played
+`Key` instrument and a global reverb on a `chnmix` bus. Launched, Alt-Enter on its score line
+`i "Pluck" 0 1 69 -9` answers `sent …`, and Alt-Enter inside `instr Pluck` answers `recompiled instr
+Pluck`. **typo** has `oscilx` on line 4, which launching marks there. **talk to pluck** writes a k-
+and an S-channel and sends score events built from Kotlin values; the orchestra's `outvalue`s come
+back as `Csound said: from Kotlin` and the reverb's level. **keys** sends MIDI notes, which `Key`
+prints as `Key 62`, `Key 65`, … **Field into fx** feeds a Field sawtooth into an a-rate channel and
+plays the reverb tail back as a Field signal. **through Csound, measured** prints a gain of 0.2420
+for a 1 kHz Field sine through `butterlp 500` (a Butterworth gives 0.2425), and **a table from
+Kotlin** writes a 4096-point ftable and reads it back equal. Needs libcsound, built once with
+`./gradlew buildCsoundNative`. The build does not own that, so CI compiles the Kotlin boxes and
+skips the Csound ones; every box was run by hand against a built Csound on 2026-10-02.
+[Csound](csound.md) has the walkthrough.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/csound_demo/metadata.edn)
 
 ### marf_demo
 

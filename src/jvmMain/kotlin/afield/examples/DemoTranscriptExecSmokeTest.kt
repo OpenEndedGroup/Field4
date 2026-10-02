@@ -105,6 +105,9 @@ object DemoTranscriptExecSmokeTest {
         // and measure onsets and pitches in the renders. No
         // audio device is opened; the audio is an offline buffer displayed as a data: URI.
         "drawn_score",
+        // Five CPU boxes: two strokes drawn from code, read back, resampled and paired with
+        // matchPoints, morphed, and the morph played as pitch into audio players. Offline buffers only.
+        "drawn_morph",
         // Three CPU boxes: a SourceFramesStudy of a box property with registerStudyTools, then two
         // children that publish a SetNumbers revision and sweep/try variants. Frames come from a CPU
         // painter at 256 px at most; no Window, no Renderer.
@@ -503,6 +506,11 @@ object DemoTranscriptExecSmokeTest {
         // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
         // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
         "pure_data_demo",
+        // Csound: the Kotlin root and five Kotlin boxes need libcsound built (./gradlew
+        // buildCsoundNative), which the build does not own, so they are compiled; the three Csound
+        // boxes are a guest language and skipped, as Pd's are. afield.csound.* tests run the calls
+        // against a real Csound when one is built. Every box was run by hand on 2026-10-02.
+        "csound_demo",
         "four_summary_pyramid",
         "four_morton_quadtree",
         // Opens its own Window + Renderer and then renders a still and a clip per blend for a dozen
