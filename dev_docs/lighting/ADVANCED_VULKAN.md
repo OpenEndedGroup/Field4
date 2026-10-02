@@ -17,7 +17,7 @@ results and explicit limits below.
    generation, cluster builds, BLAS/TLAS builds and tracing ordered on Field's graphics queue.
    Generated examples must use that public API, not hardcoded native/sample geometry.
 
-Slang 2026.18.3 is the shared compiler pin (official release 25 September), including
+Slang 2026.19 is the shared compiler pin (official release 29 September), including
 its reverse-mode autodifferentiation fix. RTXNS source stays independently pinned; upstream's
 sample compiler choice is recorded separately from Field's tested compiler choice.
 
@@ -86,7 +86,7 @@ comparison target. No memory or speed comparison against ordinary BLAS is claime
   separately reported **supported and enabled**. Ray query and ray-tracing pipelines are enabled.
   Graphics queue family 0 offers graphics/compute/transfer; these new adapters use Field's one
   graphics queue, not the separate optical-flow queue.
-- Slang **2026.18.3**, official release 25 September 2026; platform checksums in
+- Slang **2026.19**, official release 29 September 2026; platform checksums in
   `optional/lighting/toolchains.json`. RTXNS source remains
   `f309ae68677a67060cc6ded2d0af925a3931435f`; its sample compiler remains 2026.10. Training uses
   Slang's native autodiff, not the older SDK autodiff extension, whose definitions conflict with it.
