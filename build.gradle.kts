@@ -3505,6 +3505,42 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     }
 }
 
+// Build libcsound — Csound as a C library — into build/field-csound, for afield.csound.
+//
+// No wrapper: afield.csound binds csound.h directly through FFM. The script downloads one pinned,
+// checksummed Csound release tarball into the per-user native download cache and builds only the
+// library (no frontends, drivers or plugin opcodes). Needs cmake, flex, bison and libsndfile.
+// Optional like libpd and not wired into `check`; the Csound tests skip without it.
+//
+//     ./gradlew buildCsoundNative
+//     ./gradlew jvmTest --tests 'afield.csound.*'
+val buildCsoundNative = tasks.register("buildCsoundNative") {
+    group = "build"
+    description = "Builds libcsound into build/field-csound (needs cmake, flex, bison, libsndfile and, once, the network)."
+
+    val script = layout.projectDirectory.file("tools/build_csound_native.py")
+    val cacheHelper = layout.projectDirectory.file("tools/native_download_cache.py")
+    inputs.file(script)
+    inputs.file(cacheHelper)
+    outputs.dir(layout.buildDirectory.dir("field-csound/build"))
+
+    doLast {
+        val command = listOf("python3", script.asFile.absolutePath)
+        val result = providers.exec {
+            commandLine(command)
+            isIgnoreExitValue = true
+        }
+        val code = result.result.get().exitValue
+        if (code != 0) {
+            throw GradleException(
+                "${command.joinToString(" ")} failed with exit code $code:\n" +
+                    result.standardOutput.asText.get() + result.standardError.asText.get(),
+            )
+        }
+        logger.lifecycle(result.standardOutput.asText.get().trim().lines().last())
+    }
+}
+
 // Build native/ken-ceres against a Ceres found by CMake's find_package — on macOS, the Homebrew
 // one. Seconds rather than minutes, which is what you want while changing the wrapper; the result
 // carries /opt/homebrew in its load commands, so it is not the one to ship (see
