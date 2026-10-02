@@ -94,6 +94,9 @@ the reply field that tells you when you have hit one.
   automation" explains how the docs build itself uses this machinery.
 - [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
-  examples on the canvas and in `afield.four` Vulkan graphics — see `dev_docs/agents/`
-  in the Field repository (`OPERATION_TRANSCRIPT.md` and `FIELD_BACKDOOR.md`). Field's default
+  examples on the canvas and in `afield.four` Vulkan graphics — see the
+  [operation transcript reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/OPERATION_TRANSCRIPT.md)
+  and the [backdoor reference](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/FIELD_BACKDOOR.md)
+  in the Field repository. The [agent transcript gallery](agent_transcripts.md) has a worked
+  entry for every transcript Field ships. Field's default
   workspace setup also writes a short `AGENTS.md` for agents working inside that workspace.
