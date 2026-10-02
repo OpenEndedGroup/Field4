@@ -11,7 +11,7 @@ import afield.four.texture.LoadedTexture
 import afield.four.texture.StorageImage
 import afield.four.util.Projection
 import afield.four.util.Window
-import afield.four.util.forever
+import afield.four.util.updateForever
 import java.util.Random
 
 class NewMain8_writeToImage {
@@ -109,7 +109,7 @@ class NewMain8_writeToImage {
         module += "innerRectangle" to innerRectangle
 
         var frame = 0
-        innerRectangle.update["resize"] = forever {
+        innerRectangle.update["resize"] = updateForever {
 
             frame++
             val layers = (frame / 50) % 10 + 1
@@ -148,7 +148,7 @@ class NewMain8_writeToImage {
             true
         }
 
-        innerRectangle.update["rot"] = forever {
+        innerRectangle.update["rot"] = updateForever {
             innerRectangle.push.get<Matrix4f>("modelMatrix").rotate(0.01f, Vector3f(1f, 0.8f, 0.3f))
             true
         }

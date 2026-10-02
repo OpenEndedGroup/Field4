@@ -127,16 +127,12 @@ example paces the loop at ten passes a second, and the loop adds no extra frame 
 
 ```diffstatic {data-lang=kotlin}
 var x = 0.0
-afield.forever {
+forever {
     x += 0.01
     display("main", "<h2>%.2f</h2>".format(x))
     x < 1.0                         // false ends it
 }
 ```
-
-In a box it has to be written `afield.forever`. Boxes also import `afield.four.util.*`, which has a
-`forever` of its own that returns a `Sequence<Boolean>`, and a bare `forever { }` is an overload
-resolution ambiguity between the two.
 
 **`frames { }`** is the building block the others are made from. Its body runs once, and it moves
 from frame to frame only when it calls `frame()` or `delay(ms)` itself, which makes it the one for
@@ -673,9 +669,7 @@ val builders = listOf(
     "frames { while (frame()) … }" to trace(pumps) { body -> frames { while (frame()) body() } },
     "eachFrame { } — and so animate { }" to trace(pumps) { body -> eachFrame { body() } },
     "loop { }" to trace(pumps) { body -> loop { body() } },
-    // Qualified: a box also has afield.four.util.forever in scope, and bare `forever { }` is an
-    // overload resolution ambiguity between the two.
-    "afield.forever { … ; true }" to trace(pumps) { body -> afield.forever { body(); true } },
+    "forever { … ; true }" to trace(pumps) { body -> forever { body(); true } },
 )
 
 // The claim this figure makes is `expect`, not the footnote: a frameNumber that broke it would
