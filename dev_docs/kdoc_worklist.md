@@ -29,7 +29,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 11 | 14 | 16% |
-| [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, chain_pattern_particles, faust | 10 | 53 | 26% |
+| [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |
 | [ClojureInterface.kt](../src/jvmMain/kotlin/afield/clojure/ClojureInterface.kt) | Languages | clojure | 10 | 16 | 43% |
 | [Sequencing.kt](../src/jvmMain/kotlin/afield/four/synth/Sequencing.kt) | Patterns | boolean_network_music_examples, visualizers | 9 | 38 | 7% |
 | [FunctionStudyTools.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudyTools.kt) | Function | function_conversation | 9 | 14 | 41% |
