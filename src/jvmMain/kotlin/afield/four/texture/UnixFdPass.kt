@@ -34,6 +34,10 @@ import java.net.URLClassLoader
  * Linux only.
  */
 object UnixFdPass {
+    /** The optional helper must be built before starting an external-memory session. */
+    val available: Boolean get() = sendFdsMethod?.let {
+        runCatching { it.declaringClass.getMethod("closeFd", Int::class.javaPrimitiveType) }.isSuccess
+    } ?: false
     private val sendFdsMethod: Method? = runCatching {
         val jar = File("native/field-fdpass/build/fieldfdpass-native.jar")
         if (!jar.canRead()) {
@@ -52,6 +56,12 @@ object UnixFdPass {
     }.getOrElse {
         lprintln("error,field-stream", "failed to load fieldfdpass-native.jar: ${it.message}")
         null
+    }
+
+    /** Close an owned export descriptor after SCM_RIGHTS duplicated it, or on setup failure. */
+    fun closeFd(fd: Int) {
+        checkNotNull(sendFdsMethod) { "Build native/field-fdpass before exporting descriptors" }
+            .declaringClass.getMethod("closeFd", Int::class.javaPrimitiveType).invoke(null, fd)
     }
 
     /**

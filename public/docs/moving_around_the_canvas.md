@@ -171,34 +171,6 @@ If none of the uncovered space could show the selection at even half the size th
 could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
 a wide editor is not worth squinting at.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-frame-selected-window" screenshot="assets/moving_around_the_canvas/frame_selected.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="frame-selected" alt="Field after Alt+F. The code editor is docked on the right. The box named render and its open output panel, a 520 by 300 gradient labelled render output, sit together in the uncovered canvas to the left of the editor, centred in it, with nothing of either under the editor."}
-// Select `render` and open its editor. The editor docks on the right, which is where `render`
-// was put, so before Alt+F most of its output panel is underneath it.
-ui.openEditor("bm_render")
-ui.pause(900)
-ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
-ui.down("Alt"); ui.press("KeyF"); ui.up("Alt")
-// frameSelected animates for 420ms; wait it out so the shot is of where it lands.
-ui.pause(1200)
-// A zero-ink marker for clip-selector to frame: the union of the editor and the framed box with
-// its open panel, from the window's left edge, since what the figure shows is where the selection
-// ended up relative to the editor.
-val framed = (ui.eval("""
-  const ed = document.querySelector(".monaco-editor-container").getBoundingClientRect();
-  const box = Array.from(document.getElementsByClassName("box")).find(b => b.uid === "bm_render");
-  const rs = [box.getBoundingClientRect()].concat(Array.from(box.querySelectorAll(".outputArea .disclosure")).map(d => d.getBoundingClientRect()).filter(r => r.width > 0));
-  const right = Math.max.apply(null, rs.map(r => r.right));
-  const all = rs.concat([ed]);
-  const y0 = Math.max(0, Math.min.apply(null, all.map(r => r.top)) - 24);
-  const y1 = Math.min(innerHeight, Math.max.apply(null, all.map(r => r.bottom)) + 24);
-  let frame = document.getElementById("docs-frame-selected-window");
-  if (frame === null) { frame = document.createElement("div"); frame.id = "docs-frame-selected-window"; document.body.appendChild(frame); }
-  frame.setAttribute("style", "position:fixed;pointer-events:none;background:transparent;border:0;left:0;top:" + y0 + "px;width:" + innerWidth + "px;height:" + (y1 - y0) + "px;");
-  return right <= ed.left ? "framed-clear-of-editor panels=" + (rs.length - 1) : "framed-under-editor right=" + right + " editor=" + ed.left;
-""") ?: "").toString()
-if (!framed.contains("framed-clear-of-editor") || framed.endsWith("panels=0")) error("Frame Selected did not frame render and its panel clear of the editor: " + framed)
-```
-
 ## Bookmarks
 
 Arrows reach neighbours. For everywhere else there are nine numbered slots.

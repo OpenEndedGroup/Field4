@@ -442,6 +442,7 @@ object DemoTranscriptExecSmokeTest {
         // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
+        "streaming_diffusion", // Optional Linux/NVIDIA worker and a Vulkan renderer.
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
         "open_dlss_nr", // Optional native network; live transcript and GPU recording verified separately.

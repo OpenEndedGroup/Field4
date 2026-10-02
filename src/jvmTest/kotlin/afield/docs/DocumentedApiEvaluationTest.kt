@@ -176,6 +176,15 @@ class DocumentedApiEvaluationTest {
         // training for the first, Mega Geometry cluster acceleration structures for the second.
         // The 2026-10-02 origin landing (OpenDLSS-NR). Both transcripts are in the compile set: the
         // study needs a live renderer and its GPU frame targets.
+        // The 2026-10-03 origin landing (StreamDiffusion render-to-texture). Its transcript is in the
+        // compile set: the worker is an optional Linux/NVIDIA Python process beside a Vulkan renderer.
+        "configuredRoot" to
+            "streaming_diffusion.md; StreamDiffusionSupport.configuredRoot reads where the optional worker " +
+                "is installed, and the page only calls it on the way to a Linux/NVIDIA backend; the " +
+                "streaming_diffusion transcript compiles the Kotlin only.",
+        "selectedPrompt" to
+            "streaming_diffusion.md; a function the streaming_diffusion transcript's box declares to pick " +
+                "the prompt it sends the worker, run only with that worker and a live renderer; compiled only.",
         "objectPoint" to
             "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
                 "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",
