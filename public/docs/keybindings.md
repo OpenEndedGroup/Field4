@@ -54,7 +54,7 @@ bindings:
   macro-transcript-panel: "cmd+shift+r"   # was: no shortcut at all
 ```
 
-Three things are *not* in the file:
+Two things are *not* in the file:
 
 - **Gestures.** Alt-click to launch a box, Alt-drag to "strum" several, Opt+drag, and the
   multi-taps — `Esc Esc` to clear the newest output, `Esc Esc Esc` to clear them all,
@@ -177,9 +177,7 @@ the opposite; no comment at all means both. The scope belongs to the command, no
 spec, so it is not something you edit, but it does tell you whether a bare letter is a
 sensible thing to bind a command to.
 
-One line of your file does both jobs. The same spec becomes the keybinding Monaco uses when
-an editor has focus *and* the test the canvas runs when it does not, so a rebind cannot leave
-the two halves of Field disagreeing about a key. Matching is on the physical key
+One line of your file sets the shortcut for both the editor and the canvas. Matching is on the physical key
 (`KeyboardEvent.code`), not the character produced, so an Alt shortcut survives macOS turning
 `Alt+]` into `’`, falling back to the character itself for shifted punctuation on layouts
 where it is not physically Shift plus that key.
@@ -239,17 +237,13 @@ Field would rather tell you than guess.
       — a chord is at most two keys, like `cmd+k cmd+s` — this one has more
     ```
 
-    **The command keeps its default.** A line Field cannot read is ignored, not obeyed
-    halfway and not taken as an unbind: `open-anything` above is still on `cmd+p`. Keep that
-    apart from an empty value, which means something quite different: `""` is an unbind you
-    asked for (below). If a rejected spec also produced "no shortcut", a typo and a decision
-    would look identical, and the error message would be describing a shortcut you had just
-    lost without saying so.
+    **The command keeps its default.** A line Field cannot read is ignored, not taken as an
+    unbind: `open-anything` above is still on `cmd+p`. Only an empty value, `""`, removes a
+    shortcut.
 
 - **A command id it does not recognize** — usually a typo — is logged as a warning naming
-  the id, and the binding is kept anyway rather than dropped. It has to be: the
-  selection-only commands genuinely are not registered most of the time, and silently
-  discarding a shortcut that works would be worse than a warning you can ignore.
+  the id, and the binding is kept anyway, because the selection-only commands are not
+  registered most of the time and their shortcuts still have to work.
 - **YAML that does not parse** leaves your previous shortcuts in force and says where the
   file is broken. A stray bracket cannot lock you out of your own keyboard.
 - **Two commands on one chord** logs which two, and warns you that only one of them will
