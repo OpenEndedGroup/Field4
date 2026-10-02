@@ -420,13 +420,11 @@ threeInspect(
 
 The status line reports the total length of the cut and where the plane sits, both in the figure's own units — `cut 9600 mm` above is exactly four 2400-wide skins.
 
-Everything clips: fills, strokes and point sprites. `MeshStandardMaterial` gets clipping from three.js for free; the viewer draws strokes and points with custom `ShaderMaterial`s, which do not, so those carry three.js's own `clipping_planes_*` chunks explicitly. Without them the wireframe and the conduits would hang in the air past the cut.
+The section clips everything: fills, strokes and points.
 
-#### Open it and feel it
+#### A complete example
 
-`public/docs/assets/three_inspector_demo/metadata.edn` is a loadable Field document with one Kotlin box: a wall detail with four skins and five conduit runs, two authored dimensions, and all three controls live. Open it in a fresh Field, run the box, and drag the explode slider.
-
-The fence below is that document's box, character for character, and the build asserts it. The screenshot underneath is that demo.
+This box draws a wall detail with four skins and five conduit runs, two dimensions, and all three controls live. Run it and drag the explode slider. The same box is in `public/docs/assets/three_inspector_demo/metadata.edn`.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_inspector_demo/opened.png" wait="3.0" capture="box" open-outputs="true" w="1200"}
 :::static
@@ -575,17 +573,16 @@ interpolated along the element: a 3D line drawn into the flat 2D output still re
 past `position` is defaulted, so a two-field callback still compiles.
 
 Two cautions before you read a number off it. `u` on a **cubic** is the Bézier parameter, not
-arc length — on a curve whose controls crowd its start those differ enormously (measured: parameter 0.5 at
-16.8% of the length). And `(u, v)` on a face means different things on different faces, so the record says
+arc length, and on a curve whose control points crowd its start the two can be far apart: `u = 0.5`
+can sit well short of halfway along. And `(u, v)` on a face means different things on different faces, so the record says
 which: `faceCoordinates` is `BILINEAR` only for a four-corner face whose solve is checked and passes,
-`BOUNDING_BOX` for anything else, and `NONE` — with `NaN` — for a face with no plane. The Three.js
-renderer answers with the same record, working in each face's own plane; its raycast already knows
-whether it hit the strokes, the fill or the points.
+`BOUNDING_BOX` for anything else, and `NONE` (with `NaN`) for a face with no plane. The Three.js
+renderer fills in the same record, working in each face's own plane.
 
 `lineIndex` and `label` are what let **one** closure serve a whole figure instead of one closure per
 part. `Box.inspect(lines)` is that pattern packaged: it renders exactly what `lines(...)` renders and
-names whatever you click. See `dev_docs/fline_hit_records.md`, and
-`public/docs/assets/fline_hit_records_demo/metadata.edn` for a document to click.
+names whatever you click. `public/docs/assets/fline_hit_records_demo/metadata.edn` is a document to
+try it in.
 
 #### 2D callbacks
 

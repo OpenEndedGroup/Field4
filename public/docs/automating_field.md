@@ -1,9 +1,9 @@
-# Automating Field: macros, transcripts, and the backdoor
+# Automating Field
 
 Everything you do to a Field document (creating a box, editing its code, wiring one box
 into another, running it, stopping it) is an *operation*. Field can record those
-operations, replay them, and let programs perform them from outside. That single idea
-powers three things you can use:
+operations, replay them, and let programs perform them from outside. There are three
+ways to use that:
 
 - **Macros** — a saved sequence of operations you can replay on a document.
 - **The OperationTranscript format** — the small YAML language those operations are
@@ -83,17 +83,16 @@ The backdoor also captures pictures — a single box, the editor, the whole wind
 native `afield.four` graphics window — which is how this site's figures are made. It
 records short videos of the first three. The native graphics window is stills only.
 
-That asymmetry is not the only thing a capture will not do for you, and some of the rest
-fail quietly: a `screenshot-box` of a box whose outputs were never opened comes back
-`ok: true`, clipped to the collapsed box rather than to the output you wanted. **[What a
-Capture Can and Cannot Show](capture_limits.md)** is the boundary, with the reply field
-that tells you which side of it you are on.
+Some captures fail without saying so. A `screenshot-box` of a box whose outputs were
+never opened comes back `ok: true`, clipped to the collapsed box rather than to the output
+you wanted. [What a Capture Can and Cannot Show](capture_limits.md) lists these cases and
+the reply field that tells you when you have hit one.
 
 ## Where to go next
 
-- The **[Staging Overview](staging.md)** section "Reproducible docs and transcript
+- The [Staging Overview](staging.md) section "Reproducible docs and transcript
   automation" explains how the docs build itself uses this machinery.
-- **[Building & Testing](building_and_testing.md)** covers the backdoor as a test harness.
+- [Building & Testing](building_and_testing.md) covers the backdoor as a test harness.
 - For the complete reference — every operation, the observable results, and worked
   examples on the canvas and in `afield.four` Vulkan graphics — see `dev_docs/agents/`
   in the Field repository (`OPERATION_TRANSCRIPT.md` and `FIELD_BACKDOOR.md`). Field's default
