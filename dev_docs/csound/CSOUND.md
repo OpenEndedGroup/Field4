@@ -74,9 +74,21 @@ Output is in step with the requested block.
 
 `csoundNewOpcodeList` returns `opcodeListEntry {char *opname, *outypes, *intypes; int flags}` (32
 bytes on 64-bit). Names not starting with a letter are dropped. 1220 opcodes and 1906 signatures for
-6.18.1. `CsoundVocabulary.describe` spells type letters as arguments (`aSig`, `[ij=-1]`, …). There
-are no descriptions: libcsound carries none. `CsoundLanguageTest` regenerates the vocabulary when
-libcsound is present and fails on drift.
+6.18.1. `CsoundVocabulary.describe` spells type letters as arguments (`aSig`, `[ij=-1]`, …).
+
+Descriptions come from the Csound Reference Manual's DocBook source, csound/manual tag 6.18.0 (no
+6.18.1 tag exists), fetched and checksummed by `tools/fetch_csound_manual.py` into the native
+download cache. `readManual` takes each page's `refpurpose`, `synopsis` lines and the
+`<emphasis>name</emphasis> -- text` paragraphs of Initialization/Performance (first sentence, at most
+eight), keyed by `refname` first and the synopsis `<command>` second. The second key catches `chn`
+documenting `chn_k`/`chn_a`/`chn_S`, and pages with a stale refname (`randi.xml` says `rand`).
+Coverage: 1183 of 1220 library opcodes. The 37 without a description are listed in the JSON's
+`manual.undescribed`. Licence: GNU FDL 1.2 or later. The manual's `copying.txt` (notice plus
+licence text) is copied to `src/commonMain/resources/csound-manual-COPYING.txt` by the generator.
+`CsoundLanguageTest` checks names and signatures against libcsound, the descriptions against the
+cached manual, that `readManual` is deterministic, and pins aftouch, poscil, butterlp and chn_k.
+Regenerating twice gives a byte-identical file. The editor hovers an opcode with its description,
+syntax and manual link (`csound.js`).
 
 ## Verification (2026-10-02)
 
@@ -93,8 +105,7 @@ libcsound is present and fails on drift.
 
 ## Not done / limits
 
-- No per-opcode descriptions in completion or hover (libcsound has none, and copying the manual
-  would be hand-typed vocabulary).
+- 37 opcodes have no manual entry and show their signature alone.
 - Line-note event counts are static (from the score text).
 - `invalue` strings are not supported (no buffer size from Csound).
 - The macOS build links Homebrew libsndfile by absolute path, so it is not redistributable. Linux

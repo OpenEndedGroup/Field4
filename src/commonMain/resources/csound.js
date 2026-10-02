@@ -132,6 +132,27 @@ define("bithero/csound", ["require", "vs/editor/editor.api"], function (require,
     monaco.languages.setMonarchTokensProvider(languageId, grammar([]));
 
     var installed = { opcodes: 0 };
+    var byName = {};
+
+    // Hover on an opcode: the manual's description, its syntax lines and a link to its page, from the
+    // same generated csound-vocabulary.json (Csound Reference Manual 6.18.0, GNU FDL 1.2+).
+    monaco.languages.registerHoverProvider(languageId, {
+        provideHover: function (model, position) {
+            var word = model.getWordAtPosition(position);
+            if (!word) return null;
+            var op = byName[word.word];
+            if (!op) return null;
+            var lines = [];
+            lines.push("**" + op.name + "**" + (op.description ? " — " + op.description : ""));
+            var syntax = (op.syntax && op.syntax.length) ? op.syntax : [];
+            if (syntax.length) lines.push("```\n" + syntax.join("\n") + "\n```");
+            if (op.page) lines.push("[Csound manual: " + op.name + "](https://csound.com/docs/manual/" + op.page + ".html)");
+            return {
+                range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
+                contents: lines.map(function (v) { return { value: v, isTrusted: false }; })
+            };
+        }
+    });
     window.csoundGrammarState = function () { return installed; };
     if (typeof fetch === "function") {
         fetch("/csound-vocabulary.json")
@@ -139,6 +160,7 @@ define("bithero/csound", ["require", "vs/editor/editor.api"], function (require,
             .then(function (data) {
                 if (!data || !data.opcodes) return;
                 var names = data.opcodes.map(function (o) { return String(o.name); });
+                data.opcodes.forEach(function (o) { byName[o.name] = o; });
                 monaco.languages.setMonarchTokensProvider(languageId, grammar(names));
                 installed.opcodes = names.length;
                 installed.csoundVersion = data.csoundVersion;

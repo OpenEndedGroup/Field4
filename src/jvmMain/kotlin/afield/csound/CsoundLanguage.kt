@@ -288,7 +288,7 @@ class CsoundExecution(val inside: Box) : BoxExecution {
         for (op in CsoundVocabulary.committed.opcodes) {
             if (!op.name.startsWith(prefix) || op.name == prefix) continue
             val sigs = op.signatures.map { CsoundVocabulary.describe(op.name, it) }
-            rows += Row(op.name, "opcode", sigs.first(), sigs.joinToString(";  "))
+            rows += Row(op.name, "opcode", sigs.first() + (op.description?.let { "  —  $it" } ?: ""), opcodeDocumentation(op, sigs))
         }
         return start to rows.sortedWith(compareBy({ it.text.length }, { it.text })).take(200)
     }
@@ -300,6 +300,18 @@ class CsoundExecution(val inside: Box) : BoxExecution {
     }
 
     companion object {
+        /**
+         * A completion row's detail: the manual's one-line description first, then libcsound's
+         * signatures, the manual's arguments and its page. Opcodes the manual does not describe show
+         * their signatures alone.
+         */
+        fun opcodeDocumentation(op: CsoundVocabulary.Opcode, signatures: List<String>): String = buildList {
+            op.description?.let { add(it) }
+            add(signatures.joinToString(";  "))
+            if (op.arguments.isNotEmpty()) add(op.arguments.take(4).joinToString(";  ") { "${it.name}: ${it.text.removeSuffix(".")}" })
+            op.page?.let { add(CsoundVocabulary.manualUrl(it)) }
+        }.joinToString("  ·  ")
+
         /** Flags that pick an audio or MIDI device or a file; Field's engine is the device. */
         val DEVICE_FLAGS = listOf("-o", "-i", "-+rtaudio", "-+rtmidi", "-M", "-Q", "-b", "-B", "--output", "--input", "-W", "-A", "-n", "-d")
 

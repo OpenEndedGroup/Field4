@@ -15,8 +15,12 @@ import kotlinx.serialization.json.Json
  * Nothing here is hand-typed. [generate] asks a running Csound for `csoundNewOpcodeList`, which
  * returns every opcode the library has compiled in — name, output types, input types — and
  * `./gradlew generateCsoundVocabulary` writes that to `src/commonMain/resources/csound-vocabulary.json`,
- * which is committed so the editor has it on a machine with no libcsound. `CsoundVocabularyTest`
+ * which is committed so the editor has it on a machine with no libcsound. `CsoundLanguageTest`
  * regenerates it in memory, when a libcsound is built, and fails if the committed file differs.
+ *
+ * The descriptions, syntax lines and arguments are joined on from the Csound Reference Manual's
+ * DocBook source, pinned to release 6.18.0 ([readManual], `tools/fetch_csound_manual.py`), under the
+ * manual's GNU Free Documentation License; see `csound-manual-COPYING.txt` beside the JSON.
  *
  * Csound's type letters are its own and are kept: `a` audio, `k` control, `i` init, `S` string,
  * `f` frequency-domain, `x` audio or control, `T` string or init, `U` init or control, `w`
@@ -29,11 +33,107 @@ object CsoundVocabulary {
     @Serializable
     data class Signature(val outypes: String, val intypes: String)
 
+    /** One argument as the manual describes it: its name and the first sentence about it. */
     @Serializable
-    data class Opcode(val name: String, val signatures: List<Signature>)
+    data class Argument(val name: String, val text: String)
+
+    /**
+     * An opcode: [name] and [signatures] from libcsound; [description], [syntax], [arguments] and
+     * [page] from the Csound Reference Manual, when it has an entry for the name.
+     */
+    @Serializable
+    data class Opcode(
+        val name: String,
+        val signatures: List<Signature>,
+        val description: String? = null,
+        val syntax: List<String> = emptyList(),
+        val arguments: List<Argument> = emptyList(),
+        val page: String? = null,
+    )
+
+    /** Where the descriptions came from, and under what terms they are shipped. */
+    @Serializable
+    data class ManualSource(val tag: String, val sha256: String, val licence: String, val described: Int, val undescribed: List<String>)
 
     @Serializable
-    data class Vocabulary(val csoundVersion: Int, val opcodes: List<Opcode>)
+    data class Vocabulary(val csoundVersion: Int, val opcodes: List<Opcode>, val manual: ManualSource? = null)
+
+    /** The manual release and checksum `tools/fetch_csound_manual.py` pins. */
+    const val MANUAL_TAG = "6.18.0"
+    const val MANUAL_SHA256 = "260be373a943b6b81b255317d3033275dfbee249aa7bcc83e009896c03283eb5"
+    const val MANUAL_LICENCE = "GNU Free Documentation License 1.2 or later; Csound Reference Manual, " +
+        "(c) 1986, 1992 MIT (Barry L. Vercoe) and its contributors. See csound-manual-COPYING.txt."
+
+    /** A manual page URL for an opcode with a [Opcode.page]. */
+    fun manualUrl(page: String): String = "https://csound.com/docs/manual/$page.html"
+
+    /** What the manual says about one name. */
+    data class ManualEntry(val page: String, val description: String?, val syntax: List<String>, val arguments: List<Argument>)
+
+    private fun clean(xml: String): String = xml
+        .replace(Regex("<[^>]+>"), "")
+        .replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&apos;", "'")
+        .replace("&ndash;", "–").replace("&mdash;", "—").replace("&nbsp;", " ").replace("&amp;", "&")
+        .replace(Regex("\\s+"), " ").trim()
+
+    private fun firstSentence(text: String, max: Int = 180): String {
+        val t = text.trim().removePrefix("--").removePrefix("–").removePrefix("-").trim()
+        val end = Regex("""\.(\s|$)""").find(t)?.range?.first?.let { it + 1 } ?: t.length
+        val s = t.substring(0, end).trim()
+        return if (s.length <= max) s else s.substring(0, max).trimEnd() + "…"
+    }
+
+    /**
+     * Read every refentry under `opcodes/` of the manual at [manualDir] into entries by refname.
+     * Pure text processing in sorted file order, so the same manual gives the same result.
+     */
+    fun readManual(manualDir: File): Map<String, ManualEntry> {
+        val out = java.util.TreeMap<String, ManualEntry>()
+        val secondary = java.util.TreeMap<String, ManualEntry>()
+        val files = File(manualDir, "opcodes").listFiles { f -> f.name.endsWith(".xml") }.orEmpty().sortedBy { it.name }
+        for (f in files) {
+            val xml = f.readText()
+            val id = Regex("""<refentry\s+id="([^"]+)"""").find(xml)?.groupValues?.get(1) ?: continue
+            val names = Regex("""<refname>(.*?)</refname>""", RegexOption.DOT_MATCHES_ALL).findAll(xml).map { clean(it.groupValues[1]) }.filter { it.isNotEmpty() }.toList()
+            val purpose = Regex("""<refpurpose>(.*?)</refpurpose>""", RegexOption.DOT_MATCHES_ALL).find(xml)?.let { clean(it.groupValues[1]) }?.takeIf { it.isNotEmpty() }
+            val syntax = Regex("""<synopsis>(.*?)</synopsis>""", RegexOption.DOT_MATCHES_ALL).findAll(xml).map { clean(it.groupValues[1]) }.filter { it.isNotEmpty() }.distinct().toList()
+            val args = ArrayList<Argument>()
+            val sections = Regex("""<refsect1>\s*<title>(Initialization|Performance)</title>(.*?)</refsect1>""", RegexOption.DOT_MATCHES_ALL).findAll(xml)
+            for (sec in sections) {
+                for (para in Regex("""<para>\s*<emphasis>([^<]+)</emphasis>(.*?)</para>""", RegexOption.DOT_MATCHES_ALL).findAll(sec.groupValues[2])) {
+                    val name = clean(para.groupValues[1])
+                    val rest = clean(para.groupValues[2])
+                    if (name.isEmpty() || name.contains(' ') || args.any { it.name == name }) continue
+                    // "-- text", or ", ifoo -- text" when several are described together.
+                    val text = rest.substringAfter("--", rest).substringAfter("–", rest.substringAfter("--", rest))
+                    val sentence = firstSentence(text)
+                    if (sentence.isNotEmpty()) args += Argument(name, sentence)
+                    if (args.size >= 8) break
+                }
+            }
+            val entry = ManualEntry(id, purpose, syntax.take(6), args)
+            for (n in names) out.putIfAbsent(n, entry)
+            // A page documents more names than its refname says: `chn` covers chn_k, chn_a and chn_S,
+            // and some pages carry a stale refname. The `<command>` of each syntax line is the name
+            // Csound users type; those are second-choice keys, after every page's refnames.
+            val commands = Regex("""<synopsis>.*?<command>([^<]+)</command>""", RegexOption.DOT_MATCHES_ALL)
+                .findAll(xml).map { clean(it.groupValues[1]) }.filter { it.isNotEmpty() }.distinct()
+            for (c in commands) secondary.putIfAbsent(c, entry.copy(syntax = syntax.filter { line -> Regex("(^|\\s)" + Regex.escape(c) + "(\\s|$)").containsMatchIn(line) }.ifEmpty { syntax }.take(6)))
+        }
+        for ((k, v) in secondary) out.putIfAbsent(k, v)
+        return out
+    }
+
+    /** [library] with the manual's text joined on by opcode name. */
+    fun describe(library: Vocabulary, manual: Map<String, ManualEntry>): Vocabulary {
+        val opcodes = library.opcodes.map { op ->
+            val m = manual[op.name] ?: return@map op
+            op.copy(description = m.description, syntax = m.syntax, arguments = m.arguments, page = m.page)
+        }
+        val undescribed = opcodes.filter { it.description == null }.map { it.name }
+        return Vocabulary(library.csoundVersion, opcodes,
+            ManualSource(MANUAL_TAG, MANUAL_SHA256, MANUAL_LICENCE, opcodes.size - undescribed.size, undescribed))
+    }
 
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
@@ -108,13 +208,27 @@ object CsoundVocabulary {
         return (if (outs.isEmpty()) "" else outs.joinToString(", ") + " ") + name + (if (ins.isEmpty()) "" else " " + ins.joinToString(", "))
     }
 
-    /** Write the generated vocabulary to [RESOURCE_PATH]: `./gradlew generateCsoundVocabulary`. */
+    /** The pinned manual's directory, fetched (checksummed, cached) by `tools/fetch_csound_manual.py`. */
+    fun fetchManual(): File {
+        val p = ProcessBuilder("python3", "tools/fetch_csound_manual.py").redirectError(ProcessBuilder.Redirect.INHERIT).start()
+        val out = p.inputStream.bufferedReader().readText().trim()
+        check(p.waitFor() == 0 && out.isNotEmpty()) { "tools/fetch_csound_manual.py failed" }
+        return File(out.lines().last())
+    }
+
+    /**
+     * Write the generated vocabulary to [RESOURCE_PATH]: `./gradlew generateCsoundVocabulary`.
+     * Names and signatures come from libcsound; descriptions from the pinned manual.
+     */
     @JvmStatic
     fun main(args: Array<String>) {
         val target = File(args.firstOrNull() ?: RESOURCE_PATH)
-        val v = generate()
+        val manualDir = args.getOrNull(1)?.let(::File) ?: fetchManual()
+        val v = describe(generate(), readManual(manualDir))
         target.writeText(toJson(v))
-        println("wrote ${v.opcodes.size} opcodes (${v.opcodes.sumOf { it.signatures.size }} signatures) from Csound ${v.csoundVersion} to $target")
+        File(manualDir, "copying.txt").copyTo(File(target.parentFile, "csound-manual-COPYING.txt"), overwrite = true)
+        println("wrote ${v.opcodes.size} opcodes (${v.opcodes.sumOf { it.signatures.size }} signatures) from Csound ${v.csoundVersion} " +
+            "to $target; ${v.manual!!.described} described from manual ${v.manual.tag}, ${v.manual.undescribed.size} not")
     }
 }
 

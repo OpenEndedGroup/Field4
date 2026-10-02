@@ -95,8 +95,10 @@ class CsoundLanguageTest {
         val (_, rows) = ex.completions(code, pos)!!
         val poscil = rows.firstOrNull { it.text == "poscil" }
         assertNotNull(poscil, "poscil is offered: ${rows.map { it.text }}")
-        assertEquals("aSig poscil aSig, aSig, [ij=-1], [io=0]", poscil.tail)
+        assertEquals("aSig poscil aSig, aSig, [ij=-1], [io=0]  —  High precision oscillator.", poscil.tail)
+        assertTrue(poscil.documentation.startsWith("High precision oscillator."), poscil.documentation)
         assertTrue(poscil.documentation.contains("kVal poscil kVal, kVal, [ij=-1], [io=0]"), poscil.documentation)
+        assertTrue(poscil.documentation.endsWith("https://csound.com/docs/manual/poscil.html"), poscil.documentation)
 
         val chan = csd.indexOf("chnget \"cutoff\"") + "chnget \"cu".length
         val (_, chans) = ex.completions(csd, chan)!!
@@ -135,8 +137,45 @@ class CsoundLanguageTest {
         val committed = CsoundVocabulary.committed
         assertTrue(committed.opcodes.size > 1000, "csound-vocabulary.json is missing or truncated: ${committed.opcodes.size}")
         if (!CsoundLibrary.isAvailable) return println("SKIPPED vocabulary drift: ${CsoundLibrary.describe()}")
+        // Keyed on the library's list: names and signatures must be exactly what libcsound says today.
         val generated = CsoundVocabulary.generate()
-        assertEquals(CsoundVocabulary.toJson(generated), File(CsoundVocabulary.RESOURCE_PATH).readText(),
+        assertEquals(generated.csoundVersion, committed.csoundVersion)
+        assertEquals(generated.opcodes.map { it.name to it.signatures }, committed.opcodes.map { it.name to it.signatures },
             "csound-vocabulary.json has drifted from libcsound; regenerate with ./gradlew generateCsoundVocabulary")
+        val manual = cachedManual() ?: return println("SKIPPED manual drift: the pinned manual is not in the download cache")
+        assertEquals(CsoundVocabulary.toJson(CsoundVocabulary.describe(generated, CsoundVocabulary.readManual(manual))),
+            File(CsoundVocabulary.RESOURCE_PATH).readText(), "the descriptions have drifted from manual ${CsoundVocabulary.MANUAL_TAG}")
+    }
+
+    private fun cachedManual(): File? {
+        val root = System.getenv("AFIELD_NATIVE_DOWNLOAD_CACHE")?.takeIf { it.isNotBlank() }?.let(::File)
+            ?: if (System.getProperty("os.name").lowercase().contains("mac")) File(System.getProperty("user.home"), "Library/Caches/Field4")
+            else File(System.getenv("XDG_CACHE_HOME") ?: (System.getProperty("user.home") + "/.cache"), "field4")
+        return File(root, "native-downloads/csound-manual/manual-${CsoundVocabulary.MANUAL_TAG}").takeIf { File(it, "opcodes").isDirectory }
+    }
+
+    @Test fun readingTheManualIsDeterministic() {
+        val manual = cachedManual() ?: return println("SKIPPED: the pinned manual is not in the download cache")
+        assertEquals(CsoundVocabulary.readManual(manual), CsoundVocabulary.readManual(manual))
+    }
+
+    @Test fun knownOpcodesCarryTheManualsDescriptionSyntaxAndArguments() {
+        val v = CsoundVocabulary.byName
+        val aftouch = v.getValue("aftouch")
+        assertEquals("Get the current after-touch value for this channel.", aftouch.description)
+        assertEquals(listOf("kaft aftouch [imin] [, imax]"), aftouch.syntax)
+        assertEquals(listOf("imin", "imax"), aftouch.arguments.map { it.name })
+        assertEquals("aftouch", aftouch.page)
+        assertEquals("High precision oscillator.", v.getValue("poscil").description)
+        assertTrue("ares poscil aamp, acps [, ifn, iphs]" in v.getValue("poscil").syntax)
+        val butterlp = v.getValue("butterlp")
+        assertEquals("A low-pass Butterworth filter.", butterlp.description)
+        assertTrue(butterlp.arguments.any { it.name == "kfreq" })
+        assertEquals("Declare a channel of the named software bus.", v.getValue("chn_k").description)
+        val m = CsoundVocabulary.committed.manual!!
+        assertEquals(CsoundVocabulary.MANUAL_TAG, m.tag)
+        assertTrue(m.licence.startsWith("GNU Free Documentation License"))
+        assertEquals(CsoundVocabulary.committed.opcodes.count { it.description == null }, m.undescribed.size)
+        assertTrue(File("src/commonMain/resources/csound-manual-COPYING.txt").readText().contains("GNU Free Documentation License"))
     }
 }

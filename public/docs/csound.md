@@ -84,7 +84,7 @@ Ctrl-Space offers Csound's opcodes, each with its signature in Csound's type let
 defaults. Inside a quoted string after `chnget`, `chnset`, `invalue` or `outvalue`, it offers the
 orchestra's channel names. In the score it offers instrument numbers and names.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/csound/completion.png" transcript="assets/transcripts/csound_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="csound-completion" alt="Field's completion popup in a Csound box at the prefix posc. The rows are poscil and poscil3, each with its signature underneath, aSig poscil aSig, aSig, [ij=-1], [io=0]; the panel beside them lists every signature poscil has, separated by semicolons, ending with the k-rate one."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".afield-suggest" screenshot="assets/csound/completion.png" transcript="assets/transcripts/csound_completion_setup.yaml" padding="6" wait="0" timeout="180" embed=true hidden=true name="csound-completion" alt="Field's completion popup in a Csound box at the prefix posc. The rows are poscil and poscil3, each with its signature and the manual's one-line description underneath: aSig poscil aSig, aSig, [ij=-1], [io=0] — High precision oscillator. The panel beside them repeats the description, lists every signature poscil has, its arguments as the manual describes them, and the link to its manual page."}
 ui.eval("window.localStorage.removeItem('field.suggest.recency.v1'); var s=document.createElement('style');s.textContent='.tick_text{display:none !important}';document.head.appendChild(s);return 'setup';")
 ui.openEditor("csound_completion")
 ui.pause(900)
@@ -102,11 +102,22 @@ ui.pause(1400)
 ```
 
 The opcode list is not written by hand. `./gradlew generateCsoundVocabulary` asks libcsound for
-every opcode it has compiled in (`csoundNewOpcodeList`) and writes
-`src/commonMain/resources/csound-vocabulary.json`: 1220 opcodes and 1906 signatures from Csound
-6.18.1. A test fails when that file no longer matches the library. The editor's highlighting reads
-the same file. Completion offers names and type letters only: libcsound carries no descriptions, so
-for what an opcode does, see [the Csound manual](https://csound.com/docs/manual/).
+every opcode it has compiled in (`csoundNewOpcodeList`): 1220 opcodes and 1906 signatures in Csound
+6.18.1. It then joins on the description, syntax lines and arguments from the Csound Reference
+Manual's DocBook source, release 6.18.0, downloaded and checksummed. The result is
+`src/commonMain/resources/csound-vocabulary.json`. The manual describes 1183 of the 1220 opcodes;
+the other 37 (`maxtab`, `tabmap`, `mp3sr` and the like, mostly deprecated or undocumented) show
+their signatures alone. A test fails when the names or signatures no longer match the library, and
+another when the descriptions no longer match the pinned manual. The editor's highlighting reads the
+same file.
+
+Hovering on an opcode in the editor shows its description and syntax, and links to its page in the
+manual, for example [`butterlp`](https://csound.com/docs/manual/butterlp.html).
+
+The descriptions are the Csound Reference Manual's: © 1986, 1992 Massachusetts Institute of
+Technology (Barry L. Vercoe) and the manual's contributors, distributed under the GNU Free
+Documentation License 1.2 or later. The licence and notice ship beside the vocabulary as
+`csound-manual-COPYING.txt`.
 
 ### Line notes
 
