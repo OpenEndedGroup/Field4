@@ -1,15 +1,12 @@
 # A RectSL scene on a light rig
 
 A RectSL scene is a picture that changes over time, and an LED matrix is a screen with very few
-pixels. This page connects the two, using four parts of Field that were not written with each other
-in mind. `RectSLImager` draws the scene on the CPU into an `Img`. `Patch.mapImage` colours 128 RGB
+pixels. This page plays a RectSL scene on a light rig. `RectSLImager` draws the scene on the CPU into an `Img`. `Patch.mapImage` colours 128 RGB
 pixels and four RGBWA washes from that image. `DmxOutput` sends the resulting universes as sACN to
 this machine, and `DmxInput` receives them. Then `Fixture.decode` turns the received bytes back into
 colours, laid out as the rig is, so they can be checked against the pixels the rig was given.
 
-Two links in that chain were missing and are new: `RectSLImager` (a scene at time *t* as an image)
-and `Fixture.decode` with `showReceived` (a received universe drawn in the room rather than in wire
-order). Everything else was already in Field.
+The box below draws one frame, lights the rig from it, sends it over sACN, and draws what came back.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_scene_to_light/chain.png" wait="10" capture="box" open-outputs="true" w="1180" h="620" padding="18" timeout="180" name="chain-scene-to-light-chain" embed=true alt="Three panels: the RectSL frame at one second, an orange square tilted on a navy wall with a thin white line and a blue band along the bottom; the 16 by 8 rig of discs lit from it, showing a blocky orange square, two columns of pale discs where the line straddles them, and four washes along the bottom; and the same rig lit by the universes that came back over sACN, indistinguishable from the one sent"}
 :::static
@@ -47,6 +44,7 @@ try {
 
 The first panel is the scene: an orange square that crosses the wall and turns, a line a quarter of
 a unit wide sweeping from left to right, and a blue band along the bottom that fades in and out.
+In RectSL it reads:
 
 ```diffstatic {data-lang=rectsl}
 #rectsl
@@ -87,8 +85,7 @@ fixture per unit, and the frame is drawn at 16 pixels per unit, so each fixture 
 `frame(t, width, height)` draws it with the CPU reference rasterizer that the RectSL study tools
 use. That rasterizer draws the background, blends the rectangles the way the GPU blends them into
 an 8-bit target, and runs StackSL materials through the StackSL interpreter. No window or graphics
-context is involved, so the lights keep running on a machine whose display is asleep, and this
-page can be built on one.
+context is involved, so the lights keep running on a machine whose display is asleep.
 
 ```diffstatic {data-lang=kotlin}
 val scene = RectSLImager(source)
@@ -102,7 +99,7 @@ stand for. The difference matters in two places. Averaging pixels is only right 
 LED's PWM output is linear in light. So a rig driven with linear frames at gamma 1 and a rig driven
 with as-typed frames through `FixtureProfile.withGamma(2.2)` come out at roughly the same
 brightness, but only the first gives a thin line the correct total energy when it is averaged into
-a fixture. The next sections show why that matters.
+a fixture, as the section on thin lines shows.
 
 ## What the wire does
 
@@ -150,8 +147,8 @@ ${timing.ticks} looks computed; ${timing.arrivalMillis.size + 1} frames of unive
 :::endfold
 ```
 
-No slot byte changes on the way. sACN over loopback is lossless, and that result is only interesting
-because it rules out the network code as a source of error. The remaining error is quantisation. An
+No slot byte changes on the way: sACN over loopback is lossless, so the network adds no error. What
+error remains is quantisation. An
 RGB pixel's colour is rounded to 8 bits once, so it comes back within half a level. A wash is
 further off because `writeInto` splits its colour into red, green, blue, white and amber, and
 rounds each of those separately. `decode` adds white back into all three primaries and amber into
@@ -219,12 +216,12 @@ Both rigs in the figure are coloured from linear light and drawn as it is, so th
 column is dim: each of those fixtures carries an eighth of a white one, the line's quarter split
 between two columns.
 
-Point sampling gives a strobe. The line lights a column of eight fixtures at full brightness while
+Point sampling makes the rig strobe. The line lights a column of eight fixtures at full brightness while
 it is over their sample points and disappears in between, so the rig flashes once per column. It
 also overshoots: at a peak, eight fixtures are fully lit by a line that covers a quarter of one
-column. Averaged over the whole sweep the strobe delivers about the right amount of light, so the
-fault is not how much light arrives but when. Area averaging instead puts the line's light onto the
-rig in the right amount wherever the line is. As the line crosses from one column to the next, the light moves between them without
+column. Averaged over the whole sweep the strobe delivers about the right amount of light, but at
+the wrong times. Area averaging puts the right amount of the line's light onto the rig wherever the
+line is, and as the line crosses from one column to the next, the light moves between them without
 flickering.
 
 That is why `SceneOnARig.Rig.show` shrinks the frame first:
@@ -255,27 +252,9 @@ that each sample point averages what its fixture ought to show.
 * [A RectSL Animation as a Solid](chain_rectsl_spacetime.md) is the neighbouring chain: the same
   language read as a volume over *(x, y, t)* instead of a sequence of frames.
 
-The demo document `public/docs/assets/chain_scene_to_light_demo/` runs the chain live: a sender box
-that animates the scene onto the rig, a receiver box that draws the rig from what arrives, and a box
-that repeats this page's measurements. Edit the scene in the first box and launch it again to see
-the change reach the second.
+!!! note "Why the line moves with `linear`"
 
-??? aside "Why the line moves with `linear`"
-
-    A quote in a channel, `'( 0=-8  4=8 ) ->x`, is a TCB track, so with two keys the line eases in
-    and out. The first version of this page used that, and the area-averaged route showed four
-    spikes of a quarter above the truth. They were not the rig: at four instants the eased line's
-    edges landed exactly on pixel centres, and the CPU rasterizer, which takes one sample per pixel
-    centre and counts a centre on an edge as inside, drew the four-pixel line five pixels wide.
-    With `linear` and these 121 frames an edge never lands on a centre. The rasterizer's edge rule
-    is a documented difference from the GPU's, and it was left alone.
-
-??? aside "What holds these numbers"
-
-    `SceneOnARigTest` runs the round trip, the per-profile decode floor, the aliasing sweep and two
-    seconds of timing on loopback ports away from 5568 and 6454, and holds each claim on this page to
-    a bound. It also sends the same rig over Art-Net with ArtSync and checks both universes arrive
-    byte for byte. It also takes the
-    datagrams off a bare socket and reads them at the E1.31 offsets by hand, rather than through
-    `Sacn.decodeData`, so the round trip is not only Field's decoder agreeing with Field's encoder.
-    The figures on this page are docs-runner captures, drawn by the code in their fences.
+    A quoted track such as `'( 0=-8  4=8 ) ->x` eases in and out by default. The CPU rasterizer
+    takes one sample per pixel centre and counts a centre exactly on an edge as inside, so an eased
+    edge that lands on a centre draws a line one pixel wider than it is. `linear` keeps the edges
+    off the centres in this scene.
