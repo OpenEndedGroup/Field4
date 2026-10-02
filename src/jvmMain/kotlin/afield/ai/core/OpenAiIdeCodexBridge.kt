@@ -473,7 +473,7 @@ class OpenAiIdeCodexBridge(
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",
-                        body = if (toolFailed) toolResultSummary else "",
+                        body = afield.ai.core.program.nestedTraceMarkdown(toolResult) ?: if (toolFailed) toolResultSummary else "",
                         phase = "tool_result"
                     )
                 )

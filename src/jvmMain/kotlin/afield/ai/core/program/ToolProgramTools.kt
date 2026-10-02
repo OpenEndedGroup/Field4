@@ -195,3 +195,25 @@ internal fun nestedToolIoEvents(round: Int, parentCallId: String, result: Any): 
             ),
         )
     }
+
+/**
+ * A program's calls as the body of its "finished" line in the chat panel — Pi's nested call trace, in the
+ * place Field already shows tool progress: one line per call with its time and outcome, then how it ended.
+ * Null for a result that is not a program, so other tools keep their own body.
+ */
+internal fun nestedTraceMarkdown(result: Any): String? {
+    val program = result as? RunToolProgramResult ?: return null
+    return buildString {
+        program.calls.forEach { call ->
+            val args = call.args.replace("\n", " ").take(80)
+            append(if (call.ok) "✓ " else "✗ ").append(call.tool.removeSuffix("Request")).append(' ').append(args)
+            append(" — ").append(call.elapsedMs).append(" ms")
+            if (!call.ok && call.error != null) append(" — ").append(call.error.take(120))
+            append('\n')
+        }
+        if (program.totalCalls > program.calls.size) append("… ").append(program.totalCalls - program.calls.size).append(" more\n")
+        append("program ").append(program.stage).append(": ").append(program.totalCalls).append(" call(s), ")
+            .append(program.failedCalls).append(" failed, ").append(program.elapsedMs).append(" ms")
+        if (program.message.isNotBlank()) append(" — ").append(program.message.take(200))
+    }
+}

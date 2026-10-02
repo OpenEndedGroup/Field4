@@ -114,7 +114,8 @@ class ScriptedLlmBridge(
                         step.tool, "scripted-$rounds", args, json.take(300), json, elapsedMs = elapsedMs
                     )
                     transcript += afield.ai.core.program.nestedTranscriptEntries("scripted-$rounds", result)
-                    onProgress?.invoke(LlmProgressUpdate("${step.tool} finished", json.take(300), phase = "tool_result"))
+                    onProgress?.invoke(LlmProgressUpdate("${step.tool} finished",
+                        afield.ai.core.program.nestedTraceMarkdown(result) ?: json.take(300), phase = "tool_result"))
                 }
             }
         }

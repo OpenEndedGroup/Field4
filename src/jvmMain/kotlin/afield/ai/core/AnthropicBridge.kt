@@ -249,7 +249,7 @@ class AnthropicBridge(
                     "elapsedMs" to toolMs, "result" to resultJson,
                     "imageCount" to ((result as? CarriesToolImages)?.toolImages?.size ?: 0)))
                 afield.ai.core.program.nestedToolIoEvents(rounds + 1, use.id(), result).forEach { (event, fields) -> toolIo(event, fields) }
-                onProgress?.invoke(LlmProgressUpdate("$name finished ($toolMs ms)", summary))
+                onProgress?.invoke(LlmProgressUpdate("$name finished ($toolMs ms)", afield.ai.core.program.nestedTraceMarkdown(result) ?: summary))
 
                 if (name == Commentary::class.java.simpleName) {
                     runCatching { aiToolMapper.readValue(argsJson.ifBlank { "{}" }, Commentary::class.java).text }
