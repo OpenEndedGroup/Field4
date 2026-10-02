@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 171 transcripts on every build, at three
-depths. 90 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 174 transcripts on every build, at three
+depths. 93 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -444,6 +444,39 @@ Every box redraws on a clock, 30 times a second at most, rather than on every fr
 loop runs thousands of frames a second and drawing each one floods the output.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/frames_lifecycle/metadata.edn)
+
+### three_inspector_wall
+
+**The three.js output as an instrument.** One box draws a wall detail, four skins and five conduit
+runs, with the three controls `threeInspect` adds to the viewer's toolbar: a ruler that measures the
+closest approach between two things you click, a section plane, and an explode slider. It is the
+complete example from [Drawing with FLines](fline_examples.md), the same code that page captures.
+
+![The three-inspector demo document, opened](assets/three_inspector_demo/opened.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/three_inspector_wall/metadata.edn)
+
+### fline_hit_records
+
+**What a click on a figure returns.** A wall of panels drawn through `Box.inspect`. Click a panel and
+the output names it, says whether you hit its face, an edge or a corner, and where on it, in the
+wall's own coordinates. Click the amber ridge line and you get its position along its length. Every
+hit is also printed, so the box's text output becomes a log of what you clicked. From the hit-record
+section of [Drawing with FLines](fline_examples.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fline_hit_records/metadata.edn)
+
+### sound_render_path
+
+**One beat, three ways of sounding it.** The companion to the real-drums section of
+[Sound: the Pattern → Audio Path](sound.md). Box 0 draws the beat as a piano roll. Box 1 plays it
+through the synth stand-in and box 2 through the Dirt samples: play them back to back. Box 3 shows
+the per-event fallback, where a sample name the library does not have is voiced by the synth and
+mixed in with the rest. Box 4 reports where Field looked for the sample library and what it found.
+
+![Piano roll of a kick-and-snare lane over an eight-hat lane, two cycles](assets/sound_render_path/the-beat-roll.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/sound_render_path/metadata.edn)
 
 ### pitch_transcription_roundtrip
 

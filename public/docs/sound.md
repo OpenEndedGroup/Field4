@@ -220,9 +220,8 @@ If you want to be sure, force it:
 FIELD_DIRT_SAMPLES=/path/to/Dirt-Samples ./field.sh
 ```
 
-A loadable Field document with all of this side by side is committed at
-`public/docs/assets/sound_render_path/`. Open `public/docs/assets` as the workspace and
-`sound_render_path` as the document, then play box 1 and box 2 back to back.
+The [`sound_render_path`](agent_transcripts.md#sound_render_path) starting point has all of this
+side by side. Open it from the welcome screen, then play box 1 and box 2 back to back.
 
 ---
 

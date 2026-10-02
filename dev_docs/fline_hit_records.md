@@ -164,8 +164,8 @@ hover, and a card naming whatever is clicked — `panel 1,2 · face 0 · u 0.497
 180.466, 109.885)`. `FLineIntersection.describe()` is that one line; pass `describe =` to say something
 domain-specific instead. Any `onClick` a line already had still runs.
 
-**The demo.** `public/docs/assets/fline_hit_records_demo/metadata.edn` — one box, loads into a fresh
-document. Run it, then click a panel: the *inspect — what you clicked* output names that panel, whether
+**The demo.** The `fline_hit_records` starting point (`dev_docs/agents/transcripts/fline_hit_records.yaml`)
+is one box. Run it, then click a panel: the *inspect — what you clicked* output names that panel, whether
 you hit its face, one of its edges or a corner, and where on it, in the wall's own coordinates with `z`
 the distance along the wall. Hovering highlights the panel under the pointer. Clicking the amber ridge
 line names that instead, with `u` along its length.

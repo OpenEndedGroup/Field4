@@ -181,6 +181,15 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   samples so the two estimators are always compared at the same budget. Needs a GPU.
 - `path_tracing_medium.yaml`: **shafts of light through haze**, with `mediumDensity` cycling through
   four values over fixed geometry. Needs a GPU.
+- `three_inspector_wall.yaml`: **the three.js output as an instrument** — ruler, section plane and
+  explode slider on a wall detail. Its code is `fline_examples.md`'s captured fence, held equal by
+  `ThreeInspectorDemoDriftTest` against the materialized sidecar. Promoted from
+  `public/docs/assets/three_inspector_demo/metadata.edn` on 2026-10-02.
+- `fline_hit_records.yaml`: **what a click on a figure returns** — `Box.inspect` on a wall of panels.
+  Promoted from `public/docs/assets/fline_hit_records_demo/` on 2026-10-02.
+- `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
+  samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
+  `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
