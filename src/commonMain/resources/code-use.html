@@ -486,7 +486,9 @@
         connected: false,
         pendingCallback: "",
         reconnectTimer: 0,
-        turnCount: 0
+        turnCount: 0,
+        historyShown: false,
+        historyCallback: ""
     };
 
     const escapeHtml = (value) => String(value ?? "")
@@ -827,6 +829,12 @@
         ws.addEventListener("open", () => {
             chatState.connected = true;
             setChatStatus("connected");
+            if (!chatState.historyShown) {
+                // The saved document chat (<document>/ai4_document_chat.md), once per page load.
+                chatState.historyShown = true;
+                chatState.historyCallback = `code_use_chat_history_${Date.now()}`;
+                ws.send(JSON.stringify({ name: "chat_history", uid: chatState.historyCallback, replyTo: chatState.historyCallback, payload: {} }));
+            }
         });
         ws.addEventListener("close", () => {
             chatState.connected = false;
@@ -848,6 +856,15 @@
                 message = JSON.parse(event.data);
             } catch (error) {
                 console.warn("Ignoring non-JSON chat websocket message", error);
+                return;
+            }
+            if (chatState.historyCallback && (message.name === chatState.historyCallback || message.replyTo === chatState.historyCallback)) {
+                chatState.historyCallback = "";
+                const saved = String((message.payload || {}).markdown || "");
+                for (const block of saved.split(/^<<(?=you>>|ai>>)/m)) {
+                    const match = block.match(/^(you|ai)>>\n([\s\S]*)$/);
+                    if (match && match[2].trim()) appendChatTurn(match[1] === "you" ? "You" : "AI4", match[2].trim());
+                }
                 return;
             }
             const matchesPending = !chatState.pendingCallback ||

@@ -2271,6 +2271,15 @@ fun installAi4() {
         Handled.yes
     })
     
+    // The saved document chat, for the page to show what came before (DocumentChatStore).
+    handlers["chat_history"] = mutableSetOf({ _, reply ->
+        val markdown = DocumentChatStore.read(currentSessionInfoOrNull())
+        reply(Message("chat_history").payload(kotlinx.serialization.json.buildJsonObject {
+            put("markdown", kotlinx.serialization.json.JsonPrimitive(markdown))
+        }))
+        Handled.yes
+    })
+
     handlers["chat_input"] = mutableSetOf({ message, reply ->
         invalidateBridgesAfterSettingsChange()
         val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
@@ -2285,7 +2294,8 @@ fun installAi4() {
         val chatDocPath = chatSession?.filename.orEmpty()
         val documentGuides = chatSession?.let { DocumentGuideTools.forSession(it) }
         val fileKey = "chat:$chatDocPath"
-        val state = chatThreadFor(fileKey, "")
+        // A fresh thread (after a restart, or a settings change) is seeded from the saved document chat.
+        val state = chatThreadFor(fileKey, "", history = DocumentChatStore.read(chatSession))
         val agentMemory = agentMemoryByKey.computeIfAbsent(fileKey) { AgentMemoryState() }
         
         ai4Scope.launch {
@@ -2514,6 +2524,7 @@ fun installAi4() {
                 )
 
                 chatThreadByKey[fileKey] = result.threadState
+                DocumentChatStore.appendTurn(chatSession, input.value, result.text)
                 
                 // Format response with markdown
                 val responseWithChecklist = buildString {
