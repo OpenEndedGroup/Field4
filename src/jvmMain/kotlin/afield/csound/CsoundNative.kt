@@ -108,6 +108,7 @@ internal object CsoundNative {
     private val destroyH by lazy { handle("csoundDestroy", v(ADDRESS)) }
     private val getVersionH by lazy { handle("csoundGetVersion", i()) }
     private val setOptionH by lazy { handle("csoundSetOption", i(ADDRESS, ADDRESS)) }
+    private val compileCsdTextH by lazy { handle("csoundCompileCsdText", i(ADDRESS, ADDRESS)) }
     private val compileOrcH by lazy { handle("csoundCompileOrc", i(ADDRESS, ADDRESS)) }
     private val readScoreH by lazy { handle("csoundReadScore", i(ADDRESS, ADDRESS)) }
     private val inputMessageH by lazy { handle("csoundInputMessage", v(ADDRESS, ADDRESS)) }
@@ -131,6 +132,44 @@ internal object CsoundNative {
     private val getMessageCntH by lazy { handle("csoundGetMessageCnt", i(ADDRESS)) }
     private val destroyMessageBufferH by lazy { handle("csoundDestroyMessageBuffer", v(ADDRESS)) }
     private val getTableH by lazy { handle("csoundGetTable", i(ADDRESS, ADDRESS, JAVA_INT)) }
+    private val tableLengthH by lazy { handle("csoundTableLength", i(ADDRESS, JAVA_INT)) }
+    private val tableCopyInH by lazy { handle("csoundTableCopyIn", v(ADDRESS, JAVA_INT, ADDRESS)) }
+    private val setStringChannelH by lazy { handle("csoundSetStringChannel", v(ADDRESS, ADDRESS, ADDRESS)) }
+    private val getStringChannelH by lazy { handle("csoundGetStringChannel", v(ADDRESS, ADDRESS, ADDRESS)) }
+    private val getChannelDatasizeH by lazy { handle("csoundGetChannelDatasize", i(ADDRESS, ADDRESS)) }
+    private val setAudioChannelH by lazy { handle("csoundSetAudioChannel", v(ADDRESS, ADDRESS, ADDRESS)) }
+    private val getAudioChannelH by lazy { handle("csoundGetAudioChannel", v(ADDRESS, ADDRESS, ADDRESS)) }
+    private val getChannelPtrH by lazy { handle("csoundGetChannelPtr", i(ADDRESS, ADDRESS, ADDRESS, JAVA_INT)) }
+    private val getControlChannelHintsH by lazy { handle("csoundGetControlChannelHints", i(ADDRESS, ADDRESS, ADDRESS)) }
+    private val setOutputChannelCallbackH by lazy { handle("csoundSetOutputChannelCallback", v(ADDRESS, ADDRESS)) }
+    private val setInputChannelCallbackH by lazy { handle("csoundSetInputChannelCallback", v(ADDRESS, ADDRESS)) }
+    private val newOpcodeListH by lazy { handle("csoundNewOpcodeList", i(ADDRESS, ADDRESS)) }
+    private val disposeOpcodeListH by lazy { handle("csoundDisposeOpcodeList", v(ADDRESS, ADDRESS)) }
+    private val setHostImplementedMIDIIOH by lazy { handle("csoundSetHostImplementedMIDIIO", v(ADDRESS, JAVA_INT)) }
+    private val setExternalMidiInOpenCallbackH by lazy { handle("csoundSetExternalMidiInOpenCallback", v(ADDRESS, ADDRESS)) }
+    private val setExternalMidiReadCallbackH by lazy { handle("csoundSetExternalMidiReadCallback", v(ADDRESS, ADDRESS)) }
+    private val setExternalMidiInCloseCallbackH by lazy { handle("csoundSetExternalMidiInCloseCallback", v(ADDRESS, ADDRESS)) }
+
+    /** `channelCallback_t`: `(CSOUND*, const char* name, void* value, const void* type)`. */
+    val CHANNEL_CALLBACK: FunctionDescriptor = v(ADDRESS, ADDRESS, ADDRESS, ADDRESS)
+
+    /** `int (*)(CSOUND*, void** userData, const char* devName)`. */
+    val MIDI_OPEN: FunctionDescriptor = i(ADDRESS, ADDRESS, ADDRESS)
+
+    /** `int (*)(CSOUND*, void* userData, unsigned char* buf, int nBytes)`. */
+    val MIDI_READ: FunctionDescriptor = i(ADDRESS, ADDRESS, ADDRESS, JAVA_INT)
+
+    /** `int (*)(CSOUND*, void* userData)`. */
+    val MIDI_CLOSE: FunctionDescriptor = i(ADDRESS, ADDRESS)
+
+    /** `CSOUND_CONTROL_CHANNEL`, `CSOUND_AUDIO_CHANNEL`, `CSOUND_STRING_CHANNEL`, `CSOUND_INPUT_CHANNEL`, `CSOUND_OUTPUT_CHANNEL`. */
+    const val CONTROL_CHANNEL = 1
+    const val AUDIO_CHANNEL = 2
+    const val STRING_CHANNEL = 3
+    const val INPUT_CHANNEL = 16
+    const val OUTPUT_CHANNEL = 32
+
+    fun linker(): Linker = linker
 
     private var initialised = false
 
@@ -154,6 +193,7 @@ internal object CsoundNative {
     fun destroy(cs: MemorySegment) { destroyH.invokeExact(cs) }
     fun version(): Int = getVersionH.invokeExact() as Int
     fun setOption(cs: MemorySegment, option: MemorySegment): Int = setOptionH.invokeExact(cs, option) as Int
+    fun compileCsdText(cs: MemorySegment, csd: MemorySegment): Int = compileCsdTextH.invokeExact(cs, csd) as Int
     fun compileOrc(cs: MemorySegment, orc: MemorySegment): Int = compileOrcH.invokeExact(cs, orc) as Int
     fun readScore(cs: MemorySegment, sco: MemorySegment): Int = readScoreH.invokeExact(cs, sco) as Int
     fun inputMessage(cs: MemorySegment, line: MemorySegment) { inputMessageH.invokeExact(cs, line) }
@@ -180,6 +220,25 @@ internal object CsoundNative {
     fun messageCount(cs: MemorySegment): Int = getMessageCntH.invokeExact(cs) as Int
     fun destroyMessageBuffer(cs: MemorySegment) { destroyMessageBufferH.invokeExact(cs) }
     fun getTable(cs: MemorySegment, out: MemorySegment, number: Int): Int = getTableH.invokeExact(cs, out, number) as Int
+    fun tableLength(cs: MemorySegment, number: Int): Int = tableLengthH.invokeExact(cs, number) as Int
+    fun tableCopyIn(cs: MemorySegment, number: Int, src: MemorySegment) { tableCopyInH.invokeExact(cs, number, src) }
+    fun setStringChannel(cs: MemorySegment, name: MemorySegment, value: MemorySegment) { setStringChannelH.invokeExact(cs, name, value) }
+    fun getStringChannel(cs: MemorySegment, name: MemorySegment, out: MemorySegment) { getStringChannelH.invokeExact(cs, name, out) }
+    fun channelDatasize(cs: MemorySegment, name: MemorySegment): Int = getChannelDatasizeH.invokeExact(cs, name) as Int
+    fun setAudioChannel(cs: MemorySegment, name: MemorySegment, samples: MemorySegment) { setAudioChannelH.invokeExact(cs, name, samples) }
+    fun getAudioChannel(cs: MemorySegment, name: MemorySegment, samples: MemorySegment) { getAudioChannelH.invokeExact(cs, name, samples) }
+    fun channelPtr(cs: MemorySegment, out: MemorySegment, name: MemorySegment, type: Int): Int =
+        getChannelPtrH.invokeExact(cs, out, name, type) as Int
+    fun controlChannelHints(cs: MemorySegment, name: MemorySegment, hints: MemorySegment): Int =
+        getControlChannelHintsH.invokeExact(cs, name, hints) as Int
+    fun setOutputChannelCallback(cs: MemorySegment, cb: MemorySegment) { setOutputChannelCallbackH.invokeExact(cs, cb) }
+    fun setInputChannelCallback(cs: MemorySegment, cb: MemorySegment) { setInputChannelCallbackH.invokeExact(cs, cb) }
+    fun newOpcodeList(cs: MemorySegment, out: MemorySegment): Int = newOpcodeListH.invokeExact(cs, out) as Int
+    fun disposeOpcodeList(cs: MemorySegment, list: MemorySegment) { disposeOpcodeListH.invokeExact(cs, list) }
+    fun setHostImplementedMIDIIO(cs: MemorySegment, on: Int) { setHostImplementedMIDIIOH.invokeExact(cs, on) }
+    fun setMidiInOpen(cs: MemorySegment, cb: MemorySegment) { setExternalMidiInOpenCallbackH.invokeExact(cs, cb) }
+    fun setMidiRead(cs: MemorySegment, cb: MemorySegment) { setExternalMidiReadCallbackH.invokeExact(cs, cb) }
+    fun setMidiInClose(cs: MemorySegment, cb: MemorySegment) { setExternalMidiInCloseCallbackH.invokeExact(cs, cb) }
 
     fun cString(s: MemorySegment): String =
         if (s == MemorySegment.NULL) "" else s.reinterpret(Long.MAX_VALUE).getString(0)

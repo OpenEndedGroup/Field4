@@ -127,7 +127,12 @@ def main() -> int:
         shutil.rmtree(build)
 
     source = fetch(native_download_cache("csound"))
-    defines = {"CMAKE_BUILD_TYPE": "Release", "USE_DOUBLE": "ON", **{k: "OFF" for k in OFF}}
+    # No -ffast-math. Csound marks a named instrument's p1 (`i "Filter" 0 z`) with a NaN, and under
+    # fast-math clang assumes NaNs cannot happen: every named-instrument event is then "instr 0
+    # undefined". Csound's CMake adds the flag when the compiler takes it; presetting the probe's
+    # cache result is how to say no.
+    defines = {"CMAKE_BUILD_TYPE": "Release", "USE_DOUBLE": "ON", "HAS_FAST_MATH": "OFF",
+               "HAS_CXX_FAST_MATH": "OFF", **{k: "OFF" for k in OFF}}
     run(["cmake", "-S", str(source), "-B", str(build), "-Wno-dev"] +
         [f"-D{key}={value}" for key, value in defines.items()], "configure")
     run(["cmake", "--build", str(build), "--target", target_name(), "--parallel", str(args.jobs)], "build")

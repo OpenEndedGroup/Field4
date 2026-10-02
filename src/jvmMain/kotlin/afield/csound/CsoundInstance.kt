@@ -74,6 +74,24 @@ class CsoundInstance(
     private val log = ArrayDeque<String>()
     private val channelNames = java.util.concurrent.ConcurrentHashMap<String, MemorySegment>()
 
+    // ---- the data plane's shared state ---------------------------------------------------------
+    // outvalue: written on the rendering thread by the upcall, coalesced per name, delivered by poll.
+    private val outvalues = java.util.concurrent.ConcurrentHashMap<String, Any>()
+    private val outvalueStrings = ConcurrentLinkedQueue<Pair<String, String>>()
+    private val lastOutString = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val delivered = HashMap<String, Any>()
+    private val outvalueListeners = java.util.concurrent.ConcurrentHashMap<String, CopyOnWriteArrayList<(Any) -> Unit>>()
+    // invalue: what Kotlin has set; read by the upcall on the rendering thread.
+    private val invalues = java.util.concurrent.ConcurrentHashMap<String, Double>()
+    // MIDI bytes queued by Kotlin, read by Csound's host MIDI callback on the rendering thread.
+    private val midiIn = ConcurrentLinkedQueue<ByteArray>()
+    // a-rate channels: inputs are filled from Field signals per block, outputs captured per block.
+    private val audioInputs = java.util.concurrent.ConcurrentHashMap<String, AudioFifo>()
+    private val audioOutputs = java.util.concurrent.ConcurrentHashMap<String, AudioFifo>()
+    private val audioScratch: MemorySegment
+    private val spinL = AudioFifo(1 shl 15)
+    private val spinR = AudioFifo(1 shl 15)
+
     private val spout: MemorySegment
     private val spin: MemorySegment
     private val zeroDbfs: Double
@@ -102,20 +120,27 @@ class CsoundInstance(
         cs = CsoundNative.create()
         check(cs != MemorySegment.NULL) { "csoundCreate failed" }
         CsoundNative.createMessageBuffer(cs)
+        audioScratch = arena.allocate(8L * ksmps)
+        installCallbacks()
         val all = listOf(
-            "-n", "-d", "-m0",
+            "-n", "-d", "-m0", "-+rtmidi=hostbased", "-M0",
             "--sample-rate=$sampleRate", "--ksmps=$ksmps", "--nchnls=$outputs",
             "--nchnls_i=${maxOf(inputs, 1)}", "--0dbfs=1",
         ) + options
         val compileProblems: List<Problem>
         Arena.ofConfined().use { a ->
             for (o in all) CsoundNative.setOption(cs, a.allocateFrom(o))
-            val orcStatus = CsoundNative.compileOrc(cs, a.allocateFrom(normalise(orchestra)))
-            val sco = normalise(score)
-            val scoStatus = if (orcStatus == 0 && sco.isNotBlank()) CsoundNative.readScore(cs, a.allocateFrom(sco)) else 0
-            val startStatus = if (orcStatus == 0 && scoStatus == 0) CsoundNative.start(cs) else 0
+            // Orchestra and score go in together as CSD text, the way a .csd file does: that is the
+            // path on which a named instrument (`i "Filter" 0 z`) is known to the score, and on which
+            // the score ends performance when it ends. The two tag lines before the orchestra are why
+            // CSD_ORC_LINE is subtracted from the line numbers Csound reports.
+            val csd = "<CsoundSynthesizer>\n<CsInstruments>\n" + normalise(orchestra) + "</CsInstruments>\n<CsScore>\n" +
+                normalise(score) + "</CsScore>\n</CsoundSynthesizer>\n"
+            val orcStatus = CsoundNative.compileCsdText(cs, a.allocateFrom(csd))
+            val scoStatus = 0
+            val startStatus = if (orcStatus == 0) CsoundNative.start(cs) else 0
             val printed = drainMessages()
-            compileProblems = problemsIn(printed)
+            compileProblems = problemsIn(printed).map { if (it.line > CSD_ORC_LINE) it.copy(line = it.line - CSD_ORC_LINE) else it }
             if (orcStatus != 0 || scoStatus != 0 || startStatus != 0) {
                 CsoundNative.destroyMessageBuffer(cs)
                 CsoundNative.destroy(cs)
@@ -135,6 +160,76 @@ class CsoundInstance(
         zeroDbfs = CsoundNative.zeroDbfs(cs)
         pendingL = FloatArray(ksmps)
         pendingR = FloatArray(ksmps)
+        repeat(ksmps) { spinL.push(0f); spinR.push(0f) }
+    }
+
+    // ---- upcalls: these run on the rendering thread, inside Csound. They may only read and queue —
+    // and must not throw, because an exception unwinding through an FFM upcall takes the VM down.
+
+    private fun typeName(type: MemorySegment): String =
+        if (type == MemorySegment.NULL) "k"
+        else CsoundNative.cString(type.reinterpret(8).get(ADDRESS, 0))
+
+    @Suppress("unused")
+    private fun onOutputChannel(csound: MemorySegment, name: MemorySegment, value: MemorySegment, type: MemorySegment) {
+        try {
+            val n = CsoundNative.cString(name)
+            if (typeName(type) == "S") {
+                val str = CsoundNative.cString(value)
+                if (lastOutString.put(n, str) != str) outvalueStrings += n to str
+            } else {
+                outvalues[n] = value.reinterpret(8).get(JAVA_DOUBLE, 0)
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
+    @Suppress("unused")
+    private fun onInputChannel(csound: MemorySegment, name: MemorySegment, value: MemorySegment, type: MemorySegment) {
+        try {
+            if (typeName(type) == "S") return   // the string buffer's size is not passed; see setInvalue
+            val v = invalues[CsoundNative.cString(name)] ?: return
+            value.reinterpret(8).set(JAVA_DOUBLE, 0, v)
+        } catch (_: Throwable) {
+        }
+    }
+
+    @Suppress("unused")
+    private fun onMidiOpen(csound: MemorySegment, userData: MemorySegment, dev: MemorySegment): Int = 0
+
+    @Suppress("unused")
+    private fun onMidiClose(csound: MemorySegment, userData: MemorySegment): Int = 0
+
+    @Suppress("unused")
+    private fun onMidiRead(csound: MemorySegment, userData: MemorySegment, buf: MemorySegment, n: Int): Int {
+        return try {
+            val out = buf.reinterpret(n.toLong())
+            var at = 0
+            while (true) {
+                val next = midiIn.peek() ?: break
+                if (at + next.size > n) break
+                midiIn.poll()
+                for (b in next) out.set(java.lang.foreign.ValueLayout.JAVA_BYTE, (at++).toLong(), b)
+            }
+            at
+        } catch (_: Throwable) {
+            0
+        }
+    }
+
+    private fun installCallbacks() {
+        val lookup = java.lang.invoke.MethodHandles.lookup()
+        val linker = CsoundNative.linker()
+        fun stub(name: String, d: java.lang.foreign.FunctionDescriptor): MemorySegment {
+            val type = d.toMethodType()
+            return linker.upcallStub(lookup.findVirtual(CsoundInstance::class.java, name, type).bindTo(this), d, arena)
+        }
+        CsoundNative.setOutputChannelCallback(cs, stub("onOutputChannel", CsoundNative.CHANNEL_CALLBACK))
+        CsoundNative.setInputChannelCallback(cs, stub("onInputChannel", CsoundNative.CHANNEL_CALLBACK))
+        CsoundNative.setHostImplementedMIDIIO(cs, 1)
+        CsoundNative.setMidiInOpen(cs, stub("onMidiOpen", CsoundNative.MIDI_OPEN))
+        CsoundNative.setMidiRead(cs, stub("onMidiRead", CsoundNative.MIDI_READ))
+        CsoundNative.setMidiInClose(cs, stub("onMidiClose", CsoundNative.MIDI_CLOSE))
     }
 
     /** Csound's version as a number: 6181 is 6.18.1. */
@@ -177,6 +272,195 @@ class CsoundInstance(
             val err = a.allocate(JAVA_INT)
             return CsoundNative.getControlChannel(cs, channelName(name), err)
         }
+    }
+
+    /** Write string channel [name]; `chnget "name"` into an S variable sees it. Any thread. */
+    fun setStringChannel(name: String, value: String) {
+        check(!closed) { "this CsoundInstance is closed" }
+        Arena.ofConfined().use { a -> CsoundNative.setStringChannel(cs, channelName(name), a.allocateFrom(value)) }
+    }
+
+    /** Read string channel [name], as `chnset Sval, "name"` last left it. "" for an unknown channel. */
+    fun stringChannel(name: String): String {
+        if (closed) return ""
+        val n = channelName(name)
+        val size = CsoundNative.channelDatasize(cs, n)
+        if (size <= 0) return ""
+        Arena.ofConfined().use { a ->
+            val buf = a.allocate((size + 1).toLong())
+            CsoundNative.getStringChannel(cs, n, buf)
+            return buf.getString(0)
+        }
+    }
+
+    /**
+     * The value `invalue "name"` reads, at k-rate, on the rendering thread. Any thread may set it.
+     * Numbers only: Csound does not tell the host how large an `invalue` string buffer is, so strings
+     * go through [setStringChannel] and `chnget`.
+     */
+    fun setInvalue(name: String, value: Number) {
+        invalues[name] = value.toDouble()
+    }
+
+    /**
+     * Call [callback] when the orchestra's `outvalue "name", …` sends something: a [Double] for a
+     * k-rate value, a [String] for an S value. Delivered by [poll] on the polling thread. A k-rate
+     * `outvalue` runs every control cycle; the callback is called once per poll, and only when the
+     * value changed. A string is delivered every time it changes.
+     */
+    fun onOutvalue(name: String, callback: (Any) -> Unit): Closeable {
+        val list = outvalueListeners.computeIfAbsent(name) { CopyOnWriteArrayList() }
+        list += callback
+        return Closeable { list -= callback }
+    }
+
+    /** The last value `outvalue "name"` sent, or null. Any thread. */
+    fun outvalue(name: String): Any? = outvalues[name] ?: lastOutString[name]
+
+    /** The length of function table [number], or -1 when there is none. */
+    fun tableLength(number: Int): Int = lock.withLock {
+        check(!closed) { "this CsoundInstance is closed" }
+        CsoundNative.tableLength(cs, number)
+    }
+
+    /**
+     * Copy [values] into function table [number] (`csoundTableCopyIn`), under the perform lock, so the
+     * next block reads the new contents. The table keeps its length; [values] must have exactly that many.
+     */
+    fun writeTable(number: Int, values: DoubleArray) {
+        lock.withLock {
+            check(!closed) { "this CsoundInstance is closed" }
+            val n = CsoundNative.tableLength(cs, number)
+            require(n >= 0) { "Csound has no table $number" }
+            require(values.size == n) { "table $number has $n values; got ${values.size}" }
+            Arena.ofConfined().use { a -> CsoundNative.tableCopyIn(cs, number, a.allocateFrom(JAVA_DOUBLE, *values)) }
+        }
+    }
+
+    /** [writeTable] from floats. */
+    fun writeTable(number: Int, values: FloatArray) = writeTable(number, DoubleArray(values.size) { values[it].toDouble() })
+
+    /** The [ControlHints] `chn_k` declared for channel [name], or null when it declared none. */
+    fun hints(name: String): ControlHints? = lock.withLock {
+        if (closed) return null
+        Arena.ofConfined().use { a ->
+            // controlChannelHints_t: int behav; MYFLT dflt, min, max; int x, y, width, height; char *attributes
+            val h = a.allocate(64)
+            if (CsoundNative.controlChannelHints(cs, channelName(name), h) != 0) return null
+            val behav = h.get(JAVA_INT, 0)
+            if (behav == 0) return null
+            ControlHints(behav, h.get(JAVA_DOUBLE, 8), h.get(JAVA_DOUBLE, 16), h.get(JAVA_DOUBLE, 24))
+        }
+    }
+
+    /** A channel's declared range: `chn_k "name", imode, itype, idflt, imin, imax`. [type] 1 integer, 2 linear, 3 exponential. */
+    data class ControlHints(val type: Int, val default: Double, val min: Double, val max: Double)
+
+    /**
+     * A MIDI message to the orchestra, as if from a device: `massign`, `notnum`, `veloc`, `midic7`
+     * read it. Bytes are queued and read by Csound's host-MIDI callback on the next block.
+     */
+    fun midi(status: Int, data1: Int, data2: Int) {
+        midiIn += byteArrayOf(status.toByte(), data1.toByte(), data2.toByte())
+    }
+
+    /** Note on, 0-based [channel]; velocity 0 is a note off. */
+    fun noteOn(channel: Int, pitch: Int, velocity: Int) = midi(0x90 or (channel and 15), pitch, velocity)
+
+    /** Note off, 0-based [channel]. */
+    fun noteOff(channel: Int, pitch: Int) = midi(0x80 or (channel and 15), pitch, 0)
+
+    /** A controller, 0-based [channel]. */
+    fun controlChange(channel: Int, controller: Int, value: Int) = midi(0xB0 or (channel and 15), controller, value)
+
+    /**
+     * Compile [orchestra] into the running Csound now — a new or redefined `instr` — and say what
+     * Csound said. Takes the perform lock, so it waits for the current block and holds the next one
+     * for as long as the compile takes (milliseconds). Problems' lines are lines of [orchestra].
+     *
+     * @return the problems; empty when it compiled
+     */
+    fun compileNow(orchestra: String): CompileResult = lock.withLock {
+        check(!closed) { "this CsoundInstance is closed" }
+        val before = drainMessages()
+        before.forEach { pushLine(it) }
+        val status = Arena.ofConfined().use { a -> CsoundNative.compileOrc(cs, a.allocateFrom(normalise(orchestra))) }
+        val printed = drainMessages()
+        printed.forEach { pushLine(it) }
+        // Csound keeps counting orchestra lines from where the CSD's orchestra began, so a live
+        // compile's lines are offset by the same CSD_ORC_LINE as the first one's.
+        CompileResult(status == 0, problemsIn(printed).map { if (it.line > CSD_ORC_LINE) it.copy(line = it.line - CSD_ORC_LINE) else it }, printed)
+    }
+
+    /** Read score text into the running Csound now: its events start relative to the current score time. */
+    fun scoreNow(score: String): CompileResult = lock.withLock {
+        check(!closed) { "this CsoundInstance is closed" }
+        val status = Arena.ofConfined().use { a -> CsoundNative.readScore(cs, a.allocateFrom(normalise(score))) }
+        val printed = drainMessages()
+        printed.forEach { pushLine(it) }
+        CompileResult(status == 0, problemsIn(printed), printed)
+    }
+
+    /** What [compileNow] or [scoreNow] did. */
+    data class CompileResult(val ok: Boolean, val problems: List<Problem>, val printed: List<String>)
+
+    // Lines drained while holding the lock are kept for the next poll's listeners.
+    private val held = ConcurrentLinkedQueue<String>()
+    private fun pushLine(line: String) { held += line }
+
+    // ---- a-rate channels -------------------------------------------------------------------
+
+    /** A one-reader one-writer sample FIFO between the audio thread's two sides of a block. */
+    internal class AudioFifo(capacity: Int) {
+        private val data = FloatArray(capacity)
+        private var read = 0
+        private var write = 0
+        var size = 0
+            private set
+        fun push(src: FloatArray, n: Int) {
+            for (i in 0 until n) {
+                if (size == data.size) { read = (read + 1) % data.size; size-- }
+                data[write] = src[i]; write = (write + 1) % data.size; size++
+            }
+        }
+        fun push(v: Float) {
+            if (size == data.size) { read = (read + 1) % data.size; size-- }
+            data[write] = v; write = (write + 1) % data.size; size++
+        }
+        fun pop(): Float {
+            if (size == 0) return 0f
+            val v = data[read]; read = (read + 1) % data.size; size--
+            return v
+        }
+    }
+
+    /**
+     * Declare a-rate input channel [name]: `chnget "name"` into an a-variable reads what [CsoundNode]
+     * feeds it from a Field signal. The first block reads [ksmps] frames of silence: that is the
+     * input's latency, one control period, so that a render of any length always has a whole block of
+     * input ready.
+     */
+    fun declareAudioInput(name: String) {
+        audioInputs.computeIfAbsent(name) { AudioFifo(1 shl 15).also { f -> repeat(ksmps) { f.push(0f) } } }
+    }
+
+    /** Push [n] frames of [samples] into a-rate input channel [name]. The rendering thread's call. */
+    fun feedAudio(name: String, samples: FloatArray, n: Int) {
+        (audioInputs[name] ?: throw IllegalArgumentException("no audio input '$name'; declareAudioInput first")).push(samples, n)
+    }
+
+    /**
+     * Declare a-rate output channel [name]: what the orchestra `chnset`s into it is captured every
+     * block, and [pullAudio] (or [audioSignal]) reads it back in step with [render].
+     */
+    fun declareAudioOutput(name: String) {
+        audioOutputs.computeIfAbsent(name) { AudioFifo(1 shl 15) }
+    }
+
+    /** Read [n] frames captured from a-rate output channel [name] into [out]. The rendering thread's call. */
+    fun pullAudio(name: String, out: FloatArray, n: Int) {
+        val f = audioOutputs[name] ?: throw IllegalArgumentException("no audio output '$name'; declareAudioOutput first")
+        for (i in 0 until n) out[i] = f.pop()
     }
 
     /** The values of function table [number] (an `f` statement or `ftgen`), or null when there is none. */
@@ -227,12 +511,26 @@ class CsoundInstance(
     /** Hand every line Csound has printed since the last poll to [onMessage] callbacks, on this thread. */
     fun poll(): Int {
         if (closed) return 0
-        val lines = drainMessages()
+        var n = 0
+        while (true) {
+            val (name, str) = outvalueStrings.poll() ?: break
+            outvalueListeners[name]?.forEach { cb -> runCatching { cb(str) } }
+            n++
+        }
+        for ((name, v) in outvalues) {
+            if (delivered[name] == v) continue
+            delivered[name] = v
+            outvalueListeners[name]?.forEach { cb -> runCatching { cb(v) } }
+            n++
+        }
+        val lines = ArrayList<String>()
+        while (true) lines += held.poll() ?: break
+        lines += drainMessages()
         for (l in lines) {
             remember(l)
             for (cb in listeners) runCatching { cb(l) }
         }
-        return lines.size
+        return lines.size + n
     }
 
     // ---- audio ------------------------------------------------------------------------------
@@ -254,6 +552,12 @@ class CsoundInstance(
             if (outgoing.isNotEmpty()) Arena.ofConfined().use { a ->
                 while (true) (outgoing.poll() ?: break)(a)
             }
+            if (inputs > 0) {
+                for (i in 0 until numFrames) {
+                    val l = inL?.getOrNull(i) ?: 0f
+                    spinL.push(l); spinR.push(inR?.getOrNull(i) ?: l)
+                }
+            }
             var written = 0
             while (written < numFrames) {
                 if (pendingCount == 0) performBlock(inL, inR, written)
@@ -274,12 +578,22 @@ class CsoundInstance(
             pendingR.fill(0f)
         } else {
             if (inputs > 0) for (f in 0 until ksmps) {
-                val l = inL?.getOrNull(at + f) ?: 0f
-                val r = inR?.getOrNull(at + f) ?: l
+                val l = spinL.pop()
+                val r = spinR.pop()
                 spin.setAtIndex(JAVA_DOUBLE, (f * inputs).toLong(), l * zeroDbfs)
                 if (inputs > 1) spin.setAtIndex(JAVA_DOUBLE, (f * inputs + 1).toLong(), r * zeroDbfs)
             }
+            for ((name, fifo) in audioInputs) {
+                val scale = zeroDbfs
+                for (f in 0 until ksmps) audioScratch.setAtIndex(JAVA_DOUBLE, f.toLong(), fifo.pop() * scale)
+                CsoundNative.setAudioChannel(cs, channelName(name), audioScratch)
+            }
             if (CsoundNative.performKsmps(cs) != 0) finished = true
+            for ((name, fifo) in audioOutputs) {
+                CsoundNative.getAudioChannel(cs, channelName(name), audioScratch)
+                val inv = 1.0 / zeroDbfs
+                for (f in 0 until ksmps) fifo.push((audioScratch.getAtIndex(JAVA_DOUBLE, f.toLong()) * inv).toFloat())
+            }
             val scale = 1.0 / zeroDbfs
             for (f in 0 until ksmps) {
                 val l = spout.getAtIndex(JAVA_DOUBLE, (f * outputs).toLong()) * scale
@@ -322,7 +636,8 @@ class CsoundInstance(
     }
 
     /** This Csound as a node in Field's audio graph, optionally fed by [input]. */
-    fun node(input: StereoRenderable? = null): CsoundNode = CsoundNode(this, input)
+    fun node(input: StereoRenderable? = null, audioIn: Map<String, afield.four.synth.Signal> = emptyMap()): CsoundNode =
+        CsoundNode(this, input, audioIn)
 
     override fun close() {
         lock.withLock {
@@ -361,6 +676,9 @@ class CsoundInstance(
             return "\n".repeat(leading) + text.trimIndent() + "\n"
         }
 
+        /** Lines of CSD wrapping before the orchestra's first line. */
+        internal const val CSD_ORC_LINE = 2
+
         private val lineRe = Regex("""line:?\s*(\d+)""")
 
         /**
@@ -391,13 +709,41 @@ class CsoundCompileError(message: String, val problems: List<CsoundInstance.Prob
 /**
  * A [CsoundInstance] in Field's audio graph. A [StereoNode] because Csound is stateful: the node's
  * per-block cache keeps a graph that reuses it from performing twice. Whatever thread renders the
- * graph — the audio thread, live — becomes the thread that runs Csound's perform loop.
+ * graph — the audio thread, live — becomes the thread that runs Csound's perform loop, and the only
+ * thread that touches its audio.
+ *
+ * Field audio goes in two ways: [input] feeds `ins`/`inch` (the instance needs `inputs = 2`), and
+ * each of [audioIn] feeds the a-rate channel of that name, read with `ain chnget "name"`. Csound's
+ * audio comes back as `outs` (this node's own stereo output) and as Field [Signal]s from [outL],
+ * [outR] and [audioOut] (`chnset aout, "name"`), which compose with the rest of a synth graph.
+ *
+ * Latency: Csound performs whole `ksmps` blocks. Its output is in step with the block the engine
+ * asked for; audio *into* Csound (both paths) is delayed by exactly `ksmps` frames, so that every
+ * block always has a whole control period of input whatever size the engine's buffer is.
  */
-class CsoundNode(val csound: CsoundInstance, private val input: StereoRenderable? = null) : StereoNode() {
+class CsoundNode(
+    val csound: CsoundInstance,
+    private val input: StereoRenderable? = null,
+    private val audioIn: Map<String, afield.four.synth.Signal> = emptyMap(),
+) : StereoNode() {
     private var inL = FloatArray(0)
     private var inR = FloatArray(0)
+    private var scratch = FloatArray(0)
+    private var lastL = FloatArray(0)
+    private var lastR = FloatArray(0)
+    private var lastFrames = 0
+    private val outs = java.util.concurrent.ConcurrentHashMap<String, afield.four.synth.Signal>()
+
+    init {
+        for (name in audioIn.keys) csound.declareAudioInput(name)
+    }
 
     override fun generateStereo(outL: FloatArray, outR: FloatArray, numFrames: Int, ctx: SynthContext) {
+        if (scratch.size < numFrames) scratch = FloatArray(numFrames)
+        for ((name, sig) in audioIn) {
+            sig.render(scratch, numFrames, ctx)
+            csound.feedAudio(name, scratch, numFrames)
+        }
         if (input != null && csound.inputs > 0) {
             if (inL.size < numFrames) {
                 inL = FloatArray(numFrames)
@@ -409,6 +755,45 @@ class CsoundNode(val csound: CsoundInstance, private val input: StereoRenderable
             csound.render(outL, outR, numFrames, inL, inR)
         } else {
             csound.render(outL, outR, numFrames)
+        }
+        if (lastL.size < numFrames) { lastL = FloatArray(numFrames); lastR = FloatArray(numFrames) }
+        System.arraycopy(outL, 0, lastL, 0, numFrames)
+        System.arraycopy(outR, 0, lastR, 0, numFrames)
+        lastFrames = numFrames
+    }
+
+    private fun ensure(numFrames: Int, ctx: SynthContext) {
+        if (scratch.size < numFrames) scratch = FloatArray(numFrames)
+        val l = FloatArray(numFrames)
+        render(l, FloatArray(numFrames), numFrames, ctx)   // cached per cycle: performs at most once
+    }
+
+    /** Csound's left `outs` as a Field signal. */
+    val outL: afield.four.synth.Signal get() = outs.computeIfAbsent("\u0000L") { side(true) }
+
+    /** Csound's right `outs` as a Field signal. */
+    val outR: afield.four.synth.Signal get() = outs.computeIfAbsent("\u0000R") { side(false) }
+
+    private fun side(left: Boolean) = object : afield.four.synth.Signal() {
+        override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+            ensure(numFrames, ctx)
+            System.arraycopy(if (left) lastL else lastR, 0, output, 0, numFrames)
+        }
+        override fun toString() = "CsoundNode.${if (left) "outL" else "outR"}"
+    }
+
+    /**
+     * The a-rate channel [name] the orchestra writes (`chnset asig, "name"`), as a Field signal. One
+     * signal per name: asking twice gives the same one.
+     */
+    fun audioOut(name: String): afield.four.synth.Signal = outs.computeIfAbsent(name) {
+        csound.declareAudioOutput(name)
+        object : afield.four.synth.Signal() {
+            override fun generate(output: FloatArray, numFrames: Int, ctx: SynthContext) {
+                ensure(numFrames, ctx)
+                csound.pullAudio(name, output, numFrames)
+            }
+            override fun toString() = "CsoundNode.audioOut($name)"
         }
     }
 
