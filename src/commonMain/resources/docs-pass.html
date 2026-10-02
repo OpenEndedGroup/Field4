@@ -382,10 +382,16 @@
                     + `<pre class="command">${esc(batch.session.command)}</pre>`
                     + `<button data-act="copy" data-batch="${esc(batch.key)}">Copy command</button> <button data-act="end-session" data-batch="${esc(batch.key)}">End session</button> <button data-act="abandon-session" data-batch="${esc(batch.key)}" class="danger">Abandon session</button></div>`;
             } else {
-                const blocked = batch.notLanded.length ? `land the revision pass first: ${batch.notLanded.length} of these documents are not on main yet`
-                    : !openRows.length ? "every handoff here is taken" : "";
-                action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>Start session</button>`
-                    + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "");
+                // A handoff whose document is still on the branch that wrote it waits for that
+                // branch to land; the others can start now, and the page says which is which.
+                const ready = openRows.filter(h => !batch.notLanded.includes(h.id));
+                const blocked = !openRows.length ? "every handoff here is taken"
+                    : !ready.length ? "none of these documents is on main yet" : "";
+                const label = ready.length && ready.length < openRows.length ? `Start session (${ready.length} of ${openRows.length})` : "Start session";
+                const waiting = (batch.notLandedDetail || []).map(d => `<div class="muted">waits until <code>${esc(d.branches.length ? d.branches.join(", ") : "its branch")}</code> lands on main: ${esc(d.title)}</div>`).join("");
+                action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>${label}</button>`
+                    + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "")
+                    + waiting;
             }
             const asking = rows.filter(h => h.question).length;
             return `<div class="batch"><h3>${batch.order} · ${esc(batch.title)} <span class="count">${rows.length}</span>${asking ? ` <span class="badge asks">${asking} asking you</span>` : ""}</h3><p class="muted">${esc(batch.how)}</p>`
@@ -552,7 +558,9 @@
         const batch = button.dataset.batch ? (view.status.batches || []).find(b => b.key === button.dataset.batch) : null;
         if (kind === "start-session") {
             const warning = batch.earlierOpen.length ? `\n\nStill open in earlier batches: ${batch.earlierOpen.join(", ")}. The order is there because their outcome changes this batch's work.` : "";
-            if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${batch.handoffs.length} handoff(s), which are marked taken.${warning}`)) await act("start-session", { batch: batch.key });
+            const later = (batch.notLandedDetail || []).length ? `\n\nLeft for a later session, because its document is not on main yet: ${batch.notLandedDetail.map(d => d.title).join("; ")}.` : "";
+            const starting = batch.handoffs.length - (batch.notLandedDetail || []).length;
+            if (await confirmed(`Start a ${batch.title} session: a worktree off main with a brief listing its ${starting} handoff(s), which are marked taken.${later}${warning}`)) await act("start-session", { batch: batch.key });
             return;
         }
         if (kind === "copy") {
