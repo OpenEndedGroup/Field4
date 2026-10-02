@@ -45,7 +45,7 @@ From `code`
 A wavetable computed in Kotlin, copied into ftable 1, played by poscil, and read back.
 
 ```edn [field-box id="cs_table" role="properties"]
-{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1026 "sha256" "bcedbb4d7859d2c1ca8139ca38bfb9f72144a603c720bf0ca9fdc18db6ae38e8"}]}
+{"id" "cs_table" "index" 1 "name" "a table from Kotlin" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "a table from Kotlin" "_tombstone" false "frame" #afield/rect [610.0 180.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_table_code_.kt" "lines" 20 "characters" 1020 "sha256" "bc6aebeeffc2a47d95b9f70219926a43fe9e683feacfb51462a4e7e0a93441f6"}]}
 ```
 
 ```kotlin [field-property box="cs_table" name="code" path="cs_table_code_.kt"]
@@ -54,7 +54,7 @@ val cs = afield.csound.CsoundInstance("""
 giWave  ftgen  1, 0, 4096, 10, 1
 instr Play
   asig  poscil  0.3, 220, giWave
-        outs    asig, asig
+  outs    asig, asig
 endin
 """, "i \"Play\" 0 0.1")
 val partials = listOf(1.0, 0.0, 0.33, 0.0, 0.2, 0.0, 0.14)     // odd harmonics: a square-ish wave
@@ -95,7 +95,7 @@ println(afield.csound.CsoundLibrary.describe())
 <!-- field-box id="cs_typo" index="3" -->
 
 ```edn [field-box id="cs_typo" role="properties"]
-{"id" "cs_typo" "index" 3 "name" "typo" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "typo" "_tombstone" false "frame" #afield/rect [420.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_typo_code_.kt" "lines" 11 "characters" 239 "sha256" "b3bb87b44998cf182154ed4f1054b97630c5a43ba4a39a8cc880f74d41ad786a"}]}
+{"id" "cs_typo" "index" 3 "name" "typo" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "typo" "_tombstone" false "frame" #afield/rect [420.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_typo_code_.kt" "lines" 11 "characters" 233 "sha256" "01c547fa821dcbe0c0736770446432daaa213b5a5bcdb4905d264ca7c38b8677"}]}
 ```
 
 ```csound [field-property box="cs_typo" name="code" path="cs_typo_code_.kt"]
@@ -103,7 +103,7 @@ println(afield.csound.CsoundLibrary.describe())
 <CsInstruments>
 instr Beep
   asig  oscilx  0.2, 440       ; there is no oscilx: Csound's error lands on this line
-        outs    asig, asig
+  outs    asig, asig
 endin
 </CsInstruments>
 <CsScore>
@@ -117,7 +117,7 @@ i "Beep" 0 1
 <!-- field-box id="cs_pluck" index="4" -->
 
 ```edn [field-box id="cs_pluck" role="properties"]
-{"id" "cs_pluck" "index" 4 "name" "pluck" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "pluck" "_tombstone" false "frame" #afield/rect [40.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_pluck_code_.kt" "lines" 59 "characters" 1612 "sha256" "f1ffaa53cacabfc92712d6def0f2be1faed5cc8399c32fee642af2bf490df787"}]}
+{"id" "cs_pluck" "index" 4 "name" "pluck" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "pluck" "_tombstone" false "frame" #afield/rect [40.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_pluck_code_.kt" "lines" 59 "characters" 1542 "sha256" "03458dcbd4d083612fe3955885d0c377b69343759735e6b8b22d58fb9e1d0742"}]}
 ```
 
 ```csound [field-property box="cs_pluck" name="code" path="cs_pluck_code_.kt"]
@@ -142,31 +142,31 @@ instr Pluck                             ; p4 MIDI note, p5 level in dBFS
   asig  butterlp  asig, kcut
   aenv  linsegr   1, p3, 1, 0.3, 0
   asig  =         asig * aenv
-        chnmix    asig * 0.25, "reverb"
-        outs      asig, asig
+  chnmix    asig * 0.25, "reverb"
+  outs      asig, asig
 endin
 
 instr Key
   inote notnum
-        prints    "Key %d\n", inote
+  prints    "Key %d\n", inote
   icps  cpsmidi
   iamp  ampmidi   0.3
   asig  pluck     iamp, icps, icps, 0, 1
   aenv  madsr     0.005, 0.1, 0.6, 0.4
-        chnmix    asig * aenv * 0.25, "reverb"
-        outs      asig * aenv, asig * aenv
+  chnmix    asig * aenv * 0.25, "reverb"
+  outs      asig * aenv, asig * aenv
 endin
 
 instr Reverb
   ain     chnget    "reverb"
   aL, aR  reverbsc  ain, ain, 0.85, 10000
-          outs      aL, aR
-          chnclear  "reverb"
+  outs      aL, aR
+  chnclear  "reverb"
   krms    rms       aL + ain
-          chnset    krms, "level"
-          outvalue  "level", krms
+  chnset    krms, "level"
+  outvalue  "level", krms
   Svoice  chnget    "voice"
-          outvalue  "said", Svoice
+  outvalue  "said", Svoice
 endin
 </CsInstruments>
 <CsScore>
@@ -187,7 +187,7 @@ i "Pluck"  0    2    45  -6
 <!-- field-box id="cs_fx" index="5" -->
 
 ```edn [field-box id="cs_fx" role="properties"]
-{"id" "cs_fx" "index" 5 "name" "fx" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "fx" "_tombstone" false "frame" #afield/rect [230.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_fx_code_.kt" "lines" 17 "characters" 383 "sha256" "533f70d3c2db588eedbeaa94e50688010e6fe0bf0a1071142d81f067c7d0c4f1"}]}
+{"id" "cs_fx" "index" 5 "name" "fx" "parents" ["root" "cs_root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "cs_root"} "name" "fx" "_tombstone" false "frame" #afield/rect [230.0 180.0 160.0 80.0] "code_language" "Csound"} "blockProperties" [{"name" "code" "language" "csound" "path" "cs_fx_code_.kt" "lines" 17 "characters" 367 "sha256" "ccfa6ddb31c12d342ceed04e7a2647a43398c0ef1e2dd19fd044023b41dd1364"}]}
 ```
 
 ```csound [field-property box="cs_fx" name="code" path="cs_fx_code_.kt"]
@@ -200,8 +200,8 @@ chn_a "wet", 2
 instr Space
   ain     chnget    "in"
   aL, aR  reverbsc  ain, ain, 0.9, 8000
-          outs      ain * 0.5 + aL * 0.5, ain * 0.5 + aR * 0.5
-          chnset    aL, "wet"
+  outs      ain * 0.5 + aL * 0.5, ain * 0.5 + aR * 0.5
+  chnset    aL, "wet"
 endin
 </CsInstruments>
 <CsScore>
@@ -278,7 +278,7 @@ From `code`
 Offline: a Field 1 kHz sine through Csound's butterlp at 500 Hz, and back.
 
 ```edn [field-box id="cs_measured" role="properties"]
-{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1016 "sha256" "274a8ea361e85756797e8ce32d7eafcfc042e07a0a426f60bb7a937b3fbbd83f"}]}
+{"id" "cs_measured" "index" 8 "name" "through Csound, measured" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "through Csound, measured" "_tombstone" false "frame" #afield/rect [610.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_measured_code_.kt" "lines" 18 "characters" 1010 "sha256" "c3478e06efd46154a5fb8eca0a89bee9e6bd558532b60a9f8ede252bc2828d4c"}]}
 ```
 
 ```kotlin [field-property box="cs_measured" name="code" path="cs_measured_code_.kt"]
@@ -287,7 +287,7 @@ val cs = afield.csound.CsoundInstance("""
 instr Filter
   ain   chnget    "in"
   alow  butterlp  ain, 500
-        chnset    alow, "low"
+  chnset    alow, "low"
 endin
 """, "i \"Filter\" 0 z")
 val node = cs.node(audioIn = mapOf("in" to SineOsc(Param(1000f))))

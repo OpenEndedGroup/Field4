@@ -91,7 +91,7 @@ private fun Box.compileForBox(orchestra: String, make: () -> CsoundInstance): Cs
         make().also { cs -> cs.poll() }
     } catch (e: CsoundCompileError) {
         // Printed first, marked last: the editor clears a box's marks whenever the box prints.
-        for (p in e.problems) runCatching { println("Csound: ${p.message}") }
+        for (p in e.problems) if (p.line <= 0) runCatching { println("Csound: ${p.message}") }
         for (p in e.problems) if (p.line > 0) runCatching { error(p.message, "code", offset + p.line) }
         throw e
     }
