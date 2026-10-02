@@ -147,4 +147,14 @@ class ToolDescriptionRubricTest {
             )
         }
     }
+
+    @JsonClassDescription("Stop a running box and everything it launched.")
+    data class BareFixtureRequest(val box: String)
+
+    /** The negative control: the pre-2026-10-02 StopBox description scores below the bar. */
+    @Test
+    fun aBareDescriptionFailsTheRubric() {
+        val s = score(BareFixtureRequest::class.java)
+        assertTrue(s.total < MINIMUM && s.chars < 80, "a bare description must fail; got $s")
+    }
 }

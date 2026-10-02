@@ -48,7 +48,7 @@ import java.util.concurrent.TimeoutException
 // back as `success: false` with its diagnostics. Never a silent ok.
 // =============================================================================================
 
-@JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it first, to learn the names other tools accept (e.g. box = `Sun`); it takes no arguments and cannot fail, but an empty list means the document has no boxes yet.")
+@JsonClassDescription("List every box in this Field document. Returns, per box: uid, name, parents, children, whether it is running, the length of its code, and the verdict of its last run. Use it when a box the task names is not one you know; other tools accept the names it lists (e.g. box = `Sun`). It takes no arguments and does not fail; an empty list means no boxes yet.")
 data class ListBoxesRequest(val unused: Int = 0)
 
 @JsonClassDescription("Create a new box in this Field document. Returns the new box's uid. Use it when the task needs a box that does not exist yet; optionally give it Kotlin code (not run until RunBox/LaunchBox) and a parent (uid or name, e.g. parent = `Settings`) to connect it under. Fails if the parent is unknown or ambiguous.")
@@ -86,7 +86,7 @@ data class PatchBoxTextRequest(
     val insert: Boolean = false,
 )
 
-@JsonClassDescription("Read a text property of a box, most often `code` (e.g. box = `Primes`, property = `code`). Returns its text as `value`; a property the box does not have, or one that is not text, fails with success=false. Use it before editing a box you have not read this turn. An unknown or ambiguous box fails with the list of known boxes.")
+@JsonClassDescription("Read a text property of a box, most often `code` (e.g. box = `Primes`, property = `code`). Returns its text as `value`; a property the box does not have, or one that is not text, fails with success=false. Use it when you need a box's current text; a failed RunBox already reports its errors and lines. An unknown or ambiguous box fails with the list of known boxes.")
 data class GetBoxPropertyRequest(val box: String, val property: String = "code")
 
 @JsonClassDescription("Connect two boxes: `child` becomes a child of `parent` (e.g. parent = `Settings`, child = `Plot`). Children inherit properties and can see their parents' variables. Returns success and the child's uid and name. Use it when one box must read another's values; the child sees them on its next run. Fails if either box is unknown or ambiguous.")
