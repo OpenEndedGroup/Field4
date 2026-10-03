@@ -38,7 +38,9 @@ def sheet(frames: list[tuple[Path, str]], columns: int, width: int, text_size: i
         image = Image.open(path).convert("RGB")
         images.append((image.resize((width, round(image.height * width / image.width)), Image.LANCZOS), caption))
     gap, caption_height = 14, text_size * 2
-    height = images[0][0].height
+    # Frames can differ in shape (a fresh canvas of another aspect mid-painting): every cell is as tall as
+    # the tallest, each frame centred in its cell.
+    height = max(image.height for image, _ in images)
     rows = (len(images) + columns - 1) // columns
     out = Image.new("RGB", (columns * (width + gap) + gap, rows * (height + caption_height + gap) + gap), "black")
     draw = ImageDraw.Draw(out)
@@ -46,7 +48,7 @@ def sheet(frames: list[tuple[Path, str]], columns: int, width: int, text_size: i
     for i, (image, caption) in enumerate(images):
         x = gap + (i % columns) * (width + gap)
         y = gap + (i // columns) * (height + caption_height + gap)
-        out.paste(image, (x, y))
+        out.paste(image, (x, y + (height - image.height) // 2))
         draw.text((x, y + height + text_size // 2), caption, fill=(200, 200, 200), font=text)
     return out
 
