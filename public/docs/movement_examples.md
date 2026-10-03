@@ -94,7 +94,7 @@ Every step here is *exact* — the analytic solution of the spring's differentia
 equation, not a numerical integration — so one step of `dt` lands where ten steps
 of `dt / 10` do, and the motion does not change shape when the frame rate does.
 
-??? aside "Exactness, and what differs from Holden's code"
+??? aside "How exactness is checked"
     `MovementTest.aSpringStepIsExactWhateverTheStepSize` checks the step-size claim
     at 1e-4 over a fifty-fold change in step size. Holden's `fast_negexp` polynomial
     is the one thing not carried across; a real `exp` is what makes each step exact.
