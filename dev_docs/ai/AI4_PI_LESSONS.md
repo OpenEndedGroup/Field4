@@ -199,6 +199,27 @@ Also found while fixing these:
   reported three working links dead (one of them new on this branch); intraword underscores are now
   literal, as they are to the site's Markdown.
 
+### The re-review (2026-10-03, at `27b37002f`)
+
+`PI_WORKTREE_REREVIEW_20261003.md` beside the first review found three edge paths in those safeguards,
+each reproduced by a probe (`PiRereviewProbeTest`, kept in the house checkout's evidence folder). All
+three probes now fail at the assertion that captured the bug, and their inversions are tests here:
+
+- **A failed safety copy restored anyway.** When saving the state as it is failed, the copy was null,
+  null read as "no conflict", and the old snapshot overwrote a person's edit, reported as restored. Now
+  no hook is restored without its safety copy, under `KEEP` or `RESTORE`; the chat gets a note saying
+  what failed; a cancelled save cancels the restore. `noRestoreWithoutASafetyCopyOfTheStateNow`,
+  `aCancelledSaveCancelsTheRestore`.
+- **A missing snapshot meant "start fresh".** A target hash whose blob was missing reached `restore` as
+  `null` and reset the design. A missing or damaged blob (`AiStateBlobs.get` now throws on a damaged
+  file) is reported and the live state left alone; only a target absent on purpose passes `null`.
+  `aMissingOrDamagedSnapshotIsReportedAndNotRestoredAsEmpty`.
+- **Fingerprints sorted every collection**, so reordering a list (a polygon's vertices) still let world
+  undo delete the box. `AiWorldUndo.canonical` now writes values typed and quoted, lists in order, only
+  sets and maps sorted; the reload normalisation is narrowed from "any empty value" to the loader's own
+  defaults (`LOADER_DEFAULTS`: `autorun`, `preamble`, `nested`). Fingerprints recorded before this no
+  longer match, which keeps those boxes rather than deleting them. `aReorderedListIsAChangeAndValuesDoNotPrintAlike`.
+
 ### Checked in Field
 
 Backdoor sessions on scratch documents, one live panel turn each on the configured provider (now

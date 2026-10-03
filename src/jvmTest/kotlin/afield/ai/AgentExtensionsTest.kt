@@ -183,6 +183,93 @@ class AgentExtensionsTest {
         assertTrue(restoredAnyway.notes.any { it.contains("restored anyway") }, restoredAnyway.notes.toString())
     }
 
+    // Re-review (2026-10-03, PiRereviewProbeTest.failedSafetySnapshotStillOverwritesHumanEdit): a save that
+    // failed made the safety copy null, which read as "no conflict", and the old snapshot overwrote a person's edit.
+    @Test
+    fun noRestoreWithoutASafetyCopyOfTheStateNow() = inDocument { _, box, _ ->
+        for (policy in afield.ai.core.BranchConflict.entries) {
+            var state = "agent v1"
+            var failSave = false
+            box.agentExtension("review") {
+                branchState("design", save = { if (failSave) throw java.io.IOException("storage unavailable"); it.writeText(state) },
+                    restore = { state = it?.readText() ?: "empty" }, onConflict = policy)
+            }
+            val v1 = AgentExtensionRegistry.snapshotBranchStates(box)
+            state = "human moved window"
+            failSave = true
+            val result = AgentExtensionRegistry.restoreBranchStates(box, v1, expected = v1)
+            assertEquals("human moved window", state, "$policy left the live state alone")
+            assertTrue(result.restored.isEmpty(), "$policy reported no restore")
+            assertTrue(result.notes.single().contains("storage unavailable"), result.notes.toString())
+            assertTrue(result.effective.isEmpty(), "nothing is claimed about a state that could not be read")
+        }
+    }
+
+    @Test
+    fun aCancelledSaveCancelsTheRestore() = inDocument { _, box, _ ->
+        var cancel = false
+        box.agentExtension("review") {
+            branchState("design", save = { if (cancel) throw java.util.concurrent.CancellationException("turn cancelled"); it.writeText("x") },
+                restore = { })
+        }
+        val v1 = AgentExtensionRegistry.snapshotBranchStates(box)
+        cancel = true
+        assertFailsWith<java.util.concurrent.CancellationException> { AgentExtensionRegistry.restoreBranchStates(box, v1, expected = v1) }
+        Unit
+    }
+
+    // Re-review (PiRereviewProbeTest.missingTargetSnapshotIsPassedAsReset): a target hash whose blob was gone
+    // reached `restore` as null, which means "start fresh", and the design was reset to empty.
+    @Test
+    fun aMissingOrDamagedSnapshotIsReportedAndNotRestoredAsEmpty() = inDocument { _, box, _ ->
+        var state = "current valid design"
+        box.agentExtension("review") { branchState("design", save = { it.writeText(state) }, restore = { state = it?.readText() ?: "empty" }) }
+        val current = AgentExtensionRegistry.snapshotBranchStates(box)
+        val key = current.keys.single()
+        val missing = AgentExtensionRegistry.restoreBranchStates(box, mapOf(key to "0123456789abcdef01234567"), expected = current)
+        assertEquals("current valid design", state)
+        assertTrue(missing.restored.isEmpty())
+        assertTrue(missing.notes.single().contains("is missing"), missing.notes.toString())
+        assertEquals(current, missing.effective, "the effective state is the one actually there")
+
+        state = "a later design"
+        val later = AgentExtensionRegistry.snapshotBranchStates(box)
+        afield.ai.core.AiStateBlobs.fileFor(later.getValue(key), box).writeText("not gzip at all")
+        state = "current valid design"
+        val damaged = AgentExtensionRegistry.restoreBranchStates(box, later, expected = current)
+        assertEquals("current valid design", state)
+        assertTrue(damaged.notes.single().contains("could not be read"), damaged.notes.toString())
+        // A target that is absent on purpose still means "this point had no state".
+        AgentExtensionRegistry.restoreBranchStates(box, emptyMap(), expected = current)
+        assertEquals("empty", state)
+    }
+
+    // Re-review (PiRereviewProbeTest.reorderedPersistentListStillEligibleForDeletion): every collection was
+    // sorted, so reordering a list on an agent-created box left it eligible for deletion.
+    @Test
+    fun aReorderedListIsAChangeAndValuesDoNotPrintAlike() = inDocument { session, box, _ ->
+        val key = "review_ordered_vertices"
+        Box.ioPersistentProperties.add(key)
+        try {
+            box.setPropertyRaw(key, listOf("A", "B", "C"))
+            val before = afield.ai.core.AiWorldUndo.fingerprint(box)
+            val node = kotlinx.serialization.json.buildJsonObject {
+                put("op", kotlinx.serialization.json.buildJsonObject {
+                    put("createdBoxes", kotlinx.serialization.json.JsonArray(listOf(kotlinx.serialization.json.JsonPrimitive(box.id))))
+                    put("fpAfter", kotlinx.serialization.json.JsonObject(mapOf(box.id to kotlinx.serialization.json.JsonPrimitive(before))))
+                })
+            }
+            box.setPropertyRaw(key, listOf("A", "C", "B"))
+            assertNotEquals(before, afield.ai.core.AiWorldUndo.fingerprint(box))
+            val plan = afield.ai.core.AiWorldUndo.plan(listOf(node), session.boxes)
+            assertTrue(plan.delete.isEmpty() && plan.keep.single().second == "changed since", plan.toString())
+        } finally { Box.ioPersistentProperties.remove(key) }
+        val c = afield.ai.core.AiWorldUndo::canonical
+        assertNotEquals(c(listOf("a,b")), c(listOf("a", "b")))
+        assertNotEquals(c("1"), c(1))
+        assertEquals(c(setOf("b", "a")), c(linkedSetOf("a", "b")), "a set has no order")
+    }
+
     @Test
     fun aMandatoryGuardThatFailsRefusesTheCall() = inDocument { _, box, ctx ->
         box.agentExtension("guard") {

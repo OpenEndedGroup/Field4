@@ -278,7 +278,7 @@ object AgentExtensionRegistry {
      */
     fun snapshotBranchStates(chatBox: Box): Map<String, String> =
         hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
-            .mapNotNull { hook -> snapshotOne(hook, chatBox)?.let { hook.key to it } }.toMap()
+            .mapNotNull { hook -> (snapshotOne(hook, chatBox) as? Snapshot.Saved)?.let { hook.key to it.sha } }.toMap()
 
     /** What [restoreBranchStates] did: a line per state it did not simply restore, and the state each hook now has. */
     data class BranchRestore(val notes: List<String>, val effective: Map<String, String>, val restored: List<String>)
@@ -295,16 +295,35 @@ object AgentExtensionRegistry {
         val restored = mutableListOf<String>()
         for (hook in hooks) {
             val label = "${hook.label}/${hook.name}"
-            val current = snapshotOne(hook, chatBox)
+            // The safety copy comes first, and nothing is restored without it, under KEEP or RESTORE: without it
+            // a conflict cannot be detected and the state being replaced could not be got back.
+            val current = when (val saved = snapshotOne(hook, chatBox)) {
+                is Snapshot.Saved -> saved.sha
+                is Snapshot.Failed -> {
+                    notes += "$label was not restored: its current state could not be saved first (${saved.message}), " +
+                        "so it was left as it is. Fix what stops it saving, then rewind or switch again."
+                    continue
+                }
+            }
             val target = states[hook.key]
-            if (current != null && current == target) { effective[hook.key] = current; continue }
-            val conflict = current != null && current != expected[hook.key]
+            if (current == target) { effective[hook.key] = current; continue }
+            val conflict = current != expected[hook.key]
             if (conflict && hook.onConflict == BranchConflict.KEEP) {
                 notes += "$label had changed since the conversation last saw it, so it was left as it is (that state is saved as $current)."
-                effective[hook.key] = current!!
+                effective[hook.key] = current
                 continue
             }
-            val file = target?.let { AiStateBlobs.get(it, chatBox) }
+            // A target hash names a snapshot that must exist. Missing or unreadable is an error to report, never
+            // the `null` a restore takes to mean "this point of the conversation had no state; start fresh".
+            val file = if (target == null) null else when (val read = readBlob(target, chatBox)) {
+                is Blob.Found -> read.file
+                is Blob.Unavailable -> {
+                    notes += "$label was not restored: the saved state for this point of the conversation ($target) " +
+                        "${read.why}, so it was left as it is (saved as $current)."
+                    effective[hook.key] = current
+                    continue
+                }
+            }
             try {
                 runCatching { onRunloop(hook.box) { hook.restore(file) } }
                     .onSuccess {
@@ -313,25 +332,44 @@ object AgentExtensionRegistry {
                         if (conflict) notes += "$label had changed since the conversation last saw it; it was restored anyway, and the replaced state is saved as $current."
                     }
                     .onFailure {
+                        if (isAiTurnCancellation(it)) throw it
                         lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) restore failed: ${it.message}")
-                        notes += "$label could not be restored: ${it.message}"
-                        current?.let { c -> effective[hook.key] = c }
+                        notes += "$label could not be restored: ${it.message} (the state before is saved as $current)."
+                        effective[hook.key] = current
                     }
             } finally { file?.delete() }
         }
         return BranchRestore(notes, effective, restored)
     }
 
-    /** One hook's state now, saved into [AiStateBlobs]; null when it could not be saved. */
-    private fun snapshotOne(hook: BranchStateHook, chatBox: Box): String? {
+    private sealed interface Snapshot {
+        data class Saved(val sha: String) : Snapshot
+        data class Failed(val message: String) : Snapshot
+    }
+
+    /** One hook's state now, saved into [AiStateBlobs]. A cancelled turn is rethrown, not reported as a failed save. */
+    private fun snapshotOne(hook: BranchStateHook, chatBox: Box): Snapshot {
         val tmp = java.io.File.createTempFile("ai4-branch-", ".state")
         return try {
-            runCatching {
-                onRunloop(hook.box) { hook.save(tmp) }
-                AiStateBlobs.put(tmp, chatBox)
-            }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) save failed: ${it.message}") }
-                .getOrNull()
+            onRunloop(hook.box) { hook.save(tmp) }
+            Snapshot.Saved(AiStateBlobs.put(tmp, chatBox))
+        } catch (e: Exception) {
+            if (isAiTurnCancellation(e)) throw e
+            lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) save failed: ${e.message}")
+            Snapshot.Failed(e.message ?: e::class.java.simpleName)
         } finally { tmp.delete() }
+    }
+
+    private sealed interface Blob {
+        data class Found(val file: java.io.File) : Blob
+        data class Unavailable(val why: String) : Blob
+    }
+
+    private fun readBlob(sha: String, chatBox: Box): Blob = try {
+        AiStateBlobs.get(sha, chatBox)?.let { Blob.Found(it) } ?: Blob.Unavailable("is missing from ai4_blobs/state")
+    } catch (e: Exception) {
+        if (isAiTurnCancellation(e)) throw e
+        Blob.Unavailable("could not be read (${e.message ?: e::class.java.simpleName})")
     }
 
     /**
@@ -343,7 +381,13 @@ object AgentExtensionRegistry {
     internal fun resumeBranchState(hook: BranchStateHook) {
         val boxes = runCatching { hook.box.inside.boxes.values.toList() }.getOrNull() ?: return
         val sha = runCatching { AiSessionTree.currentBranchStates(boxes)[hook.key] }.getOrNull() ?: return
-        val file = AiStateBlobs.get(sha, hook.box) ?: return
+        val file = when (val read = readBlob(sha, hook.box)) {
+            is Blob.Found -> read.file
+            is Blob.Unavailable -> {
+                lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) not resumed: its saved state $sha ${read.why}")
+                return
+            }
+        }
         try {
             runCatching { hook.restore(file) }
                 .onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) resume failed: ${it.message}") }
@@ -398,10 +442,19 @@ object AiStateBlobs {
     }
 
     /** The state stored under [sha], unpacked into a temporary file the caller deletes; null if it is not here. */
+    /** The file a stored state is kept in, for tests. */
+    internal fun fileFor(sha: String, box: Box): java.io.File = java.io.File(dir(box), "$sha.state.gz")
+
+    /** Null when no such state was stored; throws when it is there but cannot be read (a damaged file). */
     fun get(sha: String, box: Box): java.io.File? {
         val packed = java.io.File(dir(box), "$sha.state.gz").takeIf { it.isFile } ?: return null
         val out = java.io.File.createTempFile("ai4-branch-", ".state")
-        java.util.zip.GZIPInputStream(packed.inputStream().buffered(1 shl 16), 1 shl 16).use { input -> out.outputStream().use { input.copyTo(it, 1 shl 16) } }
+        try {
+            java.util.zip.GZIPInputStream(packed.inputStream().buffered(1 shl 16), 1 shl 16).use { input -> out.outputStream().use { input.copyTo(it, 1 shl 16) } }
+        } catch (e: Exception) {
+            out.delete()
+            throw e
+        }
         return out
     }
 }
