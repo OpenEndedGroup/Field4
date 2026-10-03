@@ -126,6 +126,16 @@ Accepted reds live only in `dev_docs/testing/expected_test_failures.json` (JVM) 
 `dev_docs/testing/expected_smoke_failures.json` (smoke), enforced in both directions. Never
 describe a red as expected only in prose, and never use wildcards in either register.
 
+### Landing on `main`
+
+Never merge into `main` yourself. Commit on your topic branch, then
+`uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
+artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
+back as a bounce with its reason (`tools/land.py status <id>`); fix the branch and enqueue again.
+The hooks only report which guards a commit affects, so commits take seconds; do not use
+`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
+branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
+
 ### Gradle hygiene
 
 - Use the wrapper: `./gradlew compileKotlinJvm` (Windows: `.\gradlew compileKotlinJvm`, and

@@ -53,6 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("ref", nargs="?", help="branch or commit to merge into the current branch")
     parser.add_argument("--continue", dest="cont", action="store_true", help="finish a merge after resolving source conflicts")
+    parser.add_argument("-m", "--message", help="merge commit message (default: git's own)")
     parser.add_argument("--no-commit", action="store_true", help="regenerate and stage, but leave the commit to you")
     args = parser.parse_args(argv)
     repo = Path(_git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
@@ -120,7 +121,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.no_commit:
         print("merge_regen: merged and regenerated; commit when ready")
         return 0
-    return subprocess.run(["git", "commit", "--no-edit"], cwd=repo).returncode
+    commit = ["git", "commit", "-m", args.message] if args.message else ["git", "commit", "--no-edit"]
+    return subprocess.run(commit, cwd=repo).returncode
 
 
 if __name__ == "__main__":

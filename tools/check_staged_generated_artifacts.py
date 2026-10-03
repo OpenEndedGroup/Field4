@@ -115,6 +115,8 @@ def _transcript_input(path: str) -> bool:
         _under(path, "dev_docs/agents/transcripts")
         or _under(path, "public/docs/assets/agent_transcripts")
         or path == "public/docs/agent_transcripts.md"
+        # Every starting point ships a copy of this as its AGENTS.md.
+        or path == "templates/WORKSPACE_AGENTS.md"
     )
 
 
