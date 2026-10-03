@@ -2726,7 +2726,7 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
             if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
         }
 
-        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface")
+        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface", "-framework", "CoreFoundation")
 
         compile(
             *(if (isLinux) arrayOf("-shared", "-fPIC") else arrayOf("-dynamiclib")),

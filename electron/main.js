@@ -1495,6 +1495,7 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  require("./rtt-view-host").install();
   createMainWindow();
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);
