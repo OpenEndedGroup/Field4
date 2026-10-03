@@ -94,6 +94,7 @@ internal object SyphonNative {
     private val hasClientsH by fn("fs_server_has_clients", I, A)
     private val serverDescH by fn("fs_server_description", A, A)
     private val serverFreeH by fn("fs_server_free", null, A)
+    private val surfaceCreateH by fn("fs_iosurface_create", A, I, I)
     private val listH by fn("fs_list_servers", A, I)
     private val clientNewH by fn("fs_client_new", A, A, I)
     private val frameCountH by fn("fs_client_frame_count", L, A)
@@ -146,6 +147,13 @@ internal object SyphonNative {
         check(publishSurfaceH.invokeExact(s, MemorySegment.ofAddress(ioSurfaceRef), if (flipped) 1 else 0) as Int, "publishing an IOSurface")
     }
 
+    /** A new BGRA8, page-padded IOSurface; the caller owns the +1 retain (MetalIOSurface.release). */
+    fun ioSurfaceCreate(width: Int, height: Int): Long {
+        val p = surfaceCreateH.invokeExact(width, height) as MemorySegment
+        if (p == MemorySegment.NULL) fail("creating a $width x $height IOSurface")
+        return p.address()
+    }
+
     fun hasClients(s: MemorySegment): Boolean = check(hasClientsH.invokeExact(s) as Int, "hasClients") == 1
 
     fun serverDescription(s: MemorySegment): String = takeString(serverDescH.invokeExact(s) as MemorySegment, "describing the server")
@@ -187,6 +195,14 @@ internal object SyphonNative {
         val out = if (reuse != null && reuse.size == n) reuse else ByteArray(n)
         MemorySegment.copy(buf, JAVA_BYTE, 0, out, 0, n)
         Triple(out, width, height)
+    }
+
+    /** Copy the latest frame straight into [dst]; returns (width, height), or null if none yet or it does not fit. */
+    fun copyRgbaInto(c: MemorySegment, dst: MemorySegment): Pair<Int, Int>? = Arena.ofConfined().use { a ->
+        val w = a.allocate(I)
+        val h = a.allocate(I)
+        val status = copyRgbaH.invokeExact(c, dst, dst.byteSize(), w, h) as Int
+        if (status == 1) w.get(I, 0) to h.get(I, 0) else if (status == 0 || status == -2) null else fail("reading a frame")
     }
 
     fun clientDescription(c: MemorySegment): String = takeString(clientDescH.invokeExact(c) as MemorySegment, "describing the client")

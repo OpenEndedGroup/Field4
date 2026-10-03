@@ -2,6 +2,8 @@
 package afield.syphon
 
 import afield.Runloop
+import afield.four.Renderer
+import afield.four.modules.fromContext
 import afield.four.targets.RenderToTexture
 import afield.util.PngEncoder
 import org.json.JSONArray
@@ -180,6 +182,8 @@ class SyphonServer internal constructor(val name: String) : AutoCloseable {
     fun follow(target: RenderToTexture) {
         live()
         val bgra = bgraOf(target)
+        gpu?.close()
+        gpu = null
         following = target
         fun next() {
             if (closed || following !== target) return
@@ -195,8 +199,34 @@ class SyphonServer internal constructor(val name: String) : AutoCloseable {
         next()
     }
 
-    /** Stop [follow]ing. */
-    fun stopFollowing() { following = null }
+    /** Stop [follow]ing and [followOnGpu]. */
+    fun stopFollowing() {
+        following = null
+        gpu?.close()
+        gpu = null
+    }
+
+    @Volatile private var gpu: SyphonGpuPublisher? = null
+
+    /**
+     * Publish every frame [target] renders without a CPU readback: each frame is copied on the GPU
+     * into an IOSurface and Syphon takes it from there. Needs a `B8G8R8A8` target (the default) and
+     * a driver with `VK_EXT_external_memory_host` (KosmicKrisp and MoltenVK on Apple silicon); call
+     * it after [target] is in the renderer's list, since it renders after whatever is already there.
+     * Replaces any earlier [follow] or [followOnGpu]; [stopFollowing] ends it.
+     */
+    @JvmOverloads
+    fun followOnGpu(target: RenderToTexture, renderer: Renderer = fromContext()): SyphonGpuPublisher {
+        live()
+        stopFollowing()
+        val p = SyphonGpuPublisher(this, target, renderer)
+        val key = "syphon:$name"
+        // Remove first so the key goes to the end of the (insertion-ordered) list, after the target.
+        renderer.renderList.others.remove(key)
+        renderer.renderList.others[key] = p
+        gpu = p
+        return p
+    }
 
     /**
      * Publish an existing BGRA8 IOSurface by its `IOSurfaceRef` address, without touching the CPU:
@@ -215,6 +245,8 @@ class SyphonServer internal constructor(val name: String) : AutoCloseable {
         if (closed) return
         closed = true
         following = null
+        gpu?.close()
+        gpu = null
         Syphon.open.remove(name, this)
         synchronized(this) { cleanable.clean() }
     }
@@ -253,6 +285,27 @@ class SyphonClient internal constructor(private val handle: MemorySegment) : Aut
         check(!closed) { "Syphon client is closed" }
         val (bytes, w, h) = synchronized(this) { SyphonNative.copyRgba(handle, null) } ?: return null
         return SyphonFrame(bytes, w, h)
+    }
+
+    internal fun copyInto(dst: MemorySegment): Pair<Int, Int>? =
+        if (closed) null else synchronized(this) { SyphonNative.copyRgbaInto(handle, dst) }
+
+    /**
+     * This client's frames as a Vulkan texture that follows the server: bind
+     * [SyphonTexture.texture] as a `sampler2D` like any other texture. Waits up to [waitMs] for a
+     * first frame, whose size the texture keeps. Registered in [renderer]'s list, which is what
+     * refreshes it each frame.
+     */
+    @JvmOverloads
+    fun texture(renderer: Renderer = fromContext(), waitMs: Int = 2000): SyphonTexture {
+        check(!closed) { "Syphon client is closed" }
+        if (frameCount == 0L) waitForFrame(0, waitMs)
+        val first = latest() ?: throw IllegalStateException("Syphon: no frame from $server within $waitMs ms")
+        val t = SyphonTexture(this, renderer, first.width, first.height)
+        val key = "syphon-in:${server.uuid}"
+        renderer.renderList.others.remove(key)
+        renderer.renderList.others[key] = t
+        return t
     }
 
     /** The latest frame as a PNG (for `display`), or null if none has arrived yet. */

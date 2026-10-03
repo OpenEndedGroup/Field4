@@ -210,6 +210,28 @@ void fs_server_free(fs_server *s) {
     }
 }
 
+// --- IOSurfaces ---------------------------------------------------------------------------------
+
+void *fs_iosurface_create(int32_t width, int32_t height) {
+    @autoreleasepool {
+        if (width <= 0 || height <= 0) { setError(@"bad size"); return NULL; }
+        size_t bpr = IOSurfaceAlignProperty(kIOSurfaceBytesPerRow, (size_t)width * 4);
+        size_t page = 16384;
+        size_t alloc = ((bpr * height) + page - 1) / page * page;
+        NSDictionary *props = @{
+            (id)kIOSurfaceWidth: @(width),
+            (id)kIOSurfaceHeight: @(height),
+            (id)kIOSurfaceBytesPerElement: @4,
+            (id)kIOSurfaceBytesPerRow: @(bpr),
+            (id)kIOSurfaceAllocSize: @(alloc),
+            (id)kIOSurfacePixelFormat: @((uint32_t)'BGRA'),
+        };
+        IOSurfaceRef surface = IOSurfaceCreate((__bridge CFDictionaryRef)props);
+        if (!surface) { setError(@"IOSurfaceCreate failed"); return NULL; }
+        return (void *)surface;
+    }
+}
+
 // --- discovery ---------------------------------------------------------------------------------
 
 char *fs_list_servers(int32_t waitMs) {

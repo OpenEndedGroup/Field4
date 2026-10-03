@@ -108,6 +108,8 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
+- `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
+  IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.

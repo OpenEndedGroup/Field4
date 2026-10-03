@@ -47,7 +47,13 @@ val out = syphonServer("Field render")
 out.follow(target)          // every frame target renders, until out.stopFollowing()
 ```
 
-`follow` reads each frame back from the GPU once its work has finished and passes it to Syphon, one
+Better, when the renderer is to hand, is `out.followOnGpu(target)`: each frame is copied on the
+GPU, on the same command buffer that drew it, into an IOSurface, and Syphon takes it from there.
+Nothing is read back to the CPU. It needs a `B8G8R8A8` target (the default) and a driver with
+`VK_EXT_external_memory_host`, which both drivers Field uses on Apple silicon have. Call it after
+the target is in the renderer's list.
+
+`follow` instead reads each frame back from the GPU once its work has finished and passes it to Syphon, one
 frame in flight at a time, so a slow receiver drops frames instead of queueing them. The target
 needs 8-bit colour, which the default `B8G8R8A8_SRGB` is. `out.publish(target)` sends just the next
 frame.
@@ -70,14 +76,21 @@ loop {
 `latest()` returns a `SyphonFrame` with the RGBA bytes, `rgbaAt(x, y)`, `argb()` and `image()`.
 `Syphon.servers()` lists everything announced on the machine, Field's own servers included.
 
+To sample another application's video in a shader, `inp.texture()` gives a texture that follows
+the server; bind its `.texture` like any `LoadedTexture`:
+
+```diffstatic {data-lang=kotlin}
+val inp = syphonClient("Resolume Arena")
+prop<LoadedTexture>(syphonIn) = inp.texture().texture
+```
+
 ## What it costs
 
-Today every frame passes through memory on its way across. Publishing a `RenderToTexture` reads it
-back from the GPU, and Syphon then copies those bytes into the IOSurface it shares with clients;
-receiving copies the client's surface back into a byte array. At 1920 x 1080 that is about 8 MB per
+`followOnGpu` keeps a frame on the GPU all the way. Everything else passes through memory:
+`publish` and `follow` read the frame back and Syphon copies those bytes into its shared IOSurface,
+and receiving (`latest`, `png`, `texture`) copies the server's surface back into memory. At 1920 x 1080 that is about 8 MB per
 frame in each direction, which is fine at 30 or 60 frames a second on Apple silicon but is not free.
-`out.publishIOSurface(ref)` publishes an IOSurface you already have without touching the CPU, which
-is the route a zero-copy path from Field's renderer will take.
+`out.publishIOSurface(ref)` publishes an IOSurface you already have without touching the CPU.
 
 ## Try it
 

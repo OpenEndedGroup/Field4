@@ -49,6 +49,12 @@ char *fs_server_description(fs_server *s);
 // Stops and frees the server. NULL is ignored.
 void fs_server_free(fs_server *s);
 
+// --- IOSurfaces ---------------------------------------------------------------------------------
+// A new BGRA8 IOSurface (pixel format 'BGRA') of width x height, its allocation rounded up to whole
+// 16 KB pages so it can be imported as Vulkan host memory (VK_EXT_external_memory_host). Returns the
+// IOSurfaceRef (+1 retained; CFRelease it), or NULL.
+void *fs_iosurface_create(int32_t width, int32_t height);
+
 // --- discovery ---------------------------------------------------------------------------------
 // Every server currently announced, as a JSON array of {"name","appName","uuid"}. The first call
 // starts discovery and waits up to `waitMs` for announcements. Free with fs_free_string.
