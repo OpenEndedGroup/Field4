@@ -251,7 +251,7 @@ from nothing. Left to re-solve, it is the only one of the three whose speed afte
 a jump is the speed it had before — it carries on in the old direction for a
 moment, turns around, and has no corners. A drag bound to it does not stutter.
 
-Re-solving has two consequences worth knowing before you bind one:
+Before you bind one, note two things about re-solving:
 
 - `inertialTo` **never reports itself complete**, even while sitting on its
   target. A uniform that reports completion stops being written, and an
