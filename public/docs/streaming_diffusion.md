@@ -7,13 +7,13 @@ shader or composite into a scene.
 
 [Open the streaming diffusion starting point ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
-![Spinning curves rendered in Field, with the current source on the left and returned charcoal on the right](assets/streaming_diffusion/charcoal-motion-poster.png)
+![Spinning curves rendered in Field, with the current source on the left and returned charcoal on the right](assets/streaming_diffusion/charcoal-085-poster.png)
 
 The example draws five rotating curves at 512 × 512. The left panel shows the
 current source; the right shows stylized output. The model processes groups of
 frames and introduces a causal delay; the motion controls can reproject that
 output onto current geometry between results. While it starts, the right panel
-shows the source. The example starts with charcoal and enables the motion controls.
+shows the source. The example starts with charcoal at strength `0.85` and enables the motion controls.
 
 ## Open the example
 
@@ -154,26 +154,26 @@ results into each new result. **Noise advection** anchors some of the model's
 randomness to moving surfaces; changing it resets the model.
 
 The following clips are native Field RTT captures at 512 × 512 with active
-TAEHV/TensorRT and the charcoal prompt. Each has the current source on the left
+TAEHV/TensorRT and the charcoal prompt at strength `0.85`. Each has the current source on the left
 and processed output on the right. They show successive eight-second intervals of the same rotating
 scene; their source poses are not identical. Clip playback is 10 FPS; diffusion requests 16 FPS.
 
 **All three enabled** — display reprojection, history blend `.35`, noise advection
 `.8`:
 
-<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-all.mp4" poster="../assets/streaming_diffusion/charcoal-motion-poster.png" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-085-all.mp4" poster="../assets/streaming_diffusion/charcoal-085-poster.png" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
 
 **All three disabled after reset** — the model's delayed output is held between
 updates:
 
-<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-085-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
 
 The enabled run uses a paper fill for rejected pixels, avoiding the pale
 outline of old curve positions caused by falling back to flat source paper.
 Generated marks beyond the supplied correspondence can still leave trails. These clips
 establish that the paths run together, rather than a measured temporal-quality
-improvement for each control. [Run data](assets/streaming_diffusion/charcoal-motion-run.json)
-and [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain active settings,
+improvement for each control. [Run data](assets/streaming_diffusion/charcoal-085-run.json)
+and [worker log](assets/streaming_diffusion/charcoal-085-worker.txt) retain active settings,
 resets and engine loads. With the controls enabled, the first steady interval
 presented approximately 16 FPS. The retained run data gives chunk timings.
 
@@ -362,8 +362,8 @@ construct visibility and confidence; the model does not consume them directly.
 
     The editable source is the [operation transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/streaming_diffusion.yaml).
     The charcoal image and comparison clips are native Field RTT captures, with
-    TAEHV and active TensorRT. [Run data](assets/streaming_diffusion/charcoal-motion-run.json) and the
-    [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain settings and engine loads.
+    TAEHV and active TensorRT. [Run data](assets/streaming_diffusion/charcoal-085-run.json) and the
+    [worker log](assets/streaming_diffusion/charcoal-085-worker.txt) retain settings and engine loads.
     The capture uses the starting point's geometry and prompt controls with strict
     checkpoint loading. The [earlier ink clip](assets/streaming_diffusion/motion-all.mp4)
     retains the pale paper footprint that prompted the display fill. Missing-backend behavior was also run

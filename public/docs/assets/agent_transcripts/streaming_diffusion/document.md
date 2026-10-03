@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4607 "sha256" "1e00552ebaf9ee50d3305da096f5b851ba2ec4fbbe6aa9b17136e3280a5eb625"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4607 "sha256" "efef326c64d2b3d1214056481d0d8d5947f2c0bcd63a5759d6ce69abfd05eabf"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
@@ -70,7 +70,7 @@ if (!support.available) {
 } else {
     var material = 1 // 0 ink, 1 charcoal, 2 barbed wire
     var promptOverride = "" // Any text prompt; blank selects the material preset.
-    var strength = .60
+    var strength = .85
     var noiseAdvection = .8
     var adaptPrompt = whiteOnBlack
     var pendingReset = false
