@@ -43,6 +43,9 @@ from pathlib import Path
 
 PENDING, LANDED, BOUNCED = "pending", "landed", "bounced"
 POLL_SECONDS = 15
+# The lander's worktree sits on this branch rather than a detached HEAD, because a clean, merged,
+# detached worktree is exactly what tools/reap_merged_worktrees.py removes; it protects this name.
+LANDER_BRANCH = "land/lander"
 MAX_MAIN_RACES = 3
 
 
@@ -216,7 +219,7 @@ def _lander_worktree(primary: Path, requested: str | None) -> Path:
     path = Path(requested) if requested else primary.parent / f"{primary.name}-worktrees" / "lander"
     if not (path / ".git").exists():
         path.parent.mkdir(parents=True, exist_ok=True)
-        _git(primary, "worktree", "add", "--detach", str(path), "main")
+        _git(primary, "worktree", "add", "-B", LANDER_BRANCH, str(path), "main")
         subprocess.run(["git", "lfs", "checkout"], cwd=path)
         # yarn.lock is untracked but the JS build needs it.
         lock = primary / "kotlin-js-store/yarn.lock"
@@ -229,7 +232,7 @@ def _lander_worktree(primary: Path, requested: str | None) -> Path:
 def _reset(wt: Path, main_sha: str) -> None:
     if _ok(wt, "rev-parse", "-q", "--verify", "MERGE_HEAD"):
         _git(wt, "merge", "--abort", check=False)
-    _git(wt, "checkout", "-q", "--detach", "--force", main_sha)
+    _git(wt, "checkout", "-q", "--force", "-B", LANDER_BRANCH, main_sha)
     _git(wt, "reset", "-q", "--hard", main_sha)
     # Untracked files only; ignored build output stays, which keeps Gradle warm between items.
     _git(wt, "clean", "-q", "-fd")
@@ -339,6 +342,7 @@ def cmd_run(args: argparse.Namespace) -> int:
             pending = _items(queue, PENDING)
             if pending:
                 item = pending[0]
+                wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
                 print(f"land: {_now()} landing {item['id']} ({item['sha'][:9]}, by {item['by']})", flush=True)
                 _land(item, primary, wt, queue)
                 state, done = _find(queue, item["id"]) or ("?", item)

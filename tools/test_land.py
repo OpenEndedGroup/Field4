@@ -145,6 +145,15 @@ class LandQueueTest(unittest.TestCase):
         self.run_lander()
         self.assertIn("Land zeta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
 
+    def test_a_removed_lander_worktree_is_recreated_on_its_protected_branch(self) -> None:
+        self.land(self.branch_with("eta", "eta.txt"), "enqueue")
+        self.run_lander()
+        self.git(self.primary, "worktree", "remove", "--force", str(self.lander))
+        self.land(self.branch_with("theta", "theta.txt"), "enqueue")
+        result = self.run_lander()
+        self.assertIn("Land theta", self.git(self.primary, "log", "-1", "--format=%s", "main"), result.stdout + result.stderr)
+        self.assertEqual(self.git(self.lander, "branch", "--show-current"), "land/lander")
+
 
 if __name__ == "__main__":
     unittest.main()
