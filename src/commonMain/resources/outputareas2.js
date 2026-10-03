@@ -1900,7 +1900,7 @@ function ensureAiChat(container, uid, property) {
         const micButton = document.createElement("button");
         micButton.className = "ai-chat-mic";
         micButton.type = "button";
-        micButton.title = "Hold to talk (or hold Right Option anywhere)";
+        micButton.title = `Hold to talk (or hold ${window.fieldVoice?.hotkeyLabel || "the push-to-talk key"} anywhere)`;
         micButton.textContent = "\u{1F399}";
         micButton.addEventListener("pointerdown", (event) => {
                 event.preventDefault();

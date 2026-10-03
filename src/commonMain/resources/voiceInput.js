@@ -1,6 +1,9 @@
 // Push-to-talk into AI4 chat.
 //
-// Hold Right Option (anywhere), or hold a chat's microphone button, and speak. On release the clip
+// Hold the push-to-talk key (anywhere), or hold a chat's microphone button, and speak. The key is
+// Right Option on macOS and Right Ctrl elsewhere: on Windows and on most non-US Linux layouts Right
+// Alt is AltGr, which types characters. Set another with
+// `localStorage.setItem("fieldVoiceKey", "<KeyboardEvent.code>")`, e.g. "F13" or "Pause". On release the clip
 // goes to the server as `ai-transcribe` (local Whisper large-v3-turbo, `VoiceTranscriber.kt`), the
 // transcript lands in the target chat and is sent as a dictated prompt, which tells the model to
 // repair misheard identifiers from context.
@@ -18,7 +21,10 @@ const SAMPLE_RATE = 16000;
 const MIN_SECONDS = 0.3;          // shorter than this is a tap, not speech
 const TAIL_MS = 150;              // keep recording briefly after release so the last word isn't clipped
 const KEEP_MIC_OPEN_MS = 60000;   // reuse the stream for quick follow-ups, then release the mic
-const HOTKEY_CODE = "AltRight";
+const IS_MAC = /Mac/.test(navigator.platform || navigator.userAgent);
+const IS_WINDOWS = /Win/.test(navigator.platform || navigator.userAgent);
+const HOTKEY_CODE = localStorage.getItem("fieldVoiceKey") || (IS_MAC ? "AltRight" : "ControlRight");
+const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "AltGraph", "Meta", "OS"]);
 const HOTKEY_MIN_HOLD_MS = 250;
 
 const WORKLET = `
@@ -73,12 +79,7 @@ async function openMic() {
                         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
                 });
         } catch (error) {
-                if (error?.name === "NotAllowedError") {
-                        throw new Error(window.fieldElectron
-                                ? "the microphone was refused. If Field4 was started from a terminal, macOS may be asking on that terminal's behalf: check System Settings → Privacy & Security → Microphone."
-                                : "this browser refused the microphone. Allow it for this site (the address-bar permission icon), or use the Field4 app.");
-                }
-                throw error;
+                throw new Error(microphoneHelp(error));
         }
         state.context = new AudioContext({ sampleRate: SAMPLE_RATE });
         const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
@@ -93,6 +94,30 @@ async function openMic() {
                 if (state.recording) state.chunks.push(event.data);
         };
         state.source.connect(state.node);
+}
+
+function microphoneHelp(error) {
+        const name = error?.name || "";
+        if (name === "NotFoundError" || name === "OverconstrainedError") {
+                return IS_WINDOWS
+                        ? "no microphone found. Check Settings → System → Sound → Input."
+                        : IS_MAC ? "no microphone found. Check System Settings → Sound → Input."
+                        : "no microphone found. Check that PipeWire/PulseAudio lists an input (`pactl list short sources`).";
+        }
+        if (name === "NotReadableError") {
+                return "the microphone is in use or failed to start. Close other apps using it and try again.";
+        }
+        if (name !== "NotAllowedError") return error?.message || String(error);
+        if (!window.fieldElectron) {
+                return "this browser refused the microphone. Allow it for this site (the address-bar permission icon), or use the Field4 app.";
+        }
+        if (IS_WINDOWS) {
+                return "Windows refused the microphone. Turn on Settings → Privacy & security → Microphone → \"Let desktop apps access your microphone\".";
+        }
+        if (IS_MAC) {
+                return "the microphone was refused. If Field4 was started from a terminal, macOS may be asking on that terminal's behalf: check System Settings → Privacy & Security → Microphone.";
+        }
+        return "the microphone was refused. In a Flatpak or Snap, grant the app audio input; otherwise check that PipeWire/PulseAudio is running.";
 }
 
 function scheduleMicRelease() {
@@ -245,9 +270,10 @@ function deliver(target, text, options) {
 
 // ---- hotkey: hold Right Option ----------------------------------------------
 //
-// Recording starts on key-down so the first word isn't lost. Any other key pressed while it is held
-// means it was a chord (Option-letter), so the take is dropped; so is a tap shorter than
-// HOTKEY_MIN_HOLD_MS.
+// Recording starts on key-down so the first word isn't lost. Any other non-modifier key pressed while
+// it is held means it was a chord (Option-letter, Ctrl-C), so the take is dropped; so is a tap
+// shorter than HOTKEY_MIN_HOLD_MS. Modifiers alone never cancel: Windows sends a synthetic Left Ctrl
+// with AltGr, and Shift is how you ask for insert-without-sending.
 
 window.addEventListener("keydown", (event) => {
         if (event.code === HOTKEY_CODE) {
@@ -257,7 +283,7 @@ window.addEventListener("keydown", (event) => {
                 start();
                 return;
         }
-        if (state.hotkeyDownAt && event.key !== "Shift") {
+        if (state.hotkeyDownAt && !MODIFIER_KEYS.has(event.key)) {
                 state.hotkeyChorded = true;
                 cancel();
         }
@@ -284,5 +310,6 @@ window.fieldVoice = {
         start,
         stop: (options) => stop(options || {}),
         cancel,
-        vocabularyFor
+        vocabularyFor,
+        hotkeyLabel: { AltRight: "Right Option", ControlRight: "Right Ctrl" }[HOTKEY_CODE] || HOTKEY_CODE
 };

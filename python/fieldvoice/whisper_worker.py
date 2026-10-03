@@ -10,9 +10,9 @@ single time. The protocol is one JSON object per line in each direction:
 ffmpeg is needed. `prompt` is Whisper's initial prompt: the identifiers the conversation is using,
 which is what turns "from context" into `fromContext`.
 
-Backends, first that imports wins: `mlx-whisper` (Apple silicon GPU), then `faster-whisper` (CPU or
-CUDA). Install with `uv sync --inexact --group voice`. The model is `large-v3-turbo` unless
-`FIELD_VOICE_MODEL` names another.
+Backends, first that imports wins: `mlx-whisper` (Apple silicon GPU), then `faster-whisper` (CUDA,
+else CPU). Install with `uv sync --inexact --group voice`. The model is `large-v3-turbo` on a GPU and
+`small.en` on a CPU, unless `FIELD_VOICE_MODEL` names another.
 
 On startup the worker prints `{"ready": true, ...}` or `{"ready": false, "error": ...}`.
 """
@@ -49,14 +49,39 @@ def _load_backend():
             )
             return result.get("text", "")
 
-        return "mlx-whisper", repo, run
+        return "mlx-whisper", repo, run, ""
     except Exception as e:  # ImportError, or a broken install
         errors.append(f"mlx-whisper: {e}")
     try:
         from faster_whisper import WhisperModel  # type: ignore
+    except Exception as e:
+        errors.append(f"faster-whisper: {e}")
+    else:
+        return _faster_whisper(WhisperModel, model)
+    raise RuntimeError(
+        "no Whisper backend is installed (" + "; ".join(errors) + "). "
+        "Run `uv sync --inexact --group voice` in the venv Field uses."
+    )
 
-        name = model or "large-v3-turbo"
-        whisper = WhisperModel(name, device="auto", compute_type="auto")
+
+def _cuda_devices():
+    try:
+        import ctranslate2  # type: ignore
+
+        return ctranslate2.get_cuda_device_count()
+    except Exception:
+        return 0
+
+
+def _faster_whisper(WhisperModel, model):
+    """CUDA runs large-v3-turbo fast enough for push-to-talk; a CPU does not, so without a GPU the
+    default drops to small.en. When CUDA is present but its runtime libraries are not (CUDA 12 and
+    cuDNN 9), the GPU attempt fails at load or on the first clip, so it is tried with a warm-up and
+    the worker falls back to the CPU with a note instead of failing outright."""
+    import numpy as np
+
+    def make(name, device, compute):
+        whisper = WhisperModel(name, device=device, compute_type=compute)
 
         def run(audio, prompt):
             segments, _info = whisper.transcribe(
@@ -68,26 +93,32 @@ def _load_backend():
             )
             return "".join(s.text for s in segments)
 
-        return "faster-whisper", name, run
-    except Exception as e:
-        errors.append(f"faster-whisper: {e}")
-    raise RuntimeError(
-        "no Whisper backend is installed (" + "; ".join(errors) + "). "
-        "Run `uv sync --inexact --group voice` in the venv Field uses."
-    )
+        run(np.zeros(16000, dtype=np.float32), "")
+        return run
+
+    note = ""
+    if _cuda_devices() > 0:
+        name = model or "large-v3-turbo"
+        try:
+            return "faster-whisper (cuda)", name, make(name, "cuda", "float16"), ""
+        except Exception as e:
+            note = (f"CUDA was found but could not run Whisper ({e}); using the CPU. "
+                    "Install the CUDA 12 and cuDNN 9 runtimes to use the GPU.")
+    name = model or "small.en"
+    return "faster-whisper (cpu)", name, make(name, "cpu", "int8"), note
 
 
 def main():
     try:
         import numpy as np
 
-        backend, model, run = _load_backend()
+        backend, model, run, note = _load_backend()
         # Warm up so the first real clip doesn't pay for the model download and graph build.
         run(np.zeros(16000, dtype=np.float32), "")
     except Exception as e:
         _emit({"ready": False, "error": str(e)})
         return 1
-    _emit({"ready": True, "backend": backend, "model": model})
+    _emit({"ready": True, "backend": backend, "model": model, "note": note})
 
     for line in sys.stdin:
         line = line.strip()

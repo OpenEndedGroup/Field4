@@ -23,11 +23,13 @@ import java.util.concurrent.Executors
  *
  * The browser records while the push-to-talk key is held and sends the clip as `ai-transcribe`;
  * this hands it to `python/fieldvoice/whisper_worker.py`, a Python process started on first use and
- * kept alive so `large-v3-turbo` loads once. The worker is an optional dependency
- * (`uv sync --inexact --group voice`); without it the reply says how to install it.
+ * kept alive so the model loads once (`large-v3-turbo` on a GPU, `small.en` on a CPU). The worker
+ * is an optional dependency (`uv sync --inexact --group voice`); without it the reply says how to
+ * install it.
  *
  * The interpreter is `FIELD_VOICE_PYTHON` if set, otherwise the one Field's Python boxes resolved
- * (the same venv the `voice` group is installed into), otherwise `.venv/bin/python` in the checkout.
+ * (the same venv the `voice` group is installed into), otherwise the checkout's `.venv`
+ * (`Scripts\python.exe` on Windows).
  *
  * One clip is transcribed at a time, on a dedicated thread: a second press queues behind the first.
  */
@@ -67,9 +69,11 @@ object VoiceTranscriber {
     private fun pythonExecutable(): String {
         System.getenv("FIELD_VOICE_PYTHON")?.takeIf { it.isNotBlank() }?.let { return it }
         PythonInterface.resolvedPythonExecutable?.takeIf { File(it).canExecute() }?.let { return it }
-        val venv = File(System.getProperty("user.dir"), ".venv/bin/python")
-        if (venv.canExecute()) return venv.path
-        return "python3"
+        val windows = System.getProperty("os.name").lowercase().contains("windows")
+        val venv = File(System.getProperty("user.dir"), ".venv")
+        val candidates = if (windows) listOf("Scripts/python.exe") else listOf("bin/python3", "bin/python")
+        candidates.map { File(venv, it) }.firstOrNull { it.canExecute() }?.let { return it.path }
+        return if (windows) "python" else "python3"
     }
 
     private fun workerScript(): File {
@@ -83,7 +87,7 @@ object VoiceTranscriber {
         if (process?.isAlive == true) return
         val python = pythonExecutable()
         val script = workerScript()
-        notify("Loading Whisper large-v3-turbo (first use downloads ~1.5 GB)...", "AI4 voice")
+        notify("Loading Whisper (the first use downloads the model)...", "AI4 voice")
         val started = ProcessBuilder(python, "-u", script.path)
             .redirectError(ProcessBuilder.Redirect.DISCARD)
             .start()
@@ -99,7 +103,10 @@ object VoiceTranscriber {
         input = started.outputStream.bufferedWriter()
         output = reader
         lprintln("info,ai4", "Voice worker ready: $backend ${ready["model"]?.jsonPrimitive?.content.orEmpty()} via $python")
-        notify("Voice input ready ($backend)", "AI4 voice")
+        val model = ready["model"]?.jsonPrimitive?.content.orEmpty()
+        val note = ready["note"]?.jsonPrimitive?.content.orEmpty()
+        notify("Voice input ready: $model, $backend" + if (note.isNotBlank()) ". $note" else "", "AI4 voice")
+        if (note.isNotBlank()) lprintln("warning,ai4", "Voice worker: $note")
     }
 
     private fun transcribe(request: AiTranscribeRequest): AiTranscribeResponse {
