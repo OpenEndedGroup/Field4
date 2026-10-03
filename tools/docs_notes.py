@@ -2310,6 +2310,9 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
             "baseAdvanced": _int(wt.run("rev-list", "--count", f"HEAD..{base}", check=False).strip()),
             "landed": subprocess.run(["git", "merge-base", "--is-ancestor", "HEAD", base], cwd=wt.root).returncode == 0
                       and wt.head() != state["baseCommit"],
+            # The landing queue's view: queued, landing now, landed, or bounced with its reason.
+            "landing": land_status(git, branch=state["branch"]),
+            "landerRunning": lander_running(git),
             "changed": changed_files(wt, pass_fork_point(wt, state)),
             "uncommitted": len([p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]),
             "handoffDocuments": sorted(p.relative_to(wt.root).as_posix() for p in (wt.root / HANDOFF_DIR).glob("*.md")
@@ -2513,28 +2516,104 @@ def pass_commit(git: Git, store: Store) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------- the landing queue
+#
+# Only tools/land.py's lander writes main (a reference-transaction hook refuses everyone else). A pass
+# or a session enqueues its branch and stops; the lander merges it, regenerates, runs the full guard
+# once and fast-forwards main, or bounces it with a reason. The queue is JSON files in the clone's
+# common git dir, which is all this reads.
+
+LAND_STATES = ("pending", "landed", "bounced")
+
+
+def land_queue_dir(git: Git) -> Path:
+    common = Path(git.run("rev-parse", "--path-format=absolute", "--git-common-dir").strip())
+    return common / "field-land-queue"
+
+
+def land_items(git: Git) -> list[tuple[str, dict[str, Any]]]:
+    queue, found = land_queue_dir(git), []
+    for state in LAND_STATES:
+        for path in sorted((queue / state).glob("*.json")) if (queue / state).is_dir() else []:
+            with contextlib.suppress(OSError, json.JSONDecodeError):
+                found.append((state, json.loads(path.read_text())))
+    return found
+
+
+def land_status(git: Git, branch: str = "", item_id: str = "") -> dict[str, Any] | None:
+    """The newest queue item for a branch (or the item with this id), flattened for the page."""
+    matches = [(state, item) for state, item in land_items(git)
+               if (item_id and item.get("id") == item_id) or (not item_id and item.get("branch") == branch)]
+    if not matches:
+        return None
+    state, item = max(matches, key=lambda m: m[1].get("enqueued", ""))
+    return {"state": state, "id": item.get("id"), "sha": item.get("sha", ""), "reason": item.get("reason", ""),
+            "log": item.get("log", ""), "landedAs": item.get("landed_as", ""), "finished": item.get("finished", ""),
+            "landingNow": state == "pending" and bool(item.get("started")), "enqueued": item.get("enqueued", "")}
+
+
+def lander_running(git: Git) -> bool:
+    # The lander holds this lock while it runs; ask the lock, as land.py's own status does.
+    path = land_queue_dir(git) / "lander.lock"
+    if not path.exists():
+        return False
+    with path.open("a") as probe:
+        try:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(probe, fcntl.LOCK_UN)
+        return False
+
+
+def ensure_lander(git: Git) -> bool:
+    """Start a one-shot lander (`land.py run --once`) when none is running; it drains and exits.
+
+    Starting one while another runs is harmless (the second cannot take the lock), so this only
+    saves a process. It is detached, so it outlives Field and this command. Returns whether one
+    is running now.
+    """
+    if lander_running(git):
+        return True
+    primary = Path(git.run("worktree", "list", "--porcelain").splitlines()[0].split(" ", 1)[1])
+    log = land_queue_dir(git) / "logs" / f"lander-{time.strftime('%Y%m%d-%H%M%S')}.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "ab") as out:
+        subprocess.Popen(uv_command() + ["run", "--project", str(primary), "python", str(primary / "tools" / "land.py"),
+                                         "run", "--once"], cwd=primary, stdin=subprocess.DEVNULL, stdout=out,
+                         stderr=subprocess.STDOUT, start_new_session=True)
+    print(f"started a lander (land.py run --once); its log: {log}", flush=True)
+    return True
+
+
+def land_enqueue(git: Git, worktree: Path, branch: str, note: str, by: str) -> dict[str, Any] | None:
+    """`land.py enqueue <branch>` from the branch's worktree, then make sure a lander will take it."""
+    result = subprocess.run([sys.executable, str(worktree / "tools" / "land.py"), "enqueue", branch, "--note", note, "--by", by],
+                            cwd=worktree, capture_output=True, text=True, check=False)
+    print((result.stdout + result.stderr).strip(), flush=True)
+    if result.returncode != 0:
+        raise SystemExit(f"enqueueing {branch} failed (exit {result.returncode}); see above")
+    queued = re.search(r"queued (\S+) \(", result.stdout)
+    if not queued:  # "already on main; nothing to land"
+        return None
+    ensure_lander(git)
+    return land_status(git, item_id=queued.group(1))
+
+
 def pass_land(git: Git) -> int:
-    """Merge the base into the pass branch (in the worktree), then fast-forward the base to it."""
+    """Enqueue the pass branch for the lander. The lander merges main in, regenerates, checks and
+    fast-forwards main; `pass status` reports landed or the bounce and its reason."""
     state = require_pass(git.root)
     wt = Git(Path(state["worktree"]))
-    base, branch = state["base"], state["branch"]
     if [p for p in wt.status_paths() if not p.startswith(".field-backdoor/")]:
         raise SystemExit("The worktree has uncommitted changes; commit them first.")
-    if git.run("branch", "--show-current", check=False).strip() != base:
-        raise SystemExit(f"{git.root} is not on {base}; landing fast-forwards {base} there.")
-    if subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=wt.root).returncode != 0:
-        print(f"{base} has moved on; merging it into {branch} first (in the worktree) …", flush=True)
-        merge = subprocess.run(["git", "merge", "--no-ff", "--no-edit", base], cwd=wt.root, check=False)
-        if merge.returncode != 0:
-            conflicts = wt.run("diff", "--name-only", "--diff-filter=U", check=False).split()
-            subprocess.run(["git", "merge", "--abort"], cwd=wt.root, check=False)
-            print(f"merge failed and was aborted; conflicts in: {', '.join(conflicts) or '(see above)'}", flush=True)
-            return 1
-    result = subprocess.run(["git", "merge", "--ff-only", branch], cwd=git.root, check=False)
-    if result.returncode != 0:
-        print(f"fast-forward of {base} failed (see above); nothing was changed in {git.root}", flush=True)
-        return result.returncode
-    print(f"{base} is now {git.head()[:10]} in {git.root}. Not pushed.", flush=True)
+    if wt.head() == state["baseCommit"]:
+        raise SystemExit("The pass has no commits to land; commit first.")
+    item = land_enqueue(git, wt.root, state["branch"], f"docs revision pass {state['branch']}", "docs revision pass")
+    if item:
+        state["landing"] = item["id"]
+        save_pass(git.root, state)
+        print(f"queued {item['id']}. Not pushed. The page shows when it lands or bounces.", flush=True)
     return 0
 
 
@@ -2613,8 +2692,12 @@ def pass_finish(git: Git, abandon: bool) -> int:
     landed = subprocess.run(["git", "merge-base", "--is-ancestor", branch, state["base"]], cwd=git.root).returncode == 0
     dirty = is_registered_worktree(git, worktree) and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
     if (not landed or dirty) and not abandon:
-        why = "has uncommitted changes" if landed else f"has not landed on {state['base']}"
-        raise SystemExit(f"The pass {why}; commit and land it first, or finish with --abandon to throw it away.")
+        queued = land_status(git, branch=branch)
+        why = ("has uncommitted changes" if landed
+               else f"is queued for landing ({queued['id']}) and has not landed yet" if queued and queued["state"] == "pending"
+               else f"bounced from the landing queue: {queued['reason']}" if queued and queued["state"] == "bounced"
+               else f"has not landed on {state['base']}")
+        raise SystemExit(f"The pass {why}; land it first, or finish with --abandon to throw it away.")
     refuse_if_occupied(worktree, "pass")
     remove_worktree(git, worktree, force=abandon, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
@@ -2819,9 +2902,14 @@ def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]
         items = sorted((h for h in open_items if handoff_batch(h) == batch["key"]),
                        key=lambda h: (not (h.get("handoff") or {}).get("blocking"), h.get("createdAtEpochMs", 0)))
         not_landed = [h["id"] for h in items if not on_base(git, (h.get("handoff") or {}).get("path", ""))]
-        not_landed_detail = [{"id": h["id"], "title": h.get("note", ""), "path": (h.get("handoff") or {}).get("path", ""),
-                              "branches": branches_carrying(git, (h.get("handoff") or {}).get("path", ""))}
-                             for h in items if h["id"] in not_landed]
+        not_landed_detail = []
+        for h in items:
+            if h["id"] not in not_landed:
+                continue
+            carried = branches_carrying(git, (h.get("handoff") or {}).get("path", ""))
+            not_landed_detail.append({"id": h["id"], "title": h.get("note", ""), "path": (h.get("handoff") or {}).get("path", ""),
+                                      "branches": carried,
+                                      "queue": next((q for q in (land_status(git, branch=b) for b in carried) if q), None)})
         earlier = [b["title"] for b in BATCHES if b["order"] < batch["order"]
                    and any(handoff_batch(h) == b["key"] for h in open_items)]
         overview.append({**{k: batch[k] for k in ("key", "order", "title", "how")},
@@ -2845,8 +2933,11 @@ def session_brief(batch: dict[str, Any], items: list[dict[str, Any]], notes: lis
              f"    {cli} handoff-close <id> \"what happened, in a sentence the page's next agent can use\"",
              f"    {cli} handoff-close <id> --state dropped \"why not\"", "",
              "Closing releases the notes the handoff held; the next revision pass finishes those pages with your "
-             "sentence in their brief. Commit here as you go. To land, merge `main` into this branch, then in "
-             f"`{root}` run `git merge --no-ff {branch}`. Do not push.", "", "## Handoffs", ""]
+             "sentence in their brief. Commit here as you go (the hooks only report, so a commit takes seconds; "
+             "never `--no-verify`). To land, run `uv run python tools/land.py enqueue` here and stop: the lander "
+             "merges, regenerates, runs the full guard once and fast-forwards main, or bounces the branch with "
+             "a reason (`uv run python tools/land.py status`). Never merge into main yourself; a hook refuses it. "
+             "To bring main in, `uv run python tools/merge_regen.py main`. Do not push.", "", "## Handoffs", ""]
     for number, item in enumerate(items, 1):
         info = item.get("handoff") or {}
         held = sum(1 for n in notes if blocked_by(n) == item["id"])
@@ -2965,8 +3056,12 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
     merged = subprocess.run(["git", "merge-base", "--is-ancestor", branch, "main"], cwd=git.root).returncode == 0
     dirty = is_registered_worktree(git, worktree) and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
     if (dirty or not merged) and not abandon:
-        raise SystemExit("The session " + ("has uncommitted changes" if dirty else f"branch {branch} has not been merged into main")
-                         + "; land it first, or end it with --abandon to throw it away.")
+        queued = land_status(git, branch=branch)
+        why = ("has uncommitted changes" if dirty
+               else f"branch {branch} is queued for landing ({queued['id']}) and has not landed yet" if queued and queued["state"] == "pending"
+               else f"branch {branch} bounced from the landing queue: {queued['reason']}" if queued and queued["state"] == "bounced"
+               else f"branch {branch} is not on main: enqueue it with `uv run python tools/land.py enqueue`")
+        raise SystemExit(f"The session {why}; land it first, or end it with --abandon to throw it away.")
     refuse_if_occupied(worktree, "session")
     remove_worktree(git, worktree, force=True, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
@@ -3104,7 +3199,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="FIELD_DOCS_RUNNER_MODE; `never` builds HTML without re-running any capture")
     q.add_argument("--all", action="store_true", help="run captures on every page, not only changed ones")
     pass_sub.add_parser("commit", help="commit the worktree, with the resolved notes in the message")
-    pass_sub.add_parser("land", help="merge the base in, then fast-forward the base in the primary checkout")
+    pass_sub.add_parser("land", help="enqueue the pass branch for the lander (tools/land.py), which puts it on main")
     q = pass_sub.add_parser("finish", help="remove the worktree and branch once landed")
     q.add_argument("--abandon", action="store_true", help="remove them even though they never landed")
     return parser
