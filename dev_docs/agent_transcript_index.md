@@ -76,19 +76,17 @@ entry's transcript must be in one of its section's declared sets. A section with
 but should be rare, and its prose has to name the exception; the whole point of the marker is that
 "these build and run headless" is then a true statement about *every* entry beneath it.
 
-**The totals paragraph** sits under its own marker and must quote four numbers — the corpus size and
-the size of each of the three sets:
+**The totals paragraph** sits under its own marker and must quote **no** numbers:
 
 ```
 <!-- transcript-index: totals -->
-All ⟨corpus⟩ transcripts are checked on every build … ⟨execute⟩ of them are replayed end to end …
+One harness … checks every transcript on every build, at one of three depths. Most are replayed end to end …
 ```
 
-The placeholders are deliberate. This example carried real numbers twice and was stale both times —
-it is prose in a dev doc, so no guard sees it, while the paragraph it illustrates *is* guarded and
-therefore always right. Read the live numbers off `public/docs/agent_transcripts.md`, never off here.
-
-Adding a transcript makes exactly one of those wrong until somebody looks, which is the intent.
+It used to have to quote the corpus size and the size of each of the three sets. That made every
+branch that added a transcript edit the same sentence, so any two of them conflicted there, and
+landings stalled on hand-merging counts. The numbers are printed by `DemoTranscriptExecSmokeTest`
+and by this guard's ok line; read them there.
 
 **Starting-point links.** A transcript is offered as an openable document exactly when
 `AgentTranscriptMaterializer` ships it, i.e. when it is not in that object's `EXCLUDE` set. So an
@@ -108,8 +106,7 @@ the welcome screen cannot open.
    entry's prose instead of linking a starting point.
 4. `./gradlew regenerateAgentTranscriptStartingPoints`, and commit the new bundle directory.
 5. Write the entry on `public/docs/agent_transcripts.md` — a `### name` heading, the prose, then the
-   `[Open ↗](…)` line on its own — under the section whose `verified-by` marker matches step 2, and
-   bump the totals paragraph.
+   `[Open ↗](…)` line on its own — under the section whose `verified-by` marker matches step 2.
 6. `./gradlew checkAgentTranscriptIndex checkAgentTranscripts`.
 
 ## Figures

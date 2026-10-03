@@ -466,21 +466,75 @@ ui.pause(600)
 
 ### Layers 
 
-Field boxes exist in layers, and boxes visibilities and positions are _per layer_. `showLayers()` in a box gives you some UI:
-
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".layers-palette" screenshot="assets/layers-panel.png" transcript="assets/transcripts/layers_setup.yaml" padding="18" wait="0" timeout="90" embed=true hidden=true name="layers-panel"}
-ui.openEditor("layerdemo")
-ui.waitForSelector(".layers-palette", 8000.0)
-ui.pause(700)
-```
-
-Inside individual boxes, you can assign layers with `layers`:
+Field boxes exist in layers, and boxes' visibilities and positions are _per layer_. Inside a box,
+you assign it to layers with `layers`:
 
 ```diffstatic {data-lang=kotlin}
 layers = "default,secondLayer"
 ```
 
-The layers palette shows any layer that's mentioned by any box; the currently selected 'active' layer determines which set of frames you are currently manipulating. If you hide the box that's got the layers panel in it, f1-`show all layers` will get you back. `alt-]` solos the next layer, and `alt-[` solos the previous layer; the command palette labels include the target layer names.
+A box that names no layer is on `default`. `Alt+L` (**Show Layers Panel** in the command palette)
+opens the layers panel, which lists every layer some box is on:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#layers-panel" screenshot="assets/layers-panel-floating.png" transcript="assets/transcripts/layers_setup.yaml" padding="8" wait="0" timeout="120" embed=true hidden=true name="layers-panel-floating" alt="The layers panel: four rows, default, overlay, render and sketch, each with an eye button, a radio button, the layer name, its box count and a Solo button, all in aligned columns. overlay is hidden: its eye is dimmed and so is its row. default is the active layer: its radio is checked and its name is in the accent colour. Below the rows are Show all and Move selection to active layer buttons."}
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+ui.down("Alt"); ui.press("KeyL"); ui.up("Alt")
+ui.waitForSelector("#layers-panel.is-visible", 8000.0)
+// In a fresh document only `default` is shown. Show every layer, make `default` active, then hide
+// `overlay`, all through the panel's own buttons. `default` rather than another layer: the active
+// layer outlives this figure on the capture page, and the next figure's box is on `default`.
+ui.eval("""
+  const all = Array.from(document.querySelectorAll("#layers-panel button")).find(b => b.textContent === "Show all");
+  all.click();
+  return "showed all";
+""")
+ui.pause(700)
+ui.eval("""
+  const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
+  const row = name => rows.find(r => r.querySelector(".layer-name").textContent === name);
+  const target = row("default"), overlay = row("overlay");
+  if (!target || !overlay) return "rows: " + rows.map(r => r.querySelector(".layer-name").textContent).join(",");
+  target.querySelector(".layer-active").click();
+  return "activated";
+""")
+ui.pause(700)
+ui.eval("""
+  const rows = Array.from(document.querySelectorAll("#layers-panel .layer-row"));
+  const overlay = rows.find(r => r.querySelector(".layer-name").textContent === "overlay");
+  overlay.querySelector(".layer-eye").click();
+  return "hid overlay";
+""")
+ui.pause(900)
+```
+
+Each row has:
+
+- an eye, which toggles whether the layer's boxes are on the canvas. Shift-click it to show that
+  layer alone. The last layer showing cannot be hidden.
+- a radio button for the active layer. The active layer decides which set of frames you are moving
+  when you drag boxes about. Making a layer active also shows it.
+- the number of boxes on the layer
+- **Solo**, which shows only this layer and makes it active
+
+**Show all** brings every layer back, and **Move selection to active layer** puts the selected boxes
+on the active layer, and only on it. `alt-]` solos the next layer and `alt-[` the previous one; the
+command palette labels include the target layer names. **Show All Layers** in the command palette
+shows every layer and opens the panel.
+
+The panel floats over the canvas, so hiding a layer never hides it. `showLayers()` in a box puts the
+same controls in that box's output area instead:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector=".layers-palette" screenshot="assets/layers-panel.png" transcript="assets/transcripts/layers_setup.yaml" padding="18" wait="0" timeout="90" embed=true hidden=true name="layers-panel"}
+// The floating layers panel from the figure above is still open on this page; close it first.
+ui.eval("if (document.activeElement) document.activeElement.blur(); return 'blurred'")
+if ((ui.eval("return !!document.querySelector('#layers-panel.is-visible')") ?: "").toString() == "true") {
+    ui.down("Alt"); ui.press("KeyL"); ui.up("Alt")
+}
+ui.openEditor("layerdemo")
+ui.waitForSelector(".layers-palette", 8000.0)
+ui.pause(700)
+```
+
 
 ## Drawing on the canvas
 
@@ -698,6 +752,9 @@ once.myVec {
 `once.myVec { ... }` computes when the property is `null` and caches a non-null result on the box.
 (`null` itself is not cached.) This is useful in the graphics system because a box often wants to
 create one window and Vulkan renderer, then publish those resources to descendants through `prop`.
+When the value depends on something — a view made for a particular renderer — use
+`cached<View>(renderer) { View() }` instead, which makes a new one (and closes the old) when the key
+changes; see [`cached`](running_code.md#cached-one-value-per-set-of-keys).
 
 For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [Running code in a box](running_code.md).
 

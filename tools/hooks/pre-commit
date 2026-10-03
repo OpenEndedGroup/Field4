@@ -7,4 +7,13 @@ guard="$repo_root/tools/check_staged_generated_artifacts.py"
 # core.hooksPath is shared by all worktrees. Older branches must remain committable before this
 # guard lands in them; once the script exists in that checkout, the hook becomes active there.
 [ -f "$guard" ] || exit 0
-exec uv run --project "$repo_root" --frozen python "$guard"
+# The hook is shared by every worktree, but a branch cut before --report existed has a checker that
+# rejects the flag. Such a branch skips the guard rather than failing every commit; landing checks it.
+grep -q -- '"--report"' "$guard" || exit 0
+# Report only: name the affected Gradle guards, run none. Running them here cost minutes per commit
+# and refused whenever a related file was unstaged; tools/merge_regen.py runs them once per landing.
+# FIELD_PRECOMMIT_FULL=1 restores the full check for one commit.
+if [ "${FIELD_PRECOMMIT_FULL:-}" = "1" ]; then
+    exec uv run --project "$repo_root" --frozen python "$guard"
+fi
+exec uv run --project "$repo_root" --frozen python "$guard" --report

@@ -2726,7 +2726,7 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
             if (exit != 0) throw GradleException("Native browser bridge compile failed (${command.joinToString(" ")})")
         }
 
-        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface")
+        val platformLinkArgs = if (isLinux) emptyList() else listOf("-framework", "IOSurface", "-framework", "CoreFoundation")
 
         compile(
             *(if (isLinux) arrayOf("-shared", "-fPIC") else arrayOf("-dynamiclib")),
@@ -3451,6 +3451,29 @@ val buildPaintNative = tasks.register<Exec>("buildPaintNative") {
         "cargo", "build", "--release", "--locked",
         "--manifest-path", sourceDir.file("Cargo.toml").asFile.absolutePath,
         "--target-dir", layout.buildDirectory.dir("field-paint").get().asFile.absolutePath,
+    )
+}
+
+// Build native/field-syphon: a flat C ABI over the Syphon framework (BSD-2, pinned by revision in
+// native/field-syphon/build.sh), for afield.syphon — publishing Field frames to, and receiving
+// frames from, Resolume / TouchDesigner / MadMapper / OBS on macOS.
+//
+// Optional, macOS-only and not wired into `check`: it needs Xcode, and the first build clones the
+// Syphon-Framework repository. Output is build/field-syphon (Syphon.framework,
+// libfield_syphon.dylib, and the field_syphon_probe test peer), which SyphonLibrary searches;
+// -Dafield.syphon.library or AFIELD_SYPHON_LIBRARY point elsewhere.
+//
+//     ./gradlew buildSyphonNative
+//     ./gradlew jvmTest --tests 'afield.syphon.SyphonTest'
+val buildSyphonNative = tasks.register<Exec>("buildSyphonNative") {
+    group = "build"
+    description = "Builds native/field-syphon into build/field-syphon (macOS; needs Xcode and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-syphon")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-syphon"))
+    commandLine(
+        "bash", sourceDir.file("build.sh").asFile.absolutePath,
+        layout.buildDirectory.dir("field-syphon").get().asFile.absolutePath,
     )
 }
 

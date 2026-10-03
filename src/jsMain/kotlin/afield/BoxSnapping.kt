@@ -72,7 +72,10 @@ data class SnapLine(
  * Lifecycle / integration (all call sites live in Main.kt):
  * - [initialize] is called once at startup; it installs keydown/keyup listeners
  *   that track Caps Lock via `getModifierState("CapsLock")` (also toggled on the
- *   "CapsLock" key). All snapping is gated on that [capsLockEnabled] flag.
+ *   "CapsLock" key). All snapping is gated on [isSnappingEnabled]: that
+ *   [capsLockEnabled] flag, or [commandEnabled], which the "Toggle Box Snapping"
+ *   palette command flips (and which no key event resyncs, so it also works where
+ *   the browser reports no lock state, as headless Chromium does).
  * - Drag: [applySnapping] is called from the drag move handler and returns the
  *   snapped (x, y); [clearSnapGuides] is called on drag end.
  * - Resize: [applySnappingForResize] is called from the resize move handler and
@@ -132,6 +135,7 @@ class BoxSnappingSystem {
     
     // Track Caps Lock state
     private var capsLockEnabled = false
+    private var commandEnabled = false
     
     // SVG group for snap guides
     private var snapGuidesGroup: SVGElement? = null
@@ -189,6 +193,16 @@ class BoxSnappingSystem {
      * Check if Caps Lock is currently enabled
      */
     fun isCapsLockEnabled(): Boolean = capsLockEnabled
+
+    fun isSnappingEnabled(): Boolean = capsLockEnabled || commandEnabled
+
+    /** Flip snapping independently of Caps Lock; returns whether snapping is now on. */
+    fun toggleFromCommand(): Boolean {
+        commandEnabled = !commandEnabled
+        if (!isSnappingEnabled()) clearSnapGuides()
+        snapLog("Box snapping: ${if (commandEnabled) "ENABLED" else "DISABLED"} (command)")
+        return isSnappingEnabled()
+    }
     
     /**
      * Get or create the SVG group for snap guides
@@ -335,7 +349,7 @@ class BoxSnappingSystem {
         proposedW: Double,
         proposedH: Double
     ): Pair<Double, Double> {
-        if (!capsLockEnabled) {
+        if (!isSnappingEnabled()) {
             clearSnapGuides()
             return proposedX to proposedY
         }
@@ -406,7 +420,7 @@ class BoxSnappingSystem {
         proposedW: Double,
         proposedH: Double
     ): Rect {
-        if (!capsLockEnabled) {
+        if (!isSnappingEnabled()) {
             clearSnapGuides()
             return Rect(proposedX, proposedY, proposedW, proposedH)
         }
@@ -718,8 +732,10 @@ class BoxSnappingSystem {
     ): List<SnapTarget> {
         val targets = mutableListOf<SnapTarget>()
         
-        // Get boxes sorted by X position
+        // Boxes in the dragged box's row (overlapping it vertically), sorted by X position; a box
+        // in another row must not come between two neighbours in this one.
         val sortedBoxes = otherBoxes.map { getBoxBounds(it) to it }
+            .filter { it.first.y < proposedY + proposedH && it.first.y + it.first.h > proposedY }
             .sortedBy { it.first.x }
         
         // Look for pairs of boxes where we could fit in between with equal spacing
@@ -768,8 +784,9 @@ class BoxSnappingSystem {
     ): List<SnapTarget> {
         val targets = mutableListOf<SnapTarget>()
         
-        // Get boxes sorted by Y position
+        // Boxes in the dragged box's column (overlapping it horizontally), sorted by Y position.
         val sortedBoxes = otherBoxes.map { getBoxBounds(it) to it }
+            .filter { it.first.x < proposedX + proposedW && it.first.x + it.first.w > proposedX }
             .sortedBy { it.first.y }
         
         // Look for pairs of boxes where we could fit in between with equal spacing

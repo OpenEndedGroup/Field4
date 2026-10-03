@@ -311,3 +311,6 @@ dev_docs/agents/demos/ai4_loop_verification/
 
 # Excalidraw bundle build inputs (output is committed under src/jsMain/resources/excalidraw/)
 tools/excalidraw-bundle/node_modules/
+
+# Nightly agents' per-tree scratch (downloads, build logs); never source.
+.nightly-tmp/

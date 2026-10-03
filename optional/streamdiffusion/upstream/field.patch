@@ -1,0 +1,117 @@
+diff --git a/models/wan/causal_stream_inference.py b/models/wan/causal_stream_inference.py
+index c2c50b9..282cc90 100644
+--- a/models/wan/causal_stream_inference.py
++++ b/models/wan/causal_stream_inference.py
+@@ -21,7 +21,10 @@ class CausalStreamInferencePipeline(torch.nn.Module):
+         self.generator_model_name = getattr(
+             args, "generator_name", args.model_name)
+         self.generator = get_diffusion_wrapper(
+-            model_name=self.generator_model_name)(model_type=model_type)
++            model_name=self.generator_model_name)(
++                model_type=model_type,
++                load_pretrained=not bool(getattr(args, "skip_base_weights", False)),
++            )
+         self.text_encoder = get_text_encoder_wrapper(
+             model_name=args.model_name)(model_type=model_type)
+         if getattr(args, "use_taehv", False):
+@@ -70,6 +73,15 @@ class CausalStreamInferencePipeline(torch.nn.Module):
+ 
+         self.generator.model.to(self.device)
+ 
++    def to(self, *args, **kwargs):
++        result = super().to(*args, **kwargs)
++        if isinstance(self.vae, TAEHVWanVAEWrapper):
++            # Module.to applies tensors recursively without calling child.to.
++            # TAEHV needs its own hook to keep the decoder in FP16 and create
++            # the TensorRT runtime when acceleration is requested.
++            self.vae.to(*args, **kwargs)
++        return result
++
+     def _init_denoising_step_list(self, args, device):
+         self.denoising_step_list = torch.tensor(
+             args.denoising_step_list, dtype=torch.long, device=device)
+diff --git a/models/wan/taehv_wrapper.py b/models/wan/taehv_wrapper.py
+index 9468ffe..a6f35f6 100644
+--- a/models/wan/taehv_wrapper.py
++++ b/models/wan/taehv_wrapper.py
+@@ -312,6 +312,15 @@ class TAEHVTensorRTDecoder:
+         if cached is not None:
+             return cached
+ 
++        # Streaming warms up through shapes 2, 3, then 4. Each context can
++        # retain over a GB of device memory, so keep only the active shape.
++        # Return PyTorch's unused pool to CUDA before TensorRT allocates its
++        # context; TensorRT cannot reuse memory held by PyTorch's allocator.
++        torch.cuda.synchronize(device)
++        self._engine_cache.clear()
++        with torch.cuda.device(device):
++            torch.cuda.empty_cache()
++
+         engine_path = self._engine_path(shape)
+         if engine_path.exists():
+             engine_bytes = engine_path.read_bytes()
+@@ -323,6 +332,9 @@ class TAEHVTensorRTDecoder:
+         if engine is None:
+             raise RuntimeError(f"Failed to deserialize TensorRT engine for TAEHV shape {shape}")
+         context = engine.create_execution_context()
++        if context is None:
++            raise RuntimeError(f"Failed to create TensorRT decoder context for shape {shape}")
++        LOGGER.info("Loaded TAEHV TensorRT decoder engine for shape %s", shape)
+         input_name = ""
+         output_name = ""
+         for index in range(engine.num_io_tensors):
+diff --git a/models/wan/wan_wrapper.py b/models/wan/wan_wrapper.py
+index 1da14da..8bcc8ff 100644
+--- a/models/wan/wan_wrapper.py
++++ b/models/wan/wan_wrapper.py
+@@ -152,10 +152,14 @@ class WanVAEWrapper(VAEInterface):
+ 
+ 
+ class WanDiffusionWrapper(DiffusionModelInterface):
+-    def __init__(self, model_type="T2V-1.3B"):
++    def __init__(self, model_type="T2V-1.3B", *, model_class=WanModel, load_pretrained=True):
+         super().__init__()
+ 
+-        self.model = WanModel.from_pretrained(str(PROJECT_ROOT / f"wan_models/Wan2.1-{model_type}/"))
++        model_path = str(PROJECT_ROOT / f"wan_models/Wan2.1-{model_type}/")
++        if load_pretrained:
++            self.model = model_class.from_pretrained(model_path)
++        else:
++            self.model = model_class.from_config(model_class.load_config(model_path))
+         self.model.eval()
+ 
+         self.uniform_timestep = True
+@@ -341,11 +345,7 @@ class WanDiffusionWrapper(DiffusionModelInterface):
+ 
+ 
+ class CausalWanDiffusionWrapper(WanDiffusionWrapper):
+-    def __init__(self, model_type="T2V-1.3B"):
+-        super().__init__()
+-
+-        self.model = CausalWanModel.from_pretrained(
+-            str(PROJECT_ROOT / f"wan_models/Wan2.1-{model_type}/"))
+-        self.model.eval()
++    def __init__(self, model_type="T2V-1.3B", *, load_pretrained=True):
++        super().__init__(model_type, model_class=CausalWanModel, load_pretrained=load_pretrained)
+ 
+         self.uniform_timestep = False
+diff --git a/streamv2v/inference.py b/streamv2v/inference.py
+index 77e954a..2552695 100644
+--- a/streamv2v/inference.py
++++ b/streamv2v/inference.py
+@@ -345,9 +345,12 @@ class SingleGPUInferencePipeline:
+             if not self.t2v and end_idx <= input_video_original.shape[2]:
+                 inp = input_video_original[:, :, start_idx:end_idx]
+                 
+-                noise_scale, current_step = compute_noise_scale_and_step(
+-                    input_video_original, end_idx, chunk_size, noise_scale, init_noise_scale
+-                )
++                if bool(self.config.get("fixed_noise_scale", False)):
++                    current_step = int(self.pipeline.denoising_step_list[0].item())
++                else:
++                    noise_scale, current_step = compute_noise_scale_and_step(
++                        input_video_original, end_idx, chunk_size, noise_scale, init_noise_scale
++                    )
+                 
+                 # VAE encoding
+                 latents = self._timed_stream_encode(inp)

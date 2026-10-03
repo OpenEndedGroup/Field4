@@ -510,6 +510,8 @@ class PassTest(unittest.TestCase):
         self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
         self.repo.write("agent.py", FAKE_AGENT)
         self.repo.write("sleepy.py", SLEEPY_AGENT)
+        # The real queue's enqueue, so the pass talks to the same files the lander reads.
+        self.repo.write("tools/land.py", (Path(__file__).resolve().parent / "land.py").read_text())
         self.repo.commit("docs")
         self.store_path = self.repo.root / "store.json"
         other = "https://openendedgroup.com/field4/other/"
@@ -580,7 +582,18 @@ class PassTest(unittest.TestCase):
         message = subprocess.run(["git", "log", "-1", "--format=%B"], cwd=self.worktree, capture_output=True, text=True).stdout
         self.assertIn("Docs-Note: 11111111-a", message)
         self.assertIn("reworded the step", message)
-        self.assertEqual(self.cli("pass", "land"), 0)
+        # Landing enqueues and stops; nothing moves main until a lander takes the item.
+        with mock.patch.object(dn, "ensure_lander", return_value=True) as lander:
+            self.assertEqual(self.cli("pass", "land"), 0)
+        lander.assert_called_once()
+        queued = self.status()["worktree"]["landing"]
+        self.assertEqual(queued["state"], "pending")
+        self.assertNotIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
+        with self.assertRaises(SystemExit) as early:
+            self.cli("pass", "finish")
+        self.assertIn("queued for landing", str(early.exception))
+        self.land_as_the_lander_would(queued["id"])
+        self.assertEqual(self.status()["worktree"]["landing"]["state"], "landed")
         self.assertIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
         self.assertTrue((self.repo.root / "public/docs/unrelated.md").is_file())
         self.assertTrue(self.status()["worktree"]["landed"])
@@ -592,6 +605,32 @@ class PassTest(unittest.TestCase):
         self.assertEqual(self.cli("pass", "finish"), 0)
         self.assertFalse(self.worktree.exists())
         self.assertIsNone(dn.load_pass(self.repo.root))
+
+    def land_as_the_lander_would(self, item_id: str) -> None:
+        """What tools/land.py run does with one item, minus regeneration and the guard."""
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        item = json.loads((queue / "pending" / f"{item_id}.json").read_text())
+        self.repo.git("merge", "--no-ff", "-m", f"Land {item['branch']}", item["sha"])
+        item.update(landed_as=self.repo.git("rev-parse", "HEAD").strip(), finished="now")
+        (queue / "pending" / f"{item_id}.json").unlink()
+        (queue / "landed" / f"{item_id}.json").write_text(json.dumps(item))
+
+    def test_a_bounce_comes_back_with_its_reason(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        (self.worktree / "public/docs/guide.md").write_text("# Guide\n\nchanged\n")
+        subprocess.run(["git", "commit", "-qam", "edit"], cwd=self.worktree, check=True)
+        with mock.patch.object(dn, "ensure_lander", return_value=True):
+            self.cli("pass", "land")
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        pending = next((queue / "pending").glob("*.json"))
+        item = json.loads(pending.read_text()) | {"reason": "ProseNumeralContractTest: logging.md says 970", "log": "/tmp/x.log"}
+        pending.unlink()
+        (queue / "bounced" / pending.name).write_text(json.dumps(item))
+        landing = self.status()["worktree"]["landing"]
+        self.assertEqual((landing["state"], landing["reason"]), ("bounced", "ProseNumeralContractTest: logging.md says 970"))
+        with self.assertRaises(SystemExit) as refused:
+            self.cli("pass", "finish")
+        self.assertIn("bounced", str(refused.exception))
 
     def test_discarding_an_edit_reopens_what_it_resolved(self) -> None:
         self.cli("pass", "create", "--path", str(self.worktree))
@@ -868,11 +907,83 @@ class SessionTest(unittest.TestCase):
         lsof = ("p101\ncclaude\nfcwd\nn" + session["worktree"] + "/public\n"
                 "p102\nczsh\nfcwd\nn" + session["worktree"] + "\n"
                 "p103\ncclaude\nfcwd\nn" + session["worktree"] + "-other\n")
-        with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=lsof)):
+        lsof = lsof.replace("p101\ncclaude", "p101\nc2.1.288")  # Claude Code's own name is its version
+        ps = "  101 claude Read HANDOFF_SESSION.md\n  102 -zsh\n  103 claude\n"
+
+        def fake_run(argv, *args, **kwargs):
+            return subprocess.CompletedProcess(argv, 0, stdout=ps if argv[0] == "ps" else lsof)
+        with mock.patch("subprocess.run", side_effect=fake_run):
             shown = self.overview()["navigation"]["session"]
         self.assertEqual(shown["driver"], "orchestrating agent")
         # Only an agent, and only inside this worktree: not the shell, not a sibling with a longer name.
         self.assertEqual(shown["occupants"], ["claude (pid 101)"])
+
+    def _started_then_unregistered(self) -> dict:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        # What the human hit: git let go of the worktree, and Finder put the folder back.
+        self.repo.git("worktree", "remove", "--force", session["worktree"])
+        Path(session["worktree"]).mkdir()
+        (Path(session["worktree"]) / ".DS_Store").write_bytes(b"\0Bud1")
+        return session
+
+    def test_ending_a_session_whose_worktree_git_already_dropped(self) -> None:
+        session = self._started_then_unregistered()
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+        self.assertEqual(dn.load_sessions(self.repo.root), [])
+        self.assertNotIn(session["branch"], self.repo.git("branch", "--list"))
+
+    def test_a_dropped_worktree_holding_real_files_is_refused(self) -> None:
+        session = self._started_then_unregistered()
+        (Path(session["worktree"]) / "notes.md").write_text("mine\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("notes.md", str(refused.exception))
+        self.assertTrue((Path(session["worktree"]) / "notes.md").exists(), "nothing of the human's is deleted")
+
+    def _started_then_half_removed(self) -> dict:
+        """What the human hit second: git dropped its record, the checkout stayed, caches and all."""
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n.field/\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        (worktree / ".field" / "filestore").mkdir(parents=True)
+        (worktree / ".field" / "filestore" / "filestore_cache.json").write_text("{}")
+        admin = self.repo.git("rev-parse", "--git-common-dir").strip()
+        subprocess.run(["rm", "-rf", str(Path(self.repo.root, admin, "worktrees", worktree.name))], check=True)
+        return session
+
+    def test_a_half_removed_worktree_identical_to_its_branch_is_cleaned(self) -> None:
+        session = self._started_then_half_removed()
+        self.assertTrue((Path(session["worktree"]) / "public/docs/guide.md").exists())
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+
+    def test_a_half_removed_worktree_with_an_edit_is_refused(self) -> None:
+        session = self._started_then_half_removed()
+        (Path(session["worktree"]) / "public/docs/guide.md").write_text("# Edited and never committed\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("public/docs/guide.md", str(refused.exception))
+        self.assertTrue(Path(session["worktree"]).exists())
+
+    def test_a_session_an_agent_is_still_working_in_is_not_ended(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        with mock.patch.object(dn, "session_occupants", return_value=["claude (pid 75800)"]), \
+                mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("claude (pid 75800)", str(refused.exception))
+        self.assertTrue(dn.is_registered_worktree(self.git, Path(session["worktree"])), "nothing was removed")
 
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")

@@ -27,7 +27,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -1672,9 +1674,11 @@ fun installAgentBackdoorHandlers() {
         Handled.yes
     })
 
-    handlers["agent-open-playwright"] = mutableSetOf({ _, reply ->
+    handlers["agent-open-playwright"] = mutableSetOf({ message, reply ->
         val info = thisSessionInfo.get()
+        val electron = (message.payload as? JsonObject)?.get("electron")?.jsonPrimitive?.booleanOrNull == true
         playwrightScope.launch {
+            playwrightUsesElectron = electron
             val response = runCatching {
                 ensurePlaywrightForSession(info)
             }.getOrElse { throwable ->

@@ -115,6 +115,8 @@ def _transcript_input(path: str) -> bool:
         _under(path, "dev_docs/agents/transcripts")
         or _under(path, "public/docs/assets/agent_transcripts")
         or path == "public/docs/agent_transcripts.md"
+        # Every starting point ships a copy of this as its AGENTS.md.
+        or path == "templates/WORKSPACE_AGENTS.md"
     )
 
 
@@ -336,10 +338,33 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
             "(the post-merge case: work that arrived by pull never passed a hook here)"
         ),
     )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help=(
+            "name the guards the paths select and the command that runs them, without running Gradle "
+            "(what the hooks do; the full check runs once per landing, in tools/merge_regen.py)"
+        ),
+    )
     return parser.parse_args(argv)
 
 
-def _run_merge_check(repo: Path, since: str) -> int:
+def _report(selected: list[Guard], scope: str) -> int:
+    # The hooks used to run these Gradle guards themselves: minutes per commit and per merge, in
+    # every worktree, and refusing whenever a related file was unstaged. That made the commit the
+    # bottleneck for every agent. They run once per landing now; a hook only says what is affected.
+    if not selected:
+        return 0
+    tasks = " ".join(guard.task for guard in selected)
+    print(
+        f"generated-artifact guard ({scope}): affects "
+        + ", ".join(guard.description for guard in selected)
+        + f". Not run here; landing runs it. To check now: ./gradlew --continue {tasks}"
+    )
+    return 0
+
+
+def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
     """Guard whatever a merge just brought in.
 
     Deliberately advisory. Git ignores a ``post-merge`` hook's exit status, so this cannot and
@@ -355,6 +380,8 @@ def _run_merge_check(repo: Path, since: str) -> int:
     selected = guards_for_paths(changed)
     if not selected:
         return 0
+    if report:
+        return _report(selected, f"changed by {since}..HEAD")
 
     print(
         "generated-artifact guard: checking "
@@ -398,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = _repo_root()
 
     if args.since:
-        return _run_merge_check(repo, args.since)
+        return _run_merge_check(repo, args.since, args.report)
 
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
@@ -406,6 +433,8 @@ def main(argv: list[str] | None = None) -> int:
     if not selected:
         print("generated-artifact guard: no affected staged paths")
         return 0
+    if args.report:
+        return _report(selected, "staged")
 
     if not args.all:
         unstaged = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD")

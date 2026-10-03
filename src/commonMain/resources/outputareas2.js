@@ -1220,7 +1220,32 @@ function disclosureInterface(container) {
                 return Array.from(disclosures.keys());
         }
 
-        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids };
+        /** The panel's content size in layout pixels (unaffected by canvas zoom), or null. */
+        function getSize(id) {
+                const d = disclosures.get(id);
+                if (!d || d.inline) return null;
+                const st = ensureState(id);
+                if (st.open && d.cw.style.display !== "none") {
+                        return { width: d.cw.offsetWidth, height: d.cw.offsetHeight };
+                }
+                return { width: st.width || DEFAULT_W, height: st.height || DEFAULT_H };
+        }
+
+        /** Sizes the panel as if the user had dragged it there (so auto-size leaves it alone). */
+        function setSize(id, width, height) {
+                const d = disclosures.get(id);
+                if (!d || d.inline) return;
+                const st = ensureState(id);
+                const clamped = clampSizeForId(id, width, height);
+                st.width = clamped.width;
+                st.height = clamped.height;
+                st.userSized = true;
+                states.set(id, st);
+                if (st.open) applyOpen(id, d);
+                refreshConnectionLayoutForNested(id);
+        }
+
+        const api = { upsertDisclosure, setContent, toggle, open, close, remove, closeAll, solo, isOpen, ids, getSize, setSize };
         container.__disclosureAPI = api;
         return api;
 }

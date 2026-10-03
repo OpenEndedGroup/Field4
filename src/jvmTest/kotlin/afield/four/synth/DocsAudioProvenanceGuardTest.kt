@@ -62,7 +62,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 40,
             Origin.DIRT_SAMPLES to 9,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 9,
+            Origin.DOUGH_DSP to 16,
             Origin.FAUST to 3,
             Origin.DOUGH_WASM to 2,
         )
@@ -245,7 +245,11 @@ class DocsAudioProvenanceGuardTest {
          *
          * `chain_ca_sound.md`'s three moved the same way (2026-10-02): [CaSoundDocs] now plays its
          * rows as `click`, `hh` and pitched `arpy` one-shots from the pinned subset.
+         *
+         * `subharmonic_sound.md` added seven (2026-10-03), all [Origin.DOUGH_DSP]: pitch trackers
+         * from `Subharmonic.kt` rendered by [SubharmonicSoundDocs] in the same Kotlin signal graph,
+         * on a saw bassline, pinned Dirt-Samples one-shots and a committed public-domain film clip.
          */
-        const val EXPECTED_FENCE_COUNT = 64
+        const val EXPECTED_FENCE_COUNT = 71
     }
 }

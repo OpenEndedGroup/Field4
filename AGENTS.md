@@ -27,6 +27,9 @@ Top-level layout:
 - `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
 - `server/`: optional Python services — `metadata_server.py` serves templates from
   `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
 - `field-user-dir/`: local user workspace artifacts — mutable user data.
@@ -123,6 +126,19 @@ Accepted reds live only in `dev_docs/testing/expected_test_failures.json` (JVM) 
 `dev_docs/testing/expected_smoke_failures.json` (smoke), enforced in both directions. Never
 describe a red as expected only in prose, and never use wildcards in either register.
 
+### Landing on `main`
+
+Never merge into `main` yourself. Commit on your topic branch, then
+`uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
+artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
+back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
+the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
+bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
+happened to every attempt to land it.
+The hooks only report which guards a commit affects, so commits take seconds; do not use
+`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
+branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
+
 ### Gradle hygiene
 
 - Use the wrapper: `./gradlew compileKotlinJvm` (Windows: `.\gradlew compileKotlinJvm`, and
@@ -154,6 +170,10 @@ describe a red as expected only in prose, and never use wildcards in either regi
   mode. Regenerating them needs Linux, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`, and the GPU
   features; macOS always retains them, and a missing retained asset fails the build. Neural-tool
   pages use committed media and their own scripts (`dev_docs/lighting/NEURAL_TOOLS.md`).
+- `capture-profile="macos-electron"` works the same way for output that only exists in the Field
+  Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
+  runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
+  everywhere else the committed capture is retained.
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
   computed value, no scripted placeholder for a live panel. If the real capture will not come
@@ -360,9 +380,17 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
 - Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
-- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
+- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`) and the server's `viewport` rect (still translation + window size). Bookmarks record zoom; ones saved before that keep the current zoom.
+- **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
 - The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
+### Canvas panels
+
+Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
+`.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
+`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
 
 ### FLine
 

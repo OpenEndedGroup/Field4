@@ -1,9 +1,9 @@
 # Moving around the canvas
 
-A Field document is usually bigger than the window. There are three ways to move around it: pan and
+A Field document is usually bigger than the window. You can pan and
 zoom with the mouse or trackpad; step from box to box with the keyboard, by tapping `Cmd` twice and
-holding it; or jump to one of nine views you have saved. All three change what you are looking at
-and never the document itself.
+holding it; bring the selection into view with `Alt+F`; or jump to one of nine views you have saved.
+All of them change what you are looking at and never the document itself.
 
 ## Panning and zooming
 
@@ -159,7 +159,98 @@ if (!report.contains("overlay-settled")) {
 }
 ```
 
-### How the four are chosen
+## Framing the selection
+
+`Alt+F` (**Frame Selected** in the command palette, rebindable as `frame-selected`) brings the
+selected boxes, and their open output panels, into view. It puts them in the largest part of the
+window that the editor, the docs panel and Field's own panels leave uncovered. If they do not fit
+there it zooms out until they do, and if the canvas was zoomed further out than that it zooms back
+in, up to 100%. It never zooms in past that.
+
+If none of the uncovered space could show the selection at even half the size the whole window
+could, it uses the whole window instead and lets the editor cover part of it. A narrow strip beside
+a wide editor is not worth squinting at.
+
+## Bookmarks
+
+Arrows reach neighbours. For everywhere else there are nine numbered slots.
+
+- Save the current view: `Cmd+Shift+F1` through `Cmd+Shift+F9`
+- Restore a saved view: `Shift+F1` through `Shift+F9`
+
+`Cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
+`save-bookmark-N` and `restore-bookmark-N`, and both appear in the command palette as
+`Save Bookmark N` and `Restore Bookmark N`. See [Keyboard Shortcuts](keybindings.md).
+
+A slot stores a view rather than a box reference. Restoring one reapplies, in this order:
+
+- the canvas pan position and zoom
+- the open or closed state of the nested disclosures, before anything is selected
+- the size of each output panel that was open, and the open or closed state of every output
+  panel. A panel that did not exist when the slot was saved, or no longer exists, is left as it is
+- the selected box, when exactly one box was selected at save time
+- the property that was open in Monaco
+- the editor cursor line and column
+
+### The bookmarks panel
+
+`Alt+B` (**Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel
+with a row for each of the nine slots, so you can see what a slot holds before you jump to it:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#bookmarks-panel" screenshot="assets/moving_around_the_canvas/bookmarks_panel.png" transcript="../../dev_docs/agents/transcripts/docs_capture/bookmarks_panel.yaml" padding="8" wait="0" timeout="240" embed=true hidden=true name="bookmarks-panel" alt="The bookmarks panel. Nine rows, F1 to F9. F1, named ideas, and F2, named render, are saved: each shows a small map of the document's three boxes with the saved view drawn as a dashed rectangle and the selected box in the accent colour, the view position, the box that was being edited, how many output panels were open and closed with a pill naming each open one and its size, and three options, restore view, restore selection and close unrecorded panels. Each has Restore, Save and delete buttons. The other seven rows read empty, with a Save here button."}
+// Slot 1: `sketch` selected with its editor open. Slot 2: the same for `render`.
+ui.openEditor("bm_sketch")
+ui.pause(900)
+ui.down("Meta"); ui.down("Shift"); ui.press("F1"); ui.up("Shift"); ui.up("Meta")
+ui.pause(300)
+ui.openEditor("bm_render")
+ui.pause(900)
+ui.down("Meta"); ui.down("Shift"); ui.press("F2"); ui.up("Shift"); ui.up("Meta")
+ui.pause(300)
+ui.down("Alt"); ui.press("KeyB"); ui.up("Alt")
+ui.waitForSelector("#bookmarks-panel.is-visible", 8000.0)
+// Name the two slots through the panel's own name fields, the way a reader would.
+ui.eval("""
+  const names = Array.from(document.querySelectorAll("#bookmarks-panel input[type=text]"));
+  if (names.length < 2) return "only " + names.length + " saved slots";
+  [["ideas", 0], ["render", 1]].forEach(([value, i]) => {
+    names[i].value = value;
+    names[i].dispatchEvent(new Event("change"));
+  });
+  return "named";
+""")
+ui.pause(600)
+```
+
+Each saved slot shows:
+
+- a small map of the document, with the saved view as a dashed rectangle and the selected box
+  in the accent colour. The boxes are drawn where they are now, not where they were when the slot
+  was saved
+- the view position (and the zoom, when it is not 100%), and the box that was selected or being
+  edited, with the cursor line
+- how many output panels were open and closed, and a pill for each open one with its size
+
+Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* and
+`Cmd+Shift+F`*n* do, and **×** empties the slot. The three checkboxes are saved with the slot:
+
+- **restore view**: pan and zoom back to the saved view. Turn it off for a slot that should rearrange
+  output panels without moving the canvas.
+- **restore selection**: reselect the box and reopen its editor and cursor.
+- **close unrecorded panels**: also close every output panel the slot has no record of, instead of
+  leaving it as it is. Use it for a slot that should leave the canvas tidy.
+
+Saving over a slot keeps its name and its options.
+
+While the navigation overlay is up, every box on screen that a slot points at wears an `F` chip
+with that slot's number: `F3` is the view saved in slot 3, reached with `Shift+F3`. A box wears
+more than one chip if several slots were saved on it.
+
+Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
+document state. They survive a reload, and they travel with the document rather than with your
+browser session.
+
+## How the neighbours are chosen
 
 Field sorts the visible boxes by the dominant axis of their offset from the current one. A box
 further to the left than it is above counts as west, and so on. Within each direction it takes the
@@ -169,52 +260,12 @@ that is slightly off-axis does not beat one that is directly ahead.
 Only one box per direction is offered, so a dense column collapses to its nearest member. Boxes that
 are hidden, deleted, or drawn at zero size are not candidates.
 
-## Bookmarks
-
-Arrows reach neighbours. For everywhere else there are nine numbered slots.
-
-- Save the current view: `Cmd+Shift+F1` through `Cmd+Shift+F9`
-- Restore a saved view: `Shift+F1` through `Shift+F9`
-
-`cmd` is Command on macOS and Control everywhere else. Both sets are rebindable as
-`save-bookmark-N` and `restore-bookmark-N`, and both appear in the command palette as
-`Save Bookmark N` and `Restore Bookmark N`. See [Keyboard Shortcuts](keybindings.md).
-
-A slot stores a view rather than a box reference. Restoring one reapplies, in this order:
-
-- the canvas pan position
-- the open or closed state of the nested disclosures, before anything is selected
-- the open or closed state of each box's output panels. A panel that did not exist when the slot
-  was saved, or no longer exists, is left as it is
-- the selected box, when exactly one box was selected at save time
-- the property that was open in Monaco
-- the editor cursor line and column
-
-`Alt+B` (or **Show Bookmarks** in the command palette, rebindable as `show-bookmarks`) opens a panel listing all nine slots. Each saved slot
-shows a small map of the canvas with the saved view outlined, what was selected or being edited, and
-which output panels were open. It has Restore, Save and delete buttons, a name you can edit, and three
-options: *restore view*, *restore selection*, and *close unrecorded panels*. That last one also closes
-any output panel the slot did not record, rather than leaving it as it is. Saving over a slot keeps
-its name and options.
-
-Bring up the navigation overlay and every box on screen that a slot points at wears an `F` chip
-with that slot's number. A box can wear more than one if several slots were saved on it. So the
-arrows tell you what is next to you, and the chips tell you which of the nine keys reaches what
-is not.
-
-The number on a chip is a slot, so `F3` means the view saved in slot 3, reached with `Shift+F3`.
-
-Bookmarks live on the root box as the `bookmarks` property and are saved with the rest of the
-document state. They survive a reload, and they travel with the document rather than with your
-browser session.
-
 ## Limits
 
 - one target per direction, so the overlay never offers a choice between two boxes on the same side
-- a slot stores the pan position but not the zoom level, and a single selected box, so a
-  multi-selection is not restored as a set
+- a slot stores a single selected box, so a multi-selection is not restored as a set
+- a slot with no saved zoom restores the pan position at whatever zoom you are at now
 - there are nine slots and the numbering is fixed
-- restoring a slot changes the view and never the document content
 - restoring a slot you have not set yet shows a notification and leaves the view alone
 
 ## Related features

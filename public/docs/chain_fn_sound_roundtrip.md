@@ -1,7 +1,8 @@
 # A function, played and read back
 
-This page takes one `Functions.Fn`, plays it as a sound, analyses the sound, and puts what the
-analysis found next to the function it came from. `afield.stdlib.Functions` builds the function, and `FnInterval` certifies its range on any interval.
+Play a `Functions.Fn` as a sound, analyse the sound, and you can put what the analysis found next
+to the function it came from. `afield.stdlib.Functions` builds the function, and `FnInterval`
+certifies its range on any interval.
 A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection` and
 `PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
 what came back, and the audio, on one timeline.

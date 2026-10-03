@@ -59,7 +59,11 @@ This file is about what goes on a page and how it reads.
    recording, which goes stale silently. AGENTS.md section 3 forbids faking one.
 15. **A page about sound has sound, made from real material.** Use the pinned Dirt-Samples
    (`./gradlew fetchDocsDirtSamples`), not a stand-in synth that sounds like noise. A page whose
-   subject is audio and has nothing to listen to should not be a page yet.
+   subject is audio and has nothing to listen to should not be a page yet. One exception: a
+   pitched page whose own analysis listens back to its render (YIN pitch tracking on
+   `chain_drawn_score.md`, `chain_drawn_morph.md`) may keep a plain synth voice such as
+   `patVoice`, because the analysis needs a clean, detached, single-pitch signal (Marc,
+   2026-10-03).
 
 ## Where things live
 

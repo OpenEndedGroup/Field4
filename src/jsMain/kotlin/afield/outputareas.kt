@@ -632,6 +632,34 @@ private fun updatePersistentLinesOutput(contentRoot: HTMLElement, htmlString: St
     return true
 }
 
+/**
+ * Shows exactly [nextVisible] and makes [desiredActive] (or, failing that, a visible layer) the
+ * active one. Shared by the `showLayers()` palette and the layers panel.
+ */
+fun applyLayerSelection(nextVisible: Set<String>, desiredActive: String?, animateDuration: Double = 450.0) {
+    if (nextVisible.isEmpty()) return
+    val normalizedVisible = nextVisible.filter { it.isNotBlank() }.toMutableSet()
+    if (normalizedVisible.isEmpty()) normalizedVisible.add("default")
+
+    val activeCandidate = when {
+        desiredActive != null && normalizedVisible.contains(desiredActive) -> desiredActive
+        desiredActive != null -> normalizedVisible.firstOrNull()
+        activeLayer == null -> null
+        normalizedVisible.contains(activeLayer!!) -> activeLayer
+        else -> normalizedVisible.firstOrNull()
+    }
+    layerDebugLog(
+        "palette applyLayerState nextVisible=${normalizedVisible.joinToString(",")} " +
+            "desiredActive=${desiredActive ?: "null"} activeCandidate=${activeCandidate ?: "null"} " +
+            "prevVisible=${visibleLayers.joinToString(",")} prevActive=${activeLayer ?: "null"}"
+    )
+
+    setVisibleLayers(normalizedVisible.toSet(), animated = true, duration = animateDuration)
+    if (activeCandidate != activeLayer) {
+        setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
+    }
+}
+
 fun renderLayersPalette(contentRoot: HTMLElement) {
     contentRoot.innerHTML = ""
     contentRoot.classList.add("layers-palette")
@@ -684,29 +712,8 @@ fun renderLayersPalette(contentRoot: HTMLElement) {
         return btn
     }
 
-    fun applyLayerState(nextVisible: Set<String>, desiredActive: String?) {
-        if (nextVisible.isEmpty()) return
-        val normalizedVisible = nextVisible.filter { it.isNotBlank() }.toMutableSet()
-        if (normalizedVisible.isEmpty()) normalizedVisible.add("default")
-
-        val activeCandidate = when {
-            desiredActive != null && normalizedVisible.contains(desiredActive) -> desiredActive
-            desiredActive != null -> normalizedVisible.firstOrNull()
-            activeLayer == null -> null
-            normalizedVisible.contains(activeLayer!!) -> activeLayer
-            else -> normalizedVisible.firstOrNull()
-        }
-        layerDebugLog(
-            "palette applyLayerState nextVisible=${normalizedVisible.joinToString(",")} " +
-                "desiredActive=${desiredActive ?: "null"} activeCandidate=${activeCandidate ?: "null"} " +
-                "prevVisible=${visibleLayers.joinToString(",")} prevActive=${activeLayer ?: "null"}"
-        )
-
-        setVisibleLayers(normalizedVisible.toSet(), animated = true, duration = animateDuration)
-        if (activeCandidate != activeLayer) {
-            setActiveLayer(activeCandidate, animated = true, duration = animateDuration)
-        }
-    }
+    fun applyLayerState(nextVisible: Set<String>, desiredActive: String?) =
+        applyLayerSelection(nextVisible, desiredActive, animateDuration)
 
     fun renderList() {
         val allLayers = getAllLayers().toList().sorted()

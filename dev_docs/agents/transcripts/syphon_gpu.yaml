@@ -1,0 +1,137 @@
+name: syphon_gpu
+description: >
+  Syphon from Field's Vulkan renderer, both ways, in three boxes. The renderer box opens a window.
+  The second draws a colour gradient into a RenderToTexture and publishes every frame it renders as
+  the Syphon server "Field GPU" with followOnGpu: each frame is copied on the GPU into an IOSurface
+  and handed to Syphon, with no readback to the CPU. The third connects to "Field GPU" as a Syphon
+  client and draws its frames, as a texture, over the whole window, so the window shows the gradient
+  after a round trip through Syphon; change the name to bring in another application's video. macOS
+  only; needs the optional library (`./gradlew buildSyphonNative`, Xcode), and without it the two
+  Syphon boxes say how to build it and stop.
+operations:
+  - create:
+      box: syphon_gpu_renderer
+      name: renderer
+      frame: { x: 40.0, y: 40.0, w: 300.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.four.util.Options
+          prop<Window>(window)
+          prop<Renderer>(renderer)
+          Options.enableHDR = false
+          Options.profiling = false
+          once.renderer {
+              window = Window("Syphon")
+              Renderer(window)
+          }
+          println("renderer ready")
+          start(renderer::run)
+  - create:
+      box: syphon_gpu_publish
+      name: "Syphon — publish a render target from the GPU"
+      frame: { x: 40.0, y: 480.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.syphon.*
+
+          // without the library this stops here and says how to build it
+          check(Syphon.isAvailable) { Syphon.describe() }
+
+          prop<RenderToTexture>(syphonTarget) = RenderToTexture {
+              width = 640
+              height = 360
+          }
+          renderer.renderList += "syphonTarget" to syphonTarget
+
+          // a quad over the whole target, coloured by its texture coordinates
+          val module = moduleHere()
+          val quad = Mesh()
+          module += "quad" to quad
+          syphonTarget += "gradient" to module
+          quad.set(4, 2) {
+              pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+              tri.add(0, 1, 2)
+              tri.add(0, 2, 3)
+          }
+
+          // every frame syphonTarget renders goes to Syphon, copied on the GPU
+          syphonServer("Field GPU").followOnGpu(syphonTarget)
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec2 tc;
+          layout(location = 1) out vec2 ftc;
+          void main() {
+              gl_Position = vec4(pos.xy, 0.5, 1.0);
+              ftc = tc;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 color;
+          layout(location = 1) in vec2 ftc;
+          void main() {
+              // red grows to the right, green upwards; bottom-left is dark blue
+              color = vec4(ftc.x, ftc.y, 0.3, 1.0);
+          }
+  - create:
+      box: syphon_gpu_receive
+      name: "Syphon — receive into a texture"
+      frame: { x: 40.0, y: 920.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.syphon.*
+
+          // without the library this stops here and says how to build it
+          check(Syphon.isAvailable) { Syphon.describe() }
+
+          // a server's name, app name or uuid
+          val inp = syphonClient("Field GPU")
+          prop<SyphonTexture>(syphonIn) = inp.texture()
+
+          val module = moduleHere()
+          val quad = Mesh()
+          module += "quad" to quad
+          renderer += "syphonView" to module
+          quad.set(4, 2) {
+              pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
+              // the texture's v = 0 is the top of the picture, so the top corners get v = 0
+              tc.add(0, 1, 1, 1, 1, 0, 0, 0)
+              tri.add(0, 1, 2)
+              tri.add(0, 2, 3)
+          }
+          inp
+        vertex: |
+          #version 450
+          layout(location = 0) in vec3 pos;
+          layout(location = 1) in vec2 tc;
+          layout(location = 1) out vec2 ftc;
+          void main() {
+              gl_Position = vec4(pos.xy, 0.5, 1.0);
+              ftc = tc;
+          }
+        fragment: |
+          #version 450
+          layout(location = 0) out vec4 color;
+          layout(location = 1) in vec2 ftc;
+          layout(set = 0, binding = 0) uniform sampler2D syphonIn;
+          void main() {
+              color = vec4(texture(syphonIn, ftc).rgb, 1.0);
+          }
+  - connect: { parent: syphon_gpu_renderer, child: syphon_gpu_publish }
+  - connect: { parent: syphon_gpu_renderer, child: syphon_gpu_receive }
+  - launch:
+      box: syphon_gpu_renderer
+      property: code
+  - wait:
+      millis: 3000
+  - execute:
+      box: syphon_gpu_publish
+      property: code
+  - wait:
+      millis: 500
+  - execute:
+      box: syphon_gpu_receive
+      property: code
+  - wait:
+      millis: 500

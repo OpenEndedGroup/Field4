@@ -1,13 +1,10 @@
 # Profiling
 
-When a piece stops keeping up, this page is where to look. It comes in three parts. The first is
-the **Profiling Timeline** panel: what every control does, and what each number in it is a number
-*of*. [Simulation time](#simulation-time) is a clock you advance yourself, so that delays in
-coroutine code follow simulation time rather than the wall; its frames and named children are
-what the panel's frame view records. [Holding a frame budget](#holding-a-frame-budget) is the
-measurement model underneath: which of Field's three profiling instruments to reach for, what each
-one structurally cannot see, and the route from "it stutters" to a named line of your own box
-source.
+When a piece stops keeping up, start with the **Profiling Timeline** panel, described first
+below. [Simulation time](#simulation-time) covers a clock you advance yourself, so that delays in
+coroutine code follow simulation time instead of the wall clock.
+[Holding a frame budget](#holding-a-frame-budget) explains which of Field's profiling tools to
+use, what each one misses, and how to get from "it stutters" to a line of your own box code.
 
 Run **Show Profiling Timeline** from the command palette while your boxes are running.
 Choose a capture length, then **Record**. Field records each box-owned coroutine
@@ -35,21 +32,8 @@ no boxes selected. The macro creates its boxes, waits for launch startup, warms 
 workloads, records, and stops them. It leaves the timeline open for exploration.
 Replay restores the demo's original code; use the boxes directly when keeping your edits.
 
-The same replay through the backdoor, attached to an already running Field:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 --document my_demo \
-  --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
-  --command 'macro run profiling_timeline'
-```
-
-Replace the document and port with your running instance's values, and make the document
-name relative to the server's own workspace — an attached server's workspace is fixed at its
-launch, so passing `--workspace` here is a hard error rather than a no-op. This
-attaches to that document and opens the timeline in its connected browser. For an
-isolated automation check, omit `--attach-existing`, use a dedicated port such as
-9477, and add `--with-playwright`; that check uses a disposable session and a headless browser.
+To run the same macro from a script instead, see
+[Driving Field from a script or agent](automating_field.md#driving-field-from-a-script-or-agent).
 
 | Box | What to look for | Try changing |
 | --- | --- | --- |
@@ -244,14 +228,13 @@ by GC, or native/GPU memory. CPU and allocation counters exclude suspended time;
 unsupported JVM counters appear as **unavailable**. Elapsed execution time can include
 blocking and pauses during the resume, but this view does not identify their causes.
 
-This first view covers `loop`, `frames`, sequence launches, and child coroutines that
+The timeline covers `loop`, `frames`, sequence launches, and child coroutines that
 inherit a box's coroutine context and dispatch through the Runloop. Work executed
 inline inside a parent's resume is included in that parent; a child's later scheduled
 resumes have their own lane. Unowned Runloop tasks and work on other threads, including
 background compilation and renderer execution, are outside the exact resume counters.
-Optional JVM stacks cover their sampled CPU/allocation activity. GPU execution remains
-in the existing renderer profiler; this panel does not yet align GPU timings or GC
-pause events with its timeline.
+Optional JVM stacks cover their sampled CPU/allocation activity. GPU timings are in the
+renderer profiler; this panel does not show them.
 
 The source revision is a fingerprint of the box's `code` property captured with its
 launch context. The source button opens **current** code; it does not restore the
@@ -421,16 +404,13 @@ controls while keeping your own edits.
 # Holding a frame budget
 
 Sixty frames a second is 16.67<!--derive: 1000/60--> milliseconds a frame, and a real-time piece either fits in
-that or it does not. When it stops fitting, Field will show you three different sets of
-numbers, on three different clocks, over three different populations. They do not agree,
-they are not supposed to agree, and the most expensive mistake available here is to read
-one of them as if it were the others.
+that or it does not. When it stops fitting, Field can measure it three ways: renderer spans,
+coroutine resumes, and JVM samples. Each uses its own clock and counts different things, so
+their numbers will not agree; don't read one as if it were another.
 
-This part is the measurement model. The [panel](#try-the-demo) part above tells you
-what every control in it does; this one tells you what the numbers under those
-controls *mean*, and — the part that matters when you are chasing a stutter — what each
-instrument structurally **cannot see**. The second half is a route from "it stutters" to a
-named line of your own box source.
+The [panel](#try-the-demo) section above describes the controls. This section explains what
+the numbers mean and what each measurement misses, then walks from "it stutters" to a line of
+your own box code.
 
 ## The three instruments
 
@@ -443,22 +423,18 @@ named line of your own box source.
 | where you read it | the `perf` log line, the Inspector | the **Coroutines & scopes** tab | the **Hot code** tab |
 | exact or estimated | exact per sample, but the window forgets | exact | estimated |
 
-They are three answers to three different questions. `CPUSpan` answers *is the renderer
-keeping up*. A resume answers *what did this box's code cost, exactly, this time*. A sample
-answers *where is the time going, roughly, across everything*. Reach for the one whose
-question you are actually asking.
+`CPUSpan` tells you whether the renderer is keeping up. A resume tells you exactly what your
+box's code cost on one turn. A sample tells you roughly where time is going across the whole
+JVM. Pick the one that answers your question.
 
-## `CPUSpan`: always on, and eight seconds long
+## `CPUSpan`: renderer spans
 
 `CPUSpan` (`Renderer.kt:54#object CPUSpan {`) is the one you did not turn on. Every named
 renderer span goes through `Renderer.kt:80#inline fun time(label: String, block: () -> Unit) {`,
 which brackets the block with `nanoTime` and pushes the difference into a per-label deque.
-Twenty-three label literals exist in the tree today — six in the renderer proper
-(`acquire`, `record_cs`, `record_gfx`, `submit_cs`, `submit_gfx`, `present`, each suffixed
-with a window or context index, as at `Renderer.kt:1248#CPUSpan.time("present[$ctxIndex]") {`),
-fourteen under OpenXR and three in the virtual-texture system.
-
-Two things about it are not obvious from the name.
+The renderer's own labels are `acquire`, `record_cs`, `record_gfx`, `submit_cs`, `submit_gfx`
+and `present`, each suffixed with a window or context index; OpenXR and the virtual-texture
+system add more of their own.
 
 **It is wall time, not CPU time.** `time` reads `System.nanoTime()` and nothing else. A
 `present` span that spends four milliseconds waiting on a fence reports four milliseconds,
@@ -472,8 +448,7 @@ once a frame, 500 samples is the last **eight and a third seconds** at 60 Hz. Ev
 statistic it reports — `avg`, `min`, `max`, `p1` through `p99` — is a claim about that
 window and about nothing before it.
 
-That window has a consequence, and it is the easiest way to misread this instrument. The
-percentiles index a sorted copy of the window
+This makes the percentiles easy to misread. They index a sorted copy of the window
 (`Renderer.kt:111#val idx = ((sorted.size - 1) * frac).toInt().coerceIn(0, sorted.size - 1)`),
 so over a full window `p99` is element 494 of 500 — the **sixth worst** sample. One bad
 frame does not move it:
@@ -530,9 +505,8 @@ bound and the span reports the time that actually passed. Meanwhile `p99` reads
 0.33 ms, because one bad sample out of 500 cannot reach element 494. Five hundred spans
 later `max` has fallen to 0.42 ms — and `p99` is still 0.33, having moved by **0.00 ms**
 across the entire episode. **A hitch that happens once a minute is invisible to every
-`CPUSpan` percentile, and invisible to `max` for all but eight seconds of that minute.** If
-that is the shape of your problem, this is the wrong instrument and no amount of staring at
-the `perf` line will help.
+`CPUSpan` percentile, and invisible to `max` for all but eight seconds of that minute.** For
+a stutter like that, use a coroutine capture instead of the `perf` line.
 
 What else it cannot see: your box code, at all — the labels are renderer internals, so a
 slow `loop { }` never appears here. GPU execution, at all — `submit_gfx` times the
@@ -548,7 +522,7 @@ snapshot live, refreshed at most once a second
 (`rendererBrowsing.kt:824#private fun maybePushCpuChanged(intervalMs: Long = 1000) {`,
 registered at `rendererBrowsing.kt:32#CPUSpan.addListener { maybePushCpuChanged() }`).
 
-## One coroutine resume: exact, and blind between them
+## Coroutine resumes
 
 This is the instrument for *your* code, and it is the only exact one. A capture wraps the
 Runloop's dispatch site (`Phased.kt:360#CoroutineProfiles.resume(n.first, n.second)`)
@@ -822,21 +796,17 @@ better than a stale stripe pointing at a line that has moved.
 For frames outside any box, the resolver goes to the checkout instead, and checks the
 package and `SourceFile` attribute rather than guessing from a simple class name
 (`JvmProfileCapture.kt:154#/** Reuse the source index; verify package and SourceFile rather than guessing by simple class name. */`).
-In the measured recording, 2 of the 13 resolved source texts were box code and the other 11
-were codebase files — which is a fair picture of where a sampled stack actually spends its
-frames.
+Expect most resolved source to be Field's own code rather than your box: that is where most
+of a sampled stack's frames are.
 
-## What none of this sees
+## What these measurements miss
 
-If you have exhausted all three instruments and are still dropping frames, the cost is
-somewhere in here.
+If none of the three explains your dropped frames, look here.
 
-- **GPU execution.** None of the three. `submit_gfx` is the cost of submitting. The
-  renderer's own Vulkan timestamp profiler is a separate thing and is reachable through the
-  Inspector on a window context.
-- **GC pauses, as events.** They show up as wall time nobody can account for — a resume
-  with `wallMs` high and `cpuMs` near zero — and the timeline does not yet align a pause
-  event against its own axis.
+- **GPU execution.** `submit_gfx` is only the cost of submitting. The renderer's Vulkan
+  timestamp profiler measures the GPU work; open it from the Inspector on a window context.
+- **GC pauses.** In a resume they show up as unexplained wall time, with `wallMs` high and
+  `cpuMs` near zero. With **JVM stacks** on, the timeline marks pauses with amber ticks.
 - **Retained memory.** `allocatedBytes` is allocation, not occupancy; a box can churn
   tens of MiB a second and retain nothing.
 - **Native and GPU memory.** Neither counter covers them.
@@ -844,7 +814,7 @@ somewhere in here.
   actually presented. Dividing it by elapsed seconds gives you an iteration rate, which is
   a useful number and is not a measured frame rate.
 
-??? note "Seeing the renderer's own spans"
+??? aside "Seeing the renderer's own spans"
     `present` and `record_gfx` are the renderer's labels, and you will see them only by
     running `./gradlew runJvm` with a window open and reading the `perf` line. A docs
     capture runs a box in a headless Field with no `Renderer`, where `CPUSpan.snapshot()`
@@ -852,29 +822,16 @@ somewhere in here.
     instead. The window arithmetic, the percentile indexing and the 500-sample truncation
     are the renderer's own code either way, and are exercised for real.
 
-## Try it, then change one number
+## Try it
 
-Every measurement in this part came from one replay of the `profiling_timeline` starting
-point against a live Field, which needs no GPU and no private sources; the recording is
-written up in `dev_docs/profiling_stack.md`. With Field already
-running, and a workspace and document name of your own:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 \
-  --workspace /path/to/workspace --document frame_budget_demo \
-  --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
-  --command 'macro run profiling_timeline'
-```
-
-Then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to
+The `profiling_timeline` starting point needs no GPU. Replay it into an empty document as in
+[Try the demo](#try-the-demo), then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to
 16, relaunch it, and record again. The lane's `wallMs` per resume should barely move — each
 burst still costs about the same 2.2 ms — while the number of bursts in three seconds goes
-from a dozen to something near two hundred. That is the distinction the whole page is
-about: a per-resume percentile tells you how expensive one turn is, and only the count
-of turns tells you whether it fits in a frame. The same box at the same `p99` can be free
-or ruinous depending on how often it runs, and no percentile on any of these three
-instruments will tell you which.
+from a dozen to something near two hundred. A per-resume percentile tells you how
+expensive one turn is; only the number of turns tells you whether the work fits in a frame.
+The same box with the same `p99` can be cheap or far too expensive depending on how often
+it runs.
 
 For the panel's controls, and for the brush, the lane list and the save format, see
 [Explore a capture](#explore-a-capture) above.

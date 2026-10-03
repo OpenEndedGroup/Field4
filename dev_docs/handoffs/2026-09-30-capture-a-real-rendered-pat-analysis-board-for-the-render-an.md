@@ -1,6 +1,7 @@
 # Capture a real rendered-Pat analysis board for the render-analysis page
 
 - **Handoff:** `244eb419-70be-4142-8205-44a552b0868c` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_render_analysis/
 - **Filed by:** agent:claude, 2026-09-30 20:48
 - **Close with:** `python tools/docs_notes.py handoff-close 244eb419 "what happened"`
@@ -78,3 +79,14 @@ Put the image (or the runner fence plus the image) right after the "Rendering a 
 analysing it" code block, before "The final view behaves as one instrument". The alt text should
 name the Pat render's waveform and transport, the provenance line, and the beat, pYIN and Basic
 Pitch lanes. Then resolve `05f1475f`.
+
+## Completion — 2026-10-03
+
+Rendered the actual Pat drum pattern through the pinned Dirt library, asserting bd/hh/sd sample matches, then ran real beat, pYIN and Basic Pitch service jobs. Added the waveform and three analysis lanes, playable source WAV and provenance to `audio_render_analysis.md`. No fallback drum synthesis appears in the final capture.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

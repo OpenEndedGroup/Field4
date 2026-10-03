@@ -319,6 +319,7 @@ sys.prefix = _venv_path
 sys.exec_prefix = _venv_path
 print(f" venv activated: {_venv_path}")
 """ else ""}
+${PythonInterface.fieldPythonPaths().joinToString("") { "if '$it' not in sys.path: sys.path.append('$it')\n" }}
 
 class CooperativeEventLoop(asyncio.AbstractEventLoop):
     def __init__(self):
@@ -1429,6 +1430,8 @@ _orig_print(" python interpreter has finished starting up ")
 //            i.exec("_ret = _exec_with_return2(_code, globals(), locals=${locals}, source_id='${inside.id}')")
             i.exec("_ret = _exec_with_return2(_code, globals(), locals=globals(), source_id='${inside.id}')")
             val ret = i.getValue("_ret")
+            // Threads are not tasks: a fieldcv Pipeline runs on its own thread and is closed here.
+            i.exec("if 'fieldcv.pipeline' in sys.modules: sys.modules['fieldcv.pipeline'].close_for_box('${inside.id}')")
         }
     }
 
@@ -2014,6 +2017,17 @@ class PythonInterface {
                 return File(System.getProperty("user.home"), path.substring(2)).path
             }
             return path
+        }
+
+        /**
+         * Directories of Python that ships with Field, appended to `sys.path` at interpreter startup:
+         * the checkout's `python/` (the `fieldcv` package) and anything on `FIELD_PYTHONPATH`.
+         */
+        fun fieldPythonPaths(): List<String> {
+            val extra = System.getenv("FIELD_PYTHONPATH")?.split(File.pathSeparator).orEmpty()
+            return (listOf(File(System.getProperty("user.dir"), "python").path) + extra)
+                .filter { it.isNotBlank() && File(it).isDirectory }
+                .map { File(it).absolutePath.replace("\\", "\\\\").replace("'", "\\'") }
         }
 
         @JvmStatic

@@ -334,6 +334,25 @@ open class RenderToTexture(
         }
     }
 
+    /** GPU producer upload into a sampled attachment. Outside a render pass; no host staging. */
+    fun recordColorTransferDestination(command: CommandBuffer, attachment: Int = 0, copy: (vkImage: Long) -> Unit) {
+        check(parameters.colorTransferDst && parameters.colorSampled)
+        check(!command.inRenderPassInstance && parameters.mipLevels == 1)
+        MemoryStack.stackPush().use { stack ->
+            val range = VkImageSubresourceRange.calloc(stack).aspectMask(VK_IMAGE_ASPECT_COLOR_BIT)
+                .baseMipLevel(0).levelCount(1).baseArrayLayer(0).layerCount(colorLayerCount.coerceAtLeast(1))
+            val oldLayout = colorLayout[attachment]
+            val (srcStage, srcAccess) = captureSourceStageAndAccess(oldLayout)
+            transitionColorAttachment(command, attachment, srcStage, VK_PIPELINE_STAGE_2_COPY_BIT, srcAccess,
+                VK_ACCESS_2_TRANSFER_WRITE_BIT, oldLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, range)
+            copy(colorImageHandles[attachment])
+            transitionColorAttachment(command, attachment, VK_PIPELINE_STAGE_2_COPY_BIT, sampledReadStageMask,
+                VK_ACCESS_2_TRANSFER_WRITE_BIT, VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, range)
+            colorLayout[attachment] = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+        }
+    }
+
     protected fun recordPendingFileSaves(command: CommandBuffer) {
         val requests = dequeueFileSaves()
         if (requests.isEmpty()) return

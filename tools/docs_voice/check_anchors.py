@@ -54,7 +54,8 @@ def strip_inline(text):
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)   # links keep their text
     text = text.replace("`", "")
     text = re.sub(r"\*{1,3}(?=\S)(.+?)(?<=\S)\*{1,3}", r"\1", text)
-    # Underscores emphasise only at word boundaries: `photo_to_solid_chain` is a name, not "photo*to*solid".
+    # Underscores are emphasis only at word boundaries (python-markdown's smart emphasis), so
+    # `### photo_to_solid_chain` renders, and slugs, with its underscores intact.
     text = re.sub(r"(?<!\w)_{1,3}(?=\S)(.+?)(?<=\S)_{1,3}(?!\w)", r"\1", text)
     return text
 

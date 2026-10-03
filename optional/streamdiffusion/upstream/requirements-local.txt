@@ -1,0 +1,4 @@
+# Install after: uv pip install --python .venv/bin/python -e .
+onnx==1.17.0
+tensorrt-cu12==10.9.0.34
+flash-attn @ https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1%2Bcu12torch2.6cxx11abiFALSE-cp310-cp310-linux_x86_64.whl

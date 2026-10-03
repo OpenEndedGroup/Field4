@@ -298,12 +298,31 @@ class Renderer(
      */
     val isClosed: Boolean get() = cleanedUp
 
+    /** Stop external GPU consumers before queue/device retirement. Callbacks must join their owner. */
+    internal val beforeDeviceCleanup = java.util.concurrent.CopyOnWriteArrayList<Runnable>()
+
     internal fun afterCurrentGraphicsFrameComplete(callback: () -> Unit) {
         val key = graphicsRecordingContext.get()
             ?: throw IllegalStateException("afterCurrentGraphicsFrameComplete must be called while recording a graphics frame")
         synchronized(graphicsCompletionLock) {
             graphicsCompletionCallbacks.getOrPut(key) { mutableListOf() }.add(callback)
         }
+    }
+
+    data class ExternalSemaphorePoint(val semaphore: Long, val value: Long)
+    private data class ExternalFrameSync(
+        val waits: MutableList<ExternalSemaphorePoint> = mutableListOf(),
+        val signals: MutableList<ExternalSemaphorePoint> = mutableListOf()
+    )
+    private val externalFrameSync = java.util.concurrent.ConcurrentHashMap<Long, ExternalFrameSync>()
+
+    /** Add GPU interop ordering to this command buffer's submission, during graphics recording. */
+    internal fun externalGraphicsSync(command: CommandBuffer, semaphore: Long, value: Long, wait: Boolean) {
+        check(graphicsRecordingContext.get() != null && currentCommandBuffer === command)
+        val sync = externalFrameSync.computeIfAbsent(command.vkCommandBuffer.address()) { ExternalFrameSync() }
+        val points = if (wait) sync.waits else sync.signals
+        check(points.none { it.semaphore == semaphore }) { "Duplicate external semaphore in one submission" }
+        points += ExternalSemaphorePoint(semaphore, value)
     }
 
     internal fun afterCurrentComputeFrameSubmitted(callback: (Fence) -> Future<*>?) {
@@ -776,6 +795,8 @@ class Renderer(
         // (and the waits cover it) or is refused. Renderer's own frame submits use vkQueueSubmit2
         // on this thread and render() already refuses once cleanedUp is set.
         device.closeSubmissions()
+        beforeDeviceCleanup.toList().forEach { it.run() }
+        beforeDeviceCleanup.clear()
         uninstallRunloopGeometryBeginHook()
 
         presentQueue.waitIdle()
@@ -1533,6 +1554,7 @@ class Renderer(
             }
 
             currentCommandBuffer = cmd
+            externalFrameSync.remove(cmd.vkCommandBuffer.address())
             graphicsRecordingContext.set(ctxIndex to imageIndex)
             try {
                 renderStart.update()
@@ -1603,6 +1625,7 @@ class Renderer(
             MemoryStack.stackPush().use { stack ->
                 val acquireSync = context.swapChain.syncSemaphoresList[context.swapChain.currentFrame]
                 val presentSync = context.swapChain.syncSemaphoresList[context.currentImage]
+                val external = externalFrameSync.remove(commandBuffer.vkCommandBuffer.address()) ?: ExternalFrameSync()
 
                 // Command buffer info
                 val cbInfo = VkCommandBufferSubmitInfo.calloc(1, stack)
@@ -1612,7 +1635,8 @@ class Renderer(
                     .deviceMask(0)
 
                 // Always wait for image acquisition; wait for compute only when this window ran it.
-                val waits = VkSemaphoreSubmitInfo.calloc(if (computeSemaphore == null) 1 else 2, stack)
+                val ordinaryWaitCount = if (computeSemaphore == null) 1 else 2
+                val waits = VkSemaphoreSubmitInfo.calloc(ordinaryWaitCount + external.waits.size, stack)
                 waits[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                     .semaphore(acquireSync.imgAcquisitionSemaphore.vkSemaphore)
                     .value(acquireSync.imgAcquisitionSemaphore.currentValue())
@@ -1628,12 +1652,21 @@ class Renderer(
                 }
 
                 // Signal semaphore: render complete
-                val signals = VkSemaphoreSubmitInfo.calloc(1, stack)
+                external.waits.forEachIndexed { i, point ->
+                    waits[ordinaryWaitCount + i].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                        .semaphore(point.semaphore).value(point.value).stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+                }
+                val signals = VkSemaphoreSubmitInfo.calloc(1 + external.signals.size, stack)
                 signals[0].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
                     .semaphore(presentSync.renderCompleteSemaphore.vkSemaphore)
                     .value(presentSync.renderCompleteSemaphore.nextSignalValue())
                     .stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
                     .deviceIndex(0)
+
+                external.signals.forEachIndexed { i, point ->
+                    signals[1 + i].sType(VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO)
+                        .semaphore(point.semaphore).value(point.value).stageMask(VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT)
+                }
 
                 val submit2 = VkSubmitInfo2.calloc(1, stack)
                     .sType(VK_STRUCTURE_TYPE_SUBMIT_INFO_2)

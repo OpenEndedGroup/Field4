@@ -777,6 +777,36 @@ class ProseNumeralContractTest {
 
     private fun derivationsByKey() = derivations.associateBy { it.key }
 
+    /**
+     * `AFIELD_WRITE_DERIVED_COUNTS=1`: set every marked numeral to what its derivation counts, instead
+     * of failing. Two branches that each add a call site both edit the number, conflict, and one of
+     * them bounces at landing; `tools/merge_regen.py` runs this on the merged tree so the number is
+     * derived there rather than hand-merged. Only the numeral directly before its marker is touched,
+     * and a word numeral that is wrong becomes digits. The other assertions in this class still run.
+     */
+    private fun rewriteMarkedNumerals(known: Map<String, DerivedCountGuard.Derivation>) {
+        allMarked().filter { it.value != null && known[it.key] != null }
+            .groupBy { it.page }
+            .forEach { (page, marks) ->
+                val file = pageFile(page)
+                val lines = file.readLines().toMutableList()
+                var changed = false
+                for (m in marks) {
+                    val actual = known.getValue(m.key).derive(root).size
+                    if (m.value == actual) continue
+                    val at = m.pageLine - 1
+                    val pattern = Regex(
+                        Regex.escape(m.literal) + """([*`_]*<!--\s*count:""" + Regex.escape(m.key) + """\s*-->)"""
+                    )
+                    val found = checkNotNull(pattern.find(lines[at])) { "could not find ${m.describe()} to rewrite" }
+                    lines[at] = lines[at].replaceRange(found.range, "$actual" + found.groupValues[1])
+                    changed = true
+                    println("derived count: ${m.describe()} -> $actual")
+                }
+                if (changed) file.writeText(lines.joinToString("\n") + "\n")
+            }
+    }
+
     private fun pageFile(rel: String) = File(root, rel).also {
         assertTrue(it.isFile, "guarded page $rel is missing")
     }
@@ -881,6 +911,10 @@ class ProseNumeralContractTest {
 
                 else -> null
             }
+        }
+        if (System.getenv("AFIELD_WRITE_DERIVED_COUNTS") == "1") {
+            rewriteMarkedNumerals(known)
+            return
         }
         assertTrue(
             wrong.isEmpty(),

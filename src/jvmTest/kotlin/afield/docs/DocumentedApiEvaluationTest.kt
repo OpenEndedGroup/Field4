@@ -165,6 +165,10 @@ class DocumentedApiEvaluationTest {
      * and "no cheap evaluator exists" are different sentences.
      */
     private val COMPILE_ONLY_REMAINDER: Map<String, String> = mapOf(
+        // afield.syphon (2026-10-03): needs macOS, a Vulkan renderer with VK_EXT_external_memory_host
+        // and the optional native/field-syphon library. Verified live against an external Syphon
+        // client (dev_docs/SYPHON_BRIDGE.md); SyphonTest covers the CPU paths.
+        "followOnGpu" to "macOS + Vulkan renderer + optional Syphon library; verified live, see dev_docs/SYPHON_BRIDGE.md",
         // Visible since the page census includes bare API names, not only call syntax (W1).
         // The 2026-09-24 NVIDIA/RTXDI landing. Every one of these needs hardware this repository's
         // CI does not have — an NVIDIA device with the RTXDI and DLSS paths — so the pages teach
@@ -176,6 +180,12 @@ class DocumentedApiEvaluationTest {
         // training for the first, Mega Geometry cluster acceleration structures for the second.
         // The 2026-10-02 origin landing (OpenDLSS-NR). Both transcripts are in the compile set: the
         // study needs a live renderer and its GPU frame targets.
+        // The 2026-10-03 origin landing (StreamDiffusion render-to-texture). Its transcript is in the
+        // compile set: the worker is an optional Linux/NVIDIA Python process beside a Vulkan renderer.
+        "configuredRoot" to
+            "streaming_diffusion.md; StreamDiffusionSupport.configuredRoot reads where the optional worker " +
+                "is installed, and the page only calls it on the way to a Linux/NVIDIA backend; the " +
+                "streaming_diffusion transcript compiles the Kotlin only.",
         "objectPoint" to
             "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
                 "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",

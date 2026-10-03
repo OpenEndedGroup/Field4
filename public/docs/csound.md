@@ -62,6 +62,11 @@ Leave the header out; one in the orchestra is overridden. `<CsOptions>` is read,
 flags that pick a device or a file (`-o`, `-i`, `-+rtaudio`, `-M` and the like), because Field's
 audio engine is the device. Text without `<CsInstruments>` is read as a bare orchestra with no score.
 
+A `chn_k` channel starts at the default it declares: above, `chnget "cutoff"` reads 2400 until
+something writes the channel. Csound on its own leaves the channel at 0 and keeps the default only
+as a hint for the host, so the same file in another Csound host can play a 0 Hz `butterlp`, which is
+silence.
+
 ### The keys
 
 | Key | Where | What it does |
@@ -296,7 +301,10 @@ csound_demo`, or open **csound_demo** from the welcome screen's starting points.
 ??? aside "How the captures and numbers on this page were made"
     The two editor figures and the completion popup are captured by the docs runner against a
     real Field. The editor figures are gated on `requires="csound"`, so a machine without a built
-    libcsound keeps the committed images and says why. The completion figure needs no libcsound,
+    libcsound keeps the committed images and says why. An editor image does not show whether the
+    fence plays, so `CsoundDocsFencesTest` renders every `data-lang=csound` fence on this page
+    offline and fails on a silent one, or on an `expect-error` fence that compiles. It found the
+    Pluck fence silent before Field applied `chn_k` defaults. The completion figure needs no libcsound,
     because it reads the committed vocabulary. The quoted gain (0.2420) and the latency (exactly 32
     frames) come from `CsoundDataPlaneTest` and from running the demo through the backdoor on
     2026-10-02.

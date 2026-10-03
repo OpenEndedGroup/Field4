@@ -675,6 +675,7 @@ class FieldBackdoor:
         self.last_box_uid: str | None = None
         self.box_aliases: dict[str, str] = {}
         self.playwright_state: dict[str, Any] | None = None
+        self.playwright_electron = False
         # Per box: what the page could see when it last ran. A browser that attaches after a run
         # cannot recreate the output DOM that run produced, and an inline editor visualizer only
         # exists if the editor was open before the run -- so a capture of such a box shows
@@ -1309,10 +1310,12 @@ class FieldBackdoor:
             self.last_box_uid = next(reversed(self.boxes), None)
 
     async def open_playwright(self, timeout: float) -> dict[str, Any]:
-        self.logger.log("open_playwright_start", timeout=timeout, documentName=self.document_name, scratch=self.scratch, sessionKey=self.session_key)
+        self.logger.log("open_playwright_start", timeout=timeout, documentName=self.document_name, scratch=self.scratch, sessionKey=self.session_key, electron=self.playwright_electron)
+        # `playwright-open --electron` sets playwright_electron for the rest of the session, so every
+        # later attach (editor-open, screenshots) keeps capturing from the Electron app.
         event = await self.call_for_single_reply(
             "agent-open-playwright",
-            {},
+            {"electron": True} if self.playwright_electron else {},
             timeout=timeout,
         )
         payload = event["payload"]
@@ -3390,6 +3393,7 @@ def build_command_parser() -> argparse.ArgumentParser:
     sleep_parser.add_argument("seconds", type=float)
     playwright_open = subparsers.add_parser("playwright-open", add_help=False)
     playwright_open.add_argument("--timeout", type=float)
+    playwright_open.add_argument("--electron", action="store_true")
 
     dispose_graphics = subparsers.add_parser("dispose-graphics-context", add_help=False)
     dispose_graphics.add_argument("--timeout", type=float)
@@ -4018,6 +4022,8 @@ async def dispatch_command(
 
     if args.command == "playwright-open":
         timeout = command_timeout(args.timeout, client.default_timeout)
+        if args.electron:
+            client.playwright_electron = True
         data = await ensure_playwright_attached(client, timeout=timeout, reason="command:playwright-open")
         result = command_result(command_line, True, data=data, events=[])
         client.logger.log("command_dispatch_complete", commandLine=command_line, ok=result["ok"])

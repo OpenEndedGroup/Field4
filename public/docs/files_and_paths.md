@@ -1,14 +1,13 @@
 # File management
 
-A Field document is a folder, not a single file, and the code in a box runs from wherever that
-folder happens to be sitting. So a path typed into a box has a problem the same path in a compiled
-program does not: `File("/Users/you/Desktop/scan.ply")` is correct exactly once, on one machine,
-until the document is copied, moved into a project, or sent to somebody else.
+A Field document is a folder, and it can be copied, moved into a project, or sent to somebody else.
+A path like `File("/Users/you/Desktop/scan.ply")` stops working as soon as it is. Instead, give
+Field a short name and it finds the file for you: in the document first, then in the workspace
+projects the document belongs to, then in any other directories you have registered.
 
-Field's answer is a *resolver*. You hand it a short name, and it looks in the document first, the
-workspace projects it belongs to second, and a list of other directories you choose third.
+## Reading a file by name
 
-## The one line to learn
+Put the file in the document's `files/` folder and read it by name:
 
 ```diffstatic {data-lang=kotlin}
 val rows = "data.csv".file.readLines()
@@ -21,9 +20,9 @@ different type:
 
 | Spelling | You get | Reach for it when |
 | --- | --- | --- |
-| `"data.csv".file` | `java.io.File` | Returns a `java.io.File` after searching the document and its projects. Use it for ordinary reads and writes. |
-| `"data.csv".path` | `java.nio.file.Path` | Returns the same resolved location as a `java.nio.file.Path`. Choose it when calling `Files` or another NIO API. |
-| `"data.csv".absolutePath` | `String`, absolute and normalised | Returns the resolved, absolute, normalised path as a string. Pass it to a subprocess that needs a filename. |
+| `"data.csv".file` | `java.io.File` | Ordinary reads and writes. |
+| `"data.csv".path` | `java.nio.file.Path` | Calling `Files` or another NIO API. |
+| `"data.csv".absolutePath` | `String`, absolute and normalised | Passing a filename to a subprocess. |
 
 </div>
 
@@ -78,6 +77,8 @@ reading `files.documentFilesDirectory`.
 
 ## Roots of your own
 
+Give a directory outside the document a name, then ask for files in it with `%name/`:
+
 ```diffstatic {data-lang=kotlin}
 FileManager["textures"] = "~/Pictures/field-textures"
 
@@ -108,20 +109,16 @@ val helper = "my-helper".file
 FileManager.removeFile("my-helper") // unregisters without deleting anything
 ```
 
-These registrations are process-global. Document, project and search-directory copies take
-precedence, including copies added after a previous fallback lookup. Re-registering a name
-replaces its target; removing it invalidates cached resolutions. The access history records
-`file:my-helper` when the fallback supplies the answer.
+Like named roots, these registrations are shared by every open document. A copy of the file in the
+document, a project or a search directory still wins. Registering a name again replaces its target.
 
-A registration is an exact bare filename, including any extension, rather than a path or glob.
-The target may be built later: missing targets and directories do not answer lookups, and an
-unresolved name still returns the document-local path for writing. Registration does not build
-or execute anything. Globs and explicit `%document/` or `%project/` paths bypass this table.
+The name is an exact filename, including any extension, not a path or a glob. The target does not
+have to exist yet: until it does, the name resolves as if it were not registered. Globs and
+`%document/` or `%project/` paths ignore these registrations.
 
-Field registers `field-slug` at `native/field-slug/build/field-slug` relative to the checkout
-containing its loaded classes or JAR. Build it once with `bash native/field-slug/build.sh`;
-then use `"field-slug".file` from any document. No working-directory lookup is involved.
-A distribution without that native helper directory needs an explicit `addFile` registration.
+Field registers one of these itself, `field-slug`, pointing into the checkout it was started from.
+Build it once with `bash native/field-slug/build.sh` and `"field-slug".file` works from any
+document.
 
 ## Globs
 
@@ -167,9 +164,8 @@ says what it is looking for.
 
 </div>
 
-That last row follows from the first paragraph of this page. The resolver answers "where is
-`data.csv`" with respect to a specific open document, so it needs a live session or an active box
-context, and there is no way to use it outside one.
+The resolver answers "where is `data.csv`" for a particular open document, so it only works inside
+a running box.
 
 ## Where did that path actually go
 

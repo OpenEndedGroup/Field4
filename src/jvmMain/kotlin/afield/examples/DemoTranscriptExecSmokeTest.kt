@@ -399,6 +399,10 @@ object DemoTranscriptExecSmokeTest {
         // context, commands, the canvas as branch state) and shows the bare canvas. No model is called;
         // without the paint library it says so and stops, like paint_canvas.
         "ai4_paint_studio",
+        // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
+        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
+        // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
+        "drawn_paint",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the
@@ -429,6 +433,17 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
+        // measuring box whose numbers SceneOnARigTest already pins.
+        "chain_scene_to_light",
+        // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
+        // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
+        // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
+        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        "syphon_bridge",
+        // The same over the Vulkan renderer: followOnGpu (GPU copy into an IOSurface) and a Syphon
+        // client as a texture. Needs a Window, a Renderer and the library; verified live by hand.
+        "syphon_gpu",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",
@@ -446,6 +461,7 @@ object DemoTranscriptExecSmokeTest {
         // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
+        "streaming_diffusion", // Optional Linux/NVIDIA worker and a Vulkan renderer.
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
         "open_dlss_nr", // Optional native network; live transcript and GPU recording verified separately.
@@ -480,6 +496,8 @@ object DemoTranscriptExecSmokeTest {
         // left here is the window, so they classify with the rest of the tracer group.
         "polytope_path_trace_lineage",
         "polytope_manifold_path_trace",
+        "polytope_layer_stack_path_trace",
+        "photo_mount_path_trace",
         "physics_manifold_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
@@ -529,6 +547,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_emitters",
         "path_tracing_medium",
         "python_cells",
+        // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
+        // graphics boxes are compiled.
+        "fieldcv_webcam",
         // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
         // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
         "pure_data_demo",
@@ -579,6 +600,9 @@ object DemoTranscriptExecSmokeTest {
         // KosmicKrisp (host-pointer buffers). Needs a Vulkan window and the helper binary, so CI
         // compiles it; the backdoor replay runs it live.
         "iosurface_ring_roundtrip_smoke",
+        // Zero-copy Syphon receive against field_syphon_probe, read back exactly. Needs a Vulkan
+        // window and the optional Syphon library, so CI compiles it; the backdoor replay runs it live.
+        "syphon_zero_copy_receive_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

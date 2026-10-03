@@ -1,0 +1,15 @@
+{
+  "id": "job_80eab3645da04da9a63d0f9556347f3e",
+  "operation_id": "op_adfa384c9f654c9c9ea5292edb6a2f2c",
+  "request_hash": "sha256:2ca1b8145eb073548141a06b1b34107c5c88900f6135fca06cab40c7cb7de3c0",
+  "state": "complete",
+  "resolved_backend": "analysis.wavlm_base_plus",
+  "progress": 1.0,
+  "created_at": "2026-08-27T18:35:41.114943Z",
+  "updated_at": "2026-08-27T18:35:47.905672Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": null,
+  "analysis_result_id": "analysis_3c6464f9072d45fab344b5ac09f8bb02",
+  "cache_hit": false
+}

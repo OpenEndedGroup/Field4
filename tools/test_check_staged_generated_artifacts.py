@@ -235,7 +235,7 @@ class HookInstallTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         subprocess.run(["git", "init", "--quiet", str(self.tmp)], check=True)
         (self.tmp / "tools/hooks").mkdir(parents=True)
-        for name in ("pre-commit", "post-merge"):
+        for name in ("pre-commit", "post-merge", "reference-transaction"):
             shutil.copyfile(REPO / "tools/hooks" / name, self.tmp / "tools/hooks" / name)
         shutil.copyfile(
             REPO / "tools/install_git_hooks.py", self.tmp / "tools/install_git_hooks.py"
@@ -253,9 +253,9 @@ class HookInstallTests(unittest.TestCase):
     def _hooks(self) -> Path:
         return self.tmp / ".git/hooks"
 
-    def test_installs_both_hooks(self) -> None:
+    def test_installs_every_hook(self) -> None:
         self.assertEqual(self._install().returncode, 0)
-        for name in ("pre-commit", "post-merge"):
+        for name in ("pre-commit", "post-merge", "reference-transaction"):
             hook = self._hooks() / name
             self.assertTrue(hook.exists(), name)
             self.assertTrue(os.access(hook, os.X_OK), f"{name} not executable")
@@ -320,6 +320,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
         # asserts on the wiring rather than on Gradle.
         (self.tmp / "tools/check_staged_generated_artifacts.py").write_text(
             "import sys, pathlib\n"
+            "# accepts \"--report\", which the hook checks for before calling it\n"
             "pathlib.Path('guard-ran.txt').write_text(' '.join(sys.argv[1:]))\n"
         )
         (self.tmp / "seed.txt").write_text("seed\n")
@@ -353,7 +354,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
 
         ran = self.tmp / "guard-ran.txt"
         self.assertTrue(ran.exists(), "post-merge hook did not run the guard")
-        self.assertEqual(ran.read_text(), "--since ORIG_HEAD")
+        self.assertEqual(ran.read_text(), "--since ORIG_HEAD --report")
         self.assertTrue((self.tmp / "lfs-ran.txt").exists(), "chained LFS hook did not run")
 
     def test_skip_env_var_disables_the_guard_but_not_the_chained_hook(self) -> None:

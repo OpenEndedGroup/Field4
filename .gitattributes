@@ -39,3 +39,15 @@ native/steamaudio/THIRDPARTY.md -text linguist-vendored=true
 
 # Unified-diff context lines carry a literal leading space, including empty context lines.
 optional/opendlssnr/*.patch whitespace=-blank-at-eol,-blank-at-eof
+optional/streamdiffusion/upstream/*.patch whitespace=-blank-at-eol,-blank-at-eof
+
+# Generated artifacts: never hand-merge them. The `field-generated` driver keeps our side so the merge
+# never stops on them; `tools/merge_regen.py` (or the landing queue) then reruns each generator on the
+# merged tree. These files topped `main`'s churn every week, and nearly every landing conflict was a
+# derived total. The driver is registered by `tools/install_git_hooks.py`. A clone without it falls
+# back to an ordinary text merge, and the pre-commit guard still refuses a stale artifact.
+public/docs/reference/** merge=field-generated
+dev_docs/kdoc_worklist.md merge=field-generated
+public/docs/assets/agent_transcripts/** merge=field-generated
+tools/completion-corpus/boxes/** merge=field-generated
+dev_docs/GUARD_CORPORA.md merge=field-generated

@@ -7,21 +7,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * Will `public/docs/assets/chain_scene_to_light_demo/` open? Read through Field's own EDN codec, with
- * a committed bundle known to work as the control, and each `#afield/file-inline` fallback compared
- * byte for byte with the loose `_code_.kt` Field prefers. That the three boxes *run* is not visible
- * to a jvmTest (box code compiles through the K2 REPL); that was checked through the backdoor, see
- * `dev_docs/CHAIN_SCENE_TO_LIGHT.md`.
+ * Does the chain_scene_to_light starting point (materialized from
+ * `dev_docs/agents/transcripts/chain_scene_to_light.yaml`) still hold the three boxes the page describes,
+ * with the scene the page measures? Read through Field's own EDN codec, with a committed bundle known
+ * to work as the control. That the boxes compile is `DemoTranscriptExecSmokeTest`'s job; that they
+ * *run* was checked through the backdoor, see `dev_docs/CHAIN_SCENE_TO_LIGHT.md`.
  */
 class SceneOnARigDemoBundleTest {
 
     private val root = File(System.getProperty("user.dir"))
-    private val demo = File(root, "public/docs/assets/chain_scene_to_light_demo")
+    private val demo = File(root, "public/docs/assets/agent_transcripts/chain_scene_to_light")
     private val control = File(root, "public/docs/assets/dmx_lighting_demo")
     private val calls = mapOf(
-        "scene-sender" to listOf("RectSLImager(", "sacnOut(", "animate("),
-        "rig-receiver" to listOf("sacnIn(", "showReceived("),
-        "rig-measure" to listOf("SceneOnARig.roundTrip(", "SceneOnARig.aliasing("),
+        "scene_sender" to listOf("RectSLImager(", "sacnOut(", "animate("),
+        "rig_receiver" to listOf("sacnIn(", "showReceived("),
+        "rig_measure" to listOf("SceneOnARig.roundTrip(", "SceneOnARig.aliasing("),
     )
 
     @Test
@@ -29,10 +29,10 @@ class SceneOnARigDemoBundleTest {
         val saving = SavingContext()
         assertTrue(saving.readEdnTransfers(control.absolutePath).size >= 3, "control bundle read back empty")
         val byId = saving.readEdnTransfers(demo.absolutePath).associateBy { it.id }
-        assertEquals((calls.keys + "root").toSet(), byId.keys)
-        val rootChildren = byId.getValue("root").properties["children"]?.toString() ?: ""
+        assertEquals(calls.keys, byId.keys)
         calls.forEach { (id, wanted) ->
-            assertTrue(id in rootChildren, "root does not parent $id: $rootChildren")
+            val parents = byId.getValue(id).properties["parents"]?.toString() ?: ""
+            assertTrue("root" in parents, "$id is not under root: $parents")
             val code = byId.getValue(id).properties["code"]?.toString() ?: ""
             wanted.forEach { assertTrue(it in code, "$id should call $it") }
         }
@@ -51,7 +51,7 @@ class SceneOnARigDemoBundleTest {
 
     @Test
     fun `the scene in the sender box is the scene the page measures`() {
-        val sender = File(demo, "scene-sender_code_.kt").readText()
+        val sender = File(demo, "scene_sender_code_.kt").readText()
         val scene = sender.substringAfter("RectSLImager(\"\"\"\n").substringBefore("\"\"\")")
         assertEquals(SceneOnARig.SCENE.trim(), scene.trim())
     }

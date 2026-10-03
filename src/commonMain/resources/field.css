@@ -5191,9 +5191,21 @@ body.mode-editor-only .field-toast {
 .bookmark-map .bm-box { fill: #3a3a3a; }
 .bookmark-map .bm-box.has-open { fill: #6a6a6a; }
 .bookmark-map .bm-box.is-selected { fill: rgba(var(--field-accent-rgb), 0.55); }
+.bookmark-map .bm-panel { fill: rgba(216, 216, 216, 0.10); stroke: #8a8a8a; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .bookmark-map .bm-view { fill: none; stroke: #d8d8d8; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .bookmark-summary { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bookmark-summary-line { color: var(--fp-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bookmark-summary-line strong { color: #d8d8d8; font-weight: 400; }
 .bookmark-pills { display: flex; flex-wrap: wrap; gap: 3px; }
 .bookmark-options { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+
+/* Layers panel (layersPanel.kt) */
+#layers-panel { width: min(420px, calc(100vw - 20px)); }
+.layer-row .field-panel-card-head { grid-template-columns: 30px 18px minmax(0, 1fr) 64px auto; }
+.layer-row .field-panel-meta { text-align: right; }
+.field-panel button.layer-eye { width: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; opacity: 0.35; }
+.layer-active { margin: 0; accent-color: rgb(var(--field-accent-rgb)); cursor: pointer; }
+.layer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-name.is-active { color: rgb(var(--field-accent-rgb)); }
+.field-panel button.layer-eye.is-on { opacity: 1; color: #d8d8d8; }
+.layer-footer { justify-content: flex-end; padding-top: 4px; }
