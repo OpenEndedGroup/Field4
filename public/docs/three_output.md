@@ -1,12 +1,9 @@
 # Three.js scenes with `three { … }`
 
-*Everything below carries its own KDoc — start from `Box.three`, `ThreeSceneBuilder` and
-`toThreeDrawable` in `afield.graphics` (`Three.kt`, `ThreeScene.kt`). The FLine half of the same
-viewer is documented in [FLine examples](fline_examples.md#3d-output-threelines).*
-
-`Box.three { … }` draws meshes and `FLine`s together in one orbitable scene, and lays several views
-out side by side when you ask for a contact sheet. It is `threeLines(...)` grown a vocabulary: the
-same Three.js viewer you can orbit, click, section and explode, taking solids as well as lines.
+`Box.three { … }` draws meshes and `FLine`s together in one scene you can orbit, and lays several
+views out side by side when you ask for a contact sheet. It uses the same Three.js viewer as
+`threeLines(...)`, which you can orbit, click, section and explode, but takes solids as well as
+lines. For lines alone, see [FLine examples](fline_examples.md#3d-output-threelines).
 
 Field's other way of drawing a `TriMesh` is a CPU z-buffer rasterizer that hands back a **still
 picture at a fixed camera**. [Which renderer draws this](#which-renderer-draws-this) covers when you
@@ -38,7 +35,9 @@ val view = three(name = "foo", width = 760, height = 440) {
 mesh APIs are imported in ordinary Field boxes; in Kotlin source, import `afield.graphics.*`
 and `afield.stdlib.*` and call `three` on a `Box`.
 
-### `name` identifies the viewer; `channel` places its output
+### Viewer name, channel and size
+
+These are the arguments `three` itself takes:
 
 | Argument to `three` | Meaning |
 | --- | --- |
@@ -54,9 +53,9 @@ ID used by the standalone viewer and agent inspection tools.
 
 ## A scene, not a picture
 
-The block is a scene description, not a sequence of draw calls, and `three` returns the live
-`ThreeGeometryViewState`, so the scene stays drivable after it is on screen, exactly as
-`threeLines(...)` does.
+The block describes a scene rather than issuing draw calls, and `three` returns the live
+`ThreeGeometryViewState`, so you can keep changing the scene after it is on screen, as with
+`threeLines(...)`. These are the operations the block accepts:
 
 | in the block | what it does |
 |---|---|
@@ -171,9 +170,9 @@ in the scene metadata.
 ### One scene, two kinds of thing
 
 A gyroid marched inside a finite box is an **open** surface: it runs out of the sampling window
-rather than closing inside it, and every place it does that is a boundary loop. A shaded surface
-hides exactly that, since the rim reads as a silhouette and nothing more. `toFLines(MeshLines.BOUNDARY)` returns one closed ring per hole, and
-those rings go into the *same* scene as the solid.
+rather than closing inside it, and every place it does that is a boundary loop. A shaded surface hides
+those loops, since the rim reads as a silhouette. `toFLines(MeshLines.BOUNDARY)` returns one closed
+ring per hole, and this example draws those rings in the same scene as the solid.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/scene.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -205,24 +204,22 @@ three(channel = "gyroid", height = 470, width = 760) {
 
 ![A marched gyroid drawn as a pale shaded surface, with twenty orange closed rings tracing every place the surface leaves its sampling box; the panel is headed "marched gyroid, with its 20 open boundary loops drawn in the same scene" and the viewer HUD in the top right reads 3576 ln, 165368 tri, 0 p](assets/three_output/scene.png)
 
-The HUD in the top right counts the **whole** scene — `3576 ln | 165368 tri | 0 p` — because the
-drawables' triangles are added to whatever the FLine half contributed rather than replacing it. The
-mesh and the lines are one figure, and the counts say so.
+The HUD in the top right counts the whole scene, lines and triangles together:
+`3576 ln | 165368 tri | 0 p`.
 
-Neither half of that scene is a second implementation. `three { lines(…) }` delegates wholesale to
-the builder `threeLines(...)` uses, so the two cannot disagree about what an FLine is, down to its
-interactive objects, its topology strings and its click callbacks. And the mesh side is a lowering:
-`TriMesh.toThreeDrawable()` turns a mesh into a `ThreeDrawable`, which is *geometry plus how to draw
-it*, and the viewer draws drawables without knowing that meshes exist.
+`three { lines(…) }` uses the same builder as `threeLines(...)`, so FLines behave identically in
+both, including picking and click callbacks. A mesh reaches the viewer through
+`TriMesh.toThreeDrawable()`, which turns it into a `ThreeDrawable`: geometry plus how to draw it.
 
 A wide viewer can keep its controls compact with `controlGroup("controls", columns = 2) { ... }`.
 The control surface uses up to two columns and collapses to one in a narrow output. The ordinary
 `controlGroup("controls") { ... }` retains its single column; changing layout preserves control
 identities, cached values and callbacks.
 
-## The camera is four numbers, and they are the rasterizer's four numbers
+## The camera
 
-`ThreeCameraSpec` mirrors `MeshView` and `VisionGeometryPreview.Camera` one for one:
+`ThreeCameraSpec` has the same four fields as `MeshView` and `VisionGeometryPreview.Camera`, the
+CPU rasterizer's camera:
 
 - **`yawDegrees`** — orbit around `+y`. `0` looks straight down `−z`.
 - **`pitchDegrees`** — lift above the horizon. Positive looks down on the geometry.
@@ -230,11 +227,7 @@ identities, cached values and callbacks.
   2 m one.
 - **`fieldOfViewDegrees`** — vertical. Smaller is a longer lens and less perspective.
 
-The names and the meanings match so that one figure can be handed to either renderer. The viewer
-does reimplement the yaw/pitch/distance → eye-position conversion in JavaScript, which is a second
-implementation of something with a sign convention in it; it is marked
-`// [viewer-region camera-preset]` in `threejs_viewer.html`, and the build holds the two to each
-other.
+The names and meanings match, so one camera can be handed to either renderer.
 
 ??? aside "In the viewer, `distance` is a padding factor"
     The preset supplies the camera's **direction**; the viewer supplies its own distance. Having
@@ -257,7 +250,8 @@ other.
 
 For a custom contact sheet, `panel(...)` declares viewports in order and `mesh(..., panel = n)`
 assigns geometry to them. Calling `panel` does not change which viewport the next mesh goes into:
-the default stays `0`. FLine content is shared between viewports.
+the default stays `0`. FLine content is shared between viewports. This example builds a sheet by
+hand:
 
 ```diffstatic {data-lang=kotlin}
 val cube = boxMesh()
@@ -279,13 +273,10 @@ Drag to orbit; use the mouse wheel, trackpad scroll, or middle-button drag to do
 Multi-panel views retain your orbit and dolly across geometry and selection updates.
 Dolly moves the camera relative to its fitted starting view, so close inspection can crop the object.
 
-A contact sheet is N views of geometry side by side. The obvious translation is N viewers, and it is
-wrong: each iframe is its own WebGL context, Chrome caps live contexts at around sixteen and
-silently evicts the oldest, and a gallery of nine panels next to another gallery of nine is already
-over budget. The evicted context comes back as a blank panel with **nothing in the console**.
-
-So a `ThreePanel` is a *viewport*, not a document: one context, `setScissorTest` and a per-panel
-`setViewport` in the render loop. It is also much faster.
+All the panels of a contact sheet share one viewer and one WebGL context. Separate viewers would
+each need their own context, and Chrome keeps only around sixteen alive, silently blanking the
+oldest with nothing in the console. Two galleries of nine would already be too many. A
+`ThreePanel` is a viewport within the one viewer, which is also much faster.
 
 ### `threeGrid` — several meshes, each framing its own bounds
 
@@ -315,10 +306,8 @@ threeGrid(
 
 ![A two-by-two contact sheet in one viewer: a marched sphere, the same sphere drilled through so the bore is visible from above, a twisted box, and a torus. Each panel carries its title and, under it in grey monospace, a fact line giving vertex and triangle counts, extent, Euler characteristic, genus, watertightness and volume](assets/three_output/grid.png)
 
-Four panels, four cameras, **one** WebGL context. Each panel carries the fact line
-`TriMesh.threeFacts()` computes, which is the same sentence `toFigureHtml` writes under a rasterized
-figure, from one implementation, so the two renderers cannot report a different genus for the same
-mesh.
+Each panel has its own camera, and carries the fact line `TriMesh.threeFacts()` computes, the
+same line `toFigureHtml` writes under a rasterized figure.
 
 `facts = true` is **off by default**, and `showMeshGrid` does not turn it on. If you want the numbers
 under each panel, either call `threeGrid` directly as above, or use the `List<ThreeMeshPanel>`
@@ -347,17 +336,15 @@ threeTurntable(twisted, channel = "turntable", height = 290)
 
 ![Four panels in a row showing the same twisted box at yaw 0, 90, 180 and 270 degrees, all at pitch 18. The silhouette is a narrow crescent at 0 and 180 and a broad S at 90 and 270; all four are drawn at the same scale](assets/three_output/turntable.png)
 
-Four viewpoints is usually the difference between "that looks plausible" and "yes, that is the
-shape". This solid is a good advertisement for it: at yaw 0° and 180° it is a narrow crescent and at
-90° and 270° it is a broad S, and a single view of either would leave you guessing.
+At yaw 0° and 180° this solid is a narrow crescent, and at 90° and 270° it is a broad S; any single
+view would leave you guessing at its shape.
 
-Two details make the turntable cheap and stable, and both are the opposite of what the grid wants:
+Unlike a grid, the turntable:
 
-* the mesh is added once with `panel = -1`, meaning **every** panel: one upload of a 100k-triangle
-  mesh drawn from four angles, not the same buffer sent four times;
-* every panel is given the *same* `bounds`, so the shape does not appear to breathe as it rotates. A
-  grid frames each panel on its own bounds instead, and only the Kotlin side knows which of the two
-  it is building, which is why `ThreePanel.bounds` is computed there and not in the viewer.
+* adds the mesh once with `panel = -1`, meaning every panel, so a large mesh is uploaded once and
+  drawn from each angle;
+* gives every panel the same `bounds`, so the shape does not appear to grow and shrink as it
+  rotates. A grid frames each panel on its own bounds.
 
 ## `showMesh` and the `renderer` parameter
 
@@ -384,21 +371,15 @@ Two size knobs that are easy to confuse:
   ignored on that path. To get a GPU figure the same shape as a CPU one, pass `height = view.height`
   explicitly.
 
-Give the width in pixels. `field.css` says
-`.disclosure-content iframe { width: 100% !important }`, which reads as though an inline size is
-ignored, and it is not: `outputareas2.js` *measures* the output panel from `iframe.style.width` and
-sizes the disclosure to the result, and only then does the CSS stretch the iframe to fill the panel
-it just caused. A percentage claims a meaningless size rather than no size, because `parsePixels` is
-`parseFloat` and `"100%"` reports one hundred pixels, which loses to the header's floor and leaves
-the panel at whatever width it already had. That is right for an FLine viewer filling its column and
-wrong for a wide gallery, which collapses to the panel's existing width and loses the right-hand part
-of every picture. [Output panel sizing](output_panel_sizing.md) sets out the measurement rules in
-full.
+Give the width in pixels. The output panel sizes itself from the iframe's pixel width, and a
+percentage leaves the panel at whatever width it already had. That suits an FLine viewer filling
+its column, but a wide gallery collapses to the panel's width and loses the right-hand part of
+every picture. [Output panel sizing](output_panel_sizing.md) explains the rules.
 
 ## Which renderer draws this
 
-Field has more ways to put geometry on a screen than the viewer and the rasterizer. All of them, and
-what each is for:
+Field has more ways to put geometry on a screen than the viewer and the rasterizer. This table
+lists them all, and what each is for:
 
 | path | what it draws | where the pixels are made | reach for it when |
 |---|---|---|---|
@@ -429,24 +410,21 @@ front ends.
 
 ### What the CPU rasterizer is for
 
-Three things the viewer cannot do, in order of how hard they are to work around.
+The rasterizer does three things the viewer cannot.
 
-**It is deterministic, and a GPU is not.** The pixel-exact proofs compare against it, and a GPU
-capture cannot play that role: driver, vendor and antialiasing all move under you. The tests that
-read its output assert pixel *statistics* rather than golden images — counts of red defect-overlay
-pixels, coverage fractions, painted-area bounds, outward-versus-flipped diffs — and every one of them
-needs the same input to produce the same number twice.
+**It is deterministic.** The same input gives the same pixels every time, whatever the GPU, driver
+or antialiasing. Use it when a test or a comparison needs the same number twice.
 
-**It needs no WebGL context.** The inline value-visualizer card that appears when a box ends on a
-`TriMesh` uses it: an iframe per mesh in a list of values would run straight into the ~16-context
-ceiling that `ThreePanel` exists to dodge.
+**It needs no WebGL context.** The inline card that appears when a box ends on a `TriMesh` uses it,
+so a list of meshes does not run into the browser's limit on WebGL contexts.
 
-**It renders into a pixel buffer.** `TriMesh.renderPixels` hands you ARGB ints and a size, which is
-what you want when compositing several meshes into one figure yourself.
+**It renders into a pixel buffer.** `TriMesh.renderPixels` hands you ARGB ints and a size, for
+compositing several meshes into one figure yourself.
 
-A fourth reason: it is *AWT-free*, and has to be. Touching `java.awt` inside
-Field's server JVM on macOS initialises AppKit in a process whose main thread belongs to GLFW, and
-the process dies silently. So `VisionGeometryPreview` writes its own PNGs.
+??? aside "Why it writes its own PNGs"
+    `VisionGeometryPreview` avoids `java.awt`: touching AWT inside Field's server JVM on macOS
+    initialises AppKit in a process whose main thread belongs to GLFW, and the process dies
+    silently.
 
 ### The same mesh, both ways
 
@@ -468,32 +446,24 @@ showMesh(solid, channel = "the CPU rasterizer", view = view,
 
 ![The same marched solid — a ball with a bar smoothly unioned through it — drawn twice in one box. The upper output channel is the Three.js viewer: cool grey, soft falloff, fine wireframe, and the subject nearly fills the frame. The lower channel is the CPU rasterizer: warmer white, harder terminator, denser-looking wireframe, and the subject fills about half the frame. Both carry the identical fact line, 8494 verts, 16984 tris, chi=2 genus 0, watertight, volume 2.0857](assets/three_output/renderers.png)
 
-Same mesh, same `MeshView`, same 520 × 400 frame, two pictures that are obviously not the same
-picture. What differs, and what does not:
+The same mesh, `MeshView` and 520 × 400 frame give two visibly different pictures:
 
-- **Shading differs, and is not meant to match.** The rasterizer is a two-light Lambert stand-in over
-  the vertex colours. The viewer is three.js's `MeshStandardMaterial` under an ambient / key / rim
-  rig. Reconciling those would mean crippling one of them.
-- **Framing differs**, as the warning above sets out. The viewer zoom-to-fits; the rasterizer places
-  the eye literally.
-- **The input is held identical.** `toThreeDrawable` mirrors `toCapturedMesh`'s
-  preparation step for step: a mesh with no normals is run through `shadedNormals` at the *same* 35°
-  crease angle the rasterizer uses (leaning on three.js's `computeVertexNormals()` instead would be
-  an unconditional smooth average and would round every hard edge off a cube); colours come from
-  `TriMesh.colors` or from the rasterizer's own `DEFAULT_SURFACE` constant, read rather than copied
-  so the two cannot drift into two different greys; alpha is a flat 1. A difference between the two
-  outputs is a difference in shading model, never a difference in input.
-- **Back-face culling is held identical too**, which is the one with diagnostic consequences; the
-  next section shows it.
-- **The fact line is the same sentence**, from `TriMesh.threeFacts()` and `toFigureHtml` sharing one
-  implementation.
+- **Shading differs, and is not meant to match.** The rasterizer is a simple two-light Lambert
+  model over the vertex colours. The viewer is three.js's `MeshStandardMaterial` under an ambient,
+  key and rim light.
+- **Framing differs**, as the camera aside above explains. The viewer zooms to fit; the rasterizer
+  places the eye exactly where the camera says.
+- **The input is the same.** Both renderers compute missing normals with `shadedNormals` at a 35°
+  crease angle, so hard edges stay hard, and both use `TriMesh.colors` or the same default grey.
+- **Back-face culling is the same**, which matters for diagnosis; the next section shows it.
+- **The fact line is the same.**
 
 ### Back-face culling, on both renderers
 
-A face wound the wrong way is *missing* in the rasterizer, not dark but **gone**, and the
-[polytope](polytope_examples.md) and [typography](typography_examples.md) pages both teach that as a
-winding test. `ThreeDrawStyle.surface(cullBackFaces = true)` is the default in the viewer as well, so
-it is missing there too:
+A face wound the wrong way is missing in the rasterizer, not dark, and the
+[polytope](polytope_examples.md) and [typography](typography_examples.md) pages both use that as a
+winding test. `ThreeDrawStyle.surface(cullBackFaces = true)` is the default in the viewer as well,
+so it is missing there too. This example reverses a band of a sphere's triangles:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/winding.png" wait="7.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -523,23 +493,23 @@ showMesh(holed, channel = "the CPU rasterizer", view = view,
 
 ![The same sphere with a reversed band drawn twice in one box. In both output channels a wide ragged band across the upper half of the sphere is simply absent — you look straight through the shell to the inside of its far side. In the upper, Three.js panel the wireframe of the missing triangles is still drawn across the hole; in the lower, CPU panel the hole is bare. Both carry the identical fact line, 642 verts, 1280 tris, chi=2 genus 0, watertight, volume 0.8112](assets/three_output/winding.png)
 
-**394 of 1280 triangles reversed, no vertex moved, and both renderers punch the same hole.** Read
-what the numbers say while the picture says "hole":
+394 of 1280 triangles are reversed and no vertex has moved, and both renderers show the same hole.
+The numbers:
 
-* `signedVolume()` goes **2.1262 → 0.8112** — catastrophically wrong, with nothing to flag it.
-* the fact line still reads **`χ=2 genus 0 · watertight`** — χ is a *count* of vertices, edges and
-  faces, and reversing a triangle changes none of them. Topology is not orientation.
-* the only thing that says so out loud is `topology().isConsistentlyOriented`, which is **false**.
-  `fixWinding()` is the repair.
+* `signedVolume()` goes from 2.1262 to 0.8112, which is wrong, with nothing to flag it.
+* the fact line still reads `χ=2 genus 0 · watertight`: χ counts vertices, edges and faces, and
+  reversing a triangle changes none of them.
+* `topology().isConsistentlyOriented` is `false`, and is the check to use. `fixWinding()` repairs
+  the mesh.
 
-One divergence the figure shows and nothing else records: in the Three.js panel the
+The overlays differ: in the Three.js panel the
 **wireframe overlay is not back-face culled**, so you can still see the reversed triangles' edges
 drawn across the hole. The rasterizer's depth-tested wireframe is culled with its surface, so its
-hole is bare. The *surfaces* agree, which is the diagnostic; the overlays do not.
+hole is bare. The surfaces agree.
 
 ## Measuring and sectioning a solid
 
-The Three.js output area is also an **instrument**. `inspect(...)` inside a `three { }` scene, and
+`inspect(...)` inside a `three { }` scene, and
 `Box.threeInspect(...)` for lines alone, add a measurement tool, a section plane with a real cut
 outline, and an explode scrubber; the tools themselves are documented, with figures, in
 [FLine examples](fline_examples.md#the-3d-output-area-as-an-instrument-threeinspect).
@@ -548,8 +518,8 @@ A mesh is not pickable by default, because a solid filling the frame would sit i
 annotation it was drawn to explain. Ask for it with `mesh(car, pickable = true)`, or let an
 `onClick` or a `hoverColor` imply it, and pair that with `inspect(...)` on the same scene: the flag
 is what lets the ray find the solid and the toolbar is what draws the dimension. A hit arrives as a
-`ThreeSurfaceHit`, resolved to a vertex, an edge or a triangle, so a dimension runs from a corner of
-the solid to an annotation beside it — which is the scene `three` exists for.
+`ThreeSurfaceHit`, resolved to a vertex, an edge or a triangle, so a dimension can run from a corner
+of the solid to an annotation beside it, as in this example:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/section.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -590,7 +560,7 @@ three(name = "section", channel = "section", width = 760, height = 460) {
 
 What you aim at is decided by true perpendicular distance in the hit triangle's plane, within a snap
 radius of 0.14 of that triangle's own longest edge, and a corner is tested before an edge. So
-**a sliver has no clickable interior**: every point of a triangle ten long and half a unit tall
+a sliver has no clickable interior: every point of a triangle ten long and half a unit tall
 falls inside its own snap radius of an edge or a corner.
 
 The section plane cuts a mesh, wireframe overlay included. The explode scrubber moves
@@ -610,7 +580,7 @@ previous view. An ordinary click ends solo mode and edits the current visibility
 
 Use `inspect(partPaths = …)` to organise a large scene. Keys are stable mesh IDs, assembly
 group names, or review feature IDs; values are lists of folder names. The final row retains
-its part name. Folder labels do not change geometry IDs or invalidate annotations.
+its part name. Folder labels do not change geometry IDs or invalidate annotations. For example:
 
 ```diffstatic {data-lang=kotlin}
 three(name = "vehicle") {
@@ -643,20 +613,19 @@ constraints you applied. `width` is optional and otherwise fills the output area
 
 ## The payload both kinds of scene share
 
-`ThreeGeometryPayload`'s `lines` / `fills` / `points` are the FLine half, and a payload with an empty
-`drawables` list carries none of the mesh keys at all, so nothing reading an FLine-only scene has to
-know meshes exist. That is what lets the editable path, the inspector and the mesh scenes above share
-one format.
+`ThreeGeometryPayload`'s `lines` / `fills` / `points` hold the FLines, and a payload with an empty
+`drawables` list carries no mesh keys, so the editable path, the inspector and the mesh scenes above
+all share one format.
 
-Three.js itself is **vendored**, not fetched: `src/commonMain/resources/vendor/three/0.184.0/`. A
-viewer works offline and a docs capture does not depend on a CDN.
+Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
+offline.
 
 ## Play with it
 
 [Open the gallery](offline.html?file=assets/three_output_gallery/metadata.edn), a loadable Field document with the five
 boxes on this page, laid out top to bottom. Open it in a fresh Field 4 and run the boxes; then orbit
-the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4` and watch one WebGL
-context re-tile itself.
+the gyroid, change `facts = true` to `false`, or set the grid's `columns` to `4` and watch the
+panels re-tile.
 
 <iframe
     src="offline.html?file=assets/three_output_gallery/metadata.edn"
@@ -723,7 +692,8 @@ under the pointer. Click callbacks and hover highlights apply to that panel's ob
 (plus objects assigned to every panel); title bands do not pick geometry underneath.
 
 Use `mesh(mesh, unlit = true)` for force bands or other scalar data: the mesh's vertex
-colours are displayed without lighting or tone mapping. The default remains a lit surface.
+colours are displayed without lighting or tone mapping. The default remains a lit surface. This
+example shows the same torus both ways:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/three_output/lit-unlit.png" wait="6.0" capture="box" open-outputs="true" padding="20"}
 :::static
