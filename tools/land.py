@@ -2,7 +2,7 @@
 """The landing queue: agents enqueue a branch and stop; one lander puts it on `main`.
 
     uv run python tools/land.py enqueue [branch] [--note "..."]   # agents: this, then stop
-    uv run python tools/land.py status [id]                       # what is queued, landed, bounced
+    uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
@@ -31,8 +31,10 @@ are not landed until it is enqueued again.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import datetime as dt
 import fcntl
+import io
 import json
 import os
 import re
@@ -132,7 +134,9 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
     for item in _items(queue, PENDING):
-        if item["branch"] == branch:
+        # An item the lander has started stays: removing its file mid-landing hid it from status
+        # while it landed anyway. The new commit queues behind it instead.
+        if item["branch"] == branch and not item.get("started"):
             # A re-enqueue replaces the older request: the newest commit is the one meant.
             (queue / PENDING / f"{item['id']}.json").unlink(missing_ok=True)
             print(f"land: replacing queued {item['id']} ({item['sha'][:9]})")
@@ -145,6 +149,11 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         "note": args.note or "",
         "enqueued": _now(),
     }
+    # Ids are per second; a second enqueue of the same branch within it must not overwrite the first.
+    base, n = item["id"], 1
+    while _find(queue, item["id"]):
+        n += 1
+        item["id"] = f"{base}-{n}"
     _move(queue, item, PENDING)
     ahead = len(_items(queue, PENDING)) - 1
     print(f"land: queued {item['id']} ({sha[:9]}), {ahead} ahead of it.")
@@ -281,6 +290,125 @@ def _lander_line(queue: Path) -> str:
     return f"lander: running, pid {info.get('pid')}, up {_span(_since(info.get('started')))} ({mode}), worktree {info.get('worktree')}"
 
 
+# ---------------------------------------------------------------------------- terminal rendering
+#
+# Only when stdout is a terminal: agents and pipes get the plain text above, which stays stable.
+# NO_COLOR (https://no-color.org) turns colour off; FIELD_LAND_PLAIN=1 swaps Nerd Font glyphs for ASCII.
+
+
+class _Style:
+    def __init__(self) -> None:
+        self.color = "NO_COLOR" not in os.environ
+        nerd = os.environ.get("FIELD_LAND_PLAIN") != "1"
+        self.g = {
+            "up": "\uf111" if nerd else "*", "down": "\uf05e" if nerd else "x",
+            "land": "\uf135" if nerd else ">", "wait": "\uf017" if nerd else "~",
+            "ok": "\uf00c" if nerd else "+", "bounce": "\uf00d" if nerd else "!",
+            "branch": "\ue0a0" if nerd else "", "user": "\uf007" if nerd else "",
+            "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
+            "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
+        }
+
+    def c(self, code: str, text: str) -> str:
+        return f"\033[{code}m{text}\033[0m" if self.color else text
+
+    def dim(self, t: str) -> str: return self.c("2", t)
+    def bold(self, t: str) -> str: return self.c("1", t)
+    def green(self, t: str) -> str: return self.c("32", t)
+    def red(self, t: str) -> str: return self.c("31", t)
+    def yellow(self, t: str) -> str: return self.c("33", t)
+    def cyan(self, t: str) -> str: return self.c("36", t)
+    def magenta(self, t: str) -> str: return self.c("35", t)
+
+
+def _bar(fraction: float, width: int = 24) -> str:
+    full = max(0, min(width, round(fraction * width)))
+    return "\u2588" * full + "\u2591" * (width - full)
+
+
+def _pretty_status(queue: Path, recent: int) -> None:
+    st = _Style()
+    g = st.g
+    width = min(shutil.get_terminal_size((100, 20)).columns, 110)
+    rule = lambda title: print(st.dim("\u2500\u2500 ") + st.bold(title) + " " + st.dim("\u2500" * max(width - len(title) - 4, 0)))
+
+    def who(item: dict) -> str:
+        return f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
+
+    # Lander
+    if _lander_running(queue):
+        try:
+            info = json.loads((queue / "lander.json").read_text())
+        except (OSError, json.JSONDecodeError):
+            info = {}
+        mode = "--once, exits when empty" if info.get("once") else f"via {info.get('via', '?')}"
+        print(f"{st.green(g['up'])} {st.bold('lander up')}  "
+              + st.dim(f"pid {info.get('pid', '?')} \u00b7 {_span(_since(info.get('started')))} \u00b7 {mode}"))
+    else:
+        print(f"{st.red(g['down'])} {st.bold(st.red('lander down'))}  nothing lands. "
+              + st.cyan("uv run python tools/land.py run"))
+    print()
+
+    pending = _items(queue, PENDING)
+    active = [i for i in pending if i.get("started")]
+    waiting = [i for i in pending if not i.get("started")]
+
+    rule("landing")
+    if not active:
+        print(st.dim("  idle"))
+    for item in active:
+        running = _since(item["started"])
+        step, last = _phase(item)
+        gradle = _ran_gradle(item)
+        typical = _typical(queue, gradle)
+        print(f"  {st.yellow(g['land'])} {who(item)}")
+        if item.get("note"):
+            print(f"    {st.dim(g['note'] + ' ' + item['note'])}")
+        if typical:
+            frac = running / typical
+            tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
+            print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
+        else:
+            print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
+        print(f"    {st.dim('step')}  {step}")
+        if last:
+            print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
+        print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")
+    print()
+
+    rule(f"queued \u00b7 {len(waiting)}")
+    if not waiting:
+        print(st.dim("  empty"))
+    typical = _typical(queue, True) or _typical(queue, False) or 0.0
+    ahead = 0.0
+    if active:
+        ahead = max((_typical(queue, _ran_gradle(active[0])) or typical) - _since(active[0]["started"]), 0.0)
+    for n, item in enumerate(waiting, 1):
+        eta = f"  starts ~{_span(ahead)}" if typical else ""
+        print(f"  {st.dim(str(n) + '.')} {st.cyan(g['wait'])} {who(item)}  {st.dim('waiting ' + _span(_since(item.get('enqueued'))) + eta)}")
+        ahead += typical
+    print()
+
+    finished = sorted(
+        [(LANDED, i) for i in _items(queue, LANDED)] + [(BOUNCED, i) for i in _items(queue, BOUNCED)],
+        key=lambda pair: pair[1].get("finished", ""),
+    )[-recent:]
+    rule("recent")
+    if not finished:
+        print(st.dim("  nothing yet"))
+    for state, item in reversed(finished):
+        ago = _span(_since(item.get("finished")))
+        took = _took(item)
+        if state == LANDED:
+            how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
+            print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
+                  f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+        else:
+            reason = " ".join(str(item.get("reason", "?")).split())
+            print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
+            print(f"    {st.red(reason[: width - 6])}")
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     queue = _queue_dir(Path.cwd())
     if args.id:
@@ -290,6 +418,24 @@ def cmd_status(args: argparse.Namespace) -> int:
             return 2
         print(_describe(found[0], found[1], queue))
         return {PENDING: 3, LANDED: 0, BOUNCED: 1}[found[0]]
+    if sys.stdout.isatty() and not args.plain:
+        if not args.watch:
+            _pretty_status(queue, args.recent)
+            return 0
+        try:
+            while True:
+                # Home + clear-to-end rather than a full clear, so the redraw does not flicker.
+                frame = io.StringIO()
+                with contextlib.redirect_stdout(frame):
+                    _pretty_status(queue, args.recent)
+                # Clear each line's tail too: a line that got shorter would otherwise keep old text.
+                sys.stdout.write("\033[H" + frame.getvalue().replace("\n", "\033[K\n"))
+                sys.stdout.write("\033[J" + _Style().dim(f"\n{_now()} \u00b7 every 2s \u00b7 ctrl-c to stop"))
+                sys.stdout.flush()
+                time.sleep(2)
+        except KeyboardInterrupt:
+            print()
+            return 0
     print(_lander_line(queue))
     pending = _items(queue, PENDING)
     active = [item for item in pending if item.get("started")]
@@ -513,6 +659,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("status", help="show the queue, or one item (exit 0 landed, 1 bounced, 3 pending)")
     p.add_argument("id", nargs="?")
     p.add_argument("--recent", type=int, default=5)
+    p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
+    p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds until ctrl-c")
     p.set_defaults(func=cmd_status)
     p = sub.add_parser("mine", help="every landing attempt for this branch, newest first (exit 1 if it bounced)")
     p.add_argument("branch", nargs="?", help="default: the current branch")
