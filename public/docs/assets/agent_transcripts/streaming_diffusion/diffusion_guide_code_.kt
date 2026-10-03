@@ -3,7 +3,8 @@ markdown("""
 
     Run **2 · renderer**, then **3 · spinning curves**.
     Source is on the left; the returned ink, charcoal or wire image is on the right.
-    Open the diffusion controls to change material and strength.
+    Open the diffusion controls to change material, strength, reprojection,
+    history blending and experimental noise advection.
 
     The local model worker is optional and requires Linux/NVIDIA.
     On other platforms the curves box explains availability without starting it.

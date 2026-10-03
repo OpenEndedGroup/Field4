@@ -37,7 +37,9 @@ unsupported machines, including macOS.
 You can also launch Field's normal renderer box. Connect a new box below it, paste
 [`examples/spinning.kt`](examples/spinning.kt), and launch. Source is on the left,
 processed output on the right. While loading, the right panel shows the source.
-The comparison uses the current source: causal output has temporal delay.
+The example enables display reprojection, history blending (.35) and experimental
+noise advection (.8) with renderer-generated correspondence. Its controls let you
+disable each independently. The model retains its causal processing delay.
 
 The box exposes material, strength, prompt adaptation, animation and reset.
 Edit `whiteOnBlack` before launch to choose the white-line control. Edit `backend`
@@ -145,8 +147,11 @@ renderer shutdown stops workers before destroying the Vulkan device.
 
 Field waits only for outputs whose CUDA completion was already reported. It holds
 the last image when the worker is busy or fails. Worker logs live at
-`processor.session.logFile`. Remote workers and user-supplied flow/depth
-conditioning are future extensions; this implementation accepts RGB only.
+`processor.session.logFile`. A `StreamDiffusionMotionProvider` supplies backward
+RGBA32F UV/confidence/reactivity targets for display, history and noise. See the
+[public motion contract](../../public/docs/streaming_diffusion.md#use-motion-from-your-renderer)
+for frame pairs, masks, costs and limitations. Remote workers and learned
+flow/depth conditioning remain future extensions.
 
 Combined GPU throughput depends on the scene and VRAM headroom. The previous
 offline video measurement is not a promise of the same FPS inside Field.
@@ -169,3 +174,20 @@ measurements and actual TensorRT engine loads. Kotlin compilation and the native
 FD helper build passed. No automated test suite was added or run. The final gated starting-point transcript was also run, both with a missing backend
 and with active diffusion; this capture includes the final lifecycle and strict
 checkpoint-loading changes. macOS was not run on this Linux host.
+
+## Motion comparison captures
+
+[All three enabled](artifacts/motion-all.mp4) and [all three disabled](artifacts/motion-baseline.mp4)
+are successive eight-second native RTT captures, source left and output right.
+Model input is 512×512 at requested 16 FPS; capture is 10 FPS.
+[Run data](artifacts/motion-run.json) and [worker log](artifacts/motion-worker.txt)
+retain settings, reset generations and active TensorRT loads. Motion correspondence
+only approximates generated ink's extent; paper-tone seams and trails are visible.
+This is a functional demonstration, not an isolated temporal-quality comparison.
+
+To reproduce the raw clips, launch `examples/capture-motion.kt` beneath a renderer.
+It writes source/output JPEG sequences under `/tmp/field-diffusion-motion-capture`,
+records 80 frames with motion on, resets all controls off and records another 80,
+then resets motion on and prints `Motion comparison complete`. These artifact
+readbacks are outside the GPU inference transport. The interactive starting point
+does not record or read back pixels.
