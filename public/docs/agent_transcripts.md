@@ -2672,7 +2672,7 @@ resets accumulation and produces a PASS marker during live execution.
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_material_shader_check/metadata.edn)
 
 The three below end at the same tracer and start somewhere else in Field, so each one carries two
-subsystems the others do not; [Chains Across Subsystems](chain_polytope_render.md) is where they are
+subsystems the others do not; [Long Way Round](chains.md) is where they are
 walked through.
 
 ### polytope_path_trace_lineage

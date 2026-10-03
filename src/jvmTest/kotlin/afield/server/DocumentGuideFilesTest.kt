@@ -21,6 +21,17 @@ class DocumentGuideFilesTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun seededWorkspaceReadmeIsNotListedAsAGuide() {
+        val root = createTempDirectory("field-guides-seeded").toFile()
+        try {
+            root.resolve("README.md").writeText("# A Field workspace\n\nWelcome. This folder is a **Field document**.")
+            root.resolve("Camera.md").writeText("# Camera")
+            assertEquals(listOf("Camera.md"), DocumentGuideFiles(root).list().map { it.path })
+            // Still readable when something links to it.
+            assertTrue(DocumentGuideFiles(root).read("README.md").contents.startsWith("# A Field workspace"))
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun readsAndWritesStayInsideTheDocumentIncludingSymlinks() {
         val parent = createTempDirectory("field-guides-boundary").toFile()
         try {
