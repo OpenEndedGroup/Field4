@@ -1,6 +1,7 @@
 # Capture a real EnCodec reconstruction of real music for the codec microscope
 
 - **Handoff:** `c9bc554a-8229-49c1-9bbd-235c0432889c` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_codec/
 - **Filed by:** agent:claude, 2026-09-30 20:46
 - **Close with:** `python tools/docs_notes.py handoff-close c9bc554a "what happened"`
@@ -71,3 +72,14 @@ Alternatives:
 Lead with the real-music figure and its provenance (model, codebooks, metrics as measured). Reword
 lines 5-7 so the fixture is presented as the offline demo, not the main result. Update
 `dev_docs/agents/transcripts/audio_ai_codec.yaml` if the fence changes.
+
+## Completion — 2026-10-03
+
+Replaced the chirp, invented reconstruction, tokens and metrics with an actual AudioCraft EnCodec round trip of the committed 4.25-second Faust eight-voice chord. The page and companion load the exported model input, native reconstruction, tokens and measured metrics. Both WAVs are playable; result/job JSON and SHA-256 manifest retain provenance.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

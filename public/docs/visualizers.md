@@ -1180,6 +1180,10 @@ visualize path.
 
 ### Speech embedding phase portraits
 
+The real emotion2vec and WavLM views from the [speech walkthrough](audio_ai_speech_embeddings.md).
+
+![The real emotion2vec and WavLM views](assets/audio_ai_speech_embeddings/learned_spaces.png)
+
 `speechEmbeddingVisualizationHtml(result)` turns the worker's cached learned-frame preview into two phase
 portraits: MDS axes 0×1 and 2×3. The complete 768-dimensional embedding remains in the immutable
 NPZ; only a bounded preview crosses into the browser. A strip underneath shows WebRTC voice
@@ -1225,6 +1229,10 @@ the neural analysis.
 
 ### Short-time spectral phase portraits
 
+Three real distance spaces from the [spectral walkthrough](audio_ai_spectral_embeddings.md).
+
+![Three real distance spaces](assets/audio_ai_spectral_embeddings/spectral_spaces.png)
+
 `spectralEmbeddingPreviewVisualizationHtml(preview)` uses the same two phase portraits and shared
 time bus for a Field-owned MDS or t-SNE projection of mel, log-mel, or MFCC frames. The lower strip
 shows energy, mel-distribution flux, and spectral centroid; path opacity follows normalized flux.
@@ -1258,6 +1266,10 @@ binary artifact → temporal pooling → three Field Smile spaces → bidirectio
 
 ### Instrument-labelled transcription
 
+A real recording and its recovered notes from the [MuScriptor walkthrough](audio_ai_muscriptor.md).
+
+![A real recording and its recovered notes](assets/audio_ai_muscriptor/piano_roll.png)
+
 The same `analysisVisualizationHtml` viewer recognizes `analysis.transcribe_music` results as a
 MuScriptor piano roll. Note colour follows the recovered instrument group; the two lower lanes show
 active polyphony and onset count. It uses the same `syncGroup` time bus as the waveform, beat,
@@ -1286,6 +1298,10 @@ lane on one sync group. The [render-to-analysis walkthrough](audio_render_analys
 
 ### Corpus neighbour microscope
 
+Real retrieved windows from the [corpus walkthrough](audio_ai_corpus_microscope.md).
+
+![Real retrieved windows](assets/audio_ai_corpus_microscope/neighbours.png)
+
 `corpusMicroscopeHtml(preview, queryAudio)` composes the same general `AudioVisualizer` into a
 source-relative A/B board. Each neighbour retains its real asset and source timestamp, but every
 player uses `syncOffsetSeconds = -segment.startSeconds`; shared time zero is therefore the start of
@@ -1302,6 +1318,10 @@ The [corpus microscope walkthrough](audio_ai_corpus_microscope.md) and
 visualize path.
 
 ### Waveform-summary endpoint contract
+
+This player fetches its envelopes from the live Field Audio waveform endpoint.
+
+![Real service waveform envelopes of a Pat Dirt render](assets/audio_render_analysis/service_waveform.png)
 
 `AudioVisualizer` is not coupled to Field Audio. Any HTTP service can provide `waveformUrl`. The
 visualizer adds these query parameters whenever its visible interval changes:

@@ -477,6 +477,8 @@ object DemoTranscriptExecSmokeTest {
         // left here is the window, so they classify with the rest of the tracer group.
         "polytope_path_trace_lineage",
         "polytope_manifold_path_trace",
+        "polytope_layer_stack_path_trace",
+        "photo_mount_path_trace",
         "physics_manifold_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by

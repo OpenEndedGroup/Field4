@@ -1,0 +1,34 @@
+{
+  "id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f",
+  "byte_size": 1323044,
+  "created_at": "2026-10-03T10:09:59.300618Z",
+  "representations": [
+    {
+      "id": "rep_9d4ba50d0f86f2561013f5d6",
+      "asset_id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f",
+      "role": "original",
+      "media_type": "audio/wav",
+      "sample_rate": 44100,
+      "channels": 2,
+      "frame_count": 330750,
+      "duration_seconds": 7.5,
+      "native_sample_rate": null,
+      "resampling_method": null,
+      "binary_url": "/v1/representations/rep_9d4ba50d0f86f2561013f5d6/content",
+      "metadata": {
+        "original_filename": "pat-dirt-study.wav",
+        "wav": {
+          "channels": 2,
+          "duration_seconds": 7.5,
+          "format": "WAV",
+          "frame_count": 330750,
+          "sample_rate": 44100,
+          "subtype": "PCM_16"
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "original_filename": "pat-dirt-study.wav"
+  }
+}

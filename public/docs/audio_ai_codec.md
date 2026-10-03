@@ -2,47 +2,34 @@
 
 Field keeps codec tokens visible as compositional data. A `codec.reconstruct` operation produces an
 immutable model-native input, an NPY token tensor, a model-native reconstruction, a 48 kHz audition
-proxy, reconstruction metrics, and full model provenance. The renderer below is the same
-`afield.stdlib.noir.audioai.CodecVisualization` that draws service results; the fence hands it a
-synthetic fixture, so you can run it and read the display with no GPU worker attached.
+proxy, reconstruction metrics, and full model provenance. Here the input is a four-second,
+eight-voice chord rendered by Field's Faust example. Listen to the model input and reconstruction
+while comparing their spectra and the four codebook streams between them.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" wait="3" capture="box" open-outputs="true" padding="20"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_codec/reconstruction_microscope.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-codec" alt="Real EnCodec input and reconstruction waveforms, spectra, measured errors and four codebook streams"}
 :::static
 import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_codec")
+val result = json.decodeFromString<CodecReconstructionResult>(File(folder, "result.json").readText())
+val data = CodecVisualization.load(result, File(folder, "source.wav").toPath(), File(folder, "reconstruction.wav").toPath(), File(folder, "tokens.npy").toPath())
+display("main", CodecVisualization.renderHtml(data, width = 1040))
 
-val sampleRate = 8000
-val seconds = 4.0
-val source = FloatArray((sampleRate * seconds).toInt()) { i ->
-    val t = i / sampleRate.toDouble()
-    val chirp = sin(2.0 * PI * (180.0 * t + 110.0 * t * t))
-    val room = 0.28 * sin(2.0 * PI * 720.0 * t) * exp(-0.16 * t)
-    (0.62 * chirp + room + 0.025 * sin(2.0 * PI * 3100.0 * t)).toFloat()
-}
-val reconstruction = FloatArray(source.size) { i ->
-    val softened = source[i] * 0.91f
-    val codecTexture = (0.008 * sin(i * 0.173) + 0.004 * sin(i * 0.037)).toFloat()
-    softened + codecTexture
-}
-val tokenFrames = (seconds * 50).toInt()
-val tokenValues = LongArray(4 * tokenFrames) { i ->
-    val codebook = i / tokenFrames
-    val frame = i % tokenFrames
-    ((frame * (31 + codebook * 8) + 173 * codebook + 97 * sin(frame * 0.11)).toLong() and 2047)
-}
-val data = CodecVisualizationData(
-    source = source,
-    reconstruction = reconstruction,
-    sampleRate = sampleRate,
-    tokens = NpyIntTensor(intArrayOf(1, 4, tokenFrames), tokenValues),
-    metrics = ReconstructionMetrics(rmse = 0.0123, snrDb = 18.7, spectralConvergence = 0.143),
-    frameRate = 50.0,
-    cardinality = 2048,
-    codecLabel = "EnCodec 32 kHz · deterministic documentation fixture",
-)
-display("main", CodecVisualization.renderHtml(data, width = 1100))
 ```
 
-![](assets/audio_ai_codec/reconstruction_microscope.png)
+Listen to the [model input](assets/audio_ai_codec/source.wav) and its [EnCodec reconstruction](assets/audio_ai_codec/reconstruction.wav).
+
+<audio controls preload="metadata" src="assets/audio_ai_codec/source.wav"></audio>
+<audio controls preload="metadata" src="assets/audio_ai_codec/reconstruction.wav"></audio>
+
+
+The players contain the actual 32 kHz model input and decoded result. The error figures are the
+worker's measurements, including an SNR of 6.79 dB; the 48 kHz audition proxy is a separate asset.
 
 For a live result, submit `codecReconstruction(region)`, await it with
 `client.awaitCodec(accepted)`, then call `client.codecVisualizationHtml(result, cacheDirectory)`.
