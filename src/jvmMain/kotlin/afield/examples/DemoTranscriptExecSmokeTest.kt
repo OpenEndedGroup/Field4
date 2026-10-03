@@ -425,6 +425,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
+        // measuring box whose numbers SceneOnARigTest already pins.
+        "chain_scene_to_light",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",

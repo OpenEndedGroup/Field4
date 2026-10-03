@@ -1,8 +1,9 @@
 # Chain: a RectSL scene on a light rig — design, measurements, traps
 
 Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). The public page is
-`public/docs/chain_scene_to_light.md`; the loadable demo is
-`public/docs/assets/chain_scene_to_light_demo/`.
+`public/docs/chain_scene_to_light.md`; the loadable demo is the
+`chain_scene_to_light` starting point, built from `dev_docs/agents/transcripts/chain_scene_to_light.yaml`
+(it replaced a hand-saved `public/docs/assets/chain_scene_to_light_demo/` on 2026-10-03).
 
 ## Files
 
@@ -13,7 +14,7 @@ Added 2026-09-28 (nightly branch `nightly/2026-09-28/3-chain-scene-to-light`). T
 | `src/jvmMain/kotlin/afield/dmx/DmxVisual.kt` | `Patch.receivedToFLines`, `Box.showReceived` — a received universe in the rig's layout (new) |
 | `src/jvmMain/kotlin/afield/dmx/SceneOnARig.kt` | the worked chain and its three measurements (`roundTrip`, `aliasing`, `timing`, `decodeErrors`) |
 | `src/jvmTest/kotlin/afield/dmx/SceneOnARigTest.kt` | pins the measurements; one test decodes E1.31 datagrams by hand from a bare socket |
-| `src/jvmTest/kotlin/afield/dmx/SceneOnARigDemoBundleTest.kt` | the demo bundle parses; inline fallbacks match; the sender's scene is `SceneOnARig.SCENE` |
+| `src/jvmTest/kotlin/afield/dmx/SceneOnARigDemoBundleTest.kt` | the starting point parses; inline fallbacks match; the sender's scene is `SceneOnARig.SCENE` |
 
 ## Decisions
 
