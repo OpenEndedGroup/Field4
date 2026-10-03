@@ -62,6 +62,35 @@ class Pipeline:
                 return
             yield result
 
+    def draw(self, result: dict | None = None):
+        """A copy of the result's frame with every detector's annotations painted on it."""
+        result = result or self.latest
+        image = result["frame"].image.copy()
+        for d in self.detectors:
+            d.draw(image, result)
+        return image
+
+    def show(self, channel: str = "preview", width: int = 640, fps: float = 15.0) -> "Pipeline":
+        """Show annotated frames in this box's output as the pipeline runs, at most ``fps`` a second.
+
+        Each picture is a JPEG sent to the browser, so this is a way of seeing what the detectors
+        find, not a video player; :mod:`fieldcv.field` is how frames reach the GPU.
+        """
+        from .field import Preview
+        preview = Preview(channel, width)
+        previous, last = self.on_result, [0.0]
+
+        def on_result(result):
+            if previous is not None:
+                previous(result)
+            now = time.perf_counter()
+            if now - last[0] >= 1.0 / fps:
+                last[0] = now
+                preview.show(self.draw(result))
+
+        self.on_result = on_result
+        return self
+
     # -- background running -----------------------------------------------------------------
 
     @property

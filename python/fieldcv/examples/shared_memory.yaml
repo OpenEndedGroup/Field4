@@ -1,7 +1,7 @@
 name: fieldcv_shared_memory
-description: 'fieldcv in Field: a Python box runs point tracks and pose over a camera or movie on a worker thread;
-  two graphics boxes under agent_graphics_context draw its frames and FLines straight from shared memory. Run graphics_renderer_launch
-  first. FIELDCV_SOURCE picks the input (default: camera 0).'
+description: "fieldcv in Field: a Python box runs point tracks and pose over a camera or movie on a worker thread;\
+  \ two graphics boxes under agent_graphics_context draw its frames and FLines straight from shared memory. Run\
+  \ graphics_renderer_launch first. FIELDCV_SOURCE picks the input (default: the swing from Ballet M\xE9canique)."
 operations:
 - create:
     box: cv_python_root
@@ -27,9 +27,9 @@ operations:
         import fieldcv as cv4
         from fieldcv import field
 
-        # a camera index, a movie file, or a glob of images; set FIELDCV_SOURCE before starting Field
-        source = os.environ.get("FIELDCV_SOURCE", "0")
-        movie = cv4.open_source(source, loop=True)
+        # a sample clip by default; FIELDCV_SOURCE can name a camera index, a movie file or a glob of images
+        source = os.environ.get("FIELDCV_SOURCE")
+        movie = cv4.open_source(source, loop=True) if source else cv4.sample("swing")
         pose = cv4.Pose(model="lite")
         camera = field.image("camera", 240, 360)
         tracks = field.lines("tracks")
@@ -55,9 +55,9 @@ operations:
       import fieldcv as cv4
       from fieldcv import field
 
-      # a camera index, a movie file, or a glob of images; set FIELDCV_SOURCE before starting Field
-      source = os.environ.get("FIELDCV_SOURCE", "0")
-      movie = cv4.open_source(source, loop=True)
+      # a sample clip by default; FIELDCV_SOURCE can name a camera index, a movie file or a glob of images
+      source = os.environ.get("FIELDCV_SOURCE")
+      movie = cv4.open_source(source, loop=True) if source else cv4.sample("swing")
       pose = cv4.Pose(model="lite")
       camera = field.image("camera", 240, 360)
       tracks = field.lines("tracks")
@@ -157,29 +157,36 @@ operations:
         val tracks = NumpyShared.lines("tracks")
         val skeleton = NumpyShared.lines("skeleton")
 
-        var module = moduleHere { primitiveType = lines }
+        var module = moduleHere { }
         var m = Mesh()
         module += m named "overlay"
         renderer += module
 
-        // one segment per pair of consecutive nodes, coloured per source
+        val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+
         fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
 
         frames {
             while (frame()) {
-                val green = segments(tracks.lines())
-                val pink = segments(skeleton.lines())
-                val n = green.size + pink.size
-                if (n == 0) continue
-                // a Mesh always draws through its index buffer, so a line list needs one index pair per segment
-                m.set(2 * n, n) {
-                    for ((segs, c) in listOf(green to vec(0.2, 1.0, 0.3, 1.0), pink to vec(1.0, 0.3, 0.8, 1.0)))
-                        for ((a, b) in segs) {
-                            // normalized image (u, v), y down, to Field's y-up NDC (2u - 1, 1 - 2v)
-                            pos.add(2 * a.to.x - 1, 1 - 2 * a.to.y, 0.1, 2 * b.to.x - 1, 1 - 2 * b.to.y, 0.1)
-                            col.add(c.x, c.y, c.z, c.w, c.x, c.y, c.z, c.w)
-                        }
-                    for (i in 0 until n) tri.add(2 * i, 2 * i + 1)
+                val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                           segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+                if (segs.isEmpty()) continue
+                // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
+                m.set(4 * segs.size, 2 * segs.size) {
+                    for ((i, s) in segs.withIndex()) {
+                        val (ab, c) = s
+                        // image (u, v), v down, to Field's y-up NDC (2u - 1, 1 - 2v)
+                        val ax = 2 * ab.first.to.x - 1
+                        val ay = 1 - 2 * ab.first.to.y
+                        val bx = 2 * ab.second.to.x - 1
+                        val by = 1 - 2 * ab.second.to.y
+                        val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
+                        val nx = -(by - ay) / len * width
+                        val ny = (bx - ax) / len * width
+                        pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                        4 { col.add(c.x, c.y, c.z, c.w) }
+                        tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                    }
                 }
             }
         }
@@ -196,29 +203,36 @@ operations:
       val tracks = NumpyShared.lines("tracks")
       val skeleton = NumpyShared.lines("skeleton")
 
-      var module = moduleHere { primitiveType = lines }
+      var module = moduleHere { }
       var m = Mesh()
       module += m named "overlay"
       renderer += module
 
-      // one segment per pair of consecutive nodes, coloured per source
+      val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+
       fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
 
       frames {
           while (frame()) {
-              val green = segments(tracks.lines())
-              val pink = segments(skeleton.lines())
-              val n = green.size + pink.size
-              if (n == 0) continue
-              // a Mesh always draws through its index buffer, so a line list needs one index pair per segment
-              m.set(2 * n, n) {
-                  for ((segs, c) in listOf(green to vec(0.2, 1.0, 0.3, 1.0), pink to vec(1.0, 0.3, 0.8, 1.0)))
-                      for ((a, b) in segs) {
-                          // normalized image (u, v), y down, to Field's y-up NDC (2u - 1, 1 - 2v)
-                          pos.add(2 * a.to.x - 1, 1 - 2 * a.to.y, 0.1, 2 * b.to.x - 1, 1 - 2 * b.to.y, 0.1)
-                          col.add(c.x, c.y, c.z, c.w, c.x, c.y, c.z, c.w)
-                      }
-                  for (i in 0 until n) tri.add(2 * i, 2 * i + 1)
+              val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                         segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+              if (segs.isEmpty()) continue
+              // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
+              m.set(4 * segs.size, 2 * segs.size) {
+                  for ((i, s) in segs.withIndex()) {
+                      val (ab, c) = s
+                      // image (u, v), v down, to Field's y-up NDC (2u - 1, 1 - 2v)
+                      val ax = 2 * ab.first.to.x - 1
+                      val ay = 1 - 2 * ab.first.to.y
+                      val bx = 2 * ab.second.to.x - 1
+                      val by = 1 - 2 * ab.second.to.y
+                      val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
+                      val nx = -(by - ay) / len * width
+                      val ny = (bx - ax) / len * width
+                      pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                      4 { col.add(c.x, c.y, c.z, c.w) }
+                      tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                  }
               }
           }
       }

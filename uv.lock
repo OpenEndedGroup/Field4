@@ -516,7 +516,9 @@ cv = [
 docs = [
     { name = "jedi" },
     { name = "jep" },
+    { name = "mediapipe" },
     { name = "numpy" },
+    { name = "opencv-contrib-python" },
     { name = "pillow" },
     { name = "plotly" },
     { name = "pymdown-extensions" },
@@ -542,7 +544,9 @@ cv = [
 docs = [
     { name = "jedi", specifier = ">=0.19.2" },
     { name = "jep", specifier = "==4.3.1" },
+    { name = "mediapipe", specifier = ">=0.10.14,<1.0" },
     { name = "numpy", specifier = ">=1.26" },
+    { name = "opencv-contrib-python", specifier = ">=4.10" },
     { name = "pillow", specifier = ">=10.0.0" },
     { name = "plotly", specifier = ">=5.20.0" },
     { name = "pymdown-extensions", specifier = ">=11.0.0" },

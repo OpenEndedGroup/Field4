@@ -1111,6 +1111,21 @@ fun clearAllDecorations() {
     perEditorDecorations.clear()
 }
 
+/**
+ * An output message as the plain text a beside-the-line chip shows.
+ *
+ * Output is HTML — Python escapes `<`, `>` and `&` so that its multi-line `<pre>` blocks render —
+ * but the chip is a Monaco `after` decoration, which only takes text, so `print(p)` of a
+ * `<Pipeline ...>` showed as `&lt;Pipeline ...&gt;`. Decoding through a textarea turns entities back
+ * into characters and leaves already-plain text, such as Kotlin's, exactly as it was.
+ */
+private fun inlineChipText(text: String): String {
+    if (!text.contains('&')) return text
+    val decoder = document.createElement("textarea") as org.w3c.dom.HTMLTextAreaElement
+    decoder.innerHTML = text
+    return decoder.value
+}
+
 private fun looksLikeHTML(text: String): Boolean {
     val trimmed = text.trim()
     val regex = Regex("^(?:<\\?xml\\b[^>]*\\?>|<!DOCTYPE\\b[^>]*>|<!--[\\s\\S]*?-->|<[A-Za-z][-\\w:]*\\b(?:\\s[^>]*)?>)")
@@ -1719,7 +1734,7 @@ fun addOutput(
     }
 
     if (allowInline && canInline) {
-        addInlineOutput(editor, belowLine, textClean, extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
+        addInlineOutput(editor, belowLine, inlineChipText(textClean), extraClass, frameMarker, shouldFlash = repeatedInlineOutput)
     } else {
         editor.changeViewZones { changeAccessor: dynamic ->
             val domNode = document.createElement("div") as HTMLElement

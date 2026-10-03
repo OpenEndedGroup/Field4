@@ -96,6 +96,35 @@ class SharedLines:
         return f"<SharedLines {self.name!r}>"
 
 
+class Preview:
+    """Show images in the output of the box that made this, from any thread.
+
+    ``display`` writes to whichever box is running *now*, which on a pipeline's worker thread is
+    nobody in particular, so a preview remembers its box when it is created. Each :meth:`show`
+    replaces the last picture, as a JPEG ``width`` pixels wide.
+    """
+
+    def __init__(self, channel: str = "preview", width: int = 640, quality: int = 80):
+        self._box = PythonInterface.thisBox
+        self.channel = channel
+        self.width = width
+        self.quality = quality
+        if self._box is not None:
+            from afield import OutputsKt
+            OutputsKt.displayOpen(self._box, channel)
+
+    def show(self, image: np.ndarray) -> None:
+        import base64
+        h, w = image.shape[:2]
+        if w != self.width:
+            image = cv2.resize(image, (self.width, round(h * self.width / w)), interpolation=cv2.INTER_AREA)
+        ok, jpeg = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, self.quality])
+        html = (f'<img src="data:image/jpeg;base64,{base64.b64encode(jpeg.tobytes()).decode()}" '
+                f'style="width:{self.width}px;height:{image.shape[0]}px;display:block">')
+        if self._box is not None:
+            self._box.display(self.channel, html)
+
+
 def image(name: str, height: int = 0, width: int = 0) -> SharedImage:
     return SharedImage(name, height, width)
 

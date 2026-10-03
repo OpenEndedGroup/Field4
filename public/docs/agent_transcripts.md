@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 179 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 180 transcripts on every build, at three
 depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-78 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+79 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1867,6 +1867,22 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 `--with-playwright` it opens this box's `browser` channel, and headless it emits no output at all.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
+
+### fieldcv_webcam
+
+**Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
+Python root with three cells under it, one that opens the camera mirrored and starts a pipeline of
+tracks, pose, hands and a face mesh (with flow and background subtraction ready to switch in), one of
+single lines to run one at a time — `use("hands")`, `inset_view = motion`, a lambda of your own — and
+one that reports frames per second and what was found; and three Kotlin boxes under the window that
+read the cells' results by name through `NumpyShared`: the frame as a texture, an inset of any image
+the cells choose, and six channels of polylines, including strokes drawn by pinching thumb and index
+finger. Without a camera, or before macOS has granted it, the webcam cell runs on a sample clip
+instead. `public/docs/python_cv.md` is the page; the Python cells need the optional `cv` dependency
+group, which CI does not install, so `DemoTranscriptExecSmokeTest` compiles the three Kotlin boxes
+and skips the Python.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn)
 
 ### pure_data_demo
 

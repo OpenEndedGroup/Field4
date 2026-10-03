@@ -63,6 +63,7 @@ def contours_of(mask: np.ndarray, min_area: float = 0.0) -> list[np.ndarray]:
 
 class Detector:
     name = "detector"
+    color = (0, 255, 0)  # BGR, for draw()
 
     def __call__(self, frame: Frame) -> dict:
         raise NotImplementedError
@@ -88,6 +89,7 @@ class Flow(Detector):
     """
 
     name = "flow"
+    color = (255, 80, 255)
 
     def __init__(self, preset: int = cv2.DISOPTICAL_FLOW_PRESET_MEDIUM):
         self._dis = cv2.DISOpticalFlow.create(preset)
@@ -134,7 +136,7 @@ class Flow(Detector):
             for x in range(step // 2, w, step):
                 fx, fy = flow[y, x]
                 if fx * fx + fy * fy > 0.25:
-                    cv2.arrowedLine(image, (x, y), (int(x + fx * gain), int(y + fy * gain)), (255, 0, 255), 1,
+                    cv2.arrowedLine(image, (x, y), (int(x + fx * gain), int(y + fy * gain)), self.color, 1,
                                     cv2.LINE_AA, tipLength=0.3)
         return image
 
@@ -147,6 +149,7 @@ class Tracks(Detector):
     """
 
     name = "tracks"
+    color = (80, 255, 50)
 
     def __init__(self, length: int = 20, max_tracks: int = 200, max_corners: int = 5000,
                  quality: float = 0.1, min_distance: int = 7):
@@ -198,9 +201,9 @@ class Tracks(Detector):
 
     def draw(self, image: np.ndarray, result: dict) -> np.ndarray:
         lines = [_px(t, image) for t in result["tracks"]]
-        cv2.polylines(image, lines, False, (0, 255, 0))
+        cv2.polylines(image, lines, False, self.color, 1, cv2.LINE_AA)
         for t in lines:
-            cv2.circle(image, tuple(int(v) for v in t[-1]), 2, (0, 255, 0), -1)
+            cv2.circle(image, tuple(int(v) for v in t[-1]), 2, self.color, -1, cv2.LINE_AA)
         return image
 
 
@@ -209,6 +212,8 @@ class Tracks(Detector):
 
 
 class _Foreground(Detector):
+    color = (20, 140, 255)
+
     def __init__(self, contours: bool, min_area: float):
         self.contours = contours
         self.min_area = min_area
@@ -222,7 +227,7 @@ class _Foreground(Detector):
     def draw(self, image: np.ndarray, result: dict) -> np.ndarray:
         image[result["mask"] == 0] //= 3
         if "contours" in result:
-            cv2.polylines(image, [_px(c, image) for c in result["contours"]], True, (0, 255, 255), 1)
+            cv2.polylines(image, [_px(c, image) for c in result["contours"]], True, self.color, 1, cv2.LINE_AA)
         return image
 
 
@@ -281,6 +286,7 @@ class Lines(Detector):
     """Straight segments (OpenCV's fast line detector); ``segments`` is ``(N, 2, 2)``."""
 
     name = "lines"
+    color = (255, 160, 60)
 
     def __init__(self, merge: bool = True, distance_threshold: float = 10, length_threshold: int = 10):
         self._fld = cv2.ximgproc.createFastLineDetector(
@@ -293,7 +299,7 @@ class Lines(Detector):
         return dict(segments=found.reshape(-1, 2, 2) * _scale(frame.width, frame.height))
 
     def draw(self, image: np.ndarray, result: dict) -> np.ndarray:
-        cv2.polylines(image, list(_px(result["segments"], image)), False, (255, 0, 0), 1, cv2.LINE_AA)
+        cv2.polylines(image, list(_px(result["segments"], image)), False, self.color, 1, cv2.LINE_AA)
         return image
 
 
@@ -301,6 +307,7 @@ class Circles(Detector):
     """Hough circles; ``circles`` is ``(N, 3)`` of ``cx, cy, r`` (``r`` divided by the width)."""
 
     name = "circles"
+    color = (60, 60, 255)
 
     def __init__(self, min_radius: int = 5, max_radius: int = 50, min_distance: int = 10,
                  edge_threshold: float = 150, accumulator_threshold: float = 30):
@@ -318,8 +325,8 @@ class Circles(Detector):
         w = image.shape[1]
         for cx, cy, r in result["circles"]:
             centre = (int(cx * w), int(cy * image.shape[0]))
-            cv2.circle(image, centre, int(r * w), (0, 0, 255), 2, cv2.LINE_AA)
-            cv2.circle(image, centre, 2, (0, 255, 0), 3, cv2.LINE_AA)
+            cv2.circle(image, centre, int(r * w), self.color, 2, cv2.LINE_AA)
+            cv2.circle(image, centre, 2, self.color, 3, cv2.LINE_AA)
         return image
 
 
@@ -351,6 +358,7 @@ class _Landmarker(Detector):
 
     connections: np.ndarray
     _key = "points"
+    dots = True
 
     def __init__(self):
         self._landmarker = None
@@ -382,9 +390,10 @@ class _Landmarker(Detector):
         for person in result[self._key]:
             px = _px(person, image)
             for a, b in self.connections:
-                cv2.line(image, tuple(map(int, px[a])), tuple(map(int, px[b])), (0, 255, 0), 1, cv2.LINE_AA)
-            for p in px:
-                cv2.circle(image, tuple(map(int, p)), 2, (0, 255, 0), -1)
+                cv2.line(image, tuple(map(int, px[a])), tuple(map(int, px[b])), self.color, 1, cv2.LINE_AA)
+            if self.dots:
+                for a in np.unique(self.connections):
+                    cv2.circle(image, tuple(map(int, px[a])), 2, self.color, -1, cv2.LINE_AA)
         return image
 
 
@@ -393,6 +402,8 @@ class Face(_Landmarker):
 
     name = "face"
     _key = "faces"
+    color = (255, 220, 80)
+    dots = False
 
     def __init__(self, max_faces: int = 1):
         super().__init__()
@@ -419,6 +430,7 @@ class Pose(_Landmarker):
 
     name = "pose"
     _key = "poses"
+    color = (200, 80, 255)
 
     def __init__(self, model: str = "heavy", max_poses: int = 1):
         super().__init__()
@@ -445,6 +457,7 @@ class Hands(_Landmarker):
 
     name = "hands"
     _key = "hands"
+    color = (40, 220, 255)
 
     def __init__(self, max_hands: int = 2):
         super().__init__()

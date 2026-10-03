@@ -1,5 +1,7 @@
 # fieldcv
 
+The user documentation is `public/docs/python_cv.md` (*Computer Vision in Python* on the site).
+
 Webcam, movie and image-sequence computer vision for Field's Python boxes, using OpenCV and
 mediapipe.
 
@@ -33,6 +35,10 @@ import fieldcv as cv4
 
 p = cv4.Pipeline(cv4.Camera(0), cv4.Tracks(), cv4.Pose(model="lite")).start()
 ```
+
+`.show()` draws every detector's findings into the box's output as it runs:
+`cv4.Pipeline(cv4.sample("swing"), cv4.Pose(), cv4.Hands(), cv4.Face()).show().start()`. `cv4.sample(name)`
+is one of the public-domain clips in `samples/` (credits in `samples.py`), so nothing needs a camera.
 
 `start()` runs the pipeline on a worker thread, so the cell returns straight away and the box
 stays responsive. Re-run a cell to look at `p.latest`, or at `p` itself, which shows its frame

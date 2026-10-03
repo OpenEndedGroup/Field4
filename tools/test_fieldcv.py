@@ -161,6 +161,27 @@ class Sources(unittest.TestCase):
         self.assertNotIn("mask", rows[0])
 
 
+@unittest.skipIf(MISSING, MISSING or "")
+class Samples(unittest.TestCase):
+    def test_every_sample_decodes_and_loops(self):
+        for name in cv4.SAMPLES:
+            with self.subTest(name):
+                src = cv4.sample(name)
+                frames_seen = [next(src) for _ in range(12)]  # muybridge has 9 frames, so this loops
+                self.assertEqual(frames_seen[0].image.ndim, 3)
+                self.assertEqual([f.index for f in frames_seen], list(range(12)))
+                src.close()
+
+    def test_pipeline_draw_paints_every_detector(self):
+        p = cv4.Pipeline(cv4.sample("machines"), cv4.Tracks(), cv4.Flow())
+        p.step()
+        r = p.step()
+        drawn = p.draw(r)
+        self.assertEqual(drawn.shape, r["frame"].image.shape)
+        self.assertGreater(int(np.abs(drawn.astype(int) - r["frame"].image).sum()), 0)
+        p.close()
+
+
 def _cached(key):
     return MISSING is None and (models.model_dir() / models.MODELS[key].filename).exists()
 
