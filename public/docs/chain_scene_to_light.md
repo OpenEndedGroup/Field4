@@ -242,6 +242,19 @@ that each sample point averages what its fixture ought to show.
     0.54 as typed, and the mean of typed values sits below the typed value of the mean light.
     Shrink with `linear = true`, and send linear values to fixtures at gamma 1.
 
+## Running it live
+
+Open chain_scene_to_light from the welcome screen's starting points. No lights are needed: the
+universes go to this machine on port 35690 and come back. Launch `1. Scene on the rig`: it draws
+the scene from this page, shrinks it to one pixel per fixture, and sends it on the 44 Hz clock,
+showing the look it sends. Launch `2. Receiver`: it listens on the same port and draws the rig from
+what arrives. Run `3. Measure` to repeat this page's numbers on your machine. Edit the scene in the
+first box and launch it again to see the change reach the second; `area = false` in that box brings
+back the flickering line.
+
+To drive real lights, give `sacnOut` a node's address (`sacnOut("10.0.0.20")`), or no host at all
+for multicast.
+
 ## Where each piece is documented
 
 * [RectSL Examples](rectsl_examples.md) and the [RectSL Cheatsheet](rectsl_cheatsheet.md) for the
