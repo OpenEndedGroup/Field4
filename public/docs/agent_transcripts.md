@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 179 transcripts on every build, at three
-depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 180 transcripts on every build, at three
+depths. 95 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -180,6 +180,26 @@ both pairings into audio players. Draw two strokes of your own and follow the co
 The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
+
+### drawn_paint
+
+Drawn strokes become paint, as six boxes. `strokes` draws three pen strokes on the drawing layer,
+each with a pen pressure at every point, and plots the pressure along each; `paint` paints them with
+a round brush whose `swell` follows the pen, follows the pen's pressure squared, and stays even;
+`crossings` crosses wet yellow and red bands with blue, crosses them again dried, and smears them
+with a clean hog brush and a badger blender; `drying` crosses one band after 0 to 100 simulated
+hours; `meadow` paints a meadow at evening from 560 strokes on a red-ground oil canvas; `pencil`
+draws the first three strokes in a 6B pencil. Every box reads the strokes in one region of the
+drawing, so strokes you draw there with a tablet pen are painted too. All but `strokes` need the
+optional paint library (`./gradlew buildPaintNative`); without it they say where they looked and
+stop. See [Drawn Strokes Become Paint](chain_drawn_paint.md).
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="dp_meadow" screenshot="assets/chain_drawn_paint/starting_point.png" transcript="dev_docs/agents/transcripts/drawn_paint.yaml" padding="0" wait="0" timeout="300" requires="paint" embed=true hidden=true name="agent-transcripts-drawn-paint" alt="The meadow box of the drawn_paint starting point and, below it, its output panel showing the finished oil painting of a meadow at evening, sky and clouds over a field of grass and red poppies."}
+// The transcript built the six boxes and ran them; this captures `meadow` and its output panel.
+ui.pause(1500)
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_paint/metadata.edn)
 
 ### studies_rings
 

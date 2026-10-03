@@ -32,6 +32,8 @@ markdown("marks", "${notation.mine.size} marks drawn")
 
 `rect`, `ellipse`, `diamond`, `text`, `line`, `arrow`, `stroke` (a freehand stroke, from points or an `FLine`) and `frame` are all there. `arrow(from = thisBox, to = otherBox)` puts the ends on the two boxes' edges, and they stay there when either box moves. Give a block a key, `notation("overlay") { … }`, to keep a second set of marks that is replaced on its own.
 
+A stroke can carry pen pressure, as one drawn with a tablet pen does: `stroke(line, pressure = { t -> 0.2 + 0.8 * t })` gives the pressure, 0 to 1, as a function of how far along the stroke the pen is. `mark.pressures` reads it back, from code-drawn and hand-drawn strokes alike, and [Drawn Strokes Become Paint](chain_drawn_paint.md) paints with it.
+
 Any mark, hand-drawn or not, can be changed or removed:
 
 ```diffstatic {data-lang=kotlin}
@@ -183,6 +185,7 @@ Open **drawing_notation** from the welcome screen's starting points. It has the 
 | `notation.near(point, r)`, `.inside(rect)` | marks by position |
 | `notation { … }`, `notation("key") { … }` | draw marks this box owns |
 | `notation.edit(m) { … }`, `.delete(m)`, `.anchor(m, box)`, `.clear()` | change marks |
+| `mark.points`, `mark.pressures`, `mark.pressuresAlong(n)` | a stroke's points and its pen pressure, per point or evenly spaced; [painted](chain_drawn_paint.md) |
 | `notation.onStroke`, `.onArrow`, `.onText`, `.onChange` | react to what people draw |
 | `notation.vertical(x)`, `.horizontal(y)`, `.intersect(a, b)` | cut the canvas |
 | `notation.space(region, x = …, y = …)` | a region with its own axes |
