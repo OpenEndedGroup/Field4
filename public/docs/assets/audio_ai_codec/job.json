@@ -1,0 +1,15 @@
+{
+  "id": "job_826f12e7cf3f482e9d3115c2199301be",
+  "operation_id": "op_ff1c3f3689f341189b467808da73916c",
+  "request_hash": "sha256:bad503ddc432c095e73b1848cdf5d29be01722a8c7525675ae4315de7fe74bd8",
+  "state": "complete",
+  "resolved_backend": "audiocraft.encodec_musicgen_style_32khz",
+  "progress": 1.0,
+  "created_at": "2026-10-03T10:09:52.203130Z",
+  "updated_at": "2026-10-03T10:09:52.205483Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": "codec_4c504ab460934f088400039609b3f88c",
+  "analysis_result_id": null,
+  "cache_hit": true
+}

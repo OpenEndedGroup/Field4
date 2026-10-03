@@ -24,6 +24,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
     })
     private val linePointer = lines.pointer()
     private val mesh = Mesh(renderer, linePointer)
+    private var motion: SpinningDiffusionMotion? = null
     val view: StreamDiffusionView
     private val comparison: Module
     private var closed = false
@@ -35,6 +36,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         val positions = mutableListOf<Float>()
         val normals = mutableListOf<Float>()
         val indices = mutableListOf<Int>()
+        val surfaceIds = mutableListOf<Float>()
         val paths = (0..4).map { curve ->
             val n = if (curve == 4) 1 else 160
             (0..n).map { j ->
@@ -49,7 +51,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
                 }
             }
         }
-        for (path in paths) for (i in 0 until path.lastIndex) {
+        for ((curveId, path) in paths.withIndex()) for (i in 0 until path.lastIndex) {
             val a = path[i]; val b = path[i + 1]
             val dx = b[0] - a[0]; val dy = b[1] - a[1]
             val length = hypot(dx, dy).coerceAtLeast(1e-9)
@@ -57,6 +59,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
             val start = positions.size / 3
             for ((point, side) in listOf(a to -1, a to 1, b to -1, b to 1)) {
                 positions.addAll(point.map { it.toFloat() })
+                surfaceIds += (curveId + 1).toFloat()
                 normals += (side * nx).toFloat(); normals += (side * ny).toFloat()
             }
             indices.addAll(listOf(start, start + 1, start + 2, start + 2, start + 1, start + 3))
@@ -68,8 +71,11 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         mesh.push["angle"] = 0f; mesh.push["whitePaper"] = if (whiteOnBlack) 0 else 1
         lines.meshes["curves"] = mesh
         source.modules["curves"] = linePointer
-        try { view = StreamDiffusionView(renderer, source, config, name) }
-        catch (e: Throwable) { renderer.cleanup += Runnable { lines.cleanup(); cleanupSource() }; throw e }
+        try {
+            motion = SpinningDiffusionMotion(renderer, source, positions, normals, surfaceIds, indices) { angle }
+            view = StreamDiffusionView(renderer, source, config, name, motion = motion)
+        }
+        catch (e: Throwable) { motion?.close(); renderer.cleanup += Runnable { lines.cleanup(); cleanupSource() }; throw e }
         comparison = Module(parameters(renderer) {
             vertex = COMPARE_VERTEX; fragment = COMPARE_FRAGMENT
             depthTest = false; depthWrite = false; blend = false
@@ -80,7 +86,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
             } }
         })
         if (!comparison.valid) {
-            view.close()
+            view.close(); motion?.close()
             renderer.cleanup += Runnable { comparison.cleanup(); lines.cleanup(); cleanupSource() }
             error("Diffusion comparison shader failed to create its pipeline")
         }
@@ -97,7 +103,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         if (closed) return
         closed = true
         renderer.renderList.modules.remove(name)
-        view.close()
+        view.close(); motion?.close()
         renderer.cleanup += Runnable { comparison.cleanup(); lines.cleanup(); cleanupSource() }
     }
     companion object {
@@ -123,7 +129,7 @@ class SpinningDiffusionDemo(val renderer: Renderer, config: StreamDiffusionConfi
         """
         private const val COMPARE_VERTEX = """#version 460
             layout(location=0) out vec2 uv;
-            void main(){vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);uv=p;gl_Position=vec4(p*2-1,0,1);}
+            void main(){vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);uv=vec2(p.x,1-p.y);gl_Position=vec4(p*2-1,0,1);}
         """
         private const val COMPARE_FRAGMENT = """#version 460
             layout(location=0) in vec2 uv;

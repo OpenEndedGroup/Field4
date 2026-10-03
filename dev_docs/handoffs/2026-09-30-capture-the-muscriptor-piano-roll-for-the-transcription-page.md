@@ -1,6 +1,7 @@
 # Capture the MuScriptor piano roll for the transcription page
 
 - **Handoff:** `29e1e289-b0c3-4463-9ea5-a24b981e6977` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_muscriptor/; also affects visualizers.md
 - **Filed by:** agent:claude, 2026-09-30 20:47
 - **Close with:** `python tools/docs_notes.py handoff-close 29e1e289 "what happened"`
@@ -74,3 +75,14 @@ Add a runner fence (or the shared asset) plus an image right after the "Field: s
 synchronized score" code block, before the paragraph "The waveform and piano roll share Field's
 general time bus". Its alt text should describe the waveform, the instrument-coloured notes and
 the polyphony/onset lane. Then resolve `b71185e9`.
+
+## Completion — 2026-10-03
+
+Reprocessed a real 8.192-second Sonic Pi recording with the current MuScriptor small worker. Captured its source waveform and 46 predicted notes; every note lies within the source duration. Added the figure, playable source and model/result provenance to the transcription walkthrough and visualizers gallery, and updated its companion.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

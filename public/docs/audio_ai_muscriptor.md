@@ -5,6 +5,32 @@ instrument-labelled note sequence and ordinary MIDI. The integration keeps Field
 source window, job, cache key, artifacts, visualization, and subsequent composition. MuScriptor
 runs in a separate Python environment and can be replaced without changing the Field project model.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_muscriptor/piano_roll.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-muscriptor" alt="Real Sonic Pi waveform and MuScriptor instrument-labelled piano roll with polyphony and onset lanes"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_muscriptor")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "preview.json").readText())
+val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "source.wav").absolutePath)
+val sync = "docs-real-muscriptor"
+val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "source.wav").readBytes(), label = "Sonic Pi recording · 8.192 seconds")
+display("transcription", source + analysisPreviewVisualizationHtml(preview, width = 1040, height = 400, syncGroup = sync))
+
+```
+
+Listen to the recording whose notes are shown above.
+
+<audio controls preload="metadata" src="assets/audio_ai_muscriptor/source.wav"></audio>
+
+
+MuScriptor Small found 46 note hypotheses in this 8.192-second Sonic Pi recording. Instrument
+colours are the model's guesses; they do not establish which instruments produced the sound.
+
 The model-neutral operation is `analysis.transcribe_music`. Its three concrete capabilities are:
 
 | Field backend | Upstream scale | Good starting point |

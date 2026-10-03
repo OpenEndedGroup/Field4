@@ -25,6 +25,7 @@ def select_device(uuid):
 class SharedSlot:
     def __init__(self, descriptor, memory_fd, semaphore_fd, width, height, device, unconsumed):
         self.memory = self.pointer = self.semaphore = self.tensor = None
+        self.motion_tensor = None
         self.value = 0
         self.width, self.height = width, height
         try:
@@ -43,13 +44,24 @@ class SharedSlot:
             sd.handle.fd = semaphore_fd
             self.semaphore = checked(cuda.cuImportExternalSemaphore(sd))
             unconsumed.remove(semaphore_fd)
-            if descriptor["bytes"] != width * height * 4 or descriptor["size"] < descriptor["bytes"]:
+            motion_offset = (width * height * 4 + 15) & ~15
+            expected_bytes = motion_offset + width * height * 16 if descriptor.get("motion", False) else width * height * 4
+            if descriptor["bytes"] != expected_bytes or descriptor["size"] < descriptor["bytes"]:
                 raise ValueError("Invalid shared GPU buffer extent")
             self.__cuda_array_interface__ = {
                 "shape": (height, width, 4), "strides": None, "typestr": "|u1",
                 "data": (int(self.pointer), False), "version": 3,
             }
             self.tensor = torch.as_tensor(self, device=f"cuda:{device}")
+            if descriptor.get("motion", False):
+                class MotionAlias:
+                    __cuda_array_interface__ = {
+                        "shape": (height, width, 4), "strides": None, "typestr": "<f4",
+                        "data": (int(self.pointer) + motion_offset, False), "version": 3,
+                    }
+                self.motion_tensor = torch.as_tensor(MotionAlias(), device=f"cuda:{device}")
+                if self.motion_tensor.data_ptr() != int(self.pointer) + motion_offset:
+                    raise RuntimeError("Torch did not alias the imported motion allocation")
             if self.tensor.data_ptr() != int(self.pointer):
                 raise RuntimeError("Torch did not alias the imported CUDA allocation")
         except BaseException:
@@ -70,7 +82,7 @@ class SharedSlot:
         self.value = value
 
     def close(self):
-        self.tensor = None
+        self.tensor = self.motion_tensor = None
         if self.pointer is not None:
             checked(cuda.cuMemFree(self.pointer))
             self.pointer = None

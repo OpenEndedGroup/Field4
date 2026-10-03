@@ -1,6 +1,7 @@
 # Capture the Field Audio speech, spectral, transcription, corpus and waveform-endpoint views
 
 - **Handoff:** `dfbfbca4-de2a-4f89-904c-8f7e688814ac` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/visualizers/
 - **Filed by:** agent:claude, 2026-09-30 20:38
 - **Close with:** `python tools/docs_notes.py handoff-close dfbfbca4 "what happened"`
@@ -72,3 +73,14 @@ the page cannot do it alone.
 Replace each note's section intro with an image line pointing at the new asset (or an
 `embed=true` fence), with alt text that says what the figure shows, and say whether the data is a
 fixture.
+
+## Completion — 2026-10-03
+
+Added all five requested real views to `visualizers.md`: speech MDS, spectral t-SNE, MuScriptor waveform/piano roll, corpus neighbour board and the service waveform endpoint. The gallery reuses the verified walkthrough captures. The endpoint capture fetches the actual rendered Pat asset from the running service.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

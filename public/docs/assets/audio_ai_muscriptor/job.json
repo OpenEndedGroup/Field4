@@ -1,0 +1,15 @@
+{
+  "id": "job_4413fff619be44fd81c4e0d64d00af7b",
+  "operation_id": "op_40f1f2dd6abc4cf9a5f9c870d8a81d4e",
+  "request_hash": "sha256:d3b98f872ac7fd66862104412da0649d963aa183bbe00aad6488c80dca789e27",
+  "state": "complete",
+  "resolved_backend": "analysis.muscriptor.small",
+  "progress": 1.0,
+  "created_at": "2026-10-03T10:09:52.215800Z",
+  "updated_at": "2026-10-03T10:09:52.218818Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": null,
+  "analysis_result_id": "analysis_4420d74df3344cc885b3cb4f00b6d5cf",
+  "cache_hit": true
+}

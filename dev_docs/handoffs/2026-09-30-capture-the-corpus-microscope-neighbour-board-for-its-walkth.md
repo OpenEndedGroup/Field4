@@ -1,6 +1,7 @@
 # Capture the corpus microscope neighbour board for its walkthrough page
 
 - **Handoff:** `638fa3f1-24ae-44ca-9229-c0c82f864afe` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_corpus_microscope/; also affects visualizers.md
 - **Filed by:** agent:claude, 2026-09-30 20:46
 - **Close with:** `python tools/docs_notes.py handoff-close 638fa3f1 "what happened"`
@@ -56,3 +57,14 @@ Treat this handoff as a second consumer of that figure and settle both together.
 Add an image or `embed=true` capture of the neighbour board after the query fence
 (`audio_ai_corpus_microscope.md:93`), or under the opening paragraph. Give it alt text naming the
 query window, the neighbour cards and the distance bars, and say whether the data is a fixture.
+
+## Completion — 2026-10-03
+
+Captured the real Nancy query at 18–24 seconds and the first two Candlestick neighbours through the running service, including real waveform envelopes and splice players. Added the board to the corpus walkthrough and visualizers gallery. Retained Linux/NVIDIA media and exported result provenance avoid copying commercial source audio into the repository.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

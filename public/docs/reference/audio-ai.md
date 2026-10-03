@@ -97,7 +97,7 @@ across panels that share a `syncGroup`.
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/AnalysisVisualization.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/AnalysisVisualization/)
 
-**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md)
+**Used in:** [Visualizers, Displays, and Little Instruments](../visualizers.md), [Beat and pitch analysis](../audio_ai_analysis.md), [Multi-instrument transcription with MuScriptor](../audio_ai_muscriptor.md)
 
 ### Top-level functions { #analysisvisualization-kt-functions }
 
@@ -291,7 +291,7 @@ as a [`FieldAudioJobException`](audio-ai.md#fieldaudioclient-kt-fieldaudiojobexc
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/FieldAudioClient.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/FieldAudioClient/)
 
-**Used in:** [Field Audio AI](../field_audio_ai.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md)
+**Used in:** [Field Audio AI](../field_audio_ai.md), [EnCodec reconstruction microscope](../audio_ai_codec.md), [Gesture board: drawing toward a sound](../audio_ai_gesture_board.md)
 
 ### Top-level functions { #fieldaudioclient-kt-functions }
 
@@ -684,7 +684,7 @@ an older Field; the reverse is not true, because the service rejects unknown fie
 
 `src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt` — [read the source](source/jvmMain/afield/stdlib/noir/audioai/Protocol/)
 
-**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis](../audio_ai_analysis.md), [Visualizers, Displays, and Little Instruments](../visualizers.md)
+**Used in:** [Field Audio service reference](../field_audio_service_reference.md), [Beat and pitch analysis](../audio_ai_analysis.md), [Corpus microscope: from recordings to related windows](../audio_ai_corpus_microscope.md)
 
 ### AssetRegion { #protocol-kt-assetregion }
 
