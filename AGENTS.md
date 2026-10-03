@@ -131,7 +131,10 @@ describe a red as expected only in prose, and never use wildcards in either regi
 Never merge into `main` yourself. Commit on your topic branch, then
 `uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
 artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
-back as a bounce with its reason (`tools/land.py status <id>`); fix the branch and enqueue again.
+back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
+the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
+bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
+happened to every attempt to land it.
 The hooks only report which guards a commit affects, so commits take seconds; do not use
 `--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
 branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.

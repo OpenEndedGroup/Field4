@@ -106,7 +106,7 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("already on main", result.stdout)
 
     def test_a_second_lander_refuses_and_status_sees_the_first(self) -> None:
-        self.assertIn("no lander running", self.land(self.primary, "status").stdout)
+        self.assertIn("NOT RUNNING", self.land(self.primary, "status").stdout)
         first = subprocess.Popen(
             [sys.executable, str(LAND), "run", "--worktree", str(self.lander)],
             cwd=self.primary, env=self.env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
@@ -120,12 +120,12 @@ class LandQueueTest(unittest.TestCase):
             second = self.land(self.primary, "run", "--once", "--worktree", str(self.lander) + "-2")
             self.assertEqual(second.returncode, 2)
             self.assertIn("already running", second.stderr)
-            self.assertNotIn("no lander running", self.land(self.primary, "status").stdout)
+            self.assertNotIn("NOT RUNNING", self.land(self.primary, "status").stdout)
         finally:
             first.kill()
             first.wait()
         # SIGKILL leaves no cleanup behind, and status must not be fooled by that.
-        self.assertIn("no lander running", self.land(self.primary, "status").stdout)
+        self.assertIn("NOT RUNNING", self.land(self.primary, "status").stdout)
 
     def test_the_hook_refuses_a_direct_merge_into_main_but_not_the_lander(self) -> None:
         hooks = Path(self._tmp.name) / "hooks"
@@ -153,6 +153,15 @@ class LandQueueTest(unittest.TestCase):
         result = self.run_lander()
         self.assertIn("Land theta", self.git(self.primary, "log", "-1", "--format=%s", "main"), result.stdout + result.stderr)
         self.assertEqual(self.git(self.lander, "branch", "--show-current"), "land/lander")
+
+    def test_mine_reports_a_bounce_to_the_branch_that_caused_it(self) -> None:
+        wt = self.branch_with("iota", "BREAKS")
+        self.land(wt, "enqueue")
+        self.run_lander()
+        mine = self.land(wt, "mine")
+        self.assertEqual(mine.returncode, 1, mine.stdout)
+        self.assertIn("a guard failed", mine.stdout)
+        self.assertEqual(self.land(self.branch_with("kappa", "k.txt"), "mine").returncode, 0)
 
 
 if __name__ == "__main__":
