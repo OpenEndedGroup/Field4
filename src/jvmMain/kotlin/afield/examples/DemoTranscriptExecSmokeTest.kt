@@ -432,6 +432,14 @@ object DemoTranscriptExecSmokeTest {
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
+        // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
+        // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
+        // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
+        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        "syphon_bridge",
+        // The same over the Vulkan renderer: followOnGpu (GPU copy into an IOSurface) and a Syphon
+        // client as a texture. Needs a Window, a Renderer and the library; verified live by hand.
+        "syphon_gpu",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",

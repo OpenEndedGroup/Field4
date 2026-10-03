@@ -291,6 +291,7 @@ nav:
       # one is about getting it onto the GPU and proving it is still the same network.
       - Neural Particle Systems: neural_particles.md
       - Field Probes: field_probes.md
+      - Syphon (Sharing Frames with Other Apps): syphon.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md
       # Here rather than at the head of "Writing Code in a Box", where it was the first thing a
