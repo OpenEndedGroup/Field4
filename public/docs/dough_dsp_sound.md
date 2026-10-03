@@ -198,3 +198,8 @@ showSignals(
 ```diffstatic_runner {data-lang=kotlin audio="assets/dough_dsp_sound/zaw-pulze.wav" audio-spec="zaw-pulze" embed=true hidden=true name="dough-sound-oscillators-audio"}
 // offline-rendered by DoughDspSoundDocs — listen below
 ```
+
+---
+
+See also: [Subharmonic Synthesis](subharmonic_sound.md), which runs pitch trackers through these
+filters and the saturator to put a tone an octave under a bassline, a kick drum and a film voice.
