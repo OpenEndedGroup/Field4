@@ -18,7 +18,7 @@ import afield.stdlib.linalg.Matrix4f
 val useDualQuaternions = false
 val twistTime = 1.0f
 
-// ONE mesh, deliberately, and this is a trap worth knowing about. Drawing LBS and DQS side by side
+// ONE mesh, deliberately. Drawing LBS and DQS side by side
 // as two Mesh objects DOES NOT WORK: both read `inst`'s vertex buffer at draw time rather than at
 // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
 // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed

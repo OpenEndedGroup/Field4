@@ -1282,9 +1282,19 @@ button.md-search__icon[aria-label="Clear"] {
     pointer-events: auto;
 }
 
-.field-reading-rail:hover .field-reading-rail__link,
-.field-reading-rail__row.is-active .field-reading-rail__link {
+/* Once the rail is hovered, the rows themselves join hit-testing, so the cursor can cross the empty
+   space between the strip and a label without losing `:hover` (which faded the labels and dropped
+   their pointer events before the cursor arrived). At rest the rows stay click-through. */
+.field-reading-rail:hover .field-reading-rail__row {
     pointer-events: auto;
+}
+
+/* Linger before fading out, so a slightly wandering path to a label does not lose it. */
+.field-reading-rail__link {
+    transition: opacity 170ms ease 350ms, transform 220ms ease 350ms;
+}
+.field-reading-rail:hover .field-reading-rail__link {
+    transition: opacity 170ms ease, transform 220ms ease;
 }
 
 .field-reading-rail__row.is-active .field-reading-rail__dot {
