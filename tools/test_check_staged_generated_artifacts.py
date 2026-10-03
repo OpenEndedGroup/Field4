@@ -320,6 +320,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
         # asserts on the wiring rather than on Gradle.
         (self.tmp / "tools/check_staged_generated_artifacts.py").write_text(
             "import sys, pathlib\n"
+            "# accepts \"--report\", which the hook checks for before calling it\n"
             "pathlib.Path('guard-ran.txt').write_text(' '.join(sys.argv[1:]))\n"
         )
         (self.tmp / "seed.txt").write_text("seed\n")
@@ -353,7 +354,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
 
         ran = self.tmp / "guard-ran.txt"
         self.assertTrue(ran.exists(), "post-merge hook did not run the guard")
-        self.assertEqual(ran.read_text(), "--since ORIG_HEAD")
+        self.assertEqual(ran.read_text(), "--since ORIG_HEAD --report")
         self.assertTrue((self.tmp / "lfs-ran.txt").exists(), "chained LFS hook did not run")
 
     def test_skip_env_var_disables_the_guard_but_not_the_chained_hook(self) -> None:

@@ -10,7 +10,8 @@ they conflict, the agent hand-merges the generated output, the pre-commit guard 
 the loop repeats. ``.gitattributes`` marks those outputs ``merge=field-generated``. That driver
 (registered by ``tools/install_git_hooks.py``) keeps our side so the merge never stops on them. This
 script then reruns each affected generator once on the merged sources and stages the result before
-committing. The pre-commit guard still runs on the commit, so the result is verified, not trusted.
+committing, and runs the full generated-artifact guard first: the hooks only report, so this is
+where the result is verified rather than trusted.
 
 Only real source conflicts stop the merge. Resolve them, ``git add`` them, and run ``--continue``.
 """
@@ -109,6 +110,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not selected:
         print("merge_regen: no Gradle-generated artifact is affected")
+    # The hooks only report now, so this is where the full guard runs: once, on the merged tree.
+    print("merge_regen: running the generated-artifact guards on the merged tree")
+    code = subprocess.run([sys.executable, str(repo / "tools/check_staged_generated_artifacts.py")], cwd=repo).returncode
+    if code != 0:
+        print("merge_regen: a guard failed; the merge is left uncommitted for you to fix", file=sys.stderr)
+        return code
+
     if args.no_commit:
         print("merge_regen: merged and regenerated; commit when ready")
         return 0

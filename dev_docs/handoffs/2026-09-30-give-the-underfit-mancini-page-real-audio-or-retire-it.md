@@ -1,6 +1,7 @@
 # Give the Underfit Mancini page real audio, or retire it
 
 - **Handoff:** `4832e1cc-931d-4c84-93c9-249e3f3cb3aa` (project, blocking: notes on the page wait for this)
+- **Status:** completed with real audio on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_underfit_mancini/; also affects agent_transcripts.md, field_audio_ai.md
 - **Filed by:** agent:claude, 2026-09-30 20:48
 - **Close with:** `python tools/docs_notes.py handoff-close 4832e1cc "what happened"`
@@ -83,3 +84,28 @@ Alternatives:
 With audio: embed the committed source, candidate and baseline players and the candidate-board
 capture, add an aside on where they came from, and correct the source description. Without audio:
 delete the page, or reduce it to a subsection elsewhere, and fix both inbound links.
+
+## Completion — 2026-10-03
+
+Kept the page and added three committed Opus players: the real 12-second MJQ
+“Skating” source excerpt, the original successful 30-second Mancini LoRA take
+from 13 September, and a newly rendered matched 30-second strength-zero baseline.
+The original take’s native WAV matches its recorded content hash; it was not
+regenerated. Source, seed and every sampling control match between baseline and
+LoRA requests; only checkpoint strength differs. Both real proof records and an
+export hash manifest accompany the audio.
+
+The page now identifies the source as MJQ, distinguishes it from Mancini’s
+training album, and includes a retained capture of Field’s actual candidate-board
+renderer with real waveform envelopes from the running service. The screenshot
+was visually inspected, with all three waveforms present and no loading/error
+markers. Links in `field_audio_ai.md` and `agent_transcripts.md` point readers to
+the audible comparison. `tools/export_underfit_docs.py` reproduces the export
+from the retained proof and matched baseline without running a replacement take.
+
+The user explicitly requested real audio and confirmed hearing the earlier
+working take. That resolves the page-versus-retirement choice. Its title caused
+the queue classifier to place it under Decisions; this pass includes it in the
+requested hardware/service scope. Closure is recorded here because the Mac’s
+originating annotation store is absent on this machine; its ID can be closed
+there after publication.
