@@ -341,6 +341,7 @@ class BoxTool internal constructor(
         runBlocking { call(argsJson, ctx) }
 
     private suspend fun runBody(bound: Map<String, Any?>, ctx: ToolExecutionContext?): Any {
+        checkToolRunloopDispatch()
         val scope = BoxToolScope(box, ctx)
         val result = withContext(
             Runloop.runLoop.main +
