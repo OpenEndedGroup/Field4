@@ -184,7 +184,8 @@ machine.
 
 The rest use other voices. The effects on [DoughDSP Sound Examples](dough_dsp_sound.md) run on real
 signals, and [Faust](faust.md#what-it-sounds-like-at-eight-voices-and-at-one) plays its own
-instruments. The clips on [A pattern in space](pat_spatial.md) are the mono source before
+instruments. [Subharmonic Synthesis](subharmonic_sound.md) tracks the pitch of a synth bassline,
+Dirt-Samples and a 1968 film's dialogue and plays a new tone underneath. The clips on [A pattern in space](pat_spatial.md) are the mono source before
 spatialisation, since the spatialised output plays in realtime only. The drums on
 [How to make sound in Field](sound_paths.md#one-buffer-three-paths) and
 [Boolean network music examples](boolean_network_music_examples.md) are real Tidal samples.

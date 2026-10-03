@@ -32,20 +32,8 @@ no boxes selected. The macro creates its boxes, waits for launch startup, warms 
 workloads, records, and stops them. It leaves the timeline open for exploration.
 Replay restores the demo's original code; use the boxes directly when keeping your edits.
 
-The same replay through the backdoor, attached to an already running Field:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 --document my_demo \
-  --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
-  --command 'macro run profiling_timeline'
-```
-
-Replace the document and port with your own. The document name is relative to the
-workspace Field was started with; don't pass `--workspace` when attaching. The command
-opens the timeline in the browser showing that document. For an
-isolated automation check, omit `--attach-existing`, use a dedicated port such as
-9477, and add `--with-playwright`; that check uses a disposable session and a headless browser.
+To run the same macro from a script instead, see
+[Driving Field from a script or agent](automating_field.md#driving-field-from-a-script-or-agent).
 
 | Box | What to look for | Try changing |
 | --- | --- | --- |
@@ -836,18 +824,8 @@ If none of the three explains your dropped frames, look here.
 
 ## Try it
 
-The `profiling_timeline` starting point needs no GPU. To replay it into a running Field,
-with a document name of your own:
-
-```diffstatic {data-lang=bash}
-uv run --project . --group backdoor python tools/field_backdoor.py --json \
-  --attach-existing --port 9092 \
-  --workspace /path/to/workspace --document frame_budget_demo \
-  --command 'macro write profiling_timeline --file dev_docs/agents/transcripts/profiling_timeline.yaml' \
-  --command 'macro run profiling_timeline'
-```
-
-Then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to
+The `profiling_timeline` starting point needs no GPU. Replay it into an empty document as in
+[Try the demo](#try-the-demo), then change **one** thing, in box **2. Periodic bursts**: shorten `quietMillis` from 240 to
 16, relaunch it, and record again. The lane's `wallMs` per resume should barely move — each
 burst still costs about the same 2.2 ms — while the number of bursts in three seconds goes
 from a dozen to something near two hundred. A per-resume percentile tells you how

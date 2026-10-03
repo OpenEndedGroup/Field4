@@ -222,6 +222,49 @@ fun Box.showSignals(
 }
 
 /**
+ * Put a spectrogram of [audio] on the screen as a Plotly heatmap with time and frequency axes, and
+ * return the [Plot].
+ *
+ * Frequencies run from 0 to [maxHz], so a low [maxHz] zooms in on bass. [fftSize] sets the
+ * frequency resolution, `sampleRate / fftSize` Hz per bin (8192 at 48 kHz is 5.9 Hz, fine enough
+ * to separate a bass note from the tone an octave under it), and [hopSize] the time step. Colour is
+ * level in dB relative to the loudest bin, over a [rangeDb] range.
+ */
+fun Box.showSpectrogram(
+    audio: FloatArray,
+    sampleRate: Int = 48_000,
+    maxHz: Double = 600.0,
+    fftSize: Int = 8192,
+    hopSize: Int = 1024,
+    rangeDb: Double = 70.0,
+    channel: String = "output",
+    title: String? = null,
+): Plot {
+    val spec = afield.stdlib.stft(audio, fftSize = fftSize, hopSize = hopSize, sampleRate = sampleRate.toDouble())
+    val bins = (0 until spec.numBins).filter { spec.binFrequency(it) <= maxHz }
+    val mags = spec.magnitudes()
+    val peak = mags.maxOf { m -> bins.maxOf { m[it] } }.coerceAtLeast(1e-12)
+    val db = bins.map { b -> mags.map { m -> (20.0 * kotlin.math.log10((m[b] / peak).coerceAtLeast(1e-9))).coerceAtLeast(-rangeDb) } }
+    val plot = Plotly.plot {
+        heatmap {
+            x.set((0 until spec.numFrames).map { spec.frameTime(it) })
+            y.set(bins.map { spec.binFrequency(it) })
+            z.set(db)
+            zmin = -rangeDb
+            zmax = 0.0
+            colorscale = space.kscience.dataforge.meta.Value.of("Viridis")
+        }
+        layout {
+            if (title != null) this.title = title
+            xaxis { this.title = "seconds" }
+            yaxis { this.title = "Hz" }
+        }
+    }.darkMode()
+    display(channel, plot)
+    return plot
+}
+
+/**
  * Restyle a `Plot` into the repo's dark theme and hand back the same instance — near-black paper and
  * plot backgrounds, muted grid and tick colours, tick labels held horizontal, a vertical legend just
  * outside the plot's right edge, and data-first margins that reclaim most of the ~100px Plotly
