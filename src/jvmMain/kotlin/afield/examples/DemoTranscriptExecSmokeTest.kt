@@ -425,6 +425,11 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
+        // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
+        // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
+        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        "syphon_bridge",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",

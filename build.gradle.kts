@@ -3454,6 +3454,29 @@ val buildPaintNative = tasks.register<Exec>("buildPaintNative") {
     )
 }
 
+// Build native/field-syphon: a flat C ABI over the Syphon framework (BSD-2, pinned by revision in
+// native/field-syphon/build.sh), for afield.syphon — publishing Field frames to, and receiving
+// frames from, Resolume / TouchDesigner / MadMapper / OBS on macOS.
+//
+// Optional, macOS-only and not wired into `check`: it needs Xcode, and the first build clones the
+// Syphon-Framework repository. Output is build/field-syphon (Syphon.framework,
+// libfield_syphon.dylib, and the field_syphon_probe test peer), which SyphonLibrary searches;
+// -Dafield.syphon.library or AFIELD_SYPHON_LIBRARY point elsewhere.
+//
+//     ./gradlew buildSyphonNative
+//     ./gradlew jvmTest --tests 'afield.syphon.SyphonTest'
+val buildSyphonNative = tasks.register<Exec>("buildSyphonNative") {
+    group = "build"
+    description = "Builds native/field-syphon into build/field-syphon (macOS; needs Xcode and, once, the network)."
+    val sourceDir = layout.projectDirectory.dir("native/field-syphon")
+    inputs.dir(sourceDir)
+    outputs.dir(layout.buildDirectory.dir("field-syphon"))
+    commandLine(
+        "bash", sourceDir.file("build.sh").asFile.absolutePath,
+        layout.buildDirectory.dir("field-syphon").get().asFile.absolutePath,
+    )
+}
+
 // Fetch the pinned subset of tidalcycles/Dirt-Samples the docs' sample clips are rendered from.
 //
 // Not a native library, but the same kind of dependency: third-party, too large to vendor (~400MB

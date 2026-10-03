@@ -105,6 +105,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
+- `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
+  machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
+  a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
