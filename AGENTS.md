@@ -360,9 +360,17 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
 - Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
-- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`), bookmarks (they restore translation, not zoom), and the server's `viewport` rect (still translation + window size).
+- Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`) and the server's `viewport` rect (still translation + window size). Bookmarks record zoom; ones saved before that keep the current zoom.
+- **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
 - The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
+
+### Canvas panels
+
+Floating panels over the canvas are built on `FieldPanel` (`src/jsMain/kotlin/afield/fieldPanel.kt`,
+`.field-panel` in `field.css`): title, status line, close, Escape, and keys/mouse-downs kept off the
+canvas. The bookmarks panel (`alt+b`, `bookmarks.kt`) and the layers panel (`alt+l`,
+`layersPanel.kt`) use it; build the next one on it rather than copying the macro recorder's CSS.
 
 ### FLine
 

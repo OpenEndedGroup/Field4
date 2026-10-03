@@ -1,6 +1,7 @@
 # Snapping
 
-Field can snap boxes while you drag or resize them. There is no separate mode or tool palette: snapping is a toggle you turn on for a moment of layout cleanup.
+Field can snap boxes to each other while you drag or resize them. Turn it on with Caps Lock when
+you want to tidy a layout, and off again when you go back to sketching.
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 460px);">
 	<source src="assets/snapping-guide.mp4" type="video/mp4">
@@ -34,15 +35,11 @@ During a snap, Field draws cyan guide lines and tick marks so you can see what r
 
 ## Edge and center alignment
 
-The basic use case is lining up boxes.
-
 - Drag near the left or right edge of another box to align vertical edges.
 - Drag near the top or bottom edge of another box to align horizontal edges.
 - Drag near another box's center line to align centers.
 
 ## Even spacing
-
-Snapping also looks for gaps between nearby boxes.
 
 If a dragged box can land between two other boxes with equal spacing, Field offers that as a snap
 target and draws measurement ticks on the guide line, which is how you get an evenly spaced row or
@@ -51,14 +48,12 @@ tight cluster of boxes offers nothing to space evenly.
 
 ## Resize snapping
 
-The same Caps Lock toggle applies while resizing.
-
-With snapping enabled, a resize gesture can snap the edge you are dragging to nearby box edges. This is useful when you want adjacent boxes to share a boundary or keep a row visually clean.
+With Caps Lock on, the edge you drag while resizing snaps to nearby box edges, so adjacent boxes
+can share a boundary.
 
 ## Thresholds
 
-Snapping is proximity-based. A box jumps when it gets close enough, not when it lands exactly.
-Alignment and spacing use different distances, and alignment draws its guide before it will take
+A box jumps to a snap once it is close enough to it. Alignment and spacing use different distances, and alignment draws its guide before it will take
 the snap.
 
 <div class="field-data-table" markdown>
@@ -76,9 +71,9 @@ the relationship you want and watch for the guide line.
 
 ## When to use it
 
-Arranging a document for presentation, or tidying a graph after a run of exploratory edits. It
-gets in the way while sketching, so it is off unless you turn Caps Lock on. Leave Caps Lock off
-and boxes go where you put them.
+Snapping helps when you arrange a document for presentation, or tidy a graph after a run of
+exploratory edits. It gets in the way while sketching, which is why it is off until you press
+Caps Lock.
 
 ## Related features
 

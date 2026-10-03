@@ -87,6 +87,9 @@ CORPUS = {
     "learned_from_module",
     "learned_shader",
     "neural_reconstruction",
+    # Landed 2026-10-02 in `cdb8e2cf8`: sources for `open_dlss_nr{,_cubes}.yaml` (COMPILE_ONLY),
+    # not a saved document. No build.yaml, so the count below is unchanged.
+    "opendlssnr",
     "optical_flow",
     "optical_flow_pingpong",
     "ray_reconstruction",

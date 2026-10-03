@@ -78,3 +78,7 @@ JNIEXPORT jboolean JNICALL Java_fieldfdpass_UnixFdPassNative_sendFds(
     (*env)->ReleaseStringUTFChars(env, socketPath, path);
     return ok;
 }
+JNIEXPORT void JNICALL Java_fieldfdpass_UnixFdPassNative_closeFd(JNIEnv* env, jclass cls, jint fd) {
+    (void)env; (void)cls;
+    if (fd >= 0) close(fd);
+}

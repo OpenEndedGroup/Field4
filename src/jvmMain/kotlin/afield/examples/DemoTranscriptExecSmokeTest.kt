@@ -390,6 +390,11 @@ object DemoTranscriptExecSmokeTest {
         // — and the first one draws the same shape through Field's own marchingCubes instead, with the
         // difference named, rather than failing.
         "manifold_solids",
+        // Three pure-CPU boxes that paint and draw FLines through afield.paint (FFM into the optional
+        // Rust wrapper over claude-paint's `paint` crate) and display a PNG, so no Window and no
+        // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
+        // takes — they print where they looked and stop, rather than failing.
+        "paint_canvas",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the
@@ -420,6 +425,9 @@ object DemoTranscriptExecSmokeTest {
 
     /** Graphics demos: box bodies are compiled (real pipeline, eval skipped) but not launched. */
     internal val COMPILE_ONLY = setOf(
+        // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
+        // measuring box whose numbers SceneOnARigTest already pins.
+        "chain_scene_to_light",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",
@@ -437,8 +445,11 @@ object DemoTranscriptExecSmokeTest {
         // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
+        "streaming_diffusion", // Optional Linux/NVIDIA worker and a Vulkan renderer.
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.
+        "open_dlss_nr", // Optional native network; live transcript and GPU recording verified separately.
+        "open_dlss_nr_cubes", // Same native pass, with editable raster geometry and its GPU recorder.
         "neural_reconstruction", // Optional NGX evaluation is covered by ReconstructionSmoke on the NVIDIA machine.
         "ray_reconstruction", // Real NGX/RTXDI evaluation: RayReconstructionSmoke.
         "path_traced_reconstruction", // PathTracedReconstructionSmoke; optional NGX.

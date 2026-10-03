@@ -306,7 +306,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**107 rebindable commands**, 50 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**120 rebindable commands**, 54 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -316,6 +316,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `open-command-palette` | `cmd+shift+p` or `f1` | both | Command Palette |
 | `show-cheatsheet` | `?` | both | Show Cheatsheet |
 | `toggle-docs` | `cmd+/` | both | Toggle Documentation |
+| `toggle-drawing-layer` | `alt+d` | both | Toggle Drawing Layer |
 
 ### Canvas
 
@@ -328,6 +329,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `add-document-note` | *(none)* | both | Add Note to This Document |
 | `add-editor-to-output` | *(none)* | both | Add Editor to Output Area |
 | `align` | *(none)* | both | Align boxes |
+| `anchor-drawing-to-boxes` | *(none)* | both | Anchor Drawing to Boxes |
 | `connect` | `g` | canvas | Connect boxes |
 | `copy-box-guide-link` | *(none)* | both | Copy Markdown Link to Box or Line |
 | `copy-selection` | `cmd+c` | canvas | Copy Selection |
@@ -339,12 +341,16 @@ exactly what a fresh `keybindings.yaml` says.
 | `export-selection-edn` | *(none)* | both | Export selection (.edn) |
 | `fmt-kotlin` | *(none)* | both | Format Kotlin |
 | `fmt-property` | *(none)* | both | Format |
+| `frame-selected` | `alt+f` | both | Frame Selected |
 | `insert-from-workspace` | `cmd+t` | both | Insert template |
 | `macro-transcript-panel` | *(none)* | both | Macro: Recorder Panel |
 | `macro-transcript-run` | *(none)* | both | Macro: Run on Selection |
 | `macro-transcript-save` | *(none)* | both | Macro: Mark End & Save |
 | `macro-transcript-start` | *(none)* | both | Macro: Mark Start |
 | `macro-transcript-undo` | *(none)* | both | Macro: Undo on Selection |
+| `make-function-study` | *(none)* | both | Make a Function Study |
+| `make-rectsl-scene` | *(none)* | both | Make a RectSL Scene |
+| `make-stacksl-program` | *(none)* | both | Make a StackSL Program |
 | `move-forward` | *(none)* | both | Move selected boxes forward |
 | `nest-into` | *(none)* | both | Nest selection into a box |
 | `new-box` | `n` | canvas | New Box |
@@ -360,24 +366,31 @@ exactly what a fresh `keybindings.yaml` says.
 | `reload-user-keybindings` | *(none)* | both | Reload Keybindings |
 | `reloadPersonal` | *(none)* | both | Reload personal/ classes |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
+| `reset-canvas-zoom` | *(none)* | both | Reset Canvas Zoom |
 | `route` | *(none)* | both | Route (position-guided) |
 | `save-as-template` | *(none)* | both | Save selection as template |
 | `search-docs-and-code` | `cmd+shift+d` | both | Search Documentation & Code |
 | `select-all-boxes` | *(none)* | both | Select All Boxes |
 | `set-main-language` | *(none)* | both | Set Main Language |
 | `set-main-language-clojure` | *(none)* | both | Set Main Language: Clojure |
+| `set-main-language-csound` | *(none)* | both | Set Main Language: Csound |
 | `set-main-language-datalog` | *(none)* | both | Set Main Language: Datalog |
 | `set-main-language-fieldml` | *(none)* | both | Set Main Language: FieldML |
 | `set-main-language-forth` | *(none)* | both | Set Main Language: ForthField |
 | `set-main-language-kotlin` | *(none)* | both | Set Main Language: Kotlin |
 | `set-main-language-kotlinjs` | *(none)* | both | Set Main Language: Kotlin → head |
+| `set-main-language-lua` | *(none)* | both | Set Main Language: Lua |
 | `set-main-language-morpho` | *(none)* | both | Set Main Language: MorphoHDL |
 | `set-main-language-nano` | *(none)* | both | Set Main Language: Nano |
+| `set-main-language-pd` | *(none)* | both | Set Main Language: Pure Data |
 | `set-main-language-python` | *(none)* | both | Set Main Language: Python |
+| `set-main-language-rectsl` | *(none)* | both | Set Main Language: RectSL |
 | `set-main-language-remotejs` | *(none)* | both | Set Main Language: Javascript |
+| `set-main-language-stacksl` | *(none)* | both | Set Main Language: StackSL |
 | `show-all-layers` | *(none)* | both | Show All Layers |
 | `show-document-guide` | *(none)* | both | Show Document Guide |
 | `show-document-history` | *(none)* | both | Show Document History |
+| `show-layers-panel` | `alt+l` | both | Show Layers Panel |
 | `show-profiling-timeline` | *(none)* | both | Show Profiling Timeline |
 | `snap_tidy` | *(none)* | both | Snap + tidy boxes |
 | `solo-next-layer` | `alt+]` | both | Solo Next Layer |
@@ -434,6 +447,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `save-bookmark-7` | `cmd+shift+f7` | both | Save Bookmark 7 |
 | `save-bookmark-8` | `cmd+shift+f8` | both | Save Bookmark 8 |
 | `save-bookmark-9` | `cmd+shift+f9` | both | Save Bookmark 9 |
+| `show-bookmarks` | `alt+b` | both | Show Bookmarks |
 
 <!-- END generated: default bindings -->
 

@@ -41,16 +41,14 @@ Environment: Venice Sunset by Greg Zaal / Poly Haven (CC0), shared with the
 
 `SceneAdField.frameAt(t)` transforms every rect at one instant onto a fresh autodiff tape, and
 `SceneAdFrame.distanceAt(x, y)` is then the scene's signed distance there. That is a
-`(x, y, t) -> distance` already, so the obvious move is to hand it straight to a marcher. Two things
-make the grid the better route.
+`(x, y, t) -> distance` already, but it is not handed straight to a marcher, for two reasons.
 
-A tape grows monotonically, so it is worth reusing across a batch of points and wrong to hold for a
-whole march. A marcher samples in an order of its own choosing, which gives no batch to reuse it
-over. Sampling slice by slice gives one tape per time step, which is exactly the granularity the tape
-wants.
+A tape only grows, so it should be reused across a batch of points and not held for a whole march.
+A marcher samples in an order of its own choosing, which gives no batch. Sampling slice by slice
+uses one tape per time step.
 
-And `Solid.levelSet` calls its field from Manifold's own worker threads. A grid read back by
-interpolation is safe to share; an autodiff tape is not.
+And `Solid.levelSet` calls its field from several threads at once. A grid read back by
+interpolation is safe to share that way; an autodiff tape is not.
 
 `sampledField3D` is the bridge: a `FloatArray` of samples, the lattice dimensions, the box they span,
 and what comes back is an ordinary `ScalarField3D` that both marchers accept.
@@ -67,6 +65,9 @@ val spacetime = sampledField3D(grid, nx, ny, nt, bounds)
 ```
 
 ## What happens where the volume meets the window
+
+This box marches the volume with both marchers, with and without padding, and tabulates what each
+one returns.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_rectsl_spacetime/readout.png" wait="12" capture="box" open-outputs="true" w="1120" h="340" padding="18" timeout="240" name="chain-rectsl-readout" embed=true alt="A table: one RectSL scene with both rects lowered and zero channel disagreement; then four rows showing marching cubes leaving the unpadded volume open with two boundary loops while the level set closes it, and both closing the padded volume; and one component"}
 :::static
@@ -163,14 +164,12 @@ closedSolid.close()
 The animation is solid at `t = 0` and at `t = duration`, so the volume's surface has nowhere to go at
 those two walls. `marchingCubes` leaves it open there, and says so: the mesh is not watertight and
 has exactly **two** boundary loops, one per wall. `Solid.levelSetOf` closes it against the box
-instead, which is the `levelSet` row of [Solids & Booleans](manifold.md)'s own comparison table doing
-the thing that row is about.
+instead (see the `levelSet` row of the comparison table in [Solids & Booleans](manifold.md)).
 
 Pad the field with one empty slice at each end and both close, which is what the rendered figure
 uses. The padding also makes the caps flat: without it the surface snaps to the last sample plane
 with a sawtooth wherever neighbouring samples differ, because the jump to `sampledField3D`'s
-`outside` value happens in no distance at all. The cut is a property of the *window* rather than of
-either marcher, so a volume that already ends in empty space needs none of this.
+`outside` value happens in no distance at all. A volume that already ends in empty space needs none of this.
 
 !!! note "`min` is not the union's distance on the inside"
 

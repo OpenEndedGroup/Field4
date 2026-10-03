@@ -1,6 +1,5 @@
 package afield
 
-import handleOutputAreaRequest
 import kotlinx.browser.document
 import kotlinx.browser.window
 import kotlinx.html.dom.append
@@ -1931,20 +1930,7 @@ fun moveSelectedBoxesForward() {
 fun showAllLayers() {
     val layers = getAllLayers().filter { it.isNotBlank() }.toSet().ifEmpty { setOf("default") }
     setVisibleLayers(layers, animated = true, duration = 450.0)
-
-    val hostBox = selected.firstOrNull() ?: allBoxesOnCanvas().firstOrNull()
-    val hostUid = hostBox?.unsafeCast<dynamic>()?.uid as? String
-    if (hostBox != null && hostUid != null) {
-        handleOutputAreaRequest(
-            hostBox,
-            Set_output(
-                uid = hostUid,
-                property = "outputarea",
-                channel = "layers",
-                value = ""
-            )
-        )
-    }
+    showLayersPanel()
 
     notify("Showing all ${layers.size} layer${if (layers.size == 1) "" else "s"}", "command")
 }
@@ -2661,7 +2647,7 @@ fun registerBuiltinCommands() {
         },{
             id:'show-all-layers',
             label:"Show All Layers",
-            detail:"Restore visibility for every layer and reopen the layers palette",
+            detail:"Restore visibility for every layer and open the layers panel",
             run: () => {
                 showAllLayers()
             }

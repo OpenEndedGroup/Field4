@@ -46,6 +46,8 @@ data class Bookmark(
     val nestingState: Map<String, NestingInfo>? = null,
     /** box uid -> output channel -> open. Channels absent here are left alone on restore. */
     val outputAreaState: Map<String, Map<String, Boolean>>? = null,
+    /** box uid -> output channel -> size, for the panels that were open. */
+    val outputAreaSizes: Map<String, Map<String, PanelSize>>? = null,
     /** Restore the canvas pan. */
     val restoreView: Boolean = true,
     /** Restore the selected box, the property open in Monaco and the cursor. */
@@ -57,7 +59,15 @@ data class Bookmark(
 @Serializable
 data class ScrollPosition(
     val x: Double,
-    val y: Double
+    val y: Double,
+    /** Canvas zoom; absent in bookmarks saved before zoom was recorded, which keep the current zoom. */
+    val zoom: Double? = null
+)
+
+@Serializable
+data class PanelSize(
+    val width: Double,
+    val height: Double
 )
 
 @Serializable
@@ -85,7 +95,8 @@ private fun findBoxByUid(uid: String): HTMLElement? {
 fun captureScrollPosition(): ScrollPosition {
     return ScrollPosition(
         x = mainTranslation[0],
-        y = mainTranslation[1]
+        y = mainTranslation[1],
+        zoom = mainZoom
     )
 }
 
@@ -178,6 +189,44 @@ fun captureOutputAreaState(): Map<String, Map<String, Boolean>> {
     return state
 }
 
+/** The size of every open output panel, so a restore can put it back. */
+fun captureOutputAreaSizes(): Map<String, Map<String, PanelSize>> {
+    val sizes = mutableMapOf<String, Map<String, PanelSize>>()
+    try {
+        val boxes = document.body?.getElementsByClassName("box")?.asList() ?: emptyList()
+        boxes.forEach { rawBox ->
+            val box = rawBox as? HTMLElement ?: return@forEach
+            val uid = box.asDynamic().uid as? String ?: return@forEach
+            val inter = disclosureApiFor(box) ?: return@forEach
+            val open = (inter.ids() as Array<String>).filter { it != "nested" && inter.isOpen(it) as Boolean }
+            val channels = open.mapNotNull { channel ->
+                val size = inter.getSize(channel) ?: return@mapNotNull null
+                channel to PanelSize((size.width as Number).toDouble(), (size.height as Number).toDouble())
+            }.toMap()
+            if (channels.isNotEmpty()) sizes[uid] = channels
+        }
+    } catch (e: dynamic) {
+        console.warn("Error capturing output area sizes:", e)
+    }
+    return sizes
+}
+
+/** Resizes the panels a bookmark recorded a size for; others keep theirs. */
+fun restoreOutputAreaSizes(sizes: Map<String, Map<String, PanelSize>>) {
+    try {
+        sizes.forEach { (boxId, channels) ->
+            val box = findBoxByUid(boxId) ?: return@forEach
+            val inter = disclosureApiFor(box) ?: return@forEach
+            val existing = (inter.ids() as Array<String>).toSet()
+            channels.forEach { (channel, size) ->
+                if (channel in existing) inter.setSize(channel, size.width, size.height)
+            }
+        }
+    } catch (e: dynamic) {
+        console.warn("Error restoring output area sizes:", e)
+    }
+}
+
 /**
  * Opens or closes the recorded output channels. Channels and boxes the bookmark does not
  * mention, and recorded channels that no longer exist, are left untouched.
@@ -235,7 +284,8 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
         cursorLine = cursor?.first,
         cursorColumn = cursor?.second,
         nestingState = captureNestingState(),
-        outputAreaState = captureOutputAreaState()
+        outputAreaState = captureOutputAreaState(),
+        outputAreaSizes = captureOutputAreaSizes()
     )
 }
 
@@ -244,6 +294,10 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
  */
 fun restoreScrollPosition(position: ScrollPosition) {
     try {
+        if (position.zoom != null && position.zoom != mainZoom) {
+            panViewportForDrawingLayer(position.x, position.y, position.zoom)
+            return
+        }
         mainTranslation = listOf(position.x, position.y)
         drawingLayerViewportChanged(position.x, position.y)
         mainCanvas.style.transform = mainCanvasTransform(position.x, position.y)
@@ -349,6 +403,7 @@ fun restoreBookmark(bookmark: Bookmark) {
 
         // Restore nesting state first (before selecting boxes)
         bookmark.nestingState?.let { restoreNestingState(it) }
+        restoreOutputAreaSizes(bookmark.outputAreaSizes.orEmpty())
         restoreOutputAreaState(bookmark.outputAreaState.orEmpty(), bookmark.closeUnrecordedOutputs)
 
         if (!bookmark.restoreSelection) {
@@ -694,7 +749,10 @@ private fun bookmarkCard(slot: Int, bookmark: Bookmark?): HTMLElement {
         l.appendChild(el("strong", "", value))
         summary.appendChild(l)
     }
-    bookmark.scrollPosition?.let { line("view", "(${it.x.toInt()}, ${it.y.toInt()})") }
+    bookmark.scrollPosition?.let { pos ->
+        val zoom = pos.zoom?.takeIf { it != 1.0 }?.let { " at ${(it * 100).toInt()}%" } ?: ""
+        line("view", "(${pos.x.toInt()}, ${pos.y.toInt()})$zoom")
+    }
     val selected = bookmark.selectedBox?.let { boxLabel(it) }
     when {
         selected == null -> line("selection", "none")
@@ -711,7 +769,8 @@ private fun bookmarkCard(slot: Int, bookmark: Bookmark?): HTMLElement {
     val pills = el("div", "bookmark-pills", null)
     outputs.forEach { (uid, channels) ->
         channels.filter { it.value }.keys.forEach { channel ->
-            pills.appendChild(el("span", "field-panel-pill", "${boxLabel(uid)} · $channel"))
+            val size = bookmark.outputAreaSizes?.get(uid)?.get(channel)?.let { " ${it.width.toInt()}×${it.height.toInt()}" } ?: ""
+            pills.appendChild(el("span", "field-panel-pill", "${boxLabel(uid)} · $channel$size"))
         }
     }
     if (pills.childElementCount > 0) summary.appendChild(pills)
@@ -758,8 +817,8 @@ private fun savedAgo(timestamp: Double): String {
 
 /**
  * The document's boxes as they stand now, with the rectangle the bookmark's pan would show at
- * the current zoom and window size. Boxes with a recorded-open panel are lighter; the selected
- * box takes the accent.
+ * the bookmark's zoom and the current window size. The panels the bookmark keeps open are drawn
+ * under their boxes at their recorded sizes; the selected box takes the accent.
  */
 private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
     val ns = "http://www.w3.org/2000/svg"
@@ -779,10 +838,33 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
             r.width / mainZoom, r.height / mainZoom, uid
         )
     }
-    val view = bookmark.scrollPosition?.let {
-        R(-it.x / mainZoom, -it.y / mainZoom, window.innerWidth / mainZoom, window.innerHeight / mainZoom, null)
+    // The panels the bookmark keeps open, each hung under its header where the box lays it out
+    // now, at the size the bookmark recorded (or its current size, for bookmarks that predate sizes).
+    val panels = mutableListOf<R>()
+    bookmark.outputAreaState.orEmpty().forEach { (uid, channels) ->
+        val box = findBoxByUid(uid) ?: return@forEach
+        val disclosures = box.querySelectorAll(".outputArea .disclosure").asList().mapNotNull { it as? HTMLElement }
+        channels.filterValues { it }.keys.forEach { channel ->
+            val wrap = disclosures.firstOrNull { (it.asDynamic().__disclosureId as? String) == channel } ?: return@forEach
+            val header = wrap.getBoundingClientRect()
+            if (header.width <= 0.0) return@forEach
+            val size: PanelSize = bookmark.outputAreaSizes?.get(uid)?.get(channel) ?: run {
+                val current: dynamic = disclosureApiFor(box)?.getSize(channel)
+                if (current == null || current == undefined) return@forEach
+                PanelSize((current.width as Number).toDouble(), (current.height as Number).toDouble())
+            }
+            val x = (header.left - mainTranslation[0]) / mainZoom
+            val y = (header.top - mainTranslation[1]) / mainZoom
+            // An open disclosure's rect already includes its content; a closed one is only the header.
+            val headerHeight = if (header.height / mainZoom > size.height) 18.0 else header.height / mainZoom
+            panels += R(x, y + headerHeight, size.width, size.height, uid)
+        }
     }
-    val all = rects + listOfNotNull(view)
+    val view = bookmark.scrollPosition?.let {
+        val z = it.zoom ?: mainZoom
+        R(-it.x / z, -it.y / z, window.innerWidth / z, window.innerHeight / z, null)
+    }
+    val all = rects + panels + listOfNotNull(view)
     if (all.isEmpty()) return svg
     val minX = all.minOf { it.x }
     val minY = all.minOf { it.y }
@@ -801,6 +883,13 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
             if (r.uid == bookmark.selectedBox) append(" is-selected")
         }
         rect.setAttribute("class", cls)
+        svg.appendChild(rect)
+    }
+    panels.forEach { r ->
+        val rect = document.createElementNS(ns, "rect")
+        rect.setAttribute("x", "${r.x}"); rect.setAttribute("y", "${r.y}")
+        rect.setAttribute("width", "${r.w}"); rect.setAttribute("height", "${r.h}")
+        rect.setAttribute("class", "bm-panel")
         svg.appendChild(rect)
     }
     view?.let { v ->

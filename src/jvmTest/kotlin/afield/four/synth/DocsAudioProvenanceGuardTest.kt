@@ -59,8 +59,8 @@ class DocsAudioProvenanceGuardTest {
 
         val byOrigin: Map<Origin?, Int> = published.groupingBy { DocsAudioProvenance.originOf(it) }.eachCount()
         val expected: Map<Origin?, Int> = mapOf(
-            Origin.STAND_IN_SYNTH to 43,
-            Origin.DIRT_SAMPLES to 6,
+            Origin.STAND_IN_SYNTH to 40,
+            Origin.DIRT_SAMPLES to 9,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
             Origin.DOUGH_DSP to 9,
             Origin.FAUST to 3,
@@ -242,6 +242,9 @@ class DocsAudioProvenanceGuardTest {
          * `sound_paths.md`'s dry comparison clip moved from [Origin.STAND_IN_SYNTH] to
          * [Origin.DIRT_SAMPLES], because its input became real one-shots; the total did not move
          * for that one, the split did.
+         *
+         * `chain_ca_sound.md`'s three moved the same way (2026-10-02): [CaSoundDocs] now plays its
+         * rows as `click`, `hh` and pitched `arpy` one-shots from the pinned subset.
          */
         const val EXPECTED_FENCE_COUNT = 64
     }

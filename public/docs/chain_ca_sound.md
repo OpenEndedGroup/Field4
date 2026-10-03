@@ -1,14 +1,13 @@
 # A cellular automaton you can hear
 
-Four steps, four parts of Field. `alife_ca.kt` steps one of Wolfram's 256 elementary rules.
-One row or one column of the result becomes a step mask. `patCondense` searches for the shortest
-mini-notation that plays that mask. `patRenderStereo` plays the notation through a small
-deterministic voice, offline, into a `.wav`.
+This page turns a cellular automaton into rhythm. `alife_ca.kt` steps one of Wolfram's
+elementary rules, and one row or one column of the result becomes a step mask. `patCondense`
+finds the shortest mini-notation that plays that mask, and `patRenderStereo` plays the notation
+offline into a `.wav`.
 
-The third step is the one that says something. `patCondense` is the mini-notation parser run
-backwards, and the length of what it returns is a number about the rhythm it was given: a rhythm
-with structure gets a much shorter spelling than one without. So the notation a CA's row condenses
-to is a statement about the rule, and the audio is that statement played.
+`patCondense` is the mini-notation parser run backwards. A rhythm with structure gets a much
+shorter spelling than one without, so the length of what it returns tells you something about the
+rule, and the audio is that notation played.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/hero.png" wait="8" capture="box" open-outputs="true" w="1040" h="530" padding="18" timeout="120" name="chain-ca-hero" embed=true hidden=true alt="Rule 30's space-time diagram, live cells white on black: a fan spreading from one cell at the top centre until it fills the width at the bottom, regular diagonal stripes down its left edge and irregular triangles of every size everywhere else"}
 // 241 cells is exactly the light cone of 120 generations, so the fan touches both edges at the
@@ -24,10 +23,10 @@ of the two bars below.
 Rule 90 is `left XOR right`. From a single live cell its space-time diagram is Pascal's triangle
 mod 2, which is where the second column of the figure below comes from: `binomialParity` computes
 what row 20 should be from Kummer's theorem, without stepping anything, and
-[`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt-casounddocs) checks the real CA
-against it cell by cell before any sound is made.
+[`CaSoundDocs.gasketBar`](reference/patterns.md#casounddocs-kt-casounddocs) compares the real CA
+with it cell by cell.
 
-Rule 30's centre column has no such formula, which is the reason it is here.
+Rule 30's centre column has no such formula.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/rules.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-rules" embed=true alt="Two black-and-white space-time diagrams, rule 90's nested Sierpinski triangles and rule 30's chaotic fan, above a two-lane piano roll of one cycle each and a table giving both bars' step count, onset count, condensed notation and compression"}
 :::static
@@ -79,9 +78,8 @@ markdown("notation", """
 
 Rule 90's row condenses to two Euclidean figures with a rest between them, and the second is the
 first turned: `x(2,7)` and `x(2,7,5)` are the same two-in-seven pattern at two rotations. Pascal's
-triangle is symmetric in *k*, so the bar has to read the same backwards, and that is the form the
-symmetry takes once a notation is asked for it. Nothing in the condenser knows about binomial
-coefficients.
+triangle is symmetric in *k*, so the bar reads the same backwards, and the condenser finds that
+symmetry without knowing anything about binomial coefficients.
 
 Rule 30's column condenses as well. A flat spelling carries overhead that any grouping saves, so the
 number to read is never whether a rhythm compresses but how far, against another rhythm on the same
@@ -99,12 +97,12 @@ And rule 30's column, three cycles, thirty-two steps each:
 // Offline-rendered by CaSoundDocs.renderWav("rule30-hats").
 ```
 
-The first is a figure. The second is thirty-two steps that never become one, and the two compression
-numbers are that difference written down.
+The first is a figure you can hum. The second never settles into one, and the two compression
+numbers measure that difference.
 
 !!! note "Compression is a ratio of characters, so the atom's length moves it"
 
-    Both bars above use `x` as their atom for exactly this reason. Spelling the same rhythm with
+    Both bars above use `x` as their atom. Spelling the same rhythm with
     `hh` changes the numerator and the denominator by different amounts, and rule 30's 0.83 reads as
     0.73 instead. Compare two rhythms only when they are spelled with the same atom.
 
@@ -112,8 +110,8 @@ numbers are that difference written down.
 
 Row *n* of Pascal's triangle mod 2 has exactly `2^popcount(n)` odd entries, so the population of
 rule 90's rows is the binary digit sum of the generation index. `CaSoundDocs.gasketScale` counts the
-real CA's rows, checks each count against that formula, and maps the digit sum to a degree of a
-minor pentatonic. The tune is therefore the binary expansion of 0, 1, 2, … read out loud: it falls
+real CA's rows and maps the digit sum to a degree of a
+minor pentatonic. The tune is the binary expansion of 0, 1, 2, … read out loud: it falls
 back to the root at every power of two and climbs through the carries in between.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/scale.png" wait="8" capture="box" open-outputs="true" w="1180" h="280" padding="18" timeout="120" name="chain-ca-scale" embed=true alt="A sawtooth-shaped trace of rule 90's row populations climbing to 32 at generation 31 and dropping back to 2 at every power of two, above a single-cycle piano roll of 32 notes on six pitches with the same shape"}
@@ -153,7 +151,7 @@ showPatRollOf(
 
 ## Six rules, one denominator
 
-The same 32-step centre column, taken from six rules, condensed with the same atom — the two clips
+The same 32-step centre column, taken from six rules, condensed with the same atom. The two clips
 above are one row of this.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ca_sound/survey.png" wait="8" capture="box" open-outputs="true" w="1180" h="300" padding="18" timeout="120" name="chain-ca-survey" embed=true alt="A four-column table of six elementary rules sorted by compression: rules 30 and 45 near 0.8 with long notations full of groupings, then rule 250 at 0.13, rule 90 at 0.10, and rules 110 and 150 at 0.06 with one-token spellings"}
@@ -178,10 +176,9 @@ $rows
 :::endfold
 ```
 
-Two rules resist, and they are the two usually called chaotic. Every other column collapses to a
-spelling a person could have typed in one breath: `x*32`, `[x ~]*16`, `x ~!31`. What produced that
-ordering is a music-notation compressor looking for a short spelling, and it agrees with the
-classification those two rules are famous for.
+The two rules that resist are the two usually called chaotic. Every other column collapses to a
+spelling you could type in one breath: `x*32`, `[x ~]*16`, `x ~!31`. A compressor for music
+notation ends up sorting the rules the same way the usual classification does.
 
 !!! warning "The slice matters as much as the rule"
 
@@ -194,10 +191,9 @@ classification those two rules are famous for.
 * [Spatial Artificial Life](alife_examples.md) for the automata: the elementary rules as space-time
   rasters, Life, cyclic multi-state CA, and the independent oracles the same way this page uses them.
 * [Patterns & Rhythm](pattern_language.md) for the event model and the mini-notation, and
-  `dev_docs/PAT_CONDENSE.md` for the condenser, including the bounds it searches under and what it
-  refuses.
-* [Sound](sound.md) and [Making a Sound, Every Path There Is](sound_paths.md) for the voice and for
-  why every audio figure in these docs comes out of the offline `wav-file` sink.
+  `dev_docs/PAT_CONDENSE.md` for the condenser.
+* [Sound](sound.md) and [Making a Sound, Every Path There Is](sound_paths.md) for the voice and
+  the other ways to make sound.
 * [Boolean Network Music Examples](boolean_network_music_examples.md) is the neighbouring chain: a
   different discrete dynamical system, into `NoteProcess` and live Dirt triggers rather than into
   notation.

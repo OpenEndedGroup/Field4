@@ -7,7 +7,7 @@ import afield.four.modules.ModulePointer
 import afield.four.modules.parameters
 import afield.four.modules.pointer
 import afield.four.texture.TextureSampler
-import afield.four.util.forever
+import afield.four.util.updateForever
 import afield.stdlib.fromViews
 
 /** An aspect-correct rectangle in one Field [afield.four.util.Window]'s logical coordinates. */
@@ -96,7 +96,7 @@ class PuppetBrowserWindowPanel(
             rewind()
         }
         updateViewport(createdMesh, force = true)
-        createdMesh.update["browser-window-viewport"] = forever {
+        createdMesh.update["browser-window-viewport"] = updateForever {
             updateViewport(createdMesh)
             true
         }

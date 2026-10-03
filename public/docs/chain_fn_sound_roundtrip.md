@@ -1,15 +1,14 @@
 # A function, played and read back
 
-Take one `Functions.Fn`, make it a sound, analyse the sound, and put what the analysis found next to
-the function it came from. Four parts of Field that do not know about each other.
-`afield.stdlib.Functions` builds the function, and `FnInterval` certifies its range on any interval.
+Play a `Functions.Fn` as a sound, analyse the sound, and you can put what the analysis found next
+to the function it came from. `afield.stdlib.Functions` builds the function, and `FnInterval`
+certifies its range on any interval.
 A Dough graph plays it, rendered offline to a 16-bit `.wav`. `PatOnsetDetection` and
 `PatPitchDetection` read the file back. The time-axis viewer draws the function, its certified band,
 what came back, and the audio, on one timeline.
 
-What gets lost on the way is mostly not noise. It is two delays, one in how the function reaches
-the signal graph and one in how the pitch detector reports time, and both can be measured to the
-sample.
+Most of what changes on the way is delay: one from how the function reaches the signal graph and
+one from how the pitch detector reports time. Both can be measured to the sample.
 
 ## The function, and two ways to hear it
 
@@ -27,11 +26,11 @@ val f = with(Functions) {
 }
 ```
 
-It is played two ways. As **loudness**, it is the amplitude of a sine at 375 Hz, a frequency chosen
+It is played two ways. As loudness, it is the amplitude of a sine at 375 Hz, a frequency chosen
 so one period is exactly 128 samples at 48 kHz. As **pitch**, it is the frequency of a sine at
-constant level, `220 · 2^f` Hz, so the curve spans about half an octave. Both renders are
-written to disk without normalisation, so the amplitude in the file is the amplitude the function
-asked for. Both analyses read the file, not the buffer that was written to it.
+constant level, `220 · 2^f` Hz, so the curve spans about half an octave. Neither render is
+normalised, so the amplitude in the file is the amplitude the function asked for, and both analyses
+read the file back from disk.
 
 Here is the loudness render:
 
@@ -53,8 +52,8 @@ at the block's start, and `Param` ramps from the previous block's value to this 
 block. So at time `t` the audio hears, to first order, the function at `t` minus one block.
 
 `FnSignal`, reached as `f.toSignal()`, is the per-sample alternative: sample `i` of a block is
-`f(time + i / sampleRate)`. It is one small class in `FnSignal.kt`. Both routes are measured below, and
-the clips above use `toSignal()`.
+`f(time + i / sampleRate)`. Both routes are measured below, and the clips above use
+`toSignal()`. In code, the two look like this:
 
 ```diffstatic {data-lang=kotlin}
 val perSample = SineOsc(Param(375f)) * f.scaleY(0.8).toSignal()
@@ -63,10 +62,11 @@ val perBlock  = SineOsc(Param(375f)) * Param { 0.8f * f(time.toDouble()).toFloat
 
 ## What came back
 
-The loudness is recovered by `patEnergyEnvelope`, an RMS per hop, with a window of two whole carrier
-periods. Over a whole number of periods a steady sine's RMS is exactly its amplitude over √2, so the
-window adds no ripple of its own. The pitch is recovered by `patF0Frames`, the YIN estimator,
-told the register it is listening to. Every analysis frame is one member of the population.
+The loudness is recovered by `patEnergyEnvelope`, an RMS per hop, with a window two periods of the
+375 Hz sine long. Over a whole number of periods a steady sine's RMS is exactly its amplitude over
+√2, so the window adds no ripple of its own. The pitch is recovered by `patF0Frames`, the YIN
+estimator, told the pitch range to expect. The box below draws the function, both recovered curves
+and their errors on one timeline, with the loudness render underneath.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/roundtrip.png" wait="12" capture="box" open-outputs="true" w="1180" h="900" padding="18" timeout="240" name="chain-fn-roundtrip" embed=true alt="A four-lane time-axis viewer over three seconds. The top two lanes draw the function in white, a slow swell, a step up to a wobbling plateau and one narrow spike, with its certified band behind it, too tight to separate from the line at this zoom, and the curves recovered from the loudness and from the pitch of the rendered sound drawn dashed on top of it and hidden by it. The two lower lanes are the recovery errors: flat near zero except for a spike at the narrow bump, with a faint ripple along the pitch lane's plateau. Below, an audio player showing the loudness render's waveform, and a table of frame counts, errors, lags and certified-band containment for both encodings"}
 :::static
@@ -112,18 +112,18 @@ of each lies at the narrow bump, and the last column says how much of that bump'
 encoding kept. Neither window is much narrower than the bump, and a window can only report an
 average over what it read.
 
-That is what the certified band is for. A windowed measurement cannot be expected to land on
+The certified band handles this. A windowed measurement cannot be expected to land on
 the function's value at one instant. It *can* be expected to land inside the range the function
 covers over the samples the window read, and `certifiedRange` bounds that range with a proof rather
 than a sample grid. Nearly every loudness frame lands inside. The few that do not miss by less than
-one 16-bit step. Every pitch frame lands inside, which says less than it seems to: a YIN frame reads
-nearly three times as many samples as an RMS frame here, and a wider window has a wider range to land in.
+one 16-bit step. Every pitch frame lands inside, but a YIN frame reads nearly three times as many
+samples as an RMS frame here, and a wider window has a wider range to land in.
 
 ## Two delays, measured to the sample
 
 The harness also asks what delay best aligns each recovered curve with the function, searching two
-blocks either way at one-sample resolution. Four trips: two encodings, each played through both
-bridges.
+blocks either way at one-sample resolution. The box below plays both encodings through both
+bridges and zooms in on the narrow bump.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_fn_sound_roundtrip/delays.png" wait="12" capture="box" open-outputs="true" w="1180" h="640" padding="18" timeout="240" name="chain-fn-delays" embed=true alt="A two-lane time-axis viewer zoomed to thirty milliseconds around the narrow bump. In the top lane the curve read back from the per-sample render sits on the function; in the lower lane the curve read back from the per-block Param render is visibly shifted to the right of it. Below, a table of the four trips giving each one's RMS error, the delay that best aligns it in samples, the RMS error at that delay, and, for pitch, the delay measured from the centre of the samples YIN compared"}
 :::static
@@ -178,29 +178,20 @@ sample or two of zero. Through `Param { }`, what is left is one block again. The
 
     `patF0Frames` attributes each estimate a little late, by an amount that depends on the pitch:
     nothing at `minHz`, and up to half of `tauMax` well above it. Telling the detector the true
-    register, which its KDoc already asks for, keeps `tauMax` small and the bias with it. When
+    register keeps `tauMax` small and the bias with it. When
     timing matters to the sample, centre a frame at
     `startSample + (spanSamples − tauMax + sampleRate / hz) / 2`, the way `FnSoundDocs` does.
 
 ## Where each piece is documented
 
 * [Talking a Function into Existence](function_conversation.md) and the `Functions` pages for the
-  `Fn` algebra, and `dev_docs/FN_INTERVAL.md` for the certified enclosures: what they contain, what
-  they refuse, and why a bound a function attains cannot be proven exactly by bisection.
+  `Fn` algebra, and
+  [`FN_INTERVAL.md`](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/FN_INTERVAL.md)
+  for the certified enclosures: what they contain, what they refuse, and why a bound a function
+  attains cannot be proven exactly by bisection.
 * [Visualizers](visualizers.md#one-viewer-for-functions-sounds-and-signals) for the time-axis
-  viewer, its `syncGroup` timeline, and the certified band. `dev_docs/SIGNAL_VIEWER.md` is the
-  component's own record.
+  viewer, its `syncGroup` timeline, and the certified band.
 * [DoughDSP: hear the primitives](dough_dsp_sound.md) for the signal graph and `Param`, and
   [Render Field music, then analyse it](audio_render_analysis.md) for the same render-then-analyse
   loop through the Field Audio service, whose pYIN and Basic Pitch this page does not use.
-* [Making a Sound, Every Path There Is](sound_paths.md) for why every audio figure in these docs
-  comes out of an offline render.
-
-Every number on this page comes out of `FnSoundDocs`, the same code the figures call. To run all
-four trips yourself, writing only to a temp directory:
-`uv run --project . --group backdoor python tools/run_field_tests.py --id synth.fn.sound.roundtrip`.
-
-??? aside "What holds these numbers"
-
-    The `synth.fn.sound.roundtrip` FIELD_TEST runs the four trips and checks the delays, and
-    `FnSoundRoundTripTest` holds each printed number to a floor.
+* [Making a Sound, Every Path There Is](sound_paths.md) for rendering sound offline.

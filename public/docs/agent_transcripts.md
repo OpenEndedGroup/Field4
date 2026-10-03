@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 174 transcripts on every build, at three
-depths. 93 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 179 transcripts on every build, at three
+depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-74 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+78 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -1288,6 +1288,21 @@ same shape through Field's own `marchingCubes` and names the difference.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
 
+### paint_canvas
+
+Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
+canvas, a brush, three strokes* loads a filbert twice and then drags it through a three-pass zigzag
+without reloading, so you can see the brush run dry. *Strokes along a flow field* paints 260 short
+strokes that follow a field of directions. It reloads the brush before each one with `wipe = 0.4`,
+so some of the last colour stays in the bristles and neighbouring strokes blend. *Pencil, hatching
+and chalk* sketches a vase in 2B, hatches its shadow side in 4B and rules a chalk line under it, on a
+20 cm sheet so the pencil reads at screen size. All three need the optional paint library
+(`./gradlew buildPaintNative`). Without it they say where they looked and stop.
+
+![a few hundred curved brushstrokes sweeping in swirling currents, warm colours at the top shading to cool blues and violets at the bottom](assets/paint_canvas/flow.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/paint_canvas/metadata.edn)
+
 ### photo_to_solid_chain
 
 A photograph becomes a printable solid, as four pure-compute boxes — the loadable version of
@@ -1720,6 +1735,17 @@ Walkthrough: [Corpus microscope: from recordings to related windows](audio_ai_co
 These boxes are all compiled through Field's real Kotlin/preamble path, but not evaluated by CI:
 their purpose is to cross a process, audio-device or capture-device boundary that the lightweight
 build does not own.
+
+### chain_scene_to_light
+
+A RectSL scene on a light rig, with no lighting hardware: the universes go out as sACN to this
+machine and come back. Launch `1. Scene on the rig` to draw the scene, shrink it to one pixel per
+fixture and send it on a 44 Hz clock; launch `2. Receiver` to draw the rig lit by what arrived; run
+`3. Measure` for a round trip of nine frames and a thin line sampled two ways. Edit the scene in the
+first box and launch it again to see the change reach the second. See
+[A RectSL Scene on a Light Rig](chain_scene_to_light.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/chain_scene_to_light/metadata.edn)
 
 ### kratos_thermal_playground
 
@@ -2475,6 +2501,30 @@ The scene renders at 1280 × 720; surface-guided reconstruction is enabled, with
 
 [Open ↗](offline.html?file=assets/agent_transcripts/direct_lighting/metadata.edn)
 
+### open_dlss_nr
+
+Draw animated ink in an editable Field fragment shader, pass it through OpenDLSS-NR at
+tone 0 / structure 10, then grade the result independently. Three labeled 768 × 768 panels
+keep the source visible. The **record clip** child exports six seconds of consecutive GPU frames
+from the live study. Source and grading work without the optional native dependency.
+See [Neural image rendering](open_dlss_nr.md) for preparation, all scene code and the captured video.
+
+![Field shader source, native NR and graded output](assets/opendlssnr/study.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr/metadata.edn)
+
+### open_dlss_nr_cubes
+
+Rasterize two rotating colored cubes on a checkerboard plane, with thin crossing bars, a moving
+camera and light. Compare SOURCE, OpenDLSS-NR at tone 0 / structure 10, and independently graded
+output in three labeled 768 × 768 panels. Both shaders are editable; **record clip** captures
+six seconds at 30 fps from the live GPU targets. Source and grading work without the optional backend.
+See [Neural image rendering](open_dlss_nr.md) for the complete scene code and video.
+
+![Rasterized cubes, native NR and graded output](assets/opendlssnr/cubes.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/open_dlss_nr_cubes/metadata.edn)
+
 ### neural_reconstruction
 
 Compare the unmodified source, native-resolution DLAA, and two DLSS Super Resolution modes at
@@ -2843,6 +2893,16 @@ The explicit `moduleHere()` → three `RenderToTexture` attachments → DLAA/SR 
 The same pass ordering extended to raw RTXDI and five RR guide attachments. The editable `moduleHere()` shader translates Field's motion and Lambertian surface data. Requires the optional RTXDI and NGX builds and an RR-capable Vulkan device. See the [capstone walkthrough](reconstruction_plumbing.md#extend-the-graph-to-ray-reconstruction).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/rr_plumbing/metadata.edn)
+
+
+### streaming_diffusion
+
+A renderer and an editable spinning-curves scene with ink, charcoal and barbed-wire controls.
+The optional Linux/NVIDIA worker returns a sampled RTT through shared GPU memory; unsupported
+platforms show an availability message. CI compiles the boxes without starting the worker.
+The retained native capture and measured run are on [Streaming diffusion](streaming_diffusion.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
 
 ## Graphics building blocks

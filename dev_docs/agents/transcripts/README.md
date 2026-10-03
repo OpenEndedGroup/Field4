@@ -101,6 +101,10 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   **launched** morph loop, matched beside unmatched; `million_pixels` matches every pixel of a
   1024 x 1024 square onto a million points in three discs and paints each pixel by its target.
   The two still boxes execute and the morph is launched for 90 frames and stopped.
+- `paint_canvas.yaml`: three pure-CPU boxes that paint and draw FLines through
+  `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
+  blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
+  without it every box says so and stops.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
@@ -293,6 +297,9 @@ whose `verified-by` marker matches the bucket you chose. `checkAgentTranscriptIn
 until you do, and the classification you pick here is what it checks the page against — see
 `dev_docs/agent_transcript_index.md` for the contract and for why that page is hand-written rather
 than generated.
+
+- `open_dlss_nr_cubes.yaml`: editable raster cubes/plane, optional native NR, grading and frame recorder.
+- `open_dlss_nr.yaml`: optional Linux/NVIDIA native NR image study. An editable animated ink shader feeds source / NR / graded views at 768 × 768 each. The record clip child exports 180 consecutive GPU frames; the source and grade remain usable without weights. See `public/docs/open_dlss_nr.md`.
 
 ## Starting points and the docs gallery
 
