@@ -954,6 +954,9 @@ internal class ToolRegistry {
 
     private val handlers = ConcurrentHashMap<String, Handler<*>>()
 
+    /** The names of the registered (non-dynamic) tools. */
+    fun handlerNames(): Set<String> = handlers.keys.toSet()
+
     /**
      * The subset of [handlers] that arrived through [AgentToolExtensions] rather than from core.
      *
@@ -1137,9 +1140,9 @@ internal class ToolRegistry {
     private fun dynamicTool(tools: List<BoxTool>, name: String): BoxTool? =
         tools.firstOrNull { it.name == name } ?: tools.firstOrNull { it.wireName == name }
 
-    /** Dynamic tools visible under [ctx], excluding any that collide with a built-in name. */
+    /** Dynamic tools visible under [ctx], excluding any whose name or wire name a built-in has. */
     private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> =
-        ctx.dynamicTools.filter { it.name !in handlers.keys && it.name !in ctx.withheld }
+        ctx.dynamicTools.filter { it.name !in handlers.keys && it.wireName !in handlers.keys && it.name !in ctx.withheld && it.wireName !in ctx.withheld }
 
     // --- Provider-neutral face (used by the MCP backdoor bridge) -----------
     // The OpenAI path above binds tools to ResponseCreateParams / ResponseFunctionToolCall.
@@ -1215,12 +1218,15 @@ internal class ToolRegistry {
             }
             return marks + name + if (meta.mutates) "!" else ""
         }
-        handlers.values.filter { it.offeredUnder(ctx) && it.meta.exposure != ToolExposure.HIDDEN }.forEach { h ->
+        // A deferred tool is only worth naming where it can be loaded: a context with no conversation to
+        // remember a load in (promoted == null) never offers DescribeToolsRequest.
+        fun listable(meta: ToolMeta) = meta.exposure != ToolExposure.HIDDEN && (meta.exposure != ToolExposure.DEFERRED || ctx.promoted != null)
+        handlers.values.filter { it.offeredUnder(ctx) && listable(it.meta) }.forEach { h ->
             val name = h.cls.simpleName
             val notVisible = h.meta.exposure == ToolExposure.DEFERRED || (h.meta.exposure == ToolExposure.PROGRAM && programsOffered(ctx))
             if (notVisible || name in extensionOwned) entries += Entry(h.meta.namespace, label(name, h.meta))
         }
-        dynamicToolsIn(ctx).filter { it.meta.exposure != ToolExposure.HIDDEN }.forEach { entries += Entry(it.meta.namespace, label(it.wireName, it.meta)) }
+        dynamicToolsIn(ctx).filter { listable(it.meta) }.forEach { entries += Entry(it.meta.namespace, label(it.wireName, it.meta)) }
         if (entries.isEmpty()) return ""
         return buildString {
             append("- Tool catalogue beyond the schemas above (* = schema not loaded: call DescribeToolsRequest with the namespace or names first; ")

@@ -113,9 +113,24 @@ class ContextPlacementTest {
 
     @Test
     fun theContextReportRendersAsATable() {
-        val md = tc.report("instructions").copy(inputTokens = 1000, cacheReadTokens = 600).toMarkdown()
+        val md = tc.report("system+prefix").copy(inputTokens = 1000, cacheReadTokens = 600).toMarkdown()
         assertTrue(md.contains("| `guides` | this turn only | volatile |"), md)
-        assertTrue(md.contains("| `core.request` | stored | volatile |"), md)
+        assertTrue(md.contains("| `core.request` | kept | volatile |"), md)
         assertTrue(md.contains("600 from cache"), md)
+    }
+
+    // The review (2026-10-03): /context called ephemeral fragments "not stored" for OpenAI too, where the
+    // bridge puts stable instructions in the conversation once and volatile context in every request.
+    @Test
+    fun theContextReportSaysWhatEachProviderKeeps() {
+        val openAi = tc.report("developer-once+input").toMarkdown()
+        assertTrue(openAi.contains("| `guides` | kept, added every turn | volatile |"), openAi)
+        assertTrue(Regex("\\| `[^`]+` \\| kept, sent once \\| stable \\|").containsMatchIn(openAi), openAi)
+        assertTrue(openAi.contains("are added again with every turn"), openAi)
+        assertFalse(openAi.contains("this turn only"), openAi)
+        val anthropic = tc.report("system+prefix").toMarkdown()
+        assertTrue(Regex("\\| `[^`]+` \\| every request, not kept \\| stable \\|").containsMatchIn(anthropic), anthropic)
+        assertFalse(anthropic.contains("added again with every turn"), anthropic)
+        assertFalse(tc.report("inline").toMarkdown().contains("not kept |"))
     }
 }

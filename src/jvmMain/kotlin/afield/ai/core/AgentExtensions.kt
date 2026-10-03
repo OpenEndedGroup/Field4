@@ -59,9 +59,22 @@ class AgentExtensionBuilder internal constructor(private val box: Box, private v
     fun context(name: String, changesOften: Boolean = true, body: (ContextTurnView) -> String?) =
         AgentExtensionRegistry.register(box, AgentExtensionRegistry.ContextHook(box, id, name, changesOften, body))
 
-    /** Look at a tool call before it runs, and let it [ToolCallView.proceed] or [ToolCallView.refuse] it. */
-    fun beforeTool(match: (String) -> Boolean = { true }, body: ToolCallView.() -> ToolDecision) =
-        AgentExtensionRegistry.register(box, AgentExtensionRegistry.BeforeToolHook(box, id, "before#${befores++}", match, body))
+    /**
+     * Look at a tool call before it runs, and let it [ToolCallView.proceed] or [ToolCallView.refuse] it.
+     *
+     * By default the hook is an observer that can veto: if it throws or takes longer than [HOOK_DEADLINE_MS],
+     * the call goes ahead and the failure is logged, so a broken hook never stops the agent. With
+     * [mandatory] the hook is a guard: if it throws or overruns [timeoutMs], the call is refused, not run.
+     * Use a guard only as a second line: a check the work depends on (a stale revision, an unqualified
+     * cut) belongs inside the tool that does the work, where no extension can be absent or slow.
+     */
+    fun beforeTool(
+        match: (String) -> Boolean = { true },
+        mandatory: Boolean = false,
+        timeoutMs: Long = HOOK_DEADLINE_MS,
+        body: ToolCallView.() -> ToolDecision,
+    ) = AgentExtensionRegistry.register(box,
+        AgentExtensionRegistry.BeforeToolHook(box, id, "before#${befores++}", match, body, mandatory, timeoutMs))
 
     /** Look at a tool call after it has run. Observe only. */
     fun afterTool(match: (String) -> Boolean = { true }, body: (ToolCallView, ToolResultView) -> Unit) =
@@ -78,11 +91,24 @@ class AgentExtensionBuilder internal constructor(private val box: Box, private v
      * tree, and calls [restore] when the conversation moves: rewinding to a message restores the state from
      * before that message, switching branch the state at that branch's end. [restore] gets `null` where
      * the conversation has no snapshot (before the extension existed): start fresh, or keep what you have.
-     * The file is deleted when [restore] returns, so read it there. The first time a document's box registers it in a Field process — the document has just opened — the
-     * snapshot at the head of the document's latest conversation is restored at once, so the work carries on.
+     * The file is deleted when [restore] returns, so read it there.
+     *
+     * Before restoring, Field compares the state as it is now with the last state the conversation itself
+     * left (the end of its latest turn, or its last restore). If they differ, something else changed it — a
+     * person dragging, another tool — and [onConflict] decides: [BranchConflict.KEEP] (the default) leaves
+     * it as it is and says so in the chat; [BranchConflict.RESTORE] restores anyway. Either way the state that
+     * was there is saved first, so it is never lost. [restore] is the place to invalidate whatever was derived
+     * from the old state. With [resumeOnOpen], the first time the box registers in a Field process (the
+     * document has just opened) the state where the document's latest conversation left it is restored; leave
+     * it off for state the document saves itself.
      */
-    fun branchState(name: String, save: (java.io.File) -> Unit, restore: (java.io.File?) -> Unit) =
-        AgentExtensionRegistry.register(box, AgentExtensionRegistry.BranchStateHook(box, id, name, save, restore))
+    fun branchState(
+        name: String,
+        save: (java.io.File) -> Unit,
+        restore: (java.io.File?) -> Unit,
+        onConflict: BranchConflict = BranchConflict.KEEP,
+        resumeOnOpen: Boolean = false,
+    ) = AgentExtensionRegistry.register(box, AgentExtensionRegistry.BranchStateHook(box, id, name, save, restore, onConflict, resumeOnOpen))
 }
 
 /** What a context hook is told about the turn about to start. */
@@ -125,8 +151,10 @@ object AgentExtensionRegistry {
     class ContextHook(box: Box, extension: String, name: String, val changesOften: Boolean, val body: (ContextTurnView) -> String?) :
         Hook(box, extension, name) { override val kind = "context" }
 
-    class BeforeToolHook(box: Box, extension: String, name: String, val match: (String) -> Boolean, val body: ToolCallView.() -> ToolDecision) :
-        Hook(box, extension, name) { override val kind = "before" }
+    class BeforeToolHook(
+        box: Box, extension: String, name: String, val match: (String) -> Boolean, val body: ToolCallView.() -> ToolDecision,
+        val mandatory: Boolean = false, val timeoutMs: Long = HOOK_DEADLINE_MS,
+    ) : Hook(box, extension, name) { override val kind = "before" }
 
     class AfterToolHook(box: Box, extension: String, name: String, val match: (String) -> Boolean, val body: (ToolCallView, ToolResultView) -> Unit) :
         Hook(box, extension, name) { override val kind = "after" }
@@ -134,8 +162,10 @@ object AgentExtensionRegistry {
     class CommandHook(box: Box, extension: String, name: String, val help: String, val body: (CommandScope) -> String) :
         Hook(box, extension, name) { override val kind = "command" }
 
-    class BranchStateHook(box: Box, extension: String, name: String, val save: (java.io.File) -> Unit, val restore: (java.io.File?) -> Unit) :
-        Hook(box, extension, name) { override val kind = "branch" }
+    class BranchStateHook(
+        box: Box, extension: String, name: String, val save: (java.io.File) -> Unit, val restore: (java.io.File?) -> Unit,
+        val onConflict: BranchConflict = BranchConflict.KEEP, val resumeOnOpen: Boolean = false,
+    ) : Hook(box, extension, name) { override val kind = "branch" }
 
     private val byDocument = ConcurrentHashMap<String, ConcurrentHashMap<String, Hook>>()
 
@@ -146,7 +176,7 @@ object AgentExtensionRegistry {
         val documentKey = documentKeyFor(box)
         val hooks = byDocument.computeIfAbsent(documentKey) { ConcurrentHashMap() }
         val first = hooks.put(hook.key, hook) == null
-        if (first && hook is BranchStateHook) resumeBranchState(hook)
+        if (first && hook is BranchStateHook && hook.resumeOnOpen) resumeBranchState(hook)
         afield.LifecycleLedger.claim(
             KIND,
             "$documentKey:${hook.key}",
@@ -162,17 +192,22 @@ object AgentExtensionRegistry {
     fun hooksFor(documentKey: String?): List<Hook> =
         documentKey?.let { byDocument[it]?.values?.sortedBy { h -> h.key } }.orEmpty()
 
-    /** Run [block] with the hook deadline; a throw or an overrun is reported and yields null. */
-    private fun <T> guarded(hook: Hook, what: String, block: () -> T): T? {
+    /** Run [block] with a deadline; a throw or an overrun is reported (as [failure], when given) and yields null. */
+    private fun <T> guarded(
+        hook: Hook, what: String, deadlineMs: Long = HOOK_DEADLINE_MS, failure: ((String) -> Unit)? = null, block: () -> T,
+    ): T? {
         val future = runner.submit<T> { block() }
+        val outcome = if (failure == null) "ignored" else "the call was refused"
         return try {
-            future.get(HOOK_DEADLINE_MS, TimeUnit.MILLISECONDS)
+            future.get(deadlineMs, TimeUnit.MILLISECONDS)
         } catch (e: java.util.concurrent.TimeoutException) {
             future.cancel(true)
-            lprintln("warning,ai4", "agent extension ${hook.label} $what overran ${HOOK_DEADLINE_MS} ms; ignored")
+            lprintln("warning,ai4", "agent extension ${hook.label} $what overran $deadlineMs ms; $outcome")
+            failure?.invoke("did not answer within $deadlineMs ms")
             null
         } catch (e: Exception) {
-            lprintln("warning,ai4", "agent extension ${hook.label} $what failed: ${(e.cause ?: e).message}; ignored")
+            lprintln("warning,ai4", "agent extension ${hook.label} $what failed: ${(e.cause ?: e).message}; $outcome")
+            failure?.invoke("failed: ${(e.cause ?: e).message}")
             null
         }
     }
@@ -180,8 +215,19 @@ object AgentExtensionRegistry {
     /** The first refusal any before-hook gives this call, as a tool result the model will read; null to proceed. */
     internal fun before(documentKey: String?, call: ToolCallView): Map<String, Any?>? {
         for (hook in hooksFor(documentKey).filterIsInstance<BeforeToolHook>()) {
-            if (runCatching { hook.match(call.name) }.getOrDefault(false) != true) continue
-            val decision = guarded(hook, "beforeTool") { hook.body(call) } ?: continue
+            val matched = runCatching { hook.match(call.name) }
+            if (matched.isFailure && hook.mandatory) {
+                return mapOf("error" to true, "refusedBy" to hook.label, "tool" to call.name,
+                    "message" to "A required check (${hook.label}) could not tell whether this call applies, so it was not run.")
+            }
+            if (matched.getOrDefault(false) != true) continue
+            var why: String? = null
+            val decision = guarded(hook, "beforeTool", hook.timeoutMs, if (hook.mandatory) { reason -> why = reason } else null) { hook.body(call) }
+            if (decision == null && hook.mandatory) {
+                return mapOf("error" to true, "refusedBy" to hook.label, "tool" to call.name,
+                    "message" to "A required check (${hook.label}) ${why ?: "gave no answer"}, so this call was not run.")
+            }
+            if (decision == null) continue
             if (decision is ToolDecision.Refuse) {
                 return mapOf("error" to true, "refusedBy" to hook.label, "tool" to call.name, "message" to decision.message)
             }
@@ -230,39 +276,64 @@ object AgentExtensionRegistry {
      * wrote, the bytes kept in [AiStateBlobs]. Runs the hooks on the Runloop, where box code runs; a hook
      * that fails is reported and left out.
      */
-    fun snapshotBranchStates(chatBox: Box): Map<String, String> {
-        val hooks = hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
-        if (hooks.isEmpty()) return emptyMap()
-        return hooks.mapNotNull { hook ->
-            val tmp = java.io.File.createTempFile("ai4-branch-", ".state")
-            try {
-                // Only the save is box code; hashing and compressing a large state stay off the Runloop.
-                runCatching {
-                    onRunloop(hook.box) { hook.save(tmp) }
-                    hook.key to AiStateBlobs.put(tmp, chatBox)
-                }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) save failed: ${it.message}") }
-                    .getOrNull()
-            } finally { tmp.delete() }
-        }.toMap()
-    }
+    fun snapshotBranchStates(chatBox: Box): Map<String, String> =
+        hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
+            .mapNotNull { hook -> snapshotOne(hook, chatBox)?.let { hook.key to it } }.toMap()
 
-    /** Restore every branch state in [chatBox]'s document from [states] (missing keys get `null`). Returns the restored hooks' labels. */
-    fun restoreBranchStates(chatBox: Box, states: Map<String, String>): List<String> {
+    /** What [restoreBranchStates] did: a line per state it did not simply restore, and the state each hook now has. */
+    data class BranchRestore(val notes: List<String>, val effective: Map<String, String>, val restored: List<String>)
+
+    /**
+     * Restore every branch state in [chatBox]'s document to [states] (missing keys get `null`), checking each
+     * against [expected], the state the conversation last left it in ([AiSessionTree.lastKnownStates]). The
+     * state as it is now is saved first, so a conflict never loses it.
+     */
+    fun restoreBranchStates(chatBox: Box, states: Map<String, String>, expected: Map<String, String> = emptyMap()): BranchRestore {
         val hooks = hooksFor(documentKeyFor(chatBox)).filterIsInstance<BranchStateHook>()
-        if (hooks.isEmpty()) return emptyList()
-        return hooks.mapNotNull { hook ->
-            val file = states[hook.key]?.let { AiStateBlobs.get(it, chatBox) }
+        val notes = mutableListOf<String>()
+        val effective = LinkedHashMap<String, String>()
+        val restored = mutableListOf<String>()
+        for (hook in hooks) {
+            val label = "${hook.label}/${hook.name}"
+            val current = snapshotOne(hook, chatBox)
+            val target = states[hook.key]
+            if (current != null && current == target) { effective[hook.key] = current; continue }
+            val conflict = current != null && current != expected[hook.key]
+            if (conflict && hook.onConflict == BranchConflict.KEEP) {
+                notes += "$label had changed since the conversation last saw it, so it was left as it is (that state is saved as $current)."
+                effective[hook.key] = current!!
+                continue
+            }
+            val file = target?.let { AiStateBlobs.get(it, chatBox) }
             try {
-                runCatching {
-                    onRunloop(hook.box) { hook.restore(file) }
-                    "${hook.label}/${hook.name}"
-                }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) restore failed: ${it.message}") }
-                    .getOrNull()
+                runCatching { onRunloop(hook.box) { hook.restore(file) } }
+                    .onSuccess {
+                        restored += label
+                        target?.let { effective[hook.key] = it }
+                        if (conflict) notes += "$label had changed since the conversation last saw it; it was restored anyway, and the replaced state is saved as $current."
+                    }
+                    .onFailure {
+                        lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) restore failed: ${it.message}")
+                        notes += "$label could not be restored: ${it.message}"
+                        current?.let { c -> effective[hook.key] = c }
+                    }
             } finally { file?.delete() }
         }
+        return BranchRestore(notes, effective, restored)
     }
 
-    // On the Runloop with the hook's box as context, as aiTool bodies run; inline when no Runloop is running (tests).
+    /** One hook's state now, saved into [AiStateBlobs]; null when it could not be saved. */
+    private fun snapshotOne(hook: BranchStateHook, chatBox: Box): String? {
+        val tmp = java.io.File.createTempFile("ai4-branch-", ".state")
+        return try {
+            runCatching {
+                onRunloop(hook.box) { hook.save(tmp) }
+                AiStateBlobs.put(tmp, chatBox)
+            }.onFailure { lprintln("warning,ai4", "agent extension ${hook.label} branchState(${hook.name}) save failed: ${it.message}") }
+                .getOrNull()
+        } finally { tmp.delete() }
+    }
+
     /**
      * A branch state registered for the first time in this process (the document has just opened, or the
      * box has just been added) takes the snapshot at the head of the document's latest conversation, so a
@@ -333,4 +404,12 @@ object AiStateBlobs {
         java.util.zip.GZIPInputStream(packed.inputStream().buffered(1 shl 16), 1 shl 16).use { input -> out.outputStream().use { input.copyTo(it, 1 shl 16) } }
         return out
     }
+}
+
+/** What [AgentExtensionBuilder.branchState] does when the state changed outside the conversation since it last saw it. */
+enum class BranchConflict {
+    /** Leave it as it is, and say so in the chat. */
+    KEEP,
+    /** Restore the conversation's state anyway (the replaced one is saved first). */
+    RESTORE,
 }

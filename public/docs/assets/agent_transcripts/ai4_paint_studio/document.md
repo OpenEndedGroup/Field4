@@ -22,7 +22,7 @@ the canvas goes back to how it was before it; /branches and /branch switch betwe
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 0 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 301 "characters" 18693 "sha256" "646e9388141e4581eb694ab6490d65ec27574e3457e1ae276a046e64ca84b98a"}]}
+{"id" "ai4_paint_studio" "index" 0 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 304 "characters" 18976 "sha256" "bc540f4a310a9a776f763e31104fa7d40bc1a5588cf97c1e9ad7cf97b7ba7fca"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -321,9 +321,12 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         }
     }
 
+    // The canvas belongs to the conversation: a rewind restores it even over changes made outside the chat
+    // (the replaced canvas is saved first), and reopening the document puts it back where the chat left it.
     branchState("canvas",
         save = { canvas().saveState(it.path) },
-        restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() })
+        restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
+        onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
 }
 
 if (PaintCanvas.isAvailable) { show(); showGallery() }

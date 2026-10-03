@@ -812,16 +812,21 @@ fun installAi4() {
             reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, "Box no longer exists.", false)))
             return@mutableSetOf Handled.yes
         }
-        val nodes = AiSessionTree.load(target).nodes().filterKeys { it in request.turns.toSet() }.values
+        val nodes = AiSessionTree.nodesInOrder(target, request.turns)
         val origins = nodes.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
         val undone = OperationTranscript.undoOrigins(info.filename, origins)
-        val created = nodes.flatMap { AiSessionTree.createdBoxesOf(it) }.distinct()
-            .mapNotNull { uid -> info.boxes[uid]?.takeIf { it.getPropertyRaw("_tombstone") != true } }
-        inMain { created.forEach { box -> actionTable["-delete-box"]?.invoke(listOf(box)) } }
+        // Only boxes exactly as those turns left them: one a person has since edited, moved or wired stays.
+        val plan = AiWorldUndo.plan(nodes, info.boxes)
+        // Through the graph host, as the agent's own DeleteBox goes: the delete action needs this document as
+        // its session, which a bare Runloop dispatch did not give it, so the boxes were reported deleted and kept.
+        val host = afield.ai.agent.LiveFieldGraphHost
+        host.onOwner(info) { plan.delete.forEach { box -> host.delete(info, box) } }
         val text = buildString {
             append(undone.message)
-            if (created.isNotEmpty()) append(" Deleted ${created.size} box(es) those turns created: ${created.joinToString { it.name.ifBlank { it.id } }}.")
-            append(" Box creation, deletion and provisional edits accepted since are not undone.")
+            if (plan.delete.isNotEmpty()) append(" Deleted ${plan.delete.size} box(es) those turns created: ${plan.delete.joinToString { it.name.ifBlank { it.id } }}.")
+            if (plan.keep.isNotEmpty()) append(" Kept ${plan.keep.size} they created: " +
+                plan.keep.joinToString { (box, why) -> "${box.name.ifBlank { box.id }} ($why)" } + ".")
+            append(" Box deletions and provisional edits accepted since are not undone.")
         }
         reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, text, undone.success)))
         Handled.yes
@@ -866,6 +871,8 @@ fun installAi4() {
                 if (request.listBranches) {
                     AiBoxChatReply(request.uid, AiBoxConversation.read(target), message = AiSessionTree.branches(target))
                 } else {
+                    // The states the conversation last left, for the restore below to tell its own changes from anyone else's.
+                    val expectedStates = AiSessionTree.lastKnownStates(target)
                     val moved = if (request.rewindTo >= 0) AiSessionTree.rewind(target, request.rewindTo, request.expectedText)
                         else AiSessionTree.switchTo(target, request.switchTo)
                     // Branch state: provider threads are rebuilt from the new head's transcript, and agent memory
@@ -875,11 +882,14 @@ fun installAi4() {
                     agentMemoryByKey.keys.removeIf { it.startsWith(key) }
                     moved.restoredMemory?.let { snap -> agentMemoryByKey[key + "code"] = AgentMemoryState().also { it.restore(snap) } }
                     lastContextByBox.remove("${info.filename}\u0000${target.id}")
-                    // An extension's own world (a canvas, a simulation) follows the conversation too.
-                    AgentExtensionRegistry.restoreBranchStates(target, moved.branchStates)
+                    // An extension's own world (a canvas, a simulation) follows the conversation too, unless
+                    // something else changed it since; then its onConflict decides, and the reply says so.
+                    val restore = AgentExtensionRegistry.restoreBranchStates(target, moved.branchStates, expectedStates)
+                    AiSessionTree.noteStates(target, restore.effective)
                     send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", moved.markdown)))
                     val origins = moved.abandoned.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
                     AiBoxChatReply(request.uid, moved.markdown, userText = moved.userText,
+                        message = restore.notes.joinToString("\n\n"),
                         abandonedTurns = moved.abandoned.map { (it["id"] as kotlinx.serialization.json.JsonPrimitive).content },
                         undoableEdits = OperationTranscript.countOrigins(info.filename, origins),
                         undoableBoxes = moved.abandoned.sumOf { AiSessionTree.createdBoxesOf(it).size })
@@ -1754,6 +1764,9 @@ fun installAi4() {
         // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
         val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
         val opFrom = OperationTranscript.turnBoundary(docPath)
+        // How the boxes this conversation created look as the turn starts, so a later world undo can tell
+        // whether a person changed one of them between turns (AiWorldUndo).
+        val createdBefore = runCatching { AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box)) }.getOrDefault(emptyMap())
         // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
         // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
         val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
@@ -2263,6 +2276,10 @@ fun installAi4() {
                 val meta = (turnMeta.get() ?: AiSessionTree.TurnMeta(kind = exec.kind, property = exec.property, memory = agentMemory.snapshot()))
                     .copy(opFrom = opFrom, opTo = opTo, origin = turnOrigin,
                         createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct(),
+                        createdBefore = createdBefore,
+                        createdAfter = runCatching {
+                            AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box) + replyGraph.created + chatGraph.created)
+                        }.getOrDefault(emptyMap()),
                         branchBefore = branchBefore.get(),
                         branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
                 AiSessionTree.recordTurn(box, savedHistory, history(), meta)

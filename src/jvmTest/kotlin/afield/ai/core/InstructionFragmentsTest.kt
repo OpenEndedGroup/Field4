@@ -104,7 +104,8 @@ class InstructionFragmentsTest {
         val guides = fragments.single { it.source == "guides" }
         assertEquals(Stability.VOLATILE, guides.stability)
         assertTrue(guides.text.contains("HANDOFF.md"))
-        assertTrue(fragments.filter { it.source.startsWith("tools.") }.all { it.stability == Stability.STABLE })
+        // The catalogue is volatile by design (what is loaded changes within a conversation); the adverts are not.
+        assertTrue(fragments.filter { it.source.startsWith("tools.") && it.source != "tools.catalogue" }.all { it.stability == Stability.STABLE })
     }
 
     @Test

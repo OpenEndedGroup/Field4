@@ -5,6 +5,8 @@ import afield.ai.core.AgentExtensionRegistry
 import afield.ai.core.AgentToolExtensions
 import afield.ai.core.DocumentToolRegistry
 import afield.ai.core.ToolEffect
+import afield.ai.core.wireToolName
+import afield.ai.core.aiTool
 import afield.ai.core.InstructionMode
 import afield.ai.core.KOTLIN_SCRIPT
 import afield.ai.core.ToolExecutionContext
@@ -108,6 +110,23 @@ class AgentExtensionsTest {
         assertEquals(setOf(ToolEffect.CAPTURE_IMAGE), registry.metaOf(withTools, "paint_look")?.effects)
     }
 
+    // The review (2026-10-03): `house.check` and `house_check` reached the model as one name, and two long
+    // names sharing their first 64 characters as another.
+    @Test
+    fun twoToolsCannotReachTheModelUnderOneName() = inDocument { session, box, _ ->
+        assertNotEquals(wireToolName("a".repeat(64) + "one"), wireToolName("a".repeat(64) + "two"))
+        assertTrue(wireToolName("a".repeat(80)).length <= 64)
+        box.aiTool("house.check") { action { "a" } }
+        val other = Box("other").also { it.name = "Other"; it.inside = session; session.boxes[it.id] = it }
+        val refused = assertFailsWith<IllegalArgumentException> { other.aiTool("house_check") { action { "b" } } }
+        assertTrue(refused.message!!.contains("house.check") && refused.message!!.contains("Studio"), refused.message)
+        // The same box renaming its own tool replaces it.
+        box.aiTool("house_check") { action { "c" } }
+        assertEquals(listOf("house_check"), DocumentToolRegistry.toolsFor(session.filename).map { it.name })
+        assertFailsWith<IllegalArgumentException> { box.aiTool("RunBoxRequest") { action { "d" } } }
+        Unit
+    }
+
     @Test
     fun branchStateIsSnapshottedByContentAndRestored() = inDocument { _, box, _ ->
         var canvas = "blank"
@@ -123,11 +142,96 @@ class AgentExtensionsTest {
         canvas = "blank"
         assertEquals(first, AgentExtensionRegistry.snapshotBranchStates(box), "the same state is the same snapshot")
 
-        assertEquals(listOf("Studio/studio/canvas"), AgentExtensionRegistry.restoreBranchStates(box, second))
+        // The conversation last left the canvas blank (first), and it still is: no conflict.
+        assertEquals(listOf("Studio/studio/canvas"), AgentExtensionRegistry.restoreBranchStates(box, second, expected = first).restored)
         assertEquals("a sky", canvas)
-        AgentExtensionRegistry.restoreBranchStates(box, emptyMap())
+        AgentExtensionRegistry.restoreBranchStates(box, emptyMap(), expected = second)
         assertEquals("fresh", canvas, "a conversation with no snapshot restores null")
         assertEquals(listOf("a sky", null), restored)
+    }
+
+    // The review (2026-10-03): a restore replaced whatever was there, so a design a person had changed with the
+    // mouse since the conversation last saw it would have been rolled back with the chat.
+    @Test
+    fun aStateChangedOutsideTheConversationIsNotRestoredOverByDefault() = inDocument { _, box, _ ->
+        var design = "plan v1"
+        box.agentExtension("house") { branchState("plan", save = { it.writeText(design) }, restore = { f -> design = f?.readText() ?: "empty" }) }
+        val v1 = AgentExtensionRegistry.snapshotBranchStates(box)
+        design = "plan v2"
+        val v2 = AgentExtensionRegistry.snapshotBranchStates(box)
+        design = "plan v2, a window dragged by hand"
+        val kept = AgentExtensionRegistry.restoreBranchStates(box, v1, expected = v2)
+        assertEquals("plan v2, a window dragged by hand", design, "KEEP leaves the person's change")
+        assertTrue(kept.restored.isEmpty())
+        val note = kept.notes.single()
+        assertTrue(note.contains("left as it is"), note)
+        val saved = kept.effective.values.single()
+        assertTrue(note.contains(saved))
+        assertEquals("plan v2, a window dragged by hand", afield.ai.core.AiStateBlobs.get(saved, box)!!.readText(), "and it is saved")
+
+        var canvas = "painted by hand"
+        box.agentExtension("studio") {
+            branchState("canvas", save = { it.writeText(canvas) }, restore = { f -> canvas = f?.readText() ?: "fresh" },
+                onConflict = afield.ai.core.BranchConflict.RESTORE)
+        }
+        val key = AgentExtensionRegistry.snapshotBranchStates(box).keys.single { it.endsWith(":studio:canvas") }
+        canvas = "the agent's sky"
+        val agents = AgentExtensionRegistry.snapshotBranchStates(box)[key]!!
+        canvas = "painted by hand"
+        val restoredAnyway = AgentExtensionRegistry.restoreBranchStates(box, mapOf(key to agents), expected = emptyMap())
+        assertEquals("the agent's sky", canvas, "RESTORE restores anyway")
+        assertTrue(restoredAnyway.notes.any { it.contains("restored anyway") }, restoredAnyway.notes.toString())
+    }
+
+    @Test
+    fun aMandatoryGuardThatFailsRefusesTheCall() = inDocument { _, box, ctx ->
+        box.agentExtension("guard") {
+            beforeTool({ it == "ExtProbeRequest" }, mandatory = true) { throw IllegalStateException("revision service down") }
+        }
+        val refused = registry.executeByName(ctx, "ExtProbeRequest", """{"text":"cut"}""") as Map<*, *>
+        assertEquals(true, refused["error"])
+        assertTrue((refused["message"] as String).contains("revision service down"), refused.toString())
+        box.agentExtension("guard") {
+            beforeTool({ it == "ExtProbeRequest" }, mandatory = true, timeoutMs = 50) { Thread.sleep(1_000); proceed() }
+        }
+        val slow = registry.executeByName(ctx, "ExtProbeRequest", """{"text":"cut"}""") as Map<*, *>
+        assertTrue((slow["message"] as String).contains("did not answer within 50 ms"), slow.toString())
+        box.agentExtension("guard") { beforeTool({ it == "ExtProbeRequest" }, mandatory = true) { proceed() } }
+        assertEquals(mapOf("echo" to "cut"), registry.executeByName(ctx, "ExtProbeRequest", """{"text":"cut"}"""))
+    }
+
+    // The review (2026-10-03): world undo deleted every box the abandoned turns had created, including one the
+    // person had typed into since, though the panel promises anything changed since is left alone.
+    @Test
+    fun worldUndoDeletesOnlyBoxesAsTheTurnsLeftThem() = inDocument { session, box, _ ->
+        fun newBox(name: String) = Box(name).also { it.name = name; it.inside = session; session.boxes[it.id] = it; it.setPropertyRaw("code", "// $name") }
+        val untouched = newBox("Untouched")
+        val edited = newBox("Edited")
+        val wired = newBox("Wired")
+        val betweenTurns = newBox("BetweenTurns")
+        val mine = newBox("Mine")
+        fun node(created: List<Box>, before: Map<String, String>, after: List<Box>) = kotlinx.serialization.json.buildJsonObject {
+            put("t", kotlinx.serialization.json.JsonPrimitive("turn"))
+            put("op", kotlinx.serialization.json.buildJsonObject {
+                put("createdBoxes", kotlinx.serialization.json.JsonArray(created.map { kotlinx.serialization.json.JsonPrimitive(it.id) }))
+                put("fpBefore", kotlinx.serialization.json.JsonObject(before.mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) }))
+                put("fpAfter", kotlinx.serialization.json.JsonObject(afield.ai.core.AiWorldUndo.fingerprints(session.boxes, after.map { it.id })
+                    .mapValues { kotlinx.serialization.json.JsonPrimitive(it.value) }))
+            })
+        }
+        val first = node(listOf(untouched, edited, wired, betweenTurns), emptyMap(), listOf(untouched, edited, wired, betweenTurns))
+        betweenTurns.setPropertyRaw("code", "// the person's edit, between the turns")
+        val second = node(emptyList(), afield.ai.core.AiWorldUndo.fingerprints(session.boxes, listOf(untouched, edited, wired, betweenTurns).map { it.id }),
+            listOf(untouched, edited, wired, betweenTurns))
+        // After the turns: a person types into one box and wires another to a box of their own.
+        edited.setPropertyRaw("code", "// the person's edit, afterwards")
+        wired.children.add(mine); mine.parents.add(wired)
+        // Reopening a document fills in defaults (`autorun false`); an untouched box must still match.
+        untouched.setPropertyRaw("autorun", false)
+        val plan = afield.ai.core.AiWorldUndo.plan(listOf(first, second), session.boxes)
+        assertEquals(listOf("Untouched"), plan.delete.map { it.name })
+        assertEquals(mapOf("Edited" to "changed since", "Wired" to "changed since", "BetweenTurns" to "changed between the turns"),
+            plan.keep.associate { (b, why) -> b.name to why })
     }
 
     @Test

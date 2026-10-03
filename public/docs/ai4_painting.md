@@ -117,13 +117,18 @@ moves:
 ```diffstatic {data-lang=kotlin}
 branchState("canvas",
     save = { canvas().saveState(it.path) },
-    restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() })
+    restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
+    onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
 ```
 
 `restore` gets `null` when the conversation has no saved canvas, which here means starting on a
-fresh one. When the document is opened again, the box's first run puts back the canvas where the
-latest conversation left it. The same three lines work for any state a box owns, such as a
-simulation or a sequencer pattern. [Agent extensions](aiFeatures.md#more-than-a-tool-agentextension)
+fresh one. Before restoring, the chat checks whether the canvas changed since the conversation last
+saw it, for instance because a tool was run on it from outside the chat. By default a changed state
+is left as it is, and the chat says so. The Studio's canvas belongs to the conversation, so it asks
+for `BranchConflict.RESTORE`: the chat restores anyway, after saving the canvas it replaces.
+`resumeOnOpen = true` puts the canvas back where the latest conversation left it when the document
+is opened again. Leave both at their defaults for state a person also edits by hand, or that the
+document saves itself, such as a design. [Agent extensions](aiFeatures.md#more-than-a-tool-agentextension)
 has the rest of what `agentExtension` can add.
 
 ??? aside "How these figures were made"

@@ -324,6 +324,16 @@ class Narrowings(unittest.TestCase):
     rather than in a ledger entry six firings on.
     """
 
+    def test_an_underscore_inside_a_heading_name_is_not_emphasis(self):
+        ca = load("check_anchors")
+        # 2026-10-03: `### photo_to_solid_chain` slugged to `photosolidchain`-ish here (the `_to_` read as
+        # italics), so three links that resolve on the built site were reported dead and the board exited 1.
+        self.assertEqual(ca.slugify(ca.strip_inline("ai4_paint_studio")), "ai4_paint_studio")
+        self.assertEqual(ca.slugify(ca.strip_inline("photo_to_solid_chain")), "photo_to_solid_chain")
+        # The true sense stays: underscores at word boundaries, and stars anywhere, are still emphasis.
+        self.assertEqual(ca.strip_inline("an _emphasised_ word"), "an emphasised word")
+        self.assertEqual(ca.strip_inline("a **bold** one"), "a bold one")
+
     def test_argument_is_only_a_label_when_it_is_an_argument_for_something(self):
         sv = load("score_voice")
         # 2026-09-21: ten of the twelve `the argument` in public/docs are a call's

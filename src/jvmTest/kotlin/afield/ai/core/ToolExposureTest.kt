@@ -85,7 +85,9 @@ class ToolExposureTest {
         assertTrue("ExpoDeferredRequest" in names(ctx, ToolFace.MODEL), "loaded for the rest of the conversation")
         assertFalse("ExpoDeferredRequest" in names(ToolExecutionContext(promoted = mutableSetOf()), ToolFace.MODEL), "and only that one")
 
-        // Everything deferred is loaded now, so the loader steps aside; a fresh conversation loads by name.
+        // Load the one core deferred tool left (ReadToolEvidenceRequest); then everything deferred is loaded, so
+        // the loader steps aside. A fresh conversation loads by name.
+        assertTrue((registry.executeByName(ctx, "DescribeToolsRequest", """{"namespace":"program"}""") as DescribeToolsResult).success)
         assertFalse(registry.isAvailable(ctx, "DescribeToolsRequest"))
         val fresh = ToolExecutionContext(promoted = mutableSetOf())
         val byName = registry.executeByName(fresh, "DescribeToolsRequest", """{"names":["ExpoDeferred"]}""") as DescribeToolsResult
@@ -180,6 +182,8 @@ class ToolMetaPinTest {
                 "DocumentBoxNavigateRequest", "DocumentSourceExportRequest", "DocumentSourcePatchRequest", "ListDefinitionsRequest",
                 "MacroListRequest", "MacroReadRequest", "MacroRunRequest", "MacroWriteRequest",
                 "SemanticRetrievalRebuildRequest", "SemanticRetrievalStatusRequest",
+                // New on 2026-10-03, not chosen from usage: needed only after a program kept a result as evidence.
+                "ReadToolEvidenceRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )

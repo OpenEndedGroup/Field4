@@ -293,9 +293,12 @@ if (!PaintCanvas.isAvailable) markdown(PaintLibrary.describe()) else thisBox.age
         }
     }
 
+    // The canvas belongs to the conversation: a rewind restores it even over changes made outside the chat
+    // (the replaced canvas is saved first), and reopening the document puts it back where the chat left it.
     branchState("canvas",
         save = { canvas().saveState(it.path) },
-        restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() })
+        restore = { f -> replace(f?.let { PaintCanvas.load(it.path) } ?: fresh()); show() },
+        onConflict = BranchConflict.RESTORE, resumeOnOpen = true)
 }
 
 if (PaintCanvas.isAvailable) { show(); showGallery() }

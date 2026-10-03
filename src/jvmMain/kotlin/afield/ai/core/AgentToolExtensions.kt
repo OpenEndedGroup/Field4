@@ -97,6 +97,9 @@ object AgentToolExtensions {
 
     private val registrations = CopyOnWriteArrayList<Registration<*>>()
 
+    /** The tool names currently registered here (request class simple names). */
+    fun registeredNames(): Set<String> = registrations.map { it.toolClass.simpleName }.toSet()
+
     /**
      * Every [ToolRegistry] [applyTo] has been called on, held **weakly**.
      *

@@ -1768,6 +1768,8 @@ function ensureAiChat(container, uid, property) {
                                 }
                                 if (chatUid() !== targetUid) return "remove";
                                 aiChatUpdate(container, targetUid, response?.history || "");
+                                // A branch state that changed outside the conversation, and what was done about it.
+                                if (response?.message) appendLocalChatTurn("ai", response.message);
                                 if (edit && response?.userText) {
                                         textarea.value = response.userText;
                                         textarea.focus();

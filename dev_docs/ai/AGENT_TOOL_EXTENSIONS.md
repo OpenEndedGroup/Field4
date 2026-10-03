@@ -84,8 +84,11 @@ It does not go through `ToolRegistry`'s handler map at all. Tools live in the pe
 the MCP backdoor both fill it), and `ToolRegistry` honours that list in `addAllTo`/`execute`/
 `describe`/`executeByName`, with built-in names winning a collision. A model sees a tool by its
 `BoxTool.wireName`, the name with every character outside `[A-Za-z0-9_-]` made `_` (`echo.box` is
-`echo_box`), and the registry answers to either. Until 2026-10-03 the dotted name went out as it was,
-and OpenAI refused every request in a document that registered one. A result implementing
+`echo_box`; a name over 64 characters keeps 55 and gains a hash), and the registry answers to either.
+Until 2026-10-03 the dotted name went out as it was, and OpenAI refused every request in a document
+that registered one. `DocumentToolRegistry.register` refuses a tool whose wire name another box's tool
+already has, or whose name or wire name a built-in has (`BuiltInToolNames`); a box renaming its own
+tool replaces it. Tool programs see both spellings. A result implementing
 `CarriesToolImages` (`BoxToolScope.image(...)` returns one) reaches both bridges' image paths.
 
 Each registration is an `ai-tool` ownership in the `LifecycleLedger`, owned `ACCUMULATING` by the
@@ -359,13 +362,18 @@ measurements and the reasoning are in [AI4_PI_LESSONS.md](AI4_PI_LESSONS.md).
   12k in all), `beforeTool` (proceed or refuse; a refusal is the tool result the model reads),
   `afterTool` (observe only) and `command` (`/name args` in the chat). Every part is an
   `agent-extension` ownership with the same rules as `aiTool`. Hooks have 250 ms; one that throws or
-  overruns is skipped and logged. `AgentExtensionsTest` covers the hooks and the run lifecycle.
+  overruns is skipped and logged, unless it is a `beforeTool(mandatory = true, timeoutMs)` guard, which
+  refuses the call instead. `AgentExtensionsTest` covers the hooks and the run lifecycle.
 - **`branchState(name, save, restore)`** puts state the box owns (a paint canvas) on the conversation.
   The `ai-assist` handler snapshots every branch state in the chat's document at turn start and end
   (`AgentExtensionRegistry.snapshotBranchStates`, on the Runloop with the box as context). The bytes
   go content-addressed to `<doc>/ai4_blobs/state/`, a temp folder for an unsaved document, and their
   hashes onto the turn node as `branch {before, after}`. A rewind restores the rewound turn's
   `before`; a switch restores the latest `after` along the new path (`AiSessionTree.Rewind.branchStates`).
-  A hook registered for the first time in the process restores the head of the document's most
-  recently active conversation (`AiSessionTree.currentBranchStates`), so reopening a document resumes.
+  Before restoring, the current state is snapshotted and compared with `AiSessionTree.lastKnownStates`
+  (the latest turn `after` or restore `state` line): a difference means something outside the
+  conversation changed it, and `onConflict` decides (`KEEP`, the default, reports and leaves it;
+  `RESTORE` restores anyway); the reply carries the notes and the restore's outcome is recorded as a
+  `state` line. With `resumeOnOpen`, a hook registered for the first time in the process restores the
+  head of the document's most recently active conversation (`AiSessionTree.currentBranchStates`).
   Headless `agent-task` turns bypass the panel and record no snapshots.

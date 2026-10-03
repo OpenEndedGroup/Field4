@@ -80,8 +80,28 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
     return tool
 }
 
-/** [BoxTool.wireName]: a tool name the model providers accept. */
-internal fun wireToolName(name: String): String = name.replace(Regex("[^A-Za-z0-9_-]"), "_").take(64)
+/**
+ * [BoxTool.wireName]: a tool name the model providers accept (`^[A-Za-z0-9_-]{1,64}$`). A name that is too
+ * long keeps its first 55 characters and gains a hash of the whole name, so two long names that share a start
+ * stay distinct. Distinct names can still meet (`house.check` and `house_check`):
+ * [DocumentToolRegistry.register] refuses the second.
+ */
+internal fun wireToolName(name: String): String {
+    val safe = name.replace(Regex("[^A-Za-z0-9_-]"), "_").ifEmpty { "_" }
+    if (safe.length <= 64) return safe
+    val hash = java.security.MessageDigest.getInstance("SHA-256").digest(name.toByteArray()).joinToString("") { "%02x".format(it) }.take(8)
+    return safe.take(55) + "_" + hash
+}
+
+/**
+ * Built-in tool names a box tool may not take: core's, and whatever is registered through
+ * [AgentToolExtensions] when the box registers. A box tool with one of these names would be shadowed
+ * (built-ins win), so the model would call the built-in thinking it was the box's.
+ */
+internal object BuiltInToolNames {
+    private val core: Set<String> by lazy { runCatching { ToolRegistry().also { registerBuiltInAgentTools(it) }.handlerNames() }.getOrDefault(emptySet()) }
+    fun contains(name: String): Boolean = name in core || AgentToolExtensions.registeredNames().contains(name)
+}
 
 /** The document-registry key for a box (full document path; blank for unsaved docs). */
 internal fun documentKeyFor(box: Box): String =
@@ -417,10 +437,30 @@ object DocumentToolRegistry {
 
     private val byDocument = ConcurrentHashMap<String, ConcurrentHashMap<String, BoxTool>>()
 
-    /** Register (upsert by name) — re-running a box replaces its prior tool of the same name. */
+    /**
+     * Register (upsert by name) — re-running a box replaces its prior tool of the same name.
+     *
+     * A model sees a tool by its [BoxTool.wireName], so two tools whose names differ but whose wire names
+     * agree would be one tool to the model and whichever the registry found first to Field. The second is
+     * refused, with both names in the message; a tool from the same box replaces the one it collides with,
+     * since that is a box renaming its own tool between runs. A wire name a built-in tool already has is
+     * refused too.
+     */
     fun register(documentKey: String, tool: BoxTool) {
         val tools = byDocument.computeIfAbsent(documentKey) { ConcurrentHashMap() }
-        tools[tool.name] = tool
+        require(!BuiltInToolNames.contains(tool.name) && !BuiltInToolNames.contains(tool.wireName)) {
+            "aiTool(\"${tool.name}\") has the name of a built-in tool; choose another name."
+        }
+        synchronized(tools) {
+            tools.values.filter { it.name != tool.name && it.wireName == tool.wireName }.forEach { other ->
+                require(other.boxId == tool.boxId) {
+                    "aiTool(\"${tool.name}\") would reach the model as ${tool.wireName}, the same name as " +
+                        "aiTool(\"${other.name}\") in box ${other.box.name.ifBlank { other.boxId }}; rename one of them."
+                }
+                tools.remove(other.name, other)
+            }
+            tools[tool.name] = tool
+        }
         afield.LifecycleLedger.claim(
             AI_TOOL_KIND,
             "$documentKey:${tool.name}",

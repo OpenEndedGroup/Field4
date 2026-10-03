@@ -41,16 +41,18 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * ## The boundary
  *
- * Only strings cross it. The guest gets five host functions (`__call`, `__out`, `__show`, `__describe`,
- * `__settle`) and one JSON string of tool names; the [PRELUDE] builds the friendly `tools.X(...)`,
- * `text(...)` and `show(...)` surface from those in JS. The context denies host access, IO, threads,
+ * Only strings cross it. The guest gets six host functions (`__call`, `__out`, `__progress`, `__show`,
+ * `__describe`, `__settle`) and one JSON string of tool names; the [PRELUDE] builds the friendly
+ * `tools.X(...)`, `tools.X.raw(...)`, `check(...)`, `progress(...)`, `text(...)` and `show(...)` surface from
+ * those in JS. The context denies host access, IO, threads,
  * processes, native access, polyglot access and the environment, under [SandboxPolicy.CONSTRAINED], with
  * a statement limit — so a program cannot reach a Java object even by accident.
  *
  * ## Ending a program
  *
- * A program ends by settling its promise ([stage] `ok` or `runtime`), by a syntax error, by running out of
- * statements, calls or time, or because its turn was cancelled. Time and cancellation are a watchdog's job:
+ * A program ends by settling its promise (stage `ok`; or `tool-failed` for an uncaught failing call,
+ * `check-failed` for an uncaught `check`, `runtime` for any other error), by a syntax error, by running out
+ * of statements, calls or time, or because its turn was cancelled. Time and cancellation are a watchdog's job:
  * it closes the context from its own thread, which Graal honours the next time the program thread is in
  * guest code — so a tool call already running is allowed to finish. A cancellation is rethrown as a
  * [CancellationException] so the turn ends rather than reporting a tool error, matching every bridge's
@@ -77,7 +79,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         )
         val callable = callableNames(ctx)
         val owner = Thread.currentThread()
-        val context = newContext()
+        val context = buildContextInterruptibly()
         var closing = false
         val tick = watchdog.scheduleAtFixedRate({
             val reason = when {
@@ -101,9 +103,10 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         var message = ""
         try {
             val bindings = context.getBindings("js")
-            bindings.putMember("__names", aiToolMapper.writeValueAsString(jsNames(callable)))
+            bindings.putMember("__names", aiToolMapper.writeValueAsString(jsNames(callable) + aliases(ctx, callable)))
             bindings.putMember("__call", ProxyExecutable { args -> state.call(args[0].asString(), args[1].asString()) })
             bindings.putMember("__out", ProxyExecutable { args -> state.out(args[0].asString()); null })
+            bindings.putMember("__progress", ProxyExecutable { args -> state.progress(args[0].asString()); null })
             bindings.putMember("__show", ProxyExecutable { args -> state.show(args[0].asInt()); null })
             bindings.putMember("__describe", ProxyExecutable { args -> describe(ctx, args[0].asString()) })
             bindings.putMember("__settle", ProxyExecutable { args ->
@@ -117,7 +120,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
             if (state.settled == null) context.eval("js", "0")
             when (val settled = state.settled) {
                 null -> { stage = "unsettled"; message = "The program awaited something that never resolves (there are no timers)." }
-                else -> if (!settled) { stage = "runtime"; message = state.failure.take(2000) }
+                else -> if (!settled) { stage = state.failureStage; message = state.failure.take(2000) }
             }
         } catch (e: PolyglotException) {
             val fatal = state.fatal.get()
@@ -170,7 +173,8 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
             failedCalls = state.records.count { !it.ok },
             elapsedMs = (System.nanoTime() - started) / 1_000_000,
             truncated = state.outputTruncated || visibleCalls.size < state.records.size ||
-                (state.returnedJson?.length ?: 0) > MAX_RETURNED_CHARS,
+                (state.returnedJson?.length ?: 0) > MAX_RETURNED_CHARS || state.nestedClipped > 0,
+            nestedClipped = state.nestedClipped,
             imagesShown = state.images.size,
             toolImages = state.images.toList(),
             nestedCalls = state.nested.toList(),
@@ -207,7 +211,14 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         var capHit = false
         var settled: Boolean? = null
         var failure = ""
+        /** How an unsettled-by-error program ended: `tool-failed`, `check-failed` or `runtime`. */
+        var failureStage = "runtime"
         var returnedJson: String? = null
+        /** Nested results too large for the transcript, stored whole in [ToolEvidence]. */
+        var nestedClipped = 0
+        /** The program's own latest progress line, which prefixes the per-call ones the panel shows. */
+        var lastProgress: String? = null
+        var progressLines = 0
 
         fun call(name: String, argsJson: String): String {
             fatal.get()?.let { throw it }
@@ -221,7 +232,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
                 return envelope(n, ok = false, error = "$name cannot be called from a program.")
             }
             val args = clampTimeout(argsJson)
-            ctx.progress?.invoke("program: $name ($n)")
+            ctx.progress?.invoke((lastProgress?.let { "$it · " } ?: "program: ") + "${name.removeSuffix("Request")} ($n)")
             val t0 = System.nanoTime()
             val outcome: Any = try {
                 inCall = true
@@ -238,27 +249,62 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
             val ok = !failedResult(json)
             val summary = (outcome as? SummarisesForToolLog)?.toolLogSummary() ?: json
             results[n] = outcome
-            record(n, name, args, ok = ok, ms = ms, summary = summary, error = null, resultJson = json)
-            return "{\"ok\":true,\"n\":$n,\"result\":$json}"
+            val failure = if (ok) null else failureText(json)
+            record(n, name, args, ok = ok, ms = ms, summary = summary, error = failure, resultJson = json)
+            // The program gets the whole result either way; `failed` decides whether tools.X() throws.
+            return "{\"ok\":true,\"failed\":${!ok},\"n\":$n,\"failure\":${aiToolMapper.writeValueAsString(failure ?: "")},\"result\":$json}"
         }
 
         private fun record(n: Int, name: String, args: String, ok: Boolean, ms: Long, summary: String, error: String?, resultJson: String) {
-            records += ProgramToolCall(n, name, args.take(MAX_ARG_CHARS), ok, ms, summary.take(MAX_SUMMARY_CHARS), error?.take(MAX_SUMMARY_CHARS))
-            nested += NestedToolCall(n, name, args, resultJson.take(MAX_NESTED_RESULT_CHARS), summary.take(300), ok, ms)
+            val bytes = resultJson.toByteArray(Charsets.UTF_8)
+            val sha = ToolEvidence.sha256(bytes)
+            // A result too large for the transcript is kept whole in ToolEvidence, and the transcript gets a
+            // small stub that is still valid JSON and says where the rest is; a plain cut would be neither.
+            val evidence = if (resultJson.length <= MAX_NESTED_RESULT_CHARS) null
+                else runCatching { ToolEvidence.store.put(resultJson) }.getOrNull()
+            val stored = when {
+                resultJson.length <= MAX_NESTED_RESULT_CHARS -> resultJson
+                else -> {
+                    nestedClipped++
+                    aiToolMapper.writeValueAsString(linkedMapOf(
+                        "clipped" to true, "bytes" to bytes.size, "sha256" to sha,
+                        "evidence" to (evidence?.id ?: "not stored"), "head" to resultJson.take(NESTED_HEAD_CHARS),
+                    ))
+                }
+            }
+            records += ProgramToolCall(n, name, args.take(MAX_ARG_CHARS), ok, ms, summary.take(MAX_SUMMARY_CHARS),
+                error?.take(MAX_SUMMARY_CHARS), evidence = evidence?.id)
+            nested += NestedToolCall(n, name, args, stored, summary.take(300), ok, ms,
+                resultBytes = bytes.size, resultSha256 = sha, evidence = evidence?.id)
+        }
+
+        fun progress(text: String) {
+            if (progressLines >= MAX_PROGRESS_LINES) return
+            progressLines++
+            val line = text.replace('\n', ' ').trim().take(MAX_PROGRESS_CHARS).ifEmpty { return }
+            lastProgress = line
+            ctx.progress?.invoke(line)
         }
 
         private fun envelope(n: Int, ok: Boolean, error: String): String =
             aiToolMapper.writeValueAsString(mapOf("ok" to ok, "n" to n, "error" to error))
 
-        /** A nested call may not outlive the program: its own `timeoutSeconds` is cut to the time left. */
+        /**
+         * A nested call may not outlive the program: its own `timeoutSeconds` or `waitSeconds` is cut to the
+         * time left. Cutting a wait shortens how long the call waits, not the work it started: a tool that
+         * starts a job and waits for it returns its handle when the wait ends, and the program (or the next
+         * turn) observes that same job. Nothing here retries a call.
+         */
         private fun clampTimeout(argsJson: String): String {
             val node = runCatching { aiToolMapper.readTree(argsJson.ifBlank { "{}" }) }.getOrNull() as? ObjectNode
                 ?: return argsJson
             val left = ((deadlineNanos - System.nanoTime()) / 1e9).coerceAtLeast(1.0)
-            val asked = node.get("timeoutSeconds")?.takeIf { it.isNumber }?.asDouble() ?: return argsJson
-            if (asked <= left) return argsJson
-            node.put("timeoutSeconds", left)
-            return aiToolMapper.writeValueAsString(node)
+            var changed = false
+            for (field in TIMEOUT_FIELDS) {
+                val asked = node.get(field)?.takeIf { it.isNumber }?.asDouble() ?: continue
+                if (asked > left) { node.put(field, left); changed = true }
+            }
+            return if (changed) aiToolMapper.writeValueAsString(node) else argsJson
         }
 
         fun out(text: String) {
@@ -283,7 +329,15 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         fun settle(ok: Boolean, payload: String) {
             if (settled != null) return
             settled = ok
-            if (ok) returnedJson = payload.takeIf { it != "null" } else failure = payload
+            if (ok) { returnedJson = payload.takeIf { it != "null" }; return }
+            // The rejection arrives as {kind, message, tool, call} from the wrapper.
+            val node = runCatching { aiToolMapper.readTree(payload) }.getOrNull()
+            failureStage = when (node?.get("kind")?.asText()) {
+                "ToolFailure" -> "tool-failed"
+                "CheckFailed" -> "check-failed"
+                else -> "runtime"
+            }
+            failure = node?.get("message")?.asText() ?: payload
         }
     }
 
@@ -299,8 +353,57 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         const val MAX_ARG_CHARS = 160
         const val MAX_SUMMARY_CHARS = 160
         const val MAX_NESTED_RESULT_CHARS = 8_000
+        /** How much of a clipped result the transcript stub keeps as a preview. */
+        const val NESTED_HEAD_CHARS = 1_000
+        const val MAX_PROGRESS_LINES = 200
+        const val MAX_PROGRESS_CHARS = 200
         const val STATEMENT_LIMIT = 10_000_000L
         private const val WATCHDOG_MS = 100L
+        /** Arguments that say how long a nested call may wait; each is cut to the time the program has left. */
+        internal val TIMEOUT_FIELDS = listOf("timeoutSeconds", "waitSeconds")
+
+        /**
+         * Contexts are built on this thread, not the turn's: building one can swallow an interrupt that
+         * arrives meanwhile, which used to leave a cancelled turn's program running until its own timeout.
+         * The turn thread waits on the build with an interruptible get, so a cancellation always lands.
+         */
+        private val builder = Executors.newCachedThreadPool { r -> Thread(r, "ai4-tool-program-context").apply { isDaemon = true } }
+
+        /** Replaceable in tests, to make the build slow enough to interrupt. */
+        @Volatile
+        internal var contextFactory: () -> Context = { newContext() }
+
+        internal fun buildContextInterruptibly(): Context {
+            if (Thread.currentThread().isInterrupted) throw CancellationException("tool program cancelled with the turn")
+            val future = builder.submit<Context> { contextFactory() }
+            return try {
+                future.get()
+            } catch (e: InterruptedException) {
+                // The turn was cancelled while the context was built: close it when it arrives, and end.
+                builder.submit { runCatching { future.get().close(true) } }
+                throw CancellationException("tool program cancelled with the turn").apply { initCause(e) }
+            } catch (e: java.util.concurrent.ExecutionException) {
+                throw e.cause ?: e
+            }
+        }
+
+        /** The text a failed result gives: its `message`, `error` text or `errors`, else the start of its JSON. */
+        internal fun failureText(json: String): String = runCatching {
+            val node: JsonNode = aiToolMapper.readTree(json)
+            listOf("message", "error", "errors", "reason").firstNotNullOfOrNull { key ->
+                node.get(key)?.takeIf { !it.isBoolean && !it.isNull }?.let { if (it.isTextual) it.asText() else it.toString() }
+            } ?: json.take(200)
+        }.getOrDefault(json.take(200))
+
+        /**
+         * Box-authored tools reach programs under their own names as well as their wire names, so the spelling
+         * the docs and the tool's author use — `tools["rectsl.run"]` — works beside `tools.rectsl_run`.
+         */
+        internal fun aliases(ctx: ToolExecutionContext, callable: List<String>): List<List<String>> {
+            val taken = callable.toSet()
+            return ctx.dynamicTools.filter { it.wireName in taken && it.name != it.wireName && it.name !in taken }
+                .map { listOf(it.name, it.wireName) }
+        }
 
         private val watchdog: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
             Thread(r, "ai4-tool-program-watchdog").apply { isDaemon = true }
@@ -359,7 +462,7 @@ internal class ToolProgramRunner(private val registry: ToolRegistry) {
         internal fun wrap(code: String): String =
             "(async () => {" + code + "\n})().then(" +
                 "v => __settle(true, JSON.stringify(v === undefined ? null : v) ?? \"null\"), " +
-                "e => __settle(false, String((e && e.stack) || e)));"
+                "e => __settle(false, JSON.stringify({kind: (e && e.name) || \"Error\", message: String((e && e.stack) || e)})));"
 
         internal const val PRELUDE: String = """
 // Host class lookup and loading are already denied, so these could not reach Java; removing them means a
@@ -368,14 +471,42 @@ for (const g of ["Java", "Packages", "java", "javax", "javafx", "com", "org", "e
                  "load", "loadWithNewGlobal", "print", "printErr", "quit", "exit", "read", "readline", "readbuffer"]) {
   try { delete globalThis[g]; } catch (e) {}
 }
-const tools =Object.freeze(Object.fromEntries(JSON.parse(__names).map(([js, full]) => [js, (a) => __invoke(full, a)])));
-function __invoke(full, a) {
+// tools.X(args) returns X's result, and throws a ToolFailure when the call could not run or its result says it
+// failed (success: false, error: true): a failed step stops the steps after it unless the program catches it.
+// e.result is the failed result. tools.X.raw(args) never throws for a failure: it returns the result as it is,
+// or {error: true, message} for a call that could not run, for programs that look at failures on purpose.
+function __fn(js, full) {
+  const f = (a) => __invoke(js, full, a, false);
+  f.raw = (a) => __invoke(js, full, a, true);
+  return Object.freeze(f);
+}
+const tools = Object.freeze(Object.fromEntries(JSON.parse(__names).map(([js, full]) => [js, __fn(js, full)])));
+class ToolFailure extends Error {
+  constructor(message, tool, call, result) { super(message); this.name = "ToolFailure"; this.tool = tool; this.call = call; this.result = result; }
+}
+class CheckFailed extends Error {
+  constructor(message, details) { super(message); this.name = "CheckFailed"; this.details = details; }
+}
+function __invoke(js, full, a, raw) {
   const env = JSON.parse(__call(full, JSON.stringify(a === undefined ? {} : a)));
-  if (!env.ok) { const e = new Error(full + ": " + env.error); e.tool = full; e.call = env.n; throw e; }
+  if (!env.ok) {
+    if (raw) return { error: true, message: env.error };
+    throw new ToolFailure(js + " (call " + env.n + "): " + env.error, full, env.n, null);
+  }
   const r = env.result;
   if (r !== null && typeof r === "object") Object.defineProperty(r, "${'$'}call", { value: env.n, enumerable: false });
+  if (env.failed && !raw) throw new ToolFailure(js + " (call " + env.n + ") failed: " + env.failure, full, env.n, r);
   return r;
 }
+// check(condition, message, details): stop the program here unless condition holds. A tool that ran and reports
+// a verdict (qualified: false, held, warnings) has not failed; check is how a program stops on that verdict.
+function check(condition, message, details) {
+  if (!condition) throw new CheckFailed("check failed: " + (message || "condition was false") +
+    (details === undefined ? "" : " " + JSON.stringify(details)), details);
+  return true;
+}
+// progress(...): a line the person sees in the panel now; text(...) lines come back to the model at the end.
+function progress(...parts) { __progress(parts.map(p => typeof p === "string" ? p : JSON.stringify(p)).join(" ")); }
 function text(...parts) { __out(parts.map(p => typeof p === "string" ? p : JSON.stringify(p)).join(" ")); }
 const emit = text;
 const console = Object.freeze({ log: text, info: text, warn: text, error: text });

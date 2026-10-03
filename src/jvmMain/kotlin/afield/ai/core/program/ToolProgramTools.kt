@@ -48,12 +48,16 @@ import com.fasterxml.jackson.databind.JsonNode
 @JsonClassDescription(
     "Run a short JavaScript program that calls this conversation's other tools as functions and returns " +
         "one combined result. tools.NewBox({name, code}), tools.RunBox({box}), tools.ListBoxes({}) ... — the " +
-        "same tools and arguments as direct calls, with the Request suffix dropped (box-authored tools by full " +
-        "name: tools[\"rectsl.run\"]({...})). Calls are synchronous (await is allowed but unnecessary); a failing " +
-        "call throws, so use try/catch to carry on. Only what the program returns and what it passes to " +
-        "text(...) comes back, with a one-line record of each call, so use it to loop over many boxes, sweep a " +
-        "value, or chain calls where the next depends on the last. show(result) forwards that result's images. " +
-        "describe(\"RunBoxRequest\") returns a tool's input schema. No files, network, timers or Java."
+        "same tools and arguments as direct calls, with the Request suffix dropped (box-authored tools by their " +
+        "own name, tools[\"rectsl.run\"]({...}), or their listed name, tools.rectsl_run). Calls are synchronous. " +
+        "A call that fails (could not run, or returned success:false / error:true) throws a ToolFailure whose " +
+        ".result is the failed result, so later steps do not run unless you catch it; tools.X.raw(args) returns " +
+        "the result without throwing, to inspect failures on purpose. A tool that ran but reports a verdict " +
+        "(qualified:false, held, warnings) has not failed: stop on it with check(condition, message). " +
+        "progress(...) shows a line to the person now; only what the program returns and what it passes to " +
+        "text(...) comes back to you, with a one-line record of each call. show(result) forwards that result's " +
+        "images; describe(\"RunBoxRequest\") returns a tool's input schema. Not a transaction: edits made before " +
+        "a failure stay. No files, network, timers or Java."
 )
 @afield.ai.core.AgentToolMeta("program", effects = [])
 data class RunToolProgramRequest(
@@ -79,6 +83,8 @@ data class ProgramToolCall(
     val elapsedMs: Long,
     val summary: String,
     val error: String? = null,
+    /** Set when the result was too large to keep in the transcript: read it whole with [ReadToolEvidenceRequest]. */
+    val evidence: String? = null,
 )
 
 /**
@@ -94,6 +100,11 @@ data class NestedToolCall(
     val summary: String,
     val ok: Boolean,
     val elapsedMs: Long,
+    /** Size and SHA-256 of the complete result, whether or not [resultJson] holds all of it. */
+    val resultBytes: Int = 0,
+    val resultSha256: String = "",
+    /** Where the complete result is when [resultJson] is only a stub ([ToolEvidence]). */
+    val evidence: String? = null,
 )
 
 /** A tool result made of other tool calls. Implemented by [RunToolProgramResult]; read by the bridges. */
@@ -104,7 +115,7 @@ interface CarriesNestedToolCalls {
 
 data class RunToolProgramResult(
     val success: Boolean,
-    /** `ok`, `syntax`, `runtime`, `timeout`, `statement-limit`, `call-cap` or `unsettled`. */
+    /** `ok`, `tool-failed`, `check-failed`, `runtime`, `syntax`, `timeout`, `statement-limit`, `call-cap` or `unsettled`. */
     val stage: String,
     val message: String,
     /** What the program passed to text(...), one line per call, at most [ToolProgramRunner.MAX_OUTPUT_CHARS]. */
@@ -115,11 +126,13 @@ data class RunToolProgramResult(
     val totalCalls: Int,
     val failedCalls: Int,
     val elapsedMs: Long,
-    /** True when output, the returned value or the call list was cut to fit. */
+    /** True when output, the returned value, the call list or a nested result was cut to fit. */
     val truncated: Boolean,
     val imagesShown: Int,
     @get:JsonIgnore override val toolImages: List<ToolImage> = emptyList(),
     @get:JsonIgnore override val nestedCalls: List<NestedToolCall> = emptyList(),
+    /** Nested results kept whole in [ToolEvidence] because they were too large for the transcript. */
+    val nestedClipped: Int = 0,
 ) : CarriesToolImages, SummarisesForToolLog, CarriesNestedToolCalls {
     override fun toolLogSummary(): String =
         "program stage=$stage calls=$totalCalls failed=$failedCalls output=${output.length} chars " +
@@ -147,16 +160,22 @@ internal fun registerToolProgramTools(tools: ToolRegistry) {
     tools.register(RunToolProgramRequest::class.java, { ToolPrograms.enabled }) { ctx, req ->
         ToolProgramRunner(tools).run(ctx, req)
     }
+    tools.register(ReadToolEvidenceRequest::class.java, { ToolPrograms.enabled }) { _, req -> readToolEvidence(req) }
 }
 
 /** Instruction text for the tool, added to the dynamic instructions when it is offered. */
 internal fun toolProgramGuidance(): String = """
 - RunToolProgramRequest: when a step means four or more similar tool calls — every box, every value of a
   sweep, a list of edits — write it as one short JavaScript program instead. `tools.X(args)` calls tool
-  X (the Request suffix dropped) synchronously and returns its result object; a failed call throws, so
-  wrap calls you expect to fail in try/catch. Return the answer (or text(...) lines); intermediate
-  results stay in the program. Default limits: 40 calls, 60 s. Edits a program makes are applied and
-  recorded as they happen; a program that fails halfway does not undo them.
+  X (the Request suffix dropped) synchronously and returns its result object. A failed call (success:false,
+  error:true, or refused) throws a ToolFailure with `.result`, so a failed check stops the edits after it;
+  use `tools.X.raw(args)` when you want to look at failures without stopping. A result that ran but reports
+  a verdict (qualified:false, a hold, warnings) does not throw: `check(r.qualified, "why")` stops there.
+  `progress("Checking 12 windows")` tells the person what is happening; return the answer (or text(...)
+  lines). Default limits: 40 calls, 60 s, never retried. For long jobs, start them and return the job
+  handle rather than waiting inside the program. Edits are applied and recorded as they happen; a program
+  that stops halfway does not undo them. A call record with `evidence` has its full result there
+  (ReadToolEvidenceRequest).
 """.trimIndent()
 
 /** Exposed for [ToolExecutionContext] users that want to know whether a program can run under [ctx]. */
@@ -191,7 +210,8 @@ internal fun nestedToolIoEvents(round: Int, parentCallId: String, result: Any): 
             ),
             "tool_result" to mapOf(
                 "round" to round, "toolName" to call.tool, "callId" to id, "parentCallId" to parentCallId,
-                "depth" to 1, "summary" to call.summary, "elapsedMs" to call.elapsedMs, "result" to call.resultJson
+                "depth" to 1, "summary" to call.summary, "elapsedMs" to call.elapsedMs, "result" to call.resultJson,
+                "resultBytes" to call.resultBytes, "resultSha256" to call.resultSha256, "evidence" to call.evidence,
             ),
         )
     }
@@ -212,6 +232,7 @@ internal fun nestedTraceMarkdown(result: Any): String? {
             append("- ").append(if (call.ok) "✓ " else "✗ ").append(code(call.tool.removeSuffix("Request"))).append(' ').append(code(args))
             append(" — ").append(call.elapsedMs).append(" ms")
             if (!call.ok && call.error != null) append(" — ").append(call.error.take(120))
+            if (call.evidence != null) append(" — full result ").append(code(call.evidence))
             append('\n')
         }
         if (program.totalCalls > program.calls.size) append("- … ").append(program.totalCalls - program.calls.size).append(" more\n")

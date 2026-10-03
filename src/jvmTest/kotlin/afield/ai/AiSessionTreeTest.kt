@@ -121,6 +121,17 @@ class AiSessionTreeTest {
         assertEquals(mapOf("studio/canvas" to "blank"), AiSessionTree.rewind(box, ordinal = 0, expectedText = "sky").branchStates)
     }
 
+    @Test fun theLastKnownStateIsTheLatestTurnEndOrRestore() {
+        val box = Box("tree-known-state")
+        val prior = AiBoxConversation.read(box)
+        val now = turn("sky", "ok")
+        AiBoxConversation.write(box, now)
+        AiSessionTree.recordTurn(box, prior, now, meta().copy(branchAfter = mapOf("k" to "after-1")))
+        assertEquals(mapOf("k" to "after-1"), AiSessionTree.lastKnownStates(box))
+        AiSessionTree.noteStates(box, mapOf("k" to "restored-0"))
+        assertEquals(mapOf("k" to "restored-0"), AiSessionTree.lastKnownStates(box), "a restore is later than the turn")
+    }
+
     @Test fun rewindingToTheFirstTurnEmptiesTheTranscript() {
         val box = Box("tree-first")
         say(box, "one", "a")
