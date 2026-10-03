@@ -26,9 +26,9 @@ import kotlin.math.sqrt
  * @param subtractChord read A relative to the straight line from its start to its end: x along that
  *   line, y perpendicular to it (in A's plane, if A is drawn flat in xy), z the rest. A then starts
  *   and ends at zero offset, so repeats join up and the result ends where this line ends. With
- *   `false`, A is read in world axes from its start — x along, y and z as offsets — so whatever y
- *   or z A gains between its ends is carried into the offset, and stacks up over repeats only if
- *   you draw it to.
+ *   `false`, A is read in world axes: x (from A's start to its end) says how far along, and y and
+ *   z are offsets measured from A's origin, so A drawn around y = z = 0 — a circle, say — is centred
+ *   on this line, and whatever y or z A gains between its ends stays in the result.
  * @param amplitude scales the offset (A's y and z, not its x).
  * @param resolution samples taken of A; this line is sampled at least as finely per repeat.
  * @param up 3D only: the direction the starting normal leans toward when this line's own shape
@@ -54,8 +54,9 @@ fun FLine.wiggledBy(
     val chordLen = len(chord)
 
     // A's axes: the chord's frame, or the world's. `along` is how far x runs from start to end.
+    val chordFrame = subtractChord && chordLen > 1e-12
     val ax: D3; val ay: D3; val az: D3
-    if (subtractChord && chordLen > 1e-12) {
+    if (chordFrame) {
         ax = scale(chord, 1 / chordLen)
         val z = if (abs(ax[2]) < 0.9) doubleArrayOf(0.0, 0.0, 1.0) else doubleArrayOf(0.0, 1.0, 0.0)
         ay = normalize(cross(z, ax))
@@ -72,8 +73,10 @@ fun FLine.wiggledBy(
         for (j in pa.indices) {
             if (k > 0 && j == 0) continue // the previous copy's last point
             val d = sub(pa[j], start)
+            // Offsets: from the chord, or (world axes) from A's origin.
+            val o = if (chordFrame) d else pa[j]
             val u = byArc?.get(j) ?: (dot(d, ax) / along)
-            val oy = dot(d, ay) * amp; val oz = dot(d, az) * amp
+            val oy = dot(o, ay) * amp; val oz = dot(o, az) * amp
             val f = frames.frameAt((k + u) / repeats)
             val x = f.position[0] + oy * f.normal[0] + oz * f.binormal[0]
             val y = f.position[1] + oy * f.normal[1] + oz * f.binormal[1]

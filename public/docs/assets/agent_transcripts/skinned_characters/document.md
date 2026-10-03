@@ -352,7 +352,7 @@ println("At time 0 and 2 the tube is straight; the extreme is at time 1.")
 <!-- field-box id="gpu_skin" index="5" -->
 
 ```edn [field-box id="gpu_skin" role="properties"]
-{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"}]}
+{"id" "gpu_skin" "index" 5 "name" "4 - the same deformation on the GPU, no shader change" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "4 - the same deformation on the GPU, no shader change" "_tombstone" false "frame" #afield/rect [40.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "gpu_skin_code_.kt" "lines" 71 "characters" 3462 "sha256" "c9a99cc156372dbb50677daaff60bed6f82ad220cdfe1136e00bd0a310f5b19b"} {"name" "fragment" "language" "glsl" "path" "gpu_skin_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "gpu_skin_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="gpu_skin" name="code" path="gpu_skin_code_.kt"]
@@ -429,12 +429,105 @@ loop { frame() }
 // diagnosing the renderer's capture path is a different job from skinning.
 ```
 
+```glsl [field-property box="gpu_skin" name="fragment" path="gpu_skin_fragment_.glsl"]
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 3) in vec4 vColor;
+layout(location = 1) in vec3 vNormalVS;
+
+void main()
+{
+    float d = abs(dot(vNormalVS.xyz, normalize(vec3(1, 0.4, -0.2))));
+    uFragColor = vec4(vNormalVS.rgb*d,1);
+}
+```
+
+```glsl [field-property box="gpu_skin" name="vertex" path="gpu_skin_vertex_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(std430, buffer_reference) readonly buffer VertexBuffer {
+    float vertexData[];
+};
+
+layout(std430, buffer_reference) readonly buffer IndexBuffer {
+    uint indexData[];
+};
+
+layout(push_constant) uniform PushConstants {
+    mat4 modelView;        // view * model
+    mat4 proj;             // projection
+
+    vec4 materialBaseColor;
+
+    uint vertexOffset;     // in floats
+    uint indexOffset;      // in indices
+    uint vertexStride;     // in floats
+    uint useVertexColor;   // bool as uint
+
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+} pc;
+
+layout(location = 0) out vec3 vViewPos;
+layout(location = 1) out vec3 vNormalVS;
+layout(location = 2) out vec2 vUV;
+layout(location = 3) out vec4 vColor;
+
+void main()
+{
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
+
+    vec3 pos = vec3(
+        pc.vertexBuffer.vertexData[base + 0],
+        pc.vertexBuffer.vertexData[base + 1],
+        pc.vertexBuffer.vertexData[base + 2]
+    );
+
+    vec3 normal = vec3(
+        pc.vertexBuffer.vertexData[base + 3],
+        pc.vertexBuffer.vertexData[base + 4],
+        pc.vertexBuffer.vertexData[base + 5]
+    );
+
+    vec2 uv = vec2(
+        pc.vertexBuffer.vertexData[base + 6],
+        pc.vertexBuffer.vertexData[base + 7]
+    );
+
+    vec4 color = vec4(
+        pc.vertexBuffer.vertexData[base + 8],
+        pc.vertexBuffer.vertexData[base + 9],
+        pc.vertexBuffer.vertexData[base + 10],
+        pc.vertexBuffer.vertexData[base + 11]
+    );
+
+    if (pc.useVertexColor == 0u) {
+        color = vec4(1.0);
+    }
+
+    vec4 viewPos =  pc.proj * pc.modelView*vec4(pos, 1.0);
+
+    mat3 mv3 = mat3(pc.modelView);
+    vec3 normalVS = normalize(mv3 * normal);
+
+    vViewPos = viewPos.xyz;
+    vNormalVS = normalVS;
+    vUV = uv;
+    vColor = color * pc.materialBaseColor;
+
+    gl_Position = viewPos;
+}
+```
+
 ## 7. 5 - the candy wrapper, side by side
 
 <!-- field-box id="twist_compare" index="6" -->
 
 ```edn [field-box id="twist_compare" role="properties"]
-{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 62 "characters" 3230 "sha256" "15bb056e5b5fb0b1c4c3916999d3247e820ec57ee5a979b3593f99be952b2df0"}]}
+{"id" "twist_compare" "index" 6 "name" "5 - the candy wrapper, side by side" "parents" ["root" "skin_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "skin_renderer"} "name" "5 - the candy wrapper, side by side" "_tombstone" false "frame" #afield/rect [680.0 360.0 600.0 136.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "twist_compare_code_.kt" "lines" 62 "characters" 3230 "sha256" "15bb056e5b5fb0b1c4c3916999d3247e820ec57ee5a979b3593f99be952b2df0"} {"name" "fragment" "language" "glsl" "path" "twist_compare_fragment_.glsl" "lines" 10 "characters" 260 "sha256" "f337a9d388363610b81ec88dbcd02debc876320eb9daf0a17366a0778ee0fd5b"} {"name" "vertex" "language" "glsl" "path" "twist_compare_vertex_.glsl" "lines" 77 "characters" 2005 "sha256" "b60636fbbef4538818bb7caddee9f3d5ccc0a3be1b248282d52c72cebc731a7c"}]}
 ```
 
 ```kotlin [field-property box="twist_compare" name="code" path="twist_compare_code_.kt"]
@@ -500,6 +593,99 @@ println("  %-16s %.6f   (%5.1f%% of rest)".format(label, radius, 100f * radius /
 println("  non-rigid joints ${out.nonRigidJoints}, antipodal flips ${out.antipodalFlips}")
 
 loop { frame() }
+```
+
+```glsl [field-property box="twist_compare" name="fragment" path="twist_compare_fragment_.glsl"]
+#version 450
+layout(location = 0) out vec4 uFragColor;
+layout(location = 3) in vec4 vColor;
+layout(location = 1) in vec3 vNormalVS;
+
+void main()
+{
+    float d = abs(dot(vNormalVS.xyz, normalize(vec3(1, 0.4, -0.2))));
+    uFragColor = vec4(vNormalVS.rgb*d,1);
+}
+```
+
+```glsl [field-property box="twist_compare" name="vertex" path="twist_compare_vertex_.glsl"]
+#version 450
+#extension GL_EXT_buffer_reference : require
+#extension GL_EXT_scalar_block_layout : require
+
+layout(std430, buffer_reference) readonly buffer VertexBuffer {
+    float vertexData[];
+};
+
+layout(std430, buffer_reference) readonly buffer IndexBuffer {
+    uint indexData[];
+};
+
+layout(push_constant) uniform PushConstants {
+    mat4 modelView;        // view * model
+    mat4 proj;             // projection
+
+    vec4 materialBaseColor;
+
+    uint vertexOffset;     // in floats
+    uint indexOffset;      // in indices
+    uint vertexStride;     // in floats
+    uint useVertexColor;   // bool as uint
+
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+} pc;
+
+layout(location = 0) out vec3 vViewPos;
+layout(location = 1) out vec3 vNormalVS;
+layout(location = 2) out vec2 vUV;
+layout(location = 3) out vec4 vColor;
+
+void main()
+{
+    uint idx = pc.indexBuffer.indexData[pc.indexOffset+uint(gl_VertexIndex)];
+    uint base = pc.vertexOffset + idx * pc.vertexStride;
+
+    vec3 pos = vec3(
+        pc.vertexBuffer.vertexData[base + 0],
+        pc.vertexBuffer.vertexData[base + 1],
+        pc.vertexBuffer.vertexData[base + 2]
+    );
+
+    vec3 normal = vec3(
+        pc.vertexBuffer.vertexData[base + 3],
+        pc.vertexBuffer.vertexData[base + 4],
+        pc.vertexBuffer.vertexData[base + 5]
+    );
+
+    vec2 uv = vec2(
+        pc.vertexBuffer.vertexData[base + 6],
+        pc.vertexBuffer.vertexData[base + 7]
+    );
+
+    vec4 color = vec4(
+        pc.vertexBuffer.vertexData[base + 8],
+        pc.vertexBuffer.vertexData[base + 9],
+        pc.vertexBuffer.vertexData[base + 10],
+        pc.vertexBuffer.vertexData[base + 11]
+    );
+
+    if (pc.useVertexColor == 0u) {
+        color = vec4(1.0);
+    }
+
+    vec4 viewPos =  pc.proj * pc.modelView*vec4(pos, 1.0);
+
+    mat3 mv3 = mat3(pc.modelView);
+    vec3 normalVS = normalize(mv3 * normal);
+
+    vViewPos = viewPos.xyz;
+    vNormalVS = normalVS;
+    vUV = uv;
+    vColor = color * pc.materialBaseColor;
+
+    gl_Position = viewPos;
+}
 ```
 
 ## 8. 3 - the refusal PathTraceGltf used to make

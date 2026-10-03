@@ -49,7 +49,8 @@ nav:
   # choosing one to learn in depth, so the chains are a showcase here rather than a capstone after
   # the subsystem sections, where they used to sit. No one subsystem owns a chain — putting the polytope page under "Geometry & Solids" would file it
   # away from the tracer it ends at, and under "Rendering & GPU" away from the algebra it starts from.
-  - Chains Across Subsystems:
+  - Long Way Round:
+    - Overview: chains.md
     - A Polytope, Cut Open and Traced: chain_polytope_render.md
     - Particles, Welded and Traced: chain_physics_render.md
     - A Cellular Automaton You Can Hear: chain_ca_sound.md
@@ -64,6 +65,7 @@ nav:
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
     - A Drawn Morph, Heard: chain_drawn_morph.md
+    - Drawn Strokes Become Paint: chain_drawn_paint.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
@@ -264,7 +266,7 @@ nav:
       # A second worked render graph — fluid storage, grain, and a motion attachment through
       # render-to-texture — moved out of "Working in a Document" for the same reason as the page
       # above: nothing on it is about working in a document. It stays inside one subsystem and has
-      # no hop checks, which is why it is not under "Chains Across Subsystems".
+      # no hop checks, which is why it is not under "Long Way Round".
       - Flow Grain and Motion: flow_grain.md
       - Puppet Browser: puppet_browser.md
       - Fabricate Renderer: fabricate_renderer.md
@@ -290,6 +292,7 @@ nav:
       # one is about getting it onto the GPU and proving it is still the same network.
       - Neural Particle Systems: neural_particles.md
       - Field Probes: field_probes.md
+      - Syphon (Sharing Frames with Other Apps): syphon.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md
       # Here rather than at the head of "Writing Code in a Box", where it was the first thing a

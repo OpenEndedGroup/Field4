@@ -874,6 +874,33 @@ class SessionTest(unittest.TestCase):
         # Only an agent, and only inside this worktree: not the shell, not a sibling with a longer name.
         self.assertEqual(shown["occupants"], ["claude (pid 101)"])
 
+    def _started_then_unregistered(self) -> dict:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        # What the human hit: git let go of the worktree, and Finder put the folder back.
+        self.repo.git("worktree", "remove", "--force", session["worktree"])
+        Path(session["worktree"]).mkdir()
+        (Path(session["worktree"]) / ".DS_Store").write_bytes(b"\0Bud1")
+        return session
+
+    def test_ending_a_session_whose_worktree_git_already_dropped(self) -> None:
+        session = self._started_then_unregistered()
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+        self.assertEqual(dn.load_sessions(self.repo.root), [])
+        self.assertNotIn(session["branch"], self.repo.git("branch", "--list"))
+
+    def test_a_dropped_worktree_holding_real_files_is_refused(self) -> None:
+        session = self._started_then_unregistered()
+        (Path(session["worktree"]) / "notes.md").write_text("mine\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("notes.md", str(refused.exception))
+        self.assertTrue((Path(session["worktree"]) / "notes.md").exists(), "nothing of the human's is deleted")
+
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
         self.repo.commit("land")

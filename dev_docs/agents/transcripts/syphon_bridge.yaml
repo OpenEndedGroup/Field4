@@ -1,0 +1,101 @@
+name: syphon_bridge
+description: >
+  Three boxes that move frames over Syphon, the macOS standard for sharing video between
+  applications, through afield.syphon (an Objective-C shim over the Syphon framework). The first
+  lists the Syphon servers on this machine. The second publishes an animated picture as the server
+  "Field pattern", visible to Resolume, TouchDesigner, MadMapper, OBS or any other Syphon client.
+  The third connects to a server as a client and shows its latest frame — by default Field's own
+  "Field pattern", so the round trip through Syphon's shared GPU surface is visible with nothing
+  else installed; change the name to receive another application. macOS only; the library is
+  optional (`./gradlew buildSyphonNative`, needs Xcode) and without it every box says so and stops.
+operations:
+  - create:
+      box: syphon_servers
+      name: "Syphon — servers on this machine"
+      frame: { x: 80.0, y: 80.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.syphon.*
+
+          run {
+          if (!Syphon.isAvailable) {
+              markdown(Syphon.describe())
+              return@run
+          }
+
+          val servers = Syphon.servers(waitMs = 1000)
+          markdown(if (servers.isEmpty()) "No Syphon servers are running."
+                   else servers.joinToString("\n") { "- **${it.appName}** ${it.name}" })
+          }
+  - create:
+      box: syphon_publish
+      name: "Syphon — publish an animated picture"
+      frame: { x: 80.0, y: 520.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.syphon.*
+          import java.awt.BasicStroke
+          import java.awt.Color
+          import java.awt.RenderingHints
+          import java.awt.image.BufferedImage
+
+          // without the library this stops here and says how to build it
+          check(Syphon.isAvailable) { Syphon.describe() }
+
+          // other applications list this as "java — Field pattern" (or Field's app name)
+          val out = syphonServer("Field pattern")
+          val img = BufferedImage(640, 360, BufferedImage.TYPE_INT_ARGB)
+          var t = 0.0
+
+          loop {
+              t += 1.0 / 60
+              val g = img.createGraphics()
+              g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
+              g.color = Color(20, 24, 40)
+              g.fillRect(0, 0, 640, 360)
+              g.stroke = BasicStroke(6f)
+              for (i in 0 until 12) {
+                  val a = t + i * Math.PI / 6
+                  g.color = Color.getHSBColor((i / 12.0 + t * 0.05).toFloat() % 1f, 0.7f, 1f)
+                  val x = 320 + (cos(a) * 140).toInt()
+                  val y = 180 + (sin(a * 2) * 110).toInt()
+                  g.drawOval(x - 30, y - 30, 60, 60)
+              }
+              g.color = Color.WHITE
+              g.drawString("Field over Syphon  frame ${out.framesPublished}", 16, 340)
+              g.dispose()
+              out.publish(img)
+          }
+  - create:
+      box: syphon_receive
+      name: "Syphon — receive a server's frames"
+      frame: { x: 80.0, y: 960.0, w: 340.0, h: 100.0 }
+      properties:
+        code: |
+          import afield.syphon.*
+
+          // without the library this stops here and says how to build it
+          check(Syphon.isAvailable) { Syphon.describe() }
+
+          // a server's name, app name or uuid; "" takes the first one announced
+          val inp = syphonClient("Field pattern")
+
+          loop {
+              inp.png()?.let { display("main", it) }
+              delay(250)
+          }
+  - execute:
+      box: syphon_servers
+      property: code
+  - wait:
+      millis: 300
+  - launch:
+      box: syphon_publish
+      property: code
+  - wait:
+      millis: 1000
+  - launch:
+      box: syphon_receive
+      property: code
+  - wait:
+      millis: 1000
