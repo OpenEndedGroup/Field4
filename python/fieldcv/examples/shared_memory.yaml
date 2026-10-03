@@ -1,0 +1,238 @@
+name: fieldcv_shared_memory
+description: "fieldcv in Field: a Python box runs point tracks and pose over a camera or movie on a worker thread;\
+  \ two graphics boxes under agent_graphics_context draw its frames and FLines straight from shared memory. Run\
+  \ graphics_renderer_launch first. FIELDCV_SOURCE picks the input (default: the swing from Ballet M\xE9canique)."
+operations:
+- create:
+    box: cv_python_root
+    name: python
+    frame:
+      x: 40.0
+      y: 200.0
+      w: 200.0
+      h: 60.0
+    properties:
+      mainLanguage: python
+- create:
+    box: cv_source
+    name: fieldcv source
+    frame:
+      x: 40.0
+      y: 300.0
+      w: 300.0
+      h: 100.0
+    properties:
+      code: |
+        import os
+        import fieldcv as cv4
+        from fieldcv import field
+
+        # a sample clip by default; FIELDCV_SOURCE can name a camera index, a movie file or a glob of images
+        source = os.environ.get("FIELDCV_SOURCE")
+        movie = cv4.open_source(source, loop=True) if source else cv4.sample("swing")
+        pose = cv4.Pose(model="lite")
+        camera = field.image("camera", 240, 360)
+        tracks = field.lines("tracks")
+        skeleton = field.lines("skeleton")
+
+        def publish(r):
+            camera.write(r["frame"].image)
+            tracks.publish(r["tracks"])
+            skeleton.publish(cv4.edges(r["poses"], pose.connections))
+
+        p = cv4.Pipeline(movie, cv4.Tracks(), pose, on_result=publish).start()
+- connect:
+    parent: cv_python_root
+    child: cv_source
+- wait:
+    seconds: 2
+- execute:
+    box: cv_source
+    property: code
+    type: fragment
+    code: |
+      import os
+      import fieldcv as cv4
+      from fieldcv import field
+
+      # a sample clip by default; FIELDCV_SOURCE can name a camera index, a movie file or a glob of images
+      source = os.environ.get("FIELDCV_SOURCE")
+      movie = cv4.open_source(source, loop=True) if source else cv4.sample("swing")
+      pose = cv4.Pose(model="lite")
+      camera = field.image("camera", 240, 360)
+      tracks = field.lines("tracks")
+      skeleton = field.lines("skeleton")
+
+      def publish(r):
+          camera.write(r["frame"].image)
+          tracks.publish(r["tracks"])
+          skeleton.publish(cv4.edges(r["poses"], pose.connections))
+
+      p = cv4.Pipeline(movie, cv4.Tracks(), pose, on_result=publish).start()
+- wait:
+    seconds: 2
+- create:
+    box: cv_camera_quad
+    name: camera quad
+    frame:
+      x: 380.0
+      y: 80.0
+      w: 280.0
+      h: 100.0
+    properties:
+      vertex: |
+        #version 450
+        layout(location = 0) in vec3 pos;
+        layout(location = 1) in vec2 tc;
+        layout(location = 0) out vec2 ftc;
+        void main() { ftc = tc; gl_Position = vec4(pos, 1); }
+      fragment: |
+        #version 450
+        layout(location = 0) in vec2 ftc;
+        layout(location = 0) out vec4 uFragColor;
+        layout(set = 0, binding = 0) uniform sampler2D camera;
+        void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
+      code: |
+        import afield.python.NumpyShared
+
+        prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
+
+        var module = moduleHere { }
+        var m = Mesh()
+        module += m named "camera quad"
+        renderer += module
+
+        // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
+        m.set(4, 6) {
+            pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
+            tc.add(0, 1,  1, 1,  1, 0,  0, 0)
+            tri.add(0, 1, 2,  0, 2, 3)
+        }
+- connect:
+    parent: agent_graphics_context
+    child: cv_camera_quad
+- execute:
+    box: cv_camera_quad
+    property: code
+    type: fragment
+    code: |
+      import afield.python.NumpyShared
+
+      prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
+
+      var module = moduleHere { }
+      var m = Mesh()
+      module += m named "camera quad"
+      renderer += module
+
+      // the image fills the window. Field's NDC is y-up, image v is y-down: v = 0 is the top edge
+      m.set(4, 6) {
+          pos.add(-1, -1, 0.9,  1, -1, 0.9,  1, 1, 0.9,  -1, 1, 0.9)
+          tc.add(0, 1,  1, 1,  1, 0,  0, 0)
+          tri.add(0, 1, 2,  0, 2, 3)
+      }
+- create:
+    box: cv_overlay_lines
+    name: tracks and skeleton
+    frame:
+      x: 380.0
+      y: 220.0
+      w: 280.0
+      h: 100.0
+    properties:
+      vertex: |
+        #version 450
+        layout(location = 0) in vec3 pos;
+        layout(location = 1) in vec4 col;
+        layout(location = 0) out vec4 fcol;
+        void main() { fcol = col; gl_Position = vec4(pos, 1); }
+      fragment: |
+        #version 450
+        layout(location = 0) in vec4 fcol;
+        layout(location = 0) out vec4 uFragColor;
+        void main() { uFragColor = fcol; }
+      code: |
+        import afield.python.NumpyShared
+
+        val tracks = NumpyShared.lines("tracks")
+        val skeleton = NumpyShared.lines("skeleton")
+
+        var module = moduleHere { }
+        var m = Mesh()
+        module += m named "overlay"
+        renderer += module
+
+        val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+
+        fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
+
+        frames {
+            while (frame()) {
+                val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                           segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+                if (segs.isEmpty()) continue
+                // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
+                m.set(4 * segs.size, 2 * segs.size) {
+                    for ((i, s) in segs.withIndex()) {
+                        val (ab, c) = s
+                        // image (u, v), v down, to Field's y-up NDC (2u - 1, 1 - 2v)
+                        val ax = 2 * ab.first.to.x - 1
+                        val ay = 1 - 2 * ab.first.to.y
+                        val bx = 2 * ab.second.to.x - 1
+                        val by = 1 - 2 * ab.second.to.y
+                        val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
+                        val nx = -(by - ay) / len * width
+                        val ny = (bx - ax) / len * width
+                        pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                        4 { col.add(c.x, c.y, c.z, c.w) }
+                        tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                    }
+                }
+            }
+        }
+- connect:
+    parent: agent_graphics_context
+    child: cv_overlay_lines
+- launch:
+    box: cv_overlay_lines
+    property: code
+    strand: overlay
+    code: |
+      import afield.python.NumpyShared
+
+      val tracks = NumpyShared.lines("tracks")
+      val skeleton = NumpyShared.lines("skeleton")
+
+      var module = moduleHere { }
+      var m = Mesh()
+      module += m named "overlay"
+      renderer += module
+
+      val width = 0.004   // half the line's width, in NDC: about two pixels across a 1000-pixel window
+
+      fun segments(l: List<FLine>) = l.flatMap { it.nodes.zipWithNext() }
+
+      frames {
+          while (frame()) {
+              val segs = segments(tracks.lines()).map { it to vec(0.2, 1.0, 0.3, 1.0) } +
+                         segments(skeleton.lines()).map { it to vec(1.0, 0.3, 0.8, 1.0) }
+              if (segs.isEmpty()) continue
+              // each segment is a thin quad, two triangles, since GPU lines are a single pixel wide
+              m.set(4 * segs.size, 2 * segs.size) {
+                  for ((i, s) in segs.withIndex()) {
+                      val (ab, c) = s
+                      // image (u, v), v down, to Field's y-up NDC (2u - 1, 1 - 2v)
+                      val ax = 2 * ab.first.to.x - 1
+                      val ay = 1 - 2 * ab.first.to.y
+                      val bx = 2 * ab.second.to.x - 1
+                      val by = 1 - 2 * ab.second.to.y
+                      val len = maxOf(Math.hypot((bx - ax).toDouble(), (by - ay).toDouble()), 1e-6)
+                      val nx = -(by - ay) / len * width
+                      val ny = (bx - ax) / len * width
+                      pos.add(ax + nx, ay + ny, 0.1, ax - nx, ay - ny, 0.1, bx - nx, by - ny, 0.1, bx + nx, by + ny, 0.1)
+                      4 { col.add(c.x, c.y, c.z, c.w) }
+                      tri.add(4 * i, 4 * i + 1, 4 * i + 2, 4 * i, 4 * i + 2, 4 * i + 3)
+                  }
+              }
+          }
+      }

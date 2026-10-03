@@ -1,23 +1,20 @@
 # Differentiating Functions
 
-Field's derivatives come out of the arithmetic rather than out of a difference quotient.
-Reverse-mode automatic differentiation over `Double` does most of the work, second-order forward
-mode sits beside it for curvature, and SGD, Adam and L-BFGS descend on whatever those two produce.
-An `Fn` graph assembled out of stdlib parts can be differentiated too, with respect to its own
-numeric leaves.
-
-Every figure below is executed when this page is built.
+Field computes exact derivatives of the code you write, by automatic differentiation. Reverse mode
+over `Double` gives gradients, second-order forward mode gives curvature, and SGD, Adam and L-BFGS
+minimize using either. An `Fn` built from stdlib parts can be differentiated too, with respect to
+its own numeric parameters.
 
 ## One expression, three ways of differentiating it
 
 `AD` is a `Double` that remembers how it was made. Arithmetic on it appends to a tape; a single
-backward sweep reads off every derivative at once. `grad { }` returns a *function*, so it composes with
-the optimizers rather than needing a wrapper.
+backward sweep reads off every derivative at once. `grad { }` returns a function, so you can hand it
+straight to an optimizer.
 
-`Dual2` works the other way around, carrying a truncated Taylor number `(v, v', v'')` along a single
-direction. It is the right tool when there is one input and many outputs, and it is what makes
-`hessian` exact rather than a finite difference of an exact gradient. Because the second derivative
-comes free with the forward pass, all three curves below are one sweep.
+`Dual2` works the other way around, carrying a value with its first and second derivatives
+`(v, v', v'')` along a single direction. Use it when there is one input and many outputs; it is also
+what makes `hessian` exact. The second derivative comes with the forward pass, so all three curves
+below come from one sweep.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/derivatives.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="600" padding="16"}
 :::static
@@ -62,20 +59,20 @@ $agreement
 ![Three curves over minus one to one: the small oscillating function, its larger-amplitude slope, and its much larger curvature, all in phase relationships that follow from differentiation](assets/autodiff_examples/derivatives.png)
 
 Check it by hand. `∂f/∂x = -2(1-x) - 400x(y-x²)` and `∂f/∂y = 200(y-x²)`, so at `(-1.2, 1)` the
-gradient is `[-215.6, -88]`, which is what the panel reads, to the last ulp. The Hessian is
-`[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, and that is what one
-`Dual2` pass per axis plus polarisation produced, exactly. Forward and reverse agree on `f'` to
-1.8·10⁻¹⁵ despite sharing no code, and reverse agrees with the central difference to 3·10⁻¹⁰ — which is
-the *oracle's* accuracy, not the gradient's.
+gradient is `[-215.6, -88]`, which is what the panel reads. The Hessian is
+`[[2 - 400(y-x²) + 800x², -400x], [-400x, 200]]` = `[[1330, 480], [480, 200]]`, which is what
+`hessian` prints. Forward and reverse mode agree to rounding error. The larger disagreement with the
+central difference on the last line comes from the finite difference.
 
 ## Three descents, one valley
 
-`minimize` runs SGD with momentum, Adam, or a line-searched L-BFGS over the same exact gradients, all
-deterministic and all recording a start-inclusive loss trajectory that plots directly.
+`minimize` runs SGD with momentum, Adam, or L-BFGS with a line search, on the same exact gradients.
+Each run is deterministic and records its loss at every step, starting from the initial guess, so
+you can plot it directly.
 
-Rosenbrock's curved valley is the classic separator between the three. L-BFGS builds a curvature
-model from its last few steps and walks *along* the valley; a first-order method has no such model
-and zig-zags across it.
+Rosenbrock's curved valley shows the difference between them. L-BFGS builds a model of the
+curvature from its last few steps and walks along the valley; SGD and Adam have no such model and
+zig-zag across it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/optimizers.png" wait="2.5" capture="box" open-outputs="true" w="1000" h="600" padding="16"}
 :::static
@@ -110,19 +107,18 @@ $results
 
 ![Three descending curves of log10 loss against iteration: L-BFGS plunges off the bottom of the plot within about forty iterations while SGD and Adam are still descending slowly at iteration three hundred](assets/autodiff_examples/optimizers.png)
 
-L-BFGS stops on a *tolerance*, not on the iteration cap — the curve simply ends where it converged.
-`OptimizeRun.reason` says which of `gradient`, `step`, `line search` or `max iterations` it was, so a
-run that merely ran out of budget cannot be mistaken for one that arrived.
+The L-BFGS curve ends early because it converged. `OptimizeRun.reason` says why a run stopped:
+`gradient`, `step`, `line search` or `max iterations`. Check it before trusting a result, since
+`max iterations` means the run ran out of budget.
 
 ## Differentiating an `Fn` graph
 
-`Functions.Fn` is a closure over `Double`, so it cannot be differentiated by overloading its
-arithmetic. But every `Fn` the stdlib builds also carries an inspectable graph, and that graph is
-re-interpreted in tracked arithmetic, so the gradient of a loss with respect to a graph's numeric
-leaves is exact.
+Every `Fn` the stdlib builds carries a graph of the operations that made it, and Field can
+differentiate that graph. So when you fit an `Fn` to a target, the gradient of the error with
+respect to its numeric parameters is exact.
 
-The call below is the *same* `fitGradient` twice. Same optimizer, same step size, same landscape; only
-the gradient differs.
+The example runs the same `fitGradient` twice, once with finite-difference gradients and once with
+exact ones. The optimizer, step size and target are the same.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/exact_fit.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="1000" padding="16"}
 :::static
@@ -177,35 +173,28 @@ $numbers
 
 ![The target signal, a visually indistinguishable fitted signal, and two overlapping RMSE-versus-step curves that both fall from 0.36 to under 0.015](assets/autodiff_examples/exact_fit.png)
 
-The exact run reaches a *lower* RMSE for an eighth of the loss evaluations, which is not an eighth of
-the time. Measured separately, the same 400-step fit takes 31.2 ms on finite differences and 22.2 ms
-exactly: **1.4×, not 8×**, because building the tape costs about what the extra graph evaluations
-did. What the exact path buys is exactness, no `fdStep` to tune, and one sweep per step whatever the
-parameter count, where finite differences costs `2n`.
+The exact run reaches a lower error with an eighth of the loss evaluations. It is somewhat faster,
+though not eight times faster, because recording the derivative costs time too. It also leaves no
+`fdStep` to tune, and it needs one sweep per step however many parameters there are, where finite
+differences need two evaluations per parameter.
 
-The refusal line is the other half of the figure. Only 41<!--count:differentiableFnOpsOnExamplesPage-->
+The last line of the figure shows a function being refused. Only 41<!--count:differentiableFnOpsOnExamplesPage-->
 of `OpRegistry`'s 127<!--count:canonicalFnOpsOnExamplesPage--> canonical ops have a derivative; the
 burst and pattern pulse generators, the seeded noise generators, the table-backed interpolants and the windowed
 numeric operators do not. `FnGradientMode.EXACT` throws with the reason, `FnGradientMode.AUTO` falls
 back to finite differences, and `FnFitRun.usedExactGradient` tells you which happened.
 
-Which ops those are is a question about *representation* rather than about calculus. An op whose
-formula is stored in the graph can be differentiated; one built out of `Fn.mapY { … }` cannot, because
-`mapY` keeps an opaque Kotlin lambda in the node and leaves nothing to read a formula out of. So
-`abs` is differentiable, being a graph node with a formula (`FnExpr.Abs`), while a `mapY { … }` of
-your own is refused however simple the lambda inside it.
+An op can be differentiated when its formula is stored in the graph. One built with
+`Fn.mapY { … }` cannot, because `mapY` stores a Kotlin lambda that Field cannot look inside. So
+`abs` is differentiable, while a `mapY { … }` of your own is refused however simple it is.
 
-`abs` has a corner at zero, and the subgradient reported there is `0`: the even split, which is also
-exactly what a central difference reports at a kink, so the exact gradient and the finite-difference
-oracle agree *at* the corner rather than only either side of it.
+At its corner at zero, `abs` reports a derivative of `0`, halfway between the slopes on either
+side. A central difference reports the same value there, so the two methods agree at the corner too.
 
-Accepting a seed is not the same as fitting it well. Swap the seed above for
-`cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs, but it plateaus at RMSE ≈ 0.139
-where the smooth seed reaches ≈ 0.0096, and sixteen times the iteration budget only takes it to
-0.135. On that seed the exact and finite-difference arms finish within 0.1% of each other, so
-what the exact path buys is the evaluation count (801 against 6801) rather than the accuracy it also
-buys on the smooth one. Rectifying the envelope creates a local minimum, and no gradient argues a
-descent out of a local minimum.
+A differentiable starting function can still fit badly. Swap the seed above for
+`cos(1.9).abs() * sin(1.3, amplitude = 1.0)` and the exact path runs, but the error levels off
+around 0.14, where the smooth seed reached about 0.01, and more iterations barely help. The `abs`
+creates a local minimum, and gradient descent cannot climb out of one.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/abs_seed.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="900" padding="16"}
 :::static
@@ -243,17 +232,16 @@ with(Functions) {
 
 ![The rectified seed drawn as a wave whose troughs are folded up into cusps, the fitted result beneath it, and a loss chart on which the finite-difference and exact-gradient curves lie almost on top of each other and both flatten early](assets/autodiff_examples/abs_seed.png)
 
-Read the two loss curves against the ones in the previous figure. There, exact gradients reached a
-lower error. Here the two arms are indistinguishable and both stop early, and what is left is the
-cost: the same descent for **801 loss evaluations instead of 6801**. The last line of the panel is
-the boundary. `sign` is refused, because its derivative is zero wherever it exists, and a fit that
-descends a permanently-zero gradient is worse off than one that is told no.
+In the previous figure, exact gradients reached a lower error. Here the two loss curves lie on top
+of each other and both flatten early; the exact run just gets there with far fewer loss
+evaluations. The last line of the panel shows `sign` being refused: its derivative is zero
+everywhere it exists, so a fit would never move.
 
 ## Inverse kinematics on a chain of links
 
-Forward kinematics on a chain of links is a cumulative sum of joint angles and a running position
-(perfectly differentiable), so the *inverse* problem is just L-BFGS on `|tip - target|²`, and the result
-is an `FLine` you can draw.
+The position of the tip of a chain of links is a running sum of joint angles and link vectors, which
+is differentiable. So finding the joint angles that put the tip on a target is L-BFGS on
+`|tip - target|²`, and the result is an `FLine` you can draw.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/inverse_kinematics.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="560" padding="16"}
 :::static
@@ -293,19 +281,17 @@ showPlaneGrid(
 
 ![Three panels of a four-link arm sharing one frame: straight and pointing right with the target reticle far above it, then reaching with its tip dead centre in the reticle, then reaching again in a visibly straighter curve](assets/autodiff_examples/inverse_kinematics.png)
 
-The tip lands *inside* the reticle in eighteen iterations. The third panel is `IkOptions.smoothness`,
-and it is a trade rather than a free improvement: the pose straightens and the reach error goes *up*.
-The default is `0.0` for that reason. A curvature penalty competes with the reach term, and near the
-base, where reaching at all needs tight folds, it will refuse to fold and settle short;
-`IkSolution.reachError` is where you read what it cost.
+The tip lands inside the reticle. The third panel adds `IkOptions.smoothness`: the pose straightens,
+but the tip lands further from the target, which is why the default is `0.0`. Near the base, where
+reaching needs tight folds, a smooth chain will stop short. `IkSolution.reachError` tells you how
+far.
 
 ## A packing that descends instead of relaxing
 
 Circle packing is usually written as a relaxation loop: look for overlaps, nudge them apart, repeat.
-Written as a loss it stops being a loop of nudges and becomes a descent. Overlap is a hinge:
-`relu(r₁ + r₂ − distance)²`, exactly zero while two discs are disjoint and growing quadratically once
-they interpenetrate. The walls are the same shape. Every term is differentiable, so L-BFGS can
-take a real step instead of a heuristic one.
+Here it is written as a loss and minimized instead. The overlap of two discs is
+`relu(r₁ + r₂ − distance)²`, zero while they are apart and growing quadratically once they overlap.
+The walls work the same way. Every term is differentiable, so L-BFGS can minimize the whole thing.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/autodiff_examples/packing.png" wait="3.0" capture="box" open-outputs="true" w="1000" h="620" padding="16"}
 :::static
@@ -354,18 +340,16 @@ showPlaneGrid(
 
 ![Two panels sharing a frame: on the left a dozen circles of mixed sizes scattered and heavily overlapping inside a rectangle, on the right the same circles nested tightly against each other and the walls with no visible interpenetration](assets/autodiff_examples/packing.png)
 
-The residual overlap does not go to zero. A gentle pull toward the centre is a *competing* term, and
-the number you see is where the two balance; set `pullWeight` to `0.0` and it vanishes, taking the
-compactness with it. This is also the example
-that pays for the even-split kink convention: at the instant two discs touch, the hinge's derivative
-is half what a one-sided rule would report, so the packing settles into contact instead of chattering
-across it.
+A little overlap remains, because a gentle pull toward the centre works against the overlap term and
+the result is where the two balance. Set `pullWeight` to `0.0` and the overlap goes, and so does the
+compactness. The halfway derivative at a corner, described for `abs` above, matters here: when two
+discs just touch, the discs settle into contact instead of bouncing in and out of it.
 
 ## Where to go next
 
-- `dev_docs/autodiff.md` is the developer-facing account: the tape layout, the kink convention and why
-  it is the internally consistent one, the `Fn`-graph bridge and the conditions under which it
-  returns `null` rather than a gradient it cannot vouch for, the byte-identical-default proof, and an
-  explicit list of what is *not* covered.
-- The [agent transcript gallery](agent_transcripts.md) has `autodiff_worked_example`, which is this
-  page as an openable document you can edit and re-run.
+- The [`autodiff_worked_example`](agent_transcripts.md#autodiff_worked_example) starting point is
+  this page as a document you can edit and re-run.
+
+??? aside "Developer notes"
+    `dev_docs/autodiff.md` covers the tape layout, the corner convention, how `Fn` graphs are
+    differentiated and when that returns `null`, and what is not covered.

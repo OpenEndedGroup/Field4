@@ -1,0 +1,37 @@
+#!/bin/sh
+# Only the lander writes main. Installed by tools/install_git_hooks.py, alongside the hooks that call
+# tools/check_staged_generated_artifacts.py (that path is how the installer recognises this as Field's).
+#
+# Agents that merged into main themselves raced each other, landed unchecked work, and left reds
+# nobody could attribute. AGENTS.md said not to; this is what makes it true. Land with
+#   uv run python tools/land.py enqueue
+# tools/land.py sets FIELD_LANDER=1 for its own fast-forward. A human who really means it:
+#   FIELD_ALLOW_MAIN_WRITE=1 git ...
+#
+# Git calls this for every ref update, three times (prepared/committed/aborted); a non-zero exit
+# in "prepared" aborts the whole transaction. So: plain sh, read stdin once, decide fast.
+[ "$1" = "prepared" ] || exit 0
+[ "${FIELD_LANDER:-}" = "1" ] && exit 0
+[ "${FIELD_ALLOW_MAIN_WRITE:-}" = "1" ] && exit 0
+
+zero=0000000000000000000000000000000000000000
+while read -r old new ref; do
+    # Only a *move* of main is refused: a new value that differs from main's current one. Git's
+    # own housekeeping (pack-refs, gc) rewrites main to the value it already has, and a delete
+    # (new = zero) is let through. `old` cannot be trusted for this: `branch -f` reports it as zero.
+    [ "$ref" = "refs/heads/main" ] || continue
+    [ "$new" = "$zero" ] && continue
+    current=$(git rev-parse -q --verify refs/heads/main 2>/dev/null) || continue
+    if [ "$current" != "$new" ]; then
+        cat >&2 <<'EOF'
+
+  refusing to update main: only the landing queue writes it.
+    uv run python tools/land.py enqueue      # from your topic branch, then stop
+    uv run python tools/land.py status       # what is queued, landed, bounced
+  (FIELD_ALLOW_MAIN_WRITE=1 overrides, for a human who means it.)
+
+EOF
+        exit 1
+    fi
+done
+exit 0

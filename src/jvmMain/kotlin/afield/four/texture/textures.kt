@@ -774,7 +774,7 @@ open class LoadedTexture protected constructor(
  * - [source] contains at least `width*height*bytesPerPixel` bytes starting at its current position.
  * - Tearing is acceptable (CPU may write while GPU reads).
  */
-class StreamingTexture(
+open class StreamingTexture(
     val source: ByteBuffer,
     width: Int,
     height: Int,

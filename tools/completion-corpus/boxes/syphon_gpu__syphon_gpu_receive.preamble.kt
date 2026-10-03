@@ -5,9 +5,9 @@ import arrow.core.right
 import arrow.core.left
 import afield.four.modules.*
 import afield.four.buffers.*
-import afield.four.texture.LoadedTexture
-var Box.syphonIn by Inheritance<LoadedTexture>() /**/
-val Once.syphonIn by Onceing<LoadedTexture>() /**/
+import afield.syphon.SyphonTexture
+var Box.syphonIn by Inheritance<SyphonTexture>() /**/
+val Once.syphonIn by Onceing<SyphonTexture>() /**/
 val Why.syphonIn by Whying() /**/
 /*graphics-input:pos*/ val Mesh.pos by FromInput()
 /*graphics-input:tc*/ val Mesh.tc by FromInput()

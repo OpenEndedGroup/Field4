@@ -172,6 +172,7 @@ nav:
       - Making a Sound, Every Path There Is: sound_paths.md
       - A Pattern in Space (HRTF): pat_spatial.md
       - DoughDSP Sound Examples: dough_dsp_sound.md
+      - Subharmonic Synthesis: subharmonic_sound.md
       - Sonic Pi: sonic_pi.md
       - Faust: faust.md
       - Pure Data: pure_data.md
@@ -225,6 +226,7 @@ nav:
     - RectSL Inverse Animation: rectsl_inverse_animation.md
     - ForthField Examples: forth_examples.md
     - Python in a Box: python.md
+    - Computer Vision in Python: python_cv.md
     # Beside python.md rather than further down: the two pages answer the same question about two
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.
@@ -249,6 +251,9 @@ nav:
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
+      # Straight after the graphics contract: a render target from that page, drawn into a box's
+      # output area instead of a window. Electron-only, which the page says up front.
+      - Graphics in an Output Area: four_in_output_areas.md
       - GPU Schemas: gpu_schema.md
       - Slug Filled Paths: slug_paths.md
       # Directly after the graphics contract and before the probes page, because it is the sequel

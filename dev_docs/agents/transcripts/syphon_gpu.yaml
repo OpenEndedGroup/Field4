@@ -71,7 +71,7 @@ operations:
           layout(location = 0) out vec4 color;
           layout(location = 1) in vec2 ftc;
           void main() {
-              // red grows to the right, green downwards; top-left is dark blue
+              // red grows to the right, green upwards; bottom-left is dark blue
               color = vec4(ftc.x, ftc.y, 0.3, 1.0);
           }
   - create:
@@ -87,7 +87,7 @@ operations:
 
           // a server's name, app name or uuid
           val inp = syphonClient("Field GPU")
-          prop<LoadedTexture>(syphonIn) = inp.texture().texture
+          prop<SyphonTexture>(syphonIn) = inp.texture()
 
           val module = moduleHere()
           val quad = Mesh()
@@ -95,7 +95,8 @@ operations:
           renderer += "syphonView" to module
           quad.set(4, 2) {
               pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
-              tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+              // the texture's v = 0 is the top of the picture, so the top corners get v = 0
+              tc.add(0, 1, 1, 1, 1, 0, 0, 0)
               tri.add(0, 1, 2)
               tri.add(0, 2, 3)
           }

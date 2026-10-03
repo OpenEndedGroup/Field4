@@ -100,6 +100,9 @@ client.submit(underfitCandidates(
   .thenAccept { display("underfit", candidateBoardHtml(it)) }
 ```
 
+Hear the source, matched no-LoRA baseline and actual LoRA take in the
+[Underfit Mancini experiment](audio_ai_underfit_mancini.md#listen-to-the-experiment).
+
 `initNoiseLevel` is the audio-to-audio distance control: zero preserves the selected source and one
 approaches a fresh text-conditioned sample. A LoRA `intervalMax` below one skips it during the
 earliest structure-setting denoising steps. `UnderfitOperation.VARIATIONS` selects the explicit

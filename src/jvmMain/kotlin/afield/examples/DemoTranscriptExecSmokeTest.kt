@@ -543,6 +543,9 @@ object DemoTranscriptExecSmokeTest {
         "path_tracing_emitters",
         "path_tracing_medium",
         "python_cells",
+        // fieldcv: the Python cells need JEP plus the optional cv group, and a camera; the Kotlin
+        // graphics boxes are compiled.
+        "fieldcv_webcam",
         // Pure Data: the Kotlin boxes need libpd built to run, which the build does not own, so their
         // Kotlin is compiled; the three Pd boxes are a guest language and skipped, as Python's are.
         "pure_data_demo",
@@ -593,6 +596,9 @@ object DemoTranscriptExecSmokeTest {
         // KosmicKrisp (host-pointer buffers). Needs a Vulkan window and the helper binary, so CI
         // compiles it; the backdoor replay runs it live.
         "iosurface_ring_roundtrip_smoke",
+        // Zero-copy Syphon receive against field_syphon_probe, read back exactly. Needs a Vulkan
+        // window and the optional Syphon library, so CI compiles it; the backdoor replay runs it live.
+        "syphon_zero_copy_receive_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

@@ -27,6 +27,9 @@ Top-level layout:
 - `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
 - `server/`: optional Python services — `metadata_server.py` serves templates from
   `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
 - `field-user-dir/`: local user workspace artifacts — mutable user data.
@@ -123,6 +126,16 @@ Accepted reds live only in `dev_docs/testing/expected_test_failures.json` (JVM) 
 `dev_docs/testing/expected_smoke_failures.json` (smoke), enforced in both directions. Never
 describe a red as expected only in prose, and never use wildcards in either register.
 
+### Landing on `main`
+
+Never merge into `main` yourself. Commit on your topic branch, then
+`uv run python tools/land.py enqueue` and stop: the lander merges it, regenerates the generated
+artifacts, runs the full guard once and fast-forwards `main`, one branch at a time. A failure comes
+back as a bounce with its reason (`tools/land.py status <id>`); fix the branch and enqueue again.
+The hooks only report which guards a commit affects, so commits take seconds; do not use
+`--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
+branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.
+
 ### Gradle hygiene
 
 - Use the wrapper: `./gradlew compileKotlinJvm` (Windows: `.\gradlew compileKotlinJvm`, and
@@ -154,6 +167,10 @@ describe a red as expected only in prose, and never use wildcards in either regi
   mode. Regenerating them needs Linux, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`, and the GPU
   features; macOS always retains them, and a missing retained asset fails the build. Neural-tool
   pages use committed media and their own scripts (`dev_docs/lighting/NEURAL_TOOLS.md`).
+- `capture-profile="macos-electron"` works the same way for output that only exists in the Field
+  Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
+  runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
+  everywhere else the committed capture is retained.
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
   computed value, no scripted placeholder for a live panel. If the real capture will not come

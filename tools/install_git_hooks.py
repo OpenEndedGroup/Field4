@@ -12,6 +12,10 @@ Git LFS already owns ``post-merge`` in this repository. Replacing it would silen
 refusing to install would leave the gap open, so a foreign hook is *preserved* alongside as
 ``<name>.local`` and Field's hook invokes it first. That makes installation idempotent and
 reversible: move ``<name>.local`` back to ``<name>`` to undo.
+
+It also registers the ``field-generated`` merge driver that ``.gitattributes`` names for generated
+artifacts. The driver keeps our side, so a merge never stops on a derived file, and
+``tools/merge_regen.py`` regenerates those files on the merged tree.
 """
 
 from __future__ import annotations
@@ -24,7 +28,9 @@ import sys
 from pathlib import Path
 
 
-HOOKS = ("pre-commit", "post-merge")
+# reference-transaction refuses any move of main not made by tools/land.py (it carries FIELD_MARKER
+# in a comment so reinstalling recognises it).
+HOOKS = ("pre-commit", "post-merge", "reference-transaction")
 
 # Both tracked hooks invoke this script, so its presence identifies a hook as Field's and makes
 # reinstalling over an older copy an update rather than a conflict.
@@ -93,7 +99,19 @@ def main() -> int:
             continue
         if not _install(source, hook_dir / name):
             failed = True
+    _register_merge_driver(repo)
     return 1 if failed else 0
+
+
+def _register_merge_driver(repo: Path) -> None:
+    # `true` leaves %A (our side) in place and reports a clean merge. Config is shared by every
+    # worktree of the clone, so one install covers them all.
+    for key, value in (
+        ("merge.field-generated.name", "Field generated artifact: keep ours, regenerate after merge"),
+        ("merge.field-generated.driver", "true"),
+    ):
+        subprocess.run(["git", "config", key, value], cwd=repo, check=True)
+    print("registered merge driver field-generated")
 
 
 if __name__ == "__main__":
