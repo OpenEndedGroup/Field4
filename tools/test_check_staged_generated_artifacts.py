@@ -235,7 +235,7 @@ class HookInstallTests(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
         subprocess.run(["git", "init", "--quiet", str(self.tmp)], check=True)
         (self.tmp / "tools/hooks").mkdir(parents=True)
-        for name in ("pre-commit", "post-merge"):
+        for name in ("pre-commit", "post-merge", "reference-transaction"):
             shutil.copyfile(REPO / "tools/hooks" / name, self.tmp / "tools/hooks" / name)
         shutil.copyfile(
             REPO / "tools/install_git_hooks.py", self.tmp / "tools/install_git_hooks.py"
@@ -253,9 +253,9 @@ class HookInstallTests(unittest.TestCase):
     def _hooks(self) -> Path:
         return self.tmp / ".git/hooks"
 
-    def test_installs_both_hooks(self) -> None:
+    def test_installs_every_hook(self) -> None:
         self.assertEqual(self._install().returncode, 0)
-        for name in ("pre-commit", "post-merge"):
+        for name in ("pre-commit", "post-merge", "reference-transaction"):
             hook = self._hooks() / name
             self.assertTrue(hook.exists(), name)
             self.assertTrue(os.access(hook, os.X_OK), f"{name} not executable")

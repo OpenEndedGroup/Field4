@@ -28,7 +28,9 @@ import sys
 from pathlib import Path
 
 
-HOOKS = ("pre-commit", "post-merge")
+# reference-transaction refuses any move of main not made by tools/land.py (it carries FIELD_MARKER
+# in a comment so reinstalling recognises it).
+HOOKS = ("pre-commit", "post-merge", "reference-transaction")
 
 # Both tracked hooks invoke this script, so its presence identifies a hook as Field's and makes
 # reinstalling over an older copy an update rather than a conflict.

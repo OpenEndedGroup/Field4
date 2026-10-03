@@ -246,12 +246,15 @@ def _fast_forward_main(primary: Path, old: str, new: str) -> str | None:
             holder = current
     if _git(primary, "rev-parse", "refs/heads/main") != old:
         return "main moved"
+    # The reference-transaction hook refuses every other writer of main.
+    env = {**os.environ, "FIELD_LANDER": "1"}
     if holder is None:
-        return None if _ok(primary, "update-ref", "refs/heads/main", new, old) else "main moved"
+        moved = subprocess.run(["git", "update-ref", "refs/heads/main", new, old], cwd=primary, env=env)
+        return None if moved.returncode == 0 else "main moved"
     # Some worktree has main checked out (usually the primary, with other sessions' edits in it).
     # --ff-only refuses rather than overwrite a dirty file, so their work is safe either way.
     result = subprocess.run(
-        ["git", "merge", "--ff-only", "-q", new], cwd=holder, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        ["git", "merge", "--ff-only", "-q", new], cwd=holder, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
     if result.returncode == 0:
         return None
