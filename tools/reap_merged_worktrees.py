@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Remove clean nightly worktrees without risking their commits.
+"""Remove clean merged worktrees, or strip build output from idle ones, without risking any work.
 
-By default candidates must already be merged to main, and their merged branch is deleted. An exact
+By default candidates must already be merged to main; a nightly or docs branch is then deleted, an
+agent-session or other branch is kept. ``--clean-builds`` is the second mode, described below. An exact
 ``--completed PATH`` selects a clean registered nightly checkout even when its branch is unmerged;
 that mode removes only the checkout and always preserves the branch. It is the safe completion-time
 reclaim: the branch carries the work, while a multi-GiB build directory need not remain mounted.
 
-Dry-run is always the default. There is intentionally no dirty tier: generated assets and worklogs
-still deserve a human decision.
+Dry-run is always the default. There is intentionally no dirty tier: uncommitted edits and ignored
+work outside build output still deserve a human decision.
 
 WHAT MAY BE REMOVED — the retention policy
 ------------------------------------------
@@ -17,18 +18,49 @@ A worktree is only ever a candidate if it matches a *retention family*: a named 
 worktree **root directory** with a set of **branch prefixes**. Both halves must match. Run
 ``--explain-policy`` to print the table without scanning anything.
 
-  nightly        (on by default)  <repo>-worktrees        nightly/  review/  integration/nightly
-  docs-blast     (--family)       both roots              docs/language-
-  agent-session  (--family)       <repo>/.claude/worktrees  claude/
+  nightly        <repo>-worktrees          nightly/  review/  integration/nightly
+  docs-blast     both roots                docs/language-  docs/voice-  docs-pass/  docs/kdoc-
+  agent-session  <repo>/.claude/worktrees  claude/
+  any-merged     both roots + ~/.codex/worktrees/*/  any branch, or a detached HEAD
 
-Two axes, not one, because the scope gap here was measured to be the *root*, not the prefix: on
-2026-09-09 the 33 worktrees under ``.claude/worktrees`` held 61.4 GiB -- 54% of the whole footprint,
-and the population that actually grows -- and no branch name could have made one of them a candidate.
-``--family`` is purely additive: naming one can only ever *add* a population, never remove a
-protection, and [PROTECTED_BRANCHES] outranks every family.
+All four are on by default since 2026-10-03. Two axes, not one, because the scope gap here was
+measured to be the *root*, not the prefix: on 2026-09-09 the 33 worktrees under ``.claude/worktrees``
+held 61.4 GiB -- 54% of the whole footprint, and the population that actually grows -- and no branch
+name could have made one of them a candidate. Then on 2026-10-02 a hand cull found 16 merged, clean
+trees worth 45 GiB of free space on ``codex/``, ``viewers/``, ``arch/``, ``fix/`` and detached HEADs
+that no prefix covered, which is what ``any-merged`` is for. ``--only-family`` narrows the run to the
+named families; [PROTECTED_BRANCHES] outranks every family.
 
 Nothing is removed merely for matching a family. A candidate must additionally be clean, merged into
-main, free of live process cwds, and **idle** (see below).
+main, free of live process cwds, **idle** (see below), free of **ignored work**, and its submodules
+must be at commits that exist somewhere other than this checkout.
+
+IGNORED WORK
+------------
+"Clean" used to mean ``git status --porcelain`` printed nothing, and that is blind to ignored files.
+``src/personal/`` is gitignored and holds real hand-written source: on 2026-10-02 one merged, clean
+tree carried 1,205 files of it that main lacked, and the reaper would have deleted them. So every
+ignored path is now checked against [REGENERABLE] -- build output, caches, logs -- and anything else
+refuses the tree. Two known-precious files, [ARCHIVED_FILES], are copied to ``<repo>-archive/``
+first instead of refusing, because every nightly tree has one and both are small.
+
+SUBMODULES
+----------
+``git worktree remove`` refuses any tree with an initialized submodule ("working trees containing
+submodules cannot be moved or removed"), and since ``services/field-audio-ai`` arrived that is every
+fresh tree. The submodule's git dir lives under ``.git/worktrees/<name>/modules``, so removal deletes
+it; [submodule_problem] therefore requires each initialized submodule to sit at its recorded commit
+and for that commit to exist in the primary checkout's submodule or on a fetched remote branch. Then
+``--apply`` runs ``submodule deinit -f --all`` and removes with ``--force``.
+
+CLEANING BUILDS (``--clean-builds``)
+------------------------------------
+Most of a worktree's footprint is regenerable build output, and it is safe to delete from a tree
+nobody is using whether or not the branch is merged. ``--clean-builds`` runs
+``git clean -xdff -- <CLEAN_PATHS>`` (literal paths, never a bare clean) in every registered tree
+with no live cwd and no file under its source or build directories modified inside the idle window.
+It never touches tracked files, untracked source, or ``src/personal``, and it checks that
+``git status --porcelain`` is unchanged afterwards.
 
 THE IDLE GUARD
 --------------
@@ -64,6 +96,7 @@ even that is refused or fails.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import shutil
 import subprocess
 import time
@@ -71,7 +104,53 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-PROTECTED_BRANCHES = {"nightly/journal", "nightly/ci-journal"}
+PROTECTED_BRANCHES = {
+    "nightly/journal",
+    "nightly/ci-journal",
+    # The landing queue's own worktree (~/field4-worktrees/lander, tools/land.py LANDER_BRANCH): clean
+    # and merged between landings, so any-merged would otherwise reap it.
+    "land/lander",
+}
+
+# Ignored paths a tree may hold and still be removed: build output, caches and logs, each of which
+# the build or the next run regenerates. Matched with fnmatch against the path git prints for an
+# ignored entry (trailing "/" stripped). Note what is *not* here: ``src/personal``, agent demo
+# transcripts, anything under ``src/``. Adding a pattern here is a decision that the files it matches
+# are worthless; when in doubt, leave it out and let the tree be refused.
+REGENERABLE = (
+    "build", ".gradle", ".venv", ".kotlin", "kotlin-js-store", ".field-backdoor", ".field",
+    ".pytest_cache", ".nightly-tmp", "electron/node_modules",
+    "public/field4", "public/.cache", "public/.zensical-generated", "public/docs-runner-failures",
+    "public/docs-runner-failures/*", "public/.field-docs-runner-*", "public/zensical.generated.yml",
+    "native/*/build", "native/*/.build", "tools/*/build", "tools/*/.gradle", "tools/*/.kotlin",
+    "*__pycache__", "*.pyc", "*.DS_Store", "config/field4-local.p12",
+    "hs_err_pid*.log", "java_pid*.hprof",
+)
+
+# Ignored files that are precious but expected: copied to ``<repo>-archive/<subdir>/<tree>-<name>``
+# before removal rather than refusing it. NIGHTLY_WORKLOG.md is deliberately untracked (it conflicts
+# on every nightly merge), so a tree's analysis exists only on that disk.
+ARCHIVED_FILES = {
+    "NIGHTLY_WORKLOG.md": "worklogs",
+    ".claude/settings.local.json": "settings",
+}
+
+# Untracked (not ignored) paths that do not make a tree dirty. Every nightly tree carries a
+# ``.nightly-tmp/`` scratch directory, which used to make the whole nightly population read as dirty.
+SCRATCH_UNTRACKED = (".nightly-tmp/",)
+
+# What ``--clean-builds`` deletes, as literal pathspecs. Narrower than [REGENERABLE] on purpose:
+# these trees may be unmerged and mid-task, so only output the build itself writes is touched.
+CLEAN_PATHS = (
+    "build", ".gradle", ".venv", ".kotlin", "kotlin-js-store", ".field-backdoor", ".pytest_cache",
+    "public/field4", "public/.cache", "public/.zensical-generated", "electron/node_modules",
+    "tools/code-use-semantic-sidecar/build", "tools/code-use-semantic-sidecar/.gradle",
+    "tools/code-use-semantic-sidecar/.kotlin",
+)
+CLEAN_GLOBS = ("native/*/build", "native/*/.build", "java_pid*.hprof")
+
+# Where a working session writes; any file here newer than the idle window means "in use".
+ACTIVITY_DIRS = ("src", "tools", "dev_docs", "public/docs", "build", ".gradle")
 
 # Long enough that a nightly agent which pauses to run a two-hour Gradle build is still protected,
 # short enough that this morning's finished cohort is reclaimable by tonight. The populations this
@@ -102,6 +181,14 @@ class RetentionFamily:
     branch_prefixes: tuple[str, ...]
     default_on: bool
     why: str
+    # Roots whose worktrees sit one level further down, ``<root>/<id>/<checkout>`` -- the Codex app's
+    # layout.
+    nested_roots: tuple[Path, ...] = ()
+    # Claim every branch name, and a detached HEAD, rather than matching [branch_prefixes].
+    any_branch: bool = False
+    # Delete the merged branch after removing its checkout. Off for agent sessions: the desktop app
+    # checks a resumed session's branch out again, so the ref is what lets the session come back.
+    delete_branch: bool = True
 
 
 @dataclass(frozen=True)
@@ -156,9 +243,16 @@ def parse_worktrees(porcelain: str) -> list[Worktree]:
     return parsed
 
 
-def retention_families(base: Path, agent_root: Path) -> tuple[RetentionFamily, ...]:
+def retention_families(
+    base: Path, agent_root: Path, codex_root: Path | None = None
+) -> tuple[RetentionFamily, ...]:
     """The whole policy, in one readable table. [base] is ``<repo>-worktrees``, [agent_root] is
-    ``<repo>/.claude/worktrees``."""
+    ``<repo>/.claude/worktrees``, [codex_root] is ``~/.codex/worktrees``.
+
+    Order matters: [family_for] returns the first match, so the catch-all comes last and the named
+    families keep their own branch-deletion rules.
+    """
+    nested = (codex_root,) if codex_root is not None else ()
     return (
         RetentionFamily(
             name="nightly",
@@ -171,20 +265,33 @@ def retention_families(base: Path, agent_root: Path) -> tuple[RetentionFamily, .
         RetentionFamily(
             name="docs-blast",
             roots=(base, agent_root),
-            branch_prefixes=("docs/language-",),
-            default_on=False,
-            why="Prose-blast checkouts from the docs language harness, which runs 45 units 8-wide "
-                "and reaps none of them. 32 such branches existed on 2026-09-09 with no checkout "
-                "left, so the family recurs in bursts and then gets cleaned up by hand.",
+            branch_prefixes=("docs/language-", "docs/voice-", "docs-pass/", "docs/kdoc-"),
+            default_on=True,
+            why="Checkouts from the docs harnesses -- the language blast (45 units 8-wide), the "
+                "voice pass, the docs pass and the kdoc routine -- none of which reap their own. 20 "
+                "merged docs/voice-* trees sat unreached on 2026-09-29 and were culled by hand.",
         ),
         RetentionFamily(
             name="agent-session",
             roots=(agent_root,),
             branch_prefixes=("claude/",),
-            default_on=False,
-            why="Interactive agent-session checkouts. The largest population on the machine (33 "
-                "trees, 61.4 GiB on 2026-09-09) and the one that grows fastest, but also the one "
-                "most likely to be somebody's open window -- opt in deliberately.",
+            default_on=True,
+            why="Interactive agent-session checkouts: the largest population and the fastest "
+                "growing. Often still open in the app, so the live-cwd and idle guards are what "
+                "protect a session in use. The branch is kept, so the session can be resumed.",
+            delete_branch=False,
+        ),
+        RetentionFamily(
+            name="any-merged",
+            roots=(base, agent_root),
+            branch_prefixes=(),
+            default_on=True,
+            why="Everything else under the worktree roots, including detached HEADs and Codex "
+                "checkouts: codex/, viewers/, arch/, fix/ and one-off branches. On 2026-10-02 these "
+                "held 16 merged, clean trees that no prefix reached. The branch is kept.",
+            nested_roots=nested,
+            any_branch=True,
+            delete_branch=False,
         ),
     )
 
@@ -197,13 +304,126 @@ def family_for(
     [PROTECTED_BRANCHES] is checked here rather than per family so that no family, however it is
     written, can ever reach one of them.
     """
-    if not branch or branch in PROTECTED_BRANCHES:
+    if branch in PROTECTED_BRANCHES:
         return None
     parent = path.resolve().parent
     for family in families:
-        if parent in family.roots and branch.startswith(family.branch_prefixes):
+        in_root = parent in family.roots or parent.parent in family.nested_roots
+        if not in_root:
+            continue
+        if family.any_branch:
+            return family
+        if branch and branch.startswith(family.branch_prefixes):
             return family
     return None
+
+
+def head_idle_hours(path: Path, now_epoch: float) -> float | None:
+    """[branch_idle_hours] for a detached HEAD: the worktree's own HEAD reflog, or its commit date."""
+    stamps: list[int] = []
+    reflog = run_git(path, "reflog", "show", "-1", "--date=unix", "--format=%gd", "HEAD", check=False)
+    tail = reflog.stdout.strip().rpartition("@{")[2].rstrip("}")
+    if tail.isdigit():
+        stamps.append(int(tail))
+    committed = run_git(path, "log", "-1", "--format=%ct", "HEAD", check=False)
+    if committed.stdout.strip().isdigit():
+        stamps.append(int(committed.stdout.strip()))
+    if not stamps:
+        return None
+    return max(0.0, (now_epoch - max(stamps)) / 3600.0)
+
+
+def meaningful_status(path: Path) -> list[str]:
+    """``git status --porcelain`` lines, less untracked [SCRATCH_UNTRACKED] directories."""
+    lines = run_git(path, "status", "--porcelain").stdout.splitlines()
+    return [
+        line for line in lines
+        if not (line.startswith("?? ") and line[3:] in SCRATCH_UNTRACKED)
+    ]
+
+
+def ignored_paths(path: Path) -> list[str]:
+    """Every ignored entry git reports in [path], as git prints it (directories end in "/")."""
+    out = run_git(path, "status", "--porcelain", "--ignored=matching", check=False).stdout
+    return [line[3:] for line in out.splitlines() if line.startswith("!! ")]
+
+
+def is_regenerable(entry: str) -> bool:
+    """Whether [entry], or a directory containing it, matches [REGENERABLE].
+
+    The containing directories matter because a cache that carries its own ``.gitignore`` (as
+    ``public/.cache`` and ``.pytest_cache`` do) is reported file by file rather than as one entry.
+    """
+    parts = entry.rstrip("/").split("/")
+    prefixes = ["/".join(parts[: i + 1]) for i in range(len(parts))]
+    return any(
+        fnmatch.fnmatchcase(prefix, pattern) for prefix in prefixes for pattern in REGENERABLE
+    )
+
+
+def ignored_work(path: Path) -> list[str]:
+    """Ignored entries that are neither regenerable nor archived -- somebody's work, maybe.
+
+    This is the guard that keeps ``src/personal`` alive: it is gitignored, so ``git status`` says
+    nothing about it, and on 2026-10-02 a merged, clean tree held 1,205 files of it that main lacked.
+    """
+    return [
+        entry for entry in ignored_paths(path)
+        if not is_regenerable(entry) and entry not in ARCHIVED_FILES
+    ]
+
+
+def submodule_problem(path: Path, repo: Path) -> str | None:
+    """Why removing [path] could lose a submodule commit, or None when it cannot.
+
+    ``git submodule status`` prefixes ``-`` for uninitialized, ``+`` for checked out off the
+    recorded commit and ``U`` for conflicts. An initialized submodule's git dir lives under the
+    worktree's admin dir and is deleted with it, so its commit must also exist in the primary
+    checkout's submodule or on a fetched remote branch.
+    """
+    if not (path / ".gitmodules").exists():
+        return None
+    status = run_git(path, "submodule", "status", "--recursive", check=False)
+    if status.returncode != 0:
+        return f"submodule status failed: {status.stderr.strip()}"
+    for line in status.stdout.splitlines():
+        if not line:
+            continue
+        flag, rest = line[0], line[1:].split()
+        if flag == "-" or len(rest) < 2:
+            continue
+        sha, subpath = rest[0], rest[1]
+        if flag in "+U":
+            return f"submodule {subpath} is off its recorded commit"
+        primary = repo / subpath
+        if (primary / ".git").exists() and run_git(
+            primary, "cat-file", "-e", f"{sha}^{{commit}}", check=False
+        ).returncode == 0:
+            continue
+        remote = run_git(path / subpath, "branch", "-r", "--contains", sha, check=False)
+        if remote.returncode == 0 and remote.stdout.strip():
+            continue
+        return f"submodule {subpath} commit {sha[:10]} exists only in this checkout"
+    return None
+
+
+def archive_precious(path: Path, archive_root: Path) -> list[Path]:
+    """Copy any [ARCHIVED_FILES] out of [path] before it is removed; return the copies."""
+    copies: list[Path] = []
+    for relative, subdir in ARCHIVED_FILES.items():
+        source = path / relative
+        if not source.is_file():
+            continue
+        target_dir = archive_root / subdir
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / f"{path.name}-{Path(relative).name}"
+        counter = 1
+        while target.exists():
+            counter += 1
+            target = target_dir / f"{path.name}-{counter}-{Path(relative).name}"
+        shutil.copy2(source, target)
+        copies.append(target)
+    return copies
 
 
 def branch_idle_hours(repo: Path, branch: str, now_epoch: float) -> float | None:
@@ -307,11 +527,20 @@ def classify_worktree(
     if active:
         pids = ",".join(map(str, sorted(active)))
         return Verdict(f"live cwd pid(s) {pids}", "live", False, family)
-    if run_git(path, "status", "--porcelain").stdout.strip():
+    if meaningful_status(path):
         return Verdict("dirty", "dirty", False, family)
+    work = ignored_work(path)
+    if work:
+        shown = ", ".join(work[:4]) + (f", +{len(work) - 4} more" if len(work) > 4 else "")
+        return Verdict(f"holds ignored work ({shown})", "ignored-work", False, family)
+    problem = submodule_problem(path, repo)
+    if problem:
+        return Verdict(problem, "submodule", False, family)
     if not completed:
-        assert tree.branch is not None  # family_for rejects a detached head
-        idle = branch_idle_hours(repo, tree.branch, now_epoch)
+        if tree.branch is None:
+            idle = head_idle_hours(path, now_epoch)
+        else:
+            idle = branch_idle_hours(repo, tree.branch, now_epoch)
         if idle is None:
             return Verdict("no reflog or commit date to age it by", "undatable", False, family)
         if idle < min_idle_hours:
@@ -478,6 +707,8 @@ REFUSAL_LABELS = {
     "undatable": "undatable",
     "unmerged": "clean but unmerged",
     "unregistered": "unregistered",
+    "ignored-work": "holds ignored work",
+    "submodule": "a submodule commit could be lost",
 }
 
 
@@ -539,6 +770,74 @@ def print_disk_report(
     return deficit == 0
 
 
+def recently_active(path: Path, hours: float, now_epoch: float) -> str | None:
+    """The first file under [ACTIVITY_DIRS] modified within [hours], or None if the tree is quiet.
+
+    Branch age is no use here: an agent session that never commits reads as ancient by reflog while
+    its build is running. File times are what a working session actually moves.
+    """
+    dirs = [str(path / d) for d in ACTIVITY_DIRS if (path / d).is_dir()]
+    if not dirs:
+        return None
+    # A local "YYYY-MM-DD HH:MM:SS", because /usr/bin/find on macOS rejects "@<epoch>" (bfs and GNU
+    # find accept it, which is how a shell test can pass while this call fails).
+    cutoff = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now_epoch - hours * 3600))
+    found = subprocess.run(
+        ["find", *dirs, "-type", "f", "-newermt", cutoff, "-print", "-quit"],
+        capture_output=True, text=True, check=False,
+    )
+    hit = found.stdout.strip()
+    if hit:
+        return hit
+    # Fail closed: a find that could not answer must not read as "quiet", or every tree is cleaned.
+    # Unreadable subdirectories also exit non-zero, so only a parse or usage error counts here.
+    if found.returncode != 0 and "No such file" not in found.stderr and "Permission denied" not in found.stderr:
+        return f"(find failed: {found.stderr.strip()[:120]})"
+    return None
+
+
+def clean_targets(path: Path) -> list[str]:
+    """The [CLEAN_PATHS] and [CLEAN_GLOBS] that exist in [path], relative, as literal pathspecs."""
+    present = [p for p in CLEAN_PATHS if (path / p).exists()]
+    for pattern in CLEAN_GLOBS:
+        present.extend(str(hit.relative_to(path)) for hit in sorted(path.glob(pattern)))
+    return present
+
+
+@dataclass(frozen=True)
+class CleanResult:
+    kib: int
+    passes: int
+    status_changed: bool
+    leftovers: tuple[str, ...]
+
+
+def clean_builds(path: Path, *, apply: bool) -> CleanResult:
+    """Delete regenerable build output from [path], or measure it when [apply] is false.
+
+    ``git clean -xdff -- <literal paths>`` never touches a tracked file, and naming the paths keeps
+    it away from untracked source and ``src/personal``. ``-xdff`` routinely needs a second pass
+    (``failed to remove build/js: Directory not empty``) and occasionally a third, so passes repeat
+    until git prints nothing. The proof that nothing else moved is ``git status --porcelain`` before
+    and after, which is the number a human would check.
+    """
+    targets = clean_targets(path)
+    if not targets:
+        return CleanResult(0, 0, False, ())
+    kib = sum(tree_size_kib(path / t) for t in targets)
+    if not apply:
+        return CleanResult(kib, 0, False, ())
+    before = run_git(path, "status", "--porcelain").stdout
+    passes = 0
+    for passes in range(1, 4):
+        cleaned = run_git(path, "clean", "-xdff", "-q", "--", *targets, check=False)
+        targets = clean_targets(path)
+        if not (cleaned.stdout.strip() or cleaned.stderr.strip()) or not targets:
+            break
+    after = run_git(path, "status", "--porcelain").stdout
+    return CleanResult(kib, passes, before != after, tuple(targets))
+
+
 def print_policy(families: tuple[RetentionFamily, ...], enabled: frozenset[str]) -> None:
     """The whole policy, printed without scanning anything, so it can be read before it is trusted."""
     print("retention policy — a worktree is a candidate only if some ENABLED family claims it,")
@@ -546,12 +845,79 @@ def print_policy(families: tuple[RetentionFamily, ...], enabled: frozenset[str])
     for family in families:
         state = "enabled" if family.name in enabled else f"disabled (--family {family.name})"
         print(f"\n  {family.name}  [{state}]")
-        print(f"    roots:    {', '.join(str(root) for root in family.roots)}")
-        print(f"    branches: {'  '.join(family.branch_prefixes)}")
+        roots = [str(root) for root in family.roots] + [f"{root}/*" for root in family.nested_roots]
+        print(f"    roots:    {', '.join(roots)}")
+        branches = "any branch, or a detached HEAD" if family.any_branch else "  ".join(family.branch_prefixes)
+        print(f"    branches: {branches}")
+        print(f"    branch:   {'deleted once merged' if family.delete_branch else 'kept'}")
         print(f"    why:      {family.why}")
     print(f"\n  never, under any family: {', '.join(sorted(PROTECTED_BRANCHES))}")
     print("  also required of every candidate: clean, merged into main, no live process cwd inside,")
-    print("  and idle (see --min-idle-hours). --family only ever adds a population.")
+    print("  idle (see --min-idle-hours), no ignored work outside build/cache output, and no")
+    print("  submodule commit that exists only in the checkout. --family adds a population and")
+    print("  --only-family narrows to the named ones.")
+
+
+def run_clean_builds(
+    trees: list[Worktree], *, repo: Path, families: tuple[RetentionFamily, ...],
+    enabled: frozenset[str], cwds: dict[Path, set[int]], min_idle_hours: float,
+    now_epoch: float, apply: bool,
+) -> int:
+    """``--clean-builds``: strip build output from every quiet registered worktree.
+
+    Unlike removal this needs no merge, because it deletes nothing a branch or a human wrote. The
+    guards are the ones that say "somebody is using this right now": a live cwd, or any file under
+    [ACTIVITY_DIRS] newer than the idle window.
+    """
+    total = 0
+    changed: list[Path] = []
+    for tree in trees:
+        path = tree.path.resolve()
+        if path == repo.resolve():
+            continue
+        family = family_for(path, tree.branch, families)
+        if family is None or family.name not in enabled:
+            continue
+        busy = pids_inside(path, cwds)
+        if busy:
+            print(f"keeping {path}: live cwd pid(s) {','.join(map(str, sorted(busy)))}")
+            continue
+        # Both signals, because each misses a case: a landing tree's branch moves with few file
+        # writes, and a session that never commits writes files on a branch that reads as ancient.
+        idle = (
+            head_idle_hours(path, now_epoch) if tree.branch is None
+            else branch_idle_hours(repo, tree.branch, now_epoch)
+        )
+        if idle is None or idle < min_idle_hours:
+            shown = "undatable" if idle is None else f"branch touched {idle:.2f} h ago"
+            print(f"keeping {path}: {shown}")
+            continue
+        recent = recently_active(path, min_idle_hours, now_epoch)
+        if recent:
+            print(f"keeping {path}: modified within {min_idle_hours:g} h ({recent})")
+            continue
+        result = clean_builds(path, apply=apply)
+        if result.kib < 10 * 1024:
+            continue
+        total += result.kib
+        note = ""
+        if apply:
+            note = f"  {result.passes} pass(es)"
+            if result.leftovers:
+                note += f"; still present: {', '.join(result.leftovers)}"
+            if result.status_changed:
+                changed.append(path)
+                note += "  *** git status CHANGED ***"
+        print(f"  {result.kib / 1048576:6.2f} GiB  {path}{note}")
+    verb = "cleaned" if apply else "cleanable"
+    print(f"{verb}: {total / 1048576:.2f} GiB of build output (du; shared APFS blocks make the real gain smaller)")
+    if changed:
+        print(f"*** git status changed in {len(changed)} tree(s) -- inspect them: "
+              + ", ".join(map(str, changed)))
+        return 1
+    if not apply:
+        print("DRY RUN — pass --apply to delete exactly this build output.")
+    return 0
 
 
 def main() -> int:
@@ -589,6 +955,19 @@ def main() -> int:
              "widen the population, never lift a protection. See --explain-policy.",
     )
     parser.add_argument(
+        "--only-family", action="append", default=[], metavar="NAME",
+        help="Consider only these retention families (repeatable), instead of every default one.",
+    )
+    parser.add_argument(
+        "--clean-builds", action="store_true",
+        help="Instead of removing merged worktrees, delete regenerable build output (CLEAN_PATHS) "
+             "from every quiet worktree, merged or not. Dry run unless --apply.",
+    )
+    parser.add_argument(
+        "--archive-root", type=Path, metavar="PATH",
+        help="Where ARCHIVED_FILES are copied before removal (default: <repo>-archive).",
+    )
+    parser.add_argument(
         "--min-idle-hours", type=float, default=DEFAULT_MIN_IDLE_HOURS, metavar="HOURS",
         help=f"Refuse a worktree whose branch shows any sign of life inside this window; it is "
              f"probably still in flight (default {DEFAULT_MIN_IDLE_HOURS:g}).",
@@ -602,16 +981,23 @@ def main() -> int:
     repo = Path(run_git(args.repo, "rev-parse", "--show-toplevel").stdout.strip()).resolve()
     base = (args.base or repo.with_name(f"{repo.name}-worktrees")).resolve()
     agent_root = (repo / ".claude/worktrees").resolve()
-    families = retention_families(base, agent_root)
-    unknown = sorted(set(args.family) - {family.name for family in families})
+    codex_root = (Path.home() / ".codex/worktrees").resolve()
+    families = retention_families(base, agent_root, codex_root)
+    unknown = sorted(set(args.family + args.only_family) - {family.name for family in families})
     if unknown:
         parser.error(
             f"unknown --family {', '.join(unknown)}; known families are "
             + ", ".join(family.name for family in families)
         )
-    enabled = frozenset(
-        [family.name for family in families if family.default_on] + list(args.family)
-    )
+    if args.only_family:
+        enabled = frozenset(args.only_family + list(args.family))
+    else:
+        enabled = frozenset(
+            [family.name for family in families if family.default_on] + list(args.family)
+        )
+    archive_root = (args.archive_root or repo.with_name(f"{repo.name}-archive")).resolve()
+    if args.clean_builds and args.completed:
+        parser.error("--clean-builds and --completed are different modes; pick one")
     if args.explain_policy:
         print_policy(families, enabled)
         return 0
@@ -635,7 +1021,12 @@ def main() -> int:
         )
         + f"  min-idle={args.min_idle_hours:g}h"
     )
-    candidates: list[tuple[Worktree, int]] = []
+    if args.clean_builds:
+        return run_clean_builds(
+            trees, repo=repo, families=families, enabled=enabled, cwds=cwd_owners,
+            min_idle_hours=args.min_idle_hours, now_epoch=now_epoch, apply=args.apply,
+        )
+    candidates: list[tuple[Worktree, int, RetentionFamily]] = []
     for tree in trees:
         path = tree.path.resolve()
         if completed and path not in completed:
@@ -672,13 +1063,13 @@ def main() -> int:
             if verdict.reason in ("live", "in-flight"):
                 print(f"keeping {path}: {verdict.text}")
             continue
-        candidates.append((tree, tree_size_kib(path)))
+        candidates.append((tree, tree_size_kib(path), verdict.family))
 
-    total_kib = sum(size for _, size in candidates)
+    total_kib = sum(size for _, size, _ in candidates)
     kind = "completed checkout(s), branches preserved" if completed else "clean merged worktree(s)"
     print(f"main {main_head[:10]} — {len(candidates)} {kind}, {total_kib / 1048576:.2f} GiB")
-    for tree, size in candidates:
-        print(f"  {tree.path}  {size / 1048576:.2f} GiB  {tree.branch}")
+    for tree, size, family in candidates:
+        print(f"  {tree.path}  {size / 1048576:.2f} GiB  {tree.branch or '(detached ' + tree.head[:10] + ')'}  [{family.name}]")
 
     # Leaks that already happened. Reported every run, in both modes, because an orphan is by
     # definition something no future candidate scan can reach.
@@ -719,16 +1110,23 @@ def main() -> int:
         print("DRY RUN — pass --apply to remove exactly these worktrees.")
         return 0 if budget_ok else 2
 
-    for tree, _ in candidates:
+    for tree, _, family in candidates:
         print(f"removing {tree.path}")
+        for copy in archive_precious(tree.path, archive_root):
+            print(f"  archived {copy}")
         swept = sweep_finder_metadata(tree.path)
         if swept:
             print(f"  swept {swept} .DS_Store file(s) first, so git is not left half-done")
-        remove_args = ["worktree", "remove"]
-        # Git requires --force for a clean worktree with an initialized submodule. Dirt was already
-        # rejected above, so this does not broaden the selected population.
-        if completed:
-            remove_args.append("--force")
+        if (tree.path / ".gitmodules").exists():
+            # submodule_problem already proved each initialized submodule's commit exists elsewhere.
+            deinit = run_git(tree.path, "submodule", "deinit", "-f", "--all", check=False)
+            if deinit.returncode != 0:
+                print(f"  submodule deinit failed, skipping: {deinit.stderr.strip()}")
+                continue
+        # --force because git refuses a tree with an initialized submodule, and an untracked
+        # SCRATCH_UNTRACKED directory, without it. Dirt and ignored work were rejected above, so
+        # this does not widen what is removed.
+        remove_args = ["worktree", "remove", "--force"]
         removed = run_git(repo, *remove_args, str(tree.path), check=False)
         if removed.returncode != 0:
             reason = removed.stderr.strip() or removed.stdout.strip()
@@ -762,8 +1160,7 @@ def main() -> int:
             else:
                 print(f"  git declined: {reason}")
                 continue
-        if not completed:
-            assert tree.branch is not None
+        if not completed and tree.branch is not None and family.delete_branch:
             deleted = run_git(repo, "branch", "-d", tree.branch, check=False)
             if deleted.returncode != 0:
                 print(f"  branch kept: {deleted.stderr.strip() or deleted.stdout.strip()}")
