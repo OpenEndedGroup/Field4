@@ -95,7 +95,7 @@ object AgentTranscriptMaterializer {
     )
 
     /** Ops that build the box graph without compiling/running any box Kotlin (mirrors the smoke test). */
-    private val GRAPH_VERBS = setOf(
+    internal val GRAPH_VERBS = setOf(
         "create", "new-box", "box", "connect", "disconnect", "edit", "set", "set-string", "move", "frame", "set-rect", "wait",
     )
 
@@ -303,9 +303,9 @@ object AgentTranscriptMaterializer {
 
     private var sessionDocumentDir: File? = null
 
-    private fun currentDocumentDir(): File = sessionDocumentDir ?: error("no session document dir")
+    internal fun currentDocumentDir(): File = sessionDocumentDir ?: error("no session document dir")
 
-    private fun freshSession(name: String): File {
+    internal fun freshSession(name: String): File {
         thisSessionInfo.remove()
         val workspace = Files.createTempDirectory("afield-materialize-$name").toFile()
         workspace.deleteOnExit()
@@ -327,7 +327,7 @@ object AgentTranscriptMaterializer {
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun loadOps(yaml: File): List<Map<String, Any?>> {
+    internal fun loadOps(yaml: File): List<Map<String, Any?>> {
         val loaded = Yaml().load<Any?>(yaml.readText())
         val raw = when (loaded) {
             is List<*> -> loaded
@@ -337,7 +337,7 @@ object AgentTranscriptMaterializer {
         return raw.mapNotNull { it as? Map<String, Any?> }
     }
 
-    private fun startRunloopDaemon() {
+    internal fun startRunloopDaemon() {
         val t = Thread({ afield.Runloop.runLoop.start() }, "agent-transcript-materializer-runloop")
         t.isDaemon = true
         t.start()
@@ -357,7 +357,7 @@ object AgentTranscriptMaterializer {
         return temp
     }
 
-    private fun locateTranscriptsDir(): File {
+    internal fun locateTranscriptsDir(): File {
         val rel = "dev_docs/agents/transcripts"
         val candidates = buildList {
             System.getProperty("afield.repo")?.let { add(File(it, rel)) }
