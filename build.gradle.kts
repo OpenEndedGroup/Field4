@@ -1630,6 +1630,23 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         citationGuardTestClasses.forEach(::includeTestsMatching)
         isFailOnNoMatchingTests = true
     }
+    // Progress, one line per guard class as it starts and finishes. The task runs for minutes inside
+    // every landing, and `tools/land.py status` reads these lines to say which guard it is on.
+    val guardTotal = citationGuardTestClasses.size
+    var guardsDone = 0
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {
+            if (suite.className != null) println("citationGates: running ${suite.className!!.substringAfterLast('.')}")
+        }
+        override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+            val name = suite.className ?: return
+            guardsDone++
+            val seconds = (result.endTime - result.startTime) / 1000.0
+            println("citationGates: [$guardsDone/$guardTotal] ${name.substringAfterLast('.')} ${result.resultType} in ${"%.1f".format(seconds)}s")
+        }
+        override fun beforeTest(testDescriptor: TestDescriptor) {}
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+    })
     // These guards read documentation, not just classes, so Gradle must be told: without this the
     // task is UP-TO-DATE after a pure Markdown edit and the guards "pass" without running. Measured
     // on 2026-08-19 — a deliberately planted bad fence went green until `--rerun-tasks`. A guard
