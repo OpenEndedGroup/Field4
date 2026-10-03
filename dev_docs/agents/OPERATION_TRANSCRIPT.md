@@ -17,6 +17,27 @@ If you only remember one thing: **build the document with transcript ops, prove 
 by reading the captured `output`, capture a screenshot if you need a picture, then
 `save` it to a `metadata.edn` you can reopen.**
 
+To go the other way — a saved document (a demo under `dev_docs/agents/demos/`, or one
+built by hand in Field) into a transcript for the corpus — generate it rather than
+retyping it:
+
+```bash
+uv run --project . --group backdoor python tools/field_backdoor.py --json \
+  --command 'run-jvm-main afield.examples.DocumentToTranscript --arg <document dir> --arg <out.yaml>'
+```
+
+It reads the document with Field's own loader and writes one `create` per box (name,
+frame, every persisted property verbatim) and one `connect` per edge, `nested: true`
+where the box is nested. It writes no `launch`, `execute` or `save`: add what runs
+yourself. Root-box properties and values over 256 KB (AI chat histories) are left out
+and listed in the yaml's header. `--arg=--all-demos --arg <dir>` converts every demo.
+The FIELD_TEST `examples.document-to-transcript.round-trip` rebuilds each demo from
+its generated transcript and fails on any difference. Promoting the result into the
+corpus still needs its registrations: a bucket in `DemoTranscriptExecSmokeTest`, an
+entry in `public/docs/agent_transcripts.md` and in
+[`transcripts/README.md`](./transcripts/README.md), then
+`./gradlew regenerateAgentTranscriptStartingPoints`.
+
 For the low-level harness (server lifecycle, Playwright, screenshots, video, JVM
 smoke), see [`FIELD_BACKDOOR.md`](./FIELD_BACKDOOR.md). For runnable, curated examples,
 see [`transcripts/README.md`](./transcripts/README.md). This doc is the language and
