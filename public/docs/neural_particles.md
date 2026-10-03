@@ -547,8 +547,9 @@ compute-only dispatch needs a `Window` for the device to exist.
 
 - **The learned rule cannot predict the equilibrium residual.** In a settled flock, separation and
   cohesion are large and nearly cancelling, and what survives is a small difference of big terms.
-  Scored on a flock relaxed until it stops rearranging, the learned rule does slightly *worse*
-  than predicting exactly zero. It learned to be small, not to find the residual.
+  Scored on a settled flock, the learned rule does only a little better than predicting exactly
+  zero, and its forces come out about half the size they should be. On scattered neighbourhoods
+  like the ones it was trained on, it is far closer.
 - **A flock that behaves like boids is not boids**, and the picture is not evidence either way.
   Almost any attraction-plus-repulsion rule with a speed limit produces something an audience
   accepts, which is why nothing here is graded by eye.
