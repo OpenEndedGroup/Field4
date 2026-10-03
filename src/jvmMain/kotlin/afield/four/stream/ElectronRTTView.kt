@@ -13,6 +13,8 @@ import afield.four.device.CommandBuffer
 import afield.four.targets.RenderToTexture
 import afield.four.texture.IOSurfaceHostBuffer
 import afield.four.texture.MetalIOSurface
+import afield.four.util.OS
+import afield.four.util.OSType
 import afield.handlers
 import afield.logger.lprintln
 import afield.payload
@@ -48,7 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger
  * and deleting the box (or closing its document) releases it. Another box that needs the view takes
  * it as `@exported val view` (read as `_view` in a child) or `prop<ElectronRTTView>(view)`.
  *
- * macOS (KosmicKrisp) only, and only inside the Electron app; elsewhere the widget says so.
+ * macOS (KosmicKrisp) only. On Linux and Windows the constructor refuses with a message saying so.
+ * On macOS outside the Electron app (a web browser, the HTTP mirror), the widget says it needs the app.
  * Measured latencies accumulate in [stats]. The other halves: `electron/rtt-view-host.js`,
  * `electron/field-preload.js`, and `createIOSurface` in `native/field-browser-bridge/macos_bridge.cc`.
  */
@@ -60,6 +63,14 @@ class ElectronRTTView(
     private val renderer: Renderer = fromContext(),
     val name: String = "electron-rtt-${counter.incrementAndGet()}",
 ) : Target, AutoCloseable {
+
+    // First, before the render target or the Mach service exist: the surfaces are IOSurfaces.
+    init {
+        require(OS == OSType.MACOS) {
+            "ElectronRTTView needs the Field app on macOS; this is $OS, where Electron hands Field no IOSurfaces " +
+                "(Linux dma-buf and Windows D3D11 versions are not written yet)"
+        }
+    }
 
     /** Render your content into this; it is drawn to the canvas as is. */
     val rtt = RenderToTexture(renderer) {
