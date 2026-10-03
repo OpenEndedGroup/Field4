@@ -65,6 +65,7 @@ nav:
     - A RectSL Scene on a Light Rig: chain_scene_to_light.md
     - A Drawn Score, Heard: chain_drawn_score.md
     - A Drawn Morph, Heard: chain_drawn_morph.md
+    - Drawn Strokes Become Paint: chain_drawn_paint.md
   - Working in a Document:
     # First in the section: panning, zooming, Cmd Cmd-and-hold between boxes and the nine bookmark
     # slots, i.e. how you get around a document before you do anything in it. It absorbed the old
@@ -291,6 +292,7 @@ nav:
       # one is about getting it onto the GPU and proving it is still the same network.
       - Neural Particle Systems: neural_particles.md
       - Field Probes: field_probes.md
+      - Syphon (Sharing Frames with Other Apps): syphon.md
     - Heads & Headsets:
       - RemoteJS & WebXR: ar_reference.md
       # Here rather than at the head of "Writing Code in a Box", where it was the first thing a

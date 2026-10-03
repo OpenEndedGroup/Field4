@@ -385,4 +385,6 @@ without restarting. To use a copy somewhere else, set `AFIELD_PAINT_LIBRARY` or
 `-Dafield.paint.library` to its path. `PaintCanvas.isAvailable` says whether Field can find it, and
 `PaintLibrary.describe()` says where it looked.
 
-See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md).
+See also: [Drawing with FLines](fline_examples.md), [Colors](colors_examples.md), and
+[Drawn Strokes Become Paint](chain_drawn_paint.md), which paints strokes drawn on the drawing
+layer with the pen's pressure.
