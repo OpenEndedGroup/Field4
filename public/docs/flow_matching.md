@@ -1,5 +1,9 @@
 # Flow Matching
 
+For uniform image-area sources, stipple densities and a shared network with independent
+transport and movie times, see [Stipple Transport & Transport-Space Video](stipple_transport.md).
+That experimental PyTorch trainer exports a model Field can query without Python.
+
 `flowMatch` fits a velocity field that carries one cloud of points onto another. Integrating that
 field from `t = 0` to `t = 1` moves the first distribution onto the second, and stopping part-way
 gives every stage in between. The input is a few hundred to a few thousand points in two or three

@@ -23,7 +23,7 @@ import java.net.URI
  * [launch] starts Electron with `APP_URL` set to the document, so its first tab is the Field page
  * (loaded with `field-preload.js`, the preload the RTT view needs), and [fieldPage] finds that tab
  * among the window's targets (the tab strip is a separate page). Requested with
- * `playwright-open --electron` on the backdoor. macOS only, like the RTT view.
+ * `playwright-open --electron` on the backdoor. macOS and Linux (native Wayland for the RTT view).
  */
 class ElectronCaptureBrowser private constructor(
     private val process: Process,
@@ -56,7 +56,9 @@ class ElectronCaptureBrowser private constructor(
     companion object {
         fun launch(playwright: Playwright, appUrl: String, timeoutMs: Long = 60_000): ElectronCaptureBrowser {
             val electronDir = File(locateFieldProjectRoot(), "electron")
-            val binary = File(electronDir, "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron")
+            val binary = File(electronDir, if (System.getProperty("os.name").startsWith("Linux"))
+                "node_modules/electron/dist/electron"
+                else "node_modules/electron/dist/Electron.app/Contents/MacOS/Electron")
             require(binary.canExecute()) {
                 "No Electron at ${binary.absolutePath}; run ./gradlew electronInstall"
             }
