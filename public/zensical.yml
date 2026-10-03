@@ -226,6 +226,7 @@ nav:
     - RectSL Inverse Animation: rectsl_inverse_animation.md
     - ForthField Examples: forth_examples.md
     - Python in a Box: python.md
+    - Computer Vision in Python: python_cv.md
     # Beside python.md rather than further down: the two pages answer the same question about two
     # guest languages that are hosted the same way — in Field's own process, sharing one namespace,
     # with the host's objects reachable directly — and a reader who has read one wants the contrast.

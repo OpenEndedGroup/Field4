@@ -1888,6 +1888,22 @@ reporting 25.0.2. The last cell's `fig.show()` needs a browser attached to be wo
 
 [Open ↗](offline.html?file=assets/agent_transcripts/python_cells/metadata.edn)
 
+### fieldcv_webcam
+
+**Your webcam through fieldcv, drawn by the GPU from shared memory.** Eight boxes: a render window; a
+Python root with three cells under it, one that opens the camera mirrored and starts a pipeline of
+tracks, pose, hands and a face mesh (with flow and background subtraction ready to switch in), one of
+single lines to run one at a time — `use("hands")`, `inset_view = motion`, a lambda of your own — and
+one that reports frames per second and what was found; and three Kotlin boxes under the window that
+read the cells' results by name through `NumpyShared`: the frame as a texture, an inset of any image
+the cells choose, and six channels of polylines, including strokes drawn by pinching thumb and index
+finger. Without a camera, or before macOS has granted it, the webcam cell runs on a sample clip
+instead. `public/docs/python_cv.md` is the page; the Python cells need the optional `cv` dependency
+group, which CI does not install, so `DemoTranscriptExecSmokeTest` compiles the three Kotlin boxes
+and skips the Python.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn)
+
 ### pure_data_demo
 
 **Pure Data inside Field.** Eight boxes: a Kotlin root whose `mainLanguage` makes three Pd boxes
