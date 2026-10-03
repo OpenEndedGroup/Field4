@@ -2307,6 +2307,83 @@ val projected = messy.byProjectingOnto(circle, samples = 180).apply {
 lines(listOf(circle, messy, projected), w = 420.0, h = 260.0, fitToSize = true)
 ```
 
+### Wiggling one line along another: `wiggledBy(...)`
+
+`path.wiggledBy(wave)` lays `wave` along `path`. The wave's x says how far along the path a point goes, and its y pushes the point out along the path's normal. A wave that doubles back in x doubles back along the path, so loops come through as loops.
+
+```diffstatic {data-lang=kotlin}
+:::static
+fun FLine.wiggledBy(
+    a: FLine,
+    repeats: Int = 1,
+    subtractChord: Boolean = true,
+    amplitude: Number = 1.0,
+    resolution: Int = 200,
+    up: Vec3? = Vec3(0f, 0f, 1f),
+): FLine
+
+fun FLine.sweptFrames(samples: Int = 400, up: Vec3? = Vec3(0f, 0f, 1f)): SweptFrames?
+```
+
+`repeats` plays the wave back that many times, each copy over an equal share of the path. `amplitude` scales the sideways push. With `subtractChord` on (the default), the wave is read relative to the straight line from its start to its end, so a wave drawn on a slope wiggles just as well as a level one, and each copy starts and ends on the path. Turn it off and the wave is read in world axes: its y is measured from y = 0, so whatever height it gains by its end stays in the result.
+
+Below, the same sloped wave goes along one curve three ways: once with the slope removed, eight times, and once with the slope kept (orange), which leaves the end of the line up off the curve.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/wiggled_by_2d.png" embed=true}
+:::static
+// A wave drawn on a slope: two bumps and a little ripple.
+val wave = fline {
+    moveTo(0, 0)
+    for (i in 1..120) {
+        val x = i / 120.0
+        lineTo(x, 0.6 * x + Math.sin(x * 4 * Math.PI) * 0.25 + Math.sin(x * 14 * Math.PI) * 0.05)
+    }
+}
+
+val path = fline {
+    moveTo(30, 60)
+    cubicTo(160, -40, 260, 220, 400, 90)
+    color = vec(1.0, 1.0, 1.0, 0.3)
+}
+
+val once = path.wiggledBy(wave, amplitude = 60).apply { color = vec(0.4, 0.9, 1.0, 0.9); thickness = 2.0 }
+val eight = (path + vec(0.0, 110.0)).wiggledBy(wave, repeats = 8, amplitude = 25).apply {
+    color = vec(0.5, 1.0, 0.6, 0.9); thickness = 2.0
+}
+val kept = (path + vec(0.0, 220.0)).wiggledBy(wave, subtractChord = false, amplitude = 60).apply {
+    color = vec(1.0, 0.6, 0.2, 0.9); thickness = 2.0
+}
+
+lines(listOf(path, path + vec(0.0, 110.0), path + vec(0.0, 220.0), once, eight, kept),
+    w = 440.0, h = 360.0, fitToSize = true)
+```
+
+In 3D the wave's y follows the path's normal and its z the binormal. With `subtractChord = false` those offsets are measured from y = z = 0, so a circle drawn around the origin winds a coil centred on the path. The frames come from the path's own shape (they turn as little as the path forces them to, starting from the side the path bends toward), so rotating the path turns the coil with it and the coil never flips. Only a straight path, which bends toward no side, takes its starting normal from `up`. `path.sweptFrames()` gives you the frames themselves, and its `strength` (0 to 1) says how clearly the path's shape chose the starting side.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/wiggled_by_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+:::static
+// One turn of a circle around y = z = 0, with x running along: a coil when laid on a path.
+val turn = fline {
+    moveTo(0, 1, 0)
+    for (i in 1..60) {
+        val a = i / 60.0 * 2 * Math.PI
+        lineTo(i / 60.0, Math.cos(a), Math.sin(a))
+    }
+}
+
+val path = fline {
+    moveTo(-150, 0, -60)
+    cubicTo(-60, 160, 120, 60, -160, -120, 150, 40, 80)
+    color = vec(1.0, 1.0, 1.0, 0.4)
+}
+
+val coil = path.wiggledBy(turn, repeats = 30, subtractChord = false, amplitude = 14, resolution = 60).apply {
+    color = vec(0.4, 0.9, 1.0, 0.9); thickness = 1.5
+}
+
+threeLines(listOf(path, coil), channel = "coil3d", height = 430, editable = false)
+```
+
 ## Path operations and fitting
 
 These are higher-level operations that treat an `FLine` as something you can edit, split, reverse, or fit/smooth into a new representation.
