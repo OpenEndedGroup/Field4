@@ -1,6 +1,6 @@
 # Moving around the canvas
 
-A Field document is usually bigger than the window. There are four ways to move around it: pan and
+A Field document is usually bigger than the window. You can pan and
 zoom with the mouse or trackpad; step from box to box with the keyboard, by tapping `Cmd` twice and
 holding it; bring the selection into view with `Alt+F`; or jump to one of nine views you have saved.
 All of them change what you are looking at and never the document itself.
@@ -264,7 +264,7 @@ are hidden, deleted, or drawn at zero size are not candidates.
 
 - one target per direction, so the overlay never offers a choice between two boxes on the same side
 - a slot stores a single selected box, so a multi-selection is not restored as a set
-- slots saved before zoom was recorded restore the pan position at whatever zoom you are at now
+- a slot with no saved zoom restores the pan position at whatever zoom you are at now
 - there are nine slots and the numbering is fixed
 - restoring a slot you have not set yet shows a notification and leaves the view alone
 
