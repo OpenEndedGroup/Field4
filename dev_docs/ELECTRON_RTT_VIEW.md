@@ -63,6 +63,10 @@ slots in flight and skipped the copy.
   its own profile (`FIELD_ELECTRON_USER_DATA`), because the user's per-host zoom had made the capture
   page render at a device pixel ratio of 1.67. It quits once the JVM that launched it is gone
   (`FIELD_ELECTRON_OWNER_PID`).
+- **Other platforms.** Off macOS the constructor refuses with a message naming the platform. Linux would
+  use dma-buf (`nativePixmap`, with the JVM exporting the ring through `LinuxDmaBufExport` and passing
+  fds over `UnixFdPass`) and Windows a shared D3D11 texture (`ntHandle`). Neither is written; see
+  `dev_docs/external_browser_surfaces.md` for what Chromium did with dma-bufs on this NVIDIA machine.
 - **Public page.** `public/docs/four_in_output_areas.md`.
 - **Colour.** The RTT is `B8G8R8A8_SRGB` and the import declares an sRGB transfer. This has been
   checked by eye only.
