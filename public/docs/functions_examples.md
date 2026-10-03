@@ -358,7 +358,7 @@ with(Functions) {
 }
 ```
 
-`xFn` and `yFn` stay independent until the moment of sampling, where `parametric(...)` evaluates them together. The path emerges from their relationship, not from either stack on its own.
+`xFn` and `yFn` stay independent until the moment of sampling, where `parametric(...)` evaluates them together. The shape of the path comes from how the two relate.
 
 ![](assets/functions_examples/parametric_lissajous_box.png)
 
@@ -507,7 +507,7 @@ with(Functions) {
 }
 ```
 
-The diff keeps the frame and scale fixed and changes only the stack: a more shaped pulse, a little `fbm(...)` detail, and a firmer soft clip. The edit reads as an edit, not as a new scene.
+The diff keeps the frame and scale fixed and changes only the stack: a more shaped pulse, a little `fbm(...)` detail, and a firmer soft clip. The picture stays recognisably the same drawing.
 
 ![](assets/functions_examples/diff_runner_after.png)
 
@@ -656,10 +656,7 @@ A pipeline has two kinds of thing in it:
   like `gain(0.6)`, `delay(0.1)`, `lowPass(0.08)`, or `softClipBy(1.2)`.
 
 You *shape* a source by sending it `through` a transform. The result is another `Fn`, so you
-can send that through the next transform, and so on. Nothing here is a second interpreter:
-the declarative layer is thin Kotlin that only rearranges pure, freely-sampleable functions.
-That is the same property that bounds what the [rewrite layer](#rewrite-limitations) can reach
-into. A `FnTransform` holds no state and can be reused across as many sources as you like, so
+can send that through the next transform, and so on. A `FnTransform` holds no state and can be reused across as many sources as you like, so
 build a shaping chain once, name it, and apply it everywhere.
 
 ### The operators
@@ -847,7 +844,7 @@ Every builder used above (`gain`, `bias`, `delay`, `hold`, `lowPass`, `softClipB
 [reference below](#algebra-and-mapping) and under [`FnTransform`](#fntransform).
 
 Because every stage returns an `Fn`, you can plot the pipeline **at each stage** rather than only at
-the end, which is how you find out which stage did the thing you did not want. A carrier times an
+the end, which is how you find out which stage did the thing you did not want. A tone times an
 envelope, then folded, then soft-clipped:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/functions_examples/composed_pipeline_box.png" wait="1.0" capture="box" open-outputs="true" w="1200" name="functions-composed-pipeline"}
@@ -903,12 +900,14 @@ operands that fit. Because `through` (like `pipe` and `/`) declares its operand 
 floats to the top of the completion list instead of being buried in the alphabetical tail of
 everything in scope.
 
-This is generic, not a hard-coded list: the completion engine discovers the operator's
-declared parameter type by completing the operator token itself (an infix `foo` surfaces as
-`foo(ParamType)`), then rewards candidates whose return type matches. So the same help
-appears after `then ` (want another `FnTransform`), and the mechanism keeps working as new
-transform builders are added. Implementation: `InfixCompletion` in
-`src/jvmMain/kotlin/afield/execution.kt`.
+The same help appears after `then `, which also wants a `FnTransform`, and it covers any
+transform builder you write yourself.
+
+??? aside "How infix completion finds the operand type"
+    The completion engine reads the operator's declared parameter type by completing the
+    operator token itself (an infix `foo` surfaces as `foo(ParamType)`), then ranks candidates
+    whose return type matches. See `InfixCompletion` in
+    [`execution.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/execution.kt).
 
 Once you can build one gesture this way, you can evolve a whole *family* of them: the
 [variety-generation section](#variety-generation-novelty-search-for-a-set-of-gestures)
