@@ -160,6 +160,20 @@ def _describe(state: str, item: dict) -> str:
     return line
 
 
+def _lander_running(queue: Path) -> bool:
+    # Ask the lock itself: a PID file outlives a killed lander, the kernel's flock does not.
+    path = queue / "lander.lock"
+    if not path.exists():
+        return False
+    with path.open("a") as probe:
+        try:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(probe, fcntl.LOCK_UN)
+        return False
+
+
 def cmd_status(args: argparse.Namespace) -> int:
     queue = _queue_dir(Path.cwd())
     if args.id:
@@ -170,7 +184,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(_describe(*found))
         return {PENDING: 3, LANDED: 0, BOUNCED: 1}[found[0]]
     pending = _items(queue, PENDING)
-    print(f"{len(pending)} queued" + ("" if (queue / "lander.lock.pid").exists() else "  (no lander running: tools/land.py run)"))
+    print(f"{len(pending)} queued" + ("" if _lander_running(queue) else "  (no lander running: tools/land.py run)"))
     for item in pending:
         print(_describe(PENDING, item))
     for state in (BOUNCED, LANDED):
@@ -312,14 +326,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     except BlockingIOError:
         print("land: another lander is already running for this clone", file=sys.stderr)
         return 2
-    pid_file = queue / "lander.lock.pid"
-    pid_file.write_text(str(os.getpid()))
     try:
         if not _git(primary, "config", "--get", "merge.field-generated.driver", check=False):
             print("land: run `uv run python tools/install_git_hooks.py` first (merge driver missing)", file=sys.stderr)
             return 2
         wt = _lander_worktree(primary, args.worktree)
-        print(f"land: lander up in {wt}; queue {queue}")
+        print(f"land: lander up in {wt}; queue {queue}", flush=True)
         while True:
             pending = _items(queue, PENDING)
             if pending:
@@ -333,7 +345,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 return 0
             time.sleep(POLL_SECONDS)
     finally:
-        pid_file.unlink(missing_ok=True)
+        lock_file.close()
 
 
 def main(argv: list[str] | None = None) -> int:
