@@ -27,12 +27,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_staged_generated_artifacts import GUARDS, guards_for_paths  # noqa: E402
 
-# Guard task -> (gradle task that rewrites the committed artifact, extra environment).
-REGENERATORS: dict[str, tuple[str, dict[str, str]]] = {
-    "checkCodebaseReference": ("generateCodebaseReference", {}),
-    "checkAgentTranscripts": ("regenerateAgentTranscriptStartingPoints", {}),
-    "checkCompletionCorpusFixtures": ("checkCompletionCorpusFixtures", {"AFIELD_HARVEST_WRITE": "1"}),
+# Guard task -> (Gradle arguments that rewrite the committed artifact, extra environment).
+REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
+    "checkCodebaseReference": (["generateCodebaseReference"], {}),
+    "checkAgentTranscripts": (["regenerateAgentTranscriptStartingPoints"], {}),
+    "checkCompletionCorpusFixtures": (["checkCompletionCorpusFixtures"], {"AFIELD_HARVEST_WRITE": "1"}),
+    # Counts written into prose as `N<!--count:key-->` (logging.md's lprintln call sites, ...).
+    "citationGates": (
+        ["citationGates", "--tests", "afield.docs.ProseNumeralContractTest", "--rerun"],
+        {"AFIELD_WRITE_DERIVED_COUNTS": "1"},
+    ),
 }
+
+# Where a regenerator may write, when the guard has no output roots of its own.
+REGENERATED_ROOTS = {"citationGates": ("public/docs", "dev_docs")}
 
 
 def _git(repo: Path, *args: str, check: bool = True) -> str:
@@ -92,13 +100,14 @@ def main(argv: list[str] | None = None) -> int:
     selected = [guard for guard in guards_for_paths(changed) if guard.task in REGENERATORS]
 
     for guard in selected:
-        task, extra_env = REGENERATORS[guard.task]
+        gradle_args, extra_env = REGENERATORS[guard.task]
+        task = " ".join(gradle_args)
         print(f"merge_regen: regenerating {guard.description} ({task})")
-        code = subprocess.run([str(repo / "gradlew"), task], cwd=repo, env={**os.environ, **extra_env}).returncode
+        code = subprocess.run([str(repo / "gradlew"), *gradle_args], cwd=repo, env={**os.environ, **extra_env}).returncode
         if code != 0:
             print(f"merge_regen: {task} failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
             return code
-        roots = [root for root in guard.output_roots if (repo / root).exists()]
+        roots = [root for root in (guard.output_roots or REGENERATED_ROOTS.get(guard.task, ())) if (repo / root).exists()]
         if roots:
             _git(repo, "add", "-A", "--", *roots)
 
