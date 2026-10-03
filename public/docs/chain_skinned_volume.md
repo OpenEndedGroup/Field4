@@ -93,8 +93,6 @@ import afield.four.modules.GltfSkinning.SkinningMethod
 import afield.four.modules.GltfSkinning.SkinningOptions
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.manifold.toSolid
-import afield.stdlib.isWatertight
-import afield.stdlib.signedVolume
 
 val rig = CappedTwistFixture.locate()
 
