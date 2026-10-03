@@ -320,6 +320,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
         # asserts on the wiring rather than on Gradle.
         (self.tmp / "tools/check_staged_generated_artifacts.py").write_text(
             "import sys, pathlib\n"
+            "# accepts \"--report\", which the hook checks for before calling it\n"
             "pathlib.Path('guard-ran.txt').write_text(' '.join(sys.argv[1:]))\n"
         )
         (self.tmp / "seed.txt").write_text("seed\n")

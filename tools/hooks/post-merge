@@ -23,6 +23,9 @@ guard="$repo_root/tools/check_staged_generated_artifacts.py"
 # core.hooksPath is shared by all worktrees, and older branches predate the guard. Once the script
 # exists in that checkout the hook becomes active there, and not before.
 [ -f "$guard" ] || exit 0
+# The hook is shared by every worktree, but a branch cut before --report existed has a checker that
+# rejects the flag. Such a branch skips the guard rather than failing every commit; landing checks it.
+grep -q -- '"--report"' "$guard" || exit 0
 
 [ "${FIELD_SKIP_MERGE_GUARD:-}" = "1" ] && exit 0
 
