@@ -250,6 +250,8 @@ struct fs_client {
     _Atomic int64_t frames;
     pthread_mutex_t lock;
     pthread_cond_t cond;
+    void *readback;          // id<MTLBuffer>, retained: fs_client_copy_rgba's staging, reused across frames
+    int64_t readbackLength;
 };
 
 static NSDictionary *matchServer(NSArray *servers, NSString *m) {
@@ -320,8 +322,15 @@ int32_t fs_client_copy_rgba(fs_client *c, uint8_t *rgba, int64_t capacity, int32
         if (height) *height = h;
         int64_t need = (int64_t)w * h * 4;
         if (!rgba || capacity < need) { setError([NSString stringWithFormat:@"buffer holds %lld bytes, the frame needs %lld", capacity, need]); return -2; }
-        // Syphon frames are private-storage BGRA8; blit into a shared buffer, then swizzle.
-        id<MTLBuffer> buf = [sharedDevice() newBufferWithLength:need options:MTLResourceStorageModeShared];
+        // Blit into a shared buffer (kept across frames, regrown only when a frame is larger), then
+        // swizzle. fs_client_frame_iosurface is the path with no copy at all.
+        if (c->readbackLength < need) {
+            if (c->readback) CFRelease(c->readback);
+            c->readback = (__bridge_retained void *)[sharedDevice() newBufferWithLength:need options:MTLResourceStorageModeShared];
+            c->readbackLength = c->readback ? need : 0;
+            if (!c->readback) { setError(@"could not allocate the readback buffer"); return -1; }
+        }
+        id<MTLBuffer> buf = (__bridge id<MTLBuffer>)c->readback;
         id<MTLCommandBuffer> cb = [sharedQueue() commandBuffer];
         id<MTLBlitCommandEncoder> blit = [cb blitCommandEncoder];
         [blit copyFromTexture:frame sourceSlice:0 sourceLevel:0 sourceOrigin:MTLOriginMake(0, 0, 0)
@@ -343,6 +352,22 @@ int32_t fs_client_copy_rgba(fs_client *c, uint8_t *rgba, int64_t capacity, int32
     }
 }
 
+void *fs_client_frame_iosurface(fs_client *c, int32_t *width, int32_t *height) {
+    @autoreleasepool {
+        if (width) *width = 0;
+        if (height) *height = 0;
+        if (!c) { setError(@"null client"); return NULL; }
+        id<MTLTexture> frame = [(__bridge SyphonMetalClient *)c->client newFrameImage];
+        if (!frame) return NULL;
+        IOSurfaceRef surface = frame.iosurface;
+        if (!surface) { setError(@"the Syphon frame is not IOSurface-backed"); return NULL; }
+        CFRetain(surface);
+        if (width) *width = (int32_t)IOSurfaceGetWidth(surface);
+        if (height) *height = (int32_t)IOSurfaceGetHeight(surface);
+        return surface;
+    }
+}
+
 char *fs_client_description(fs_client *c) {
     @autoreleasepool {
         if (!c) { setError(@"null client"); return NULL; }
@@ -360,6 +385,7 @@ void fs_client_free(fs_client *c) {
         });
         pthread_mutex_destroy(&c->lock);
         pthread_cond_destroy(&c->cond);
+        if (c->readback) CFRelease(c->readback);
         free(c);
     }
 }

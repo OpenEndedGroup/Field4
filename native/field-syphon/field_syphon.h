@@ -68,9 +68,15 @@ fs_client *fs_client_new(const char *match, int32_t waitMs);
 // Frames received so far (counts Syphon's new-frame callbacks). Negative on error.
 int64_t fs_client_frame_count(fs_client *c);
 // Copies the latest frame into `rgba` (capacity `capacity` bytes) as RGBA8, top row first, and
-// writes its size. Returns 1 if a frame was copied, 0 if there is none yet, negative on error
+// writes its size: a GPU blit into a staging buffer the client keeps (so one caller at a time per
+// client), then a CPU swizzle. Returns 1 if a frame was copied, 0 if there is none yet, negative on error
 // (including a too-small buffer: then *width / *height are still written).
 int32_t fs_client_copy_rgba(fs_client *c, uint8_t *rgba, int64_t capacity, int32_t *width, int32_t *height);
+// The IOSurface the latest frame lives in (an IOSurfaceRef, +1 retained: CFRelease it), with no
+// copy: Syphon's server surface itself, BGRA8 ('BGRA'), top row first. The server keeps drawing
+// into the same surface frame after frame and replaces it only when its size changes, so compare
+// IOSurfaceGetID to tell. NULL if there is no frame yet (then *width = *height = 0) or on error.
+void *fs_client_frame_iosurface(fs_client *c, int32_t *width, int32_t *height);
 // Waits up to `waitMs` for the frame count to exceed `after`. Returns the new count, or `after`.
 int64_t fs_client_wait_frame(fs_client *c, int64_t after, int32_t waitMs);
 // The connected server's description (JSON). Free with fs_free_string.
