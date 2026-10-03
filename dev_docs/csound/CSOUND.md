@@ -113,3 +113,24 @@ syntax and manual link (`csound.js`).
 - The Field-into-fx path is verified numerically offline (`renderSignalsOffline`, same code path)
   and ran live without error, but its live output was not measured.
 - Csound MIDI is in only; MIDI out (`midiout`) is not routed to Field.
+
+## `chn_k` defaults and the docs-fence gate (2026-10-03)
+
+- **Csound 6 does not apply a `chn_k` default.** `idflt` is stored as a host hint
+  (`csoundGetControlChannelHints`) and the channel stays 0. `CsoundInstance` therefore writes each
+  declared `chn_k` default once at construction (`applyDeclaredDefaults`), never on a live
+  recompile. Before this, the docs page's Pluck fence and the demo's **pluck** box played a
+  `butterlp` at 0 Hz, which is silence, until a Kotlin box wrote `cutoff`. Pinned by
+  `CsoundTest.aChnKChannelStartsAtItsDeclaredDefault`.
+- **`CsoundDocsFencesTest`** renders every `data-lang=csound` fence in `public/docs/csound.md` the
+  way `CsoundExecution` does and requires a peak above -60 dBFS, or, for `expect-error=true`, a
+  refusal placed on an orchestra line. It skips without libcsound, like every Csound test; the
+  fence-count check runs everywhere. The docs runner (`mode=always`) also fails on a fence that
+  does not compile, but an editor capture cannot tell a silent fence from a playing one: this test
+  is the part that can. Negative controls on 2026-10-03: `plucx` for `pluck` turned both red;
+  restored, both green.
+- **Main Language** registration was already complete in 75a095d7d. Verified through the backdoor:
+  `action @root set-main-language-csound` (and setting `mainLanguage` directly) makes a connected
+  child holding plain `.csd` text launch as Csound; a sibling Kotlin box read its `chnset` rms
+  (0.11) and the default `cutoff` (1800) from the running instance; relaunching replaced it; a
+  typo was marked on its own line (4).
