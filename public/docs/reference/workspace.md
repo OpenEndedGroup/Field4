@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-21 source file(s), 331 public symbol(s), 236 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+22 source file(s), 334 public symbol(s), 239 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -666,6 +666,26 @@ The picture-level halves of a study's *Compare* and *Sweep*, which do not depend
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">pixels</span><span class="p">(</span><span class="n">before</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CpuRaster</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">after</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">CpuRaster</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">times</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">beforeLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">afterLabel</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">region</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="o">?</span><span class="p">,</span> <span class="n">mode</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">timeLabel</span><span class="p">:</span> <span class="p">(</span><span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">String</span><span class="p">,</span> <span class="n">captions</span><span class="p">:</span> <span class="p">(</span><span class="p">(</span><span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">Pair</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">,</span> <span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="n">shown</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span><span class="p">:</span> <span class="nc">Pixels</span></code>](source/jvmMain/afield/stdlib/StudyVariants/#L159) | Compare `before` and `after`, frame by frame at `times`: displayed colour (`rgb`), brightness (`luma`), or raw values (`stage`, for what a program leaves on the stack). `region` (`u0, v0, u1, v1`) is where change is allowed; everything else is held to one 8-bit level, or 1e-6 raw. `captions` replaces each tile's time caption, for a stage comparison that names its stages. With `shown`, the frames are captures of what is shown (see `StudyEvidence.fromPng`) rather than raw output. |
 | [<code class="highlight"><span class="k">data</span> <span class="k">class</span> <span class="nf">Swept</span><span class="p">(</span><span class="k">val</span> <span class="k">value</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">raster</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="o">?</span><span class="p">,</span> <span class="k">val</span> <span class="n">error</span><span class="p">:</span> <span class="nc">String</span><span class="o">?</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StudyVariants/#L181) | One value of a sweep: the frame drawn with it, or why it could not be. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nf">sweep</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">draw</span><span class="p">:</span> <span class="p">(</span><span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">CpuRaster</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Swept</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StudyVariants/#L184) | Draw `values` (2..9 of them) with `draw`; a value that fails records its error instead. Cancellation propagates. |
+
+## cached.kt { #cached-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/cached.kt` — [read the source](source/jvmMain/afield/stdlib/cached/)
+
+### Top-level functions { #cached-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">inline</span> <span class="k">fun</span> <span class="p">&lt;</span><span class="k">reified</span> <span class="nc">T</span> <span class="p">:</span> <span class="nc">Any</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">cached</span><span class="p">(</span><span class="k">vararg</span> <span class="n">keys</span><span class="p">:</span> <span class="nc">Any</span><span class="o">?</span><span class="p">,</span> <span class="k">noinline</span> <span class="n">make</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">T</span></code>](source/jvmMain/afield/stdlib/cached/#L46) | Returns the `T` this box made last time for the same `keys`, making one with `make` only when there is none: |
+
+### BoxCache { #cached-kt-boxcache }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">BoxCache</span></code>](source/jvmMain/afield/stdlib/cached/#L50)
+
+The per-box store behind `cached`; public only so the inline `cached` can reach it.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">size</span><span class="p">(</span><span class="n">box</span><span class="p">:</span> <span class="nc">Box</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/cached/#L108) | How many values `box` has cached; for tests and inspection. |
 
 ## props.kt { #props-kt }
 
