@@ -102,27 +102,24 @@ val people = dataFrameOf("name", "age")(
 
 From then on `People` is an ordinary source declaration in that box, so `people.cast<People>().age` resolves in every later execution.
 
-Calling `typed()` on every run is cheap and safe:
+Calling `typed()` on every run is cheap and safe. The preamble only re-evaluates lines that changed, so a re-run with unchanged columns costs nothing; a re-run with a *changed* schema rewrites the old declaration instead of accumulating a second one. Unlike `sharedTypes`, nothing is loaded into a classloader, so changing the columns and re-running simply redeclares the interface.
 
-<div class="field-data-table" markdown>
+??? aside "The three design choices"
+    <div class="field-data-table" markdown>
 
-| choice | why | where |
-|---|---|---|
-| **The preamble, not an inline eval.** | `typed()` runs *inside* the box's engine, and the compile dispatcher is a single thread, so evaluating another snippet from there risks deadlock. The preamble is the existing channel for "source this box should have compiled first". | `DataFrameSchemas.kt:31#- **The preamble, not an inline eval.** We are executing inside` |
-| **Unchanged schemas are free.** | `checkPreambleAndExecute` only evaluates preamble lines that *changed*, so re-running a box whose columns are the same costs nothing. | `DataFrameSchemas.kt:34#only evaluates lines that *changed* — so re-running a box with` |
-| **Replace by name, not append.** | Matching is on the `interface <name> {` prefix rather than the whole line, so a re-run with a *changed* set of columns rewrites the declaration instead of accumulating a second one. | `DataFrameSchemas.kt:100#val marker = "interface $name {"` |
+    | choice | why | where |
+    |---|---|---|
+    | **The preamble, not an inline eval.** | `typed()` runs *inside* the box's engine, and the compile dispatcher is a single thread, so evaluating another snippet from there risks deadlock. The preamble is the existing channel for "source this box should have compiled first". | `DataFrameSchemas.kt:31#- **The preamble, not an inline eval.** We are executing inside` |
+    | **Unchanged schemas are free.** | `checkPreambleAndExecute` only evaluates preamble lines that *changed*, so re-running a box whose columns are the same costs nothing. | `DataFrameSchemas.kt:34#only evaluates lines that *changed* — so re-running a box with` |
+    | **Replace by name, not append.** | Matching is on the `interface <name> {` prefix rather than the whole line, so a re-run with a *changed* set of columns rewrites the declaration instead of accumulating a second one. | `DataFrameSchemas.kt:100#val marker = "interface $name {"` |
 
-</div>
-
-Unlike `sharedTypes`, nothing is loaded into a classloader, so changing the columns and re-running simply redeclares the interface.
+    </div>
 
 Flat value columns get their real element type. A column group or frame column would need a nested interface, so it is declared `Any?`: you still get the column, but not its shape. The log names which ones landed that way (`DataFrameSchemas.kt:67#val rendered = columns().map { it.name() to`). Calling `typed()` with no box in context logs a warning and does nothing (`DataFrameSchemas.kt:58#lprintln("warning,dataframe", "typed(\"$name\"): no box in`).
 
 ### One execution, two halves: the `//%-` marker { #fragment-marker }
 
-`typed()` writes to the preamble, so it looks as though you have to run the box twice. You do not, if you split the box with a `//%-` marker.
-
-Field re-runs a box's setup blocks (preamble, introduction, attic) before every `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1427#withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }`, defined at `execution.kt:1539#private suspend fun runLaunchSetupBlocks(box: Box): Boolean {`). So a `typed()` call in the first half of a box has already published its schema by the time the second half is compiled:
+`typed()` writes to the preamble, so it looks as though you have to run the box twice. You do not, if you split the box with a `//%-` marker. A `typed()` call in the first half has already published its schema by the time the second half is compiled:
 
 ```diffstatic {data-lang=kotlin}
 :::static
@@ -141,6 +138,9 @@ println("adults: " + p.filter { age >= 18 }.name.toList())
 ```
 
 Delete the `//%-` and the box stops compiling: with a single fragment, the schema is written only after that fragment has been compiled, so `Peach` does not exist yet.
+
+??? aside "Why: setup blocks re-run before each fragment"
+    Field re-runs a box's setup blocks (preamble, introduction, attic) before every `//%-` fragment, not once per execution: `runLaunchSetupBlocks(box)` sits *inside* the fragment loop (`execution.kt:1427#withContext(Runloop.runLoop.main) { runLaunchSetupBlocks(box) }`, defined at `execution.kt:1539#private suspend fun runLaunchSetupBlocks(box: Box): Boolean {`). A `typed()` call in the first fragment has already written its schema to the preamble, and that preamble re-compiles before the second fragment runs, so the schema is available.
 
 Once it has run, the second half is independently re-runnable: select those lines, run them as often as you like, and the frame is never reloaded.
 
