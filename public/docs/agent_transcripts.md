@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 182 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 183 transcripts on every build, at three
 depths. 95 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-80 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+81 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2944,9 +2944,22 @@ The retained native capture and measured run are on [Streaming diffusion](stream
 box draws a colour gradient into a `RenderToTexture` and publishes every frame as "Field GPU" with
 `followOnGpu`, which copies each frame on the GPU into an IOSurface for Syphon without reading it
 back; the third connects to "Field GPU" as a client and draws its frames, as a texture, over the
-whole window. macOS only; needs `./gradlew buildSyphonNative`.
+whole window, sampling the IOSurface Syphon shares without copying it. macOS only; needs
+`./gradlew buildSyphonNative`.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/syphon_gpu/metadata.edn)
+
+### syphon_zero_copy_receive_smoke
+
+The test behind `SyphonClient.texture()`. A separate process publishes a known pattern through
+Syphon, first at 64×48 and then at 96×64. A shader samples the received texture into a
+`RenderToTexture`, and the box reads it back. It expects exact pixels in the right order and the
+right way up, one re-import when the size changes, and no frame copied through memory. MoltenVK
+samples the IOSurface as an imported image; KosmicKrisp samples it as host memory under a linear
+image. CI compiles the graph; the backdoor replay is the live test, and needs
+`./gradlew buildSyphonNative`. An integration probe, not a starting point.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_zero_copy_receive_smoke/metadata.edn)
 
 ## Graphics building blocks
 

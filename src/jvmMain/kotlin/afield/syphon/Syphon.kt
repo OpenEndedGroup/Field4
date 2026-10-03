@@ -46,6 +46,12 @@ object Syphon {
     var mainLoopTurns: Long = 0
         private set
 
+    /**
+     * Frames this JVM has read back through memory from any Syphon client (`latest()`, `png()`, and
+     * a [SyphonTexture] on its copy path). A zero-copy [SyphonTexture] leaves it unchanged.
+     */
+    val cpuCopies: Long get() = SyphonNative.cpuCopies.get()
+
     /** Pump calls that found themselves off the main thread, and so did nothing. */
     @Volatile
     var offMainCalls: Long = 0
@@ -287,23 +293,26 @@ class SyphonClient internal constructor(private val handle: MemorySegment) : Aut
         return SyphonFrame(bytes, w, h)
     }
 
+    internal fun handleForTexture(): MemorySegment? = if (closed) null else handle
+
     internal fun copyInto(dst: MemorySegment): Pair<Int, Int>? =
         if (closed) null else synchronized(this) { SyphonNative.copyRgbaInto(handle, dst) }
 
     /**
-     * This client's frames as a Vulkan texture that follows the server: bind
-     * [SyphonTexture.texture] as a `sampler2D` like any other texture. Waits up to [waitMs] for a
-     * first frame, whose size the texture keeps. Registered in [renderer]'s list, which is what
-     * refreshes it each frame.
+     * This client's frames as a Vulkan texture that follows the server: bind the returned
+     * [SyphonTexture] as a `sampler2D` like any other texture. Where the Vulkan driver allows it the
+     * shader samples the sender's IOSurface itself, with nothing copied ([SyphonTexture.path]);
+     * [zeroCopy] = false asks for the old route through memory. Waits up to [waitMs] for a first
+     * frame. Registered in [renderer]'s list, which is what refreshes it each frame.
      */
     @JvmOverloads
-    fun texture(renderer: Renderer = fromContext(), waitMs: Int = 2000): SyphonTexture {
+    fun texture(renderer: Renderer = fromContext(), waitMs: Int = 2000, zeroCopy: Boolean = true): SyphonTexture {
         check(!closed) { "Syphon client is closed" }
         if (frameCount == 0L) waitForFrame(0, waitMs)
-        val first = latest() ?: throw IllegalStateException("Syphon: no frame from $server within $waitMs ms")
-        val t = SyphonTexture(this, renderer, first.width, first.height)
+        if (frameCount == 0L) throw IllegalStateException("Syphon: no frame from $server within $waitMs ms")
+        val t = SyphonTexture(this, renderer, zeroCopy)
         val key = "syphon-in:${server.uuid}"
-        renderer.renderList.others.remove(key)
+        (renderer.renderList.others.remove(key) as? SyphonTexture)?.close()
         renderer.renderList.others[key] = t
         return t
     }

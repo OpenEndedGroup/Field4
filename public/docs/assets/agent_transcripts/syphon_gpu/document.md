@@ -33,7 +33,7 @@ start(renderer::run)
 <!-- field-box id="syphon_gpu_publish" index="1" -->
 
 ```edn [field-box id="syphon_gpu_publish" role="properties"]
-{"id" "syphon_gpu_publish" "index" 1 "name" "Syphon — publish a render target from the GPU" "parents" ["root" "syphon_gpu_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_gpu_renderer"} "name" "Syphon — publish a render target from the GPU" "_tombstone" false "frame" #afield/rect [40.0 480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_publish_code_.kt" "lines" 25 "characters" 729 "sha256" "99203c191d741b1e03c28c0ab8e84b0a628da9d503dec5127a4fcd9efb177711"} {"name" "vertex" "language" "glsl" "path" "syphon_gpu_publish_vertex_.glsl" "lines" 8 "characters" 187 "sha256" "87f01eaf76f00f64181f4a1b96be43770f2a57c9787b78cfa701a414ac3a1a17"} {"name" "fragment" "language" "glsl" "path" "syphon_gpu_publish_fragment_.glsl" "lines" 7 "characters" 212 "sha256" "bf714a2d047e24163a04d86c4a5798041962e10b919b026a155b1822a925eddb"}]}
+{"id" "syphon_gpu_publish" "index" 1 "name" "Syphon — publish a render target from the GPU" "parents" ["root" "syphon_gpu_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_gpu_renderer"} "name" "Syphon — publish a render target from the GPU" "_tombstone" false "frame" #afield/rect [40.0 480.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_publish_code_.kt" "lines" 25 "characters" 729 "sha256" "99203c191d741b1e03c28c0ab8e84b0a628da9d503dec5127a4fcd9efb177711"} {"name" "vertex" "language" "glsl" "path" "syphon_gpu_publish_vertex_.glsl" "lines" 8 "characters" 187 "sha256" "87f01eaf76f00f64181f4a1b96be43770f2a57c9787b78cfa701a414ac3a1a17"} {"name" "fragment" "language" "glsl" "path" "syphon_gpu_publish_fragment_.glsl" "lines" 7 "characters" 213 "sha256" "99450bd3f231e3203edb11cdbf1847d9068c4ff35114fcaf8d9c6daca7063abe"}]}
 ```
 
 ```kotlin [field-property box="syphon_gpu_publish" name="code" path="syphon_gpu_publish_code_.kt"]
@@ -80,7 +80,7 @@ void main() {
 layout(location = 0) out vec4 color;
 layout(location = 1) in vec2 ftc;
 void main() {
-    // red grows to the right, green downwards; top-left is dark blue
+    // red grows to the right, green upwards; bottom-left is dark blue
     color = vec4(ftc.x, ftc.y, 0.3, 1.0);
 }
 ```
@@ -90,7 +90,7 @@ void main() {
 <!-- field-box id="syphon_gpu_receive" index="2" -->
 
 ```edn [field-box id="syphon_gpu_receive" role="properties"]
-{"id" "syphon_gpu_receive" "index" 2 "name" "Syphon — receive into a texture" "parents" ["root" "syphon_gpu_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_gpu_renderer"} "name" "Syphon — receive into a texture" "_tombstone" false "frame" #afield/rect [40.0 920.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_receive_code_.kt" "lines" 20 "characters" 521 "sha256" "409f18aac43825b794e2e2a640f75ea838653dab36ffdc2c244fd2eaaa7c644c"} {"name" "vertex" "language" "glsl" "path" "syphon_gpu_receive_vertex_.glsl" "lines" 8 "characters" 187 "sha256" "87f01eaf76f00f64181f4a1b96be43770f2a57c9787b78cfa701a414ac3a1a17"} {"name" "fragment" "language" "glsl" "path" "syphon_gpu_receive_fragment_.glsl" "lines" 7 "characters" 208 "sha256" "324ba797f122d6e6d6a8714f5f90b60e11fd32536c1ef0b0f84bf6d608d8b21a"}]}
+{"id" "syphon_gpu_receive" "index" 2 "name" "Syphon — receive into a texture" "parents" ["root" "syphon_gpu_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "syphon_gpu_renderer"} "name" "Syphon — receive into a texture" "_tombstone" false "frame" #afield/rect [40.0 920.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "syphon_gpu_receive_code_.kt" "lines" 21 "characters" 596 "sha256" "295580fbda8474b60a7366c03304c169fbb6d183ed8a642dec83919092a8e944"} {"name" "vertex" "language" "glsl" "path" "syphon_gpu_receive_vertex_.glsl" "lines" 8 "characters" 187 "sha256" "87f01eaf76f00f64181f4a1b96be43770f2a57c9787b78cfa701a414ac3a1a17"} {"name" "fragment" "language" "glsl" "path" "syphon_gpu_receive_fragment_.glsl" "lines" 7 "characters" 208 "sha256" "324ba797f122d6e6d6a8714f5f90b60e11fd32536c1ef0b0f84bf6d608d8b21a"}]}
 ```
 
 ```kotlin [field-property box="syphon_gpu_receive" name="code" path="syphon_gpu_receive_code_.kt"]
@@ -101,7 +101,7 @@ check(Syphon.isAvailable) { Syphon.describe() }
 
 // a server's name, app name or uuid
 val inp = syphonClient("Field GPU")
-prop<LoadedTexture>(syphonIn) = inp.texture().texture
+prop<SyphonTexture>(syphonIn) = inp.texture()
 
 val module = moduleHere()
 val quad = Mesh()
@@ -109,7 +109,8 @@ module += "quad" to quad
 renderer += "syphonView" to module
 quad.set(4, 2) {
     pos.add(-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0)
-    tc.add(0, 0, 1, 0, 1, 1, 0, 1)
+    // the texture's v = 0 is the top of the picture, so the top corners get v = 0
+    tc.add(0, 1, 1, 1, 1, 0, 0, 0)
     tri.add(0, 1, 2)
     tri.add(0, 2, 3)
 }
