@@ -3803,7 +3803,11 @@ private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boo
     box.style.asDynamic().pointerEvents = if (visible) "auto" else "none"
     if (visible) box.style.display = "flex" else box.style.display = "none"
 
-    if (!includeOutputArea) return
+    // Showing a box always shows its output area too. A box can be judged invisible for a moment
+    // while it is being created, and a full updateAllBoxVisibility pass in that window hides the
+    // output area; the per-box calls that later show the box pass includeOutputArea = false, so
+    // its output stayed display:none behind a visible box (the funFeatures layers-panel capture).
+    if (!includeOutputArea && !visible) return
 
     val outputArea = box.getElementsByClassName("outputArea").asList().firstOrNull() as? HTMLElement
     if (outputArea != null) {

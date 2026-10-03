@@ -12,8 +12,7 @@ and which other boxes also had an answer. Nothing runs; it is the walk the box's
 **Settings** declares `prop<Double>(speed)` and sets it to 0.25. **Fast**, under it, sets
 `speed = 3.0`. **Slow** has no parent; it declares its own `prop<Double>(speed)`, sets 0.5, and also
 leaves a plain variable, `val gear = 2`. **Mover** is connected under Fast first and Slow second.
-**Gearbox** sits under Slow alone. The setup is the transcript
-`dev_docs/agents/transcripts/docs_capture/context_why_graph.yaml`.
+**Gearbox** sits under Slow alone.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/why/graph.png" alt="the Field canvas with five boxes: Settings at the top left, Fast beneath it, Slow to the right, Mover below between them and Gearbox at the far right, with connection lines from Settings down to Fast, from Fast and Slow down to Mover, and from Slow down to Gearbox" capture="window" open-outputs="false" clip="20,20,1060,540" wait="1.0" timeout="180" embed=true hidden=true name="why-graph" macro-file="../../dev_docs/agents/transcripts/docs_capture/context_why_graph.yaml" capture-box="why_mover"}
 // The canvas after the transcript has run.
@@ -64,7 +63,3 @@ The same answer is available without writing any box code:
   (`dev_docs/agents/FIELD_BACKDOOR.md`, "Why does this value resolve here?");
 - the MCP bridge: `field_why`;
 - AI4 chat: the tool `WhyDoesThisResolve`, offered whenever a box is focused.
-
-The smoke `context.why.tie-and-shadow` (`src/jvmMain/kotlin/afield/examples/ContextWhySmoke.kt`)
-builds a graph like the one above through the backdoor and asserts the supplier, the competitor and
-both shadowed candidates.
