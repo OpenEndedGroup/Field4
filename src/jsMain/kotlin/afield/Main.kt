@@ -2222,6 +2222,12 @@ private fun registerCanvasZoomActions() {
     frame.keys = "alt+f"
     frame.run = { frameSelected() }
     builtin.push(frame)
+    val snapping: dynamic = js("({})")
+    snapping.id = "toggle-box-snapping"
+    snapping.label = "Toggle Box Snapping"
+    snapping.detail = "Snap boxes to each other while dragging and resizing, as Caps Lock does"
+    snapping.run = { boxSnappingSystem.toggleFromCommand() }
+    builtin.push(snapping)
     allActions.builtin = builtin
     updateActions()
     window.asDynamic().frameSelected = ::frameSelected

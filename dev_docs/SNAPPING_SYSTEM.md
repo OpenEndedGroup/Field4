@@ -11,12 +11,14 @@ asset rather than a docs-runner capture. Treat both as verification gaps when ch
 
 Manual invariants:
 
-1. With Caps Lock off, drag and resize coordinates are unmodified and guides are cleared.
-2. With Caps Lock on, drag chooses at most one closest target per axis; resize may show multiple
+1. With snapping off (Caps Lock off and the Toggle Box Snapping command not on), drag and resize coordinates are unmodified and guides are cleared.
+2. With snapping on, drag chooses at most one closest target per axis; resize may show multiple
    in-range edge guides.
 3. The snapped frame, not the unsnapped proposal, is sent through the ordinary server update path.
 4. Hidden/tombstoned/non-renderable boxes are not useful snap references.
-5. Guides remain non-interactive, follow the overlay coordinate system, and disappear on gesture end.
+5. Even spacing pairs only neighbours in the dragged box's row (or column): a box in another
+   row never comes between them.
+6. Guides remain non-interactive, follow the overlay coordinate system, and disappear on gesture end.
 
-If thresholds or SVG styling change, update the KDoc and recapture `public/docs/assets/snapping-guide.mp4`
-through the real Field UI; do not preserve numeric details in a second prose specification here.
+If thresholds or SVG styling change, update the KDoc and rebuild `snapping.md` with
+`FIELD_DOCS_RUNNER_MODE=always` (its `capture="ui"` fence drives the real UI); do not preserve numeric details in a second prose specification here.
