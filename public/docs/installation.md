@@ -60,6 +60,8 @@ for (i in 0 until 60) {
     state = ui.eval("""
         const d = document.getElementById("docs-welcome-frame")?.contentDocument
         if (!d || !d.getElementById("starting-points-dock")) return "loading"
+        const splash = d.getElementById("splash-screen")
+        if (splash && !splash.classList.contains("hidden")) return "splash"
         const pending = [...d.querySelectorAll("details > summary")].filter(s => /loading|checking/i.test(s.textContent)).length
         return pending === 0 ? "ready" : "pending:" + pending
     """.trimIndent()).toString()

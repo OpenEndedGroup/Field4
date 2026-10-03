@@ -1,0 +1,41 @@
+name: bookmarks_panel
+description: >
+  Three boxes with output panels, for the bookmarks-panel figure on
+  `public/docs/moving_around_the_canvas.md`.
+
+  `sketch` and `render` are launched, and open their output panels (`display` alone makes a closed
+  one), so each has an open panel for a bookmark to record; a bookmark only records panels that
+  exist. `notes` is left unlaunched, so the panel's
+  minimap shows a box with no output beside two that have one.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: bm_sketch
+      name: sketch
+      frame: { x: 120.0, y: 140.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          display("notes", "<div style='width:260px;height:120px;padding:10px;color:#ddd'>three ideas for the next pass</div>")
+          displayOpen("notes")
+  - create:
+      box: bm_notes
+      name: notes
+      frame: { x: 120.0, y: 520.0, w: 220.0, h: 110.0 }
+      properties:
+        code: |
+          // Not launched: a box with no output panel yet.
+  - create:
+      box: bm_render
+      name: render
+      frame: { x: 1180.0, y: 300.0, w: 240.0, h: 110.0 }
+      properties:
+        code: |
+          display("main", "<div style='width:520px;height:300px;background:linear-gradient(135deg,#1e3a5f,#7a3e1d);color:#eee;padding:12px'>render output</div>")
+          displayOpen("main")
+  - launch: { box: bm_sketch }
+  - launch: { box: bm_render }
+  - wait:
+      millis: 800

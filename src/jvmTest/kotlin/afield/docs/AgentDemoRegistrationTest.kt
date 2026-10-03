@@ -91,6 +91,9 @@ class AgentDemoRegistrationTest {
             "learned_from_module",
             "learned_shader",
             "neural_reconstruction",
+            // Landed 2026-10-02 in `cdb8e2cf8`. Like `flow_grain`, not a document: it holds the
+            // sources of `open_dlss_nr.yaml` and `open_dlss_nr_cubes.yaml`, both COMPILE_ONLY.
+            "opendlssnr",
             "optical_flow",
             "optical_flow_pingpong",
             "ray_reconstruction",

@@ -88,6 +88,9 @@ CARRIER_PAGES = {
     # `offline.html?file=assets/agent_transcripts/lua_demo/metadata.edn`, no leading slash.
     "public/docs/lua.md",
     "public/docs/nano_examples.md",
+    # Added 2026-10-03: both new pages link their starting points. Shape checked:
+    # `offline.html?file=assets/agent_transcripts/<name>/metadata.edn`, no leading slash.
+    "public/docs/open_dlss_nr.md",
     "public/docs/openxr_eye_intersection.md",
     "public/docs/profiling_timeline.md",
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
@@ -97,6 +100,7 @@ CARRIER_PAGES = {
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
     "public/docs/stacksl_examples.md",
+    "public/docs/streaming_diffusion.md",
     "public/docs/three_output.md",
     "public/docs/vision_geometry.md",
     "public/docs/wfc_examples.md",

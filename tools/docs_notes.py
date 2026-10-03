@@ -2538,6 +2538,38 @@ def pass_land(git: Git) -> int:
     return 0
 
 
+# Files a removed worktree's directory can be left holding that are nobody's work: Finder writes
+# .DS_Store into any folder it has shown, and a session brief is regenerated on demand.
+_LEFTOVER_NAMES = {".DS_Store", "HANDOFF_SESSION.md"}
+
+
+def is_registered_worktree(git: Git, worktree: Path) -> bool:
+    out = git.run("worktree", "list", "--porcelain", check=False)
+    wanted = {str(worktree), str(worktree.resolve())}
+    return any(line[len("worktree "):] in wanted for line in out.splitlines() if line.startswith("worktree "))
+
+
+def remove_worktree(git: Git, worktree: Path, force: bool) -> None:
+    """Remove a pass or session worktree, including one git has already let go of.
+
+    The directory can outlive its registration: an earlier removal that was interrupted, or
+    Finder writing .DS_Store into a folder that was open in a window while git deleted it. Then
+    `git worktree remove` says "is not a working tree". A directory holding only such leftovers is
+    deleted; one holding anything else is refused, naming the files, so no work is thrown away.
+    """
+    if is_registered_worktree(git, worktree):
+        git.run(*(["worktree", "remove"] + (["--force"] if force else []) + [str(worktree)]))
+    elif worktree.is_dir():
+        kept = [str(f.relative_to(worktree)) for f in sorted(worktree.rglob("*"))
+                if f.is_file() and f.name not in _LEFTOVER_NAMES]
+        if kept:
+            raise SystemExit(f"{worktree} is no longer a git worktree but still holds files: "
+                             + ", ".join(kept[:5]) + (" …" if len(kept) > 5 else "")
+                             + ". Move or delete them, then try again.")
+        shutil.rmtree(worktree)
+    git.run("worktree", "prune", check=False)
+
+
 def pass_finish(git: Git, abandon: bool) -> int:
     state = load_pass(git.root)
     if not state:
@@ -2545,14 +2577,11 @@ def pass_finish(git: Git, abandon: bool) -> int:
         return 0
     worktree, branch = Path(state["worktree"]), state["branch"]
     landed = subprocess.run(["git", "merge-base", "--is-ancestor", branch, state["base"]], cwd=git.root).returncode == 0
-    dirty = worktree.is_dir() and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
+    dirty = is_registered_worktree(git, worktree) and any(not p.startswith(".field-backdoor/") for p in Git(worktree).status_paths())
     if (not landed or dirty) and not abandon:
         why = "has uncommitted changes" if landed else f"has not landed on {state['base']}"
         raise SystemExit(f"The pass {why}; commit and land it first, or finish with --abandon to throw it away.")
-    if worktree.is_dir():
-        remove = ["worktree", "remove"] + (["--force"] if abandon else []) + [str(worktree)]
-        git.run(*remove)
-    git.run("worktree", "prune", check=False)
+    remove_worktree(git, worktree, force=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
     save_pass(git.root, None)
     print(f"pass closed: removed {worktree} and {branch}" + (" (abandoned)" if abandon else ""), flush=True)
@@ -2889,13 +2918,11 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
         raise SystemExit(f"no {batch_key} session")
     worktree, branch = Path(session["worktree"]), session["branch"]
     merged = subprocess.run(["git", "merge-base", "--is-ancestor", branch, "main"], cwd=git.root).returncode == 0
-    dirty = worktree.is_dir() and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
+    dirty = is_registered_worktree(git, worktree) and any(p != "HANDOFF_SESSION.md" for p in Git(worktree).status_paths())
     if (dirty or not merged) and not abandon:
         raise SystemExit("The session " + ("has uncommitted changes" if dirty else f"branch {branch} has not been merged into main")
                          + "; land it first, or end it with --abandon to throw it away.")
-    if worktree.is_dir():
-        git.run(*(["worktree", "remove", "--force", str(worktree)]))
-    git.run("worktree", "prune", check=False)
+    remove_worktree(git, worktree, force=True)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
 
     def release(current: list[dict[str, Any]]) -> None:

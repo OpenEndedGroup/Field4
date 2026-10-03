@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-02",
+  "source_resolution": [
+    512,
+    512
+  ],
+  "capture_resolution": [
+    6528,
+    3672
+  ],
+  "input_target_fps": 16,
+  "strength": 0.6,
+  "seed": 0,
+  "preset": "INK",
+  "transport": "Vulkan external device-local buffers and timeline semaphores, SCM_RIGHTS, Torch CUDA pointer alias",
+  "presented_frames": 343,
+  "skipped_captures": 3,
+  "steady_display_fps": 16.000658486232716,
+  "steady_interval_seconds": 17.99925923347473,
+  "median_worker_chunk_seconds": 0.18608423549994768,
+  "last_worker_stats": {
+    "generation": 1,
+    "reserved_bytes": 8491368448,
+    "decoder": "TAEHVWanVAEWrapper",
+    "steps": 2,
+    "chunk_seconds": 0.18772911600171938,
+    "tensorrt_active": true,
+    "tensorrt_requested": true,
+    "text_encoder_offloaded": true,
+    "taehv": true,
+    "allocated_bytes": 6294362112,
+    "backend": "diffusion",
+    "fixed_strength": true,
+    "event": "stats"
+  },
+  "commands": [
+    {
+      "command": "macro write diffusion_start --file dev_docs/agents/transcripts/streaming_diffusion.yaml",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "macro run diffusion_start",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "launch \"2 \u00b7 renderer\" --timeout 120",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "wait-native-renderer \"2 \u00b7 renderer\" --frames 3 --timeout 90",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "launch \"3 \u00b7 spinning curves\" --timeout 120",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "wait-output \"3 \u00b7 spinning curves\" --contains \"Active TAEHV TensorRT\" --timeout 240",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "sleep 20",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "native-screenshot /tmp/field-diffusion-starting-live.png --uid \"3 \u00b7 spinning curves\" --wait-frames 5 --timeout 90",
+      "ok": true,
+      "timed_out": false
+    },
+    {
+      "command": "output \"3 \u00b7 spinning curves\"",
+      "ok": true,
+      "timed_out": false
+    }
+  ],
+  "note": "Final gated starting-point transcript executed in Field. Missing backend also exercised: normal availability output and no box errors. Native capture with strict checkpoint loading and final lifecycle guards. Source is current; model output is delayed. Owned renderer and worker shut down after capture. macOS was not executed on this Linux host.",
+  "previous_run": {
+    "presented_frames": 329,
+    "skipped_captures": 2,
+    "steady_display_fps": 15.999494992407602,
+    "steady_interval_seconds": 18.000568151474,
+    "median_worker_chunk_seconds": 0.18622447899906547,
+    "last_worker_stats": {
+      "generation": 1,
+      "reserved_bytes": 9049210880,
+      "decoder": "TAEHVWanVAEWrapper",
+      "steps": 2,
+      "chunk_seconds": 0.18687136200060195,
+      "tensorrt_active": true,
+      "tensorrt_requested": true,
+      "text_encoder_offloaded": true,
+      "taehv": true,
+      "allocated_bytes": 6294362112,
+      "backend": "diffusion",
+      "fixed_strength": true,
+      "event": "stats"
+    }
+  }
+}

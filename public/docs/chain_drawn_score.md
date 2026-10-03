@@ -1,13 +1,13 @@
 # A Drawn Score, Heard
 
-Three parts of Field, written without each other in mind. The drawing layer holds a score:
+This page reads a drawing as a score and plays it. The drawing layer holds the score:
 rectangles, a pen stroke, a level line. `notation.space` reads it as time across and pitch up. A
 dozen lines of box code decide what each mark means as music and build a pattern from the notes,
 and `patRenderStereo` plays the pattern offline into a `.wav`. Then the `.wav` is taken apart again,
 onsets and pitches, and put next to what was drawn.
 
-The score here is drawn by code, so the page can be rebuilt without anyone holding a pen. The
-reading does not know that. A rectangle you draw by hand in the same frame is read the same way.
+The score on this page is drawn by code, but a rectangle you draw by hand in the same frame is read
+the same way. Here is the score in Field with the drawing layer switched on:
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x520" clip="0,0,1100,520" screenshot="assets/chain_drawn_score/hero.png" transcript="assets/transcripts/drawn_score_hero_setup.yaml" padding="0" wait="0" timeout="120" embed=true hidden=true name="chain-drawn-score-hero" alt="Field with the drawing layer switched on: Excalidraw's toolbar across the top of the window, over the score frame with its blue piano-roll rectangles, the red glissando and its label, the green held note and the orange playhead, and the box that drew them to the left."}
 // The marks come from the setup transcript's box. Switching the drawing layer on is what Alt-D
@@ -99,25 +99,24 @@ val tune = patTimed(notes, beats = 8.0)
 showPatRollOf("read" to tune, title = "the score, read", subtitle = "${notes.size} notes", cycles = 1, pitched = true)
 ```
 
-Played through `patVoice`, the stand-in synth every pattern page uses (one triangle oscillator, an
-envelope and a lowpass):
+It plays through `patVoice`, a simple synth voice (one triangle oscillator, an envelope and a
+lowpass):
 
 ```diffstatic {data-lang=kotlin}
 val voice = patVoice(wave = PatWave.TRIANGLE, decay = 0.004, sustain = 0.4)
 val audio = patRenderStereo(tune, cycles = 2, cps = 0.25, voice = voice)
 ```
 
-The voice is detached on purpose. Each note holds for 40% of its length and its tail is gone 16 ms
-later, so the glissando's steps are separate strikes you can count. Two cycles:
+The voice is short and detached: each note holds for 40% of its length and its tail is gone 16 ms
+later, so the glissando's steps are separate strikes you can count, and so the onset detector
+further down can find each one. Two cycles:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score.wav" audio-spec="drawn-score" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score").
 ```
 
-The renderer opens a document of its own, draws the same score into it and runs the loop above:
-`DrawnScoreDocs.interpret` is that loop, word for word, and `DrawnScorePageTest` fails if the two
-drift apart. The same reading also ships as `score.toPattern()`, for when the defaults are what you
-want.
+`DrawnScoreDocs.interpret` is the same loop, which the later boxes on this page call. The same
+reading also ships as `score.toPattern()`, for when its defaults are what you want.
 
 ## The same drawing, read another way
 
@@ -141,6 +140,8 @@ for (n in notes.map { it.copy(note = snap(it.note)) }) {
 showPatRollOf("read" to patTimed(notes, beats = 8.0), "C minor pentatonic" to patTimed(tuned, beats = 8.0),
     title = "one drawing, two readings", subtitle = "${notes.size} notes, then ${tuned.size}", cycles = 1, pitched = true)
 ```
+
+The pentatonic reading, two cycles:
 
 ```diffstatic_runner {data-lang=kotlin audio="assets/chain_drawn_score/drawn-score-pentatonic.wav" audio-spec="drawn-score-pentatonic" audio-renderer="afield.four.synth.DrawnScoreDocs" embed=true hidden=true name="chain-drawn-score-pentatonic-audio"}
 // Offline-rendered by DrawnScoreDocs.renderWav("drawn-score-pentatonic").
@@ -190,47 +191,26 @@ markdown("measured", """
 ```
 
 Every note is found and every pitch is where the reading put it, including the glissando's steps,
-whose pitches fall between semitones. The pentatonic reading measures the same way: 32 notes over
-two cycles, all 32 onsets found (worst 10.8 ms) and all 32 pitches within 0.003 semitones. The onset error is the detector's, not the score's: `onsetPeaks`
-reports the start of the 12 ms window that first rises, and that window starts before the strike.
-The `synth.drawn.score` smoke test runs the same measurement on every build and fails if a strike
-goes missing or a pitch moves by a quarter of a semitone, in either reading.
+whose pitches fall between semitones. The pentatonic reading measures the same way. The onset
+error comes from the detector: `onsetPeaks` reports the start of the 12 ms window that first rises,
+and that window starts before the strike.
 
-??? aside "Why the voice is detached"
+!!! note "Leave silence between strikes you want detected"
 
-    The first render held each note for 60% of its length with a 12 ms tail, and the detector found
-    16 of 48 strikes. At 50% and 8 ms it found 32, missing every glissando step in the first cycle
-    and none in the second. `onsetPeaks` re-arms when the level falls below half the level of the
-    window that triggered it, and that window is low on the attack, so it can be a few percent of
-    the note's peak. The gaps between steps fell to about 5%, and whether that was deep enough
-    depended on where the 2 ms hop landed against each attack. Its KDoc had said it re-arms against
-    "the last onset's peak", and now says what it does. The voice was then shortened until the
-    steps are separated by true silence, rather than changing a detector six other pages count with.
+    `onsetPeaks` re-arms only when the level falls below half the level of the window that
+    triggered it. That window sits low on the attack, so a legato voice whose notes barely dip
+    between steps can hide most of a glissando's strikes. A detached voice, with true silence
+    between notes, is found every time.
 
 ## Drawing your own
 
-Open **drawn_score** from the welcome screen's starting points: `score`, `read`, `play`,
+Open drawn_score from the welcome screen's starting points: `score`, `read`, `play`,
 `pentatonic` and `listen back`, run in that order. `play` holds the reading loop from this page, so
 that is the box to change. Then press `alt-d` and draw into the frame: `r` for a rectangle (a note),
 `p` for a pen stroke (a glissando if it moves, a held note if it does not). Run the boxes after
 `score` again, and they read what you drew along with what the code drew.
 
 A frame you make yourself with Excalidraw's frame tool works too, once you rename it "score".
-
-??? aside "Two things the chain found in `notation.space`"
-
-    Both were one-line fixes in `afield/notation`, and `DrawnScoreTest` measured each one failing
-    before it was fixed.
-
-    A frame named by hand could not be found. Excalidraw keeps a frame's title in the element's own
-    `name` field, and `Mark.label` read a name given from code, a text, and a bound text, but never
-    that field. So `space("score")` over a frame someone had drawn and renamed returned an empty
-    space, and the claim that "the region can be a frame" held only for frames drawn from code. The
-    live check in `dev_docs/NOTATION.md` used a code-drawn frame, which is why it did not show.
-
-    A space defined by a named rectangle counted the rectangle as one of its own events: a note as
-    wide as the score, at its middle pitch. Only a frame was excluded. Now any closed mark whose
-    bounds are the region's is.
 
 ## Where each piece is documented
 
