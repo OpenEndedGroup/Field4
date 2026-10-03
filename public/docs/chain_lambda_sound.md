@@ -20,7 +20,6 @@ keeps sharing correct. The box below reduces it and plots the size of the net af
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_lambda_sound/one_reduction.png" wait="10" capture="box" open-outputs="true" w="1180" h="360" padding="18" timeout="180" name="chain-lambda-one" embed=true alt="A two-trace plot over twenty-six reactions: an agent count that saws upward from twelve to a plateau of twenty-four around reaction twelve and then falls steadily to ten, and a lower trace of covered pairs that never leaves the range one to seven, above a table giving the term, fourteen agents and three fans compiled, twenty-six reactions of which eight are beta, the rule tally, and the answer as a lambda term"}
 :::static
 import afield.four.synth.LambdaSoundDocs
-import afield.stdlib.ActivationOrder
 
 // trace() compiles, reduces and records; it does not relax the layout, because nothing is
 // watching. The answer it read back is checked against the plain normal-order evaluator below.
@@ -84,7 +83,7 @@ val spellings = LambdaSoundDocs.spellingsPerTerm(sweep)
 :::fold the corpus, worst-spread first
 val rows = sweep.entries
     .filter { counts.getValue(it.key) > 0 }
-    .sortedWith(compareByDescending<Map.Entry<String, Map<afield.stdlib.ActivationOrder, LambdaSoundDocs.Trace>>> {
+    .sortedWith(compareByDescending<Map.Entry<String, Map<ActivationOrder, LambdaSoundDocs.Trace>>> {
         spellings.getValue(it.key)
     }.thenByDescending { counts.getValue(it.key) })
     .joinToString("\n") { (name, traces) ->
