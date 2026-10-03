@@ -2,7 +2,8 @@ markdown("""
     # Streaming diffusion
 
     Run **2 · renderer**, then **3 · spinning curves**.
-    Source is on the left; the returned ink, charcoal or wire image is on the right.
+    Source is on the left; the returned stylized image is on the right.
+    The example starts with charcoal. Enter any text in the prompt override.
     Open the diffusion controls to change material, strength, reprojection,
     history blending and experimental noise advection.
 

@@ -23,4 +23,12 @@ interface StreamDiffusionMotionProvider {
     /** Called after every source draw, before requests; retain only bounded frame state. */
     fun onFrame(frame: StreamDiffusionFrame) {}
     fun record(command: CommandBuffer, request: StreamDiffusionMotionRequest): RenderToTexture?
+    /**
+     * Optional display hole fill, called immediately after a successful DISPLAY record.
+     * Return a sampled single-layer/single-sample RTT matching source extent and colour format,
+     * or null to use the current source. referenceImage is the resolved stylized result at
+     * request.reference; it is borrowed only for this call. The provider owns its fallback target.
+     */
+    fun recordFallback(command: CommandBuffer, request: StreamDiffusionMotionRequest,
+        source: RenderToTexture, referenceImage: RenderToTexture): RenderToTexture? = null
 }

@@ -88,11 +88,21 @@ internal class StreamDiffusionTemporalOutput(
             historyIndex = next; historyFrame = arrived
         }
         val reference = historyFrame
-        val mapping = if (displayReprojection && reference != null) {
+        val request = if (displayReprojection && reference != null)
+            StreamDiffusionMotionRequest(current, reference, StreamDiffusionMotionUse.DISPLAY) else null
+        val mapping = request?.let {
             displayRequests++
-            checkedMotion(motion.record(command, StreamDiffusionMotionRequest(current, reference, StreamDiffusionMotionUse.DISPLAY)), source)
-        } else null
-        freshImage = source; historyImage = if (reference != null) history[historyIndex] else raw
+            checkedMotion(motion.record(command, it), source)
+        }
+        historyImage = if (reference != null) history[historyIndex] else raw
+        val fallback = if (mapping != null) motion.recordFallback(command, request, source, historyImage) else null
+        if (fallback != null) require(fallback.width == source.width && fallback.height == source.height &&
+            fallback.colorLayerCount == 1 && fallback.colorFormats[0] == source.colorFormats[0] &&
+            fallback.parameters.colorSampled && fallback.defaultSampler != null &&
+            fallback.colorImageRefs[0]?.imageData?.sampleCount == VK_SAMPLE_COUNT_1_BIT) {
+            "Diffusion display fallback must be sampled, single-sample and match source extent/colour format"
+        }
+        freshImage = fallback ?: source
         motionImage = mapping ?: invalid
         displayPass.second.push["mode"] = if (mapping != null) 1 else 2
         displayPass.second.push["amount"] = 0f

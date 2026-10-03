@@ -238,3 +238,16 @@ invalid pixels. Noise uses nearest CUDA grid sampling and square-root mixing,
 clearing state on reset; temporal VAE compression makes this a spatial heuristic.
 No model flow/depth conditioning is introduced. The public guide documents the
 coordinate convention, cost, retention window and validity requirements.
+
+## Display hole fill and free text prompts
+
+`StreamDiffusionMotionProvider.recordFallback` optionally records a sampled RGB
+fallback immediately after DISPLAY correspondence, borrowing the resolved styled
+reference. The provider owns its target; format, extent and sample count match
+the source. Returning null retains source RGB at rejected pixels. The curve demo
+uses a GPU local paper fill: it preserves current source marks, excludes old
+reference ribbon IDs and strong contrast, and reconstructs paper from nearby
+stylized pixels. This removes the source-paper colour mismatch that made a pale
+mask imprint follow old curve positions. Filling unknown styled content remains
+a heuristic. The starting point now defaults to charcoal and accepts arbitrary
+text through a prompt override; the three material choices are convenience presets.

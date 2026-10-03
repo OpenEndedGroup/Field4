@@ -6,6 +6,8 @@ import afield.four.modules.*
 import afield.four.modules.Module
 import afield.four.targets.RenderToTexture
 import afield.stdlib.fromViews
+import afield.four.texture.HasImageViewArray
+import afield.four.texture.PreparesSampledImages
 import org.lwjgl.vulkan.VK10.*
 
 /** Renderer-derived correspondence for the demo ribbons; reference IDs reject hidden crossings. */
@@ -21,6 +23,10 @@ internal class SpinningDiffusionMotion(
     }.also { it.setDefaultSampler(anisotropyEnable = false, filter = VK_FILTER_NEAREST) }
     private val referenceIds = target()
     private val mapping = target()
+    private val filledPaper = RenderToTexture(renderer) {
+        width = source.width; height = source.height; format = source.colorFormats[0]; useDepth = false
+    }.also { it.setDefaultSampler(anisotropyEnable = false) }
+    private var styledReference = source
     private val modules = mutableListOf<Module>()
     private fun geometry(target: RenderToTexture, fragment: String, name: String): Mesh {
         val module = Module(parameters(renderer) {
@@ -41,6 +47,7 @@ internal class SpinningDiffusionMotion(
     private val referenceMesh: Mesh
     private val background: Module
     private val mappingMesh: Mesh
+    private val paperFill: Module
     private var closed = false
     init {
         try {
@@ -56,6 +63,31 @@ internal class SpinningDiffusionMotion(
                 mapping.modules["background"] = pointer
             }
             mappingMesh = geometry(mapping, MOTION, "curve-correspondence")
+            paperFill = Module(parameters(renderer) {
+                filledPaper.apply(); vertex = FULLSCREEN; fragment = PAPER_FILL
+                depthTest = false; depthWrite = false; blend = false
+                textureResolver = { t ->
+                    when (t.name) {
+                        "sourceImage" -> fromViews(source, t.name, source.defaultSampler!!)
+                        "referenceIds" -> fromViews(referenceIds, t.name, referenceIds.defaultSampler!!)
+                        "motionImage" -> fromViews(mapping, t.name, mapping.defaultSampler!!)
+                        "referenceImage" -> {
+                            val provider = object : HasImageViewArray, PreparesSampledImages {
+                                override val imageViewArray get() = styledReference.imageViewArray
+                                override fun prepareSampledImagesFor(command: CommandBuffer) =
+                                    styledReference.prepareSampledImagesFor(command)
+                            }
+                            fromViews(provider, t.name, source.defaultSampler!!)
+                        }
+                        else -> null
+                    }
+                }
+            }).also { module ->
+                modules += module; check(module.valid) { "Diffusion paper fill shader failed" }
+                val pointer = module.pointer()
+                module.meshes["fill-paper"] = Mesh(renderer, pointer).resize(3, 0)
+                filledPaper.modules["fill-paper"] = pointer
+            }
         } catch (e: Throwable) { close(); throw e }
     }
     override fun onFrame(frame: StreamDiffusionFrame) {
@@ -71,12 +103,18 @@ internal class SpinningDiffusionMotion(
         mapping.render(command, 0)
         return mapping
     }
+    override fun recordFallback(command: CommandBuffer, request: StreamDiffusionMotionRequest,
+        source: RenderToTexture, referenceImage: RenderToTexture): RenderToTexture {
+        styledReference = referenceImage
+        filledPaper.render(command, 0)
+        return filledPaper
+    }
     override fun close() {
         if (closed) return
         closed = true
         renderer.cleanup += Runnable {
             modules.forEach { it.cleanup() }
-            for (target in listOf(mapping, referenceIds)) {
+            for (target in listOf(filledPaper, mapping, referenceIds)) {
                 target.imageViewArray.forEach { it.imageView.cleanup() }
                 target.colorImageRefs.forEach { it?.cleanup() }; target.defaultSampler?.cleanup()
             }
@@ -139,6 +177,38 @@ internal class SpinningDiffusionMotion(
             void main() {
                 vec2 p=vec2((gl_VertexIndex<<1)&2,gl_VertexIndex&2);
                 uv=vec2(p.x,1-p.y); gl_Position=vec4(p*2-1,0,1);
+            }
+        """
+        // The source paper is flat; generated paper has a different tone/texture. Fill rejected
+        // paper using nearby reference paper, preserving actual current source strokes. This
+        // prevents the visibility mask leaving a bright impression of the old curve positions.
+        private const val PAPER_FILL = """#version 460
+            layout(location=0) in vec2 uv;
+            layout(set=0,binding=0) uniform sampler2D sourceImage;
+            layout(set=0,binding=1) uniform sampler2D referenceImage;
+            layout(set=0,binding=2) uniform sampler2D referenceIds;
+            layout(set=0,binding=3) uniform sampler2D motionImage;
+            layout(location=0) out vec4 color;
+            void main() {
+                vec4 fresh=texture(sourceImage,uv);
+                vec3 sourcePaper=texelFetch(sourceImage,ivec2(0),0).rgb;
+                vec4 m=texelFetch(motionImage,ivec2(gl_FragCoord.xy),0);
+                if (m.z*(1-m.w)>=.999 || distance(fresh.rgb,sourcePaper)>.005) {
+                    color=fresh; return;
+                }
+                vec3 paper=texture(referenceImage,vec2(.02)).rgb;
+                vec2 texel=1./vec2(textureSize(referenceImage,0));
+                vec3 sum=vec3(0); float total=0;
+                for(int y=-4;y<=4;y++) for(int x=-4;x<=4;x++) {
+                    vec2 q=uv+vec2(x,y)*6*texel;
+                    if (any(lessThan(q,vec2(0))) || any(greaterThan(q,vec2(1))) ||
+                        texture(referenceIds,q).r>.5) continue;
+                    vec3 c=texture(referenceImage,q).rgb;
+                    // Do not copy another strong mark into newly revealed paper.
+                    if (abs(dot(c-paper,vec3(.2126,.7152,.0722)))>.25) continue;
+                    float w=1./(1+float(x*x+y*y)); sum+=c*w; total+=w;
+                }
+                color=vec4(total>0?sum/total:paper,fresh.a);
             }
         """
         private const val BACKGROUND = """#version 460

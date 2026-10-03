@@ -41,7 +41,9 @@ The example enables display reprojection, history blending (.35) and experimenta
 noise advection (.8) with renderer-generated correspondence. Its controls let you
 disable each independently. The model retains its causal processing delay.
 
-The box exposes material, strength, prompt adaptation, animation and reset.
+The box starts with charcoal and exposes a custom text prompt, material presets,
+strength, prompt adaptation, animation and reset. Presets do not limit the model
+to those three appearances.
 Edit `whiteOnBlack` before launch to choose the white-line control. Edit `backend`
 to `identity` or `invert` to compose a graph without loading diffusion weights;
 both still use the same bidirectional GPU transport.
@@ -177,12 +179,13 @@ checkpoint-loading changes. macOS was not run on this Linux host.
 
 ## Motion comparison captures
 
-[All three enabled](artifacts/motion-all.mp4) and [all three disabled](artifacts/motion-baseline.mp4)
+[All three enabled](artifacts/charcoal-motion-all.mp4) and [all three disabled](artifacts/charcoal-motion-baseline.mp4)
 are successive eight-second native RTT captures, source left and output right.
+The clips use charcoal with a GPU paper fill for rejected display pixels.
 Model input is 512×512 at requested 16 FPS; capture is 10 FPS.
-[Run data](artifacts/motion-run.json) and [worker log](artifacts/motion-worker.txt)
+[Run data](artifacts/charcoal-motion-run.json) and [worker log](artifacts/charcoal-motion-worker.txt)
 retain settings, reset generations and active TensorRT loads. Motion correspondence
-only approximates generated ink's extent; paper-tone seams and trails are visible.
+only approximates generated marks' extent; trails and softened paper texture remain possible.
 This is a functional demonstration, not an isolated temporal-quality comparison.
 
 To reproduce the raw clips, launch `examples/capture-motion.kt` beneath a renderer.
@@ -191,3 +194,9 @@ records 80 frames with motion on, resets all controls off and records another 80
 then resets motion on and prints `Motion comparison complete`. These artifact
 readbacks are outside the GPU inference transport. The interactive starting point
 does not record or read back pixels.
+
+The provider's optional `recordFallback` hook can render style-compatible fill for
+rejected display pixels. The demo samples nearby reference paper outside old
+ribbons; strong marks are excluded. It preserves current source strokes and
+avoids replacing textured/darker generated paper with bright flat source paper.
+The generic default remains current RGB source, and no CPU pixels are needed.

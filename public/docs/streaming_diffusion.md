@@ -1,31 +1,35 @@
 # Streaming diffusion
 
-Turn a rendered texture into moving ink, charcoal or barbed wire with
-StreamDiffusionV2. The source and returned image stay on the GPU, and the result
+Restyle a rendered texture with a text prompt using StreamDiffusionV2.
+Describe the appearance you want; charcoal, ink and barbed wire are example prompts. The source and returned image stay on the GPU, and the result
 is a normal Field render-to-texture target (RTT) that you can sample in another
 shader or composite into a scene.
 
 [Open the streaming diffusion starting point ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
-![Spinning curves rendered in Field, with the current source on the left and returned ink on the right](assets/streaming_diffusion/ink-field.png)
+![Spinning curves rendered in Field, with the current source on the left and returned charcoal on the right](assets/streaming_diffusion/charcoal-motion-poster.png)
 
 The example draws five rotating curves at 512 × 512. The left panel shows the
 current source; the right shows stylized output. The model processes groups of
 frames and introduces a causal delay; the motion controls can reproject that
 output onto current geometry between results. While it starts, the right panel
-shows the source. The capture above predates the motion controls.
+shows the source. The example starts with charcoal and enables the motion controls.
 
 ## Open the example
 
 Search for `streaming_diffusion` under **Starting points** on Field's welcome
 screen, then open an editable copy in your workspace. Run **2 · renderer**,
-then **3 · spinning curves**. Its diffusion controls let you choose ink,
-charcoal or wire, adjust strength, pause rotation, and reset the model's state.
+then **3 · spinning curves**. Start with the charcoal preset or enter any text in
+**Prompt override**. A blank override uses the selected material preset. Press
+Enter or leave the text field to apply your prompt. The controls also let you
+adjust strength, pause rotation, and reset the model's state.
 
 For white marks on black paper, set `whiteOnBlack = true` in the curves box and
 run it again. **Adapt prompt for white marks on black** switches between the
-original material prompt and its white-on-black version. Edit `selectedPrompt()`
-to supply your own words. The input geometry stays the same across materials.
+original material prompt and its white-on-black version. A custom prompt takes
+precedence over this switch. The input geometry stays the same across prompts.
+The model can invent detail and change the shapes; strength controls how much
+freedom it has.
 
 Lower strength retains more of the input; higher strength gives the model more
 room to add texture, smudges and splatter. Start at `0.45` for restrained marks,
@@ -150,27 +154,28 @@ results into each new result. **Noise advection** anchors some of the model's
 randomness to moving surfaces; changing it resets the model.
 
 The following clips are native Field RTT captures at 512 × 512 with active
-TAEHV/TensorRT. Each has the current source on the left and processed output on
-the right. They show successive eight-second intervals of the same rotating
+TAEHV/TensorRT and the charcoal prompt. Each has the current source on the left
+and processed output on the right. They show successive eight-second intervals of the same rotating
 scene; their source poses are not identical. Clip playback is 10 FPS; diffusion requests 16 FPS.
 
 **All three enabled** — display reprojection, history blend `.35`, noise advection
 `.8`:
 
-<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/motion-all.mp4" poster="../assets/streaming_diffusion/motion-poster.png" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-all.mp4" poster="../assets/streaming_diffusion/charcoal-motion-poster.png" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
 
 **All three disabled after reset** — the model's delayed output is held between
 updates:
 
-<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/motion-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
 
-The enabled run improves alignment but can expose seams in paper tones and
-trails from generated marks beyond the supplied correspondence. These clips
+The enabled run uses a paper fill for rejected pixels, avoiding the pale
+outline of old curve positions caused by falling back to flat source paper.
+Generated marks beyond the supplied correspondence can still leave trails. These clips
 establish that the paths run together, rather than a measured temporal-quality
-improvement for each control. [Run data](assets/streaming_diffusion/motion-run.json)
-and [worker log](assets/streaming_diffusion/motion-worker.txt) retain active settings,
+improvement for each control. [Run data](assets/streaming_diffusion/charcoal-motion-run.json)
+and [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain active settings,
 resets and engine loads. With the controls enabled, the first steady interval
-presented approximately 16 FPS and the median worker chunk took 188 ms.
+presented approximately 16 FPS. The retained run data gives chunk timings.
 
 For your own scene, pass a `StreamDiffusionMotionProvider` to the processor and
 opt into the controls. The provider records a GPU correspondence target in the
@@ -240,16 +245,27 @@ for individual pixels that cannot be matched.
 The demo retains 512 display-frame transforms, about 8.5 seconds at 60 FPS. Your
 retention window should cover your actual model lag. It extends correspondence to a
 wider ribbon around each curve to carry stylized edges. Its static paper mapping
-feathers rejection around old ribbons. Paper-tone seams and generated mark
-trails remain possible: it cannot identify every generated
-splatter pixel as part of a moving surface.
+feathers rejection around old ribbons and fills revealed paper using nearby
+generated paper. This local fill can soften paper texture, and generated mark
+trails remain possible: it cannot identify every generated splatter pixel as
+part of a moving surface.
 
 ### What each control does
 
 Display reprojection samples the delayed stylized result at reference UVs on
-every Field draw. Rejected pixels show the current source. Missing correspondence
-holds the latest resolved result. It improves geometric responsiveness; model
+every Field draw. Rejected pixels show the current source unless your provider
+supplies a fallback image. Missing correspondence holds the latest resolved result. It improves geometric responsiveness; model
 inference still has the same causal delay.
+
+A provider can override `recordFallback(command, request, source, referenceImage)`
+to render an image used where confidence or reactivity rejects display history.
+It is called immediately after a successful `DISPLAY` request, with the resolved
+stylized reference image borrowed for that call. Return a sampled, single-layer,
+single-sample RTT matching the source's dimensions and colour format; you own it.
+Return null for the default source fallback. This leaves noise and history
+blending unchanged. The demo uses this hook to reconstruct paper from nearby
+reference pixels outside old ribbons, avoiding a brighter source-paper footprint.
+It is a local approximation, rather than a prediction of new stylized content.
 
 History blending warps the previous resolved result into the new result's frame,
 clamps its colours to the fresh result's 3 × 3 neighbourhood, and blends using
@@ -277,8 +293,8 @@ Display/history passes run on Vulkan. Motion for noise is copied into an
 additional RGBA32F plane in each shared input slot and imported directly as a
 CUDA tensor; RGB and motion do not pass through CPU memory. Six float planes add
 24 MiB at 512 × 512. Resolved history, display and the invalid-map target add
-another 7 MiB for RGBA8 output; your motion targets and retained scene state are
-additional. Larger resolutions scale these allocations with pixel count.
+another 7 MiB for RGBA8 output; your motion targets, fallback target, CUDA
+copies for the current four/five-frame group and retained scene state are additional. Larger resolutions scale these allocations with pixel count.
 
 `displayReprojectionRequests`, `historyBlendRequests` and `noiseMotionFrames`
 report requests/maps sent by Field. The worker's `noise_motion_frames` reports
@@ -345,11 +361,12 @@ construct visibility and confidence; the model does not consume them directly.
 ??? aside "Source and recorded run"
 
     The editable source is the [operation transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/streaming_diffusion.yaml).
-    The image above is a native Field capture from 2 October 2026, with TAEHV and
-    active TensorRT. [Run data](assets/streaming_diffusion/run.json) and the
-    [worker log](assets/streaming_diffusion/ink-worker.txt) retain settings and engine loads.
-    The capture runs the gated starting-point transcript, including strict checkpoint
-    loading and the final lifecycle guards. Missing-backend behavior was also run
+    The charcoal image and comparison clips are native Field RTT captures, with
+    TAEHV and active TensorRT. [Run data](assets/streaming_diffusion/charcoal-motion-run.json) and the
+    [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain settings and engine loads.
+    The capture uses the starting point's geometry and prompt controls with strict
+    checkpoint loading. The [earlier ink clip](assets/streaming_diffusion/motion-all.mp4)
+    retains the pale paper footprint that prompted the display fill. Missing-backend behavior was also run
     on Linux; macOS was not run on that host. The backend's setup and architecture
     are in `optional/streamdiffusion/README.md` in the Field checkout.
 
