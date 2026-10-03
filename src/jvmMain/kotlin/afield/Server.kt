@@ -1647,6 +1647,10 @@ var globalPlaywright: Playwright? = null
 var globalPlaywrightBrowser: Browser? = null
 var globalPlaywrightBrowserContext: BrowserContext? = null
 var globalPlaywriteContext: Page? = null
+// `playwright-open --electron` makes the capture page this checkout's Electron app instead of the
+// shared Chromium (afield.docs.ElectronCaptureBrowser); the choice lasts until the next explicit open.
+@Volatile var playwrightUsesElectron: Boolean = false
+var globalElectronCapture: afield.docs.ElectronCaptureBrowser? = null
 var globalServerPort: Int = 9092
 var globalLoopbackHttpPort: Int? = null
 private const val PLAYWRIGHT_NAVIGATION_TIMEOUT_MS = 12_000.0
@@ -1765,6 +1769,8 @@ private fun closeGlobalPlaywrightPageState() {
 private fun resetGlobalPlaywrightState() {
     closeGlobalPlaywrightPageState()
     runCatching { globalPlaywrightBrowser?.close() }
+    runCatching { globalElectronCapture?.close() }
+    globalElectronCapture = null
     runCatching { globalPlaywright?.close() }
     globalPlaywrightBrowser = null
     globalPlaywright = null
@@ -1833,7 +1839,41 @@ internal fun ensureSharedPlaywrightBrowser(): Pair<Browser, Boolean> {
     return browser to createdBrowser
 }
 
+// The Electron app's own Field tab. Its context is Electron's default session, so it is never closed
+// here (closeGlobalPlaywrightPageState only closes a context this server created); the viewport is set
+// to the capture viewport by emulation, and the device scale factor is the display's own.
+private fun ensureElectronPlaywrightPage(targetUrl: String): PlaywrightPageHandle {
+    closeGlobalPlaywrightPageState()
+    val pw = globalPlaywright ?: Playwright.create().also { globalPlaywright = it }
+    val existing = globalElectronCapture?.takeIf { it.alive }
+    val capture = existing ?: run {
+        runCatching { globalElectronCapture?.close() }
+        afield.docs.ElectronCaptureBrowser.launch(pw, targetUrl).also { globalElectronCapture = it }
+    }
+    val page = capture.fieldPage(globalServerPort)
+    // The same viewport and scale factor as a Chromium capture context. Playwright's setViewportSize
+    // cannot set a scale factor on an attached page (it kept the window's, 0.83 for a viewport larger
+    // than the window), so ask CDP directly.
+    page.context().newCDPSession(page).send(
+        "Emulation.setDeviceMetricsOverride",
+        com.google.gson.JsonObject().apply {
+            addProperty("width", PLAYWRIGHT_VIEWPORT_WIDTH)
+            addProperty("height", PLAYWRIGHT_VIEWPORT_HEIGHT)
+            addProperty("deviceScaleFactor", PLAYWRIGHT_DEVICE_SCALE_FACTOR)
+            addProperty("mobile", false)
+        }
+    )
+    globalPlaywriteContext = page
+    return PlaywrightPageHandle(
+        page = page,
+        createdBrowser = existing == null,
+        createdContext = false,
+        createdPage = existing == null
+    )
+}
+
 private fun ensurePlaywrightPageOnce(targetUrl: String): PlaywrightPageHandle {
+    if (playwrightUsesElectron) return ensureElectronPlaywrightPage(targetUrl)
     var createdContext = false
     var createdPage = false
 
