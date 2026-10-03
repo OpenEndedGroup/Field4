@@ -79,8 +79,10 @@ A run keeps each agent's prompt, complete log and recorded outcomes in
 4. **Changes** shows every file's diff against where the pass started. **Discard** throws one
    file's edit away and puts the notes it resolved back in the queue.
 5. **Rebuild docs** builds the site in the worktree and links each changed page to its rebuilt copy.
-   **Commit** makes one commit listing every resolved note. **Land on main** merges `main` in if it
-   has moved on, then fast-forwards `main`. **Finish** removes the worktree.
+   **Commit** makes one commit listing every resolved note. **Enqueue for landing** hands the branch
+   to the repository's landing queue (`tools/land.py`), whose lander merges `main` in, runs the
+   checks once and fast-forwards `main`. The page shows when it has landed, or the reason it
+   bounced. **Finish** removes the worktree once the pass has landed.
 
 Everything on the page is also `docs_notes.py pass …` (`create`, `revise`, `stop`, `diff`,
 `discard`, `rebuild`, `commit`, `land`, `finish`). The page accepts requests only from a browser on

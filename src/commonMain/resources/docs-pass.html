@@ -236,9 +236,10 @@
         <div class="row" id="built-links"></div>
         <div class="row">
             <button id="commit" type="button" class="primary">Commit the worktree</button>
-            <button id="land" type="button" class="primary">Land on main</button>
+            <button id="land" type="button" class="primary">Enqueue for landing</button>
         </div>
-        <p class="muted">Commit runs the repository's pre-commit guard (several minutes). Land merges <code>main</code> into the pass branch if it has moved on, then fast-forwards <code>main</code> in this checkout. Nothing is pushed.</p>
+        <div id="landing-state"></div>
+        <p class="muted">Commit takes seconds: the hooks only report which checks it affects. <em>Enqueue for landing</em> hands the branch to the landing queue (<code>tools/land.py</code>) and returns. The lander merges <code>main</code> in, regenerates the generated files, runs the full checks once and fast-forwards <code>main</code>, or bounces the branch with its reason, shown here. Nothing is pushed.</p>
     </section>
 
 </main>
@@ -299,18 +300,34 @@
         $("posture").innerHTML = lines.join(" ");
     };
 
+    // The landing queue's view of the pass branch: queued (and whether a lander is taking it),
+    // landed, or bounced with the reason and the log the lander wrote.
+    const renderLanding = (wt) => {
+        const node = $("landing-state"), q = wt && wt.landing;
+        if (!q || wt.landed && q.state !== "bounced") { node.innerHTML = wt && wt.landed ? `<p class="state-done">Landed on main${q && q.landedAs ? ` as <code>${esc(q.landedAs.slice(0, 10))}</code>` : ""}.</p>` : ""; return; }
+        if (q.state === "pending") {
+            node.innerHTML = `<p class="state-running">Queued as <code>${esc(q.id)}</code>${q.landingNow ? ": landing now" : wt.landerRunning ? ": waiting for the lander" : ": no lander is running yet"}.</p>`;
+        } else if (q.state === "bounced") {
+            node.innerHTML = `<div class="notice bad">Bounced (<code>${esc(q.id)}</code>): ${esc(q.reason)}<br><span class="muted">log: <code>${esc(q.log)}</code>. Fix it in the pass worktree, commit, and enqueue again.</span></div>`;
+        } else {
+            node.innerHTML = `<p class="state-done">Landed on main as <code>${esc((q.landedAs || "").slice(0, 10))}</code>.</p>`;
+        }
+    };
     const renderPass = (status) => {
         const pass = status.pass, wt = status.worktree;
+        if (!pass || !wt || !wt.exists) $("landing-state").innerHTML = "";
         if (!pass) { $("pass-summary").innerHTML = `<p>No pass is open. Starting one makes a worktree on a new <code>docs-pass/…</code> branch from <code>main</code>, so agents never edit this checkout.</p>`; return; }
         if (!wt || !wt.exists) { $("pass-summary").innerHTML = `<div class="notice bad">The pass's worktree <code>${esc(pass.worktree)}</code> is gone. Abandon the pass to clear it.</div>`; return; }
         const bits = [
             `<code>${esc(pass.worktree)}</code> on <code>${esc(pass.branch)}</code>, from <code>${esc(pass.base)}</code> at <code>${esc(pass.baseCommit.slice(0, 10))}</code>`,
             `${wt.ahead} commit(s) on the branch, ${wt.uncommitted} uncommitted file(s)`,
             wt.baseAdvanced ? `<span class="muted">${esc(pass.base)} has moved on by ${wt.baseAdvanced} commit(s); landing merges it in first</span>` : "",
-            wt.landed ? `<b class="state-done">landed on ${esc(pass.base)}</b>` : "",
+            wt.landed ? `<b class="state-done">landed on ${esc(pass.base)}</b>` : wt.landing && wt.landing.state === "pending" ? `<span class="state-running">queued for landing</span>`
+                : wt.landing && wt.landing.state === "bounced" ? `<span class="state-failed">bounced from the landing queue</span>` : "",
             `${(pass.runs || []).length} run(s)`,
         ].filter(Boolean);
         $("pass-summary").innerHTML = `<p>${bits.join(" · ")}</p>`;
+        renderLanding(wt);
     };
 
     const renderCounts = (status) => {
@@ -388,7 +405,8 @@
                 const blocked = !openRows.length ? "every handoff here is taken"
                     : !ready.length ? "none of these documents is on main yet" : "";
                 const label = ready.length && ready.length < openRows.length ? `Start session (${ready.length} of ${openRows.length})` : "Start session";
-                const waiting = (batch.notLandedDetail || []).map(d => `<div class="muted">waits until <code>${esc(d.branches.length ? d.branches.join(", ") : "its branch")}</code> lands on main: ${esc(d.title)}</div>`).join("");
+                const queueWord = q => !q ? " (not queued)" : q.state === "pending" ? ` (queued${q.landingNow ? ", landing now" : ""})` : q.state === "bounced" ? ` (bounced: ${q.reason})` : "";
+                const waiting = (batch.notLandedDetail || []).map(d => `<div class="muted">waits until <code>${esc(d.branches.length ? d.branches.join(", ") : "its branch")}</code> lands on main${esc(queueWord(d.queue))}: ${esc(d.title)}</div>`).join("");
                 action = `<button data-act="start-session" data-batch="${esc(batch.key)}" class="primary"${blocked ? " disabled" : ""}>${label}</button>`
                     + (blocked ? ` <span class="muted">${esc(blocked)}</span>` : batch.earlierOpen.length ? ` <span class="state-waiting">still open before it: ${esc(batch.earlierOpen.join(", "))}</span>` : "")
                     + waiting;
@@ -473,7 +491,8 @@
         set("stop-now", draining);
         set("rebuild", !!pass && wt.exists && !busy && !draining);
         set("commit", !!pass && wt.exists && wt.uncommitted > 0 && !busy && !draining);
-        set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !busy && !draining);
+        const queued = wt && wt.landing && wt.landing.state === "pending" && wt.landing.sha === wt.head;
+        set("land", !!pass && wt.exists && wt.ahead > 0 && wt.uncommitted === 0 && !wt.landed && !queued && !busy && !draining);
         set("cancel-job", busy);
         document.querySelectorAll('#changes button[data-act="discard"]').forEach(b => { b.disabled = busy || draining; });
         document.querySelectorAll('#handoffs [data-act="start-session"]').forEach(b => { if (busy) b.disabled = true; });
@@ -504,7 +523,7 @@
     $("stop-now").onclick = async () => await confirmed("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");
-    $("land").onclick = async () => await confirmed("Merge the pass into main in this checkout (fast-forward, after merging main into the pass if it has moved)? Nothing is pushed.") && act("land");
+    $("land").onclick = async () => await confirmed("Hand the pass branch to the landing queue? The lander merges main in, checks it and fast-forwards main, or bounces it with a reason. Nothing is pushed.") && act("land");
     $("toggle-log").onclick = () => { const d = $("job-detail"); d.hidden = !d.hidden; $("toggle-log").textContent = d.hidden ? "log" : "hide log"; };
     $("cancel-job").onclick = async () => await confirmed("Kill the running job and everything it started?") && act("cancel-job");
 

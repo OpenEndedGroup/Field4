@@ -510,6 +510,8 @@ class PassTest(unittest.TestCase):
         self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n")
         self.repo.write("agent.py", FAKE_AGENT)
         self.repo.write("sleepy.py", SLEEPY_AGENT)
+        # The real queue's enqueue, so the pass talks to the same files the lander reads.
+        self.repo.write("tools/land.py", (Path(__file__).resolve().parent / "land.py").read_text())
         self.repo.commit("docs")
         self.store_path = self.repo.root / "store.json"
         other = "https://openendedgroup.com/field4/other/"
@@ -580,7 +582,18 @@ class PassTest(unittest.TestCase):
         message = subprocess.run(["git", "log", "-1", "--format=%B"], cwd=self.worktree, capture_output=True, text=True).stdout
         self.assertIn("Docs-Note: 11111111-a", message)
         self.assertIn("reworded the step", message)
-        self.assertEqual(self.cli("pass", "land"), 0)
+        # Landing enqueues and stops; nothing moves main until a lander takes the item.
+        with mock.patch.object(dn, "ensure_lander", return_value=True) as lander:
+            self.assertEqual(self.cli("pass", "land"), 0)
+        lander.assert_called_once()
+        queued = self.status()["worktree"]["landing"]
+        self.assertEqual(queued["state"], "pending")
+        self.assertNotIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
+        with self.assertRaises(SystemExit) as early:
+            self.cli("pass", "finish")
+        self.assertIn("queued for landing", str(early.exception))
+        self.land_as_the_lander_would(queued["id"])
+        self.assertEqual(self.status()["worktree"]["landing"]["state"], "landed")
         self.assertIn("go on to the next step", (self.repo.root / "public/docs/guide.md").read_text())
         self.assertTrue((self.repo.root / "public/docs/unrelated.md").is_file())
         self.assertTrue(self.status()["worktree"]["landed"])
@@ -592,6 +605,32 @@ class PassTest(unittest.TestCase):
         self.assertEqual(self.cli("pass", "finish"), 0)
         self.assertFalse(self.worktree.exists())
         self.assertIsNone(dn.load_pass(self.repo.root))
+
+    def land_as_the_lander_would(self, item_id: str) -> None:
+        """What tools/land.py run does with one item, minus regeneration and the guard."""
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        item = json.loads((queue / "pending" / f"{item_id}.json").read_text())
+        self.repo.git("merge", "--no-ff", "-m", f"Land {item['branch']}", item["sha"])
+        item.update(landed_as=self.repo.git("rev-parse", "HEAD").strip(), finished="now")
+        (queue / "pending" / f"{item_id}.json").unlink()
+        (queue / "landed" / f"{item_id}.json").write_text(json.dumps(item))
+
+    def test_a_bounce_comes_back_with_its_reason(self) -> None:
+        self.cli("pass", "create", "--path", str(self.worktree))
+        (self.worktree / "public/docs/guide.md").write_text("# Guide\n\nchanged\n")
+        subprocess.run(["git", "commit", "-qam", "edit"], cwd=self.worktree, check=True)
+        with mock.patch.object(dn, "ensure_lander", return_value=True):
+            self.cli("pass", "land")
+        queue = Path(self.repo.git("rev-parse", "--path-format=absolute", "--git-common-dir").strip()) / "field-land-queue"
+        pending = next((queue / "pending").glob("*.json"))
+        item = json.loads(pending.read_text()) | {"reason": "ProseNumeralContractTest: logging.md says 970", "log": "/tmp/x.log"}
+        pending.unlink()
+        (queue / "bounced" / pending.name).write_text(json.dumps(item))
+        landing = self.status()["worktree"]["landing"]
+        self.assertEqual((landing["state"], landing["reason"]), ("bounced", "ProseNumeralContractTest: logging.md says 970"))
+        with self.assertRaises(SystemExit) as refused:
+            self.cli("pass", "finish")
+        self.assertIn("bounced", str(refused.exception))
 
     def test_discarding_an_edit_reopens_what_it_resolved(self) -> None:
         self.cli("pass", "create", "--path", str(self.worktree))
