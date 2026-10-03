@@ -422,20 +422,34 @@ def cmd_status(args: argparse.Namespace) -> int:
         if not args.watch:
             _pretty_status(queue, args.recent)
             return 0
+        # Read keys one at a time without echo, so `q` or Esc quits: not every embedded terminal
+        # delivers ctrl-c. The tty is restored however the loop ends.
+        import select, termios, tty
+        stdin = sys.stdin.fileno() if sys.stdin.isatty() else None
+        saved = termios.tcgetattr(stdin) if stdin is not None else None
         try:
+            if stdin is not None:
+                tty.setcbreak(stdin)
+            sys.stdout.write("\033[?25l\033[2J")  # hide the cursor, start from a clean screen
             while True:
-                # Home + clear-to-end rather than a full clear, so the redraw does not flicker.
                 frame = io.StringIO()
                 with contextlib.redirect_stdout(frame):
                     _pretty_status(queue, args.recent)
                 # Clear each line's tail too: a line that got shorter would otherwise keep old text.
                 sys.stdout.write("\033[H" + frame.getvalue().replace("\n", "\033[K\n"))
-                sys.stdout.write("\033[J" + _Style().dim(f"\n{_now()} \u00b7 every 2s \u00b7 ctrl-c to stop"))
+                sys.stdout.write("\033[J" + _Style().dim(f"\n{_now()} \u00b7 every 2s \u00b7 q to quit"))
                 sys.stdout.flush()
-                time.sleep(2)
+                if stdin is None:
+                    time.sleep(2)
+                elif select.select([stdin], [], [], 2)[0] and os.read(stdin, 1) in (b"q", b"Q", b"\x1b", b"\x03"):
+                    break
         except KeyboardInterrupt:
-            print()
-            return 0
+            pass
+        finally:
+            if saved is not None:
+                termios.tcsetattr(stdin, termios.TCSADRAIN, saved)
+            sys.stdout.write("\033[?25h\n")
+        return 0
     print(_lander_line(queue))
     pending = _items(queue, PENDING)
     active = [item for item in pending if item.get("started")]
@@ -660,7 +674,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("id", nargs="?")
     p.add_argument("--recent", type=int, default=5)
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
-    p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds until ctrl-c")
+    p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
     p = sub.add_parser("mine", help="every landing attempt for this branch, newest first (exit 1 if it bounced)")
     p.add_argument("branch", nargs="?", help="default: the current branch")
