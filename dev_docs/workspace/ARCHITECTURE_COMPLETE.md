@@ -20,10 +20,9 @@ already present in the session.
 ## Workspace orientation files
 
 `SavingContext.ensureDirectory(...)` also calls the private `ensureAgentGuides(...)`.
-That helper copies:
-
-- `templates/WORKSPACE_README.md` to `README.md`
-- `templates/WORKSPACE_AGENTS.md` to `AGENTS.md`
+That helper copies `templates/WORKSPACE_AGENTS.md` to `AGENTS.md`. (It used to copy a
+`templates/WORKSPACE_README.md` to `README.md` too; the Document Guide panel hides those older
+copies, since they described the on-disk format, not the document.)
 
 It copies only missing destinations and treats failure as non-fatal. The exact discovery,
 copy, and fallback behavior belongs to the KDoc beside `ensureAgentGuides(...)` and

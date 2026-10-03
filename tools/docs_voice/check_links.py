@@ -66,11 +66,11 @@ EXTERNAL = re.compile(r"^(?:[a-z][a-z0-9+.-]*:|//)", re.I)
 LIST_ITEM = re.compile(r"^\s{0,3}(?:[-*+]\s|\d+[.)]\s)")
 
 # Template sources are written from the point of view of the workspace they are seeded INTO, not
-# of `templates/`. `ensureAgentGuides` (saving.kt:1748) copies WORKSPACE_README.md -> README.md and
-# WORKSPACE_AGENTS.md -> AGENTS.md side by side, so `./AGENTS.md` in WORKSPACE_README.md is correct
-# at every one of the 243 destinations and dead only at the source. Checking these would need the
-# seeded name map; the 243 copies are checked directly instead, which is the stronger check.
-DESTINATION_RELATIVE = ("templates/WORKSPACE_README.md", "templates/WORKSPACE_AGENTS.md")
+# of `templates/`. `ensureAgentGuides` (saving.kt) copies WORKSPACE_AGENTS.md -> AGENTS.md (older
+# Fields also seeded a README.md beside it), so a relative link in it is correct at every
+# destination and may be dead at the source. Checking it would need the seeded name map; the
+# copies are checked directly instead, which is the stronger check.
+DESTINATION_RELATIVE = ("templates/WORKSPACE_AGENTS.md",)
 
 # Paths the docs build writes into the site and the source tree therefore does not carry.
 # `reference/source/`: `generateCodebaseReference`, via build_zensical_docs.py:501-522.
