@@ -68,13 +68,14 @@ expect:
  *    materialized and must not when it is not, and the committed bundle directory must really be
  *    there. This is the check that stops the page advertising a document the welcome screen cannot
  *    open.
- * 5. **The counts in the CI paragraph** — the paragraph marked
+ * 5. **No counts in the CI paragraph** — the paragraph marked
  *    ```
  *    <!-- transcript-index: totals -->
  *    ```
- *    must contain, as standalone numbers, the corpus size and the size of each of the three sets. Four
- *    numerals, so the reader gets told the shape of the verification, and adding a transcript makes
- *    exactly one of them wrong until someone looks.
+ *    must not quote a number. It used to have to quote four (the corpus size and each set's size), so
+ *    every branch that added a transcript edited the same sentence. Any two such branches then conflicted
+ *    there, and resolving it by hand was a recurring way to waste a landing. The counts live in
+ *    `DemoTranscriptExecSmokeTest`, which prints them; the prose names the three depths without them.
  *
  * ### Running it
  *
@@ -243,26 +244,19 @@ object AgentTranscriptIndexGuard {
             }
         }
 
-        // ---- 5: the counts in the CI paragraph ----
-        val expected = buildList {
-            add(corpus.size to "the corpus size")
-            Level.entries.forEach { level -> add(setFor(level).size to "the ${level.marker} set") }
-        }
+        // ---- 5: no counts in the CI paragraph ----
         val totals = totalsParagraph
         if (totals == null) {
             problems.add(
                 "$INDEX_REL has no `<!-- transcript-index: totals -->` marker. Put it directly above the paragraph " +
-                    "that quotes how many transcripts there are and how each is verified."
+                    "that says how each transcript is verified."
             )
         } else {
-            val numbers = Regex("""\d+""").findAll(totals).map { it.value }.toSet()
-            for ((n, what) in expected) {
-                if (n.toString() !in numbers) problems.add(
-                    "the totals paragraph does not mention $n — $what. It currently reads: " +
-                        "\"${totals.trim()}\". Expected numbers: " +
-                        expected.joinToString(", ") { "${it.first} (${it.second})" }
-                )
-            }
+            val numbers = Regex("""\b\d+\b""").findAll(totals).map { it.value }.toList()
+            if (numbers.isNotEmpty()) problems.add(
+                "the totals paragraph quotes ${numbers.joinToString(", ")}. It must quote no counts: every branch that " +
+                    "adds a transcript would have to edit it, and those edits conflict. Describe the depths without numbers."
+            )
         }
 
         if (problems.isNotEmpty()) {
