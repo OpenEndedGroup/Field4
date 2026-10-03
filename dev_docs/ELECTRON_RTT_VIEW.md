@@ -55,8 +55,15 @@ slots in flight and skipped the copy.
 - **Signalling hop.** Frame-ready goes JVM → WebSocket → page → IPC → main. A direct JVM ↔ Electron-main
   channel would cut the dominant (and noisiest) hop.
 - **Errors.** A failed `sendSharedTexture` never frees its slot.
-- **Electron only.** The HTTP mirror, external browsers and Playwright docs captures show a "needs the
-  Field Electron app" label instead.
+- **Electron only.** The HTTP mirror and external browsers show a "needs the Field Electron app"
+  label instead. Docs captures go through Electron itself (`capture-profile="macos-electron"`,
+  `afield.docs.ElectronCaptureBrowser`). That needed two `electron/main.js` changes. With remote
+  debugging on, the window's own unused `webContents` loads `about:blank`, because otherwise it has
+  no renderer and Playwright's `connectOverCDP` waits forever on it. The capture Electron also gets
+  its own profile (`FIELD_ELECTRON_USER_DATA`), because the user's per-host zoom had made the capture
+  page render at a device pixel ratio of 1.67. It quits once the JVM that launched it is gone
+  (`FIELD_ELECTRON_OWNER_PID`).
+- **Public page.** `public/docs/four_in_output_areas.md`.
 - **Colour.** The RTT is `B8G8R8A8_SRGB` and the import declares an sRGB transfer. This has been
   checked by eye only.
 - **Installing Electron 44.5.1.** Its installer `require()`s an ES module, so `install.js` fails under

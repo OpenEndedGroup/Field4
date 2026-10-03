@@ -51,6 +51,15 @@ class HardwareDocsGatingTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'Unknown docs capture profile'):
                 docs_hooks.capture_profile_enabled('misspelled-profile')
 
+    def test_macos_electron_profile_needs_darwin_and_the_request(self):
+        with patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':'macos-electron'}):
+            with patch.object(docs_hooks.sys,'platform','darwin'):
+                self.assertTrue(docs_hooks.capture_profile_enabled('macos-electron'))
+            with patch.object(docs_hooks.sys,'platform','linux'):
+                self.assertFalse(docs_hooks.capture_profile_enabled('macos-electron'))
+        with patch.object(docs_hooks.sys,'platform','darwin'),patch.dict(os.environ,{'FIELD_DOCS_CAPTURE_PROFILES':''}):
+            self.assertFalse(docs_hooks.capture_profile_enabled('macos-electron'))
+
     def test_missing_protected_asset_fails_without_attempting_replacement(self):
         with tempfile.TemporaryDirectory() as temporary:
             docs=Path(temporary);page=docs/'test.md';state=self.state(docs)

@@ -868,13 +868,24 @@ class RunnerOptions:
     hide_toasts: bool = False
 
 
+# A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
+# names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
+# Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
+# exists there, such as the RTT view's shared-texture frames.
+CAPTURE_PROFILE_PLATFORMS = {
+    "linux-nvidia": "linux",
+    "macos-electron": "darwin",
+}
+
+
 def capture_profile_enabled(profile: str | None) -> bool:
     if profile is None:
         return True
-    if profile != "linux-nvidia":
+    platform = CAPTURE_PROFILE_PLATFORMS.get(profile)
+    if platform is None:
         raise RuntimeError(f"Unknown docs capture profile {profile!r}")
     requested = {p.strip() for p in os.environ.get("FIELD_DOCS_CAPTURE_PROFILES", "").split(",")}
-    return sys.platform.startswith("linux") and profile in requested
+    return sys.platform.startswith(platform) and profile in requested
 
 
 def derive_sidecar_port(repo_root: Path) -> int:
@@ -5108,6 +5119,9 @@ def build_backdoor_command(
     if document:
         command.extend(["--document", document])
     backdoor_commands: list[str] = []
+    if options.capture_profile == "macos-electron":
+        # Before anything renders: the capture page has to be the Electron tab when output DOM appears.
+        backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same
