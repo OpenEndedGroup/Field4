@@ -1,6 +1,7 @@
 # Capture a real spectral-spaces dashboard for audio_ai_spectral_embeddings
 
 - **Handoff:** `cb4120be-4e73-4748-bc29-08e92db68d31` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_spectral_embeddings/
 - **Filed by:** agent:claude, 2026-09-30 20:47
 - **Close with:** `python tools/docs_notes.py handoff-close cb4120be "what happened"`
@@ -73,3 +74,14 @@ Add a runner fence (or a retained capture) that produces the three-distance dash
 figure near the top, after the opening paragraphs or right after "Complete Field workflow". Give it
 alt text naming the three distances, and caption where the features came from if it isn't the
 live service.
+
+## Completion — 2026-10-03
+
+Captured three fixed-seed Smile t-SNE projections computed by Field from the actual librosa MessagePack features, with 200 ms pooling and 40 ms hops over ten seconds. Added the dashboard to the spectral walkthrough and visualizers gallery; the companion now uses genuine exported features.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

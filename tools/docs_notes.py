@@ -2549,23 +2549,57 @@ def is_registered_worktree(git: Git, worktree: Path) -> bool:
     return any(line[len("worktree "):] in wanted for line in out.splitlines() if line.startswith("worktree "))
 
 
-def remove_worktree(git: Git, worktree: Path, force: bool) -> None:
+def files_not_on_branch(git: Git, worktree: Path, branch: str) -> list[str]:
+    """Files in an unregistered worktree directory that the branch does not account for.
+
+    Git-ignored files (build output, `.field/` caches, `.venv`) are regenerable and do not count,
+    nor do Finder's leftovers. Every other file must be byte-identical to the branch tip; one that
+    differs, or that the branch does not have, is someone's work.
+    """
+    rel = [str(f.relative_to(worktree)) for f in worktree.rglob("*")
+           if f.is_file() and not f.is_symlink() and f.name not in _LEFTOVER_NAMES and f.name != ".git"]
+    if not rel:
+        return []
+    ignored = set(subprocess.run(["git", "check-ignore", "--no-index", "--stdin"], input="\n".join(rel),
+                                 capture_output=True, text=True, cwd=git.root).stdout.splitlines())
+    tracked = {}
+    for line in git.run("ls-tree", "-r", "--format=%(objectname) %(path)", branch, check=False).splitlines():
+        sha, _, path = line.partition(" ")
+        tracked[path] = sha
+    candidates = [r for r in rel if r not in ignored]
+    hashes = subprocess.run(["git", "hash-object", "--stdin-paths"], input="\n".join(str(worktree / r) for r in candidates),
+                            capture_output=True, text=True, cwd=git.root).stdout.split() if candidates else []
+    return sorted(r for r, h in zip(candidates, hashes) if tracked.get(r) != h)
+
+
+def refuse_if_occupied(worktree: Path, what: str) -> None:
+    """An agent still working in the worktree would have it deleted from under it.
+
+    That is how a removal ends half done: git drops its record, then cannot delete the files a
+    running process holds or rewrites, and the directory is left looking like nobody's.
+    """
+    running = session_occupants(str(worktree))
+    if running:
+        raise SystemExit(f"{', '.join(running)} is still working in {worktree}. Quit it first, then end the {what}.")
+
+
+def remove_worktree(git: Git, worktree: Path, force: bool, branch: str = "", abandon: bool = False) -> None:
     """Remove a pass or session worktree, including one git has already let go of.
 
-    The directory can outlive its registration: an earlier removal that was interrupted, or
-    Finder writing .DS_Store into a folder that was open in a window while git deleted it. Then
-    `git worktree remove` says "is not a working tree". A directory holding only such leftovers is
-    deleted; one holding anything else is refused, naming the files, so no work is thrown away.
+    The directory can outlive its registration: Finder writes .DS_Store into a folder open in a
+    window, and a removal run under a live agent drops git's record and then leaves the files.
+    Then `git worktree remove` says "is not a working tree". Such a directory is deleted when
+    nothing in it is work the branch lacks: only git-ignored files and files byte-identical to
+    the branch tip (or anything at all, when abandoning). Otherwise it is refused, naming files.
     """
     if is_registered_worktree(git, worktree):
         git.run(*(["worktree", "remove"] + (["--force"] if force else []) + [str(worktree)]))
     elif worktree.is_dir():
-        kept = [str(f.relative_to(worktree)) for f in sorted(worktree.rglob("*"))
-                if f.is_file() and f.name not in _LEFTOVER_NAMES]
+        kept = [] if abandon else files_not_on_branch(git, worktree, branch or "HEAD")
         if kept:
-            raise SystemExit(f"{worktree} is no longer a git worktree but still holds files: "
-                             + ", ".join(kept[:5]) + (" …" if len(kept) > 5 else "")
-                             + ". Move or delete them, then try again.")
+            raise SystemExit(f"{worktree} is no longer a git worktree, and holds files that are not on {branch}: "
+                             + ", ".join(kept[:5]) + (f" and {len(kept) - 5} more" if len(kept) > 5 else "")
+                             + ". Move or commit them elsewhere, then try again.")
         shutil.rmtree(worktree)
     git.run("worktree", "prune", check=False)
 
@@ -2581,7 +2615,8 @@ def pass_finish(git: Git, abandon: bool) -> int:
     if (not landed or dirty) and not abandon:
         why = "has uncommitted changes" if landed else f"has not landed on {state['base']}"
         raise SystemExit(f"The pass {why}; commit and land it first, or finish with --abandon to throw it away.")
-    remove_worktree(git, worktree, force=abandon)
+    refuse_if_occupied(worktree, "pass")
+    remove_worktree(git, worktree, force=abandon, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
     save_pass(git.root, None)
     print(f"pass closed: removed {worktree} and {branch}" + (" (abandoned)" if abandon else ""), flush=True)
@@ -2846,13 +2881,23 @@ def session_occupants(worktree: str) -> list[str]:
     except (OSError, subprocess.SubprocessError):
         return []
     roots = {worktree.rstrip("/"), str(Path(worktree).resolve())}  # lsof reports /private/var for /var
+    # lsof's command name is the executable's own: Claude Code's is its version ("2.1.288").
+    # The program it was started as is argv[0], which ps reports.
+    try:
+        listing = subprocess.run(["ps", "-axo", "pid=,args="], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        listing = ""
+    program = {}
+    for row in listing.splitlines():
+        pid_text, _, args = row.strip().partition(" ")
+        program[pid_text] = os.path.basename(args.split(" ", 1)[0]) if args else ""
     found, pid, name = [], "", ""
     for line in out.splitlines():
         tag, value = line[:1], line[1:]
         if tag == "p":
             pid, name = value, ""
         elif tag == "c":
-            name = value
+            name = value if value in ("claude", "codex") else program.get(pid, value)
         elif tag == "n" and name in ("claude", "codex") and any(value == r or value.startswith(r + "/") for r in roots):
             found.append(f"{name} (pid {pid})")
     return found
@@ -2922,7 +2967,8 @@ def end_session(git: Git, store: Store, batch_key: str, abandon: bool) -> int:
     if (dirty or not merged) and not abandon:
         raise SystemExit("The session " + ("has uncommitted changes" if dirty else f"branch {branch} has not been merged into main")
                          + "; land it first, or end it with --abandon to throw it away.")
-    remove_worktree(git, worktree, force=True)
+    refuse_if_occupied(worktree, "session")
+    remove_worktree(git, worktree, force=True, branch=branch, abandon=abandon)
     git.run("branch", "-D" if abandon else "-d", branch, check=False)
 
     def release(current: list[dict[str, Any]]) -> None:

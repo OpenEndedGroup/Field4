@@ -1,0 +1,25 @@
+{
+  "id": "rep_85d8008d5b3e2430bda4ffaa",
+  "asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+  "role": "canonical_project",
+  "media_type": "audio/wav",
+  "sample_rate": 48000,
+  "channels": 2,
+  "frame_count": 10121300,
+  "duration_seconds": 210.86041666666668,
+  "native_sample_rate": 44100,
+  "resampling_method": "ffmpeg_libsoxr_precision_28",
+  "binary_url": "/v1/representations/rep_85d8008d5b3e2430bda4ffaa/content",
+  "metadata": {
+    "derived_from_asset_id": "sha256:5bfe2fbd7f1d0b99a9c91e73db98535220c3f61eedc7b27335c8a99fb821485a",
+    "original_filename": "Henry Mancini - Nancy.48k-f32.wav",
+    "wav": {
+      "channels": 2,
+      "duration_seconds": 210.86041666666668,
+      "format": "WAV",
+      "frame_count": 10121300,
+      "sample_rate": 48000,
+      "subtype": "FLOAT"
+    }
+  }
+}

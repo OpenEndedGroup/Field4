@@ -395,6 +395,10 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
+        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
+        // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
+        "drawn_paint",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the
@@ -428,6 +432,14 @@ object DemoTranscriptExecSmokeTest {
         // A sender and a receiver that loop until stopped over loopback sACN on a fixed UDP port, and a
         // measuring box whose numbers SceneOnARigTest already pins.
         "chain_scene_to_light",
+        // Syphon (macOS frame sharing) through the optional native/field-syphon library: two of the
+        // three boxes are `loop { }`s that publish and receive frames across Syphon's shared GPU
+        // surface. Not evaluated here (a Mac, Metal and `./gradlew buildSyphonNative`);
+        // afield.syphon.SyphonTest runs the cross-process round trip with exact pixels instead.
+        "syphon_bridge",
+        // The same over the Vulkan renderer: followOnGpu (GPU copy into an IOSurface) and a Syphon
+        // client as a texture. Needs a Window, a Renderer and the library; verified live by hand.
+        "syphon_gpu",
         // Editable tiled fluid, grain/strokes and motion RTT; live GPU check is separate.
         "flow_grain",
         "aperture_playground",
@@ -480,6 +492,8 @@ object DemoTranscriptExecSmokeTest {
         // left here is the window, so they classify with the rest of the tracer group.
         "polytope_path_trace_lineage",
         "polytope_manifold_path_trace",
+        "polytope_layer_stack_path_trace",
+        "photo_mount_path_trace",
         "physics_manifold_path_trace",
         // Also a window, and additionally a compute dispatch whose push constants are bound to
         // lambdas; the pattern scheduler and the band analysis in front of it are covered by
@@ -579,6 +593,9 @@ object DemoTranscriptExecSmokeTest {
         // KosmicKrisp (host-pointer buffers). Needs a Vulkan window and the helper binary, so CI
         // compiles it; the backdoor replay runs it live.
         "iosurface_ring_roundtrip_smoke",
+        // Zero-copy Syphon receive against field_syphon_probe, read back exactly. Needs a Vulkan
+        // window and the optional Syphon library, so CI compiles it; the backdoor replay runs it live.
+        "syphon_zero_copy_receive_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

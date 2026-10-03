@@ -5,6 +5,26 @@ in it is voice activity, vocal timbre, prosody and phonetic motion, and that is 
 `analysis.embed_speech` measures. Two speech models sit behind that one operation, and which of
 them you ask changes what the motion is about.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_speech_embeddings/learned_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-speech" alt="Real emotion2vec and WavLM learned phase portraits with voice activity, energy and novelty"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_speech_embeddings")
+val previews = listOf("emotion2vec", "wavlm_base_plus").map {
+    json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText())
+}
+display("speech spaces", speechEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 220))
+
+```
+
+These are the two workers' landmark MDS views of `near_drowning.wav`. The workflow below fits
+fresh t-SNE views of a selected ten-second interval from the same cached learned features.
+
 | Backend | Bias | Useful first reading |
 | --- | --- | --- |
 | `analysis.emotion2vec` | affect, vocal texture, prosody, speaker state | where the manner and energy of speech change |

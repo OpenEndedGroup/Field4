@@ -1,0 +1,310 @@
+{
+  "id": "analysis_d40241d408374cb19bd06b8852e3fcce",
+  "operation_id": "op_a2ed08c3a117422abe47b05d79cb463a",
+  "request_hash": "sha256:f6a7a9250b5b7ce8345820b6e9be65415b82bf8fb18a2cc6ad71436698d44d06",
+  "source": {
+    "start_seconds": 18.0,
+    "duration_seconds": 6.0,
+    "asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973"
+  },
+  "data": {
+    "id": "rep_146f67553f44b2aeacbbf6ec",
+    "asset_id": "sha256:2aed392b2a4b514076f59c4f9254b844f16201371bf478bc67a405f5ac1a83e7",
+    "role": "analysis_find_neighbours",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 22050,
+    "resampling_method": "librosa_soxr_hq",
+    "binary_url": "/v1/representations/rep_146f67553f44b2aeacbbf6ec/content",
+    "metadata": {
+      "algorithm": "pooled chroma, dominant pitch, MFCC, spectral, onset, tempo and RMS descriptors",
+      "analysis_sample_rate": 22050,
+      "arrays": {
+        "embedding": [
+          1,
+          71
+        ],
+        "segment_duration_seconds": [
+          1
+        ],
+        "segment_scale_seconds": [
+          1
+        ],
+        "segment_start_seconds": [
+          1
+        ]
+      },
+      "backend": "analysis.librosa",
+      "backend_revision": "librosa:0.11.0",
+      "channel_mix": "arithmetic_mean_to_mono",
+      "descriptor_version": "librosa-corpus-v1",
+      "feature_groups": {
+        "dynamics": [
+          67,
+          71
+        ],
+        "harmony": [
+          0,
+          24
+        ],
+        "pitch": [
+          24,
+          27
+        ],
+        "rhythm": [
+          61,
+          67
+        ],
+        "texture": [
+          27,
+          61
+        ]
+      },
+      "frame_period_seconds": 0.023219954648526078,
+      "hop_length": 512,
+      "library": "librosa",
+      "library_version": "0.11.0",
+      "n_fft": 2048,
+      "operation_id": "op_53ad018db7454d1a9785c7c173eacdae",
+      "overlap": 0.0,
+      "request_hash": "sha256:13523ec13bff506829b85ad9033e189c454fe13fe3697268dab45f4183b2311e",
+      "resampling": "librosa_soxr_hq",
+      "scales_seconds": [
+        6.0
+      ],
+      "source_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+      "source_channels": 2,
+      "source_duration_seconds": 6.0,
+      "source_sample_rate": 48000,
+      "source_start_seconds": 18.0
+    }
+  },
+  "artifacts": [],
+  "summary": {
+    "duration_seconds": 6.0,
+    "embedding_dimensions": 71,
+    "overlap": 0.0,
+    "scales_seconds": [
+      6.0
+    ],
+    "segment_count": 1,
+    "corpus": {
+      "operation": "analysis.find_neighbours",
+      "segment_ids": [],
+      "neighbours": [
+        {
+          "segment_id": "segment_34897cf763627ef8fad361572dc1469c",
+          "distance": 0.04749015728632609,
+          "group_distances": {
+            "dynamics": 0.0157468318939209,
+            "harmony": 0.16828006505966187,
+            "pitch": 0.023174583911895752,
+            "rhythm": 0.0021533966064453125,
+            "texture": 0.01755499839782715
+          },
+          "splice_preview_representation_id": "rep_358e882b75ee3f178d7a55c3"
+        },
+        {
+          "segment_id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+          "distance": 0.04807432413101197,
+          "group_distances": {
+            "dynamics": 0.0016591548919677734,
+            "harmony": 0.14123231172561646,
+            "pitch": 0.010075032711029053,
+            "rhythm": 0.0011873841285705566,
+            "texture": 0.04469609260559082
+          },
+          "splice_preview_representation_id": "rep_7fd4e0818fa499b0ef1844c8"
+        },
+        {
+          "segment_id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+          "distance": 0.05435504674911499,
+          "group_distances": {
+            "dynamics": 0.030473947525024414,
+            "harmony": 0.20080268383026123,
+            "pitch": 0.005991876125335693,
+            "rhythm": 0.0012609362602233887,
+            "texture": 0.020996451377868652
+          },
+          "splice_preview_representation_id": "rep_1b9a541dc845172d0ae7cb65"
+        },
+        {
+          "segment_id": "segment_405179b360873ea4107ebf11d7160fe7",
+          "distance": 0.06020291725794475,
+          "group_distances": {
+            "dynamics": 0.030139029026031494,
+            "harmony": 0.2475069761276245,
+            "pitch": 0.005497336387634277,
+            "rhythm": 0.004687070846557617,
+            "texture": 0.008075714111328125
+          },
+          "splice_preview_representation_id": "rep_1ffb9ab8277841ed9f52433a"
+        },
+        {
+          "segment_id": "segment_877d522e30ae94c77af1429782a18bfc",
+          "distance": 0.061392424106597905,
+          "group_distances": {
+            "dynamics": 0.019030213356018066,
+            "harmony": 0.23965692520141602,
+            "pitch": 0.013339042663574219,
+            "rhythm": 0.004332304000854492,
+            "texture": 0.015901029109954834
+          },
+          "splice_preview_representation_id": "rep_595c3ec95da471b520ba0a71"
+        },
+        {
+          "segment_id": "segment_20d063792df32d6e1d3fa009d5e45f19",
+          "distance": 0.06399005333582561,
+          "group_distances": {
+            "dynamics": 0.005776941776275635,
+            "harmony": 0.2680588364601135,
+            "pitch": 0.010314583778381348,
+            "rhythm": 0.002833068370819092,
+            "texture": 0.011731505393981934
+          },
+          "splice_preview_representation_id": "rep_a48729c0ebcb01f223c7e359"
+        },
+        {
+          "segment_id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+          "distance": 0.06501747051874797,
+          "group_distances": {
+            "dynamics": 0.016833961009979248,
+            "harmony": 0.17317050695419312,
+            "pitch": 0.010429859161376953,
+            "rhythm": 0.001363515853881836,
+            "texture": 0.06866395473480225
+          },
+          "splice_preview_representation_id": "rep_5d726e204a5cad84b6e6d338"
+        },
+        {
+          "segment_id": "segment_a30d821ce28a5635bf28e6fe04643ea0",
+          "distance": 0.06814713795979818,
+          "group_distances": {
+            "dynamics": 0.007040679454803467,
+            "harmony": 0.18729621171951294,
+            "pitch": 0.006383836269378662,
+            "rhythm": 0.0011594891548156738,
+            "texture": 0.07327985763549805
+          },
+          "splice_preview_representation_id": "rep_92ef29f764be4e1800f009b4"
+        },
+        {
+          "segment_id": "segment_dc010766b2ff68661e7ee664d964c0c8",
+          "distance": 0.07567296822865804,
+          "group_distances": {
+            "dynamics": 0.03440737724304199,
+            "harmony": 0.3054347634315491,
+            "pitch": 0.024243652820587158,
+            "rhythm": 0.0028331875801086426,
+            "texture": 0.0089377760887146
+          },
+          "splice_preview_representation_id": "rep_a86b3df913b5449c794808f1"
+        },
+        {
+          "segment_id": "segment_5b5eccafc69702305b2d6ad78de16b1a",
+          "distance": 0.07606850226720176,
+          "group_distances": {
+            "dynamics": 0.02295738458633423,
+            "harmony": 0.30515992641448975,
+            "pitch": 0.021944701671600342,
+            "rhythm": 0.015333831310272217,
+            "texture": 0.007622659206390381
+          },
+          "splice_preview_representation_id": "rep_a786ae9e1bed0e1a65d80f9a"
+        },
+        {
+          "segment_id": "segment_78a101567ec5eb0b582857e3721e4acb",
+          "distance": 0.07612854560216269,
+          "group_distances": {
+            "dynamics": 0.030896306037902832,
+            "harmony": 0.306129515171051,
+            "pitch": 0.025463461875915527,
+            "rhythm": 0.0008457303047180176,
+            "texture": 0.011235415935516357
+          },
+          "splice_preview_representation_id": "rep_cf1703f8000b751d007ad7e2"
+        },
+        {
+          "segment_id": "segment_81684eae91f7cf87a2cc2e41ec678b0d",
+          "distance": 0.07626238822937012,
+          "group_distances": {
+            "dynamics": 0.03235739469528198,
+            "harmony": 0.2817528247833252,
+            "pitch": 0.027678191661834717,
+            "rhythm": 0.0032649636268615723,
+            "texture": 0.023517131805419922
+          },
+          "splice_preview_representation_id": "rep_c4e41ede74626be983c621be"
+        }
+      ],
+      "indexed_segment_count": 60,
+      "scale_seconds": 6.0,
+      "weights": {
+        "dynamics": 0.35,
+        "harmony": 0.8,
+        "pitch": 0.55,
+        "rhythm": 0.7,
+        "texture": 1.35
+      }
+    }
+  },
+  "analysis": {
+    "algorithm": "pooled chroma, dominant pitch, MFCC, spectral, onset, tempo and RMS descriptors",
+    "analysis_sample_rate": 22050,
+    "arrays": {
+      "embedding": [
+        1,
+        71
+      ],
+      "segment_duration_seconds": [
+        1
+      ],
+      "segment_scale_seconds": [
+        1
+      ],
+      "segment_start_seconds": [
+        1
+      ]
+    },
+    "channel_mix": "arithmetic_mean_to_mono",
+    "descriptor_version": "librosa-corpus-v1",
+    "feature_groups": {
+      "dynamics": [
+        67,
+        71
+      ],
+      "harmony": [
+        0,
+        24
+      ],
+      "pitch": [
+        24,
+        27
+      ],
+      "rhythm": [
+        61,
+        67
+      ],
+      "texture": [
+        27,
+        61
+      ]
+    },
+    "frame_period_seconds": 0.023219954648526078,
+    "hop_length": 512,
+    "library": "librosa",
+    "library_version": "0.11.0",
+    "n_fft": 2048,
+    "overlap": 0.0,
+    "resampling": "librosa_soxr_hq",
+    "scales_seconds": [
+      6.0
+    ],
+    "source_channels": 2,
+    "source_sample_rate": 48000
+  },
+  "created_at": "2026-08-24T16:28:03.199561Z"
+}

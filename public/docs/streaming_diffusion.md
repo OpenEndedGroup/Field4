@@ -1,30 +1,35 @@
 # Streaming diffusion
 
-Turn a rendered texture into moving ink, charcoal or barbed wire with
-StreamDiffusionV2. The source and returned image stay on the GPU, and the result
+Restyle a rendered texture with a text prompt using StreamDiffusionV2.
+Describe the appearance you want; charcoal, ink and barbed wire are example prompts. The source and returned image stay on the GPU, and the result
 is a normal Field render-to-texture target (RTT) that you can sample in another
 shader or composite into a scene.
 
 [Open the streaming diffusion starting point ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
-![Spinning curves rendered in Field, with the current source on the left and returned ink on the right](assets/streaming_diffusion/ink-field.png)
+![Spinning curves rendered in Field, with the current source on the left and returned charcoal on the right](assets/streaming_diffusion/charcoal-motion-poster.png)
 
 The example draws five rotating curves at 512 × 512. The left panel shows the
-current source; the right shows the latest completed diffusion output. These
-are different moments: the model processes groups of frames and introduces a
-causal delay. While it starts, the right panel shows the source.
+current source; the right shows stylized output. The model processes groups of
+frames and introduces a causal delay; the motion controls can reproject that
+output onto current geometry between results. While it starts, the right panel
+shows the source. The example starts with charcoal and enables the motion controls.
 
 ## Open the example
 
 Search for `streaming_diffusion` under **Starting points** on Field's welcome
 screen, then open an editable copy in your workspace. Run **2 · renderer**,
-then **3 · spinning curves**. Its diffusion controls let you choose ink,
-charcoal or wire, adjust strength, pause rotation, and reset the model's state.
+then **3 · spinning curves**. Start with the charcoal preset or enter any text in
+**Prompt override**. A blank override uses the selected material preset. Press
+Enter or leave the text field to apply your prompt. The controls also let you
+adjust strength, pause rotation, and reset the model's state.
 
 For white marks on black paper, set `whiteOnBlack = true` in the curves box and
 run it again. **Adapt prompt for white marks on black** switches between the
-original material prompt and its white-on-black version. Edit `selectedPrompt()`
-to supply your own words. The input geometry stays the same across materials.
+original material prompt and its white-on-black version. A custom prompt takes
+precedence over this switch. The input geometry stays the same across prompts.
+The model can invent detail and change the shapes; strength controls how much
+freedom it has.
 
 Lower strength retains more of the input; higher strength gives the model more
 room to add texture, smudges and splatter. Start at `0.45` for restrained marks,
@@ -139,6 +144,163 @@ export features, native helper and installation files. The worker then checks
 CUDA device matching, packages and model loading. A startup or inference failure
 leaves the source or last completed output visible.
 
+## Use motion from your renderer
+
+The starting point enables all three motion controls. It generates correspondence
+from the same ribbon geometry that draws the source, retaining earlier transforms
+and checking reference object IDs at crossings. **Reproject output** updates the
+right panel between model results. **History blend** mixes preceding stylized
+results into each new result. **Noise advection** anchors some of the model's
+randomness to moving surfaces; changing it resets the model.
+
+The following clips are native Field RTT captures at 512 × 512 with active
+TAEHV/TensorRT and the charcoal prompt. Each has the current source on the left
+and processed output on the right. They show successive eight-second intervals of the same rotating
+scene; their source poses are not identical. Clip playback is 10 FPS; diffusion requests 16 FPS.
+
+**All three enabled** — display reprojection, history blend `.35`, noise advection
+`.8`:
+
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-all.mp4" poster="../assets/streaming_diffusion/charcoal-motion-poster.png" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+
+**All three disabled after reset** — the model's delayed output is held between
+updates:
+
+<video controls muted loop playsinline preload="metadata" src="assets/streaming_diffusion/charcoal-motion-baseline.mp4" width="1024" height="512" style="max-width:100%;height:auto;aspect-ratio:2/1"></video>
+
+The enabled run uses a paper fill for rejected pixels, avoiding the pale
+outline of old curve positions caused by falling back to flat source paper.
+Generated marks beyond the supplied correspondence can still leave trails. These clips
+establish that the paths run together, rather than a measured temporal-quality
+improvement for each control. [Run data](assets/streaming_diffusion/charcoal-motion-run.json)
+and [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain active settings,
+resets and engine loads. With the controls enabled, the first steady interval
+presented approximately 16 FPS. The retained run data gives chunk timings.
+
+For your own scene, pass a `StreamDiffusionMotionProvider` to the processor and
+opt into the controls. The provider records a GPU correspondence target in the
+supplied command buffer:
+
+```diffstatic {data-lang=kotlin}
+import afield.four.diffusion.*
+import afield.four.device.CommandBuffer
+
+val config = StreamDiffusionConfig(checkNotNull(root),
+    displayReprojection = true, historyBlend = .35, noiseAdvection = .8)
+val motion = object : StreamDiffusionMotionProvider {
+    override fun onFrame(frame: StreamDiffusionFrame) {
+        // Retain transforms / camera / object state keyed by frame.id and generation.
+    }
+    override fun record(command: CommandBuffer,
+        request: StreamDiffusionMotionRequest): RenderToTexture? {
+        // Render current pixels into reference-frame UV coordinates.
+        // Return null if this pair's retained geometry is unavailable.
+        return renderCorrespondence(command, request.current, request.reference)
+    }
+}
+val diffusion = StreamDiffusionView(renderer, source, config, motion = motion)
+```
+
+`renderCorrespondence` here stands for your renderer's pass. It must return a
+single-layer, single-sample **RGBA32F** RTT at the source resolution, with a
+sampler and `colorSampled = true`, `colorTransferSrc = true`. You own that target
+and its retained geometry; close them after the processor. The same target can
+be reused across calls: each consumer records its work before the next request.
+
+| Channel | Meaning |
+| --- | --- |
+| R, G | Absolute normalized UV in the requested **reference** frame |
+| B | Confidence, 0 to 1; zero rejects history |
+| A | Reactive rejection, 0 to 1; one rejects history |
+
+Use texture-row coordinates: X right, Y down, pixel centres
+`((x + .5) / width, (y + .5) / height)`. Field's negative-height viewport puts
+NDC Y = +1 at texture row zero. A backward displacement `(dx, dy)` in pixels
+becomes `referenceUV = currentUV + (dx / width, dy / height)`. Forward flow needs
+to be converted into backward correspondence with holes and visibility handled.
+The alpha channel is a reactive mask, rather than opacity; ordinary geometry can
+use confidence one and reactive zero.
+
+### Match the requested frames
+
+`onFrame` runs after every source draw, including draws that are not accepted by
+the model. Retain renderer state under its frame ID; timestamps and generation
+are provided too. `record` can be called several times in one graphics frame,
+with different frame pairs:
+
+| Request use | Current → reference |
+| --- | --- |
+| `DISPLAY` | Current source → source frame of the latest resolved result |
+| `HISTORY` | Source frame of a new result → preceding resolved result's source frame |
+| `NOISE` | Newly accepted source → previous accepted source |
+
+A single previous-frame vector buffer usually cannot cover the model's delay.
+Re-render previous surface positions using retained transforms, or compose
+backward flow with confidence checks across the requested interval. Match the
+actual IDs, including skipped input captures. Use depth, object IDs or your
+G-buffer to reject occlusion, newly revealed surfaces, topology changes and
+unreliable pixels. Return null for missing retained state; write confidence zero
+for individual pixels that cannot be matched.
+
+The demo retains 512 display-frame transforms, about 8.5 seconds at 60 FPS. Your
+retention window should cover your actual model lag. It extends correspondence to a
+wider ribbon around each curve to carry stylized edges. Its static paper mapping
+feathers rejection around old ribbons and fills revealed paper using nearby
+generated paper. This local fill can soften paper texture, and generated mark
+trails remain possible: it cannot identify every generated splatter pixel as
+part of a moving surface.
+
+### What each control does
+
+Display reprojection samples the delayed stylized result at reference UVs on
+every Field draw. Rejected pixels show the current source unless your provider
+supplies a fallback image. Missing correspondence holds the latest resolved result. It improves geometric responsiveness; model
+inference still has the same causal delay.
+
+A provider can override `recordFallback(command, request, source, referenceImage)`
+to render an image used where confidence or reactivity rejects display history.
+It is called immediately after a successful `DISPLAY` request, with the resolved
+stylized reference image borrowed for that call. Return a sampled, single-layer,
+single-sample RTT matching the source's dimensions and colour format; you own it.
+Return null for the default source fallback. This leaves noise and history
+blending unchanged. The demo uses this hook to reconstruct paper from nearby
+reference pixels outside old ribbons, avoiding a brighter source-paper footprint.
+It is a local approximation, rather than a prediction of new stylized content.
+
+History blending warps the previous resolved result into the new result's frame,
+clamps its colours to the fresh result's 3 × 3 neighbourhood, and blends using
+`historyBlend × confidence × (1 − reactive)`. Missing or invalid history uses the
+fresh result. High blending can soften marks or leave trails; begin near `.35`.
+
+Noise advection warps a CUDA noise field between accepted source frames and mixes
+it with fresh noise. Nearest sampling and square-root weights preserve marginal
+noise variance. The encoder compresses four RGB frames into one temporal latent;
+the adapter uses the group's ending noise field. This is an **experimental spatial
+approximation**, not exact flow through the video VAE. The model has no new learned
+flow or depth conditioning, and generated marks can move independently of the
+source geometry.
+
+API defaults are `false`, `0`, `0`; supplying no provider retains the original
+RGB processing path. Display reprojection and history blending can be changed
+live through `diffusion.displayReprojection` and `diffusion.historyBlend`.
+Change noise through `diffusion.reset(noiseAdvection = .8)`; reset clears noise
+history and prevents history blending across model generations. During reset,
+the last valid image can still be reprojected while new results warm up.
+
+### GPU cost and diagnostics
+
+Display/history passes run on Vulkan. Motion for noise is copied into an
+additional RGBA32F plane in each shared input slot and imported directly as a
+CUDA tensor; RGB and motion do not pass through CPU memory. Six float planes add
+24 MiB at 512 × 512. Resolved history, display and the invalid-map target add
+another 7 MiB for RGBA8 output; your motion targets, fallback target, CUDA
+copies for the current four/five-frame group and retained scene state are additional. Larger resolutions scale these allocations with pixel count.
+
+`displayReprojectionRequests`, `historyBlendRequests` and `noiseMotionFrames`
+report requests/maps sent by Field. The worker's `noise_motion_frames` reports
+maps actually consumed by noise advection, and `noise_advection` reports its
+active setting. Counts do not establish correspondence quality or valid coverage.
+
 ## Resolution
 
 Width and height must each be multiples of 32. Rectangular images are accepted;
@@ -192,17 +354,19 @@ change the available throughput and memory headroom.
 
 The text encoder moves to CPU after initial prompt encoding by default. Later
 prompt changes can therefore take longer. Per-frame image processing and image
-transport stay on CUDA and Vulkan. Optical flow, depth and other G-buffer inputs
-are not accepted by this adapter yet.
+transport stay on CUDA and Vulkan. Renderer correspondence can drive the three
+motion controls above. Depth and other G-buffer data can help your provider
+construct visibility and confidence; the model does not consume them directly.
 
 ??? aside "Source and recorded run"
 
     The editable source is the [operation transcript](https://github.com/OpenEndedGroup/Field4/blob/main/dev_docs/agents/transcripts/streaming_diffusion.yaml).
-    The image above is a native Field capture from 2 October 2026, with TAEHV and
-    active TensorRT. [Run data](assets/streaming_diffusion/run.json) and the
-    [worker log](assets/streaming_diffusion/ink-worker.txt) retain settings and engine loads.
-    The capture runs the gated starting-point transcript, including strict checkpoint
-    loading and the final lifecycle guards. Missing-backend behavior was also run
+    The charcoal image and comparison clips are native Field RTT captures, with
+    TAEHV and active TensorRT. [Run data](assets/streaming_diffusion/charcoal-motion-run.json) and the
+    [worker log](assets/streaming_diffusion/charcoal-motion-worker.txt) retain settings and engine loads.
+    The capture uses the starting point's geometry and prompt controls with strict
+    checkpoint loading. The [earlier ink clip](assets/streaming_diffusion/motion-all.mp4)
+    retains the pale paper footprint that prompted the display fill. Missing-backend behavior was also run
     on Linux; macOS was not run on that host. The backend's setup and architecture
     are in `optional/streamdiffusion/README.md` in the Field checkout.
 

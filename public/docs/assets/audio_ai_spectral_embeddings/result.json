@@ -1,0 +1,232 @@
+{
+  "id": "analysis_ae9954ba590a47f48a0f3fff163689ad",
+  "operation_id": "op_0356dc0f7b564bb3a641637ac15464d1",
+  "request_hash": "sha256:6ea8f5f6893b326a7d52f406b345e76d72f580ef3ae1023fc0f204507ff5c6ca",
+  "source": {
+    "start_seconds": 0.0,
+    "duration_seconds": 273.82284375,
+    "asset_id": "sha256:8a2fb0d3c737b52174c1d6929ef1c9063dba3a1bd3a0ac22cac627410945a601"
+  },
+  "data": {
+    "id": "rep_c51b75a23ead7e1e4e830cef",
+    "asset_id": "sha256:67533d11dcc0b23029b03874b953544c4c7bcbf5b8de1ef45838ebbea8cf776a",
+    "role": "analysis_embed_spectral",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 22050,
+    "resampling_method": "librosa_soxr_hq",
+    "binary_url": "/v1/representations/rep_c51b75a23ead7e1e4e830cef/content",
+    "metadata": {
+      "algorithm": "Slaney-normalized mel power, log-mel, MFCC and spectral trajectories",
+      "analysis_sample_rate": 22050,
+      "arrays": {
+        "energy_dbfs": [
+          6846
+        ],
+        "log_mel_db": [
+          6846,
+          64
+        ],
+        "mel_distribution": [
+          6846,
+          64
+        ],
+        "mel_frequencies_hz": [
+          64
+        ],
+        "mfcc": [
+          6846,
+          20
+        ],
+        "spectral_centroid_hz": [
+          6846
+        ],
+        "spectral_flatness": [
+          6846
+        ],
+        "spectral_flux": [
+          6846
+        ],
+        "spectral_rolloff_hz": [
+          6846
+        ],
+        "times_seconds": [
+          6846
+        ]
+      },
+      "artifact_format": "field.audio.spectral-embedding.v1",
+      "backend": "analysis.librosa",
+      "backend_revision": "librosa:0.11.0",
+      "channel_mix": "arithmetic_mean_to_mono",
+      "fmax_hz": 11025.0,
+      "fmin_hz": 30.0,
+      "frame_period_seconds": 0.04,
+      "hop_length": 882,
+      "library": "librosa",
+      "library_version": "0.11.0",
+      "log_mel_reference": "1.0 power; 80 dB range",
+      "mel_distribution_normalization": "per-frame unit mass",
+      "mel_transport_axis": "uniform Slaney mel-bin coordinate normalized to 0..1",
+      "n_fft": 2048,
+      "n_mels": 64,
+      "n_mfcc": 20,
+      "operation_id": "op_0356dc0f7b564bb3a641637ac15464d1",
+      "request_hash": "sha256:6ea8f5f6893b326a7d52f406b345e76d72f580ef3ae1023fc0f204507ff5c6ca",
+      "resampling": "librosa_soxr_hq",
+      "source_asset_id": "sha256:8a2fb0d3c737b52174c1d6929ef1c9063dba3a1bd3a0ac22cac627410945a601",
+      "source_channels": 2,
+      "source_duration_seconds": 273.82284375,
+      "source_sample_rate": 96000,
+      "source_start_seconds": 0.0
+    }
+  },
+  "artifacts": [
+    {
+      "id": "rep_bc78c858628b0e1ca3ef6000",
+      "asset_id": "sha256:9ad3530335034ebb055622b0ab99977469e0025145978386a19a3eeec352d143",
+      "role": "spectral_embedding_messagepack",
+      "media_type": "application/msgpack",
+      "sample_rate": null,
+      "channels": null,
+      "frame_count": null,
+      "duration_seconds": null,
+      "native_sample_rate": 22050,
+      "resampling_method": null,
+      "binary_url": "/v1/representations/rep_bc78c858628b0e1ca3ef6000/content",
+      "metadata": {
+        "algorithm": "Slaney-normalized mel power, log-mel, MFCC and spectral trajectories",
+        "analysis_sample_rate": 22050,
+        "arrays": {
+          "energy_dbfs": [
+            6846
+          ],
+          "log_mel_db": [
+            6846,
+            64
+          ],
+          "mel_distribution": [
+            6846,
+            64
+          ],
+          "mel_frequencies_hz": [
+            64
+          ],
+          "mfcc": [
+            6846,
+            20
+          ],
+          "spectral_centroid_hz": [
+            6846
+          ],
+          "spectral_flatness": [
+            6846
+          ],
+          "spectral_flux": [
+            6846
+          ],
+          "spectral_rolloff_hz": [
+            6846
+          ],
+          "times_seconds": [
+            6846
+          ]
+        },
+        "artifact_format": "field.audio.spectral-embedding.v1",
+        "backend": "analysis.librosa",
+        "backend_revision": "librosa:0.11.0",
+        "channel_mix": "arithmetic_mean_to_mono",
+        "fmax_hz": 11025.0,
+        "fmin_hz": 30.0,
+        "format": "field.audio.spectral-embedding.v1",
+        "frame_count": 6846,
+        "frame_period_seconds": 0.04,
+        "hop_length": 882,
+        "library": "librosa",
+        "library_version": "0.11.0",
+        "log_mel_reference": "1.0 power; 80 dB range",
+        "mel_dimensions": 64,
+        "mel_distribution_normalization": "per-frame unit mass",
+        "mel_transport_axis": "uniform Slaney mel-bin coordinate normalized to 0..1",
+        "mfcc_dimensions": 20,
+        "n_fft": 2048,
+        "n_mels": 64,
+        "n_mfcc": 20,
+        "operation_id": "op_0356dc0f7b564bb3a641637ac15464d1",
+        "request_hash": "sha256:6ea8f5f6893b326a7d52f406b345e76d72f580ef3ae1023fc0f204507ff5c6ca",
+        "resampling": "librosa_soxr_hq",
+        "source_asset_id": "sha256:8a2fb0d3c737b52174c1d6929ef1c9063dba3a1bd3a0ac22cac627410945a601",
+        "source_channels": 2,
+        "source_duration_seconds": 273.82284375,
+        "source_sample_rate": 96000,
+        "source_start_seconds": 0.0
+      }
+    }
+  ],
+  "summary": {
+    "duration_seconds": 273.8228571428571,
+    "frame_count": 6846,
+    "frame_rate_hz": 25.0,
+    "mel_dimensions": 64,
+    "mfcc_dimensions": 20
+  },
+  "analysis": {
+    "algorithm": "Slaney-normalized mel power, log-mel, MFCC and spectral trajectories",
+    "analysis_sample_rate": 22050,
+    "arrays": {
+      "energy_dbfs": [
+        6846
+      ],
+      "log_mel_db": [
+        6846,
+        64
+      ],
+      "mel_distribution": [
+        6846,
+        64
+      ],
+      "mel_frequencies_hz": [
+        64
+      ],
+      "mfcc": [
+        6846,
+        20
+      ],
+      "spectral_centroid_hz": [
+        6846
+      ],
+      "spectral_flatness": [
+        6846
+      ],
+      "spectral_flux": [
+        6846
+      ],
+      "spectral_rolloff_hz": [
+        6846
+      ],
+      "times_seconds": [
+        6846
+      ]
+    },
+    "artifact_format": "field.audio.spectral-embedding.v1",
+    "channel_mix": "arithmetic_mean_to_mono",
+    "fmax_hz": 11025.0,
+    "fmin_hz": 30.0,
+    "frame_period_seconds": 0.04,
+    "hop_length": 882,
+    "library": "librosa",
+    "library_version": "0.11.0",
+    "log_mel_reference": "1.0 power; 80 dB range",
+    "mel_distribution_normalization": "per-frame unit mass",
+    "mel_transport_axis": "uniform Slaney mel-bin coordinate normalized to 0..1",
+    "n_fft": 2048,
+    "n_mels": 64,
+    "n_mfcc": 20,
+    "resampling": "librosa_soxr_hq",
+    "source_channels": 2,
+    "source_sample_rate": 96000
+  },
+  "created_at": "2026-08-27T19:18:30.051267Z"
+}

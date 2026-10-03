@@ -868,7 +868,12 @@ class SessionTest(unittest.TestCase):
         lsof = ("p101\ncclaude\nfcwd\nn" + session["worktree"] + "/public\n"
                 "p102\nczsh\nfcwd\nn" + session["worktree"] + "\n"
                 "p103\ncclaude\nfcwd\nn" + session["worktree"] + "-other\n")
-        with mock.patch("subprocess.run", return_value=subprocess.CompletedProcess([], 0, stdout=lsof)):
+        lsof = lsof.replace("p101\ncclaude", "p101\nc2.1.288")  # Claude Code's own name is its version
+        ps = "  101 claude Read HANDOFF_SESSION.md\n  102 -zsh\n  103 claude\n"
+
+        def fake_run(argv, *args, **kwargs):
+            return subprocess.CompletedProcess(argv, 0, stdout=ps if argv[0] == "ps" else lsof)
+        with mock.patch("subprocess.run", side_effect=fake_run):
             shown = self.overview()["navigation"]["session"]
         self.assertEqual(shown["driver"], "orchestrating agent")
         # Only an agent, and only inside this worktree: not the shell, not a sibling with a longer name.
@@ -900,6 +905,46 @@ class SessionTest(unittest.TestCase):
             dn.end_session(self.git, self.store, "navigation", abandon=False)
         self.assertIn("notes.md", str(refused.exception))
         self.assertTrue((Path(session["worktree"]) / "notes.md").exists(), "nothing of the human's is deleted")
+
+    def _started_then_half_removed(self) -> dict:
+        """What the human hit second: git dropped its record, the checkout stayed, caches and all."""
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.write(".gitignore", ".field-backdoor/\nstore.json*\n.field/\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        worktree = Path(session["worktree"])
+        (worktree / ".field" / "filestore").mkdir(parents=True)
+        (worktree / ".field" / "filestore" / "filestore_cache.json").write_text("{}")
+        admin = self.repo.git("rev-parse", "--git-common-dir").strip()
+        subprocess.run(["rm", "-rf", str(Path(self.repo.root, admin, "worktrees", worktree.name))], check=True)
+        return session
+
+    def test_a_half_removed_worktree_identical_to_its_branch_is_cleaned(self) -> None:
+        session = self._started_then_half_removed()
+        self.assertTrue((Path(session["worktree"]) / "public/docs/guide.md").exists())
+        with mock.patch("builtins.print"):
+            self.assertEqual(dn.end_session(self.git, self.store, "navigation", abandon=False), 0)
+        self.assertFalse(Path(session["worktree"]).exists())
+
+    def test_a_half_removed_worktree_with_an_edit_is_refused(self) -> None:
+        session = self._started_then_half_removed()
+        (Path(session["worktree"]) / "public/docs/guide.md").write_text("# Edited and never committed\n")
+        with mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("public/docs/guide.md", str(refused.exception))
+        self.assertTrue(Path(session["worktree"]).exists())
+
+    def test_a_session_an_agent_is_still_working_in_is_not_ended(self) -> None:
+        self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")
+        self.repo.commit("land")
+        with mock.patch("builtins.print"):
+            session = dn.start_session(self.git, self.store, "navigation")
+        with mock.patch.object(dn, "session_occupants", return_value=["claude (pid 75800)"]), \
+                mock.patch("builtins.print"), self.assertRaises(SystemExit) as refused:
+            dn.end_session(self.git, self.store, "navigation", abandon=False)
+        self.assertIn("claude (pid 75800)", str(refused.exception))
+        self.assertTrue(dn.is_registered_worktree(self.git, Path(session["worktree"])), "nothing was removed")
 
     def test_start_and_end_a_session(self) -> None:
         self.repo.write("dev_docs/handoffs/2026-10-01-not-landed.md", "# Now landed\n")

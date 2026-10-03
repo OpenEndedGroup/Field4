@@ -5,6 +5,29 @@ needs a trained model to notice, only a record of which frequencies are loud fro
 next. `analysis.embed_spectral` keeps that record in several interchangeable forms rather than
 settling on one.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_spectral_embeddings/spectral_spaces.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-spectral" alt="Three real Field t-SNE projections of librosa mel, log-mel and MFCC frames"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_spectral_embeddings")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "result-preview.json").readText())
+val frames = decodeSpectralEmbeddingMessagePack(File(folder, "frames.msgpack").readBytes(), maxFrames = 600, durationSeconds = 10.0, poolMillis = 200.0, hopMillis = 40.0)
+val previews = listOf(SpectralEmbeddingDistance.MEL_WASSERSTEIN, SpectralEmbeddingDistance.LOG_MEL_COSINE, SpectralEmbeddingDistance.MFCC_EUCLIDEAN).mapIndexed { index, distance ->
+    preview.withSpectralProjection(frames.tsne(dimensions = 4, distance = distance, perplexity = 30.0, maxIterations = 750, seed = 184921L + index))
+}
+display("spectral spaces", spectralEmbeddingPreviewDashboardHtml(previews, width = 1040, phaseHeight = 210))
+
+```
+
+Three distances give three views of the first ten seconds of `near_drowning.wav`: mel transport,
+log-mel cosine and MFCC Euclidean. Each projection is computed by Field from the worker's real
+spectral frames.
+
 A single cached librosa job holds all of them, which puts the interesting decisions after the
 analysis instead of inside it: how much audio pools into one point, which distance compares two
 points, whether MDS or t-SNE lays them out. Each of those is a re-fit in Field, not a second pass

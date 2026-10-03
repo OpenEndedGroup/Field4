@@ -1,0 +1,15 @@
+{
+  "id": "job_f2f12689df3e4a29ae42917de0d49c49",
+  "operation_id": "op_2a2428aefff24f6bba1d72a3b05a2345",
+  "request_hash": "sha256:b425925c9d13cc6d309ef8b3701979d20b1bd03fe3c024fc2fe6ec7599c599eb",
+  "state": "complete",
+  "resolved_backend": "analysis.emotion2vec",
+  "progress": 1.0,
+  "created_at": "2026-08-27T18:35:34.892242Z",
+  "updated_at": "2026-08-27T18:35:41.100720Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": null,
+  "analysis_result_id": "analysis_acc22172015140f8b27068078a5123e3",
+  "cache_hit": false
+}

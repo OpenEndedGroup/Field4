@@ -48,5 +48,5 @@ println("  " + compiled.net.nodes.groupingBy { it.type.name }.eachCount().toSort
 println("  ${compiled.fans} fan(s) for the variable used twice, ${compiled.erasers} eraser(s) for unused binders")
 
 // Try it: put a term of your own in the list. `\x. x x` applied to itself diverges, and the net will
-// too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is the only
-// honest answer to a term that has no normal form.
+// too — `normalise` takes a `maxSteps` and `run.finished` is false when it ran out, which is all
+// a reducer can report about a term that has no normal form.
