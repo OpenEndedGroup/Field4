@@ -161,4 +161,15 @@ class FLineWiggleTest {
         val up3 = FLine().moveTo(0, 0).lineTo(10, 0).wiggledBy(FLine().moveTo(0, 0).lineTo(0.5, 0, 1).lineTo(1, 0, 0))
         assertEquals(1.0, points(up3).maxOf { it[2] }, 1e-2)
     }
+
+    @Test
+    fun withoutTheChordOffsetsComeFromTheOrigin() {
+        // A circle round y = z = 0, starting off the axis: it should be centred on B.
+        val ring = FLine().moveTo(0, 1, 0)
+        for (i in 1..120) { val a = i / 120.0 * 2 * PI; ring.lineTo(i / 120.0, cos(a), sin(a)) }
+        val b = FLine().moveTo(0, 0, 0).lineTo(0, 0, 10)
+        val out = points(b.wiggledBy(ring, subtractChord = false, amplitude = 2))
+        for (p in out) assertEquals(2.0, sqrt(p[0] * p[0] + p[1] * p[1]), 1e-2)
+        assertEquals(10.0, out.last()[2], 1e-3)
+    }
 }
