@@ -1,0 +1,105 @@
+{
+  "id": "analysis_2b870dc7380d462db654c42f828ea6a5",
+  "operation_id": "op_1fb287cc711b46c8b22c09a0d2a0029e",
+  "request_hash": "sha256:1662933f037d7acee2c68d0c93062c6cfb566ad53ff6f571926e9585f4529352",
+  "source": {
+    "start_seconds": 0.0,
+    "duration_seconds": 7.5,
+    "asset_id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f"
+  },
+  "data": {
+    "id": "rep_e3b6ae11e580a6709671cc0a",
+    "asset_id": "sha256:2bbda2b51926ee1a9b482b3e260f4b32411eae1b5bc1b2c37450e6887ff23d37",
+    "role": "analysis_pitch_mono",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 22050,
+    "resampling_method": "librosa_soxr_hq",
+    "binary_url": "/v1/representations/rep_e3b6ae11e580a6709671cc0a/content",
+    "metadata": {
+      "algorithm": "pyin",
+      "analysis_sample_rate": 22050,
+      "arrays": {
+        "frequency_hz": [
+          646
+        ],
+        "midi": [
+          646
+        ],
+        "times_seconds": [
+          646
+        ],
+        "voiced": [
+          646
+        ],
+        "voiced_probability": [
+          646
+        ]
+      },
+      "backend": "analysis.librosa",
+      "backend_revision": "librosa:0.11.0",
+      "channel_mix": "arithmetic_mean_to_mono",
+      "fmax_hz": 1760.0,
+      "fmin_hz": 55.0,
+      "frame_length": 2048,
+      "frame_period_seconds": 0.011609977324263039,
+      "hop_length": 256,
+      "library": "librosa",
+      "library_version": "0.11.0",
+      "operation_id": "op_1fb287cc711b46c8b22c09a0d2a0029e",
+      "request_hash": "sha256:1662933f037d7acee2c68d0c93062c6cfb566ad53ff6f571926e9585f4529352",
+      "resampling": "librosa_soxr_hq",
+      "resolution": 0.1,
+      "source_asset_id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f",
+      "source_channels": 2,
+      "source_duration_seconds": 7.5,
+      "source_sample_rate": 44100,
+      "source_start_seconds": 0.0
+    }
+  },
+  "artifacts": [],
+  "summary": {
+    "duration_seconds": 7.5,
+    "frame_count": 646,
+    "median_frequency_hz": 55.31861114501953,
+    "median_midi": 33.099998474121094,
+    "voiced_fraction": 0.39164086687306504
+  },
+  "analysis": {
+    "algorithm": "pyin",
+    "analysis_sample_rate": 22050,
+    "arrays": {
+      "frequency_hz": [
+        646
+      ],
+      "midi": [
+        646
+      ],
+      "times_seconds": [
+        646
+      ],
+      "voiced": [
+        646
+      ],
+      "voiced_probability": [
+        646
+      ]
+    },
+    "channel_mix": "arithmetic_mean_to_mono",
+    "fmax_hz": 1760.0,
+    "fmin_hz": 55.0,
+    "frame_length": 2048,
+    "frame_period_seconds": 0.011609977324263039,
+    "hop_length": 256,
+    "library": "librosa",
+    "library_version": "0.11.0",
+    "resampling": "librosa_soxr_hq",
+    "resolution": 0.1,
+    "source_channels": 2,
+    "source_sample_rate": 44100
+  },
+  "created_at": "2026-10-03T10:10:02.434900Z"
+}

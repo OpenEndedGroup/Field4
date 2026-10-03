@@ -6,6 +6,12 @@ operator algebra and the two ways of making a form canonical (an iteration, and 
 Ceres). `afield.manifold` does exact geometry on closed solids. `Solid.slice` cuts a solid with a
 plane and returns the 2D contours.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_ceres_manifold_contours/stack.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="layer_stack_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-layer_stack_trace" alt="Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible." macro-file="../../dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml" capture-box="layer_stack_trace" capture-profile="linux-nvidia"}
+// Built and launched from dev_docs/agents/transcripts/polytope_layer_stack_path_trace.yaml.
+```
+
+Forty-eight extruded slices of canonical `gC`, scaled to volume one. Colour follows height; the small gaps make the individual layers visible.
+
 Canonicalising a polytope can change its layers a great deal while leaving the number of contours
 on each layer alone. The layer stack also checks the polytope itself: its areas have to add up to
 the solid's volume, and when they do not, the surface passes through itself.

@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 5 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "fragment" "stackSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "fileManagerAccessHistory" "isClojureRoot" "isDatalogRoot" "isForthRoot" "isFieldMLRoot" "isMorphoRoot" "isNanoRoot" "nanoLaunchDelayMs" "nanoMemoryInit" "isKotlinJsRoot" "mainLanguage" "spreadsheet"]}
 ```
 
 ## 1. frame history renderer
@@ -173,17 +173,9 @@ var Box.renderer by Inheritance<Renderer>() /**/
 val Once.renderer by Onceing<Renderer>() /**/
 ```
 
-## 4. renderer
+## 4. the four debug modes
 
-<!-- field-box id="agent_graphics_context" index="3" -->
-
-```edn [field-box id="agent_graphics_context" role="properties"]
-{"id" "agent_graphics_context" "index" 3 "name" "renderer" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "renderer" "frame" #afield/rect [0.0 0.0 120.0 80.0] "nested" #{} "preamble" ""} "blockProperties" []}
-```
-
-## 5. the four debug modes
-
-<!-- field-box id="rp_modes" index="4" -->
+<!-- field-box id="rp_modes" index="3" -->
 
 ### Narrative
 
@@ -202,7 +194,7 @@ offset is invisible, inside an absolute coordinate it is a colour shift.
 band on the trailing edge: those pixels were off screen last frame.
 
 ```edn [field-box id="rp_modes" role="properties"]
-{"id" "rp_modes" "index" 4 "name" "the four debug modes" "parents" ["root" "rp_chain"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rp_chain"} "name" "the four debug modes" "_tombstone" false "frame" #afield/rect [1120.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_modes_code_.kt" "lines" 21 "characters" 1149 "sha256" "7ccddec39799eeb79be3ea98a23c57d2a880421b704145c05c939a4560080850"} {"name" "preamble" "language" "text" "lines" 10 "characters" 564 "sha256" "aefb4afd09c0c218970462cf6a0312ee1c30d0422a9f1cc2c65751dd5bb7fe22"}]}
+{"id" "rp_modes" "index" 3 "name" "the four debug modes" "parents" ["root" "rp_chain"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rp_chain"} "name" "the four debug modes" "_tombstone" false "frame" #afield/rect [1120.0 40.0 320.0 100.0] "nested" #{}} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rp_modes_code_.kt" "lines" 21 "characters" 1149 "sha256" "7ccddec39799eeb79be3ea98a23c57d2a880421b704145c05c939a4560080850"} {"name" "preamble" "language" "text" "lines" 10 "characters" 564 "sha256" "aefb4afd09c0c218970462cf6a0312ee1c30d0422a9f1cc2c65751dd5bb7fe22"}]}
 ```
 
 ```kotlin [field-property box="rp_modes" name="code" path="rp_modes_code_.kt"]

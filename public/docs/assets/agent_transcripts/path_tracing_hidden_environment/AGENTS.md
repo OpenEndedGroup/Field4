@@ -9,10 +9,27 @@ an art-oriented live-coding IDE — graphics, sound, data, motion. Working here 
 
 - **`metadata.edn`** — the document: the list of boxes and their properties. Field owns
   it. **Don't hand-edit it to make things happen** — drive Field instead (below).
-- **`<box>_<property>_.{kt,glsl,yaml,js}`** — sidecar files holding each box's larger
+- **`<box>_<property>_.{kt,glsl,yaml,js,…}`** — sidecar files holding each box's larger
   text properties (`code`, `fragment`, `vertex`, `compute`, …). Editing these on disk is
   fine for quick manual changes; Field's file watcher syncs them within a few seconds.
-- **`README.md`** — the human-facing tour of this folder.
+
+Creating a sidecar creates a box:
+
+```bash
+# a file named <boxId>_<property>_.<ext> becomes box <boxId>
+echo 'println("hello from a new box")' > hello_code_.kt
+```
+
+Field detects `hello_code_.kt`, creates a box `hello`, positions it, loads the code, and
+saves to `metadata.edn`. The underscore before the dot (`_.`) is required. The extension
+follows the property: `code` is `.kt`, `metadata` is `.yaml`, `customization` is `.js`,
+`notes` is `.md`. A shader stage takes the extension of its own language: `.glsl` for
+`fragment`, `vertex`, `compute` and the ray-tracing stages, `.slang` for their Slang
+twins, `.metal` for `msl`, `.stacksl` for `stackSL`. `Box.ioSeparateProperties` in the
+Field source is the whole list, and `dev_docs/FileWatchManager.md` the mechanics. Field's
+console logs every file operation (`info,file-watch: Auto-created box: …`) — the first
+place to look when a file doesn't sync. A sidecar edit does not *run* anything; for that,
+drive Field.
 
 ## Drive Field, don't hand-edit its files
 

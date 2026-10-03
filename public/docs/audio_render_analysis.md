@@ -64,6 +64,32 @@ client.analyzeRenderedAudio(
 }
 ```
 
+This captured drum pattern uses `pat("{bd ~ sd ~, hh*8}")` with the pinned Dirt samples. Its
+7.5-second render goes through the real beat, pYIN and Basic Pitch workers.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/pat_analysis.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-pat" alt="Actual Pat Dirt render waveform, beat grid, pYIN and Basic Pitch lanes on a shared cursor"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_render_analysis")
+val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "pat-dirt-study.wav").absolutePath)
+val previews = listOf("beats", "pitch_mono", "pitch_poly").map { json.decodeFromString<AnalysisPreview>(File(folder, "$it-preview.json").readText()) }
+val sync = "docs-real-pat"
+val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "pat-dirt-study.wav").readBytes(), label = "Pat through pinned Dirt samples · 12 cycles at 1.6 cps")
+display("analysis", source + analysisPreviewDashboardHtml(previews, width = 1040, panelHeight = 210, syncGroup = sync))
+
+```
+
+Listen to the Dirt render while comparing the analysis lanes.
+
+<audio controls preload="metadata" src="assets/audio_render_analysis/pat-dirt-study.wav"></audio>
+
+
 The final view behaves as one instrument: audio playback moves every analysis cursor; hovering a
 pitch or beat lane moves the waveform cursor; clicking any lane seeks the player; zoom and pan
 share the same time window.
@@ -132,3 +158,22 @@ Load the `audio_render_analysis` operation transcript for complete Pat/Dirt, Dou
 Pi boxes plus the durable job monitor. Continue with [beat and pitch analysis](audio_ai_analysis.md),
 [the general audio visualizer](visualizers.md#recorded-audio-waveform-player-playhead-and-navigation),
 or [every sound path in Field](sound_paths.md).
+
+### The service waveform
+
+This view requests the same render through Field Audio's waveform-summary endpoint.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_render_analysis/service_waveform.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-waveform" alt="Real service waveform envelopes of a Pat Dirt render" capture-profile="linux-nvidia"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val asset = json.decodeFromString<AudioAsset>(File("public/docs/assets/audio_render_analysis/asset.json").readText())
+val audio = asset.representations.first { it.mediaType == "audio/wav" }
+display("waveform", audio.audioVisualizerHtml(label = "Pat through Dirt · service waveform envelope", options = AudioVisualizerOptions(width = 1040, waveformHeight = 170)))
+
+```

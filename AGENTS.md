@@ -157,6 +157,10 @@ describe a red as expected only in prose, and never use wildcards in either regi
   mode. Regenerating them needs Linux, `FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia`, and the GPU
   features; macOS always retains them, and a missing retained asset fails the build. Neural-tool
   pages use committed media and their own scripts (`dev_docs/lighting/NEURAL_TOOLS.md`).
+- `capture-profile="macos-electron"` works the same way for output that only exists in the Field
+  Electron app (the RTT view): with `FIELD_DOCS_CAPTURE_PROFILES=macos-electron` on macOS the
+  runner captures through this checkout's Electron over CDP (`playwright-open --electron`);
+  everywhere else the committed capture is retained.
 - **A capture exercises the real code, or it does not exist.** Never fake, synthesize, hardcode,
   mock, or hand-edit a capture — no CPU stand-in for a GPU render, no hand-written string for a
   computed value, no scripted placeholder for a live panel. If the real capture will not come

@@ -16,17 +16,22 @@ data class StreamDiffusionConfig(
     val offloadTextEncoder: Boolean = true,
     /** A GPU-only identity/invert mode useful when composing a new RTT graph. */
     val backend: String = "diffusion",
-    val startupTimeoutSeconds: Long = 240
+    val startupTimeoutSeconds: Long = 240,
+    val displayReprojection: Boolean = false,
+    val historyBlend: Double = 0.0,
+    val noiseAdvection: Double = 0.0
 ) {
     init {
         require(strength in 0.2..0.9 && strength.isFinite())
         require(fps in 1..60 && startupTimeoutSeconds > 0)
         require(backend in setOf("diffusion", "identity", "invert"))
         require(prompt.isNotBlank())
+        require(historyBlend.isFinite() && historyBlend in 0.0..1.0)
+        require(noiseAdvection.isFinite() && noiseAdvection in 0.0..1.0)
     }
     internal fun settings() = JSONObject().put("prompt", prompt).put("strength", strength)
         .put("seed", seed).put("use_tensorrt", useTensorRT).put("offload_text_encoder", offloadTextEncoder)
-        .put("backend", backend)
+        .put("backend", backend).put("noise_advection", noiseAdvection)
 }
 
 /** Presets match the expressive study; edit the prompt/strength live through view.reset(...). */

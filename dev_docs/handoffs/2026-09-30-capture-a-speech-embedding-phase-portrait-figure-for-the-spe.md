@@ -1,6 +1,7 @@
 # Capture a speech-embedding phase-portrait figure for the speech embeddings page
 
 - **Handoff:** `baf524f9-880a-4ff1-bb35-a44f017931f1` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/audio_ai_speech_embeddings/; also affects visualizers.md
 - **Filed by:** agent:claude, 2026-09-30 20:47
 - **Close with:** `python tools/docs_notes.py handoff-close baf524f9 "what happened"`
@@ -61,3 +62,14 @@ Put a figure after the intro paragraph (after line 6, before the backend table).
 should describe the two phase portraits per backend and the voice/energy/novelty strip, and say
 whether the data is a fixture. If the capture fence lives here, put it in the "Complete Field
 path" section, or in a new short "Without the worker" section, and keep it runnable.
+
+## Completion — 2026-10-03
+
+Captured the actual emotion2vec and WavLM Base+ worker-v2 previews of near_drowning.wav, including landmark MDS coordinates and associated timelines. Added the figure to the speech walkthrough and visualizers gallery, labelled MDS to distinguish it from the separate live t-SNE workflow. The companion renders the genuine previews.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

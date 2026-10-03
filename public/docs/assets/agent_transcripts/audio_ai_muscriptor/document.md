@@ -11,7 +11,7 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="muscriptor_guide" index="0" -->
 
 ```edn [field-box id="muscriptor_guide" role="properties"]
-{"id" "muscriptor_guide" "index" 0 "name" "1 · MuScriptor guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · MuScriptor guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_guide_code_.kt" "lines" 11 "characters" 1240 "sha256" "288cddb16ebbcfeac7563d3ba5e6ede01f73ffceb57605a03df08bd4b4002117"}]}
+{"id" "muscriptor_guide" "index" 0 "name" "1 · MuScriptor guide and jobs" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · MuScriptor guide and jobs" "_tombstone" false "frame" #afield/rect [40.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_guide_code_.kt" "lines" 11 "characters" 1271 "sha256" "1011c4bfcca2c21341b13b31db9a284e63292adc2b543a8f3d1d808bcb73d173"}]}
 ```
 
 ```kotlin [field-property box="muscriptor_guide" name="code" path="muscriptor_guide_code_.kt"]
@@ -21,7 +21,7 @@ display("guide", """
 <section style="width:1040px;max-width:100%;box-sizing:border-box;background:#151a20;color:#dbe3e9;padding:18px;border:1px solid #303c46;border-radius:8px;font:13px/1.5 system-ui,sans-serif">
   <h2 style="margin:0 0 8px;color:#7fcbd7">MuScriptor · recording to an instrument-labelled score</h2>
   <p><code>analysis.transcribe_music</code> is one model-neutral operation with three revision-pinned worker capabilities: small, medium, and large. It retains onset, offset, MIDI pitch, instrument group, activity curves, MessagePack events, performance-timed MIDI, and optional beat-quantized MIDI.</p>
-  <p>Run box 2 without a server to explore the synchronized piano roll. Replace box 3's <code>sourcePattern</code> with a recording you have the rights to transcribe, then run it for asset lookup → submit → progress → durable result → source/score audition → MIDI download. Unchanged operations are cache hits.</p>
+  <p>Run box 2 from the committed real result without a server to explore the synchronized piano roll. Replace box 3's <code>sourcePattern</code> with a recording you have the rights to transcribe, then run it for asset lookup → submit → progress → durable result → source/score audition → MIDI download. Unchanged operations are cache hits.</p>
   <p style="color:#e5bd77">The code is MIT, but the gated model weights are CC BY-NC 4.0. Accept the selected model's Hugging Face terms before starting the worker.</p>
 </section>
 """.trimIndent())
@@ -33,55 +33,23 @@ display("all durable jobs", fieldAudioJobMonitor(heightPixels = 430))
 <!-- field-box id="muscriptor_visualizer_gallery" index="1" -->
 
 ```edn [field-box id="muscriptor_visualizer_gallery" role="properties"]
-{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 45 "characters" 1803 "sha256" "49b5aed1cd2173c3831f04a6ca0805a8e350340f917acdd78835413257b18215"}]}
+{"id" "muscriptor_visualizer_gallery" "index" 1 "name" "2 · synchronized instrument piano roll" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "2 · synchronized instrument piano roll" "_tombstone" false "frame" #afield/rect [420.0 40.0 340.0 50.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "muscriptor_visualizer_gallery_code_.kt" "lines" 13 "characters" 904 "sha256" "1314551d686724b7a3c8ef71c7410daf2a42c2d9fa216fa52f7ca0b462959773"}]}
 ```
 
 ```kotlin [field-property box="muscriptor_visualizer_gallery" name="code" path="muscriptor_visualizer_gallery_code_.kt"]
-import afield.stdlib.*
 import afield.stdlib.noir.audioai.*
-
-val sync = "muscriptor-gallery"
-val rate = 8_000
-val duration = 12.0
-val samples = FloatArray((rate * duration).toInt()) { i ->
-    val t = i / rate.toDouble()
-    val bass = .16 * kotlin.math.sin(2 * Math.PI * 110 * t)
-    val upper = .1 * kotlin.math.sin(2 * Math.PI * (220 + 45 * kotlin.math.sin(t * .4)) * t)
-    val pulse = .08 * kotlin.math.exp(-24 * (t % .5))
-    (bass + upper + pulse).toFloat()
-}
-display("source", AudioVisualizer.renderSamplesHtml(
-    samples, rate,
-    AudioVisualizerOptions(width = 1100, waveformHeight = 125, syncGroup = sync),
-    label = "model-free score calibration · play, zoom, or seek either view",
-))
-
-val times = (0..300).map { it * .04 }
-fun series(name: String, values: List<Double>) = AnalysisSeries(
-    name, name.replace('_', ' '), timesSeconds = times.map { it as Double? },
-    values = values.map { it as Double? },
-)
-val instruments = listOf("acoustic_bass", "cello", "violin", "drums")
-val notes = (0 until 34).map { i ->
-    val start = i * .34
-    AnalysisNote(
-        startSeconds = start,
-        endSeconds = start + if (i % 7 == 0) .08 else .48 + .12 * (i % 4),
-        midi = if (i % 7 == 0) 36 else 43 + (i * 5) % 36,
-        amplitude = 1.0,
-        instrument = instruments[i % instruments.size],
-    )
-}
-val preview = AnalysisPreview(
-    operation = "analysis.transcribe_music", durationSeconds = duration,
-    series = listOf(
-        series("active_note_count", times.map { 1.0 + kotlin.math.floor(4 * kotlin.math.abs(kotlin.math.sin(it * .7))) }),
-        series("onset_count", times.map { if ((it * 4).toInt() % 4 == 0) 2.0 else 0.0 }),
-    ), notes = notes,
-)
-display("score", analysisPreviewVisualizationHtml(
-    preview, width = 1100, height = 360, syncGroup = sync,
-))
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_muscriptor")
+val preview = json.decodeFromString<AnalysisPreview>(File(folder, "preview.json").readText())
+val wav = WavFloatArrayLoader.loadWavToFloatArray(File(folder, "source.wav").absolutePath)
+val sync = "docs-real-muscriptor"
+val source = AudioVisualizer.renderSamplesHtml(wav.samples, wav.sampleRate, options = AudioVisualizerOptions(width = 1040, waveformHeight = 130, syncGroup = sync), wavBytes = File(folder, "source.wav").readBytes(), label = "Sonic Pi recording · 8.192 seconds")
+display("transcription", source + analysisPreviewVisualizationHtml(preview, width = 1040, height = 400, syncGroup = sync))
 ```
 
 ## 3. 3 · submit, monitor, audition, download MIDI

@@ -55,16 +55,16 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 180 transcripts on every build, at three
-depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks every transcript on every build, at one of three
+depths. Most are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-79 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+Others want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
-evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
+evaluation skipped, the line that would open the window or reach the device. A handful are
 Kotlin **compiled to JavaScript** for a browser or visionOS head, through the real head profile that
 the box's `// {{ marker }}` selects.
 
@@ -180,6 +180,26 @@ both pairings into audio players. Draw two strokes of your own and follow the co
 The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
+
+### drawn_paint
+
+Drawn strokes become paint, as six boxes. `strokes` draws three pen strokes on the drawing layer,
+each with a pen pressure at every point, and plots the pressure along each; `paint` paints them with
+a round brush whose `swell` follows the pen, follows the pen's pressure squared, and stays even;
+`crossings` crosses wet yellow and red bands with blue, crosses them again dried, and smears them
+with a clean hog brush and a badger blender; `drying` crosses one band after 0 to 100 simulated
+hours; `meadow` paints a meadow at evening from 560 strokes on a red-ground oil canvas; `pencil`
+draws the first three strokes in a 6B pencil. Every box reads the strokes in one region of the
+drawing, so strokes you draw there with a tablet pen are painted too. All but `strokes` need the
+optional paint library (`./gradlew buildPaintNative`); without it they say where they looked and
+stop. See [Drawn Strokes Become Paint](chain_drawn_paint.md).
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="dp_meadow" screenshot="assets/chain_drawn_paint/starting_point.png" transcript="dev_docs/agents/transcripts/drawn_paint.yaml" padding="0" wait="0" timeout="300" requires="paint" embed=true hidden=true name="agent-transcripts-drawn-paint" alt="The meadow box of the drawn_paint starting point and, below it, its output panel showing the finished oil painting of a meadow at evening, sky and clouds over a field of grass and red poppies."}
+// The transcript built the six boxes and ran them; this captures `meadow` and its output panel.
+ui.pause(1500)
+```
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_paint/metadata.edn)
 
 ### studies_rings
 
@@ -1941,6 +1961,19 @@ know whether it is being drawn or heard, and that argument does not survive the 
 
 [Open ↗](offline.html?file=assets/agent_transcripts/marf_demo/metadata.edn)
 
+### syphon_bridge
+
+Three boxes that move frames over [Syphon](syphon.md), the way video applications on a Mac share
+pictures. *Servers on this machine* lists every Syphon server announced. *Publish an animated
+picture* draws twelve circles into a `BufferedImage` every frame and publishes it as "Field pattern",
+which Resolume, TouchDesigner, MadMapper or OBS can pick up. *Receive a server's frames* connects to
+"Field pattern" as a client and shows its latest frame, so the round trip is visible with nothing
+else installed; change the name to receive another application. macOS only, and all three need the
+optional library (`./gradlew buildSyphonNative`, which needs Xcode); without it they say how to build
+it and stop.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_bridge/metadata.edn)
+
 ## visionOS device scenes
 
 <!-- transcript-index: verified-by = kotlinjs, execute -->
@@ -2655,7 +2688,7 @@ resets accumulation and produces a PASS marker during live execution.
 [Open ↗](offline.html?file=assets/agent_transcripts/path_tracing_material_shader_check/metadata.edn)
 
 The three below end at the same tracer and start somewhere else in Field, so each one carries two
-subsystems the others do not; [Chains Across Subsystems](chain_polytope_render.md) is where they are
+subsystems the others do not; [Long Way Round](chains.md) is where they are
 walked through.
 
 ### polytope_path_trace_lineage
@@ -2677,6 +2710,23 @@ Manifold and once by Field's own mesh code, and the shell's volume is checked ag
 thickness.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn)
+
+### polytope_layer_stack_path_trace
+
+Canonical gC sliced at 48 layer midpoints, extruded with small gaps and coloured
+by height. The real path tracer accumulates at least 900 samples before the
+Linux/NVIDIA capture. See [the layer-stack walkthrough](chain_ceres_manifold_contours.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn)
+
+### photo_mount_path_trace
+
+The relief and frame returned by `PhotoToSolidChain.mount()`, imported into the
+real tracer and lit with the Venice environment. The retained Linux/NVIDIA figure
+shows the mounted plaque after at least 900 samples. See
+[the photo-to-solid walkthrough](chain_photo_to_solid.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/photo_mount_path_trace/metadata.edn)
 
 ### physics_manifold_path_trace
 
@@ -2920,6 +2970,29 @@ The retained native capture and measured run are on [Streaming diffusion](stream
 
 [Open ↗](offline.html?file=assets/agent_transcripts/streaming_diffusion/metadata.edn)
 
+
+### syphon_gpu
+
+[Syphon](syphon.md) from the Vulkan renderer, both ways. A renderer box opens a window; the second
+box draws a colour gradient into a `RenderToTexture` and publishes every frame as "Field GPU" with
+`followOnGpu`, which copies each frame on the GPU into an IOSurface for Syphon without reading it
+back; the third connects to "Field GPU" as a client and draws its frames, as a texture, over the
+whole window, sampling the IOSurface Syphon shares without copying it. macOS only; needs
+`./gradlew buildSyphonNative`.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_gpu/metadata.edn)
+
+### syphon_zero_copy_receive_smoke
+
+The test behind `SyphonClient.texture()`. A separate process publishes a known pattern through
+Syphon, first at 64×48 and then at 96×64. A shader samples the received texture into a
+`RenderToTexture`, and the box reads it back. It expects exact pixels in the right order and the
+right way up, one re-import when the size changes, and no frame copied through memory. MoltenVK
+samples the IOSurface as an imported image; KosmicKrisp samples it as host memory under a linear
+image. CI compiles the graph; the backdoor replay is the live test, and needs
+`./gradlew buildSyphonNative`. An integration probe, not a starting point.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/syphon_zero_copy_receive_smoke/metadata.edn)
 
 ## Graphics building blocks
 

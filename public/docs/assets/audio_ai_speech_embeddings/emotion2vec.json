@@ -1,0 +1,309 @@
+{
+  "id": "analysis_acc22172015140f8b27068078a5123e3",
+  "operation_id": "op_2a2428aefff24f6bba1d72a3b05a2345",
+  "request_hash": "sha256:b425925c9d13cc6d309ef8b3701979d20b1bd03fe3c024fc2fe6ec7599c599eb",
+  "source": {
+    "start_seconds": 0.0,
+    "duration_seconds": 273.82284375,
+    "asset_id": "sha256:dddaf7772f69b9f17013c89996cc2082649615fa8983178609e00f2147aefc8a"
+  },
+  "data": {
+    "id": "rep_49b8ae8d3e40c6fbd9683879",
+    "asset_id": "sha256:ef4ad6cb223f48db59c0eba41cf0b75aa7e93b78eeb3fbf041069077b3393753",
+    "role": "analysis_embed_speech",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 16000,
+    "resampling_method": "libsoxr_hq",
+    "binary_url": "/v1/representations/rep_49b8ae8d3e40c6fbd9683879/content",
+    "metadata": {
+      "algorithm": "frame embedding plus WebRTC VAD and landmark classical MDS over cosine distance",
+      "analysis_sample_rate": 16000,
+      "arrays": {
+        "embedding": {
+          "dtype": "float16",
+          "shape": [
+            13690,
+            768
+          ]
+        },
+        "embedding_novelty": {
+          "dtype": "float32",
+          "shape": [
+            13690
+          ]
+        },
+        "energy_dbfs": {
+          "dtype": "float32",
+          "shape": [
+            13690
+          ]
+        },
+        "mds_coordinates": {
+          "dtype": "float32",
+          "shape": [
+            13690,
+            4
+          ]
+        },
+        "mds_eigenvalues": {
+          "dtype": "float32",
+          "shape": [
+            4
+          ]
+        },
+        "mds_landmark_indices": {
+          "dtype": "int64",
+          "shape": [
+            384
+          ]
+        },
+        "times_seconds": {
+          "dtype": "float64",
+          "shape": [
+            13690
+          ]
+        },
+        "voice_activity": {
+          "dtype": "float32",
+          "shape": [
+            13690
+          ]
+        },
+        "voice_activity_raw": {
+          "dtype": "float32",
+          "shape": [
+            13690
+          ]
+        }
+      },
+      "backend": "analysis.emotion2vec",
+      "backend_revision": "speech-worker-v2;emotion2vec/emotion2vec_base@0c9a3152734f9d7a7a05b4ee6bfb3c109d288664",
+      "channel_mix": "identity",
+      "chunk_seconds": 20.0,
+      "context_seconds": 1.0,
+      "device": "cuda",
+      "embedding_storage_dtype": "float16",
+      "frame_period_seconds": 0.02,
+      "frame_rate_hz": 50.0,
+      "mds_distance": "cosine",
+      "mds_landmarks": 384,
+      "mds_smoothing_ms": 80.0,
+      "model_id": "emotion2vec/emotion2vec_base",
+      "model_revision": "0c9a3152734f9d7a7a05b4ee6bfb3c109d288664",
+      "operation_id": "op_2a2428aefff24f6bba1d72a3b05a2345",
+      "request_hash": "sha256:b425925c9d13cc6d309ef8b3701979d20b1bd03fe3c024fc2fe6ec7599c599eb",
+      "resampling": "libsoxr_hq",
+      "source_asset_id": "sha256:dddaf7772f69b9f17013c89996cc2082649615fa8983178609e00f2147aefc8a",
+      "source_channels": 1,
+      "source_duration_seconds": 273.82284375,
+      "source_sample_rate": 96000,
+      "source_start_seconds": 0.0,
+      "voice_activity_algorithm": "WebRTC VAD mode 2, 20 ms frames; five-frame centered mean",
+      "wavlm_layer": null,
+      "worker_revision": "speech-worker-v2"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "rep_65f2016c948eb7dc6998be5e",
+      "asset_id": "sha256:a1e4d8b5e45acd24c08a6a15b7291962c10abd6f7fd4da8a6aed571b68a27645",
+      "role": "speech_embedding_messagepack",
+      "media_type": "application/msgpack",
+      "sample_rate": null,
+      "channels": null,
+      "frame_count": null,
+      "duration_seconds": null,
+      "native_sample_rate": 16000,
+      "resampling_method": null,
+      "binary_url": "/v1/representations/rep_65f2016c948eb7dc6998be5e/content",
+      "metadata": {
+        "algorithm": "frame embedding plus WebRTC VAD and landmark classical MDS over cosine distance",
+        "analysis_sample_rate": 16000,
+        "arrays": {
+          "embedding": {
+            "dtype": "float16",
+            "shape": [
+              13690,
+              768
+            ]
+          },
+          "embedding_novelty": {
+            "dtype": "float32",
+            "shape": [
+              13690
+            ]
+          },
+          "energy_dbfs": {
+            "dtype": "float32",
+            "shape": [
+              13690
+            ]
+          },
+          "mds_coordinates": {
+            "dtype": "float32",
+            "shape": [
+              13690,
+              4
+            ]
+          },
+          "mds_eigenvalues": {
+            "dtype": "float32",
+            "shape": [
+              4
+            ]
+          },
+          "mds_landmark_indices": {
+            "dtype": "int64",
+            "shape": [
+              384
+            ]
+          },
+          "times_seconds": {
+            "dtype": "float64",
+            "shape": [
+              13690
+            ]
+          },
+          "voice_activity": {
+            "dtype": "float32",
+            "shape": [
+              13690
+            ]
+          },
+          "voice_activity_raw": {
+            "dtype": "float32",
+            "shape": [
+              13690
+            ]
+          }
+        },
+        "backend": "analysis.emotion2vec",
+        "backend_revision": "speech-worker-v2;emotion2vec/emotion2vec_base@0c9a3152734f9d7a7a05b4ee6bfb3c109d288664",
+        "channel_mix": "identity",
+        "chunk_seconds": 20.0,
+        "context_seconds": 1.0,
+        "device": "cuda",
+        "embedding_dimensions": 768,
+        "embedding_dtype": "float16-le",
+        "embedding_storage_dtype": "float16",
+        "format": "field.audio.speech-embedding.v1",
+        "frame_count": 13690,
+        "frame_period_seconds": 0.02,
+        "frame_rate_hz": 50.0,
+        "mds_distance": "cosine",
+        "mds_landmarks": 384,
+        "mds_smoothing_ms": 80.0,
+        "model_id": "emotion2vec/emotion2vec_base",
+        "model_revision": "0c9a3152734f9d7a7a05b4ee6bfb3c109d288664",
+        "operation_id": "op_2a2428aefff24f6bba1d72a3b05a2345",
+        "request_hash": "sha256:b425925c9d13cc6d309ef8b3701979d20b1bd03fe3c024fc2fe6ec7599c599eb",
+        "resampling": "libsoxr_hq",
+        "source_asset_id": "sha256:dddaf7772f69b9f17013c89996cc2082649615fa8983178609e00f2147aefc8a",
+        "source_channels": 1,
+        "source_duration_seconds": 273.82284375,
+        "source_sample_rate": 96000,
+        "source_start_seconds": 0.0,
+        "times_dtype": "float64-le",
+        "voice_activity_algorithm": "WebRTC VAD mode 2, 20 ms frames; five-frame centered mean",
+        "wavlm_layer": null,
+        "worker_revision": "speech-worker-v2"
+      }
+    }
+  ],
+  "summary": {
+    "chunk_count": 14,
+    "duration_seconds": 273.822875,
+    "embedding_dimensions": 768,
+    "frame_count": 13690,
+    "frame_rate_hz": 50.0,
+    "mds_dimensions": 4,
+    "mds_landmark_count": 384,
+    "voice_activity_fraction": 0.872553288936615
+  },
+  "analysis": {
+    "algorithm": "frame embedding plus WebRTC VAD and landmark classical MDS over cosine distance",
+    "analysis_sample_rate": 16000,
+    "arrays": {
+      "embedding": {
+        "dtype": "float16",
+        "shape": [
+          13690,
+          768
+        ]
+      },
+      "embedding_novelty": {
+        "dtype": "float32",
+        "shape": [
+          13690
+        ]
+      },
+      "energy_dbfs": {
+        "dtype": "float32",
+        "shape": [
+          13690
+        ]
+      },
+      "mds_coordinates": {
+        "dtype": "float32",
+        "shape": [
+          13690,
+          4
+        ]
+      },
+      "mds_eigenvalues": {
+        "dtype": "float32",
+        "shape": [
+          4
+        ]
+      },
+      "mds_landmark_indices": {
+        "dtype": "int64",
+        "shape": [
+          384
+        ]
+      },
+      "times_seconds": {
+        "dtype": "float64",
+        "shape": [
+          13690
+        ]
+      },
+      "voice_activity": {
+        "dtype": "float32",
+        "shape": [
+          13690
+        ]
+      },
+      "voice_activity_raw": {
+        "dtype": "float32",
+        "shape": [
+          13690
+        ]
+      }
+    },
+    "backend": "analysis.emotion2vec",
+    "channel_mix": "identity",
+    "chunk_seconds": 20.0,
+    "context_seconds": 1.0,
+    "device": "cuda",
+    "embedding_storage_dtype": "float16",
+    "frame_period_seconds": 0.02,
+    "frame_rate_hz": 50.0,
+    "mds_distance": "cosine",
+    "mds_landmarks": 384,
+    "mds_smoothing_ms": 80.0,
+    "model_id": "emotion2vec/emotion2vec_base",
+    "model_revision": "0c9a3152734f9d7a7a05b4ee6bfb3c109d288664",
+    "resampling": "libsoxr_hq",
+    "source_channels": 1,
+    "source_sample_rate": 96000,
+    "voice_activity_algorithm": "WebRTC VAD mode 2, 20 ms frames; five-frame centered mean",
+    "wavlm_layer": null,
+    "worker_revision": "speech-worker-v2"
+  },
+  "created_at": "2026-08-27T18:35:41.094767Z"
+}

@@ -55,6 +55,28 @@ class CsoundTest {
         }
     }
 
+    // Csound 6 leaves a chn_k channel at 0 whatever its idflt; Field writes the default, or a cutoff read from it is 0 Hz.
+    @Test fun aChnKChannelStartsAtItsDeclaredDefault() {
+        if (!available()) return
+        val orc = """
+            chn_k "cutoff", 1, 3, 2400, 200, 8000
+            chn_k "plain", 1
+            instr 1
+              k1 chnget "cutoff"
+              a1 oscili 0.25, 440
+              a1 butterlp a1, k1
+              outs a1, a1
+            endin
+        """
+        CsoundInstance(orc, "i1 0 0.5").use { cs ->
+            assertEquals(2400.0, cs.channel("cutoff"))
+            assertEquals(0.0, cs.channel("plain"))
+            val (left, _) = cs.renderOffline()
+            // 440 Hz through a 2400 Hz lowpass is barely touched; at 0 Hz it would be silent.
+            assertTrue(left.maxOf { abs(it) } > 0.2f, "peak ${left.maxOf { abs(it) }}")
+        }
+    }
+
     @Test fun oddSizedRendersJoinUpExactly() {
         if (!available()) return
         val whole = CsoundInstance(sine, "i1 0 1").use { cs -> FloatArray(300).also { cs.render(it, FloatArray(300), 300) } }

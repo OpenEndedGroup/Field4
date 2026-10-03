@@ -233,11 +233,83 @@ napi_value node_send_surface(napi_env env, napi_callback_info info) {
   return id;
 }
 
+void put_int(CFMutableDictionaryRef properties, CFStringRef key, int value) {
+  CFNumberRef number = CFNumberCreate(nullptr, kCFNumberIntType, &value);
+  CFDictionarySetValue(properties, key, number);
+  CFRelease(number);
+}
+
+// createIOSurface(width, height) -> pointer-sized Buffer holding a retained BGRA IOSurfaceRef.
+//
+// The other direction from sendIOSurface's usual use: here Electron owns the surface and Field
+// writes into it, so the main process can hand the same surface to sharedTexture.importSharedTexture
+// while sendIOSurface gives Field a Mach port for it. The caller releases it with releaseIOSurface.
+napi_value node_create_surface(napi_env env, napi_callback_info info) {
+  std::size_t argc = 2;
+  napi_value argv[2];
+  napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  int width = 0;
+  int height = 0;
+  if (argc != 2 || napi_get_value_int32(env, argv[0], &width) != napi_ok ||
+      napi_get_value_int32(env, argv[1], &height) != napi_ok || width <= 0 ||
+      height <= 0) {
+    napi_throw_type_error(env, nullptr, "createIOSurface(width, height) expected");
+    return nullptr;
+  }
+
+  CFMutableDictionaryRef properties = CFDictionaryCreateMutable(
+      nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+  put_int(properties, kIOSurfaceWidth, width);
+  put_int(properties, kIOSurfaceHeight, height);
+  put_int(properties, kIOSurfaceBytesPerElement, 4);
+  put_int(properties, kIOSurfaceBytesPerRow,
+          static_cast<int>(IOSurfaceAlignProperty(kIOSurfaceBytesPerRow, width * 4)));
+  put_int(properties, kIOSurfacePixelFormat, 'BGRA');
+  IOSurfaceRef surface = IOSurfaceCreate(properties);
+  CFRelease(properties);
+  if (!surface) {
+    napi_throw_error(env, nullptr, "IOSurfaceCreate failed");
+    return nullptr;
+  }
+
+  napi_value handle;
+  void* data = nullptr;
+  napi_create_buffer(env, sizeof(std::uintptr_t), &data, &handle);
+  auto pointer = reinterpret_cast<std::uintptr_t>(surface);
+  std::memcpy(data, &pointer, sizeof(pointer));
+  return handle;
+}
+
+napi_value node_release_surface(napi_env env, napi_callback_info info) {
+  std::size_t argc = 1;
+  napi_value argv[1];
+  napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr);
+  void* data = nullptr;
+  std::size_t size = 0;
+  bool is_buffer = false;
+  if (argc == 1) napi_is_buffer(env, argv[0], &is_buffer);
+  if (!is_buffer || napi_get_buffer_info(env, argv[0], &data, &size) != napi_ok ||
+      size != sizeof(std::uintptr_t)) {
+    napi_throw_type_error(env, nullptr, "releaseIOSurface(handleBuffer) expected");
+    return nullptr;
+  }
+  std::uintptr_t pointer = 0;
+  std::memcpy(&pointer, data, sizeof(pointer));
+  if (pointer) CFRelease(reinterpret_cast<IOSurfaceRef>(pointer));
+  return nullptr;
+}
+
 napi_value initialize(napi_env env, napi_value exports) {
   napi_value function;
   napi_create_function(env, "sendIOSurface", NAPI_AUTO_LENGTH,
                        node_send_surface, nullptr, &function);
   napi_set_named_property(env, exports, "sendIOSurface", function);
+  napi_create_function(env, "createIOSurface", NAPI_AUTO_LENGTH,
+                       node_create_surface, nullptr, &function);
+  napi_set_named_property(env, exports, "createIOSurface", function);
+  napi_create_function(env, "releaseIOSurface", NAPI_AUTO_LENGTH,
+                       node_release_surface, nullptr, &function);
+  napi_set_named_property(env, exports, "releaseIOSurface", function);
   return exports;
 }
 

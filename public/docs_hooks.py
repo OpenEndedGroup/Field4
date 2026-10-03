@@ -849,6 +849,10 @@ class RunnerOptions:
     # figures of something drawn on the canvas, where the capture viewport is far larger than the
     # drawing and `trim` cannot see past the dot grid.
     clip: tuple[float, float, float, float] | None = None
+    # `window-outputs="true"`: keep a `capture="window"` a window capture even though the box's
+    # output panels are open, so `clip=` can frame the panels together with what is drawn on the
+    # canvas beside them (normally window + open outputs collapses to a box capture).
+    window_outputs: bool = False
     # `viewport="WxH"` (capture="ui" only): the capture page's size in CSS pixels for this drive,
     # set before the recording starts and restored after it. Field's layout follows the window
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
@@ -868,13 +872,24 @@ class RunnerOptions:
     hide_toasts: bool = False
 
 
+# A profile names the host a capture needs. On any other host, or unless FIELD_DOCS_CAPTURE_PROFILES
+# names it, the committed capture is kept. `macos-electron` captures from this checkout's Field
+# Electron app instead of the capture Chromium (`playwright-open --electron`), for output that only
+# exists there, such as the RTT view's shared-texture frames.
+CAPTURE_PROFILE_PLATFORMS = {
+    "linux-nvidia": "linux",
+    "macos-electron": "darwin",
+}
+
+
 def capture_profile_enabled(profile: str | None) -> bool:
     if profile is None:
         return True
-    if profile != "linux-nvidia":
+    platform = CAPTURE_PROFILE_PLATFORMS.get(profile)
+    if platform is None:
         raise RuntimeError(f"Unknown docs capture profile {profile!r}")
     requested = {p.strip() for p in os.environ.get("FIELD_DOCS_CAPTURE_PROFILES", "").split(",")}
-    return sys.platform.startswith("linux") and profile in requested
+    return sys.platform.startswith(platform) and profile in requested
 
 
 def derive_sidecar_port(repo_root: Path) -> int:
@@ -3356,6 +3371,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
+        window_outputs=parse_bool(first_attr(attrs, "window-outputs", "window_outputs"), default=False),
         viewport=parse_viewport(first_attr(attrs, "viewport")),
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
@@ -4805,7 +4821,7 @@ def parse_codegen_expectation(*, code: str, key: str) -> bool | None:
 
 
 def effective_capture_mode(options: RunnerOptions) -> str:
-    if options.capture == "window" and options.open_outputs and not options.with_editor:
+    if options.capture == "window" and options.open_outputs and not options.with_editor and not options.window_outputs:
         return "box"
     return options.capture
 
@@ -5108,6 +5124,9 @@ def build_backdoor_command(
     if document:
         command.extend(["--document", document])
     backdoor_commands: list[str] = []
+    if options.capture_profile == "macos-electron":
+        # Before anything renders: the capture page has to be the Electron tab when output DOM appears.
+        backdoor_commands.append("playwright-open --electron")
 
     if options.capture == "ui":
         # Optional setup: run a transcript= file of create/launch ops FIRST, in the same

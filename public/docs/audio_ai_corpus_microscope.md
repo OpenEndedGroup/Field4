@@ -7,6 +7,25 @@ one. Those windows are recorded as boundaries and offsets; the audio itself is n
 Closeness is yours to set: the distance is five separate measurements with a weight each, not one
 similarity number.
 
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_corpus_microscope/neighbours.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1100" hidden=true embed=true name="elsewhere-corpus" alt="Real Nancy query and two Candlestick neighbour windows with waveforms, distance bars and splice players" capture-profile="linux-nvidia"}
+:::static
+import afield.stdlib.noir.audioai.*
+import afield.stdlib.AudioVisualizer
+import afield.stdlib.AudioVisualizerOptions
+import afield.four.audio.WavFloatArrayLoader
+import java.io.File
+import java.nio.file.Path
+val json = FieldAudioClient.json
+val folder = File("public/docs/assets/audio_ai_corpus_microscope")
+val preview = json.decodeFromString<CorpusPreview>(File(folder, "corpus.json").readText())
+val query = json.decodeFromString<AssetRepresentation>(File(folder, "query-audio.json").readText())
+display("microscope", corpusMicroscopeHtml(preview.copy(neighbours = preview.neighbours.take(2)), query, width = 1040, cardWidth = 495) + "<style>.fcm-query > .field-audio-visualizer{width:100%!important}</style>")
+
+```
+
+The first two neighbours of the six-second Nancy query, with their source timestamps and
+separate distances for harmony, pitch, texture, rhythm and dynamics.
+
 ## What each window is measured by
 
 | Group | Measurements |

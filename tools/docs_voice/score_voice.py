@@ -812,8 +812,8 @@ SEEDED_FIRST_LINES = (
 # them: the nineteenth through twenty-first firings each found one surface a detector skipped, and
 # this is the fourth -- a surface reached only through its source. --assets scores these alongside
 # the hand-authored asset pages, because the fix for a seeded copy is always here.
+# (`templates/WORKSPACE_README.md` was retired; its seeded copies still match SEEDED_FIRST_LINES.)
 TEMPLATE_SOURCES = (
-    "templates/WORKSPACE_README.md",
     "templates/WORKSPACE_AGENTS.md",
 )
 
