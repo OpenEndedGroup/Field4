@@ -752,6 +752,9 @@ once.myVec {
 `once.myVec { ... }` computes when the property is `null` and caches a non-null result on the box.
 (`null` itself is not cached.) This is useful in the graphics system because a box often wants to
 create one window and Vulkan renderer, then publish those resources to descendants through `prop`.
+When the value depends on something — a view made for a particular renderer — use
+`cached<View>(renderer) { View() }` instead, which makes a new one (and closes the old) when the key
+changes; see [`cached`](running_code.md#cached-one-value-per-set-of-keys).
 
 For the mechanism behind all of this — how `prop`/`once` expand, how properties propagate up the box graph, the `@exported` annotation, the typed accessors `moduleHere { }` generates, and the `//%-` fragment break — see [Running code in a box](running_code.md).
 

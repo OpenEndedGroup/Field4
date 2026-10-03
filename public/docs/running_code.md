@@ -70,7 +70,12 @@ The expander walks your code's syntax tree, asks the macro registry to rewrite e
 
 ---
 
-## `prop` and `once`: typed, inheritable box state
+## `prop`, `once` and `cached`: values that outlive a run
+
+Each run of a box starts with fresh local variables: a `val` written at the top of the code is
+made again every time you run it. These three keep a value across runs.
+
+### `prop`: a typed slot that children inherit
 
 `prop<T>(name)` is the workhorse. Writing it in a parent box:
 
@@ -78,47 +83,81 @@ The expander walks your code's syntax tree, asks the macro registry to rewrite e
 prop<Int>(savemarker) = 12321
 ```
 
-expands to *nothing at the call site but the bare name* (`savemarker = 12321`), plus two generated lines injected into the box's preamble:
+expands to *nothing at the call site but the bare name* (`savemarker = 12321`), plus three generated lines injected into the box's preamble:
 
 ```diffstatic {data-lang=kotlin}
 var Box.savemarker by Inheritance<Int>() /**/
 val Once.savemarker by Onceing<Int>() /**/
+val Why.savemarker by Whying() /**/
 ```
 
 (and an `import` for the type). Now `savemarker` is a real, typed Kotlin property. From then on:
 
 - **Writing** `savemarker = …` stores the value **on this box**.
 - **Reading** `savemarker` returns this box's value if set, otherwise walks *up the box graph* to the first ancestor that has one (that is what `Inheritance` does — see **Property inheritance** below).
+- **`why.savemarker`** says which box that value came from; see [Why does this value resolve here?](why.md).
 
-The companion `once.savemarker { … }` computes and stores the value when the property is `null`,
-then returns the stored value on later calls:
+The name is written unquoted: it is a name, not a string.
 
-```diffstatic {data-lang=kotlin}
-class Onceing<T> {
-    operator fun getValue(f: Once, property: KProperty<*>): (() -> T) -> T = { compute ->
-        var a = f.inside.getPropertyRaw(property.name) as T?
-        if (a == null) { a = compute(); if (a != null) f.inside.setPropertyRaw(property.name, a, true) }
-        a as T
-    }
-}
-```
+### `once`: fill the slot the first time
 
-`prop` and `once` are two halves of one feature: `prop` declares the typed, inheritable slot; `once`
-fills a non-null value lazily. Because `null` is the empty sentinel, a computation that returns
-`null` is not cached and may run again. This is the idiom behind a renderer box publishing its
+`once.savemarker { … }` runs the block only when the property is `null`, stores the result, and
+returns the stored value on every later run. This is the idiom behind a renderer box publishing its
 window and renderer to its children:
 
 ```diffstatic {data-lang=kotlin}
 prop<Window>(window)
 prop<Renderer>(renderer)
 
-once.renderer {                       // cached after the first non-null result
+once.renderer {                       // runs on the first run only
     window = Window("My sketch")
     Renderer(window)
 }
 ```
 
-`window` and `renderer` are now typed properties on this box, filled once, and visible to every box connected beneath it, because `prop` generated inheriting accessors.
+`window` and `renderer` are now typed properties on this box, filled once, and visible to every box
+connected beneath it. A child reads `renderer` by name; it never needs to look the renderer up.
+
+`null` means "empty": a block that returns `null` is not cached and runs again next time.
+
+### `cached`: one value per set of keys
+
+`once` has one slot per name. When a value depends on something else — a view made for a
+particular renderer, a buffer made for a particular size — use `cached`, which keeps one value per
+type *and* key:
+
+```diffstatic {data-lang=kotlin}
+val view = cached<ElectronRTTView>(renderer) { ElectronRTTView(640, 360) }
+```
+
+Re-run the box and you get the same view back. Connect the box under a different renderer, or pass
+different keys, and the block runs again to make a new one; the old one is closed (if it is
+`AutoCloseable`), so changing a key replaces rather than leaks. Keys are compared with `equals`, and
+any number can be given: `cached<FloatArray>(width, height) { FloatArray(width * height) }`.
+
+One run may ask for several values of one type under different keys — one view per renderer in a
+loop — and keeps them all. Two calls with the *same* type and keys share one value; add a key such as
+`"left"` to keep them apart. `cached` needs no `prop` first, and its value is not visible to child
+boxes: return it into a `prop` if children should see it.
+
+`T` should be a library type. A class declared in the box's own code is a new class each time the
+box compiles, so a `cached` of it never finds the previous value.
+
+### What lasts how long
+
+What the block of a `once` or `cached` makes — a slider, a render module, an audio patch —
+belongs to the box, not to the run that happened to make it, so a re-run does not take it apart.
+
+| | re-run | stop | delete the box / close the document |
+|---|---|---|---|
+| a `val` in the code | made again | — | — |
+| `prop` value | kept | kept | gone |
+| `once` / `cached` value | kept | kept, unless its block started something that runs (an audio patch, a process); then cleared and made again on the next run | released |
+| `cached` value whose keys changed | closed, a new one made | — | — |
+
+Stop only stops what is running. If a `once` or `cached` block started an audio patch, stop ends
+the patch and forgets the value, so the next run makes a fresh one instead of handing back one whose
+sound has gone.
 
 ---
 
@@ -282,6 +321,7 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - During interactive execution, Kotlin box code is **fragmented** on `//%-`, and each fragment is **macro-expanded, compiled, and evaluated in turn** — so a fragment sees the runtime effects of earlier fragments in that box.
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
+- **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
