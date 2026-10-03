@@ -5164,6 +5164,7 @@ body.mode-editor-only .field-toast {
 .bookmark-map .bm-box { fill: #3a3a3a; }
 .bookmark-map .bm-box.has-open { fill: #6a6a6a; }
 .bookmark-map .bm-box.is-selected { fill: rgba(var(--field-accent-rgb), 0.55); }
+.bookmark-map .bm-panel { fill: rgba(216, 216, 216, 0.10); stroke: #8a8a8a; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .bookmark-map .bm-view { fill: none; stroke: #d8d8d8; stroke-width: 1; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .bookmark-summary { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .bookmark-summary-line { color: var(--fp-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

@@ -817,8 +817,8 @@ private fun savedAgo(timestamp: Double): String {
 
 /**
  * The document's boxes as they stand now, with the rectangle the bookmark's pan would show at
- * the current zoom and window size. Boxes with a recorded-open panel are lighter; the selected
- * box takes the accent.
+ * the bookmark's zoom and the current window size. The panels the bookmark keeps open are drawn
+ * under their boxes at their recorded sizes; the selected box takes the accent.
  */
 private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
     val ns = "http://www.w3.org/2000/svg"
@@ -838,11 +838,33 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
             r.width / mainZoom, r.height / mainZoom, uid
         )
     }
+    // The panels the bookmark keeps open, each hung under its header where the box lays it out
+    // now, at the size the bookmark recorded (or its current size, for bookmarks that predate sizes).
+    val panels = mutableListOf<R>()
+    bookmark.outputAreaState.orEmpty().forEach { (uid, channels) ->
+        val box = findBoxByUid(uid) ?: return@forEach
+        val disclosures = box.querySelectorAll(".outputArea .disclosure").asList().mapNotNull { it as? HTMLElement }
+        channels.filterValues { it }.keys.forEach { channel ->
+            val wrap = disclosures.firstOrNull { (it.asDynamic().__disclosureId as? String) == channel } ?: return@forEach
+            val header = wrap.getBoundingClientRect()
+            if (header.width <= 0.0) return@forEach
+            val size: PanelSize = bookmark.outputAreaSizes?.get(uid)?.get(channel) ?: run {
+                val current: dynamic = disclosureApiFor(box)?.getSize(channel)
+                if (current == null || current == undefined) return@forEach
+                PanelSize((current.width as Number).toDouble(), (current.height as Number).toDouble())
+            }
+            val x = (header.left - mainTranslation[0]) / mainZoom
+            val y = (header.top - mainTranslation[1]) / mainZoom
+            // An open disclosure's rect already includes its content; a closed one is only the header.
+            val headerHeight = if (header.height / mainZoom > size.height) 18.0 else header.height / mainZoom
+            panels += R(x, y + headerHeight, size.width, size.height, uid)
+        }
+    }
     val view = bookmark.scrollPosition?.let {
         val z = it.zoom ?: mainZoom
         R(-it.x / z, -it.y / z, window.innerWidth / z, window.innerHeight / z, null)
     }
-    val all = rects + listOfNotNull(view)
+    val all = rects + panels + listOfNotNull(view)
     if (all.isEmpty()) return svg
     val minX = all.minOf { it.x }
     val minY = all.minOf { it.y }
@@ -861,6 +883,13 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
             if (r.uid == bookmark.selectedBox) append(" is-selected")
         }
         rect.setAttribute("class", cls)
+        svg.appendChild(rect)
+    }
+    panels.forEach { r ->
+        val rect = document.createElementNS(ns, "rect")
+        rect.setAttribute("x", "${r.x}"); rect.setAttribute("y", "${r.y}")
+        rect.setAttribute("width", "${r.w}"); rect.setAttribute("height", "${r.h}")
+        rect.setAttribute("class", "bm-panel")
         svg.appendChild(rect)
     }
     view?.let { v ->
