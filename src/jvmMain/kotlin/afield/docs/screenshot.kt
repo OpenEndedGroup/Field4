@@ -2586,6 +2586,9 @@ class DocsUiDriver internal constructor(
     }
     fun mouseUp() { run(AgentPlaywrightInputRequest(action = "mouseUp")) }
 
+    /** Press the real mouse where it is now; with [moveMouse] and [mouseUp], a drag that starts anywhere (a box edge, to resize). */
+    fun mouseDown() { runBlocking(playwrightDispatcher) { pageProvider().mouse().down() } }
+
     /** Move the real mouse to ([x], [y]) in CSS px, in [steps] steps, as a hand would (canvas hover state, `n`'s drop point). */
     fun moveMouse(x: Double, y: Double, steps: Int = 1) {
         runBlocking(playwrightDispatcher) {
