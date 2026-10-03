@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -14,13 +15,16 @@ LAND = Path(__file__).resolve().parent / "land.py"
 # Stands in for tools/merge_regen.py: a plain --no-ff merge with the lander's message, or a failure
 # when the merged tree contains a file named BREAKS, the way a red guard would refuse it.
 STUB = '''
-import subprocess, sys, pathlib
-sha, msg = sys.argv[1], sys.argv[sys.argv.index("-m") + 1]
-subprocess.run(["git", "merge", "--no-ff", "--no-commit", sha], check=True)
-if pathlib.Path("BREAKS").exists():
-    print("merge_regen: a guard failed; the merge is left uncommitted for you to fix", file=sys.stderr)
+import sys, pathlib
+# The lander now merges each branch itself and calls this once per batch, as --regen-since BASE -m MSG.
+# The guard "fails" when the merged tree contains a file named BREAKS, or two files named PAIR_A and
+# PAIR_B (a combination that breaks only together); it writes REGEN_CALLS so tests can count guards.
+assert sys.argv[1] == "--regen-since", sys.argv
+calls = pathlib.Path(__file__).resolve().parents[2] / "REGEN_CALLS"
+calls.write_text(calls.read_text() + "x" if calls.exists() else "x")
+if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathlib.Path("PAIR_B").exists()):
+    print("merge_regen: a guard failed on the batch", file=sys.stderr)
     sys.exit(1)
-sys.exit(subprocess.run(["git", "commit", "-q", "-m", msg]).returncode)
 '''
 
 
@@ -177,6 +181,96 @@ class LandQueueTest(unittest.TestCase):
         self.git(wt, "commit", "-qam", "third")
         self.assertNotIn("replacing", self.land(wt, "enqueue").stdout)
         self.assertEqual(len(list(queue.glob("*.json"))), 2)
+
+    # ------------------------------------------------------------------ batching
+
+    def guard_calls(self) -> int:
+        calls = Path(self._tmp.name) / "REGEN_CALLS"
+        return len(calls.read_text()) if calls.exists() else 0
+
+    def states(self) -> dict[str, str]:
+        queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue"
+        return {json.loads(f.read_text())["branch"]: state
+                for state in ("pending", "landed", "bounced") for f in (queue / state).glob("*.json")}
+
+    def test_a_batch_shares_one_guard_and_keeps_one_commit_per_branch(self) -> None:
+        names = ["b1", "b2", "b3", "b4", "b5"]
+        for name in names:
+            self.land(self.branch_with(name, f"{name}.txt"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.guard_calls(), 1, "five branches should share one regeneration and guard")
+        self.assertEqual(set(self.states().values()), {"landed"})
+        subjects = self.git(self.primary, "log", "--format=%s", "--first-parent", "main").splitlines()
+        self.assertEqual(subjects[:5], [f"Land {n} (test-agent)" for n in reversed(names)])
+
+    def test_a_red_batch_is_bisected_to_the_culprit_and_the_rest_land(self) -> None:
+        for name, filename in (("ok1", "ok1.txt"), ("ok2", "ok2.txt"), ("bad", "BREAKS"), ("ok3", "ok3.txt")):
+            self.land(self.branch_with(name, filename), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"ok1": "landed", "ok2": "landed", "bad": "bounced", "ok3": "landed"})
+        self.assertLessEqual(self.guard_calls(), 5)
+        mine = self.land(Path(self._tmp.name) / "bad", "mine")
+        self.assertIn("bisecting a red batch of 4", mine.stdout)
+
+    def test_a_pair_that_only_breaks_together_lands_the_first_and_bounces_the_second(self) -> None:
+        self.land(self.branch_with("pa", "PAIR_A"), "enqueue")
+        self.land(self.branch_with("pb", "PAIR_B"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"pa": "landed", "pb": "bounced"})
+
+    def test_a_conflict_inside_the_batch_is_deferred_not_blamed(self) -> None:
+        for name in ("c1", "c2"):
+            wt = self.branch_with(name, f"{name}.txt")
+            (wt / "shared.txt").write_text(f"{name}\n")
+            self.git(wt, "add", "-A")
+            self.git(wt, "commit", "-qm", f"{name} edits shared")
+            self.land(wt, "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"c1": "landed", "c2": "bounced"})
+        mine = self.land(Path(self._tmp.name) / "c2", "mine").stdout
+        self.assertIn("conflict with main", mine)
+
+    def test_batch_size_one_lands_one_at_a_time(self) -> None:
+        for name in ("s1", "s2", "s3"):
+            self.land(self.branch_with(name, f"{name}.txt"), "enqueue")
+        self.land(self.primary, "run", "--once", "--batch", "1", "--worktree", str(self.lander))
+        self.assertEqual(self.guard_calls(), 3)
+
+    # ------------------------------------------------------------------ pushing
+
+    def with_origin(self) -> Path:
+        origin = Path(self._tmp.name) / "origin.git"
+        self.git(Path(self._tmp.name), "init", "-q", "--bare", "-b", "main", str(origin))
+        self.git(self.primary, "remote", "add", "origin", str(origin))
+        self.git(self.primary, "push", "-q", "origin", "main")
+        return origin
+
+    def test_push_happens_after_a_landing_and_only_then(self) -> None:
+        origin = self.with_origin()
+        self.land(self.branch_with("p1", "p1.txt"), "enqueue", "--push")
+        self.run_lander()
+        self.assertEqual(self.git(origin, "rev-parse", "main"), self.git(self.primary, "rev-parse", "main"))
+        self.assertIn("pushed main", self.land(Path(self._tmp.name) / "p1", "mine").stdout)
+        before = self.git(origin, "rev-parse", "main")
+        self.land(self.branch_with("p2", "BREAKS"), "enqueue", "--push")
+        self.run_lander()
+        self.assertEqual(self.git(origin, "rev-parse", "main"), before, "a bounced item must not push")
+
+    def test_sync_brings_origin_in_through_the_queue_then_pushes(self) -> None:
+        origin = self.with_origin()
+        elsewhere = Path(self._tmp.name) / "elsewhere"
+        self.git(Path(self._tmp.name), "clone", "-q", str(origin), str(elsewhere))
+        (elsewhere / "theirs.txt").write_text("from another machine\n")
+        self.git(elsewhere, "add", "-A")
+        self.git(elsewhere, "commit", "-qm", "work pushed from elsewhere")
+        self.git(elsewhere, "push", "-q", "origin", "main")
+        self.land(self.branch_with("local", "local.txt"), "enqueue")
+        self.run_lander()  # local main is now 1 ahead, 1 behind origin
+        result = self.land(self.primary, "sync", "--push")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.run_lander()
+        self.assertTrue((self.primary / "theirs.txt").exists())
+        self.assertEqual(self.git(origin, "rev-parse", "main"), self.git(self.primary, "rev-parse", "main"))
 
 
 if __name__ == "__main__":

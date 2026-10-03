@@ -10,11 +10,6 @@ Here is a sawtooth with a very narrow gaussian bump added to it: half a millisec
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/three_calls.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-three-calls"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.enclose
-import afield.stdlib.certifiedRange
-import afield.stdlib.certifiedNeverExceeds
-
 val f = with(Functions) {
     saw(0.7, amplitude = 0.4) + gaussian(2.31, 0.0005, 0.6, Functions.Domain.ALL)
 }
@@ -55,8 +50,6 @@ There is also `f.certifiedEnvelope(a, b, bins)`, which gives a proven `[lo, hi]`
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/picture.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-picture"}
 :::static
-import afield.stdlib.Functions
-
 val f = with(Functions) {
     saw(0.7, amplitude = 0.4) + gaussian(2.31, 0.0005, 0.6, Functions.Domain.ALL)
 }
@@ -82,9 +75,6 @@ The triangle needs one more step. Its shape is `if (t < 0.5) 2t else 2 - 2t`. Wh
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/oscillators.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-oscillators"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.enclose
-
 val cases = with(Functions) {
     listOf(
         "saw(0.5)" to saw(0.5),

@@ -57,14 +57,66 @@ def _driver_registered(repo: Path) -> bool:
     return _git(repo, "config", "--get", "merge.field-generated.driver", check=False).strip() != ""
 
 
+def regenerate(repo: Path, changed: set[str]) -> int:
+    """Rerun every generator whose inputs are in [changed] and stage what it wrote."""
+    selected = [guard for guard in guards_for_paths(changed) if guard.task in REGENERATORS]
+    for guard in selected:
+        gradle_args, extra_env = REGENERATORS[guard.task]
+        task = " ".join(gradle_args)
+        print(f"merge_regen: regenerating {guard.description} ({task})")
+        code = subprocess.run([str(repo / "gradlew"), *gradle_args], cwd=repo, env={**os.environ, **extra_env}).returncode
+        if code != 0:
+            print(f"merge_regen: {task} failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
+            return code
+        roots = [root for root in (guard.output_roots or REGENERATED_ROOTS.get(guard.task, ())) if (repo / root).exists()]
+        if roots:
+            _git(repo, "add", "-A", "--", *roots)
+
+    # GUARD_CORPORA.md counts corpora across the whole tree, so any merge can move it. Cheap: no Gradle.
+    print("merge_regen: regenerating dev_docs/GUARD_CORPORA.md")
+    if subprocess.run([sys.executable, str(repo / "tools/guard_corpora.py"), "--write"], cwd=repo).returncode != 0:
+        print("merge_regen: guard_corpora.py --write failed; the merge is left uncommitted", file=sys.stderr)
+        return 1
+    _git(repo, "add", "--", "dev_docs/GUARD_CORPORA.md")
+    if not selected:
+        print("merge_regen: no Gradle-generated artifact is affected")
+    return 0
+
+
+def regen_since(repo: Path, base: str, message: str) -> int:
+    """The landing queue's batch step: everything since [base] is already committed, one merge per
+    branch. Regenerate once for all of it, commit that if it changed anything, then run the full
+    guard once over base..HEAD. One Gradle run for the whole batch instead of one per branch."""
+    changed = set(_lines(_git(repo, "diff", "--name-only", base, "HEAD")))
+    code = regenerate(repo, changed)
+    if code != 0:
+        return code
+    if _git(repo, "diff", "--cached", "--name-only"):
+        code = subprocess.run(["git", "commit", "-q", "-m", message], cwd=repo).returncode
+        if code != 0:
+            return code
+        print("merge_regen: committed the regenerated artifacts")
+    print(f"merge_regen: running the generated-artifact guards over {base[:9]}..HEAD")
+    code = subprocess.run(
+        [sys.executable, str(repo / "tools/check_staged_generated_artifacts.py"), "--since", base], cwd=repo
+    ).returncode
+    if code != 0:
+        print("merge_regen: a guard failed on the batch", file=sys.stderr)
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("ref", nargs="?", help="branch or commit to merge into the current branch")
     parser.add_argument("--continue", dest="cont", action="store_true", help="finish a merge after resolving source conflicts")
     parser.add_argument("-m", "--message", help="merge commit message (default: git's own)")
     parser.add_argument("--no-commit", action="store_true", help="regenerate and stage, but leave the commit to you")
+    parser.add_argument("--regen-since", metavar="BASE",
+                        help="no merge: regenerate and guard everything committed since BASE (the landing queue's batch step)")
     args = parser.parse_args(argv)
     repo = Path(_git(Path.cwd(), "rev-parse", "--show-toplevel").strip())
+    if args.regen_since:
+        return regen_since(repo, args.regen_since, args.message or "Regenerate generated artifacts")
 
     if not _driver_registered(repo):
         print("merge driver field-generated is not registered; run: uv run python tools/install_git_hooks.py", file=sys.stderr)
@@ -97,29 +149,9 @@ def main(argv: list[str] | None = None) -> int:
     base = _git(repo, "merge-base", "HEAD", "MERGE_HEAD").strip()
     changed = set(_lines(_git(repo, "diff", "--name-only", base, "HEAD")))
     changed |= set(_lines(_git(repo, "diff", "--name-only", base, "MERGE_HEAD")))
-    selected = [guard for guard in guards_for_paths(changed) if guard.task in REGENERATORS]
-
-    for guard in selected:
-        gradle_args, extra_env = REGENERATORS[guard.task]
-        task = " ".join(gradle_args)
-        print(f"merge_regen: regenerating {guard.description} ({task})")
-        code = subprocess.run([str(repo / "gradlew"), *gradle_args], cwd=repo, env={**os.environ, **extra_env}).returncode
-        if code != 0:
-            print(f"merge_regen: {task} failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
-            return code
-        roots = [root for root in (guard.output_roots or REGENERATED_ROOTS.get(guard.task, ())) if (repo / root).exists()]
-        if roots:
-            _git(repo, "add", "-A", "--", *roots)
-
-    # GUARD_CORPORA.md counts corpora across the whole tree, so any merge can move it. Cheap: no Gradle.
-    print("merge_regen: regenerating dev_docs/GUARD_CORPORA.md")
-    if subprocess.run([sys.executable, str(repo / "tools/guard_corpora.py"), "--write"], cwd=repo).returncode != 0:
-        print("merge_regen: guard_corpora.py --write failed; the merge is left uncommitted", file=sys.stderr)
-        return 1
-    _git(repo, "add", "--", "dev_docs/GUARD_CORPORA.md")
-
-    if not selected:
-        print("merge_regen: no Gradle-generated artifact is affected")
+    code = regenerate(repo, changed)
+    if code != 0:
+        return code
     # The hooks only report now, so this is where the full guard runs: once, on the merged tree.
     print("merge_regen: running the generated-artifact guards on the merged tree")
     code = subprocess.run([sys.executable, str(repo / "tools/check_staged_generated_artifacts.py")], cwd=repo).returncode
