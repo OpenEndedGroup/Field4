@@ -163,6 +163,21 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("a guard failed", mine.stdout)
         self.assertEqual(self.land(self.branch_with("kappa", "k.txt"), "mine").returncode, 0)
 
+    def test_reenqueue_replaces_a_waiting_item_but_never_one_being_landed(self) -> None:
+        wt = self.branch_with("lam", "lam.txt")
+        self.land(wt, "enqueue")
+        (wt / "lam.txt").write_text("second\n")
+        self.git(wt, "commit", "-qam", "second")
+        self.assertIn("replacing", self.land(wt, "enqueue").stdout)
+        queue = Path(self.git(self.primary, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "field-land-queue/pending"
+        self.assertEqual(len(list(queue.glob("*.json"))), 1)
+        only = next(queue.glob("*.json"))
+        only.write_text(only.read_text().replace('"enqueued"', '"started": "2026-10-03T00:00:00+00:00", "enqueued"'))
+        (wt / "lam.txt").write_text("third\n")
+        self.git(wt, "commit", "-qam", "third")
+        self.assertNotIn("replacing", self.land(wt, "enqueue").stdout)
+        self.assertEqual(len(list(queue.glob("*.json"))), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

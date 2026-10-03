@@ -132,7 +132,9 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
     for item in _items(queue, PENDING):
-        if item["branch"] == branch:
+        # An item the lander has started stays: removing its file mid-landing hid it from status
+        # while it landed anyway. The new commit queues behind it instead.
+        if item["branch"] == branch and not item.get("started"):
             # A re-enqueue replaces the older request: the newest commit is the one meant.
             (queue / PENDING / f"{item['id']}.json").unlink(missing_ok=True)
             print(f"land: replacing queued {item['id']} ({item['sha'][:9]})")
