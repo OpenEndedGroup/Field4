@@ -80,9 +80,14 @@ class _Capture(Source):
 
 
 class Camera(_Capture):
-    """A webcam. ``width``/``height`` are requests; the device decides what it actually delivers."""
+    """A webcam. ``width``/``height`` are requests; the device decides what it actually delivers.
 
-    def __init__(self, device: int = 0, width: int | None = None, height: int | None = None, shrink: float = 1.0):
+    ``mirror=True`` flips each frame left-to-right, the way a selfie view does, so moving your right
+    hand moves something on the right. mediapipe's ``handedness`` then reports the mirrored hand.
+    """
+
+    def __init__(self, device: int = 0, width: int | None = None, height: int | None = None, shrink: float = 1.0,
+                 mirror: bool = False):
         capture = cv2.VideoCapture(device)
         if width:
             capture.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -90,11 +95,14 @@ class Camera(_Capture):
             capture.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         super().__init__(capture, f"camera {device}", shrink)
         self.fps = capture.get(cv2.CAP_PROP_FPS) or DEFAULT_FPS
+        self.mirror = mirror
         self._t0 = time.monotonic()
         self._last_ms = -1
 
     def __next__(self) -> Frame:
         image = self._read()
+        if self.mirror:
+            image = cv2.flip(image, 1)
         t = int((time.monotonic() - self._t0) * 1000)
         t = max(t, self._last_ms + 1)
         self._last_ms = t

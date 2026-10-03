@@ -93,10 +93,7 @@ operations:
         layout(set = 0, binding = 0) uniform sampler2D camera;
         void main() { uFragColor = vec4(texture(camera, ftc).rgb, 1.0); }
       code: |
-        import afield.four.Renderer
-        import afield.four.modules.fromContext
         import afield.python.NumpyShared
-        val renderer: Renderer = fromContext()
 
         prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
@@ -119,10 +116,7 @@ operations:
     property: code
     type: fragment
     code: |
-      import afield.four.Renderer
-      import afield.four.modules.fromContext
       import afield.python.NumpyShared
-      val renderer: Renderer = fromContext()
 
       prop<LoadedTexture>(camera) = NumpyShared.image("camera").texture()
 
@@ -158,10 +152,7 @@ operations:
         layout(location = 0) out vec4 uFragColor;
         void main() { uFragColor = fcol; }
       code: |
-        import afield.four.Renderer
-        import afield.four.modules.fromContext
         import afield.python.NumpyShared
-        val renderer: Renderer = fromContext()
 
         val tracks = NumpyShared.lines("tracks")
         val skeleton = NumpyShared.lines("skeleton")
@@ -200,10 +191,7 @@ operations:
     property: code
     strand: overlay
     code: |
-      import afield.four.Renderer
-      import afield.four.modules.fromContext
       import afield.python.NumpyShared
-      val renderer: Renderer = fromContext()
 
       val tracks = NumpyShared.lines("tracks")
       val skeleton = NumpyShared.lines("skeleton")
