@@ -1,7 +1,9 @@
 // field_syphon_probe: a separate process on the other end of a Syphon link, for tests.
 //
 //   field_syphon_probe list [waitMs]                 JSON array of announced servers
-//   field_syphon_probe serve <name> <seconds> [w h]  publishes the test pattern below at ~60 Hz
+//   field_syphon_probe serve <name> <seconds> [w h [w2 h2]]
+//                                                    publishes the test pattern below at ~60 Hz
+//                                                    (at w2 x h2 for the second half, if given)
 //   field_syphon_probe receive <match> [waitMs]      prints {"width","height","frames","pixels":[...]}
 //                                                    with the RGBA of the pattern's probe points
 //
@@ -40,11 +42,14 @@ int main(int argc, char **argv) {
         int w = argc > 5 ? atoi(argv[4]) : 64, h = argc > 5 ? atoi(argv[5]) : 48;
         fs_server *srv = fs_server_new(argv[2]);
         if (!srv) { fprintf(stderr, "%s\n", fs_last_error()); return 1; }
-        uint8_t *p = malloc((size_t)w * h * 4);
+        int w2 = argc > 7 ? atoi(argv[6]) : w, h2 = argc > 7 ? atoi(argv[7]) : h;
+        uint8_t *p = malloc((size_t)(w > w2 ? w : w2) * (h > h2 ? h : h2) * 4);
         double seconds = atof(argv[3]);
         char *d = fs_server_description(srv);
         printf("%s\n", d); fflush(stdout); fs_free_string(d);
-        for (int f = 0; f < (int)(seconds * 60); f++) {
+        int total = (int)(seconds * 60);
+        for (int f = 0; f < total; f++) {
+            if (f == total / 2) { w = w2; h = h2; }
             pattern(p, w, h, f);
             if (fs_server_publish_rgba(srv, p, w, h, 0) < 0) { fprintf(stderr, "%s\n", fs_last_error()); return 1; }
             fs_pump(16);

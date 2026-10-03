@@ -593,6 +593,9 @@ object DemoTranscriptExecSmokeTest {
         // KosmicKrisp (host-pointer buffers). Needs a Vulkan window and the helper binary, so CI
         // compiles it; the backdoor replay runs it live.
         "iosurface_ring_roundtrip_smoke",
+        // Zero-copy Syphon receive against field_syphon_probe, read back exactly. Needs a Vulkan
+        // window and the optional Syphon library, so CI compiles it; the backdoor replay runs it live.
+        "syphon_zero_copy_receive_smoke",
         // Needs a camera, which CI does not have. Compiling without evaluating is also what keeps this
         // hermetic: the box's `clipEncode(…)` calls and its Depth Anything session are behind lazy
         // initialisation, so nothing here fetches the ~600MB of encoders that running it would.

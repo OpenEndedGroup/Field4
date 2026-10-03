@@ -99,6 +99,7 @@ internal object SyphonNative {
     private val clientNewH by fn("fs_client_new", A, A, I)
     private val frameCountH by fn("fs_client_frame_count", L, A)
     private val copyRgbaH by fn("fs_client_copy_rgba", I, A, A, L, A, A)
+    private val frameSurfaceH by fn("fs_client_frame_iosurface", A, A, A, A)
     private val waitFrameH by fn("fs_client_wait_frame", L, A, L, I)
     private val clientDescH by fn("fs_client_description", A, A)
     private val clientFreeH by fn("fs_client_free", null, A)
@@ -189,6 +190,7 @@ internal object SyphonNative {
         }
         if (status == 0) return@use null
         check(status, "reading a frame")
+        cpuCopies.incrementAndGet()
         val width = w.get(I, 0)
         val height = h.get(I, 0)
         val n = width * height * 4
@@ -197,11 +199,30 @@ internal object SyphonNative {
         Triple(out, width, height)
     }
 
+    /**
+     * Frames read back through memory by [copyRgba] / [copyRgbaInto] in this JVM (each one a GPU
+     * blit into a staging buffer and a CPU swizzle). A zero-copy receiver leaves it unchanged.
+     */
+    val cpuCopies = java.util.concurrent.atomic.AtomicLong()
+
+    /**
+     * The IOSurface the client's latest frame lives in, +1 retained (release with
+     * `MetalIOSurface.release`), or 0 if there is no frame yet (or it is
+     * not IOSurface-backed; [lastErrorMessage] then says so). No pixels move.
+     */
+    fun frameSurface(c: MemorySegment): Long = Arena.ofConfined().use { a ->
+        val w = a.allocate(I)
+        val h = a.allocate(I)
+        val p = frameSurfaceH.invokeExact(c, w, h) as MemorySegment
+        if (p == MemorySegment.NULL) 0L else p.address()
+    }
+
     /** Copy the latest frame straight into [dst]; returns (width, height), or null if none yet or it does not fit. */
     fun copyRgbaInto(c: MemorySegment, dst: MemorySegment): Pair<Int, Int>? = Arena.ofConfined().use { a ->
         val w = a.allocate(I)
         val h = a.allocate(I)
         val status = copyRgbaH.invokeExact(c, dst, dst.byteSize(), w, h) as Int
+        if (status == 1) cpuCopies.incrementAndGet()
         if (status == 1) w.get(I, 0) to h.get(I, 0) else if (status == 0 || status == -2) null else fail("reading a frame")
     }
 
