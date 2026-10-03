@@ -15,11 +15,8 @@ position.x += 1f          // now (2, 2, 3)
 position { normalize() }  // a unit copy; position itself is untouched
 ```
 
-The whole surface (the vectors, their swizzles and operators, and the matrix and
-quaternion types) is *generated* from one typed algebra model in
-`tools/linalg-generator`, so the same names behave identically across `vec2`,
-`vec3`, `vec4` and both precisions. You do not need to understand the storage
-backends to begin.
+The same names behave the same way across `vec2`, `vec3`, `vec4` and both
+precisions.
 
 The images below come from Field's value visualizer,
 `ValueVisualizer.visualize(...)`, the renderer described in
@@ -236,11 +233,10 @@ velocity.normalized(scratch, epsilon = 1e-6f)
 ```
 
 The default epsilon is zero; choose a threshold when a very short direction should count
-as stationary. Scaled arithmetic handles very large and very small finite inputs. NaN,
-infinity, and invalid epsilon values are rejected. The existing `normalize()` and
-`v { normalize() }` retain their original zero-vector behaviour. These methods are emitted
-by the linalg generator for float, double and half heap vectors; see the
-[generated API reference](linear_algebra_api.md).
+as stationary. Very large and very small finite inputs are handled; NaN, infinity and an
+invalid epsilon are rejected. `normalize()` and `v { normalize() }` still produce
+non-finite components for the zero vector. `normalized()` exists on float, double and
+half vectors; see the [generated API reference](linear_algebra_api.md).
 
 ## Dot product: “how much do these agree?”
 
@@ -467,13 +463,16 @@ frameScratch {
 }
 ```
 
-`frameScratch` uses one thread-confined `FrameArena`; leaving the block
-invalidates its allocations together. Copy explicitly (`copyTo`, `set`) when a
-scratch result must outlive the scope. For dense CPU data, direct memory, or
-mapped Vulkan buffers, the `SegmentVec2/3/4Buffer` views carry the same operation
-surface over externally-owned memory. Development builds detect stale handles,
-wrong types, and cross-thread access; a distribution build can compile those
-checks out with `-PlinalgArenaChecks=false`.
+Everything made inside `frameScratch { }` is released together when the block
+ends, so copy a result out (`copyTo`, `set`) when you need it afterwards, and use
+the block from one thread only. For dense CPU data, direct memory, or mapped
+Vulkan buffers, the `SegmentVec2/3/4Buffer` views offer the same operations over
+memory something else owns. Field reports an error when a scratch value is used
+after its block has ended, as the wrong type, or from another thread.
+
+??? aside "Turning the scratch checks off"
+    The checks are compiled in by default. A distribution build can drop them with
+    `-PlinalgArenaChecks=false`.
 
 <div class="field-data-table" markdown>
 
@@ -509,16 +508,16 @@ if (intersectRayAabb(origin, direction, minimum, maximum, nearFar)) {
 
 ## The shape of it
 
-The vocabulary is small and regular. **Vectors:** name components in any order to
-read them, assign through distinct-index names to write them, use `+ - * /` for
-arithmetic, `invoke` and `len` to copy, and `%=` to overwrite. The same rules hold
-across `vec2`, `vec3`, and `vec4` (swizzles and the `invoke`/`len`/`%=` operators
-are emitted for the *float* heap vectors; arithmetic additionally covers the
-double and half-precision vectors). **Matrices:** pick the width by need. The `…f`
-family is for anything that ends up on screen (cameras, rotations, per-frame
-transforms) and the `…d` family for when accumulated arithmetic must stay exact,
-while rotation, projection, and pushing a vector through a matrix are the f32
-`Matrix4f`'s job.
+For vectors: name components in any order to read them, assign through
+distinct-index names to write them, use `+ - * /` for arithmetic, `invoke` and
+`len` to copy, and `%=` to overwrite. The same rules hold across `vec2`, `vec3`,
+and `vec4`. Swizzles and the `invoke`/`len`/`%=` operators exist on the float
+vectors; arithmetic also works on the double and half-precision vectors.
+
+For matrices, pick the precision by need: the `…f` family for anything that ends
+up on screen (cameras, rotations, per-frame transforms), the `…d` family when
+accumulated arithmetic must stay exact. Rotation, projection, and transforming a
+vector are done with the single-precision `Matrix4f`.
 
 For the complete member listing of every type, precision, and storage form, see
 the [generated vector API reference](linear_algebra_api.md).
