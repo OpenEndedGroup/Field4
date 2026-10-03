@@ -1,0 +1,1136 @@
+{
+  "operation": "analysis.find_neighbours",
+  "query": {
+    "start_seconds": 18.0,
+    "duration_seconds": 6.0,
+    "asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973"
+  },
+  "scale_seconds": 6.0,
+  "indexed_segment_count": 60,
+  "segments": [],
+  "neighbours": [
+    {
+      "segment": {
+        "id": "segment_34897cf763627ef8fad361572dc1469c",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 21.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_877d522e30ae94c77af1429782a18bfc",
+        "next_segment_id": "segment_20d063792df32d6e1d3fa009d5e45f19",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.04749015728632609,
+      "group_distances": {
+        "dynamics": 0.0157468318939209,
+        "harmony": 0.16828006505966187,
+        "pitch": 0.023174583911895752,
+        "rhythm": 0.0021533966064453125,
+        "texture": 0.01755499839782715
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_358e882b75ee3f178d7a55c3",
+        "asset_id": "sha256:f611d1ba2f78e5f9d18190e4a20a240b1f49f8abacf57537344e9a9cb797f36b",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_358e882b75ee3f178d7a55c3/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_34897cf763627ef8fad361572dc1469c",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 111.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+        "next_segment_id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.04807432413101197,
+      "group_distances": {
+        "dynamics": 0.0016591548919677734,
+        "harmony": 0.14123231172561646,
+        "pitch": 0.010075032711029053,
+        "rhythm": 0.0011873841285705566,
+        "texture": 0.04469609260559082
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_7fd4e0818fa499b0ef1844c8",
+        "asset_id": "sha256:bbc610c4b33bc3d832b4275ff35c42d6d38839305cd9b604291547938c4b4e28",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_7fd4e0818fa499b0ef1844c8/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 108.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_405179b360873ea4107ebf11d7160fe7",
+        "next_segment_id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.05435504674911499,
+      "group_distances": {
+        "dynamics": 0.030473947525024414,
+        "harmony": 0.20080268383026123,
+        "pitch": 0.005991876125335693,
+        "rhythm": 0.0012609362602233887,
+        "texture": 0.020996451377868652
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_1b9a541dc845172d0ae7cb65",
+        "asset_id": "sha256:1348bab9a2dfa5a4d2548e7bc68f02fcc457eb9e5eaffa7481435093fded4215",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_1b9a541dc845172d0ae7cb65/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_405179b360873ea4107ebf11d7160fe7",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 105.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_5b5eccafc69702305b2d6ad78de16b1a",
+        "next_segment_id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.06020291725794475,
+      "group_distances": {
+        "dynamics": 0.030139029026031494,
+        "harmony": 0.2475069761276245,
+        "pitch": 0.005497336387634277,
+        "rhythm": 0.004687070846557617,
+        "texture": 0.008075714111328125
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_1ffb9ab8277841ed9f52433a",
+        "asset_id": "sha256:5ee45a3188c46425fbca8e05db0b3c90fa6c43fedc0a01e08b1c32592d21b2e8",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_1ffb9ab8277841ed9f52433a/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_405179b360873ea4107ebf11d7160fe7",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_877d522e30ae94c77af1429782a18bfc",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 18.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_d616510d7b833799cfbea019d215e675",
+        "next_segment_id": "segment_34897cf763627ef8fad361572dc1469c",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.061392424106597905,
+      "group_distances": {
+        "dynamics": 0.019030213356018066,
+        "harmony": 0.23965692520141602,
+        "pitch": 0.013339042663574219,
+        "rhythm": 0.004332304000854492,
+        "texture": 0.015901029109954834
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_595c3ec95da471b520ba0a71",
+        "asset_id": "sha256:c2efe21ecdb93ce9415d70902fcd29b3790b379519c2b1a6e02b84f99fcb340a",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_595c3ec95da471b520ba0a71/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_877d522e30ae94c77af1429782a18bfc",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_20d063792df32d6e1d3fa009d5e45f19",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 24.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_34897cf763627ef8fad361572dc1469c",
+        "next_segment_id": "segment_02e062ffb00294304021c3ed687e9d6f",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.06399005333582561,
+      "group_distances": {
+        "dynamics": 0.005776941776275635,
+        "harmony": 0.2680588364601135,
+        "pitch": 0.010314583778381348,
+        "rhythm": 0.002833068370819092,
+        "texture": 0.011731505393981934
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_a48729c0ebcb01f223c7e359",
+        "asset_id": "sha256:c4da7070a7cff687e791e6ba40e66943e787ae391d00ef7c1b0cb4eb95ada8ee",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_a48729c0ebcb01f223c7e359/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_20d063792df32d6e1d3fa009d5e45f19",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 114.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+        "next_segment_id": "segment_a30d821ce28a5635bf28e6fe04643ea0",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.06501747051874797,
+      "group_distances": {
+        "dynamics": 0.016833961009979248,
+        "harmony": 0.17317050695419312,
+        "pitch": 0.010429859161376953,
+        "rhythm": 0.001363515853881836,
+        "texture": 0.06866395473480225
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_5d726e204a5cad84b6e6d338",
+        "asset_id": "sha256:0039501dea139ca47b215cc4a1965d839e61cb6fd3e9ca422eaba410c469769a",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_5d726e204a5cad84b6e6d338/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_a30d821ce28a5635bf28e6fe04643ea0",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 117.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+        "next_segment_id": "segment_46bbe0b2d1103e1ff8dc1236d8513388",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.06814713795979818,
+      "group_distances": {
+        "dynamics": 0.007040679454803467,
+        "harmony": 0.18729621171951294,
+        "pitch": 0.006383836269378662,
+        "rhythm": 0.0011594891548156738,
+        "texture": 0.07327985763549805
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_92ef29f764be4e1800f009b4",
+        "asset_id": "sha256:0cbee05c5eb2b44374027bc6e43ec9bad4587b56c5c9e66cfaa1b3f252186ee0",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_92ef29f764be4e1800f009b4/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_a30d821ce28a5635bf28e6fe04643ea0",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_dc010766b2ff68661e7ee664d964c0c8",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 96.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_78a101567ec5eb0b582857e3721e4acb",
+        "next_segment_id": "segment_9ce3a53dd8d44834b28ec2e8bb707a18",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.07567296822865804,
+      "group_distances": {
+        "dynamics": 0.03440737724304199,
+        "harmony": 0.3054347634315491,
+        "pitch": 0.024243652820587158,
+        "rhythm": 0.0028331875801086426,
+        "texture": 0.0089377760887146
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_a86b3df913b5449c794808f1",
+        "asset_id": "sha256:4ebbc0e386692bbf926ba54b0cb2f2b8242a69bf74bd515e0d9c6f9ec8e48d66",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_a86b3df913b5449c794808f1/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_dc010766b2ff68661e7ee664d964c0c8",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_5b5eccafc69702305b2d6ad78de16b1a",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 102.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_9ce3a53dd8d44834b28ec2e8bb707a18",
+        "next_segment_id": "segment_405179b360873ea4107ebf11d7160fe7",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.07606850226720176,
+      "group_distances": {
+        "dynamics": 0.02295738458633423,
+        "harmony": 0.30515992641448975,
+        "pitch": 0.021944701671600342,
+        "rhythm": 0.015333831310272217,
+        "texture": 0.007622659206390381
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_a786ae9e1bed0e1a65d80f9a",
+        "asset_id": "sha256:c2f75b3aba68ba3835e441f50b9322fe8cd0ac461297260632773122f61fd5ce",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_a786ae9e1bed0e1a65d80f9a/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_5b5eccafc69702305b2d6ad78de16b1a",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_78a101567ec5eb0b582857e3721e4acb",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 93.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_fbcd25a9f32c5cea2fba6e5c4834ebde",
+        "next_segment_id": "segment_dc010766b2ff68661e7ee664d964c0c8",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.07612854560216269,
+      "group_distances": {
+        "dynamics": 0.030896306037902832,
+        "harmony": 0.306129515171051,
+        "pitch": 0.025463461875915527,
+        "rhythm": 0.0008457303047180176,
+        "texture": 0.011235415935516357
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_cf1703f8000b751d007ad7e2",
+        "asset_id": "sha256:19ce888b1861089b8d77175d437df0a0a1ac69fb96efb45c6802594014c471df",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_cf1703f8000b751d007ad7e2/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_78a101567ec5eb0b582857e3721e4acb",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    },
+    {
+      "segment": {
+        "id": "segment_81684eae91f7cf87a2cc2e41ec678b0d",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "start_seconds": 36.0,
+        "duration_seconds": 6.0,
+        "scale_seconds": 6.0,
+        "previous_segment_id": "segment_9254a756660b390ede6d84996d2da03a",
+        "next_segment_id": "segment_c5291717ab3cc4b1285d209aae94cd5f",
+        "descriptor_representation_id": "rep_2b58dd003ba99c5e47d1d3dc",
+        "metadata": {
+          "descriptor_version": "librosa-corpus-v1",
+          "source_operation_duration_seconds": 182.29985416666668,
+          "source_operation_start_seconds": 0.0
+        }
+      },
+      "distance": 0.07626238822937012,
+      "group_distances": {
+        "dynamics": 0.03235739469528198,
+        "harmony": 0.2817528247833252,
+        "pitch": 0.027678191661834717,
+        "rhythm": 0.0032649636268615723,
+        "texture": 0.023517131805419922
+      },
+      "audio": {
+        "id": "rep_c7834a92187cd8596a7f5727",
+        "asset_id": "sha256:d8aec7df03436dcc53124f5754a1b3fcf4fbd88fe222beb1487c3f03c9e6f225",
+        "role": "canonical_project",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 8750393,
+        "duration_seconds": 182.29985416666668,
+        "native_sample_rate": 44100,
+        "resampling_method": "ffmpeg_libsoxr_precision_28",
+        "binary_url": "/v1/representations/rep_c7834a92187cd8596a7f5727/content",
+        "metadata": {
+          "derived_from_asset_id": "sha256:1c109f9bd46527fa7142102ac8e0a4a9dfe3d20bdb9caf260b66509b8fe0e746",
+          "original_filename": "Henry Mancini - Final Out at Candlestick Park.48k-f32.wav",
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 182.29985416666668,
+            "format": "WAV",
+            "frame_count": 8750393,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      },
+      "splice_preview": {
+        "id": "rep_c4e41ede74626be983c621be",
+        "asset_id": "sha256:038c346700e6e03ab163779cfa5be8ae657ac2de8070979cef53ff58be0d40eb",
+        "role": "corpus_splice_preview",
+        "media_type": "audio/wav",
+        "sample_rate": 48000,
+        "channels": 2,
+        "frame_count": 213600,
+        "duration_seconds": 4.45,
+        "native_sample_rate": 48000,
+        "resampling_method": "identity",
+        "binary_url": "/v1/representations/rep_c4e41ede74626be983c621be/content",
+        "metadata": {
+          "crossfade": "equal_power",
+          "crossfade_seconds": 0.05,
+          "neighbour_segment_id": "segment_81684eae91f7cf87a2cc2e41ec678b0d",
+          "peak_guarded": false,
+          "query_asset_id": "sha256:ed8bdca3410f3d6acb13585c69dcf08f606d6ac94a0f758fad58d39030d75973",
+          "query_start_seconds": 18.0,
+          "wav": {
+            "channels": 2,
+            "duration_seconds": 4.45,
+            "format": "WAV",
+            "frame_count": 213600,
+            "sample_rate": 48000,
+            "subtype": "FLOAT"
+          }
+        }
+      }
+    }
+  ],
+  "weights": {
+    "dynamics": 0.35,
+    "harmony": 0.8,
+    "pitch": 0.55,
+    "rhythm": 0.7,
+    "texture": 1.35
+  },
+  "summary": {
+    "duration_seconds": 6.0,
+    "embedding_dimensions": 71,
+    "overlap": 0.0,
+    "scales_seconds": [
+      6.0
+    ],
+    "segment_count": 1,
+    "corpus": {
+      "operation": "analysis.find_neighbours",
+      "segment_ids": [],
+      "neighbours": [
+        {
+          "segment_id": "segment_34897cf763627ef8fad361572dc1469c",
+          "distance": 0.04749015728632609,
+          "group_distances": {
+            "dynamics": 0.0157468318939209,
+            "harmony": 0.16828006505966187,
+            "pitch": 0.023174583911895752,
+            "rhythm": 0.0021533966064453125,
+            "texture": 0.01755499839782715
+          },
+          "splice_preview_representation_id": "rep_358e882b75ee3f178d7a55c3"
+        },
+        {
+          "segment_id": "segment_196bb35f2d6997ba7f683e7c1f72f6b4",
+          "distance": 0.04807432413101197,
+          "group_distances": {
+            "dynamics": 0.0016591548919677734,
+            "harmony": 0.14123231172561646,
+            "pitch": 0.010075032711029053,
+            "rhythm": 0.0011873841285705566,
+            "texture": 0.04469609260559082
+          },
+          "splice_preview_representation_id": "rep_7fd4e0818fa499b0ef1844c8"
+        },
+        {
+          "segment_id": "segment_f035c3e0ce21756de0df0382dcd3f2e5",
+          "distance": 0.05435504674911499,
+          "group_distances": {
+            "dynamics": 0.030473947525024414,
+            "harmony": 0.20080268383026123,
+            "pitch": 0.005991876125335693,
+            "rhythm": 0.0012609362602233887,
+            "texture": 0.020996451377868652
+          },
+          "splice_preview_representation_id": "rep_1b9a541dc845172d0ae7cb65"
+        },
+        {
+          "segment_id": "segment_405179b360873ea4107ebf11d7160fe7",
+          "distance": 0.06020291725794475,
+          "group_distances": {
+            "dynamics": 0.030139029026031494,
+            "harmony": 0.2475069761276245,
+            "pitch": 0.005497336387634277,
+            "rhythm": 0.004687070846557617,
+            "texture": 0.008075714111328125
+          },
+          "splice_preview_representation_id": "rep_1ffb9ab8277841ed9f52433a"
+        },
+        {
+          "segment_id": "segment_877d522e30ae94c77af1429782a18bfc",
+          "distance": 0.061392424106597905,
+          "group_distances": {
+            "dynamics": 0.019030213356018066,
+            "harmony": 0.23965692520141602,
+            "pitch": 0.013339042663574219,
+            "rhythm": 0.004332304000854492,
+            "texture": 0.015901029109954834
+          },
+          "splice_preview_representation_id": "rep_595c3ec95da471b520ba0a71"
+        },
+        {
+          "segment_id": "segment_20d063792df32d6e1d3fa009d5e45f19",
+          "distance": 0.06399005333582561,
+          "group_distances": {
+            "dynamics": 0.005776941776275635,
+            "harmony": 0.2680588364601135,
+            "pitch": 0.010314583778381348,
+            "rhythm": 0.002833068370819092,
+            "texture": 0.011731505393981934
+          },
+          "splice_preview_representation_id": "rep_a48729c0ebcb01f223c7e359"
+        },
+        {
+          "segment_id": "segment_262ca1e388b9be6f452c502d0b7d0227",
+          "distance": 0.06501747051874797,
+          "group_distances": {
+            "dynamics": 0.016833961009979248,
+            "harmony": 0.17317050695419312,
+            "pitch": 0.010429859161376953,
+            "rhythm": 0.001363515853881836,
+            "texture": 0.06866395473480225
+          },
+          "splice_preview_representation_id": "rep_5d726e204a5cad84b6e6d338"
+        },
+        {
+          "segment_id": "segment_a30d821ce28a5635bf28e6fe04643ea0",
+          "distance": 0.06814713795979818,
+          "group_distances": {
+            "dynamics": 0.007040679454803467,
+            "harmony": 0.18729621171951294,
+            "pitch": 0.006383836269378662,
+            "rhythm": 0.0011594891548156738,
+            "texture": 0.07327985763549805
+          },
+          "splice_preview_representation_id": "rep_92ef29f764be4e1800f009b4"
+        },
+        {
+          "segment_id": "segment_dc010766b2ff68661e7ee664d964c0c8",
+          "distance": 0.07567296822865804,
+          "group_distances": {
+            "dynamics": 0.03440737724304199,
+            "harmony": 0.3054347634315491,
+            "pitch": 0.024243652820587158,
+            "rhythm": 0.0028331875801086426,
+            "texture": 0.0089377760887146
+          },
+          "splice_preview_representation_id": "rep_a86b3df913b5449c794808f1"
+        },
+        {
+          "segment_id": "segment_5b5eccafc69702305b2d6ad78de16b1a",
+          "distance": 0.07606850226720176,
+          "group_distances": {
+            "dynamics": 0.02295738458633423,
+            "harmony": 0.30515992641448975,
+            "pitch": 0.021944701671600342,
+            "rhythm": 0.015333831310272217,
+            "texture": 0.007622659206390381
+          },
+          "splice_preview_representation_id": "rep_a786ae9e1bed0e1a65d80f9a"
+        },
+        {
+          "segment_id": "segment_78a101567ec5eb0b582857e3721e4acb",
+          "distance": 0.07612854560216269,
+          "group_distances": {
+            "dynamics": 0.030896306037902832,
+            "harmony": 0.306129515171051,
+            "pitch": 0.025463461875915527,
+            "rhythm": 0.0008457303047180176,
+            "texture": 0.011235415935516357
+          },
+          "splice_preview_representation_id": "rep_cf1703f8000b751d007ad7e2"
+        },
+        {
+          "segment_id": "segment_81684eae91f7cf87a2cc2e41ec678b0d",
+          "distance": 0.07626238822937012,
+          "group_distances": {
+            "dynamics": 0.03235739469528198,
+            "harmony": 0.2817528247833252,
+            "pitch": 0.027678191661834717,
+            "rhythm": 0.0032649636268615723,
+            "texture": 0.023517131805419922
+          },
+          "splice_preview_representation_id": "rep_c4e41ede74626be983c621be"
+        }
+      ],
+      "indexed_segment_count": 60,
+      "scale_seconds": 6.0,
+      "weights": {
+        "dynamics": 0.35,
+        "harmony": 0.8,
+        "pitch": 0.55,
+        "rhythm": 0.7,
+        "texture": 1.35
+      }
+    }
+  }
+}

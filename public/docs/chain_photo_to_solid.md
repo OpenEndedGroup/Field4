@@ -71,8 +71,8 @@ resolution, as a closed surface with no holes should be.
 
 ## The plaque
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/plaque.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="a plaque has none" embed=true force=true timeout="300" w="1120" h="440" padding="18" name="chain-photo-plaque" alt="Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab is visible under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest" macro-file="../../dev_docs/agents/transcripts/photo_to_solid_chain.yaml" capture-box="photo_plaque"}
-// Built and launched from dev_docs/agents/transcripts/photo_to_solid_chain.yaml.
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/plaque.png" capture="box" open-outputs="true" wait-output=true wait-output-kind="all" wait-output-contains="a plaque has none" wait="3" embed=true force=true timeout="300" w="1120" h="440" padding="18" name="chain-photo-plaque" alt="Three renders of the same pale wireframed relief plaque on a dark background: from above, where the room reads as a shallow basin with a raised near edge and raised side walls; from three-quarters, where the flat base slab is visible under the relief; and edge-on along the rim, where the slab and the vertical skirt joining it to the surface are clearest" macro-file="../../dev_docs/agents/transcripts/docs_capture/photo_plaque.yaml" capture-box="photo_plaque"}
+// Built and launched from dev_docs/agents/transcripts/docs_capture/photo_plaque.yaml.
 ```
 
 The caption reads `watertight=true manifold=true chi=2` and `boundary loops=0`, where the
@@ -102,6 +102,12 @@ The companion `vol(A − B) = vol(A) − vol(A ∩ B)` is checked in the same bo
 
 The renders come from `TriMesh.renderPng`, a CPU rasteriser with a depth-tested wireframe. It does
 not use AWT, so it is safe to call from a box on macOS.
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/mounted_path_trace.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="photo_mount_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-photo_mount_trace" alt="The mounted relief and its frame, lit and rendered with the GPU path tracer." macro-file="../../dev_docs/agents/transcripts/photo_mount_path_trace.yaml" capture-box="photo_mount_trace" capture-profile="linux-nvidia"}
+// Built and launched from dev_docs/agents/transcripts/photo_mount_path_trace.yaml.
+```
+
+The mounted relief and its frame, lit and rendered with the GPU path tracer.
 
 ### Asking for normals breaks the round trip
 

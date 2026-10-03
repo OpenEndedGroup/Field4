@@ -1,6 +1,7 @@
 # Add a path-traced hero of the sliced layer stack to chain_ceres_manifold_contours
 
 - **Handoff:** `9098c6be-3067-4141-ad8c-f8f90a00c317` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/chain_ceres_manifold_contours/
 - **Filed by:** agent:claude, 2026-09-30 20:49
 - **Close with:** `python tools/docs_notes.py handoff-close 9098c6be "what happened"`
@@ -77,3 +78,14 @@ A hidden hero fence after the opening paragraph:
 It also needs one or two sentences under the hero that say what the reader is looking at (48
 extruded layers of the canonical form, at volume 1), and the smoke `manifold.polytope.contours`
 could assert the same layer count.
+
+## Completion — 2026-10-03
+
+Added the real RTX 4090 path-traced hero to `chain_ceres_manifold_contours.md`: canonical gC, 48 extruded layers, height colour ramp, and at least 900 accumulated samples. The retained Linux/NVIDIA capture is `assets/chain_ceres_manifold_contours/stack.png`; the new `polytope_layer_stack_path_trace.yaml` companion rebuilds the actual geometry and renderer.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

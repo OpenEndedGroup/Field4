@@ -214,3 +214,40 @@ The final retained capture and measurements are in optional/streamdiffusion/arti
 and public/docs/assets/streaming_diffusion. Mac runtime behavior remains unexecuted
 on this Linux host; the platform guard precedes all platform-specific operations.
 Owned worker processes were gone after the automation client closed.
+
+## Renderer correspondence implementation
+
+The optional `StreamDiffusionMotionProvider` now supplies all three paths: Vulkan
+display reprojection, Vulkan history blending, and CUDA noise advection. Each
+request carries current/reference renderer frame IDs, times, generations and a
+DISPLAY/HISTORY/NOISE use. Frame IDs advance on every source draw; noise references
+the previous accepted input, history references resolved outputs, and display
+references the delayed output's source geometry. Consumers finish recording
+before another provider request; targets may be reused within the command buffer.
+
+Motion is backward absolute UV, confidence and reactive rejection in a
+single-layer sampled/transfer-source RGBA32F RTT matching source extent. The six
+input slots include an additional 16-byte-per-pixel plane when a provider is
+supplied. RGB and motion share the allocation/semaphore lifetime; CUDA clones
+both before releasing the slot. Output transport is unchanged. Metadata names
+the motion reference ID, with -1 disabling a missing field.
+
+History uses two resolved targets, clamps history to fresh 3x3 colours and rejects
+inter-generation blending. Display mixes warped history with current source at
+invalid pixels. Noise uses nearest CUDA grid sampling and square-root mixing,
+clearing state on reset; temporal VAE compression makes this a spatial heuristic.
+No model flow/depth conditioning is introduced. The public guide documents the
+coordinate convention, cost, retention window and validity requirements.
+
+## Display hole fill and free text prompts
+
+`StreamDiffusionMotionProvider.recordFallback` optionally records a sampled RGB
+fallback immediately after DISPLAY correspondence, borrowing the resolved styled
+reference. The provider owns its target; format, extent and sample count match
+the source. Returning null retains source RGB at rejected pixels. The curve demo
+uses a GPU local paper fill: it preserves current source marks, excludes old
+reference ribbon IDs and strong contrast, and reconstructs paper from nearby
+stylized pixels. This removes the source-paper colour mismatch that made a pale
+mask imprint follow old curve positions. Filling unknown styled content remains
+a heuristic. The starting point now defaults to charcoal and accepts arbitrary
+text through a prompt override; the three material choices are convenience presets.

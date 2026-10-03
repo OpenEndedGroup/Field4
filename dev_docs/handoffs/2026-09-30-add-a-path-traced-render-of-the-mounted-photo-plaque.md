@@ -1,6 +1,7 @@
 # Add a path-traced render of the mounted photo plaque
 
 - **Handoff:** `4daf8d53-c867-4286-bfc8-5e4e64e27570` (project)
+- **Status:** completed on Linux/NVIDIA, 2026-10-03; see [verification record](../ELSEWHERE_CAPTURES.md).
 - **Filed from:** https://openendedgroup.com/field4/chain_photo_to_solid/
 - **Filed by:** agent:claude, 2026-09-30 20:50
 - **Close with:** `python tools/docs_notes.py handoff-close 4daf8d53 "what happened"`
@@ -53,3 +54,14 @@ reproducibility for the page's figures and CI's `chain.photo-to-solid` check sti
 
 One new `diffstatic_runner` fence and a sentence of caption in or after "Mounted in a frame". No
 limitation paragraph needs to come back.
+
+## Completion — 2026-10-03
+
+Added the real RTX 4090 render of `PhotoToSolidChain.mount()` relief and frame to `chain_photo_to_solid.md`, with at least 900 accumulated samples. The retained capture is `assets/chain_photo_to_solid/mounted_path_trace.png`; `photo_mount_path_trace.yaml` reproduces it. Also repaired the older plaque capture using a focused transcript so its three actual views are visible.
+
+The real captures were visually inspected. `checkAgentTranscripts` and the clean
+HTML docs build passed; the published asset check found no missing or placeholder
+media. Completion is recorded here because the originating Mac annotation store
+is absent on this machine; its handoff ID still needs closing in that store after
+these changes land. The questions above describe the original request; the
+choices and reproducible commands are in the linked verification record.

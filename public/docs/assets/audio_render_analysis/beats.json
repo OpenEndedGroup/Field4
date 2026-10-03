@@ -1,0 +1,179 @@
+{
+  "id": "analysis_8b802c2225224a5cbaa2f991a47a3b54",
+  "operation_id": "op_67ad2591f0aa4c1c83e6b46dc11e00cf",
+  "request_hash": "sha256:f33f5c6185d396aa98b40d8ce5714ce11b1f71d3316f6f60ed1bf7c5eb0de235",
+  "source": {
+    "start_seconds": 0.0,
+    "duration_seconds": 7.5,
+    "asset_id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f"
+  },
+  "data": {
+    "id": "rep_243d51878aa78e0243efa4c0",
+    "asset_id": "sha256:2771ad7b6eedbfacfc9d2ff41f6479fcf18dd8d024f2b7bea6a5fff0631652ea",
+    "role": "analysis_beats",
+    "media_type": "application/x-npz",
+    "sample_rate": null,
+    "channels": null,
+    "frame_count": null,
+    "duration_seconds": null,
+    "native_sample_rate": 22050,
+    "resampling_method": "librosa_soxr_hq",
+    "binary_url": "/v1/representations/rep_243d51878aa78e0243efa4c0/content",
+    "metadata": {
+      "algorithm": "beat_track plus multi-window tempogram dominant-tempo trajectories",
+      "analysis_sample_rate": 22050,
+      "arrays": {
+        "beat_frames": [
+          11
+        ],
+        "beat_strength": [
+          11
+        ],
+        "beat_times_seconds": [
+          11
+        ],
+        "onset_strength": [
+          646
+        ],
+        "scale_seconds": [
+          4
+        ],
+        "tempo_0_bpm": [
+          646
+        ],
+        "tempo_0_confidence": [
+          646
+        ],
+        "tempo_1_bpm": [
+          646
+        ],
+        "tempo_1_confidence": [
+          646
+        ],
+        "tempo_2_bpm": [
+          646
+        ],
+        "tempo_2_confidence": [
+          646
+        ],
+        "tempo_3_bpm": [
+          646
+        ],
+        "tempo_3_confidence": [
+          646
+        ],
+        "times_seconds": [
+          646
+        ]
+      },
+      "backend": "analysis.librosa",
+      "backend_revision": "librosa:0.11.0",
+      "channel_mix": "arithmetic_mean_to_mono",
+      "frame_period_seconds": 0.011609977324263039,
+      "hop_length": 256,
+      "library": "librosa",
+      "library_version": "0.11.0",
+      "max_bpm": 300.0,
+      "min_bpm": 30.0,
+      "operation_id": "op_67ad2591f0aa4c1c83e6b46dc11e00cf",
+      "request_hash": "sha256:f33f5c6185d396aa98b40d8ce5714ce11b1f71d3316f6f60ed1bf7c5eb0de235",
+      "resampling": "librosa_soxr_hq",
+      "source_asset_id": "sha256:6b012678664379dc21cdd855f224c04c49138c58c6768e810120e69a6b9af33f",
+      "source_channels": 2,
+      "source_duration_seconds": 7.5,
+      "source_sample_rate": 44100,
+      "source_start_seconds": 0.0
+    }
+  },
+  "artifacts": [],
+  "summary": {
+    "beat_count": 11,
+    "duration_seconds": 7.5,
+    "global_bpm": 95.703125,
+    "scales": [
+      {
+        "median_bpm": 95.703125,
+        "median_confidence": 0.50757896900177,
+        "scale_seconds": 2.0,
+        "window_frames": 172
+      },
+      {
+        "median_bpm": 95.703125,
+        "median_confidence": 0.8405001163482666,
+        "scale_seconds": 4.0,
+        "window_frames": 345
+      },
+      {
+        "median_bpm": 95.703125,
+        "median_confidence": 0.912354052066803,
+        "scale_seconds": 8.0,
+        "window_frames": 689
+      },
+      {
+        "median_bpm": 95.703125,
+        "median_confidence": 0.922590970993042,
+        "scale_seconds": 16.0,
+        "window_frames": 1378
+      }
+    ]
+  },
+  "analysis": {
+    "algorithm": "beat_track plus multi-window tempogram dominant-tempo trajectories",
+    "analysis_sample_rate": 22050,
+    "arrays": {
+      "beat_frames": [
+        11
+      ],
+      "beat_strength": [
+        11
+      ],
+      "beat_times_seconds": [
+        11
+      ],
+      "onset_strength": [
+        646
+      ],
+      "scale_seconds": [
+        4
+      ],
+      "tempo_0_bpm": [
+        646
+      ],
+      "tempo_0_confidence": [
+        646
+      ],
+      "tempo_1_bpm": [
+        646
+      ],
+      "tempo_1_confidence": [
+        646
+      ],
+      "tempo_2_bpm": [
+        646
+      ],
+      "tempo_2_confidence": [
+        646
+      ],
+      "tempo_3_bpm": [
+        646
+      ],
+      "tempo_3_confidence": [
+        646
+      ],
+      "times_seconds": [
+        646
+      ]
+    },
+    "channel_mix": "arithmetic_mean_to_mono",
+    "frame_period_seconds": 0.011609977324263039,
+    "hop_length": 256,
+    "library": "librosa",
+    "library_version": "0.11.0",
+    "max_bpm": 300.0,
+    "min_bpm": 30.0,
+    "resampling": "librosa_soxr_hq",
+    "source_channels": 2,
+    "source_sample_rate": 44100
+  },
+  "created_at": "2026-10-03T10:09:59.405677Z"
+}

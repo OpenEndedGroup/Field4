@@ -37,7 +37,7 @@ start(renderer::run)
 <!-- field-box id="diffusion_curves" index="1" -->
 
 ```edn [field-box id="diffusion_curves" role="properties"]
-{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 77 "characters" 3571 "sha256" "856687c79aa949cc7485b20ae93e58ce84fe223d280877ec5cd08697110b397c"}]}
+{"id" "diffusion_curves" "index" 1 "name" "3 · spinning curves" "parents" ["root" "diffusion_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "diffusion_renderer"} "name" "3 · spinning curves" "_tombstone" false "frame" #afield/rect [440.0 160.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_curves_code_.kt" "lines" 91 "characters" 4607 "sha256" "1e00552ebaf9ee50d3305da096f5b851ba2ec4fbbe6aa9b17136e3280a5eb625"}]}
 ```
 
 ```kotlin [field-property box="diffusion_curves" name="code" path="diffusion_curves_code_.kt"]
@@ -55,7 +55,7 @@ fromContextWithNameOrNull<SpinningDiffusionDemo>("diffusionDemo")?.close()
 val backend = "diffusion"
 val whiteOnBlack = false
 val root = StreamDiffusionSupport.configuredRoot()
-val config = root?.let { StreamDiffusionConfig(it, backend = backend) }
+val config = root?.let { StreamDiffusionConfig(it, backend = backend, displayReprojection = true, historyBlend = .35, noiseAdvection = .8) }
 val support = StreamDiffusionSupport.probe(owner, config)
 if (!support.available) {
     print("Streaming diffusion unavailable: ${support.reason}")
@@ -68,31 +68,45 @@ if (!support.available) {
         The model environment is optional; you can keep editing this document.
     """.trimIndent())
 } else {
-    var material = 0 // 0 ink, 1 charcoal, 2 barbed wire
+    var material = 1 // 0 ink, 1 charcoal, 2 barbed wire
+    var promptOverride = "" // Any text prompt; blank selects the material preset.
     var strength = .60
+    var noiseAdvection = .8
     var adaptPrompt = whiteOnBlack
     var pendingReset = false
     var animate = true
-    fun selectedPrompt(): String = when {
+    fun selectedPrompt(): String = promptOverride.trim().ifEmpty { when {
         material == 2 && adaptPrompt -> StreamDiffusionPresets.WHITE_WIRE
         material == 2 -> StreamDiffusionPresets.WIRE
         material == 1 && adaptPrompt -> StreamDiffusionPresets.WHITE_CHARCOAL
         material == 1 -> StreamDiffusionPresets.CHARCOAL
         adaptPrompt -> StreamDiffusionPresets.WHITE_INK
         else -> StreamDiffusionPresets.INK
-    }
+    } }
     diffusionDemo = SpinningDiffusionDemo(owner,
         checkNotNull(config).copy(prompt = selectedPrompt(), strength = strength),
         whiteOnBlack = whiteOnBlack)
     val demo = diffusionDemo
     controlGroup("diffusion") {
-        slider("0: ink / 1: charcoal / 2: wire", min = 0.0, max = 2.0, step = 1.0, initialValue = 0.0) {
+        slider("0: ink / 1: charcoal / 2: wire", min = 0.0, max = 2.0, step = 1.0, initialValue = material.toDouble()) {
             material = it.toInt(); pendingReset = true
+        }
+        text("Prompt override (blank uses preset)", initialValue = promptOverride) {
+            promptOverride = it; pendingReset = true
         }
         slider("Strength", min = .2, max = .9, step = .05, initialValue = strength) {
             strength = it; pendingReset = true
         }
         checkbox("Adapt prompt for white marks on black", initialValue = adaptPrompt) { adaptPrompt = it; pendingReset = true }
+        checkbox("Reproject output to current geometry", initialValue = demo.view.displayReprojection) {
+            demo.view.displayReprojection = it
+        }
+        slider("History blend", min = 0.0, max = .9, step = .05, initialValue = demo.view.historyBlend) {
+            demo.view.historyBlend = it
+        }
+        slider("Noise advection (experimental)", min = 0.0, max = 1.0, step = .05, initialValue = noiseAdvection) {
+            noiseAdvection = it; pendingReset = true
+        }
         checkbox("Animate", initialValue = true) { animate = it }
         button("Reset causal state / seed") { if (it) pendingReset = true }
     }
@@ -108,10 +122,10 @@ if (!support.available) {
             previous = now
             demo.angle = angle.toFloat()
             if (pendingReset && demo.view.session.ready) {
-                demo.view.reset(selectedPrompt(), strength, 0)
+                demo.view.reset(selectedPrompt(), strength, 0, noiseAdvection)
                 pendingReset = false
             }
-            if (count++ % 120 == 0) print("${demo.view.session.status}; captured=${demo.view.capturedFrames}, shown=${demo.view.presentedFrames}, skipped=${demo.view.skippedCaptures}; ${demo.view.session.capabilities}")
+            if (count++ % 120 == 0) print("${demo.view.session.status}; captured=${demo.view.capturedFrames}, shown=${demo.view.presentedFrames}, skipped=${demo.view.skippedCaptures}, displayWarps=${demo.view.displayReprojectionRequests}, historyWarps=${demo.view.historyBlendRequests}, noiseMaps=${demo.view.noiseMotionFrames}; ${demo.view.session.capabilities}")
             if (count % 120 == 1 && demo.view.session.capabilities.optBoolean("tensorrt_active"))
                 print("Active TAEHV TensorRT; shown=${demo.view.presentedFrames}")
             frame()
@@ -125,7 +139,7 @@ if (!support.available) {
 <!-- field-box id="diffusion_guide" index="2" -->
 
 ```edn [field-box id="diffusion_guide" role="properties"]
-{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 13 "characters" 587 "sha256" "0513058739865495dd68360208e7740d73d5899f50faa89354822a48e57623a0"}]}
+{"id" "diffusion_guide" "index" 2 "name" "1 · streaming diffusion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "1 · streaming diffusion" "_tombstone" false "frame" #afield/rect [40.0 40.0 360.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "diffusion_guide_code_.kt" "lines" 15 "characters" 717 "sha256" "6d726150f158af93271a1f73a1d6aaeb918de715a861e722bad442e1444cfa0e"}]}
 ```
 
 ```kotlin [field-property box="diffusion_guide" name="code" path="diffusion_guide_code_.kt"]
@@ -133,8 +147,10 @@ markdown("""
     # Streaming diffusion
 
     Run **2 · renderer**, then **3 · spinning curves**.
-    Source is on the left; the returned ink, charcoal or wire image is on the right.
-    Open the diffusion controls to change material and strength.
+    Source is on the left; the returned stylized image is on the right.
+    The example starts with charcoal. Enter any text in the prompt override.
+    Open the diffusion controls to change material, strength, reprojection,
+    history blending and experimental noise advection.
 
     The local model worker is optional and requires Linux/NVIDIA.
     On other platforms the curves box explains availability without starting it.

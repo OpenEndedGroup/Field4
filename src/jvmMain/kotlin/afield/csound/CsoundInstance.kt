@@ -161,6 +161,22 @@ class CsoundInstance(
         pendingL = FloatArray(ksmps)
         pendingR = FloatArray(ksmps)
         repeat(ksmps) { spinL.push(0f); spinR.push(0f) }
+        applyDeclaredDefaults(orchestra)
+    }
+
+    /**
+     * Give each `chn_k` channel the default it declares. Csound 6 records `idflt` only as a hint for
+     * the host and leaves the channel at 0, so `chn_k "cutoff", 1, 3, 2400, 200, 8000` followed by
+     * `chnget "cutoff"` read 0 until something wrote it: a `butterlp` at 0 Hz, and a silent box. Field
+     * is the host, so it writes the default once, before the first note's init pass. Only at
+     * construction: a live recompile must not reset a channel Field has since set.
+     */
+    private fun applyDeclaredDefaults(orchestra: String) {
+        val declared = Regex("""^\s*chn_k\s+"([^"]+)"""", RegexOption.MULTILINE).findAll(orchestra).map { it.groupValues[1] }.toSet()
+        for (name in declared) {
+            val h = hints(name) ?: continue
+            if (h.default != 0.0 && channel(name) == 0.0) setChannel(name, h.default)
+        }
     }
 
     // ---- upcalls: these run on the rendering thread, inside Csound. They may only read and queue —
