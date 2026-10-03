@@ -1,0 +1,28 @@
+{
+  "source": "Modern Jazz Quartet, Skating; first 12 seconds of the retained proof excerpt",
+  "exports": {
+    "baseline-proof.json": "e6c998fbc1d8e7e6031adc8c42bda35ee7e90fbebf48f648b39b40edb60d87b7",
+    "baseline-waveform.json": "2c3b9a16a424a45a93212c6c44891172aa1cf58828aea0c5a0d2033c98f1b771",
+    "baseline.opus": "ed2ff379f3295238e2f7ddf2de093c15f839bcb3cacfe8f11eef52c6c913c45c",
+    "candidate-proof.json": "d06db086b9fc64ec92ef77d9f579508751f02a0b08e0d0e05f44aeae58b3c80e",
+    "candidate-waveform.json": "9dfa31daff8136a8dfd2b89f6e650ac0e2e36b9154ea93269aec060e640fdcdb",
+    "candidate.opus": "4e535b796f020a4f860b898398031dd0415157aab57262e561ff74d2c0b9e7e5",
+    "source-waveform.json": "3be22993f670d781cc0cdfae56efcdb39445a6fc79ff3d7957e44f13e0b26f92",
+    "source.opus": "12d3be25239122fd377b1da45535196f2cf501651db6b377d8e452b39df55612"
+  },
+  "inputs": {
+    "source": {
+      "filename": "source-mjq-skating.wav",
+      "sha256": "0b80bac5e1c27faad60bf3eb6701a0795a4c62c673656a1889564983f2a4d365"
+    },
+    "candidate": {
+      "filename": "proxy-48k.wav",
+      "sha256": "f6fea40f72666e09bbc609d7796f78274b9cd9e2ee78a46d4c230515ec810632"
+    },
+    "baseline": {
+      "filename": "proxy-48k.wav",
+      "sha256": "54d567f6af5abafbe266b0b5f730356dc010bf25e848e203451fd21c7f0e6e98"
+    }
+  },
+  "encoder": "ffmpeg libopus 160k, without gain normalization"
+}

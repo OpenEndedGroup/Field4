@@ -86,7 +86,8 @@ companion documents with
 
 ## Verification — 2026-10-03
 
-All nine tracked Elsewhere handoffs are completed. Each capture was inspected as
+All ten requested hardware/service handoffs are completed, including the
+Underfit handoff `4832e1cc` whose title was classified under Decisions. Each capture was inspected as
 an image, including the corrected three-view plaque capture and pinned-sample
 Pat waveform. Actual model exports passed 35 SHA-256 checks and MuScriptor note
 bounds checks. `regenerateAgentTranscriptStartingPoints checkAgentTranscripts`
@@ -98,3 +99,36 @@ regenerated screenshots, one cached capture and zero failures.
 The music API and four workers were verified listening on loopback ports
 8765–8769 and remain running. The Elsewhere publication excludes existing local
 transport work, which remains preserved in the original checkout.
+
+## Underfit audio follow-up — 4832e1cc
+
+The existing `result-cfg15-30s` render was recovered from
+`/home/marc/temp/music/audio-project/underfit-proof/`; its native WAV SHA-256
+matches the original candidate asset ID. No replacement LoRA take was generated.
+The Underfit worker was started on port 8770 and its health confirmed RTX 4090
+CUDA and the pinned Underfit/Stable Audio 3 revisions. A new baseline was rendered
+with strength zero and all other source, seed and sampling controls identical.
+
+The three Opus players preserve the real MJQ source and both audition proxies,
+without gain normalization. Both proof records, genuine waveform envelopes and
+the export manifest live under `assets/audio_ai_underfit_mancini/`. Export with:
+
+```bash
+python tools/export_underfit_docs.py
+FIELD_DOCS_CAPTURE_PROFILES=linux-nvidia FIELD_DOCS_RUNNER_MODE=always \
+FIELD_DOCS_RUNNER_CONTINUE_ON_ERROR=false \
+uv run --project . --group docs python tools/build_zensical_docs.py \
+  --page audio_ai_underfit_mancini
+```
+
+The exporter checks both native/proxy hashes and exact request equality apart
+from strength; ffprobe confirmed stereo 48 kHz Opus copies of 12/30/30 seconds
+(with normal Opus container pre-skip). The actual candidate-board capture passed
+with one regenerated screenshot and zero failures and was visually inspected.
+The board fetches real waveform windows through `/field-audio`, requiring the
+API with the exported assets reimported; the three published players are portable.
+The archive omits the unavailable old source→candidate splice instead of faking it.
+
+The follow-up clean HTML build passed with no issues; all 2,066 distinct local
+references resolved. The only absent fragment was the theme’s registered 404
+skip-link exception.

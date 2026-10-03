@@ -5,12 +5,56 @@ Underfit rank-16 DoRA-rows checkpoint, trained for 1,000 steps on 165 lossless 1
 from all 12 tracks on Henry Mancini's *Experiment in Terror*, is applied to Stable Audio 3's
 small-music base model.
 
-The live request imports a held-out source excerpt, keeps a 12-second source window, and asks for a
+The source is a 12-second excerpt of the Modern Jazz Quartet’s **“Skating”**, separate from the
+Mancini album used for training. The live request imports that excerpt and asks for a
 30-second candidate with a modest guidance value (`cfg = 1.5`). The source distance is controlled by
 `initNoiseLevel = 0.65`; the LoRA contributes at strength `0.85` through denoising interval `0..0.92`.
 Field hashes the checkpoint before submission, and the worker verifies the same digest. The resulting
 candidate board retains the source, seed, model revisions, checkpoint digest, and every sampling
 control.
+
+## Listen to the experiment
+
+Listen to the source first, then compare the base model with the LoRA take. Both outputs use
+seed 1962, 50 steps, `cfg = 1.5`, `cfgRescale = 0`, `initNoiseLevel = 0.65`, two seconds of
+padding and chunked decoding. The only request parameter that changes is checkpoint strength:
+zero for the baseline and 0.85 for the LoRA. A shared seed does not establish musical similarity;
+the audio is the evidence for what the checkpoint changes.
+
+**Source · MJQ, “Skating” · 12 seconds**
+
+<audio controls preload="metadata" src="assets/audio_ai_underfit_mancini/source.opus"></audio>
+
+**Stable Audio 3 Small Music Base · no LoRA · 30 seconds**
+
+<audio controls preload="metadata" src="assets/audio_ai_underfit_mancini/baseline.opus"></audio>
+
+**Mancini step-1000 checkpoint · strength 0.85 · 30 seconds**
+
+<audio controls preload="metadata" src="assets/audio_ai_underfit_mancini/candidate.opus"></audio>
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/audio_ai_underfit_mancini/comparison.png" capture="box" open-outputs="true" wait="4" padding="16" timeout="180" w="1120" h="1200" hidden=true embed=true name="underfit-archive-board" alt="Actual MJQ source waveform and Underfit candidate boards for the matched no-LoRA baseline and original Mancini LoRA take" macro-file="../../dev_docs/agents/transcripts/docs_capture/underfit_mancini_board.yaml" capture-box="underfit_mancini_board" capture-profile="linux-nvidia"}
+// The real candidate sets and waveform envelopes are rendered by the archive capture transcript.
+```
+
+The figure uses Field’s real candidate-board renderer with exported service results. Audition
+and rating in a live Field document still use the service; the players above use committed Opus
+files and work independently of it.
+
+??? aside "Where these examples came from"
+    The LoRA take is the successful 13 September 2026 render retained on the Linux RTX 4090
+    machine, not a new replacement. Its native WAV hash is
+    `572545c7809e33ad00e642d40c5b3c65ebecfa3abbf233b8924292e26d30a5ad`.
+    The matched strength-zero baseline was rendered on 3 October 2026 with the same pinned
+    Underfit and Stable Audio 3 revisions and request controls. The checkpoint digest is
+    `3769f0e3282ea970a5c953933216f84c847478cfc51213c7adfa3f5a98762364`.
+    [Candidate proof](assets/audio_ai_underfit_mancini/candidate-proof.json),
+    [baseline proof](assets/audio_ai_underfit_mancini/baseline-proof.json) and the
+    [export manifest](assets/audio_ai_underfit_mancini/manifest.json) preserve the original
+    asset hashes, model revisions and encoding provenance. Opus copies use the real audition
+    proxies without gain normalization. The captured board omits the unavailable archived
+    splice preview; the source is provided separately. Refresh these exports before recapture;
+    a normal HTML build reuses the genuine results and does not run a model.
 
 ## Run it
 
