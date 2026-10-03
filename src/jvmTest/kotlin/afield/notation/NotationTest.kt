@@ -1,5 +1,6 @@
 package afield
 
+import afield.graphics.FLine
 import afield.stdlib.vec
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -292,5 +293,20 @@ class NotationTest {
         assertEquals(3, pen.size)
         assertTrue(abs(pen[0] - 0.2) < 1e-9 && abs(pen[1] - 0.5) < 1e-9 && abs(pen[2] - 0.8) < 1e-9)
         assertTrue(a.notation.named("mouse")!!.pressures.isEmpty())
+        // unevenly spaced points: pressure is resampled by distance, not by index
+        a.notation { stroke(listOf(vec(0, 0), vec(1, 0), vec(2, 0), vec(30, 0)), name = "slow", pressure = { it }) }
+        val along = a.notation.named("slow")!!.pressuresAlong(4)
+        assertEquals(4, along.size)
+        assertTrue(abs(along[1] - 1.0 / 3) < 1e-9 && abs(along[3] - 1.0) < 1e-9, "$along")
+    }
+
+    @Test
+    fun cubicStrokeFollowsTheCurve() {
+        // the end point is the cubic's end, and the middle sample is the curve's midpoint, not a control
+        a.notation { stroke(FLine().moveTo(0, 0).cubicTo(0, 100, 100, 100, 100, 0), name = "arch") }
+        val pts = a.notation.named("arch")!!.points
+        assertTrue(abs(pts.last().x - 100f) < 1e-3 && abs(pts.last().y) < 1e-3, "${pts.last()}")
+        val mid = pts[pts.size / 2]
+        assertTrue(abs(mid.x - 50f) < 1e-3 && abs(mid.y - 75f) < 1e-3, "$mid")
     }
 }

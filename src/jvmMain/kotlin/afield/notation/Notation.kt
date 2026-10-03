@@ -70,6 +70,28 @@ class Mark internal constructor(
      * none: a mouse stroke, whose width Excalidraw simulates from speed instead.
      */
     val pressures: List<Double> get() = MarkGeometry.of(json).pressures?.toList() ?: emptyList()
+
+    /**
+     * [pressures] at [n] stations evenly spaced by distance along the stroke, first point to last.
+     * A pen records points closer together where it moves slowly, so the raw list is not evenly
+     * spaced; this one is, which is what a `PaintCanvas` brush's `swell` and a pencil's pressure
+     * profile expect. Empty when the stroke recorded no pressure.
+     */
+    fun pressuresAlong(n: Int): List<Double> {
+        val g = MarkGeometry.of(json)
+        val p = g.pressures ?: return emptyList()
+        if (n <= 0) return emptyList()
+        if (p.size == 1 || n == 1) return List(n) { p[0] }
+        val total = g.arc.last()
+        var i = 0
+        return List(n) { k ->
+            val s = total * k / (n - 1)
+            while (i < p.size - 2 && g.arc[i + 1] < s) i++
+            val span = g.arc[i + 1] - g.arc[i]
+            val f = if (span <= 0) 0.0 else ((s - g.arc[i]) / span).coerceIn(0.0, 1.0)
+            p[i] + (p[i + 1] - p[i]) * f
+        }
+    }
     val start: Vec2? get() = points.firstOrNull()
     val end: Vec2? get() = points.lastOrNull()
 
@@ -714,9 +736,10 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
         for (node in fline.nodes) {
             val to = node.toOrNull ?: continue
             if (node.storage.size >= 3 && last != null) {
-                val p0 = last; val c1 = node.storage[0]; val c2 = node.storage[1]; val p3 = node.storage[2]
-                for (i in 1..12) {
-                    val t = i / 12.0; val u = 1 - t
+                // FLine.CubicTo keeps [end, c1, c2]: the end point first, then the two controls.
+                val p0 = last; val c1 = node.storage[1]; val c2 = node.storage[2]; val p3 = to
+                for (i in 1..24) {
+                    val t = i / 24.0; val u = 1 - t
                     val px = u * u * u * p0.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p3.x
                     val py = u * u * u * p0.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p3.y
                     out += vec(px, py)

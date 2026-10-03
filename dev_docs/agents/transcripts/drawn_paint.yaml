@@ -1,0 +1,90 @@
+name: drawn_paint
+description: >
+  Drawn strokes become paint: three boxes that draw pen strokes with pressure on the document's
+  drawing, read them back with notation, and paint them with afield.paint.PaintCanvas.
+
+  Run `strokes` first: it draws three strokes into the drawing (an S pressed hardest in the middle,
+  a sweep that lifts off, a loop that bears down at its end), each with a pen pressure per point,
+  and plots the pressure along each. `paint` reads every stroke with notation.strokes and paints it
+  with a round brush whose swell follows the pen (Mark.pressuresAlong), above the same strokes at
+  one even pressure. `pencil` draws them in a 6B pencil whose pressure follows the pen. To paint
+  your own, draw with the pen (Alt+D, then P) and delete the notation block in `strokes`.
+  The paint library is optional — `./gradlew buildPaintNative` builds it — and without it `paint`
+  and `pencil` say so and stop.
+
+  Companion to public/docs/chain_drawn_paint.md. Pure CPU; no Window, no Renderer, no audio device.
+operations:
+  - create:
+      box: dp_strokes
+      name: strokes
+      frame: { x: 1150.0, y: 40.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          // Three pen strokes, drawn from code into the document's drawing, each with a pen pressure
+          // (0..1) as a function of how far along the stroke the pen is. Running it again replaces them.
+          // To paint strokes you drew yourself (Alt+D, P, with a tablet pen for pressure), delete this block.
+          notation {
+              stroke(FLine().moveTo(80, 300).cubicTo(200, 60, 330, 420, 420, 140), name = "S",
+                  pressure = { 0.15 + 0.85 * sin(PI * it) })
+              stroke(FLine().moveTo(470, 110).cubicTo(560, 300, 700, 330, 820, 180), name = "sweep",
+                  pressure = { 1.0 - 0.85 * it })
+              stroke(FLine().moveTo(880, 330).cubicTo(1060, 300, 1020, 60, 900, 120).cubicTo(820, 160, 880, 260, 960, 250),
+                  name = "loop", pressure = { 0.15 + 0.85 * it * it })
+          }
+          // Read them back: the pressure at 50 points evenly spaced along each.
+          val strokes = notation.strokes.filter { it.pressures.isNotEmpty() }
+          if (strokes.isNotEmpty()) showSignals(*strokes.map { (it.label ?: it.id) to it.pressuresAlong(50) }.toTypedArray(),
+              x = (0 until 50).map { it / 49.0 }, title = "pen pressure along each stroke",
+              xTitle = "fraction of the way along", yTitle = "pressure", channel = "pressure")
+          println(notation.strokes.map { "${it.label ?: it.id}: ${it.points.size} points, ${it.pressures.size} pressures" })
+  - create:
+      box: dp_paint
+      name: paint
+      frame: { x: 1150.0, y: 700.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.paint.*
+
+          run {
+          if (!PaintCanvas.isAvailable) {
+              markdown(PaintLibrary.describe())
+              return@run
+          }
+          // Every stroke in the drawing, painted with a brush that presses as hard as the pen did.
+          // `view` is the rectangle of drawing coordinates that becomes the canvas.
+          val colours = listOf(rgb(0.12, 0.2, 0.55), rgb(0.85, 0.3, 0.1), rgb(0.15, 0.5, 0.25))
+          val canvas = PaintCanvas(900, aspect = 1.6, view = Rect(40.0, 40.0, 1040.0, 650.0))
+          val brush = canvas.brush(BrushKind.Round, width = 40.0)
+          notation.strokes.forEachIndexed { i, s ->
+              brush.load(colours[i % colours.size], wipe = 1.0)
+              val swell = s.pressuresAlong(64)   // empty for a mouse stroke: then the base pressure applies
+              canvas.stroke(s.toFLine(), brush, pressure = if (swell.isEmpty()) 0.6..0.6 else 1.0..1.0, swell = swell)
+          }
+          // The same strokes 320 units lower, at one even pressure, to compare.
+          notation.strokes.forEachIndexed { i, s ->
+              val lower = FLine()
+              s.points.forEachIndexed { k, p -> if (k == 0) lower.moveTo(p.x, p.y + 320) else lower.lineTo(p.x, p.y + 320) }
+              brush.load(colours[i % colours.size], wipe = 1.0)
+              canvas.stroke(lower, brush, pressure = 0.6..0.6)
+          }
+          display("main", canvas.png())
+          }
+  - create:
+      box: dp_pencil
+      name: pencil
+      frame: { x: 1150.0, y: 1440.0, w: 190.0, h: 60.0 }
+      properties:
+        code: |
+          import afield.paint.*
+
+          run {
+          if (!PaintCanvas.isAvailable) {
+              markdown(PaintLibrary.describe())
+              return@run
+          }
+          // The same strokes in a 6B pencil, on a 20 cm sheet, its pressure following the pen.
+          val canvas = PaintCanvas(900, aspect = 2.5, view = Rect(40.0, 40.0, 1040.0, 416.0), sizeMm = 200.0)
+          val pencil = canvas.pencil("6B")
+          for (s in notation.strokes) canvas.draw(s.toFLine(), pencil, pressure = s.pressuresAlong(32).ifEmpty { listOf(0.6) })
+          display("main", canvas.png())
+          }

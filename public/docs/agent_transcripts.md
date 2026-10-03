@@ -55,8 +55,8 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 178 transcripts on every build, at three
-depths. 94 of them are **replayed end to end**: the real macro runner builds the graph and the real
+One harness, `DemoTranscriptExecSmokeTest`, checks all 179 transcripts on every build, at three
+depths. 95 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
@@ -180,6 +180,19 @@ both pairings into audio players. Draw two strokes of your own and follow the co
 The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_morph/metadata.edn)
+
+### drawn_paint
+
+Drawn strokes become paint, as three boxes. `strokes` draws three pen strokes on the drawing layer,
+each with a pen pressure at every point, and plots the pressure along each with `pressuresAlong`;
+`paint` reads every stroke in the drawing with `notation.strokes` and paints it with a round brush
+whose `swell` follows the pen, above the same strokes at one even pressure; `pencil` draws them in a
+6B pencil whose pressure follows the pen. Draw your own with a tablet pen and delete the `notation`
+block in `strokes`. `paint` and `pencil` need the optional paint library
+(`./gradlew buildPaintNative`); without it they say where they looked and stop. See
+[Drawn Strokes Become Paint](chain_drawn_paint.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/drawn_paint/metadata.edn)
 
 ### studies_rings
 

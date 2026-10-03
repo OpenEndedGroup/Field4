@@ -395,6 +395,10 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
+        // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
+        // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
+        "drawn_paint",
         // Two pure-CPU boxes that lower a RectSL scene to a GLSL distance field and print it.
         // `emitSdf` is a string builder over the compiled SceneProgram — no shaderc, no Window,
         // no Renderer — so both run to completion, which is also the cheapest check that the
