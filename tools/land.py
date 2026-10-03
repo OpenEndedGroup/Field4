@@ -228,6 +228,14 @@ def _phase(item: dict) -> tuple[str, str]:
     step = steps[-1][len("merge_regen: "):] if steps else "merging onto main"
     if tasks and not lines[-1].startswith("merge_regen:"):
         step += f"; Gradle at {tasks[-1]}"
+        # citationGates names each guard class as it goes (build.gradle.kts adds a test listener).
+        done = [line for line in lines if line.startswith("citationGates: [")]
+        running = [line for line in lines if line.startswith("citationGates: running ")]
+        if tasks[-1] == ":citationGates" and (done or running):
+            count = done[-1].split("]")[0][len("citationGates: ["):] if done else "0/?"
+            current = running[-1][len("citationGates: running "):] if running else ""
+            finished_current = done and current and f"] {current} " in done[-1]
+            step += f" {count}" + (f", running {current}" if current and not finished_current else "")
     return step, lines[-1][:160]
 
 
@@ -626,7 +634,10 @@ def _fast_forward_main(primary: Path, old: str, new: str) -> str | None:
 
 def _first_error(log: Path) -> str:
     text = log.read_text(errors="replace").splitlines()
-    for pattern in (r"merge_regen: .*fail", r"source conflicts", r"FAILED", r"What went wrong", r"[Ee]rror"):
+    # Most specific first: a failing test, a compiler error, Gradle's own account, and only then
+    # merge_regen's summary line, which names no cause.
+    for pattern in (r" > .* FAILED$", r"^e: ", r"source conflicts", r"What went wrong", r"FAILED",
+                    r"merge_regen: .*fail", r"[Ee]rror"):
         for i, line in enumerate(text):
             if re.search(pattern, line):
                 return " | ".join(" ".join(l.split()) for l in text[i : i + 3] if l.strip())[:400]
@@ -662,6 +673,33 @@ def _push_main(primary: Path, sha: str, out) -> str | None:
     return " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
 
 
+def _collect_failures(wt: Path, since: float, log: Path) -> str | None:
+    """Gradle prints a failing test as "AssertionError at Foo.kt:769"; the message itself is only in
+    the JUnit XML inside the lander's worktree, which the next round overwrites. Copy every failure
+    written during this round next to the log, and return a one-line summary of the first."""
+    import xml.etree.ElementTree as ET
+    found: list[tuple[str, str]] = []
+    for xml in sorted((wt / "build" / "test-results").glob("*/TEST-*.xml")):
+        if xml.stat().st_mtime < since:
+            continue
+        try:
+            root = ET.parse(xml).getroot()
+        except ET.ParseError:
+            continue
+        for case in root.iter("testcase"):
+            for failure in list(case.findall("failure")) + list(case.findall("error")):
+                name = f"{case.get('classname', '').rsplit('.', 1)[-1]}.{case.get('name')}"
+                found.append((name, (failure.get("message") or failure.text or "").strip()))
+    if not found:
+        return None
+    path = log.with_suffix(".failures.txt")
+    path.write_text("".join(f"## {name}\n{message}\n\n" for name, message in found))
+    first_name, first_message = found[0]
+    first_line = next((line.strip() for line in first_message.splitlines() if line.strip()), "")
+    more = f" (+{len(found) - 1} more)" if len(found) > 1 else ""
+    return f"{first_name}: {first_line[:220]}{more}; full messages: {path}"
+
+
 def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecting: int | None) -> str:
     """Land [items] together: one merge commit each, then one regeneration and one guard for all.
 
@@ -695,6 +733,7 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
         if not todo:
             return "green"
         _reset(wt, main_sha)
+        round_started = time.time()
         members: list[dict] = []
         with log.open("a") as out:
             out.write(f"\n=== {_now()} {batch_id}: {len(todo)} branch(es) onto main {main_sha}"
@@ -733,11 +772,12 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
                 cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env,
             ).returncode
         if code != 0:
+            failures = _collect_failures(wt, round_started, log)
             _reset(wt, main_sha)
             if len(members) == 1:
                 item = members[0]
                 found = f" (found by bisecting a red batch of {bisecting})" if bisecting else ""
-                item.update(reason=_first_error(log) + found, finished=_now())
+                item.update(reason=(failures or _first_error(log)) + found, finished=_now())
                 _move(queue, item, BOUNCED)
                 return "bounced"
             for item in members:
