@@ -441,11 +441,13 @@ object AiStateBlobs {
         } finally { tmp.delete() }
     }
 
-    /** The state stored under [sha], unpacked into a temporary file the caller deletes; null if it is not here. */
     /** The file a stored state is kept in, for tests. */
     internal fun fileFor(sha: String, box: Box): java.io.File = java.io.File(dir(box), "$sha.state.gz")
 
-    /** Null when no such state was stored; throws when it is there but cannot be read (a damaged file). */
+    /**
+     * The state stored under [sha], unpacked into a temporary file the caller deletes. Null when no such state
+     * was stored; throws when it is there but cannot be read (a damaged file).
+     */
     fun get(sha: String, box: Box): java.io.File? {
         val packed = java.io.File(dir(box), "$sha.state.gz").takeIf { it.isFile } ?: return null
         val out = java.io.File.createTempFile("ai4-branch-", ".state")
