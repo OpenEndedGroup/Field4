@@ -179,11 +179,11 @@ checkpoint-loading changes. macOS was not run on this Linux host.
 
 ## Motion comparison captures
 
-[All three enabled](artifacts/charcoal-motion-all.mp4) and [all three disabled](artifacts/charcoal-motion-baseline.mp4)
+[All three enabled](artifacts/charcoal-085-all.mp4) and [all three disabled](artifacts/charcoal-085-baseline.mp4)
 are successive eight-second native RTT captures, source left and output right.
 The clips use charcoal with a GPU paper fill for rejected display pixels.
 Model input is 512×512 at requested 16 FPS; capture is 10 FPS.
-[Run data](artifacts/charcoal-motion-run.json) and [worker log](artifacts/charcoal-motion-worker.txt)
+[Run data](artifacts/charcoal-085-run.json) and [worker log](artifacts/charcoal-085-worker.txt)
 retain settings, reset generations and active TensorRT loads. Motion correspondence
 only approximates generated marks' extent; trails and softened paper texture remain possible.
 This is a functional demonstration, not an isolated temporal-quality comparison.

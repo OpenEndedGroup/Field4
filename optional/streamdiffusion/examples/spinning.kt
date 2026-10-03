@@ -27,7 +27,7 @@ if (!support.available) {
 } else {
     var material = 1 // 0 ink, 1 charcoal, 2 barbed wire
     var promptOverride = "" // Any text prompt; blank selects the material preset.
-    var strength = .60
+    var strength = .85
     var noiseAdvection = .8
     var adaptPrompt = whiteOnBlack
     var pendingReset = false
