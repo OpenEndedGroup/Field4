@@ -127,6 +127,24 @@ class LandQueueTest(unittest.TestCase):
         # SIGKILL leaves no cleanup behind, and status must not be fooled by that.
         self.assertIn("no lander running", self.land(self.primary, "status").stdout)
 
+    def test_the_hook_refuses_a_direct_merge_into_main_but_not_the_lander(self) -> None:
+        hooks = Path(self._tmp.name) / "hooks"
+        hooks.mkdir()
+        hook = hooks / "reference-transaction"
+        hook.write_text((LAND.parent / "hooks/reference-transaction").read_text())
+        hook.chmod(0o755)
+        self.git(self.primary, "config", "core.hooksPath", str(hooks))
+        wt = self.branch_with("zeta", "zeta.txt")
+        before = self.git(self.primary, "rev-parse", "main")
+        direct = subprocess.run(["git", "merge", "--ff-only", "zeta"], cwd=self.primary, capture_output=True, text=True, env=self.env)
+        self.assertNotEqual(direct.returncode, 0)
+        self.assertIn("land.py enqueue", direct.stderr)
+        self.assertEqual(self.git(self.primary, "rev-parse", "main"), before)
+        self.git(self.primary, "pack-refs", "--all")  # git's own housekeeping must still work
+        self.land(wt, "enqueue")
+        self.run_lander()
+        self.assertIn("Land zeta", self.git(self.primary, "log", "-1", "--format=%s", "main"))
+
 
 if __name__ == "__main__":
     unittest.main()
