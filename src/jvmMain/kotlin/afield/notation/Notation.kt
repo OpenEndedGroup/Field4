@@ -64,6 +64,12 @@ class Mark internal constructor(
 
     /** World-space points of a stroke, line or arrow; empty for other kinds. */
     val points: List<Vec2> get() = if (kind.isLinear) json.worldPoints() else emptyList()
+    /**
+     * The pen pressure Excalidraw recorded at each of [points], 0..1, for a stroke drawn with a
+     * pressure-sensitive pen (or written from code with `pressure =`). Empty when the stroke has
+     * none: a mouse stroke, whose width Excalidraw simulates from speed instead.
+     */
+    val pressures: List<Double> get() = MarkGeometry.of(json).pressures?.toList() ?: emptyList()
     val start: Vec2? get() = points.firstOrNull()
     val end: Vec2? get() = points.lastOrNull()
 
@@ -503,13 +509,24 @@ class NotationBuilder internal constructor(private val owner: Box, private val k
     fun line(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
         line(sample(fline), name, stroke)
 
-    /** A freehand stroke — the same kind of mark as one drawn with the pen tool. */
-    fun stroke(fline: FLine, name: String? = null, stroke: String = this.stroke): MarkRef =
-        stroke(sample(fline), name, stroke)
+    /**
+     * A freehand stroke — the same kind of mark as one drawn with the pen tool. Give [pressure]
+     * (a function of the fraction of the way along the stroke, 0..1, returning 0..1) to record
+     * pen pressure the way a tablet does; without it the stroke is like a mouse stroke, and
+     * [Mark.pressures] reads back empty.
+     */
+    fun stroke(fline: FLine, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef =
+        stroke(sample(fline), name, stroke, pressure)
 
-    fun stroke(points: List<Vec2>, name: String? = null, stroke: String = this.stroke): MarkRef {
+    fun stroke(points: List<Vec2>, name: String? = null, stroke: String = this.stroke, pressure: ((Double) -> Double)? = null): MarkRef {
+        val pressures = if (pressure == null || points.isEmpty()) emptyList() else {
+            val arc = DoubleArray(points.size)
+            for (i in 1 until points.size) arc[i] = arc[i - 1] + hypot((points[i].x - points[i - 1].x).toDouble(), (points[i].y - points[i - 1].y).toDouble())
+            val total = arc.last().takeIf { it > 0 } ?: 1.0
+            arc.map { JsonPrimitive(pressure(it / total).coerceIn(0.0, 1.0)) }
+        }
         val e = linear("freedraw", nextId(name), points, name, stroke)
-            .with("pressures" to JsonArray(emptyList()), "simulatePressure" to JsonPrimitive(true))
+            .with("pressures" to JsonArray(pressures), "simulatePressure" to JsonPrimitive(pressure == null))
         return add(e)
     }
 

@@ -281,4 +281,16 @@ class NotationTest {
         assertTrue(abs(s.points[1].y - 4f) < 1e-4)
         assertFalse(s.handDrawn)
     }
+
+    @Test
+    fun strokePressureRoundTrips() {
+        a.notation {
+            stroke(listOf(vec(0, 0), vec(10, 0), vec(20, 0)), name = "pen", pressure = { 0.2 + 0.6 * it })
+            stroke(listOf(vec(0, 0), vec(10, 0)), name = "mouse")
+        }
+        val pen = a.notation.named("pen")!!.pressures
+        assertEquals(3, pen.size)
+        assertTrue(abs(pen[0] - 0.2) < 1e-9 && abs(pen[1] - 0.5) < 1e-9 && abs(pen[2] - 0.8) < 1e-9)
+        assertTrue(a.notation.named("mouse")!!.pressures.isEmpty())
+    }
 }
