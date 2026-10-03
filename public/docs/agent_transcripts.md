@@ -183,14 +183,21 @@ The replay runs all five headless. See [A Drawn Morph, Heard](chain_drawn_morph.
 
 ### drawn_paint
 
-Drawn strokes become paint, as three boxes. `strokes` draws three pen strokes on the drawing layer,
-each with a pen pressure at every point, and plots the pressure along each with `pressuresAlong`;
-`paint` reads every stroke in the drawing with `notation.strokes` and paints it with a round brush
-whose `swell` follows the pen, above the same strokes at one even pressure; `pencil` draws them in a
-6B pencil whose pressure follows the pen. Draw your own with a tablet pen and delete the `notation`
-block in `strokes`. `paint` and `pencil` need the optional paint library
-(`./gradlew buildPaintNative`); without it they say where they looked and stop. See
-[Drawn Strokes Become Paint](chain_drawn_paint.md).
+Drawn strokes become paint, as six boxes. `strokes` draws three pen strokes on the drawing layer,
+each with a pen pressure at every point, and plots the pressure along each; `paint` paints them with
+a round brush whose `swell` follows the pen, follows the pen's pressure squared, and stays even;
+`crossings` crosses wet yellow and red bands with blue, crosses them again dried, and smears them
+with a clean hog brush and a badger blender; `drying` crosses one band after 0 to 100 simulated
+hours; `meadow` paints a meadow at evening from 560 strokes on a red-ground oil canvas; `pencil`
+draws the first three strokes in a 6B pencil. Every box reads the strokes in one region of the
+drawing, so strokes you draw there with a tablet pen are painted too. All but `strokes` need the
+optional paint library (`./gradlew buildPaintNative`); without it they say where they looked and
+stop. See [Drawn Strokes Become Paint](chain_drawn_paint.md).
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="box" capture-box="dp_meadow" screenshot="assets/chain_drawn_paint/starting_point.png" transcript="dev_docs/agents/transcripts/drawn_paint.yaml" padding="0" wait="0" timeout="300" requires="paint" embed=true hidden=true name="agent-transcripts-drawn-paint" alt="The meadow box of the drawn_paint starting point and, below it, its output panel showing the finished oil painting of a meadow at evening, sky and clouds over a field of grass and red poppies."}
+// The transcript built the six boxes and ran them; this captures `meadow` and its output panel.
+ui.pause(1500)
+```
 
 [Open ↗](offline.html?file=assets/agent_transcripts/drawn_paint/metadata.edn)
 

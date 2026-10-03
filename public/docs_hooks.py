@@ -849,6 +849,10 @@ class RunnerOptions:
     # figures of something drawn on the canvas, where the capture viewport is far larger than the
     # drawing and `trim` cannot see past the dot grid.
     clip: tuple[float, float, float, float] | None = None
+    # `window-outputs="true"`: keep a `capture="window"` a window capture even though the box's
+    # output panels are open, so `clip=` can frame the panels together with what is drawn on the
+    # canvas beside them (normally window + open outputs collapses to a box capture).
+    window_outputs: bool = False
     # `viewport="WxH"` (capture="ui" only): the capture page's size in CSS pixels for this drive,
     # set before the recording starts and restored after it. Field's layout follows the window
     # (the editor pane is 40vw), so a smaller window is how a figure shows box and editor together
@@ -3356,6 +3360,7 @@ def parse_runner_options(*, runner_name: str, open_line: str, page_path: Path, l
         trim_native=parse_bool(first_attr(attrs, "trim-native", "trim_native", "native-trim", "native_trim", "auto-trim", "auto_trim"), default=False),
         trim=parse_bool(first_attr(attrs, "trim", "crop", "auto-crop", "auto_crop"), default=False),
         clip=parse_clip(first_attr(attrs, "clip")),
+        window_outputs=parse_bool(first_attr(attrs, "window-outputs", "window_outputs"), default=False),
         viewport=parse_viewport(first_attr(attrs, "viewport")),
         scale=parse_capture_scale(first_attr(attrs, "scale")),
         fresh_document=parse_bool(first_attr(attrs, "fresh-document", "fresh_document"), default=False),
@@ -4805,7 +4810,7 @@ def parse_codegen_expectation(*, code: str, key: str) -> bool | None:
 
 
 def effective_capture_mode(options: RunnerOptions) -> str:
-    if options.capture == "window" and options.open_outputs and not options.with_editor:
+    if options.capture == "window" and options.open_outputs and not options.with_editor and not options.window_outputs:
         return "box"
     return options.capture
 
