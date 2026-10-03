@@ -186,9 +186,6 @@ class DocumentedApiEvaluationTest {
             "streaming_diffusion.md; StreamDiffusionSupport.configuredRoot reads where the optional worker " +
                 "is installed, and the page only calls it on the way to a Linux/NVIDIA backend; the " +
                 "streaming_diffusion transcript compiles the Kotlin only.",
-        "selectedPrompt" to
-            "streaming_diffusion.md; a function the streaming_diffusion transcript's box declares to pick " +
-                "the prompt it sends the worker, run only with that worker and a live renderer; compiled only.",
         "objectPoint" to
             "open_dlss_nr.md; a GLSL function in the cubes scene's vertex shader, run only inside a " +
                 "live renderer. The open_dlss_nr_cubes transcript compiles the Kotlin only.",

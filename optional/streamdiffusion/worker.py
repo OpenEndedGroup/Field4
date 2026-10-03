@@ -116,10 +116,11 @@ def main():
         elif mode not in ("identity", "invert"):
             raise ValueError("Unknown backend")
         def caps():
-            return backend.capabilities() if backend else dict(backend=mode, taehv=False, tensorrt_active=False)
+            return dict(motion_transport=any(s.motion_tensor is not None for s in inputs),
+                **(backend.capabilities() if backend else dict(backend=mode, taehv=False, tensorrt_active=False)))
         emit("ready", device_uuid=request["device_uuid"], gpu_only_pixels=True, **caps())
         threading.Thread(target=receive_commands, daemon=True, name="diffusion-control").start()
-        frames, ids = [], []
+        frames, ids, motions = [], [], []
         first = True
         bgra = request["format"] in (44, 50)
         order = [2, 1, 0] if bgra else [0, 1, 2]
@@ -156,7 +157,7 @@ def main():
                 settings = reset["settings"]
                 if backend:
                     backend.reset(settings)
-                frames, ids, first = [], [], True
+                frames, ids, motions, first = [], [], [], True
                 emit("reset", generation=generation, **caps())
             try:
                 message = commands.get(timeout=0.25)
@@ -175,6 +176,8 @@ def main():
             rgb = slot.tensor[:, :, order].permute(2, 0, 1).float().div_(127.5).sub_(1)
             if backend is not None:
                 rgb = rgb.to(torch.bfloat16)
+            reference = message.get("motion_reference_id", -1)
+            motion = (slot.motion_tensor.clone(), reference) if slot.motion_tensor is not None and reference >= 0 else None
             slot.signal(value + 1)
             completed()
             emit("input_free", slot=index, value=value + 1)
@@ -185,11 +188,11 @@ def main():
                 image = rgb.permute(1, 2, 0).float() * 0.5 + 0.5
                 publish(1 - image if mode == "invert" else image, tag)
                 continue
-            frames.append(rgb); ids.append(tag)
+            frames.append(rgb); ids.append(tag); motions.append(motion)
             if len(frames) == (5 if first else 4):
                 started = time.perf_counter()
-                results = backend.process(frames, ids)
-                frames, ids, first = [], [], False
+                results = backend.process(frames, ids, motions)
+                frames, ids, motions, first = [], [], [], False
                 for image, result_tag in results:
                     publish(image, result_tag)
                 emit("stats", generation=generation, chunk_seconds=time.perf_counter() - started,

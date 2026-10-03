@@ -1,0 +1,15 @@
+{
+  "id": "job_e82581e1cdd84bcab1bf51198fd7e5e3",
+  "operation_id": "op_cdbe95fb0b2f43699c66460064a4bf13",
+  "request_hash": "sha256:ad4abf40ed0edfffa770e90bfc3441ecb210afb014f34414206d4c8bb3c5a365",
+  "state": "complete",
+  "resolved_backend": "analysis.basic_pitch",
+  "progress": 1.0,
+  "created_at": "2026-10-03T10:10:03.365326Z",
+  "updated_at": "2026-10-03T10:10:03.625536Z",
+  "error": null,
+  "candidate_set_id": null,
+  "codec_result_id": null,
+  "analysis_result_id": "analysis_66e09e05c6a34c0098c33b1d6e42e022",
+  "cache_hit": false
+}

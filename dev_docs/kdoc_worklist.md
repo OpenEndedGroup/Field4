@@ -26,7 +26,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [StackSLStudyTools.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackSLStudyTools.kt) | Languages | stacksl_conversation | 14 | 17 | 15% |
 | [Oscillators.kt](../src/jvmMain/kotlin/afield/four/synth/Oscillators.kt) | Synthesis | csound | 13 | 42 | 41% |
 | [PythonInterface.kt](../src/jvmMain/kotlin/afield/python/PythonInterface.kt) | Languages | python | 13 | 27 | 4% |
-| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, visualizers | 11 | 61 | 73% |
+| [Protocol.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/Protocol.kt) | Audio AI | field_audio_service_reference, audio_ai_analysis, audio_ai_corpus_microscope | 11 | 61 | 73% |
 | [StackSL.kt](../src/jvmMain/kotlin/afield/stacksl/StackSL.kt) | Languages | stacksl_examples | 11 | 47 | 15% |
 | [StackAutoStudyTools.kt](../src/jvmMain/kotlin/afield/stacksl/study/StackAutoStudyTools.kt) | Languages | stackauto_conversation, stacksl_examples | 11 | 14 | 16% |
 | [Signal.kt](../src/jvmMain/kotlin/afield/four/synth/Signal.kt) | Synthesis | sound_paths, faust, chain_pattern_particles | 10 | 53 | 26% |

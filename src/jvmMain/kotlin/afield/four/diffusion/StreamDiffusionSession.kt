@@ -16,8 +16,10 @@ import java.util.concurrent.atomic.AtomicLong
 /** Owns one isolated worker and its bounded GPU rings. Pixels never enter this protocol. */
 class StreamDiffusionSession internal constructor(
     private val renderer: Renderer, val width: Int, val height: Int, val format: Int,
-    val config: StreamDiffusionConfig
+    val config: StreamDiffusionConfig, val motionEnabled: Boolean = false
 ) : AutoCloseable {
+    // Float texels require a 16-byte-aligned copy offset, including odd identity-mode extents.
+    internal val motionOffset = (width.toLong() * height * 4 + 15) and -16L
     internal val inputs = mutableListOf<SharedGpuSlot>()
     internal val outputs = mutableListOf<SharedGpuSlot>()
     private val inputFree = Array(6) { AtomicBoolean(true) }
@@ -52,7 +54,7 @@ class StreamDiffusionSession internal constructor(
         check(config.python.canExecute() && config.worker.isFile)
         check(UnixFdPass.available) { "Build native/field-fdpass first" }
         try {
-            repeat(inputFree.size) { inputs += SharedGpuSlot(renderer, width.toLong() * height * 4) }
+            repeat(inputFree.size) { inputs += SharedGpuSlot(renderer, if (motionEnabled) motionOffset + width.toLong() * height * 16 else width.toLong() * height * 4) }
             repeat(8) { outputs += SharedGpuSlot(renderer, width.toLong() * height * 4) }
         } catch (e: Throwable) { (inputs + outputs).forEach { it.close() }; throw e }
         renderer.beforeDeviceCleanup += shutdown
@@ -89,10 +91,11 @@ class StreamDiffusionSession internal constructor(
             check(listening.await(15, TimeUnit.SECONDS) && !closing.get()) { "Worker did not open its FD socket" }
             val all = inputs + outputs
             val descriptors = JSONArray()
-            all.forEach { slot ->
+            all.forEachIndexed { slotIndex, slot ->
                 check(!closing.get()) { "Session closed during descriptor export" }
                 fds += slot.exportFds().toList()
-                descriptors.put(JSONObject().put("size", slot.allocationSize).put("bytes", slot.bytes).put("dedicated", true))
+                descriptors.put(JSONObject().put("size", slot.allocationSize).put("bytes", slot.bytes).put("dedicated", true)
+                    .put("motion", motionEnabled && slotIndex < inputs.size))
             }
             enqueue(JSONObject().put("op", "open").put("schema", 1).put("width", width).put("height", height)
                 .put("format", format).put("device_uuid", SharedGpuSlot.deviceUuid(renderer))
@@ -133,17 +136,18 @@ class StreamDiffusionSession internal constructor(
         check(!closing.get() && messages.offer(message)) { "Diffusion worker stopped or control queue full" }
     }
     internal fun reserveInput(): Int = inputFree.indexOfFirst { it.compareAndSet(true, false) }
-    internal fun frame(slot: Int, value: Long, id: Long, time: Long, generation: Long) {
+    internal fun frame(slot: Int, value: Long, id: Long, time: Long, generation: Long, motionReference: Long = -1) {
         if (!closing.get()) enqueue(JSONObject().put("op", "frame").put("slot", slot).put("value", value)
-            .put("frame_id", id).put("time_nanos", time).put("generation", generation))
+            .put("frame_id", id).put("time_nanos", time).put("generation", generation)
+            .put("motion_reference_id", motionReference))
     }
     internal fun outputFree(slot: Int, value: Long) {
         if (!closing.get()) enqueue(JSONObject().put("op", "output_free").put("slot", slot).put("value", value))
     }
     /** Reset prompt/strength/seed at a causal boundary; old outputs are discarded by the view. */
-    fun reset(prompt: String = config.prompt, strength: Double = config.strength, seed: Int = config.seed) {
+    fun reset(prompt: String = config.prompt, strength: Double = config.strength, seed: Int = config.seed, noiseAdvection: Double = config.noiseAdvection) {
         check(ready && !isClosed) { "Wait for the diffusion worker to become ready before resetting" }
-        val settings = config.copy(prompt = prompt, strength = strength, seed = seed).settings()
+        val settings = config.copy(prompt = prompt, strength = strength, seed = seed, noiseAdvection = noiseAdvection).settings()
         enqueue(JSONObject().put("op", "reset").put("generation", version.incrementAndGet()).put("settings", settings))
     }
 

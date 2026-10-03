@@ -26,6 +26,8 @@ class DiffusionBackend:
         del weights
         self.encoder_forward = self.manager.pipeline.text_encoder.forward
         self.offloaded = settings["offload_text_encoder"]
+        from motion_noise import MotionNoise
+        self.motion_noise = MotionNoise()
         self.settings = None
         self.reset(settings)
 
@@ -34,6 +36,7 @@ class DiffusionBackend:
         from models.util import set_seed
         pipeline = self.manager.pipeline
         self.manager.reset_stream_state()
+        self.motion_noise.reset()
         pipeline.kv_cache2 = None
         pipeline.conditional_dict = None
         pipeline.vae._decode_latent_cache = None
@@ -66,13 +69,18 @@ class DiffusionBackend:
         return dict(backend="diffusion", decoder=type(vae).__name__,
             taehv=hasattr(vae, "taehv"), tensorrt_requested=self.settings["use_tensorrt"],
             tensorrt_active=bool(getattr(decoder, "_engine_cache", {})) and not getattr(vae, "_tensorrt_failed", False),
-            text_encoder_offloaded=self.offloaded, steps=2, fixed_strength=True)
+            text_encoder_offloaded=self.offloaded, steps=2, fixed_strength=True,
+            noise_advection=self.settings.get("noise_advection", 0.0),
+            noise_motion_frames=self.motion_noise.motion_frames)
 
     @torch.inference_mode()
-    def process(self, frames, ids):
+    def process(self, frames, ids, motions):
         manager, pipeline = self.manager, self.manager.pipeline
         images = torch.stack(frames, dim=1).unsqueeze(0)  # [1,C,T,H,W], [-1,1]
-        noisy = manager._encode_noisy_latents(images, self.settings["strength"])
+        latents = manager._timed_stream_encode(images)
+        latents = latents.transpose(2, 1).contiguous().to(dtype=torch.bfloat16)
+        noise = self.motion_noise.sample(latents, motions, ids, self.settings.get("noise_advection", 0.0))
+        noisy = noise * self.settings["strength"] + latents * (1 - self.settings["strength"])
         if self.first:
             self.current_end = pipeline.frame_seq_length * 2
             prediction = manager.prepare_pipeline([self.settings["prompt"]], noisy, 0, self.current_end)

@@ -55,13 +55,13 @@ regenerate, in every branch. Change the loose `<box>_code_.kt` sidecar, or chang
 ## How CI checks them
 
 <!-- transcript-index: totals -->
-One harness, `DemoTranscriptExecSmokeTest`, checks all 182 transcripts on every build, at three
+One harness, `DemoTranscriptExecSmokeTest`, checks all 184 transcripts on every build, at three
 depths. 95 of them are **replayed end to end**: the real macro runner builds the graph and the real
 compile-and-evaluate pipeline runs every box the transcript asks it to, and the test fails if a
 single box emits one error-kind output line. (Almost always that is every box in the file. A
 transcript may create a box it does not execute, one that wants a device the build does not have or
 that is meant to fail so a diagnostic can be shown, and only the ops it writes down are replayed.)
-80 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
+82 want something the lightweight build does not own (a GLFW window and Vulkan renderer, an external
 audio service, a native library, or a camera), so those are **built and compiled**: the graph is assembled through the
 real apply path and each box's Kotlin goes through the real K2 compiler, with only the terminal
 evaluation skipped, the line that would open the window or reach the device. The remaining 7 are
@@ -2694,6 +2694,23 @@ Manifold and once by Field's own mesh code, and the shell's volume is checked ag
 thickness.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/polytope_manifold_path_trace/metadata.edn)
+
+### polytope_layer_stack_path_trace
+
+Canonical gC sliced at 48 layer midpoints, extruded with small gaps and coloured
+by height. The real path tracer accumulates at least 900 samples before the
+Linux/NVIDIA capture. See [the layer-stack walkthrough](chain_ceres_manifold_contours.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/polytope_layer_stack_path_trace/metadata.edn)
+
+### photo_mount_path_trace
+
+The relief and frame returned by `PhotoToSolidChain.mount()`, imported into the
+real tracer and lit with the Venice environment. The retained Linux/NVIDIA figure
+shows the mounted plaque after at least 900 samples. See
+[the photo-to-solid walkthrough](chain_photo_to_solid.md).
+
+[Open ↗](offline.html?file=assets/agent_transcripts/photo_mount_path_trace/metadata.edn)
 
 ### physics_manifold_path_trace
 
