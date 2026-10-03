@@ -2748,10 +2748,30 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
     }
 }
 
+// The Linux RTT view reverses the native-handle handoff: the JVM sends dma-buf FDs to Electron.
+val buildFieldFdPass = tasks.register("buildFieldFdPass") {
+    group = "application"
+    description = "Builds the isolated JNI FD sender used by the Linux Electron RTT view."
+    val source = layout.projectDirectory.dir("native/field-fdpass")
+    inputs.files(source.file("CMakeLists.txt"), source.file("src/fdpass.c"),
+        source.file("java/fieldfdpass/UnixFdPassNative.java"))
+    outputs.files(source.file("build/libfieldfdpass.so"), source.file("build/fieldfdpass-native.jar"))
+    onlyIf { osName.startsWith("Linux") }
+    doLast {
+        fun run(vararg command: String) {
+            val process = ProcessBuilder(*command).directory(project.projectDir).inheritIO()
+            process.environment()["JAVA_HOME"] = System.getProperty("java.home")
+            if (process.start().waitFor() != 0) throw GradleException("FD helper build failed: ${command.joinToString(" ")}")
+        }
+        run("cmake", "-S", source.asFile.absolutePath, "-B", source.dir("build").asFile.absolutePath)
+        run("cmake", "--build", source.dir("build").asFile.absolutePath)
+    }
+}
+
 val electronInstall = tasks.register("electronInstall") {
     group = "application"
     description = "Installs Electron wrapper dependencies in electron/."
-    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge)
+    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge, buildFieldFdPass)
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")

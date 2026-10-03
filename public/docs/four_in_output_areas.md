@@ -5,9 +5,37 @@ instead of into a separate render window. Frames go from the GPU to the panel wi
 copied back to the CPU or encoded, so a 640×360 view keeps up with the renderer, which is
 85 to 120 frames a second on an Apple silicon Mac.
 
-!!! note "Field app on macOS only"
-    The view needs the Field desktop app (Electron) on macOS. In a web browser, including Field's
-    own HTTP mirror, the panel says so instead of showing frames.
+!!! note "Field desktop app required"
+    The view works in Field's Electron app on macOS and on Linux using native Wayland.
+    A web browser, including Field's HTTP mirror, shows a message instead of frames.
+    Windows is not implemented.
+
+## Linux status
+
+Verified with Electron 44.5.1 on an NVIDIA RTX 4090 (driver 610.43.02):
+
+| Session | Vulkan texture shown in the canvas |
+| --- | --- |
+| Native Wayland | Yes; all source pixels matched |
+| Xorg | Blank with both default GL and ANGLE/Vulkan |
+| XWayland | Blank with both default GL and ANGLE/Vulkan |
+
+Use the app in a Wayland session. No ANGLE/Vulkan switch is needed for this view;
+forcing that backend can prevent the Wayland app window from appearing. The Linux
+view reports an error when opened through Xorg or XWayland.
+
+The Linux implementation uses a shared GPU image ring without CPU readback or video
+encoding. The tested 640×360 view showed about 20 frames per second, with roughly
+0.8 ms from the frame's GPU fence to the canvas draw. These measurements are from this
+machine; the macOS figures below are separate measurements.
+
+The same moving-square example shown below was captured in the Linux app:
+
+![Moving square in a Linux Wayland Field output panel](assets/four_in_output_areas/rtt-view-linux.png)
+
+The [verification record](assets/four_in_output_areas/linux-verification.json) includes the
+source and canvas pixel counts, exact switches, and checks after re-running and deleting the box.
+
 
 ## A view in a box
 
