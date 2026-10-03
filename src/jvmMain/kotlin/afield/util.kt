@@ -229,13 +229,14 @@ object PersistOnExit {
         }
     }
 
-    inline fun <reified T> load(name: String): T? {
+    inline fun <reified T> load(
+        name: String,
+        storageDirectory: File = File(System.getProperty("user.dir"), ".field"),
+    ): T? {
         try {
-            val f = System.getProperty("user.dir") + "/.field"
-            File(f).mkdirs()
-            val p = f + "/$name"
-
-            val text = File(p).readText()
+            val source = File(storageDirectory, name)
+            if (!source.exists()) return null
+            val text = source.readText()
 
             when (T::class) {
                 String::class -> {

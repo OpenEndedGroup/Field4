@@ -2609,7 +2609,7 @@ tasks.register("generateFieldAotCache") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/aot-classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${fieldAotRuntimeClasspath(runJvmTask.classpath)}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(fieldAotRuntimeClasspath(runJvmTask.classpath))}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -2758,6 +2758,13 @@ val buildFieldFdPass = tasks.register("buildFieldFdPass") {
     outputs.files(source.file("build/libfieldfdpass.so"), source.file("build/fieldfdpass-native.jar"))
     onlyIf { osName.startsWith("Linux") }
     doLast {
+        val cache = source.file("build/CMakeCache.txt").asFile
+        val cachedHome = cache.takeIf { it.isFile }?.readLines()
+            ?.firstOrNull { it.startsWith("CMAKE_HOME_DIRECTORY:INTERNAL=") }?.substringAfter('=')
+        if (cachedHome != null && File(cachedHome).canonicalFile != source.asFile.canonicalFile) {
+            logger.lifecycle("Checkout moved; rebuilding the FD helper's CMake output.")
+            delete(source.dir("build"))
+        }
         fun run(vararg command: String) {
             val process = ProcessBuilder(*command).directory(project.projectDir).inheritIO()
             process.environment()["JAVA_HOME"] = System.getProperty("java.home")
@@ -2878,13 +2885,19 @@ val electronInstall = tasks.register("electronInstall") {
     }
 }
 
+fun javaArgfileToken(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"")
+        .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+
+val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
+
 tasks.register("dumpFieldLaunch") {
     group = "application"
     description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
         "afield.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
-    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("jvmJar"), prepareSmileNative)
     dependsOn(tasks.named("generateLocalKeystore"))
-    dependsOn(electronInstall)
+    if (!fieldServerOnly.get()) dependsOn(electronInstall)
     personalJar?.let { dependsOn(it) }
     outputs.upToDateWhen { false }
 
@@ -2901,14 +2914,13 @@ tasks.register("dumpFieldLaunch") {
         val outDir = File(project.layout.buildDirectory.asFile.get(), "field-launch")
         outDir.mkdirs()
         File(outDir, "java").writeText(javaExecutable + System.lineSeparator())
-        // Java @argfile: one token per line. Paths are assumed free of whitespace, as elsewhere in
-        // this build (see the runDesktop Windows @argfile at the classpath block below).
+        // Java @argfile: quote every token so whitespace, backslashes and # survive on all OSes.
         File(outDir, "args").writeText(
             buildString {
-                jvmArgs.forEach { appendLine(it) }
+                jvmArgs.forEach { appendLine(javaArgfileToken(it)) }
                 appendLine("-cp")
-                appendLine(runJvmTask.classpath.asPath)
-                appendLine(mainClass)
+                appendLine(javaArgfileToken(runJvmTask.classpath.asPath))
+                appendLine(javaArgfileToken(mainClass))
             }
         )
 
@@ -2918,12 +2930,11 @@ tasks.register("dumpFieldLaunch") {
         val electronArgs = if (os.contains("windows") || os.contains("mac")) {
             emptyList()
         } else {
-            listOf(
-                "--ignore-gpu-blocklist", "--disable-gpu-process-crash-limit",
-                "--enable-gpu-rasterization", "--enable-zero-copy", "--ozone-platform-hint=auto",
-            )
+            listOf("--ozone-platform-hint=auto")
         }
-        File(outDir, "electron").writeText(electronHostBinary().absolutePath + System.lineSeparator())
+        File(outDir, "electron").writeText(
+            (if (fieldServerOnly.get()) "" else electronHostBinary().absolutePath) + System.lineSeparator()
+        )
         File(outDir, "electron-dir").writeText(electronDir.asFile.absolutePath + System.lineSeparator())
         File(outDir, "electron-args").writeText(
             electronArgs.joinToString(separator = System.lineSeparator(), postfix = if (electronArgs.isEmpty()) "" else System.lineSeparator())
@@ -3074,7 +3085,7 @@ tasks.register("runDesktop") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${backendClasspath}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(backendClasspath)}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -3095,13 +3106,7 @@ tasks.register("runDesktop") {
             .start()
         forwardProcessOutput(backendProcess)
         val isMac = os.contains("mac")
-        val linuxElectronGpuArgs = listOf(
-            "--ignore-gpu-blocklist",
-            "--disable-gpu-process-crash-limit",
-            "--enable-gpu-rasterization",
-            "--enable-zero-copy",
-            "--ozone-platform-hint=auto",
-        )
+        val linuxElectronGpuArgs = listOf("--ozone-platform-hint=auto")
         val electronCommand = if (isWindows) {
             listOf(electronHostBinary().absolutePath, ".")
         } else if (isMac) {
