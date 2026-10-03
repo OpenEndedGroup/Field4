@@ -28,6 +28,15 @@ docs = [
     "websockets>=15.0.0",
     "zensical>=0.0.47",
 ]
+cv = [
+    # Optional computer vision for Python boxes (`python/fieldcv`). Not part of any default
+    # gate: install with `uv sync --inexact --group cv` into the venv Field's JEP is bound to.
+    "numpy>=1.26",
+    "opencv-contrib-python>=4.10",
+    # 1.0.x aborts the process on macOS (`graph_service.h: Check failed: service_`, from its Metal
+    # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
+    "mediapipe>=0.10.14,<1.0",
+]
 
 [tool.uv]
 package = false

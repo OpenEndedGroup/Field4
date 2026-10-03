@@ -27,6 +27,9 @@ Top-level layout:
 - `metadata_store/`, `templates/`: example and template documents (`metadata.edn`).
 - `server/`: optional Python services — `metadata_server.py` serves templates from
   `metadata_store/`, `guide_chat_server.py` backs slideshow chat (see `server/README.md`).
+- `python/`: Python that ships with Field, appended to `sys.path` in Python boxes — `fieldcv`
+  (OpenCV/mediapipe detectors sharing numpy memory with Kotlin through `afield.python.NumpyShared`;
+  optional `cv` dependency group, see `python/fieldcv/README.md`).
 - `dev_docs/`: internal design notes, grouped in topical folders (`agents/`, `animation/`,
   `workspace/`, `physics/`, `testing/`, ...).
 - `field-user-dir/`: local user workspace artifacts — mutable user data.
