@@ -65,7 +65,7 @@ That is already a working guide. It opens a note, selects a box, and leaves the 
 
 A step usually explains the current stage with a note and moves the UI to the place the note is talking about. Use `selectBox(box, property = "code")` when you already have the target box in scope, and `selectBoxByName(...)` when the guide is driving another named box in the document.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="1.5" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28" alt="The selected guide box on the left, a green running dot in its corner, and the slide note floating to its right: the heading Welcome to Field and the sentence about the slideshow system. The capture is caught part-way through the note's reveal animation, so the three bullets below show their markers with no text yet and the Home and Continue links have not appeared."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/basic_slideshow.png" wait="8" capture="box" outputs="none" embed=true name="basic-slideshow" w="560" h="140" padding="28" alt="The selected guide box on the left, a green running dot in its corner, and the slide note floating to its right: the heading Welcome to Field and the sentence about the slideshow system. Below it the three bullets about notes, selectable boxes and the visible editor, then the Home and Continue links."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -106,7 +106,7 @@ Pair notes with view changes. A note that talks about code should leave that cod
 
 An interactive step uses a `#custom:name` link in the note body, a `linkCallback("name") { ... }` handler in the step to receive it, and `{{propertyName}}` template expansion for the live values. Together they cover choices, branching, and notes that update while the guide stays on the same step.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. The three template slots around them are empty in this capture: the line reads Version: with nothing after it, and the footer reads Count: Choice: with neither value filled in."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/callbacks_and_templates.png" wait="1.5" capture="box" outputs="none" embed=true name="callbacks-and-templates" w="560" h="140" padding="28" alt="The guide box beside its note, headed Interactive Guides with Callbacks. Three blue callback links are listed as bullets: Increment, Choose performance mode, Choose quality mode. Above them the line reads Version: 1.0.0, and the footer reads Count: 3 and Choice: Balanced Mode."}
 :::static
 import afield.logger.lprintln
 import afield.markdownNote
@@ -118,6 +118,7 @@ var clickCount = 3
 var userChoice = "Balanced Mode"
 val version = "1.0.0"
 val host = thisBox
+//%-
 
 println("interactive guide ready")
 
@@ -167,7 +168,7 @@ runBlocking {
 }
 ```
 
-A template value can come from `this.properties[...]`, from a Kotlin variable that is still in scope, or from the shared template helpers the slideshow runtime exposes.
+A template value can come from `this.properties[...]`, from a Kotlin variable the box has already run, or from the shared template helpers the slideshow runtime exposes. A variable becomes visible to templates once the code declaring it has finished running, so the [`//%-` line](running_code.md#the-fragment-break) after the declarations matters here: it runs `version`, `clickCount` and `userChoice` as their own fragment before `show.start()` renders the first note. Without it the first note shows those slots empty.
 
 When a callback changes state, call `show.goToStep(show.currentStepIndex)` to rerender the current step immediately. That updates `{{clickCount}}` and `{{userChoice}}` without leaving the slide.
 
@@ -178,7 +179,7 @@ A step can carry its own discussion thread.
 - `withChat()` creates a thread for that slide.
 - `withChat(id = "shared-id")` shares one thread across repeated guide instances.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28" alt="The guide box beside a note headed Per-slide Chat, giving the two withChat forms in inline code, then a Back and Next link pair, a horizontal rule, and a collapsed Discussion disclosure with its triangle still closed. The second code span prints its quotes with literal backslashes, as backslash-quote templateId backslash-quote, because the snippet escaped them inside a Kotlin raw string."}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/interactive_guides/slide_chat.png" wait="1.5" capture="box" outputs="none" embed=true name="slide-chat" w="560" h="140" padding="28" alt="The guide box beside a note headed Per-slide Chat, giving the two withChat forms in inline code, then a Back and Next link pair, a horizontal rule, and a collapsed Discussion disclosure with its triangle still closed."}
 :::static
 import afield.markdownNote
 import afield.slideShow
@@ -197,7 +198,7 @@ val show = slideShow {
             ## Per-slide Chat
             Use `withChat()` when a slide should carry its own discussion.
 
-            Use `withChat(id = \"templateId\")` when multiple template instances should share one thread.
+            Use `withChat(id = "templateId")` when multiple template instances should share one thread.
 
             [[back]] [[next]]
             """.trimIndent()
