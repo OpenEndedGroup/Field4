@@ -71,9 +71,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-# land/lander is the landing queue's own worktree (tools/land.py): always clean and merged between
-# landings, so without this it would be reaped while idle.
-PROTECTED_BRANCHES = {"nightly/journal", "nightly/ci-journal", "land/lander"}
+PROTECTED_BRANCHES = {"nightly/journal", "nightly/ci-journal"}
 
 # Long enough that a nightly agent which pauses to run a two-hour Gradle build is still protected,
 # short enough that this morning's finished cohort is reclaimable by tonight. The populations this
