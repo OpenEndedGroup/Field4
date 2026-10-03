@@ -145,6 +145,12 @@ process.on("unhandledRejection", (reason) => {
 });
 
 app.setName(APP_NAME);
+// A capture Electron (afield.docs.ElectronCaptureBrowser) gets its own profile, so the user's
+// per-host zoom, cookies and window state never reach a docs capture, and their running Field4 app
+// keeps its profile to itself.
+if (process.env.FIELD_ELECTRON_USER_DATA) {
+  app.setPath("userData", process.env.FIELD_ELECTRON_USER_DATA);
+}
 if (process.platform === "win32") {
   app.setAppUserModelId(APP_USER_MODEL_ID);
 }
@@ -804,6 +810,14 @@ function createMainWindow() {
 
   if (process.platform !== "darwin") {
     win.removeMenu();
+  }
+
+  // The window's own webContents is never used (every page is a WebContentsView), so it never gets
+  // a renderer, and a CDP client that auto-attaches to it waits forever: Playwright's
+  // connectOverCDP hangs on its Page.enable. The docs capture path (afield.docs.ElectronCaptureBrowser)
+  // attaches over CDP, so when remote debugging is on, give it a page that answers.
+  if (app.commandLine.hasSwitch("remote-debugging-port")) {
+    win.webContents.loadURL("about:blank");
   }
 
   const tabStripView = new WebContentsView({
@@ -1488,6 +1502,19 @@ async function logGpuStatus(label) {
   }
 }
 
+// A capture Electron (afield.docs.ElectronCaptureBrowser) is owned by the Field JVM that launched it,
+// and a JVM that dies without running its shutdown hooks would otherwise leave it running forever.
+const ownerPid = Number(process.env.FIELD_ELECTRON_OWNER_PID || 0);
+if (ownerPid > 0) {
+  setInterval(() => {
+    try {
+      process.kill(ownerPid, 0);
+    } catch (_) {
+      app.quit();
+    }
+  }, 2000).unref();
+}
+
 app.whenReady().then(() => {
   initializeDiagnosticLog();
   if (LOG_GPU_STATUS) {
@@ -1495,6 +1522,7 @@ app.whenReady().then(() => {
   }
   installDockIcon();
   installAppMenu();
+  require("./rtt-view-host").install();
   createMainWindow();
   if (LOG_GPU_STATUS) {
     setTimeout(() => logGpuStatus("delayed"), 2000);

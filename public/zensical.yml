@@ -249,6 +249,9 @@ nav:
   - Graphics, GPU & Headsets:
     - Rendering & GPU:
       - afield.four Graphics: afield_four_graphics.md
+      # Straight after the graphics contract: a render target from that page, drawn into a box's
+      # output area instead of a window. Electron-only, which the page says up front.
+      - Graphics in an Output Area: four_in_output_areas.md
       - GPU Schemas: gpu_schema.md
       - Slug Filled Paths: slug_paths.md
       # Directly after the graphics contract and before the probes page, because it is the sequel
