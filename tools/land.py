@@ -430,14 +430,22 @@ def cmd_status(args: argparse.Namespace) -> int:
         try:
             if stdin is not None:
                 tty.setcbreak(stdin)
-            sys.stdout.write("\033[?25l\033[2J")  # hide the cursor, start from a clean screen
+            # The alternate screen, as top and less use: the redraw never reaches the scrollback, and
+            # the shell's screen comes back untouched on exit.
+            sys.stdout.write("\033[?1049h\033[?25l\033[2J")
             while True:
                 frame = io.StringIO()
                 with contextlib.redirect_stdout(frame):
                     _pretty_status(queue, args.recent)
-                # Clear each line's tail too: a line that got shorter would otherwise keep old text.
-                sys.stdout.write("\033[H" + frame.getvalue().replace("\n", "\033[K\n"))
-                sys.stdout.write("\033[J" + _Style().dim(f"\n{_now()} \u00b7 every 2s \u00b7 q to quit"))
+                # Clip to the window: a frame taller than the terminal scrolls on every redraw, which
+                # stacked frames into the scrollback. Clear each line's tail, since a shorter line
+                # would otherwise keep the old text.
+                rows = shutil.get_terminal_size((100, 24)).lines
+                lines = frame.getvalue().split("\n")
+                if len(lines) > rows - 2:
+                    lines = lines[: rows - 3] + [_Style().dim(f"  \u2026 {len(lines) - rows + 3} more lines (make the window taller)")]
+                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 q to quit")
+                sys.stdout.write("\033[H" + "\033[K\n".join(lines) + "\033[K\n" + footer + "\033[K\033[J")
                 sys.stdout.flush()
                 if stdin is None:
                     time.sleep(2)
@@ -448,7 +456,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         finally:
             if saved is not None:
                 termios.tcsetattr(stdin, termios.TCSADRAIN, saved)
-            sys.stdout.write("\033[?25h\n")
+            sys.stdout.write("\033[?25h\033[?1049l")
         return 0
     print(_lander_line(queue))
     pending = _items(queue, PENDING)
