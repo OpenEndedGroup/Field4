@@ -8,6 +8,7 @@ const {
   WebContentsView,
   ipcMain,
   screen,
+  systemPreferences,
 } = require("electron");
 
 const APP_NAME = "Field4";
@@ -48,6 +49,20 @@ const diagnosticStartedAt = Date.now();
 let diagnosticLogPath = null;
 let diagnosticLogStream = null;
 
+
+// AI4 push-to-talk (voiceInput.js). macOS only grants the microphone to an app that asks, and a
+// page's getUserMedia alone reports a refusal as a bare "Permission denied". Asking here shows the
+// system prompt the first time and lets the page say where to re-enable it after a "no".
+async function onMicrophoneAccess() {
+  if (process.platform !== "darwin") return "granted";
+  let status = systemPreferences.getMediaAccessStatus("microphone");
+  if (status === "not-determined") {
+    await systemPreferences.askForMediaAccess("microphone");
+    status = systemPreferences.getMediaAccessStatus("microphone");
+  }
+  diagnosticLog("microphone-access", { status });
+  return status;
+}
 function diagnosticError(error) {
   if (!error) return null;
   return {
@@ -1455,6 +1470,8 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-hide", onHideTabs);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
+  ipcMain.removeHandler("field4-microphone-access");
+  ipcMain.handle("field4-microphone-access", onMicrophoneAccess);
 
   const relayout = () => applyLayout();
   const enterFullScreen = () => {

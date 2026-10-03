@@ -772,6 +772,8 @@ fun installAi4() {
         Handled.yes
     })
 
+    VoiceTranscriber.install()
+
     handlers["ai-assist"] = mutableSetOf({ message, _ ->
         invalidateBridgesAfterSettingsChange()
         val exec = Json.decodeFromJsonElement<AiAssist>(message.payload!!)
@@ -964,6 +966,15 @@ fun installAi4() {
         }
 
         val expandedExtraPrompt = expandBoxSlashRefs(exec.extraPrompt)
+        // What the model reads. A push-to-talk prompt is a Whisper transcript, so the model is told to
+        // read it for intent and repair misheard identifiers from context ("from context" is
+        // `fromContext`); the chat history keeps the transcript as spoken.
+        val modelUserPrompt = if (exec.dictated && expandedExtraPrompt.isNotBlank()) {
+            "[Dictated by voice: this is a speech-to-text transcript and may contain recognition " +
+                "errors. Read it for what was meant, using the code and conversation to correct " +
+                "misheard identifiers, names and symbols. If a correction changes what you would do, " +
+                "say which reading you took.]\n\n" + expandedExtraPrompt
+        } else expandedExtraPrompt
         val agentMemory = agentMemoryByKey.computeIfAbsent(conversationKey) { AgentMemoryState() }
 
         val preamblePropertyRegex =
@@ -1783,7 +1794,7 @@ fun installAi4() {
                             code = exec.prompt,
                             lang = lang,
                             lineNumber = exec.startLine,
-                            userPrompt = expandedExtraPrompt,
+                            userPrompt = modelUserPrompt,
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,
                             listDefinitions = listDefinitions,
@@ -1817,7 +1828,7 @@ fun installAi4() {
                             state = state,
                             code = exec.prompt,
                             lang = lang,
-                            userPrompt = expandedExtraPrompt,
+                            userPrompt = modelUserPrompt,
                             imageUrls = exec.images,
                             attachments = contextAttachments,
                             resolveAttachment = resolveAttachment,

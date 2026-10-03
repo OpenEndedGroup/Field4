@@ -174,7 +174,26 @@ data class AiAssist(
     val startLine: Int = 0,
     val property: String = "code",
     val kind: String,
-    val images: List<String> = emptyList()
+    val images: List<String> = emptyList(),
+    /** The prompt came from push-to-talk, so it may carry speech-recognition errors. */
+    val dictated: Boolean = false
+)
+
+/** Push-to-talk audio: base64 little-endian float32 mono PCM, plus Whisper's initial prompt. */
+@Serializable
+data class AiTranscribeRequest(
+    val pcm: String,
+    val sampleRate: Int = 16000,
+    val vocabulary: String = ""
+)
+
+@Serializable
+data class AiTranscribeResponse(
+    val success: Boolean,
+    val text: String = "",
+    val message: String = "",
+    val millis: Int = 0,
+    val backend: String = ""
 )
 
 @Serializable
