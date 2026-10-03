@@ -8,9 +8,7 @@ and Field can read those logs back to suggest how the agents should work next ti
 index keeps the workspace code it last indexed, arranged by what the code does, so you can find it
 again by describing it.
 
-Each of these keeps its own record for its own length of time, and none of them has everything
-that happened. Together they tell you what the document used to say, what a value was doing a
-moment ago, what the agents did for you, and where code you half-remember lives. The tools:
+Each keeps its own record, for its own length of time. The tools:
 
 - **[Document history](document_history.md)** — a full-page timeline of the versions in the document's history store, with restore, cherry-pick and diff.
 - **[Inline history: the History Lens](history_lens.md)** — scrub a single line or selection back through its versions without leaving the editor.
@@ -28,9 +26,8 @@ The AI-facing history tools are launched and monitored from the **welcome page**
 You can also reach it at any time from the hero buttons of a running instance, or by navigating straight to `/welcome`.
 
 The left of the page is about *documents*: a search box, the workspace list, and currently running
-documents. Searching combines `/api/workspace-search` text/name matches with semantic matches when
-the [semantic index](semantic_index.md) is enabled and available. Semantic failures do not remove
-the ordinary workspace-search results.
+documents. The search box matches document names and text, and, when the
+[semantic index](semantic_index.md) is turned on, code that matches what you describe.
 
 The right of the page is a stack of collapsible panels. **AI** is the one that runs the background tasks:
 
@@ -93,8 +90,8 @@ ui.eval("""
 ui.pause(300)
 ```
 
-Each task card carries a live status badge. When a task finishes a run, writes a report or rebuilds
-the index, the page updates itself over a `/welcome-events` WebSocket without a reload.
+Each task card has a status line that updates by itself when a task finishes a run, writes a
+report or rebuilds the index.
 
 A task's run button starts the work and opens its inspection page in a new tab. Those pages are the
 subject of the rest of this section.
