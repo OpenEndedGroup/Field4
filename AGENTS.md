@@ -134,7 +134,9 @@ artifacts, runs the full guard once and fast-forwards `main`, one branch at a ti
 back as a bounce with its reason; fix the branch and enqueue again. When you need the outcome, run
 the `tools/land.py wait <id>` that `enqueue` prints as a background command (exit 0 landed, 1
 bounced) instead of polling; when you come back to a branch, `tools/land.py mine` lists what
-happened to every attempt to land it.
+happened to every attempt to land it. To push, `enqueue --push` (pushes `main` once that item lands);
+to bring in work from `origin`, `tools/land.py sync [--push]` lands `origin/main` through the queue.
+Never `git pull` or push `main` by hand.
 The hooks only report which guards a commit affects, so commits take seconds; do not use
 `--no-verify`, and do not run or track guards as "owed" before landing. Bring `main` into your
 branch with `tools/merge_regen.py main`, which regenerates rather than hand-merging generated files.

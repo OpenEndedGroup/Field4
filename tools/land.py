@@ -5,13 +5,20 @@
     uv run python tools/land.py status [id] [--watch]             # what is queued, landed, bounced
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
+    uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
 moved, and merged again, colliding with everyone else doing the same. Here only the lander writes to
 `main`, one item at a time, so nobody races and nobody needs to wait for a landing.
 
-What the lander does with each item, oldest first:
+Batching: the lander takes up to --batch (default 8) of the oldest items per round, merges each as
+its own commit, and runs ONE regeneration and ONE guard for all of them. A red round is bisected:
+the batch halves and retries from the oldest until the culprit bounces alone, and every retry builds
+on the current main, so a pair that only breaks together lands the first and bounces the second. A
+branch that conflicts only with another branch in its batch is deferred to a later round, not bounced.
+
+What the lander does with each round:
 
 1. Resets its own worktree to `main` (it never touches yours).
 2. Skips the item as already landed if its commit is already on `main`.
@@ -83,12 +90,13 @@ def _now() -> str:
 
 def _items(queue: Path, state: str) -> list[dict]:
     items = []
-    for path in sorted((queue / state).glob("*.json")):
+    for path in (queue / state).glob("*.json"):
         try:
             items.append(json.loads(path.read_text()))
         except (OSError, json.JSONDecodeError):
             continue
-    return items
+    # Arrival order; items queued before `seq` existed fall back to their id, which is a timestamp.
+    return sorted(items, key=lambda item: (item.get("seq", 0), item["id"]))
 
 
 def _find(queue: Path, item_id: str) -> tuple[str, dict] | None:
@@ -147,7 +155,12 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         "sha": sha,
         "by": args.by or os.environ.get("FIELD_LAND_BY") or f"{_git(here, 'config', 'user.name', check=False) or 'unknown'} @ {here.name}",
         "note": args.note or "",
+        # Push main to origin once this lands (and only if it lands).
+        "push": bool(getattr(args, "push", False)),
         "enqueued": _now(),
+        # Queue order. Ids only resolve to the second, so sorting by them put two branches enqueued in
+        # the same second in alphabetical order instead of the order they arrived.
+        "seq": time.time_ns(),
     }
     # Ids are per second; a second enqueue of the same branch within it must not overwrite the first.
     base, n = item["id"], 1
@@ -259,6 +272,12 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
             + (f", took {_span(took)} ({how})" if took is not None else "")
             + (f"; {item['reason']}" if item.get("reason") else "")
         )
+        if item.get("pushed_as"):
+            lines.append(f"         pushed main {item['pushed_as'][:9]} to origin")
+        elif item.get("push_error"):
+            lines.append(f"         NOT pushed: {item['push_error']}")
+        elif item.get("push"):
+            lines.append("         push requested")
     elif state == BOUNCED:
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
@@ -509,6 +528,35 @@ def cmd_mine(args: argparse.Namespace) -> int:
     return {PENDING: 3, LANDED: 0, BOUNCED: 1}[newest]
 
 
+def cmd_sync(args: argparse.Namespace) -> int:
+    """Bring origin/main in through the queue (and optionally push after), never by merging main."""
+    here = Path.cwd()
+    primary = _primary(here)
+    fetch = subprocess.run(["git", "fetch", "origin", "main"], cwd=primary)
+    if fetch.returncode != 0:
+        print("land: git fetch origin main failed", file=sys.stderr)
+        return fetch.returncode
+    upstream = _git(primary, "rev-parse", "refs/remotes/origin/main")
+    behind = int(_git(primary, "rev-list", "--count", "refs/heads/main..refs/remotes/origin/main"))
+    ahead = int(_git(primary, "rev-list", "--count", "refs/remotes/origin/main..refs/heads/main"))
+    print(f"land: main is {ahead} ahead of origin/main and {behind} behind")
+    if behind == 0:
+        if not args.push or ahead == 0:
+            print("land: nothing to bring in" + ("" if args.push else "; pass --push to push main"))
+            return 0
+        with (_queue_dir(here) / "logs" / "push.log").open("a") as out:
+            why = _push_main(primary, _git(primary, "rev-parse", "refs/heads/main"), out)
+        print("land: pushed main to origin" if why is None else f"land: push failed: {why}")
+        return 0 if why is None else 1
+    branch = f"sync/origin-main-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+    _git(primary, "branch", branch, upstream)
+    print(f"land: {branch} = origin/main {upstream[:9]}")
+    return cmd_enqueue(argparse.Namespace(
+        branch=branch, by=args.by, push=args.push,
+        note=f"bring in {behind} commit(s) from origin/main" + ("; push after" if args.push else ""),
+    ))
+
+
 def cmd_wait(args: argparse.Namespace) -> int:
     queue = _queue_dir(Path.cwd())
     while True:
@@ -585,52 +633,145 @@ def _first_error(log: Path) -> str:
     return (text[-1] if text else "no output")[:400]
 
 
-def _land(item: dict, primary: Path, wt: Path, queue: Path) -> None:
-    log = queue / "logs" / f"{item['id']}.log"
-    item["log"] = str(log)
-    item["started"] = _now()
+def _message(item: dict) -> str:
+    message = f"Land {item['branch']} ({item['by']})\n\nLanding queue item {item['id']}, commit {item['sha']}."
+    if item.get("note"):
+        message += f"\n\n{item['note']}"
+    return message
+
+
+def _requeue(queue: Path, item: dict, why: str) -> None:
+    """Back to waiting, as if never started: a later round takes it again."""
+    for key in ("started", "batch", "batch_size", "merged_as", "log"):
+        item.pop(key, None)
+    item.setdefault("history", []).append(f"{_now()} {why}")
     _move(queue, item, PENDING)
-    if not _ok(primary, "cat-file", "-e", f"{item['sha']}^{{commit}}"):
-        item.update(reason="its commit no longer exists", finished=_now())
-        _move(queue, item, BOUNCED)
-        return
+
+
+def _push_main(primary: Path, sha: str, out) -> str | None:
+    """Push main to origin. None on success, else why not. Never forces, never touches local main."""
+    out.write(f"merge_regen: pushing main {sha[:9]} to origin\n")
+    out.flush()
+    result = subprocess.run(["git", "push", "origin", f"{sha}:refs/heads/main"], cwd=primary,
+                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    out.write(result.stdout)
+    if result.returncode == 0:
+        return None
+    if "rejected" in result.stdout or "fetch first" in result.stdout or "non-fast-forward" in result.stdout:
+        return "origin/main has commits main lacks; run `uv run python tools/land.py sync --push`"
+    return " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
+
+
+def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecting: int | None) -> str:
+    """Land [items] together: one merge commit each, then one regeneration and one guard for all.
+
+    Returns "green" (everything that could land did), "red" (the combined guard failed with more
+    than one branch in it: all of them are back in the queue and the caller halves the batch), or
+    "bounced" (a single branch failed on its own and has been bounced).
+    """
+    batch_id = f"batch-{dt.datetime.now().strftime('%Y%m%d-%H%M%S-%f')}"
+    log = queue / "logs" / f"{batch_id}.log"
+    for item in items:
+        item.update(log=str(log), started=_now(), batch=batch_id, batch_size=len(items))
+        _move(queue, item, PENDING)
+    live = []
+    for item in items:
+        if _ok(primary, "cat-file", "-e", f"{item['sha']}^{{commit}}"):
+            live.append(item)
+        else:
+            item.update(reason="its commit no longer exists", finished=_now())
+            _move(queue, item, BOUNCED)
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+
     for _attempt in range(MAX_MAIN_RACES):
         main_sha = _git(primary, "rev-parse", "refs/heads/main")
-        if _ok(primary, "merge-base", "--is-ancestor", item["sha"], main_sha):
-            item.update(landed_as=main_sha, finished=_now(), reason="already on main")
-            _move(queue, item, LANDED)
-            return
+        todo = []
+        for item in live:
+            if _ok(primary, "merge-base", "--is-ancestor", item["sha"], main_sha):
+                item.update(landed_as=main_sha, finished=_now(), reason="already on main")
+                _move(queue, item, LANDED)
+            else:
+                todo.append(item)
+        if not todo:
+            return "green"
         _reset(wt, main_sha)
-        message = f"Land {item['branch']} ({item['by']})\n\nLanding queue item {item['id']}, commit {item['sha']}."
-        if item.get("note"):
-            message += f"\n\n{item['note']}"
+        members: list[dict] = []
         with log.open("a") as out:
-            out.write(f"\n=== {_now()} merging {item['sha']} onto main {main_sha}\n")
+            out.write(f"\n=== {_now()} {batch_id}: {len(todo)} branch(es) onto main {main_sha}"
+                      + (f" (bisecting a red batch of {bisecting})" if bisecting else "") + "\n")
+            for item in todo:
+                out.write(f"merge_regen: merging {item['branch']} {item['sha'][:9]}\n")
+                out.flush()
+                subprocess.run(["git", "merge", "--no-ff", "--no-commit", item["sha"]], cwd=wt, stdout=out,
+                               stderr=subprocess.STDOUT, env=env)
+                conflicts = _git(wt, "diff", "--name-only", "--diff-filter=U", check=False).split()
+                merging = _ok(wt, "rev-parse", "-q", "--verify", "MERGE_HEAD")
+                if conflicts or not merging:
+                    if merging:
+                        _git(wt, "merge", "--abort", check=False)
+                    files = ", ".join(conflicts) or "see the log"
+                    if members:
+                        # It may only conflict with a batch member that has yet to pass the guard; try
+                        # it again in a later round rather than blame it for someone else's change.
+                        out.write(f"merge_regen: {item['branch']} conflicts with an earlier branch in this batch ({files}); deferred\n")
+                        _requeue(queue, item, f"deferred: conflicted with {', '.join(m['branch'] for m in members)} in {batch_id}")
+                    else:
+                        item.update(reason=f"merge conflict with main: {files}", finished=_now())
+                        _move(queue, item, BOUNCED)
+                    continue
+                subprocess.run(["git", "commit", "-q", "-m", _message(item)], cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env)
+                item["merged_as"] = _git(wt, "rev-parse", "HEAD")
+                members.append(item)
+            if not members:
+                return "green"
+            names = "\n".join(f"- {m['branch']} ({m['id']})" for m in members)
+            out.write(f"merge_regen: one regeneration and one guard for {len(members)} branch(es)\n")
             out.flush()
             code = subprocess.run(
-                [sys.executable, str(wt / "tools/merge_regen.py"), item["sha"], "-m", message],
-                # Unbuffered, so `status` can read which step it is on while it runs.
-                cwd=wt, stdout=out, stderr=subprocess.STDOUT, env={**os.environ, "PYTHONUNBUFFERED": "1"},
+                [sys.executable, str(wt / "tools/merge_regen.py"), "--regen-since", main_sha,
+                 "-m", f"Regenerate generated artifacts after landing {len(members)} branch(es)\n\n{names}"],
+                cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env,
             ).returncode
         if code != 0:
-            item.update(reason=_first_error(log), finished=_now())
             _reset(wt, main_sha)
-            _move(queue, item, BOUNCED)
-            return
+            if len(members) == 1:
+                item = members[0]
+                found = f" (found by bisecting a red batch of {bisecting})" if bisecting else ""
+                item.update(reason=_first_error(log) + found, finished=_now())
+                _move(queue, item, BOUNCED)
+                return "bounced"
+            for item in members:
+                _requeue(queue, item, f"in red {batch_id} of {len(members)}; bisecting")
+            return "red"
         new = _git(wt, "rev-parse", "HEAD")
         why = _fast_forward_main(primary, main_sha, new)
         if why is None:
-            item.update(landed_as=new, finished=_now())
-            _move(queue, item, LANDED)
-            return
+            for item in members:
+                item.update(landed_as=item["merged_as"], finished=_now())
+            if any(item.get("push") for item in members):
+                with log.open("a") as out:
+                    pushed = _push_main(primary, new, out)
+                for item in members:
+                    if item.get("push"):
+                        item.update(pushed_as=new) if pushed is None else item.update(push_error=pushed)
+            for item in members:
+                _move(queue, item, LANDED)
+            return "green"
         if why != "main moved":
-            item.update(reason=why, finished=_now())
-            _move(queue, item, BOUNCED)
-            return
+            if len(members) > 1:
+                # Usually one branch touches a file someone has dirty in the primary: narrow it down.
+                for item in members:
+                    _requeue(queue, item, f"{batch_id}: {why}")
+                return "red"
+            members[0].update(reason=why, finished=_now())
+            _move(queue, members[0], BOUNCED)
+            return "bounced"
         with log.open("a") as out:
             out.write("main moved during the landing; starting again on the new main\n")
-    item.update(reason=f"main moved under the lander {MAX_MAIN_RACES} times; enqueue again", finished=_now())
-    _move(queue, item, BOUNCED)
+        live = members
+    for item in live:
+        _requeue(queue, item, f"main moved under the lander {MAX_MAIN_RACES} times")
+    return "green"
 
 
 def cmd_run(args: argparse.Namespace) -> int:
@@ -653,15 +794,29 @@ def cmd_run(args: argparse.Namespace) -> int:
         (queue / "lander.json").write_text(json.dumps(
             {"pid": os.getpid(), "started": _now(), "once": args.once, "via": via, "worktree": str(wt)}) + "\n")
         print(f"land: lander up in {wt}; queue {queue}", flush=True)
+        limit, bisecting, suspects = args.batch, None, set()
         while True:
             pending = _items(queue, PENDING)
             if pending:
-                item = pending[0]
+                batch = pending[:limit]
                 wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
-                print(f"land: {_now()} landing {item['id']} ({item['sha'][:9]}, by {item['by']})", flush=True)
-                _land(item, primary, wt, queue)
-                state, done = _find(queue, item["id"]) or ("?", item)
-                print(_describe(state, done, queue), flush=True)
+                print(f"land: {_now()} landing {len(batch)}: " + ", ".join(i["branch"] for i in batch), flush=True)
+                result = _land_batch(batch, primary, wt, queue, bisecting)
+                if result == "red":
+                    # Halve and retry from the oldest. Each round builds on the current main, so a pair
+                    # that only breaks together is caught too: the earlier lands, the later fails on it.
+                    if not suspects:
+                        bisecting, suspects = len(batch), {item["id"] for item in batch}
+                    limit = max(1, len(batch) // 2)
+                else:
+                    # Keep halving through the rest of the red batch; back to full batches once every
+                    # branch that was in it has landed or bounced (or the red was a flake).
+                    suspects -= {item["id"] for item in batch if (_find(queue, item["id"]) or (PENDING,))[0] != PENDING}
+                    if not suspects:
+                        limit, bisecting = args.batch, None
+                for item in batch:
+                    state, done = _find(queue, item["id"]) or ("?", item)
+                    print(_describe(state, done, queue), flush=True)
                 continue
             if args.once:
                 return 0
@@ -676,6 +831,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("enqueue", help="queue a branch for landing, then stop")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.add_argument("--note", help="one line for the landing commit, e.g. what to look at if it bounces")
+    p.add_argument("--push", action="store_true", help="push main to origin once this lands (only if it lands)")
     p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
     p.set_defaults(func=cmd_enqueue)
     p = sub.add_parser("status", help="show the queue, or one item (exit 0 landed, 1 bounced, 3 pending)")
@@ -684,6 +840,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
+    p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")
+    p.add_argument("--push", action="store_true", help="push main to origin once it has landed")
+    p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
+    p.set_defaults(func=cmd_sync)
     p = sub.add_parser("mine", help="every landing attempt for this branch, newest first (exit 1 if it bounced)")
     p.add_argument("branch", nargs="?", help="default: the current branch")
     p.set_defaults(func=cmd_mine)
@@ -692,6 +852,9 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_wait)
     p = sub.add_parser("run", help="the lander: drain the queue onto main, one item at a time")
     p.add_argument("--once", action="store_true", help="drain the queue and exit instead of polling")
+    p.add_argument("--batch", type=int, default=int(os.environ.get("FIELD_LAND_BATCH", "8")),
+                   help="most branches landed together, sharing one regeneration and one guard "
+                        "(default $FIELD_LAND_BATCH or 8; 1 lands them one at a time)")
     p.add_argument("--worktree", help="the lander's own worktree (default: <primary>-worktrees/lander)")
     p.set_defaults(func=cmd_run)
     args = parser.parse_args(argv)
