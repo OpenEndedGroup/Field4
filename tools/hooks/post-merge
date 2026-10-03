@@ -30,4 +30,6 @@ guard="$repo_root/tools/check_staged_generated_artifacts.py"
 # in which case there is no "what just arrived" to speak of.
 git rev-parse --verify --quiet ORIG_HEAD >/dev/null 2>&1 || exit 0
 
-uv run --project "$repo_root" --frozen python "$guard" --since ORIG_HEAD || true
+# Report only. Git ignores this hook's status, so running Gradle here bought minutes of blocked
+# `git merge` and nothing it could act on. tools/merge_regen.py runs the full check before landing.
+uv run --project "$repo_root" --frozen python "$guard" --since ORIG_HEAD --report || true

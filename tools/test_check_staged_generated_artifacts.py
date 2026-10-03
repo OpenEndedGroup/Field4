@@ -353,7 +353,7 @@ class PostMergeHookFiresTests(unittest.TestCase):
 
         ran = self.tmp / "guard-ran.txt"
         self.assertTrue(ran.exists(), "post-merge hook did not run the guard")
-        self.assertEqual(ran.read_text(), "--since ORIG_HEAD")
+        self.assertEqual(ran.read_text(), "--since ORIG_HEAD --report")
         self.assertTrue((self.tmp / "lfs-ran.txt").exists(), "chained LFS hook did not run")
 
     def test_skip_env_var_disables_the_guard_but_not_the_chained_hook(self) -> None:
