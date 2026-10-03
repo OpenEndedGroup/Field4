@@ -49,6 +49,20 @@ is identical to the hung dusk painting:
 
 ![six frames on black showing the storm painting: the dusk canvas as the rewind restored it; heavy dark clouds and teal water blocked in over it; cloud banks and rows of wave strokes; the boats repainted heeling, with white caps; foam and spray stippled over the crests; and the hung storm painting](assets/ai4_painting/storm.jpg)
 
+## The same request, another model
+
+The Studio works with whichever model the AI chat is set to use. The painting on the left is the dusk
+painting above, by OpenAI's `gpt-6-astra`. The one on the right is the same request in a fresh Studio,
+by `gpt-6.1-sol`:
+
+![two paintings of the harbour at dusk side by side on black. Left, by gpt-6-astra: a clear apricot glow at the horizon under violet bands, dark headlands at both edges, three moored boats with thin reflections on pale still water. Right, by gpt-6.1-sol: the same violet-to-apricot sky over a band of mist along the horizon, one dark headland on the left, a long streak of light on the water, and three boats sitting in heavier, darker reflections](assets/ai4_painting/two_models.jpg)
+
+Sol worked the same way, from broad masses to boats and reflections, also in six tool programs, and
+also took about three minutes. Its painting is mistier. At the fourth look it had laid a few pale
+patches of reflected light, and by the next look it had worked them into the water:
+
+![eight frames on black showing gpt-6.1-sol painting the harbour: the bare oil ground; violet, apricot and grey-blue laid in as loose patches; continuous body colour in bands; a dark headland on the left and pale patches of reflected light on the water; three hulls with slender masts; darker reflections under the boats and fine rigging; the reflections softened; and the hung painting](assets/ai4_painting/sol_dusk.jpg)
+
 These commands work in the Studio's chat:
 
 - `/canvas` shows the canvas in the chat.
@@ -132,7 +146,9 @@ document saves itself, such as a design. [Agent extensions](aiFeatures.md#more-t
 has the rest of what `agentExtension` can add.
 
 ??? aside "How these figures were made"
-    They are from one live run on 2026-10-03, OpenAI `gpt-6-astra`, with the three requests sent as
+    The Astra figures are from one live run on 2026-10-03, OpenAI `gpt-6-astra`, and the Sol figures
+    from a second, later that day, `gpt-6.1-sol`, given only the dusk request in a fresh Studio. In the
+    first run the three requests were sent as
     real panel turns (`agent-task --chat-box Studio` in `tools/field_backdoor.py`) and the rewind and
     branch switch sent as the panel sends them. The frames are the images the agent's `paint_look`
     calls returned, which the Studio also writes to the document's `progress/` folder, and the last
