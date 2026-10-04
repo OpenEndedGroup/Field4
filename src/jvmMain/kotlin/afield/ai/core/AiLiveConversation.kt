@@ -17,7 +17,8 @@ internal class AiLiveConversation {
     }
 
     /** A message the person sent while the turn ran, at the point the model received it ([AiTurnInbox]). */
-    @Synchronized fun user(message: String) {
+    @Synchronized
+    fun user(message: String) {
         if (message.isNotBlank()) entries += User(message.trim())
     }
 

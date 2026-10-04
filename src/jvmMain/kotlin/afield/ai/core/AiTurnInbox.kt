@@ -33,12 +33,15 @@ class AiTurnInbox {
     private var closed = false
 
     /** Called, on the bridge's thread, with the messages it has just handed to the model. */
-    @Volatile var onDelivered: ((List<Pending>) -> Unit)? = null
+    @Volatile
+    var onDelivered: ((List<Pending>) -> Unit)? = null
     /** Called by whoever queued a message, after [offer] and outside any lock, so the turn can show it. */
-    @Volatile var onQueued: (() -> Unit)? = null
+    @Volatile
+    var onQueued: (() -> Unit)? = null
 
     /** Queue [message]; false once the turn has ended and taken what was left. */
-    @Synchronized fun offer(message: Pending): Boolean {
+    @Synchronized
+    fun offer(message: Pending): Boolean {
         if (closed) return false
         pending += message
         return true
@@ -57,7 +60,8 @@ class AiTurnInbox {
     }
 
     /** The turn has ended: refuse further messages and return those never delivered, for the next turn. */
-    @Synchronized fun close(): List<Pending> {
+    @Synchronized
+    fun close(): List<Pending> {
         closed = true
         return pending.toList().also { pending.clear() }
     }
