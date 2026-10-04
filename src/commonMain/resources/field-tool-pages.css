@@ -1,4 +1,5 @@
-/* Shared look of Field's tool pages (/welcome, /docs-pass.html, /code-use, /ai-tool-use-improvement.html):
+/* Shared look of Field's tool pages (/welcome, /docs-pass.html, /code-use, /ai-tool-use-improvement.html,
+   /completion-doc-polish.html):
    palette, black-bordered panels, buttons, inputs, chips, tables. Page-specific rules stay in each page. */
 @font-face {
     font-family: "Iosevka Web";
