@@ -1528,6 +1528,14 @@ body {
     overflow: visible;
 }
 
+/* Boxes being dragged on a split canvas ride an unclipped canvas above the panes (beginBoxDrag). */
+.field-drag-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+}
+
 .field-pane-left {
     border-right: 1px solid rgba(255, 255, 255, 0.16);
 }

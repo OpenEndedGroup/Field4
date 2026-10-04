@@ -7222,16 +7222,23 @@ suspend fun main() {
         provideMissingMouseup(event)
         // Clear snap guides when drag ends
         boxSnappingSystem.clearSnapGuides()
-        // A dragged box stays in its pane until the drag ends, then joins the pane its frame is in.
-        CanvasCamera.draggingBoxes = false
+        // A split canvas: a box dropped over another pane keeps its place on screen in that pane.
+        val moved = CanvasCamera.endBoxDrag()
+        if (moved.isNotEmpty()) {
+            moved.forEach { (box, frame) -> applyFrameToBox(box, frame) }
+            send(Message("set-rects").payload(Set_rects(moved.mapNotNull { (box, frame) ->
+                (box.asDynamic().uid as? String)?.let { Set_rect(it, "frame", frame) }
+            })))
+        }
         selected.copy().forEach { CanvasCamera.place(it) }
+        canvasGestures.requestConnectionGroupRebuild()
     }
 
     interactable.on("dragstart") { event ->
         if (pendingShiftToggleBox != null) {
             pendingShiftToggleHadDrag = true
         }
-        CanvasCamera.draggingBoxes = true
+        CanvasCamera.beginBoxDrag(selected.copy())
         selected.copy().forEach {
             it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
             it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)

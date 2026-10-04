@@ -4194,6 +4194,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-split-drag",
+            description="On a split canvas, a box dragged across a divider is not clipped mid-drag and lands where it was dropped, in the other pane's camera.",
+            document=f"ui-regression-canvas-split-drag-{int(time.time())}",
+            commands=[
+                "new-box --name DragA --alias drag_a --x 100 --y 200",
+                "new-box --name DragFar --x 600 --y 200",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-setup.js"), "--timeout", pw_timeout]),
+                "drag-box @drag_a --dx 360 --dy 40 --hold",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-mid.js"), "--timeout", pw_timeout]),
+                "mouse-up",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-check.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="profiling-timeline",
             description="Record real box coroutines, brush CPU/allocation samples, navigate to code, and retain or replace a latched capture.",
             document=f"ui-regression-profile-{int(time.time())}",

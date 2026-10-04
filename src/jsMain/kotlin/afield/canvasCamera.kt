@@ -66,9 +66,12 @@ object CanvasCamera {
     fun paneAt(clientX: Double, clientY: Double): CanvasPane =
         panes.firstOrNull { it.contains(clientX, clientY) } ?: main
 
-    /** The pane showing [element] (a box, or anything inside one). */
+    /** The pane showing [element] (a box, or anything inside one); for a box being dragged, its origin pane. */
     fun paneOf(element: Element?): CanvasPane {
         if (!isSplit || element == null) return main
+        element.closest(".field-drag-canvas")?.let { canvas ->
+            return dragCanvases.entries.firstOrNull { it.value == canvas }?.key ?: main
+        }
         val host = element.closest(".field-pane") ?: return main
         return panes.firstOrNull { it.element == host } ?: main
     }
@@ -86,6 +89,8 @@ object CanvasCamera {
      */
     fun visibleRect(box: Element, r: DOMRect): DOMRect? {
         if (!isSplit) return r
+        // A box being dragged is drawn above the panes, unclipped.
+        if (box.closest(".field-drag-canvas") != null) return r
         val p = paneOf(box).rect
         val left = max(r.left, p.x)
         val top = max(r.top, p.y)
@@ -471,6 +476,68 @@ object CanvasCamera {
     fun applyTransforms() {
         panes.forEach { pane -> pane.canvas?.style?.transform = pane.canvasTransform() }
         if (!isSplit) mainCanvas.style.transform = main.canvasTransform()
+        // Drag canvases sit at the window's corner, so their translation is the pane's own.
+        dragCanvases.forEach { (pane, canvas) -> canvas.style.transform = "translate(${pane.tx}px, ${pane.ty}px) scale($zoom)" }
+    }
+
+    // ---- Dragging boxes across dividers ----
+
+    /** One unclipped canvas above the panes per pane a dragged box came from. */
+    private val dragCanvases = mutableMapOf<CanvasPane, HTMLElement>()
+    private val dragOrigins = mutableMapOf<HTMLElement, CanvasPane>()
+
+    /**
+     * A drag is starting: each dragged top-level box moves (with its state, see [moveNode]) onto
+     * an unclipped canvas above the panes that carries its pane's camera, so it stays where it is
+     * on screen and can be dragged across a divider without being cut off.
+     */
+    fun beginBoxDrag(boxes: Collection<HTMLElement>) {
+        draggingBoxes = true
+        if (!isSplit) return
+        boxes.forEach { box ->
+            val pane = panes.firstOrNull { it.canvas == box.parentElement } ?: return@forEach
+            val canvas = dragCanvases.getOrPut(pane) {
+                (document.createElement("div") as HTMLElement).also {
+                    it.className = "field-main-canvas field-pane-canvas field-drag-canvas"
+                    mainViewport.appendChild(it)
+                }
+            }
+            dragOrigins[box] = pane
+            moveNode(canvas, box, null)
+        }
+        applyTransforms()
+    }
+
+    /**
+     * The drag ended. Each box goes back onto a pane canvas; one dropped over a different pane
+     * gets the frame that keeps it where it was dropped, seen through that pane's camera (its
+     * on-screen corner picks the pane, as its frame origin picks the quadrant). Returns the
+     * boxes whose frame changed, with their new frames, for the caller to apply and send; boxes
+     * are then placed by their frames.
+     */
+    fun endBoxDrag(): List<Pair<HTMLElement, Rect>> {
+        draggingBoxes = false
+        val changed = mutableListOf<Pair<HTMLElement, Rect>>()
+        dragOrigins.forEach { (box, origin) ->
+            val r = box.getBoundingClientRect()
+            val dest = paneAt(r.left, r.top)
+            if (dest.col != origin.col || dest.row != origin.row) {
+                var x = dest.worldX(r.left)
+                var y = dest.worldY(r.top)
+                // A corner dropped outside every pane falls to the main pane; keep it in its quadrant.
+                if (splitX != null) x = if (dest.col == 1) max(x, worldSplitX) else minOf(x, worldSplitX - 1.0)
+                if (splitY != null) y = if (dest.row == 1) max(y, worldSplitY) else minOf(y, worldSplitY - 1.0)
+                val d = box.asDynamic()
+                val w = (d.data_w as? Number)?.toDouble() ?: (r.width / zoom)
+                val h = (d.data_h as? Number)?.toDouble() ?: (r.height / zoom)
+                changed += box to Rect(x, y, w, h)
+            }
+            origin.canvas?.let { if (box.isConnected) moveNode(it, box, null) }
+        }
+        dragOrigins.clear()
+        dragCanvases.values.forEach { it.remove() }
+        dragCanvases.clear()
+        return changed
     }
 
     /**
