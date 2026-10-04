@@ -1,25 +1,114 @@
 # Installation
 
-Field is distributed as source. You install it by cloning it:
+Field is distributed as source. The checkout is the installation; the launcher downloads its own
+Java and Node runtimes, builds Field, and opens the desktop app. You do not need to install Java,
+Gradle, Node, Python, an AI API key, or the optional submodules to get started.
+
+## Before cloning
+
+Install **Git and Git LFS**, and run `git lfs install` before cloning. The compiler fork is stored
+in LFS: without it, Git leaves a small text pointer where the compiler JAR should be. GitHub's
+**Download ZIP** is not the recommended installation route.
+
+Allow several gigabytes for the checkout, downloaded runtimes, dependency caches and build output.
+The tracked checkout alone is about 1.3 GB. Start with at least **10 GB of free space**; this is a
+planning allowance, not a measured minimum. For this beta, **16 GB RAM is recommended** for the
+source build. The Kotlin compiler is allowed a 10 GB heap; an 8 GB machine has not been qualified.
+The first launch needs internet access and may spend several minutes downloading and compiling.
+A long-running Gradle task is normal; `BUILD FAILED` is not.
+
+<div class="field-data-table" markdown>
+
+| Platform | Prerequisites and current limits |
+| --- | --- |
+| **macOS, Apple silicon** | Native arm64 Terminal; Git LFS (`brew install git-lfs` if you use Homebrew), and Apple's Command Line Tools (`xcode-select --install`). The desktop bridge compiles with `xcrun clang++`. |
+| **Linux, x86-64** | A glibc desktop distribution, Git LFS, `curl`, a C/C++ toolchain, Make, CMake, and the desktop libraries listed below. Run from your desktop session. |
+| **Windows, x64** | Git for Windows with Git LFS enabled. Use `field.bat`, or PowerShell as shown below. The launcher provisions its runtimes; a separate C++ compiler is not needed for the default Windows launch. |
+| **Linux, ARM64** | The launcher has an ARM64 provisioning path, but this release has not yet been validated end to end on ARM64. Treat it as experimental. |
+| **Intel Macs / native Windows ARM64** | Not supported by the pinned toolchain. GraalVM Community 25.0.2 supplies no Intel macOS or Windows ARM64 build; the launcher reports this before downloading. |
+
+</div>
+
+### Linux prerequisites
+
+For an Ubuntu 24.04 desktop (package names vary on older releases):
 
 ```diffstatic {data-lang=bash}
-git clone https://github.com/OpenEndedGroup/Field4.git
+sudo apt update
+sudo apt install git git-lfs curl build-essential cmake \
+    libgtk-3-0t64 libnss3 libasound2t64 libgbm1 libxkbcommon0
+
+git lfs install
 ```
 
-There are no binaries and no installer — the checkout is the installation.
+On Fedora, the build tools are `git git-lfs curl gcc gcc-c++ make cmake`; on Arch, they are
+`git git-lfs curl base-devel cmake`. Electron also needs GTK 3, NSS, ALSA, GBM, and X11/XKB
+libraries, normally present on a full desktop installation. Minimal installations may need more:
+the launcher reports missing shared libraries by name. Alpine/musl, WSL and headless desktop
+launches are not qualified platforms for this beta.
 
-## Starting Field
+A Vulkan driver is needed for **native graphics examples**, rather than for the editor itself.
+Install your distribution's Vulkan loader and the driver for your GPU. On Linux, Mesa supplies
+Intel/AMD drivers; NVIDIA users need a matching proprietary driver with Vulkan support. The
+**Vulkan** panel on the welcome page checks what Field can actually use. A detected GPU does not
+prove that a window can open: SSH sessions and displays with no usable monitor can still fail.
 
-Launch Field·4 from the repository:
+## Clone and start
 
-- **Mac**: run `./field.sh` in Terminal, or double-click `field.command` in Finder.
-- **Windows**: double-click `field.bat` in File Explorer, or run `.\field.ps1` in PowerShell.
-- **Linux**: run `./field.sh` in a terminal.
+On macOS and Linux:
 
-The first Gradle build downloads dependencies and compiles the JVM and browser code, so it can take
-substantially longer than later starts.
+```diffstatic {data-lang=bash}
+git lfs install
+git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
+cd Field4
+./field.sh
+```
 
-Eventually you'll be greeted with the boot-screen:
+The shallow clone reduces history downloads and supports ordinary `git pull` updates. Use a full
+clone, or `git fetch --unshallow`, if you want the entire development history. You do not need
+`--recurse-submodules`: those services and experiments are optional.
+
+On Windows, from PowerShell:
+
+```diffstatic {data-lang=powershell}
+git lfs install
+git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
+cd Field4
+.\field.bat
+```
+
+`field.bat` invokes the checked-in PowerShell launcher with a process-local execution-policy
+bypass. You can also run `.\field.ps1` directly when your PowerShell policy permits it. On macOS,
+`field.command` is the Finder equivalent of `./field.sh`.
+
+Before a full build, `./field.sh --check-install` (Windows: `.\field.bat --check-install`) checks
+the platform, required tools and LFS content without downloading or compiling anything. If you
+already cloned without LFS, install it and run `git lfs install` followed by `git lfs pull` in
+this checkout; there is no need to clone again.
+
+Downloads come from the Java distribution providers, GitHub releases, Gradle, Maven repositories,
+and the Node/npm ecosystem. The pinned GraalVM download is checked against its release checksum.
+A proxy or blocked download host can prevent the first build. Later launches reuse the downloaded
+runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache; it cannot prepare
+a machine that has never completed an online build.
+
+On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
+Choose the desktop app or browser/server mode, and optionally request Vulkan diagnostics or
+Python prerequisites. It shows the exact package-manager commands and requires typing `INSTALL`
+before running them. Administrator authentication belongs to your OS package manager; no API keys
+are requested. You can leave the commands for later and install them yourself.
+
+Python prerequisites do not include a configured JEP runtime: complete that in the welcome page's
+**Python** panel. Vulkan diagnostics do not install your GPU driver. AI features, model services
+and agent tooling remain optional separate setups.
+
+Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
+(Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches
+skip the questionnaire. Automation may also set `AFIELD_FIRST_RUN=skip`; prerequisite checks still
+apply. The helper builds on the wrapper's Java 17, independently of Field's compiler fork.
+
+The terminal shows startup progress and server URLs. This older screenshot illustrates the console;
+current launches use HTTPS:
 
 ![A dark terminal filling the window with the word FIELD drawn very large in ASCII art, each letter built from slashes and dots. Beneath it three lines each tagged with a dim "welcome" marker read "welcome to Field, ß-023" and "http://localhost:9092/index.html?file=helloVideo". Below those, the server's own log: Ktor reporting "Application started in 0.206 seconds" and "Responding at http://0.0.0.0:9092", the filestore persisting its cache, "indexed 243 files, 3617 definitions", "found 54429 classes on classpath in 1.851s", and at the bottom a Gradle progress line reading "96% EXECUTING" against the still-running `:runJvm` task](assets/screenshot_22.png)
 
@@ -91,14 +180,70 @@ The right side is a stack of collapsible panels, one per part of Field:
   inside a document is in [AI features](aiFeatures.md).
 - **Preferences** and the **OSC editor**.
 
+## Browser or server-only use
+
+```diffstatic {data-lang=bash}
+./field.sh --server-only
+```
+
+Windows: `.\field.bat --server-only`. This builds the server and browser code without installing
+Electron or compiling the desktop bridges. Open the printed welcome URL in your browser. The
+server keeps running in the terminal; press **Ctrl+C** to stop it. The development HTTPS
+certificate is self-signed, so a browser may require a local certificate exception. This mode
+also supports remote development when used with an SSH tunnel; it does not remove GPU/display
+requirements from native graphics examples.
+
+## Your workspace and local server
+
+With no arguments, a new installation creates `~/Documents/AFieldWorkspace` (the equivalent under
+your Windows home). Field remembers the last workspace across checkouts and prints its choice at
+launch. To choose a new directory, create it first and then pass it:
+
+```diffstatic {data-lang=bash}
+mkdir -p ~/Documents/MyFieldWorkspace
+./field.sh ~/Documents/MyFieldWorkspace
+```
+
+Field saves documents there, outside the checkout. Close Field before updating with `git pull`.
+**Ctrl+C**, closing the desktop app, or **Shut down Field** on the welcome page stops the server;
+normal shutdown saves pending edits.
+
+By default, the server listens on **127.0.0.1** and refuses cross-site browser API requests.
+To connect a device such as Vision Pro over a trusted LAN, explicitly set `AFIELD_BIND_HOST=0.0.0.0`
+before launching. This exposes an **unauthenticated** code-execution environment to that network;
+use a firewall or a trusted private connection. See [Field's server surface](server_surface.md)
+for the deliberate cross-origin exceptions and integration settings.
+
 ## Troubleshooting
+
+- **Git LFS pointer / `zip END header not found`**: run `git lfs install` and `git lfs pull`.
+- **Missing `g++`, Make, CMake or `xcrun`**: install the platform prerequisites above, or use
+  `--server-only` to skip desktop bridge compilation.
+- **Missing Electron shared library**: install the library named by the launcher using your
+  distribution's package manager; `--server-only` is also available.
+- **Linux browser GPU problems**: the desktop uses Chromium's normal backend selection.
+  `FIELD_ELECTRON_ANGLE_VULKAN=1` explicitly requests its optional Vulkan backend; unset it
+  for ordinary desktop use. Field's native Vulkan renderer is configured separately.
+- **No display / SSH**: use `--server-only` and a browser via an SSH tunnel. Run native graphics
+  from a real desktop session.
+- **Port already in use**: close your existing Field, or run `PORT=9477 ./field.sh`. In PowerShell,
+  set `$env:PORT = "9477"` first. The launcher does not attach to someone else's Field.
+- **Download or checksum failure**: correct the connection/proxy problem and rerun. An incomplete
+  GraalVM download is discarded.
+- **Out of memory during compilation**: close memory-heavy applications and include available RAM,
+  swap, and the first compiler error in your report. Lowering the compiler heap may make the build
+  fail sooner; it is not a verified low-memory installation recipe.
+- **An error after startup**: include the first error and its context, OS/architecture, and the
+  exact launch command. Review logs before posting them; paths and document output may be private.
+
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
 [GitHub issue tracker](https://github.com/OpenEndedGroup/Field4/issues).
 
-On Mac you might find that Apple cannot abide the idea of you downloading some code from the internet, building it and running it — all outside their ecosystem. Most likely, this complaint is framed in terms of security and privacy. It's possible that you'll have to give `Terminal` permission to read files from your home directory. For reporting bugs with our installation process, beyond that I'll be very interested in the contents of your Security and Privacy settings page:
-
-![macOS System Settings open on the Privacy & Security pane, that row highlighted in the sidebar among Desktop & Dock, Displays, Notifications, Sound, Lock Screen and the rest. The pane is scrolled to its lower half: Screen & System Audio Recording with 3 apps, Speech Recognition with 0, Sensitive Content Warning off, Analytics & Improvements, Apple Advertising, Apple Intelligence Report on. Then a Security section with "Allow applications from — App Store & Known Developers", "Allow accessories to connect — Ask for New Accessories", FileVault off and Lockdown Mode off, with an Advanced button bottom right](assets/screenshot_4.png)
+On macOS, use the specific permission prompt shown for the folder you chose, and install Command
+Line Tools when requested. Field does not require disabling Gatekeeper, FileVault or other system
+protections. A report should contain the actual error rather than screenshots of unrelated
+Privacy & Security settings.
 
 ## Updating
 

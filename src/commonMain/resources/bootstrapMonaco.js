@@ -25,11 +25,9 @@ window.require.config({
 
 window.MonacoEnvironment = {
         getWorkerUrl: function (workerId, label) {
-                return `data:text/javascript;charset=utf-8,${encodeURIComponent(`
-        self.MonacoEnvironment = {
-          baseUrl: '${document.location.protocol}//${document.location.host}/min/'
-        };
-        importScripts('${document.location.protocol}//${document.location.host}/min/vs/base/worker/workerMain.js');`)}`;
+                // A data: worker has an opaque origin and cannot load its scripts under the
+                // browser-origin guard. Serve the bootstrap from Field's own origin instead.
+                return new URL("/fieldMonacoWorker.js", document.location.href).href;
         }
 };
 
