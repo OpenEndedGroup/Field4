@@ -1112,9 +1112,11 @@ kotlin {
                 //   -Xplugin args (compilerPluginArgs == []) still produced 10
                 //   io.github.kyay10.wither frames. The practical consequence is that Wither
                 //   CANNOT be turned off at runtime -- only by removing the line below.
-                // - and it is not neutral: its IrGenerationExtension breaks local and class-member
-                //   `by provideDelegate` in box code. See dev_docs/k2_repl_provide_delegate.md and
-                //   the reproducer afield.examples.ProvideDelegateReplSmokeTest.
+                // - and it is not neutral: until 2026-10-04 its IrGenerationExtension failed every
+                //   box that called a local function (or a member of a local or anonymous class) as
+                //   a statement, with "... has no callableId". The jar is now built from
+                //   ~/temp/wither branch field/kotlin-2.5.0-beta1, which fixes that. See
+                //   dev_docs/k2_repl_provide_delegate.md and afield.ReplSnippetDeclarationsSmokeTest.
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
 
