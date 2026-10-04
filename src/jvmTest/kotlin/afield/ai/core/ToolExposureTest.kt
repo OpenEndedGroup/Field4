@@ -184,6 +184,17 @@ class ToolMetaPinTest {
                 "SemanticRetrievalRebuildRequest", "SemanticRetrievalStatusRequest",
                 // New on 2026-10-03, not chosen from usage: needed only after a program kept a result as evidence.
                 "ReadToolEvidenceRequest",
+                "InspectStudyBuildsRequest",
+                "WaitStudyBuildRequest",
+                "StartStudyBuildRequest",
+                "CancelStudyBuildRequest",
+                "StyleGeometryPartsRequest",
+                "ReadGeometryReviewsRequest",
+                "ReadGeometryNoteRequest",
+                "ReplyGeometryNoteRequest",
+                "ReviewGeometryNoteRequest",
+                "ReportGeometryFindingRequest",
+                "InspectGeometryViewRequest",
             ),
             metas.filterValues { it.exposure == ToolExposure.DEFERRED }.keys
         )

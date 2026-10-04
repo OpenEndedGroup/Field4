@@ -21,6 +21,9 @@ import com.fasterxml.jackson.annotation.JsonClassDescription
 import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
+import com.openai.core.JsonValue
+import com.openai.models.responses.FunctionTool
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.openai.models.responses.ResponseCreateParams
 import com.openai.models.responses.ResponseFunctionToolCall
 import java.util.concurrent.ConcurrentHashMap
@@ -67,17 +70,30 @@ data class ListAttachmentsRequest(val unused: Int = 0)
 data class ListAttachmentsResult(val attachments: List<AttachmentInfo>)
 data class AttachmentInfo(val file: String, val language: String, val description: String = "")
 
-/** Tool: retrieve an attached file's contents by name. */
-@JsonClassDescription("Retrieve the code content of an attached file by its name. Responses may also include relatedGuides and relatedExamples paths.")
+/** Tool: read a bounded excerpt of an attachment or resolvable source. */
+@JsonClassDescription("Read an attachment or resolvable file/ref in bounded excerpts (default 6000 UTF-16 code units, maximum 65536). The response identifies the whole source hash and totalChars, marks isExcerpt and gives nextOffset when more remains. Continue with nextOffset and expectedSourceHash to refuse mixed versions. An excerpt is not the entire file: never replace a file with just its excerpt. Use find for a case-sensitive literal search starting at offset: return a bounded excerpt around the first match instead of reading unrelated source. searchMatched=false means no match, not an empty file. Related guides/examples are preserved.")
 @AgentToolMeta("context", effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
-data class AttachmentRequest(val file: String)
+data class AttachmentRequest(
+    val file: String,
+    val offset: Int = 0,
+    val maxChars: Int = 6000,
+    val expectedSourceHash: String = "",
+    val find: String = ""
+)
 
 data class AttachmentResponse(
     val file: String,
     val language: String,
     val content: String,
     val relatedGuides: List<String> = emptyList(),
-    val relatedExamples: List<String> = emptyList()
+    val relatedExamples: List<String> = emptyList(),
+    val offset: Int = 0,
+    val totalChars: Int = content.length,
+    val sourceHash: String = "",
+    val nextOffset: Int? = null,
+    val isExcerpt: Boolean = false,
+    val searchMatched: Boolean? = null,
+    val matchOffset: Int? = null
 )
 
 // Kotlin-only tools ---------------------------------------------------------
@@ -919,6 +935,8 @@ data class ToolExecutionContext(
      * where there is no conversation to remember it in.
      */
     val promoted: MutableSet<String>? = null,
+    /** Structured progress from native tools, scoped to this conversation. */
+    val reportProgress: ((LlmProgressUpdate) -> Unit)? = null,
 ) {
     /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
     fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true
@@ -1060,19 +1078,29 @@ internal class ToolRegistry {
 
     /** The metadata of [name] under [ctx] (built-in, extension or box-authored), or null if unknown. */
     fun metaOf(ctx: ToolExecutionContext, name: String): ToolMeta? =
-        handlers[name]?.meta ?: dynamicTool(ctx.dynamicTools, name)?.meta
+        handlers[name]?.meta ?: dynamicTool(dynamicToolsIn(ctx), name)?.meta
 
-    fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext) {
+    fun addAllTo(builder: ResponseCreateParams.Builder, ctx: ToolExecutionContext, deferLoading: Boolean = false, loadedTools: Set<String> = emptySet()) {
+        val immediate = setOf("Commentary", "AttachmentRequest", "DocumentGuideListRequest", "DocumentGuideReadRequest", "ChecklistReadRequest", "ChecklistUpdateRequest", "ScratchpadReadRequest", "ScratchpadUpdateRequest", "DescribeToolsRequest", "RunToolProgramRequest")
+        var hasDeferredTool = false
         handlers.values.forEach { h ->
             if (h.offeredUnder(ctx) && shown(h.cls.simpleName, h.meta, ToolFace.MODEL, ctx)) {
                 @Suppress("UNCHECKED_CAST")
-                builder.addTool(h.cls as Class<Any>)
+                val tool = openAiTool(h.cls as Class<Any>)
+                val defer = deferLoading && tool.name() !in immediate && tool.name() !in loadedTools
+                hasDeferredTool = hasDeferredTool || defer
+                builder.addTool(if (defer) tool.toBuilder().deferLoading(true).build() else tool)
             }
         }
         // Document-authored tools (box aiTool DSL). Built-ins win on name collision.
         dynamicToolsIn(ctx).filter { shown(it.wireName, it.meta, ToolFace.MODEL, ctx) }.forEach { tool ->
-            builder.addTool(tool.toFunctionTool())
+            val definition = tool.toFunctionTool()
+            val defer = deferLoading && definition.name() !in loadedTools
+            hasDeferredTool = hasDeferredTool || defer
+            builder.addTool(if (defer) definition.toBuilder().deferLoading(true).build() else definition)
         }
+        if (hasDeferredTool) builder.addTool(com.openai.models.responses.ToolSearchTool.builder()
+            .execution(com.openai.models.responses.ToolSearchTool.Execution.SERVER).build())
     }
 
     fun execute(ctx: ToolExecutionContext, call: ResponseFunctionToolCall): Any =
@@ -1141,8 +1169,16 @@ internal class ToolRegistry {
         tools.firstOrNull { it.name == name } ?: tools.firstOrNull { it.wireName == name }
 
     /** Dynamic tools visible under [ctx], excluding any whose name or wire name a built-in has. */
-    private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> =
-        ctx.dynamicTools.filter { it.name !in handlers.keys && it.wireName !in handlers.keys && it.name !in ctx.withheld && it.wireName !in ctx.withheld }
+    private fun dynamicToolsIn(ctx: ToolExecutionContext): List<BoxTool> {
+        val tools = (ctx.focus?.document?.takeIf { it.isNotBlank() }?.let(DocumentToolRegistry::toolsFor) ?: ctx.dynamicTools)
+            .filter { it.name !in handlers.keys && it.wireName !in handlers.keys && it.name !in ctx.withheld && it.wireName !in ctx.withheld }
+        val collisions = tools.groupBy { it.wireName }.values.filter { it.size > 1 }
+        require(collisions.isEmpty()) { "Conflicting tool identities: ${collisions.flatten().joinToString { it.name }}" }
+        return tools
+    }
+
+    internal fun openAiDynamicToolsIn(ctx: ToolExecutionContext): Map<String, BoxTool> =
+        dynamicToolsIn(ctx).associateBy { it.wireName }
 
     // --- Provider-neutral face (used by the MCP backdoor bridge) -----------
     // The OpenAI path above binds tools to ResponseCreateParams / ResponseFunctionToolCall.
@@ -1182,7 +1218,7 @@ internal class ToolRegistry {
         dynamicToolsIn(ctx)
             .filter { shown(it.wireName, it.meta, face, ctx) }
             .sortedBy { it.wireName }
-            .forEach { tool -> add(descriptor(tool.wireName, tool.description, tool.parametersSchema, tool.meta)) }
+            .forEach { tool -> add(descriptor(if (face == ToolFace.MCP) tool.name else tool.wireName, tool.description, tool.parametersSchema, tool.meta)) }
     }
 
     /** True if [name] is registered (static or dynamic) and its gate passes under [ctx]. Exposure aside: a deferred tool is available. */
@@ -1244,6 +1280,33 @@ internal class ToolRegistry {
      */
     fun executeByName(ctx: ToolExecutionContext, name: String, argsJson: String, origin: CallOrigin = CallOrigin.MODEL): Any =
         dispatch(ctx, name, origin, { cls -> aiToolMapper.readValue(argsJson.ifBlank { "{}" }, cls) }, { argsJson })
+}
+
+/** Keep the SDK schema, including nested definitions, but retain Kotlin nullable arguments.
+ * Java reflection alone loses that distinction and strict tools then force invented values for
+ * mutually exclusive options such as a point pick and a rectangular pick.
+ */
+internal fun openAiTool(cls: Class<Any>): FunctionTool {
+    val sdk = ResponseCreateParams.builder().model("schema").input("").addTool(cls).build()
+        .tools().orElseThrow().single().function().orElseThrow()
+    val nullable = cls.kotlin.primaryConstructor?.parameters.orEmpty()
+        .filter { it.type.isMarkedNullable }.mapNotNull { it.name }
+    if (nullable.isEmpty()) return sdk
+    val schema = aiToolMapper.createObjectNode()
+    sdk._parameters().asObject().orElseThrow().forEach { (key, value) ->
+        schema.set<com.fasterxml.jackson.databind.JsonNode>(key, value.convert(com.fasterxml.jackson.databind.JsonNode::class.java))
+    }
+    val properties = schema.path("properties") as? ObjectNode ?: return sdk
+    nullable.forEach { name ->
+        properties.get(name)?.let { original ->
+            val union = aiToolMapper.createObjectNode()
+            union.putArray("anyOf").add(original).addObject().put("type", "null")
+            properties.set<ObjectNode>(name, union)
+        }
+    }
+    val params = FunctionTool.Parameters.builder()
+    schema.properties().forEach { (key, value) -> params.putAdditionalProperty(key, JsonValue.fromJsonNode(value)) }
+    return sdk.toBuilder().parameters(params.build()).build()
 }
 
 /** Shared Jackson mapper for the provider-neutral tool face (Kotlin data classes). */

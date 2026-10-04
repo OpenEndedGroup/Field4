@@ -1,0 +1,21 @@
+--- a/src/edge_op.cpp
++++ b/src/edge_op.cpp
+@@ -628,6 +628,18 @@
+   // Only operate on the long edge of a degenerate triangle.
+   if (CCW(v[0], v[1], v[2], tolerance_) > 0 || !Is01Longest(v[0], v[1], v[2]))
+     return;
++
++  // A folded coplanar triangle can have the opposite orientation to the
++  // normal propagated across its face. Treating that winding as degeneracy
++  // must not flip an edge across a crease: that exchanges a tetrahedron of
++  // real volume. Test the four positions before using either face projection.
++  const vec3 a = vertPos_[halfedge_.Start(tri0edge[0])];
++  const vec3 b = vertPos_[halfedge_.Start(tri0edge[1])];
++  const vec3 c = vertPos_[halfedge_.Start(tri0edge[2])];
++  const vec3 d = vertPos_[halfedge_.Start(tri1edge[2])];
++  const vec3 neighborNormal = cross(a - d, b - d);
++  if (std::abs(dot(c - d, neighborNormal)) >
++      tolerance_ * length(neighborNormal)) return;
+ 
+   // Switch to neighbor's projection.
+   projection = GetAxisAlignedProjection(faceNormal_[pair / 3]);

@@ -259,3 +259,6 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     The lazy-output and value-viewer frames are not under any geometry check, and the two
     `isFillWidthIframe` copies are never compared. The full census is in
     `dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md`.
+
+For an iframe that edits a shared model, use [box-owned requests](output_requests.md) to connect
+its controls to Kotlin through Field's existing WebSocket server.

@@ -15,6 +15,8 @@ import afield.ai.core.createIdeBridge
 import afield.isTrue
 import afield.sourceRevision
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.util.UUID
 
 /**
@@ -170,7 +172,7 @@ data class AgentTaskResult(
     val mode: String,
     val provider: String,
     val model: String,
-    /** `pass`, `fail`, `budget-exhausted`, `error`, or `unchecked`. */
+    /** `pass`, `fail`, `budget-exhausted`, `error`, `unchecked`, or `running` when observation ended before a live panel turn. */
     val verdict: String,
     val checks: List<AgentCheckOutcome>,
     val toolCalls: List<AgentToolCallRecord>,
@@ -364,6 +366,20 @@ object AgentTaskRunner {
                 maxToolRounds = budget, hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
                 setupCalls = setupLog, error = message, chatBox = box.id)
         }
+        if (box.getPropertyRaw(afield.ai.core.AiBoxConversation.RUNNING_PROPERTY) == true) {
+            // The persisted flag can survive a JVM interruption. The ordinary chat-history
+            // handler consults the server's live turns before recovering it; use that same path
+            // instead of treating a saved flag as evidence of an active turn.
+            val previous = afield.thisSessionInfo.get()
+            afield.thisSessionInfo.set(info)
+            try {
+                afield.handle(afield.Message("ai-chat-history").apply {
+                    payload = buildJsonObject { put("uid", box.id) }
+                }) { }
+            } finally {
+                if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
+            }
+        }
         if (box.getPropertyRaw(afield.ai.core.AiBoxConversation.RUNNING_PROPERTY) == true)
             return refuse("'${box.name}' already has an AI turn running. Wait for it (or stop it) and ask again.")
 
@@ -377,26 +393,35 @@ object AgentTaskRunner {
 
         val marker = BoxOutputLog.mark()
         val turn = runAsBoxChatTurn(info, box, request, budget)
+        if (turn.running) return AgentTaskResult(
+            taskId = taskId, goal = request.goal, mode = request.mode, provider = "ai4-panel", model = "",
+            verdict = "running", checks = emptyList(), toolCalls = emptyList(), finalText = "", rounds = -1,
+            maxToolRounds = budget, hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
+            setupCalls = setupLog, chatBox = box.id, documentRef = java.io.File(info.filename).name
+        )
         if (turn.error != null) return refuse(turn.error)
         val shots = HashMap<String, BoxOutputShot>()
-        val outcomes = request.checks.map { evaluate(it, info, graph, marker, shots) }
+        val outcomes = if (turn.failure != null) emptyList() else request.checks.map { evaluate(it, info, graph, marker, shots) }
         val result = AgentTaskResult(
             taskId = taskId, goal = request.goal, mode = request.mode,
             provider = turn.identity?.provider ?: "ai4-panel", model = turn.identity?.let { it.responseModel ?: it.requestedModel }.orEmpty(),
             verdict = when {
+                turn.failure != null -> "error"
+                turn.hitToolRoundCap -> "budget-exhausted"
                 outcomes.isEmpty() -> "unchecked"
                 outcomes.all { it.passed } -> "pass"
                 else -> "fail"
             },
-            checks = outcomes, toolCalls = emptyList(), finalText = turn.reply, rounds = -1, maxToolRounds = budget,
-            hitToolRoundCap = false, elapsedMs = elapsed(), documentName = info.documentName,
-            setupCalls = setupLog, chatBox = box.id
+            checks = outcomes, toolCalls = emptyList(), finalText = turn.reply, rounds = turn.rounds, maxToolRounds = budget,
+            hitToolRoundCap = turn.hitToolRoundCap, elapsedMs = elapsed(), documentName = info.documentName,
+            setupCalls = setupLog, chatBox = box.id, error = turn.failure.orEmpty()
         )
         AgentTaskTranscript.appendVerdict(info, box, result)
         return result
     }
 
-    internal data class PanelTurn(val reply: String, val identity: afield.AiChatModelIdentity? = null, val error: String? = null)
+    internal data class PanelTurn(val reply: String, val identity: afield.AiChatModelIdentity? = null, val error: String? = null,
+        val running: Boolean = false, val failure: String? = null, val rounds: Int = -1, val hitToolRoundCap: Boolean = false)
 
     /** How long a turn that *did* start may run before this gives up on it (it keeps running). */
     internal var panelTurnLimitMs: Long = 10 * 60_000L
@@ -413,15 +438,17 @@ object AgentTaskRunner {
     private fun runAsBoxChatTurn(info: SessionInformation, box: Box, request: AgentTaskRequest, budget: Int): PanelTurn {
         val runningKey = afield.ai.core.AiBoxConversation.RUNNING_PROPERTY
         val before = afield.ai.core.AiBoxConversation.read(box)
+        val beforeSequence = afield.ai.core.AiBoxConversation.turnSequence(box)
         val assist = afield.AiAssist(
             uid = box.id,
             prompt = (box.getPropertyRaw("code") as? String).orEmpty(),
             // Just the goal: this is an ordinary panel turn the person can see and continue, so the
             // headless "nobody can answer" framing does not apply, and it would be shown to them as
-            // their own message. The panel's own round limit applies (maxToolRounds is not passed).
+            // their own message. Carry the task's bounded budget through the ordinary panel path.
             extraPrompt = request.goal,
             property = "code",
             kind = "general",
+            maxToolRounds = budget,
         )
         val previous = afield.thisSessionInfo.get()
         afield.thisSessionInfo.set(info)
@@ -430,12 +457,14 @@ object AgentTaskRunner {
         } finally {
             if (previous == null) afield.thisSessionInfo.remove() else afield.thisSessionInfo.set(previous)
         }
-        if (box.getPropertyRaw(runningKey) != true) return PanelTurn("", error =
+        if (afield.ai.core.AiBoxConversation.turnSequence(box) == beforeSequence) return PanelTurn("", error =
             "AI4 did not start a turn in '${box.name}': AI setup failed or no provider is configured (see Field's notifications and /welcome).")
         val deadline = System.currentTimeMillis() + panelTurnLimitMs
         while (box.getPropertyRaw(runningKey) == true) {
-            if (System.currentTimeMillis() > deadline) return PanelTurn("", error =
-                "The AI turn in '${box.name}' was still running after ${panelTurnLimitMs / 60_000} minutes; it was left running.")
+            // An observation limit neither stops the live turn nor establishes failure.
+            // In particular, do not append an "Agent task not started" user turn into
+            // the conversation while the original task is still using its tools.
+            if (System.currentTimeMillis() > deadline) return PanelTurn("", running = true)
             Thread.sleep(200)
         }
         val history = afield.ai.core.AiBoxConversation.read(box)
@@ -448,7 +477,10 @@ object AgentTaskRunner {
         if (!added.contains(request.goal.trim().take(60))) return PanelTurn("", error = "The chat history gained a turn that is not this task's.")
         val last = added.substringAfterLast("<<ai>>").trimStart('\n')
         val (identity, text) = afield.AiChatModelIdentity.splitFromContent(last)
-        return PanelTurn(text.substringBefore("<<progress").trim().take(4000), identity)
+        return PanelTurn(text.substringBefore("<<progress").trim().take(4000), identity,
+            failure = afield.ai.core.AiBoxConversation.turnFailure(box),
+            rounds = afield.ai.core.AiBoxConversation.turnRounds(box),
+            hitToolRoundCap = afield.ai.core.AiBoxConversation.turnCapped(box))
     }
 
     fun defaultBridge(request: AgentTaskRequest): LlmBridge = when (request.mode) {
@@ -491,7 +523,7 @@ object AgentTaskRunner {
     }
 
     private fun said(box: Box, marker: Long): List<BoxOutputLog.Entry> =
-        BoxOutputLog.since(box.id, marker).entries.filter { it.kind == "out" || it.kind == "display" }
+        BoxOutputLog.since(box, marker).entries.filter { it.kind == "out" || it.kind == "display" }
 
     internal fun evaluate(check: AgentCheck, info: SessionInformation, graph: FieldGraphTools, marker: Long,
                           shots: MutableMap<String, BoxOutputShot> = HashMap(),
@@ -560,7 +592,7 @@ object AgentTaskRunner {
             }
             "last-run-ok" -> {
                 val b = box(check.box) ?: return fail("no unique live box '${check.box}'")
-                val verdicts = BoxOutputLog.since(b.id, marker).entries.filter { it.kind == "verdict" }
+                val verdicts = BoxOutputLog.since(b, marker).entries.filter { it.kind == "verdict" }
                 val last = verdicts.lastOrNull() ?: return fail("not run since the turn began")
                 if (last.success != true) return fail("latest run failed: ${last.text.take(300)}")
                 val report = ExecutionReports.latest(b, "code")

@@ -91,6 +91,20 @@ The right side is a stack of collapsible panels, one per part of Field:
   inside a document is in [AI features](aiFeatures.md).
 - **Preferences** and the **OSC editor**.
 
+### Personal templates
+
+The Welcome screen also discovers document templates in `src/personal/templates/`
+(relative to Field's working directory) and `~/.afield/templates/`. Put each template
+in its own folder with its `metadata.edn` and document files. These use the same search
+and **Templates** list as bundled templates. Opening one creates an independent editable
+copy in the current workspace; it does not modify the template or upgrade existing copies.
+
+`-Dafield.personalTemplates.dir=/path/to/templates` changes the user-level directory.
+For duplicate names, bundled templates take precedence, then checkout-local personal
+templates, then user-level templates. Give private templates distinctive names.
+`src/personal` is excluded from Git; keep private template backups/versioning separately.
+Templates carry code: opening the copy does not automatically run its boxes.
+
 ## Troubleshooting
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's
@@ -136,3 +150,23 @@ or the network is down) it says which, rather than reporting that you are up to 
 
     Anyone whose update check spans that commit sees the trailer's text verbatim, instead of the
     subject of the newest commit. Several notices in one range are all shown, deduplicated.
+
+## Project-owned Kotlin extensions
+
+Reusable local code can live outside a Field checkout. Set `AFIELD_EXTENSION_DIRS`
+(or Gradle's `-PfieldExtensionDirs`) to one or more directory roots, separated by
+this platform's path separator (`:` on macOS/Linux, `;` on Windows). Each root
+contains `kotlin/`, `resources/`, or both. Paths containing spaces work unchanged.
+Missing roots fail the build with their path rather than silently dropping code.
+
+```diffstatic {data-lang=bash}
+AFIELD_EXTENSION_DIRS="$HOME/my-project/extensions" ./field.sh "$HOME/my-project/workspace"
+```
+
+These roots join `src/personal` in the existing isolated `personalJar` compilation
+and classloader. Core Field cannot depend on them; boxes can import their classes.
+Use the same setting when rebuilding `personalJar`, then use `reloadPersonal` or
+restart Field. External Gradle scripts are not executed automatically; additional
+third-party dependencies still use Field's existing dependency configuration.
+Keep extension sources and document templates in the project's own version control.
+For external templates, use the `afield.personalTemplates.dir` setting above.

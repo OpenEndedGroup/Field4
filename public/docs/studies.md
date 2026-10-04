@@ -253,6 +253,97 @@ through `CarriesToolImages`, as real images the model can look at; the section
 explains why an image inside the JSON would be wasted. The same class comes back from the function,
 StackSL, RectSL and stack.auto studies, so a result reads the same whichever produced it.
 
+## Build derived results without blocking edits
+
+Some results take longer than an edit: a checked mesh, an export, or an analysis that consumes
+another stage's output. `StudyBuilds` gives these operations a persistent attempt history and an
+explicit **Build** button. The editable source stays in its existing study.
+
+For an existing `SourceStudy` named `design`, this small stage writes a report from the exact
+source it captured when the build started:
+
+```diffstatic {data-lang=kotlin}
+val builds = studyBuilds("reports", listOf(
+    StudyBuildStage("summary", "Source report", "report-v1", setOf("source")) { context ->
+        val source = context.inputs.getValue("source")
+        context.progress(0.5, "Writing the report")
+        context.file("summary.txt").writeText("${source.lines().size} source lines")
+        StudyBuildProduct(listOf("summary.txt"))
+    }
+)) { mapOf("source" to design.liveSource()) }
+showStudyBuilds("reports")
+```
+
+The card lives in this box's output. It shows progress, elapsed time, cancellation and selectable
+error text. Progress reflects the worker's completed work; it is not a time estimate.
+An agent's [geometry findings](geometry_review.md#let-the-agent-point-something-out)
+join this card when their `runId` matches the build's job ID. Each link opens the
+existing review thread in its Field output, with evidence and replies. The card
+distinguishes open and closed discussions and marks findings from an earlier
+attempt after inputs change. Closing a discussion never changes the build verdict.
+Unlaunched review sources retain their historical findings and explain that the
+source must run before its viewer can open.
+
+AI4 can discover the same runner with `ListStudyBuildsRequest`, inspect it with
+`InspectStudyBuildsRequest`, and start it with `StartStudyBuildRequest`, quoting the stage's current
+`fingerprint`. Starting returns a job ID immediately. `WaitStudyBuildRequest` observes that same
+job for up to 900 seconds and streams progress into chat during the wait. Agents can use
+`waitSeconds=600` for long work, leaving `afterUpdated` empty, so progress does not require
+repeated model turns. Completion returns early; `afterUpdated` can instead request an early
+return on a progress change. A wait timeout leaves the build running;
+wait again using the same job ID. Optionally supply `afterUpdated` from a previous response to
+return when progress changes. After completion, inspect the stage to check that its result is
+still current. **Queued** does not mean **built**, and an earlier successful build may no longer
+be current. Stopping an observation does not cancel the build.
+
+Name upstream stages in `dependencies`. The worker reads their captured files through
+`context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
+cannot start. `inputKeys` selects the authored inputs that affect this stage, so an unrelated edit
+can leave its result current. The input reader must return one coherent, immutable snapshot and
+be safe to call from a worker thread.
+
+For an optional stage, explain who supplies its inputs with
+`inputHelp = StudyBuildInputHelp("Idle", "No candidate is being tested. Ask the agent to prepare a recipe change.")`.
+The card and agent inspection expose this explanation while required inputs are absent.
+It changes neither readiness nor build identity: the stage still cannot start until every input
+and dependency is present. Once configured, normal progress, failure and currency reporting take over.
+
+A completed analysis may still have unresolved findings. Give the stage a `resultNotes` adapter
+over its saved `StudyBuildRecord.facts`, for example:
+
+```diffstatic {data-lang=kotlin}
+resultNotes = { result ->
+    val count = (result.facts["unresolved"] as? Number)?.toInt() ?: 0
+    if (count > 0) listOf(StudyBuildNotice("$count findings remain. Inspect the retained report."))
+    else emptyList()
+}
+```
+
+Warnings show **Current · Needs review**; `StudyBuildNoticeKind.ERROR` shows
+**Current · Needs correction**, with red explanatory text. `INFO` supplies context without
+implying a problem. The same notes appear in native agent inspection and the completion stream.
+The adapter must be fast and pure: read the supplied record's retained facts, never the live
+design, and perform no build work. It also works over existing attempt history. A formatter
+failure exposes a review notice while preserving the result. These are explanations, not gates:
+they do not change fingerprints, acceptance, or dependency availability. Keep actual qualification
+requirements in build/input contracts. Stale results lose their current-result notices; their
+individual attempt inspections retain them.
+
+An edit during a build leaves the old attempt available for inspection, marked **obsolete**.
+It cannot become the current result. Changing a dependency result or `recipeVersion` also
+invalidates downstream results. Use `builds.currentFile(stage, path)` when a viewer or export
+needs a current result; it refuses stale, missing or changed artifacts.
+
+Throw `StudyBuildFailure(StudyBuildProblem(...))` for an actionable failure with a code, message,
+suggestions and structured details. A failed retry preserves the previous result if that result
+still matches the current inputs. Cancellation is cooperative: call `context.checkCancelled()`
+during long work. The card continues to say **Cancelling** until the worker has actually returned.
+
+Attempts persist under the document's `studies` directory. Re-running or stopping the owner box
+revokes unfinished publication; reopening records interrupted work and waits for an explicit retry.
+Change `recipeVersion` whenever the recipe or its relevant runtime changes. The runner checks
+provenance and lifecycle; the recipe remains responsible for checking its own result.
+
 ## The library's studies
 
 StackSL, RectSL and stack.auto are built from the same pieces a `SourceFramesStudy` is, and the
@@ -261,6 +352,7 @@ function study keeps its revisions through the first of them:
 | Piece | What it does |
 | --- | --- |
 | `SourceStudy` | Revisions on disk, the revision-and-hash guard, compare-and-swap publication into the box |
+| `StudyBuilds` | Asynchronous derived stages, frozen inputs, dependency invalidation, progress and retained diagnostics |
 | `StudyFrames` | Where frames come from: a CPU reference, or the GPU of a running window |
 | `StudyEvidence` | Measurements and the sheets the pictures are laid out on |
 | `StudyCompare` | Before/after/difference and sweeps |

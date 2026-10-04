@@ -71,7 +71,7 @@ class InstructionFragmentsTest {
             val legacy = legacyBuildDynamicInstructions(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
             // Deliberate difference 2 (2026-10-02): the tool catalogue (deferred and extension tools) is new.
             var joined = buildInstructionFragments(mode, lang, prompt, "Unresolved reference: foo", 7, ctx)
-                .filter { it.source != "tools.catalogue" }.joinToString("") { it.text }
+                .filter { it.source !in setOf("tools.catalogue", "tools.progress", "tools.house") }.joinToString("") { it.text }
             // The one deliberate difference (2026-10-02): a chat turn no longer repeats the request inside its
             // instructions, because chatGeneral's message ends with it anyway. Put it back and nothing else differs.
             if (mode == InstructionMode.Chat) {
@@ -79,12 +79,30 @@ class InstructionFragmentsTest {
                 assertTrue(joined.startsWith(contract))
                 joined = contract + "\n\nUser request: $prompt" + joined.removePrefix(contract)
             }
+            // House-workflow additions are intentional behavior changes, independently pinned below.
+            joined = joined.lineSequence().filterNot { it.startsWith("- Use DocumentBoxNavigateRequest") }.joinToString("\n")
+            joined = joined.replace(Regex("- AttachmentRequest: read bounded source excerpts[^\n]*"),
+                "- AttachmentRequest: retrieve attached context by name/path (supports attached names and resolvable refs/paths; responses may suggest relatedGuides and relatedExamples).")
             if (legacy != joined) {
                 val at = legacy.zip(joined).indexOfFirst { (a, b) -> a != b }.let { if (it < 0) minOf(legacy.length, joined.length) else it }
                 mismatches += "$name/${lang.name}/$mode differs at $at: legacy='${legacy.substring(at).take(60)}' joined='${joined.substring(at).take(60)}'"
             }
         }
         assertTrue(mismatches.isEmpty(), mismatches.joinToString("\n"))
+    }
+
+    @Test
+    fun houseGuidancePreservesProgressRevisionChecksAndBoundedReads() {
+        val ctx = contexts().getValue("graph-lessons")
+        val fragments = buildInstructionFragments(InstructionMode.Chat, KOTLIN_SCRIPT, prompt, null, null, ctx)
+        assertTrue(fragments.single { it.source == "tools.progress" }.text.contains("observe the existing handle"))
+        val builds = fragments.filter { it.source == "tools.house" }.joinToString { it.text }
+        for (required in listOf("currency.isCurrent", "expectedRevision", "latest note version", "acceptance is not completion"))
+            assertTrue(builds.contains(required), required)
+        assertTrue(fragments.single { it.source == "core.contract" }.text.contains("DocumentBoxNavigateRequest"))
+        val attachments = fragments.filter { it.source == "tools.attachments" }.joinToString { it.text }
+        for (required in listOf("6000 characters", "expectedSourceHash", "searchMatched=false", "must not be used as a full-file replacement"))
+            assertTrue(attachments.contains(required), required)
     }
 
     @Test

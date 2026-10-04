@@ -248,7 +248,7 @@ class ToolProgramTest {
         val tool = box.aiTool("house.inspect") { describe("fixture"); action { "inspected" } }
         try {
             val ctx = ToolExecutionContext(dynamicTools = listOf(tool))
-            val result = run("return {dotted: typeof tools['house.inspect'], wire: typeof tools.house_inspect, raw: typeof tools['house.inspect'].raw};", ctx)
+            val result = run("return {dotted: typeof tools['house.inspect'], wire: typeof tools['${tool.wireName}'], raw: typeof tools['house.inspect'].raw};", ctx)
             assertEquals("function", result.returned!!["dotted"].asText())
             assertEquals("function", result.returned["wire"].asText())
             assertEquals("function", result.returned["raw"].asText())

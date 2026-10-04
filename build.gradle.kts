@@ -464,7 +464,18 @@ fun fieldAotBuildFingerprint(
 // launch -cp: the app loads it through afield.PersonalLayer, a URLClassLoader parented to the
 // app loader, so the whole layer can eventually be dropped and rebuilt without restarting.
 // The path is announced to the app via a system property rather than the classpath.
-val hasPersonalLayer = file("src/personal/kotlin").exists()
+// Optional project-owned extensions share the existing isolated personal compilation.
+// Never add these roots to core: the dependency direction remains extension -> Field.
+val externalExtensionRoots = (providers.gradleProperty("fieldExtensionDirs").orNull
+    ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
+    .split(File.pathSeparatorChar).filter { it.isNotBlank() }.map { file(it.trim()).canonicalFile }
+    .distinct().onEach { root ->
+        require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
+            "Field extension root must contain kotlin/ or resources/: $root"
+        }
+    }
+val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
+val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory }
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.PersonalLayer.CLASSPATH_PROPERTY`. */
 val personalLayerProperty = "afield.personal.classpath"
@@ -839,8 +850,8 @@ kotlin {
             compilations.create("personal") {
                 associateWith(jvmMainCompilation)
                 defaultSourceSet {
-                    kotlin.setSrcDirs(listOf(file("src/personal/kotlin")))
-                    resources.setSrcDirs(listOf(file("src/personal/resources")))
+                    kotlin.setSrcDirs(personalSourceRoots.map { File(it, "kotlin") })
+                    resources.setSrcDirs(personalSourceRoots.map { File(it, "resources") })
                 }
             }
         }

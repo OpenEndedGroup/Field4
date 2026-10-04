@@ -105,9 +105,10 @@ class AgentExtensionsTest {
         val withTools = ctx.copy(dynamicTools = DocumentToolRegistry.toolsFor(session.filename))
         val names = registry.describe(withTools).map { (it as kotlinx.serialization.json.JsonObject)["name"].toString().trim('"') }
         // OpenAI and Anthropic refuse a tool name outside [A-Za-z0-9_-]; one dotted name failed every request.
-        assertTrue("paint_look" in names && "paint.look" !in names, names.toString())
-        assertTrue(registry.isAvailable(withTools, "paint_look") && registry.isAvailable(withTools, "paint.look"))
-        assertEquals(setOf(ToolEffect.CAPTURE_IMAGE), registry.metaOf(withTools, "paint_look")?.effects)
+        val wire = wireToolName("paint.look")
+        assertTrue(wire in names && "paint.look" !in names, names.toString())
+        assertTrue(registry.isAvailable(withTools, wire) && registry.isAvailable(withTools, "paint.look"))
+        assertEquals(setOf(ToolEffect.CAPTURE_IMAGE), registry.metaOf(withTools, wire)?.effects)
     }
 
     // The review (2026-10-03): `house.check` and `house_check` reached the model as one name, and two long
@@ -116,13 +117,15 @@ class AgentExtensionsTest {
     fun twoToolsCannotReachTheModelUnderOneName() = inDocument { session, box, _ ->
         assertNotEquals(wireToolName("a".repeat(64) + "one"), wireToolName("a".repeat(64) + "two"))
         assertTrue(wireToolName("a".repeat(80)).length <= 64)
-        box.aiTool("house.check") { action { "a" } }
+        val dotted = box.aiTool("house.check") { action { "a" } }
         val other = Box("other").also { it.name = "Other"; it.inside = session; session.boxes[it.id] = it }
-        val refused = assertFailsWith<IllegalArgumentException> { other.aiTool("house_check") { action { "b" } } }
+        val underscore = other.aiTool("house_check") { action { "b" } }
+        assertNotEquals(dotted.wireName, underscore.wireName, "Distinct authored names must stay distinct")
+        val refused = assertFailsWith<IllegalArgumentException> { other.aiTool("house.check") { action { "takeover" } } }
         assertTrue(refused.message!!.contains("house.check") && refused.message!!.contains("Studio"), refused.message)
-        // The same box renaming its own tool replaces it.
-        box.aiTool("house_check") { action { "c" } }
-        assertEquals(listOf("house_check"), DocumentToolRegistry.toolsFor(session.filename).map { it.name })
+        val replacement = box.aiTool("house.check") { action { "updated" } }
+        assertSame(replacement, DocumentToolRegistry.get(session.filename, "house.check"))
+        assertSame(underscore, DocumentToolRegistry.get(session.filename, "house_check"))
         assertFailsWith<IllegalArgumentException> { box.aiTool("RunBoxRequest") { action { "d" } } }
         Unit
     }

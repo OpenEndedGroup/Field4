@@ -175,6 +175,7 @@ data class AiAssist(
     val property: String = "code",
     val kind: String,
     val images: List<String> = emptyList(),
+    val maxToolRounds: Int = 24,
     /** The prompt came from push-to-talk, so it may carry speech-recognition errors. */
     val dictated: Boolean = false
 )
@@ -1386,6 +1387,20 @@ data class Rect(val x: Double, val y: Double, val w: Double, val h: Double) {
     val cx: Double get() = x + w / 2.0
     val cy: Double get() = y + h / 2.0
 }
+
+/** Semantic document navigation shared by AI4 and the existing Field canvas. */
+@Serializable
+data class DocumentBoxNavigation(
+    val uid: String, val surface: String = "editor", val channel: String = "",
+    val property: String = "code", val line: Int? = null
+)
+
+@Serializable
+data class DocumentBoxNavigationResult(
+    val success: Boolean, val uid: String, val surface: String, val channel: String = "",
+    val channels: List<String> = emptyList(), val message: String,
+    val visible: Boolean = false
+)
 
 // Slideshow messages
 @Serializable

@@ -457,6 +457,13 @@ uv run --project . --group backdoor python tools/field_backdoor.py --json --port
 - `--chat-box <box>` (live only) runs the task as that box's real AI4 panel turn (`ai-assist`,
   kind `general`), so the exchange lands in its chat history. The per-call tool log then stays with
   the panel.
+- A live panel turn may outlast the observer's ten-minute wait. Its result then says
+  `verdict: running` with `chatBox` identifying the continuing turn; no completion checks
+  have run. Read that chat's current history/status and retained tool/build results.
+  An observation timeout is not authorization to submit the same work again.
+- A panel provider failure returns `verdict: error`, its failure message and the
+  retained partial reply. Completion checks do not run on that partial work, and
+  no second user turn is appended. A stopped running flag alone is not success.
 - The same tools are in every AI4 chat. `agent-task` is a headless entry into the AI4 chat turn,
   not a separate agent.
 - After the task the backdoor refreshes its snapshot, so later commands can name the boxes the agent

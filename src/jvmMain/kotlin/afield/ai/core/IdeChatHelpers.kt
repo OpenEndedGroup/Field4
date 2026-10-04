@@ -164,7 +164,8 @@ class IdeChatHelpers(
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
         vectorStoreIds: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null
+        onProgress: ((OpenAiIdeCodexBridge.ProgressUpdate) -> Unit)? = null,
+        maxToolRounds: Int = 24
     ): OpenAiIdeCodexBridge.SendResult {
         info(
             "chatGeneral(): lang=${lang.name} codeChars=${code.length} attachments=${attachments.size} " +
@@ -199,7 +200,7 @@ class IdeChatHelpers(
         )
 
         return chatGeneral(state, code, lang, userPrompt, ctx, imageUrls, vectorStoreIds,
-            onTextDelta = onTextDelta, onProgress = onProgress)
+            maxToolRounds = maxToolRounds.coerceIn(1, 64), onTextDelta = onTextDelta, onProgress = onProgress)
     }
 
     /**

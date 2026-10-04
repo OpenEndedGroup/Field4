@@ -48,7 +48,10 @@ These are the arguments `three` itself takes:
 
 Running the same box with the same `name` updates the same viewer. To keep two independent
 scenes, give them different **names and channels**. `channel` alone does not give a scene a new
-identity. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid` is the
+identity. Viewer IDs are scoped to the saved document, so duplicated boxes cannot replace
+another document's scene or edit controls. Use the returned ID rather than constructing one
+from a box ID and name. Copied notes retain their original recorded identity and independent
+reply history. The value returned by `three` is the live `ThreeGeometryViewState`; `view.uid` is the
 ID used by the standalone viewer and agent inspection tools.
 
 ## A scene, not a picture
@@ -139,6 +142,21 @@ box or an agent, `threeGeometryReviews(viewId)` reads the same inbox by ID. Note
 geometry revision and camera; [selecting and annotating geometry](geometry_review.md) explains
 points, faces, edges, vertices and visible-only rectangles.
 
+### Compare views with linked cameras
+
+Choose **Link camera** in each viewer you want to compare. The newly linked view adopts the
+camera of an already linked view in the same Field document. Orbiting, panning and zooming either
+view then moves both, including when they are embedded in different boxes. Click **Camera linked**
+to return that view to independent movement.
+
+Only the camera is shared. Visible parts, X-ray, explode, sections and selections remain local,
+so a detailed error view can sit beside its surrounding assembly. Linking accounts for each
+scene's render origin and up axis, and converts millimetres, centimetres, metres, inches and feet.
+Other unit labels link only to the same label. Geometry must use a shared model coordinate frame.
+
+Linking is off when a viewer opens and does not opt other views in automatically. It is available
+for ordinary single-view scenes; contact sheets with several viewports keep their own cameras.
+
 ### See through surfaces
 
 Press **X-ray** in the viewer toolbar to reveal geometry behind filled surfaces. The
@@ -215,6 +233,10 @@ A wide viewer can keep its controls compact with `controlGroup("controls", colum
 The control surface uses up to two columns and collapses to one in a narrow output. The ordinary
 `controlGroup("controls") { ... }` retains its single column; changing layout preserves control
 identities, cached values and callbacks.
+
+An unchanged camera preset preserves the current orbit, pan and zoom when geometry
+updates. Changing the preset explicitly establishes a new view. Resizing a view
+that the user has positioned also preserves that position.
 
 ## The camera
 
@@ -660,11 +682,20 @@ three(name = "tools-example") {
 
 Each module exports a default factory returning a descriptor with a unique `id`.
 `mount(context)` receives a toolbar element, `THREE`, the camera and controls,
-`overlays`, the inspector API, `sources()` and `requestRender()`. Tool overlays stay
+`overlays`, the inspector API, `sources()` and `requestRender()`. `surface` is the
+viewer canvas for pointer input; `interactionBusy()` tells an editing tool when
+picking or measurement already owns the interaction. Reuse the inspector for
+visible-surface picking and leave its camera controls enabled outside a drag.
+Tool overlays stay
 out of GLB exports. `dispose()` releases the tool's own GPU resources and listeners;
 Field removes its toolbar and overlay group. `refresh()` runs after the viewer applies
 its base pose, rather than on an animation timer. Compute transformations from retained
 source coordinates, never by repeatedly transforming the previous result.
+
+If a tool needs asynchronous initialization, return its promise from `mount(context)`.
+Field waits for it before restoring tool state or capturing the viewer. A rejected promise
+removes the incomplete tool and makes capture report its error. The initial saved state is
+recorded after initialization finishes; release listeners and pending work in `dispose()`.
 
 For stateful tools, implement all three methods: `snapshot()`, `validate(state)` and
 `restore(state)`. State must be finite JSON of at most 32 KB per tool. Views and notes
@@ -676,6 +707,9 @@ once validation has accepted it.
 Agents can use `FieldViewer.tools.register(descriptor)` or
 `await FieldViewer.tools.load("/path/to/tool.js")` in their capture browser. Both return
 an idempotent disposal function. `FieldViewer.tools.ids()` lists installed tools.
+After direct registration, `await FieldViewer.tools.ready()` waits for initialization.
+`FieldViewer.captureStatus()` reports readiness, the geometry revision and any startup error;
+readiness includes the tools and a rendered frame, not just a loaded HTML document.
 Use the same source geometry revision when restoring a note. An application owns its
 modules and their behavior; registration does not validate geometry produced by a tool.
 
