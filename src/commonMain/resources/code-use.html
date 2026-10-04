@@ -558,7 +558,8 @@
                 const saved = String((message.payload || {}).markdown || "");
                 for (const block of saved.split(/^<<(?=you>>|ai>>)/m)) {
                     const match = block.match(/^(you|ai)>>\n([\s\S]*)$/);
-                    if (match && match[2].trim()) appendChatTurn(match[1] === "you" ? "You" : "AI4", match[2].trim());
+                    // As the live chat shows them: your turns as text, AI4's rendered as markdown.
+                    if (match && match[2].trim()) appendChatTurn(match[1] === "you" ? "You" : "AI4", match[2].trim(), { markdown: match[1] === "ai" });
                 }
                 return;
             }
