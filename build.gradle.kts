@@ -1827,6 +1827,11 @@ val recordTestTreeBaseline = tasks.register<Exec>("recordTestTreeBaseline") {
         "--snapshot", testTreeWriteBaselineFile.get().asFile.absolutePath,
         "--ran-dir", testTreeWriteRanDir.get().asFile.absolutePath,
     ))
+    // A regeneration run (`merge_regen.py`) puts JavaExec rewriters such as
+    // checkCompletionCorpusFixtures in the same invocation as citationGates. Snapshotting before
+    // they run charged their intended rewrites (182 corpus files) to the first test task's guard.
+    // Only Test tasks are guarded, so baselining after every scheduled JavaExec loses nothing.
+    mustRunAfter(tasks.withType<JavaExec>())
 }
 
 val checkTestTreeWrites = tasks.register<Exec>("checkTestTreeWrites") {
