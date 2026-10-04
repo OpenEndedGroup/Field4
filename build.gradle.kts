@@ -3744,7 +3744,7 @@ val buildCeresRedistributable = tasks.register("buildCeresRedistributable") {
 tasks.register<Exec>("buildDocsNativePrerequisites") {
     group = "documentation"
     description = "Builds and verifies all native dependencies required by documentation captures."
-    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
+    dependsOn(buildCeresRedistributable, buildTetgenNative, buildPaintNative, buildLibpdNative, buildCsoundNative, buildFieldBrowserBridge, electronInstall, fetchDocsDirtSamples)
     commandLine(rootPythonCommand + listOf("tools/check_docs_native_prerequisites.py"))
 }
 

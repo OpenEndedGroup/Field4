@@ -96,6 +96,9 @@ CARRIER_PAGES = {
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
     # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
     "public/docs/pure_data.md",
+    # Added 2026-10-04 (489bd01b5): the computer-vision page links its webcam starting point. Shape checked:
+    # `offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn`, no leading slash.
+    "public/docs/python_cv.md",
     "public/docs/rectsl_examples.md",
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
