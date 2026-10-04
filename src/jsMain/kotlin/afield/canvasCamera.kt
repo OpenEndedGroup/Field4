@@ -80,6 +80,20 @@ object CanvasCamera {
         return panes.first { it.col == col && it.row == row }
     }
 
+    /**
+     * [r] (the client rect of [box], or of something in it) cut to the pane showing it; null when
+     * that pane hides it entirely. Unsplit, [r] itself.
+     */
+    fun visibleRect(box: Element, r: DOMRect): DOMRect? {
+        if (!isSplit) return r
+        val p = paneOf(box).rect
+        val left = max(r.left, p.x)
+        val top = max(r.top, p.y)
+        val right = minOf(r.right, p.x + p.w)
+        val bottom = minOf(r.bottom, p.y + p.h)
+        return if (right <= left || bottom <= top) null else DOMRect(left, top, right - left, bottom - top)
+    }
+
     /** True for the empty canvas background: the viewport, or a pane when split. */
     fun isBackground(target: Any?): Boolean =
         target == mainViewport || (target is HTMLElement && target.classList.contains("field-pane"))
@@ -160,40 +174,103 @@ object CanvasCamera {
         val ty = from.ty
         val sx = clientX?.let { (it / w).coerceIn(0.08, 0.92) }
         val sy = clientY?.let { (it / h).coerceIn(0.08, 0.92) }
-        setSplit(
-            SplitState(
-                sx = sx,
-                sy = sy,
-                wx = sx?.let { (it * w - tx) / zoom } ?: 0.0,
-                wy = sy?.let { (it * h - ty) / zoom } ?: 0.0,
-            ),
-            tx, ty, persist = true
+        val state = SplitState(
+            sx = sx,
+            sy = sy,
+            wx = sx?.let { (it * w - tx) / zoom } ?: 0.0,
+            wy = sy?.let { (it * h - ty) / zoom } ?: 0.0,
         )
+        setSplit(state, DoubleArray(state.columns) { tx }, DoubleArray(state.rows) { ty }, persist = true)
     }
 
     /** Applies a split from the root box's `panes` property (another client, or a document load). */
     fun loadSplit(json: String?) {
-        val state = SplitState.parse(json)
-        if (state == SplitState(splitX, splitY, worldSplitX, worldSplitY)) return
-        setSplit(state ?: SplitState(null, null, 0.0, 0.0), main.tx, main.ty, persist = false)
+        val state = SplitState.parse(json) ?: SplitState(null, null, 0.0, 0.0)
+        if (state == currentState()) return
+        setSplit(state, DoubleArray(state.columns) { main.tx }, DoubleArray(state.rows) { main.ty }, persist = false)
     }
 
-    private fun setSplit(state: SplitState, tx: Double, ty: Double, persist: Boolean) {
+    /**
+     * Restores a bookmarked view: the split ([splitJson], empty for none) and each column's and
+     * row's translation, when the bookmark recorded as many as the split has.
+     */
+    fun restoreView(splitJson: String, columnX: List<Double>?, rowY: List<Double>?) {
+        val state = SplitState.parse(splitJson) ?: SplitState(null, null, 0.0, 0.0)
+        val xs = columnX?.takeIf { it.size == state.columns }?.toDoubleArray() ?: DoubleArray(state.columns) { main.tx }
+        val ys = rowY?.takeIf { it.size == state.rows }?.toDoubleArray() ?: DoubleArray(state.rows) { main.ty }
+        if (state == currentState()) {
+            // Same split: only the cameras move; the panes and their boxes stay put.
+            x = xs
+            y = ys
+            constrain(main, zoom)
+            onCameraLayoutChanged?.invoke()
+        } else {
+            setSplit(state, xs, ys, persist = true)
+        }
+    }
+
+    /** The split as JSON for the root box and for bookmarks; empty when the canvas is not split. */
+    fun splitJson(): String = if (isSplit) currentState().toJson() else ""
+
+    private fun currentState() = SplitState(splitX, splitY, worldSplitX, worldSplitY)
+
+    private fun setSplit(state: SplitState, xs: DoubleArray, ys: DoubleArray, persist: Boolean) {
         splitX = state.sx
         splitY = state.sy
         worldSplitX = state.wx
         worldSplitY = state.wy
-        x = DoubleArray(columns) { tx }
-        y = DoubleArray(rows) { ty }
+        x = xs
+        y = ys
         rebuildPanes()
         constrain(main, zoom)
-        if (persist) {
-            val json = if (isSplit) state.toJson() else ""
-            findBoxByUid("root")?.asDynamic()?.panes = json
-            send(Message("set-string").payload(Set_string("root", "panes", json)))
-        }
+        if (persist) persistSplit()
         onCameraLayoutChanged?.invoke()
     }
+
+    private fun persistSplit() {
+        val json = splitJson()
+        findBoxByUid("root")?.asDynamic()?.panes = json
+        // Through the marked send, so the server's echo of an older split (a divider drag sends
+        // several) is recognised as ours and dropped by acceptSetStringSync instead of undoing this.
+        val payload: dynamic = js("({})")
+        payload.uid = "root"
+        payload.property = "panes"
+        payload.value = json
+        send("set-string", payload)
+    }
+
+    /**
+     * Moves the dividers to new window fractions (null leaves that one where it is). The world
+     * line stays with its divider: each pane keeps the world point at its divider edge, so the
+     * content next to a divider travels with it. Not persisted until [commitDividers].
+     */
+    fun moveDividers(sx: Double?, sy: Double?) {
+        val edgeWorldX = (0 until columns).map { (dividerEdgeX(it) - x[it]) / zoom }
+        val edgeWorldY = (0 until rows).map { (dividerEdgeY(it) - y[it]) / zoom }
+        if (sx != null && splitX != null) splitX = sx.coerceIn(MIN_SPLIT, MAX_SPLIT)
+        if (sy != null && splitY != null) splitY = sy.coerceIn(MIN_SPLIT, MAX_SPLIT)
+        for (c in 0 until columns) x[c] = dividerEdgeX(c) - edgeWorldX[c] * zoom
+        for (r in 0 until rows) y[r] = dividerEdgeY(r) - edgeWorldY[r] * zoom
+        layoutPanes()
+        constrain(main, zoom)
+        onCameraLayoutChanged?.invoke()
+    }
+
+    fun commitDividers() = persistSplit()
+
+    /**
+     * Removes one divider ([vertical] for the column divider), keeping the other. The remaining
+     * panes keep the bottom-right pane's translation on the removed axis.
+     */
+    fun removeDivider(vertical: Boolean) {
+        val state = if (vertical) currentState().copy(sx = null, wx = 0.0) else currentState().copy(sy = null, wy = 0.0)
+        val xs = if (vertical) doubleArrayOf(x.last()) else x.copyOf()
+        val ys = if (vertical) y.copyOf() else doubleArrayOf(y.last())
+        setSplit(state, xs, ys, persist = true)
+    }
+
+    private const val MIN_SPLIT = 0.04
+    private const val MAX_SPLIT = 0.96
 
     /** Set by Main.kt: re-applies transforms and every layer that copies the camera. */
     internal var onCameraLayoutChanged: (() -> Unit)? = null
@@ -215,6 +292,8 @@ object CanvasCamera {
                 pane.element?.remove()
             }
         }
+        dividers.forEach { it.remove() }
+        dividers.clear()
         val next = mutableListOf<CanvasPane>()
         for (r in 0 until rows) for (c in 0 until columns) next += CanvasPane(c, r)
         panes = next
@@ -237,12 +316,126 @@ object CanvasCamera {
                     pane.canvas = canvas
                 }
             }
+            if (splitX != null) dividers += makeDivider(vertical = true)
+            if (splitY != null) dividers += makeDivider(vertical = false)
         } else {
             panes.single().canvas = mainCanvas
         }
         boxesToRehome.forEach { place(it) }
-        layoutPanes()
         installOnce()
+        layoutPanes()
+    }
+
+    // ---- Divider handles and the corner grip ----
+
+    private val dividers = mutableListOf<HTMLElement>()
+    private var grip: HTMLElement? = null
+
+    /** Releasing a divider this close to the window edge (as a fraction) removes it. */
+    private const val REMOVE_AT = 0.03
+
+    /** Dropping the corner grip this close to the top (left) edge leaves out that divider. */
+    private const val GRIP_EDGE_PX = 24.0
+
+    /**
+     * A divider's handle: a strip over the pane border that drags the divider. Releasing it at the
+     * window edge, or double-clicking it, removes that divider.
+     */
+    private fun makeDivider(vertical: Boolean): HTMLElement {
+        val el = document.createElement("div") as HTMLElement
+        el.className = "field-pane-divider " + if (vertical) "field-pane-divider-v" else "field-pane-divider-h"
+        el.title = "Drag to move the divider; drag to the edge or double-click to remove it"
+        el.addEventListener("mousedown", { event ->
+            val e = event as MouseEvent
+            if (e.button.toInt() != 0) return@addEventListener
+            e.preventDefault()
+            e.stopPropagation()
+            el.classList.add("dragging")
+            document.body?.classList?.add(if (vertical) "field-pane-resizing-v" else "field-pane-resizing-h")
+            fun fraction(ev: MouseEvent) =
+                if (vertical) ev.clientX / window.innerWidth.toDouble() else ev.clientY / window.innerHeight.toDouble()
+            trackPointer(
+                move = { ev -> if (vertical) moveDividers(fraction(ev), null) else moveDividers(null, fraction(ev)) },
+                up = { ev ->
+                    el.classList.remove("dragging")
+                    document.body?.classList?.remove("field-pane-resizing-v", "field-pane-resizing-h")
+                    val f = fraction(ev)
+                    if (f < REMOVE_AT || f > 1 - REMOVE_AT) removeDivider(vertical) else commitDividers()
+                }
+            )
+        })
+        el.addEventListener("dblclick", { event ->
+            event.preventDefault()
+            event.stopPropagation()
+            removeDivider(vertical)
+        })
+        mainViewport.appendChild(el)
+        return el
+    }
+
+    /**
+     * The grip in the canvas's top-left corner, shown while the canvas is not split: drag it out
+     * and release to split there. Released near the top edge it makes columns only, near the left
+     * edge rows only.
+     */
+    private fun installGrip() {
+        val el = document.createElement("div") as HTMLElement
+        el.className = "field-split-grip"
+        el.title = "Drag out to split the canvas into panes"
+        val previewV = document.createElement("div") as HTMLElement
+        previewV.className = "field-split-preview field-split-preview-v"
+        val previewH = document.createElement("div") as HTMLElement
+        previewH.className = "field-split-preview field-split-preview-h"
+        el.addEventListener("mousedown", { event ->
+            val e = event as MouseEvent
+            if (e.button.toInt() != 0) return@addEventListener
+            e.preventDefault()
+            e.stopPropagation()
+            mainViewport.appendChild(previewV)
+            mainViewport.appendChild(previewH)
+            fun show(ev: MouseEvent) {
+                val px = ev.clientX.toDouble()
+                val py = ev.clientY.toDouble()
+                previewV.style.left = "${px}px"
+                previewV.style.display = if (px >= GRIP_EDGE_PX) "block" else "none"
+                previewH.style.top = "${py}px"
+                previewH.style.display = if (py >= GRIP_EDGE_PX) "block" else "none"
+            }
+            show(e)
+            trackPointer(
+                move = ::show,
+                up = { ev ->
+                    previewV.remove()
+                    previewH.remove()
+                    val px = ev.clientX.toDouble().takeIf { it >= GRIP_EDGE_PX }
+                    val py = ev.clientY.toDouble().takeIf { it >= GRIP_EDGE_PX }
+                    if (px != null || py != null) splitAt(px, py)
+                }
+            )
+        })
+        mainViewport.appendChild(el)
+        grip = el
+    }
+
+    /** Follows a drag through the window until the button is released, ahead of everything else. */
+    private fun trackPointer(move: (MouseEvent) -> Unit, up: (MouseEvent) -> Unit) {
+        val capture = js("({ capture: true })")
+        lateinit var onMove: (org.w3c.dom.events.Event) -> Unit
+        lateinit var onUp: (org.w3c.dom.events.Event) -> Unit
+        onMove = { ev ->
+            ev.preventDefault()
+            ev.stopPropagation()
+            move(ev as MouseEvent)
+        }
+        onUp = { ev ->
+            ev.preventDefault()
+            ev.stopPropagation()
+            window.removeEventListener("mousemove", onMove, capture)
+            window.removeEventListener("mouseup", onUp, capture)
+            up(ev as MouseEvent)
+        }
+        window.addEventListener("mousemove", onMove, capture)
+        window.addEventListener("mouseup", onUp, capture)
     }
 
     /** Boxes that sit directly on a pane canvas (not nested inside another box). */
@@ -251,7 +444,7 @@ object CanvasCamera {
             canvas.children.asList().filterIsInstance<HTMLElement>().filter { it.classList.contains("box") }
         }
 
-    /** Sizes the pane elements to their rects. */
+    /** Sizes the pane elements to their rects and puts the divider handles on the borders. */
     fun layoutPanes() {
         panes.forEach { pane ->
             val el = pane.element ?: return@forEach
@@ -261,7 +454,18 @@ object CanvasCamera {
             el.style.width = "${r.w}px"
             el.style.height = "${r.h}px"
         }
+        dividers.forEach { el ->
+            if (el.classList.contains("field-pane-divider-v")) {
+                el.style.left = "${columnRect(1).first - DIVIDER_HALF_WIDTH}px"
+            } else {
+                el.style.top = "${rowRect(1).first - DIVIDER_HALF_WIDTH}px"
+            }
+        }
+        grip?.style?.display = if (isSplit) "none" else "block"
     }
+
+    /** Half the divider handle's hit width (field.css `.field-pane-divider`). */
+    private const val DIVIDER_HALF_WIDTH = 4.0
 
     /** Applies each pane's camera to its canvas element. */
     fun applyTransforms() {
@@ -300,9 +504,11 @@ object CanvasCamera {
         parent.insertBefore(node, before)
     }
 
-    private fun installOnce() {
+    /** Called once mainViewport and mainCanvas exist: the grip, the observers, the listeners. */
+    fun installOnce() {
         if (installed) return
         installed = true
+        installGrip()
         window.addEventListener("resize", {
             if (isSplit) {
                 layoutPanes()
@@ -362,6 +568,9 @@ object CanvasCamera {
 
 /** The persisted split: the root box's `panes` property, as JSON. */
 private data class SplitState(val sx: Double?, val sy: Double?, val wx: Double, val wy: Double) {
+    val columns: Int get() = if (sx != null) 2 else 1
+    val rows: Int get() = if (sy != null) 2 else 1
+
     fun toJson(): String {
         val o: dynamic = js("({})")
         if (sx != null) { o.sx = sx; o.wx = wx }

@@ -4181,13 +4181,14 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
         ),
         UiRegression(
             id="canvas-split",
-            description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, persists, and unsplits cleanly.",
+            description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, draws connections between panes where the boxes are seen, persists and bookmarks, moves and removes dividers by their handles, splits from the corner grip, and unsplits cleanly.",
             document=f"ui-regression-canvas-split-{int(time.time())}",
             commands=[
-                "new-box --name SplitA --x 100 --y 100",
+                "new-box --name SplitA --alias split_a --x 100 --y 100",
                 "new-box --name SplitB --x 500 --y 100",
                 "new-box --name SplitC --x 100 --y 400",
-                "new-box --name SplitD --x 500 --y 400",
+                "new-box --name SplitD --alias split_d --x 500 --y 400",
+                "connect @split_a @split_d",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),

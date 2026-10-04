@@ -889,7 +889,10 @@ private fun ensureActorArcLayer(): SVGSVGElement {
  */
 private fun boxWorldRect(uid: String): DOMRect? {
     val el = findBoxElementByUid(uid) ?: return null
-    return CanvasCamera.paneOf(el).worldRect(el.getBoundingClientRect())
+    // The arc layer draws through the main pane's camera; map where the box is seen through it, so
+    // an arc reaches a box in any pane (unsplit, this is the world rect).
+    val r = el.getBoundingClientRect()
+    return CanvasCamera.main.worldRect(CanvasCamera.visibleRect(el, r) ?: r)
 }
 
 private fun drawActorArc(arc: ActorArc) {
@@ -6729,6 +6732,7 @@ suspend fun main() {
         }
 
     }.first()
+    CanvasCamera.installOnce()
 
     registerOnOpen(
         Message("hello").payload(
