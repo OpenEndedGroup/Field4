@@ -2205,6 +2205,7 @@ class Server {
             UserThemeManager.start()
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
+            SemanticRetrievalService.startIdleRebuildWatcher() // rebuilds a stale semantic index once the workspace is quiet
 
             // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
             DocumentShutdownFlush.install()
