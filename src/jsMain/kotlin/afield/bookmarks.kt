@@ -340,7 +340,7 @@ fun restoreScrollPosition(position: ScrollPosition) {
 /**
  * Selects and focuses a specific box
  */
-fun restoreSelectedBox(boxId: String) {
+fun restoreSelectedBox(boxId: String, bringIntoView: Boolean = true) {
     try {
         val box = findBoxByUid(boxId)
         if (box != null) {
@@ -351,8 +351,10 @@ fun restoreSelectedBox(boxId: String) {
             // Select the target box
             selectBox(box)
 
-            // Scroll into view
-            box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
+            // Through the camera (of the box's own pane, on a split canvas). Not scrollIntoView,
+            // which scrolled the viewport or pane element behind the camera's back and left every
+            // screen-to-world conversion off by that much.
+            if (bringIntoView) ensureBoxVisibleForNavigation(box)
         }
     } catch (e: dynamic) {
         console.warn("Error restoring selected box:", e)
@@ -362,9 +364,9 @@ fun restoreSelectedBox(boxId: String) {
 /**
  * Opens the Monaco editor for a specific property of a box
  */
-fun restoreEditedProperty(boxId: String, property: String) {
+fun restoreEditedProperty(boxId: String, property: String, bringIntoView: Boolean = true) {
     try {
-        restoreSelectedBox(boxId)
+        restoreSelectedBox(boxId, bringIntoView)
         selectedProperty = property
         // Tell Monaco runtime not to re-apply its remembered view state for the upcoming open
         js("window").suppressNextEditorStateRestore = true
@@ -440,14 +442,16 @@ fun restoreBookmark(bookmark: Bookmark) {
             return
         }
 
-        // Restore selected box and edited property
+        // Restore selected box and edited property. A slot that restored its view keeps it
+        // exactly; one that did not brings the box into view instead.
+        val bringIntoView = !bookmark.restoreView
         bookmark.selectedBox?.let { boxId ->
             if (bookmark.editedProperty != null) {
                 bookmarkDebug("restoring property ${bookmark.editedProperty} in box $boxId")
-                restoreEditedProperty(boxId, bookmark.editedProperty)
+                restoreEditedProperty(boxId, bookmark.editedProperty, bringIntoView)
             } else {
                 bookmarkDebug("restoring selection in box $boxId")
-                restoreSelectedBox(boxId)
+                restoreSelectedBox(boxId, bringIntoView)
             }
         }
 
@@ -902,12 +906,18 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
             panels += R(x, y + headerHeight, size.width, size.height, uid)
         }
     }
-    val view = bookmark.scrollPosition?.let {
+    // The saved view: one dashed rectangle, or one per pane when the slot was saved split.
+    val views = bookmark.scrollPosition?.let {
         val z = it.zoom ?: mainZoom
-        val view = CanvasCamera.main.rect
-        R((view.x - it.x) / z, (view.y - it.y) / z, view.w / z, view.h / z, null)
-    }
-    val all = rects + panels + listOfNotNull(view)
+        val split = it.panes?.takeIf { json -> json.isNotEmpty() }?.let { json ->
+            CanvasCamera.viewsOf(json, it.paneX.orEmpty(), it.paneY.orEmpty(), z)
+        }
+        split?.map { v -> R(v.x, v.y, v.w, v.h, null) } ?: run {
+            val view = CanvasCamera.main.rect
+            listOf(R((view.x - it.x) / z, (view.y - it.y) / z, view.w / z, view.h / z, null))
+        }
+    }.orEmpty()
+    val all = rects + panels + views
     if (all.isEmpty()) return svg
     val minX = all.minOf { it.x }
     val minY = all.minOf { it.y }
@@ -935,7 +945,7 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
         rect.setAttribute("class", "bm-panel")
         svg.appendChild(rect)
     }
-    view?.let { v ->
+    views.forEach { v ->
         val rect = document.createElementNS(ns, "rect")
         rect.setAttribute("x", "${v.x}"); rect.setAttribute("y", "${v.y}")
         rect.setAttribute("width", "${v.w}"); rect.setAttribute("height", "${v.h}")

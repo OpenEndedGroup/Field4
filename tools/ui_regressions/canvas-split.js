@@ -19,6 +19,14 @@ try {
     const root=[...document.querySelectorAll('.box')].find(b=>b.uid==='root');
     const mainCanvas=()=>document.querySelector('.field-main-canvas:not(.field-pane-canvas)');
 
+    // Nothing can scroll the canvas behind the camera: scrollIntoView on a far-off box (as bookmark
+    // restore once did, and as the browser does for a focused input) leaves viewport and panes alone.
+    const far=byName('SplitFar');
+    check(far,'SplitFar box');
+    const scrolled=()=>[document.querySelector('.field-main-viewport'),...document.querySelectorAll('.field-pane')].filter(e=>e.scrollLeft||e.scrollTop).map(e=>e.className);
+    far.scrollIntoView({block:'center'});
+    check(scrolled().length===0,'unsplit viewport was scrolled: '+scrolled());
+
     // Divider at the screen point halfway between SplitA (world 100,100) and SplitD (world 500,400).
     const a=rects().SplitA, d=rects().SplitD;
     const sx=(a.right+d.left)/2, sy=(a.bottom+d.top)/2;
@@ -34,6 +42,8 @@ try {
     const where=Object.fromEntries(names.map(n=>{const p=paneOf(boxes[n].uid);return [n,p&&`${p.col},${p.row}`];}));
     check(where.SplitA==='0,0'&&where.SplitB==='1,0'&&where.SplitC==='0,1'&&where.SplitD==='1,1','quadrants: '+JSON.stringify(where));
     check(boxes.SplitD.closest('.field-pane')===mainCanvas().closest('.field-pane'),'D lives in the main canvas');
+    far.scrollIntoView({block:'center'});
+    check(scrolled().length===0,'a pane was scrolled: '+scrolled());
 
     // Wheel in D, away from any box: D, B (same column) move in x; D, C (same row) move in y; A does not move.
     const r0=rects();

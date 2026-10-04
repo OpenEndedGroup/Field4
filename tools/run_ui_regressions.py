@@ -4188,6 +4188,7 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name SplitB --x 500 --y 100",
                 "new-box --name SplitC --x 100 --y 400",
                 "new-box --name SplitD --alias split_d --x 500 --y 400",
+                "new-box --name SplitFar --x 4000 --y 3500",
                 "connect @split_a @split_d",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
             ],

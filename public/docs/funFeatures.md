@@ -458,6 +458,10 @@ ui.pause(600)
 	<source src="assets/Screen-Recording-2026-03-21-at-14.14.34.mp4" type="video/mp4">
 </video>
 
+Drag the little grip in the top-left corner of the canvas to split it into panes, like a spreadsheet's split. Panes in a row scroll up and down together and panes in a column scroll side to side together, so a row of headings or a column of labels stays lined up with the boxes it belongs to while you move around the rest. Drag a divider to move it; drag it to the edge to get rid of it. [Moving around the canvas](moving_around_the_canvas.md#splitting-the-canvas) has the details.
+
+![Field's canvas split into four panes by a black cross: bar headings along the top and instrument labels down the left stay lined up with the pattern boxes in the scrolled body](assets/moving_around_the_canvas/split_canvas.png)
+
 `command/ctrl-f` does the _Find_ you'd expect inside the editor; but with the keyboard focused on the whole document, finds over the contents of all of the boxes:
 
 <video controls autoplay loop muted playsinline style="width: min(100%, 660px);">

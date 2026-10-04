@@ -404,6 +404,37 @@ existing `mountDrawingLayer` surface was enough.
   - A tool chosen through the API commits on React's schedule, so the test waits for it before
     moving the pointer.
 
+**Bookmarks and `set-viewport`, reviewed 2026-10-05.**
+
+- **Bookmark restore scrolled the canvas behind the camera.** This predates panes.
+  `restoreSelectedBox` called `box.scrollIntoView`. An `overflow: hidden` element is still a scroll
+  container, so for an off-screen box this scrolled `mainViewport`, or the box's `.field-pane`
+  when split. The camera still read the old translation, and every screen-to-world conversion
+  (connections, hit tests, the drawing layer) was off by the scroll until reload. Measured
+  unsplit: `scrollLeft 1900, scrollTop 805`.
+  - Fixed twice over. The viewport, the panes and the drawing hosts are `overflow: clip`, which
+    clips the same way but is not a scroll container, so nothing (including a browser scrolling a
+    focused input into view) can scroll them.
+  - `restoreSelectedBox` now brings the box into view through the camera
+    (`ensureBoxVisibleForNavigation`, in the box's own pane), and only when the slot is not
+    restoring its view. A slot with **restore view** on keeps its saved view exactly.
+  - `canvas-split` asserts that `scrollIntoView` on a far box leaves the viewport and every pane
+    unscrolled, both unsplit and split.
+- **Bookmark minimap.** A slot saved split draws one dashed view rectangle per pane
+  (`CanvasCamera.viewsOf`, at the current window size); an unsplit slot draws one as before.
+- **`set-viewport`.** `viewport` is set on every box and read only by box code
+  (`onViewportChange`, the "lock_x" example in the Tour). Its meaning has always been the canvas
+  translation plus the window size: at zoom 1, the world shown is `(-x, -y, w, h)`.
+  - Split, it now sends the main pane's translation measured from the pane's own corner, with the
+    pane's size: `Rect(tx - rect.x, ty - rect.y, w, h)`. The old meaning still holds for the main
+    pane, and unsplit nothing changed. Before this, it mixed the window-relative translation with
+    the pane's size, which was off by the pane's origin.
+  - Measured with D panned to `tx = -50`, the pane at `x = 300`, and a 1900 × 2576 pane: box code
+    read `Rect(x=-350.0, y=-254.0, w=1900.0, h=2576.0)`.
+  - Still open: no zoom in `viewport`, which predates panes, and no per-pane viewports. Both would
+    be API additions, not fixes. The public page's limits say `viewport` describes the
+    bottom-right pane.
+
 ## 7. Persistence
 
 Add a root property `panes` holding a JSON string:
