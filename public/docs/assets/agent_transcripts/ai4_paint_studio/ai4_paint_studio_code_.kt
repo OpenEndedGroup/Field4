@@ -16,6 +16,8 @@ fun replace(c: PaintCanvas) { thisBox.properties["studio.canvas"] = c }
 
 fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
 fun show() = display("main", canvas().png())
+// Another box's tool can paint on this easel: it finds the canvas here and calls this to show the result.
+thisBox.properties["studio.refresh"] = { show() }
 
 // "#rrggbb", one tube ("ultramarine blue"), or a pile of tubes by parts ("lead white:3, yellow ochre:1").
 class Paint(val color: Vec4, val tubes: Map<String, Double>?)

@@ -107,8 +107,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   without it every box says so and stops.
 - `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
   `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
-  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it. The transcript only
-  runs the box; painting needs a person (or `agent-task --chat-box Studio`) and a provider.
+  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
+  `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
+  needs a person (or `agent-task --chat-box Studio`) and a provider.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.

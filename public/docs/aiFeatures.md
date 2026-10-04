@@ -347,7 +347,8 @@ reported in the log, so a broken hook cannot stop the agent. A `beforeTool` mark
 no extension can be missing. Context arrives marked
 as coming from the document rather than as instructions, at most 4,000 characters a
 part. `/help` lists the commands extensions add. [AI4 paints](ai4_painting.md)
-is a whole studio built this way.
+is a whole studio built this way, and [Experimenting with AI4](ai4_experiments.md)
+adds a tool to it in the middle of a conversation.
 
 Some state belongs to the conversation rather than to the document: a canvas the
 agent paints on, a simulation it is steering. `branchState` hands that state to the

@@ -3,12 +3,81 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 1 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
-## 1. Studio
+## 1. Scribbler
 
-<!-- field-box id="ai4_paint_studio" index="0" -->
+<!-- field-box id="ai4_paint_scribbler" index="0" -->
+
+```edn [field-box id="ai4_paint_scribbler" role="properties"]
+{"id" "ai4_paint_scribbler" "index" 0 "name" "Scribbler" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Scribbler" "_tombstone" false "frame" #afield/rect [820.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_scribbler_code_.kt" "lines" 58 "characters" 2837 "sha256" "f48066be42672914f9d4626a393d4438721dd8e8f5a93d119d10768c38f6c482"}]}
+```
+
+```kotlin [field-property box="ai4_paint_scribbler" name="code" path="ai4_paint_scribbler_code_.kt"]
+import afield.paint.*
+import kotlin.random.Random
+
+// A brush the painter does not have yet: a scribble, painted on the Studio's easel.
+val studio = thisBox.inside.boxes.values.single { it.name == "Studio" }
+
+fun inside(ring: List<List<Double>>, x: Double, y: Double) = ring.indices.count { i ->
+    val a = ring[i]; val b = ring[(i + 1) % ring.size]
+    (a[1] > y) != (b[1] > y) && x < a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0])
+} % 2 == 1
+
+fun ink(spec: String): Vec4 = if (spec.startsWith("#")) {
+    val v = spec.drop(1).chunked(2).map { it.toInt(16) / 255.0 }
+    rgb(v[0], v[1], v[2])
+} else Tubes[spec].color
+
+aiTool("scribble") {
+    describe("Scribble inside a region: rows of looping, wandering line that fill the outline the way a quick hand " +
+        "does. Dense scribbles read as tone, loose ones as texture; layer colours for depth.")
+    effects(ToolEffect.CONTROL_RUNTIME)
+    val outline by param<List<Double>>("the region, [x0, y0, x1, y1, ...] in canvas units")
+    val color by param<String>("#rrggbb, or a tube name")
+    val density by param<Double>("rows of loops per 100 units: 1 loose .. 8 dense", default = 3.0)
+    val width by param<Double>("brush width", default = 5.0)
+    action {
+        val canvas = studio.properties["studio.canvas"] as PaintCanvas
+        val ring = outline().chunked(2)
+        val rnd = Random(color().hashCode() + outline().hashCode())
+        val loop = 50.0 / density()
+        val left = ring.minOf { it[0] }; val right = ring.maxOf { it[0] }
+        val brush = canvas.brush(BrushKind.Round, width())
+        var row = ring.minOf { it[1] }
+        var dir = 1.0
+        while (row <= ring.maxOf { it[1] }) {
+            val line = FLine()
+            var x = if (dir > 0) left else right
+            var a = rnd.nextDouble(6.28)
+            var r = loop          // the loop size wanders, and the hand drifts off its row
+            var drift = 0.0
+            var pen = false
+            while (x in left..right) {
+                r = (r + rnd.nextDouble(-0.08, 0.08) * loop).coerceIn(loop * 0.4, loop * 1.7)
+                drift = (drift + rnd.nextDouble(-0.05, 0.05) * loop).coerceIn(-loop, loop)
+                val px = x + cos(a) * r
+                val py = row + drift + sin(a) * r * 0.8
+                pen = if (inside(ring, px, py)) { if (pen) line.lineTo(px, py) else line.moveTo(px, py); true } else false
+                x += dir * loop * rnd.nextDouble(0.06, 0.2)
+                a += rnd.nextDouble(0.2, 0.55)
+            }
+            brush.load(ink(color()), hiding = 0.8, wipe = 0.6)
+            canvas.stroke(line, brush, pressure = 0.4..0.8)
+            row += loop * 1.1
+            dir = -dir
+        }
+        (studio.properties["studio.refresh"] as () -> Unit)()
+        "scribbled ${color()} over the region at density ${density()}"
+    }
+}
+```
+
+## 2. Studio
+
+<!-- field-box id="ai4_paint_studio" index="1" -->
 
 ### Narrative
 
@@ -22,7 +91,7 @@ the canvas goes back to how it was before it; /branches and /branch switch betwe
 Needs the paint library: ./gradlew buildPaintNative.
 
 ```edn [field-box id="ai4_paint_studio" role="properties"]
-{"id" "ai4_paint_studio" "index" 0 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 304 "characters" 18976 "sha256" "bc540f4a310a9a776f763e31104fa7d40bc1a5588cf97c1e9ad7cf97b7ba7fca"}]}
+{"id" "ai4_paint_studio" "index" 1 "name" "Studio" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Studio" "_tombstone" false "frame" #afield/rect [80.0 80.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "ai4_paint_studio_code_.kt" "lines" 306 "characters" 19133 "sha256" "6c585cdcbb589f81ced6b0b7a0fc561d6e6725b30cd6a5537fdae60cd33ad6f7"}]}
 ```
 
 ```kotlin [field-property box="ai4_paint_studio" name="code" path="ai4_paint_studio_code_.kt"]
@@ -44,6 +113,8 @@ fun replace(c: PaintCanvas) { thisBox.properties["studio.canvas"] = c }
 
 fun pngUrl(bytes: ByteArray) = "data:image/png;base64," + Base64.getEncoder().encodeToString(bytes)
 fun show() = display("main", canvas().png())
+// Another box's tool can paint on this easel: it finds the canvas here and calls this to show the result.
+thisBox.properties["studio.refresh"] = { show() }
 
 // "#rrggbb", one tube ("ultramarine blue"), or a pile of tubes by parts ("lead white:3, yellow ochre:1").
 class Paint(val color: Vec4, val tubes: Map<String, Double>?)
