@@ -147,6 +147,14 @@ fun main(args: Array<String>) {
         if (!indexForTools?.definitions.isNullOrEmpty()) {
             appendLine("WorkspaceSymbolSearch is available for Kotlin source definitions.")
         }
+        // KDoc is published (the reference pages mirror it), so it is held to the same rules the
+        // human's notes on the docs produced; the documentation revision pass reads the same file.
+        readTextIfExists(workspaceRoot.resolve(DOCS_WRITING_RULES)).takeIf { it.isNotBlank() }?.let { rules ->
+            appendLine()
+            appendLine("The KDoc you write is published on the reference pages. Follow these rules, distilled from the human's notes on the docs ($DOCS_WRITING_RULES):")
+            appendLine()
+            appendLine(rules.trim())
+        }
     }.trim()
 
     val state = bridge.startThread(
@@ -465,6 +473,8 @@ private fun replaceInFile(
  * One line per applied source edit, however the model called the tool (directly or from inside a tool
  * program). The polish page reads its Edits panel from these lines, not from the model's tool calls.
  */
+private const val DOCS_WRITING_RULES = "dev_docs/agents/DOCS_WRITING_RULES.md"
+
 internal const val APPLIED_EDIT_MARKER = "[completion-doc-polish-edit] "
 
 private fun printAppliedEdit(file: String, req: ReplaceInFileRequest, dryRun: Boolean) {
