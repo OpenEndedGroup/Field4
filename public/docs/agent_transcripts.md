@@ -89,6 +89,14 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### particle_video_reader
+
+Inspect recorded trajectories as continuous polylines, with time, history length, identity color
+and sampling-density controls. This portable example reads the same complete-trajectory subset
+as the [Video particles](particle_video.md) walkthrough; it runs without a neural environment.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video_reader/metadata.edn)
+
 ### hello_display
 
 Minimal blank-canvas macro that creates one runnable output box.
@@ -1990,6 +1998,19 @@ optional library (`./gradlew buildSyphonNative`, which needs Xcode); without it 
 it and stop.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/syphon_bridge/metadata.edn)
+
+### particle_video
+
+Follow a movie as recorded moving points. The [Video particles](particle_video.md) walkthrough
+shows a hand-colored serpentine dance at native resolution with 24,000 target particles, with
+source and Kotlin-rendered output side by side. The reader box scrubs a portable subset of complete
+trajectories and exposes identity colors and trails without a Python process. The tracking box
+runs an optional cached RAFT job; prepare its environment and select the device first.
+CI compiles the boxes; new inference requires that separate environment.
+
+![Recorded particles with time, color and trail controls](assets/particle_video/field-view.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
 
 ## visionOS device scenes
 
