@@ -101,9 +101,9 @@ The Gaussian noise the examples inject comes from the standard-library
 
 ## Example: tracking a hidden Mackey-Glass point
 
-The smallest useful shape: one hidden point evolves through a nonlinear delayed
-map (the Mackey-Glass system), the only measurement is that point plus Gaussian
-error, and the UKF predicts the motion then corrects from the scalar measurement.
+In this first example one hidden point moves through a nonlinear delayed map (the
+Mackey-Glass system). The only measurement is that point plus Gaussian error, and
+the UKF predicts the motion, then corrects it from that one number.
 The state carries three coordinates (the current value and two delayed ones), but
 only the first is ever observed.
 
@@ -199,12 +199,12 @@ needs to predict.
 
 ## Example: recovering an unmeasured velocity
 
-The Mackey-Glass filter never observes its delayed coordinates, but they only
-matter internally. Here the hidden dimension is the one you want: the state
+In the Mackey-Glass example the unobserved coordinates were only needed to
+predict. Here the unobserved value is the one you want: the state
 is `[position, velocity]`, the sensor reports **only a noisy position**, and the
 filter has to infer velocity from how the position moves. A constant-velocity
 transition (`position += velocity·dt`) plus a little process noise on the velocity
-lets the estimate bend to a genuinely curving trajectory.
+lets the estimate follow a trajectory that curves.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/state_estimation_examples/ukf_velocity_tracker.png" wait="1.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -310,10 +310,9 @@ display("velocity", velocityPlot)
 
 ![A UKF recovering an unmeasured velocity from noisy position measurements](assets/state_estimation_examples/ukf_velocity_tracker.png)
 
-The top panel is the noisy-measurement / clean-estimate comparison. In the bottom
-panel the velocity trace tracks the true sine even though velocity is *never
-measured*: no amount of smoothing the raw signal could produce it, because velocity
-is not in the signal.
+The top panel compares the noisy measurement with the estimate. In the bottom
+panel the estimated velocity follows the true sine, although velocity is never
+measured.
 
 ## The particle filter: keeping several models alive
 
@@ -584,6 +583,7 @@ panel shows the true `beta`, the weighted particle estimate, and a weighted
 one-standard-deviation envelope; the particle panel scatters each hypothesis at
 saved time steps, and because the markers are translucent, a bright saturated band
 is where the particles have clumped and loose dots are where they have not.
+
 Observing the current point plus the two previous measurements pins the delayed
 state coordinates, so a wrong `beta` cannot hide behind a different latent delay.
 The broad-proposal rate is raised only around the known transition window: enough
