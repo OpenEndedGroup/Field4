@@ -2090,7 +2090,9 @@ function ensureAiChat(container, uid, property) {
         micButton.className = "ai-chat-mic";
         micButton.type = "button";
         micButton.title = `Hold to talk (or hold ${window.fieldVoice?.hotkeyLabel || "the push-to-talk key"} anywhere)`;
-        micButton.textContent = "\u{1F399}";
+        micButton.setAttribute("aria-label", "Push to talk");
+        // Line-drawn like the layers panel's eye: capsule, cradle, stem, 1.3 stroke in currentColor.
+        micButton.innerHTML = '<svg width="12" height="18" viewBox="0 0 12 18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect class="ai-chat-mic-capsule" x="3.5" y="1" width="5" height="9.5" rx="2.5"/><path d="M1 8.5a5 5 0 0 0 10 0"/><path d="M6 13.5V17M3.5 17h5"/></svg>';
         micButton.addEventListener("pointerdown", (event) => {
                 event.preventDefault();
                 micButton.setPointerCapture?.(event.pointerId);
