@@ -268,14 +268,19 @@ class MqttClient(
         s.connect(InetSocketAddress(host, port), connectTimeoutMs)
         socket = s
         if (isClosed) { s.close(); return }
-        out = s.getOutputStream()
+        val o = s.getOutputStream()
         val input = BufferedInputStream(s.getInputStream())
         s.soTimeout = connectTimeoutMs
-        send(MqttPacket.Connect(clientId, cleanSession, keepAliveSeconds, will, username, password?.encodeToByteArray()))
+        // [out] stays null until CONNACK: a publish or subscribe made meanwhile must not reach the
+        // socket ahead of CONNECT (mosquitto drops such a client); it is queued and sent below.
+        o.write(Mqtt.encode(MqttPacket.Connect(clientId, cleanSession, keepAliveSeconds, will, username, password?.encodeToByteArray())))
+        o.flush()
+        lastSendNanos = System.nanoTime()
         val ack = Mqtt.read(input) as? MqttPacket.ConnAck ?: throw MqttProtocolException("expected CONNACK")
         if (ack.returnCode != 0) {
             throw MqttProtocolException("broker refused: ${Mqtt.connackReason(ack.returnCode)}")
         }
+        out = o
         s.soTimeout = 250 // so the reader can check the keepalive clock
         pingSentNanos = 0L
         isConnected = true
@@ -327,8 +332,10 @@ class MqttClient(
                 received.incrementAndGet()
                 latest[p.topic] = m
                 onReceive.forEach { runCatching { it(m) } }
-                subscriptions.forEach { s ->
-                    if (MqttTopic.matches(s.filter, p.topic)) dispatch(Runnable {
+                val matching = subscriptions.filter { MqttTopic.matches(it.filter, p.topic) }
+                if (isOverlapCopy(p, matching)) return
+                matching.forEach { s ->
+                    dispatch(Runnable {
                         if (!s.isClosed) { s.count.incrementAndGet(); s.handler(m) }
                     })
                 }
@@ -341,6 +348,30 @@ class MqttClient(
             is MqttPacket.SubAck -> if (p.returnCodes.any { it == 0x80 }) lastError = "broker refused a subscription"
             else -> {}
         }
+    }
+
+    private class Copies(val topic: String, val payload: ByteArray, val retain: Boolean, var remaining: Int, val nanos: Long)
+    private val expectedCopies = ArrayDeque<Copies>()
+
+    /**
+     * Mosquitto (like most brokers, and as 3.1.1 §3.3.5 allows) sends one copy of a message per
+     * matching subscription, so `a/+` and `a/#` together deliver `a/b` twice — and every copy
+     * already reaches every matching handler here. When a message matches N distinct filters, the
+     * next N − 1 identical copies within [COPY_WINDOW_NANOS] are acknowledged but not dispatched.
+     * A broker that sends one copy (the embedded one) loses at most one genuine identical repeat
+     * inside that window.
+     */
+    private fun isOverlapCopy(p: MqttPacket.Publish, matching: List<MqttSubscription>): Boolean = synchronized(expectedCopies) {
+        val now = System.nanoTime()
+        while (expectedCopies.isNotEmpty() && now - expectedCopies.first().nanos > COPY_WINDOW_NANOS) expectedCopies.removeFirst()
+        val hit = expectedCopies.firstOrNull { it.topic == p.topic && it.retain == p.retain && it.payload.contentEquals(p.payload) }
+        if (hit != null) {
+            if (--hit.remaining == 0) expectedCopies.remove(hit)
+            return true
+        }
+        val n = matching.map { it.filter }.distinct().size
+        if (n > 1) expectedCopies.addLast(Copies(p.topic, p.payload, p.retain, n - 1, now))
+        false
     }
 
     private fun drop(reason: String) {
@@ -366,6 +397,10 @@ class MqttClient(
         pendingAcks.values.forEach { it.completeExceptionally(IOException("client closed")) }
         pendingAcks.clear()
         thread.interrupt()
+    }
+
+    companion object {
+        internal const val COPY_WINDOW_NANOS = 250_000_000L
     }
 
     override fun toString() = "MqttClient($url, ${if (isConnected) "connected" else "disconnected"}, ${subscriptions.size} subscriptions)"
