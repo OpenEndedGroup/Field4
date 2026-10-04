@@ -1,5 +1,11 @@
 # Field's server surface: the route and command inventory
 
+Fresh installations bind HTTPS to `127.0.0.1` and enable the application-wide browser-origin
+policy. This inventory records route-specific guards; `none` does not bypass those defaults.
+LAN reachability requires `AFIELD_BIND_HOST=0.0.0.0`, and the older permissive browser policy
+requires `AFIELD_API_REQUIRE_SAME_SITE=0`.
+
+
 The maintainer's companion to `public/docs/server_surface.md`. That page explains the trust
 boundary and the defences; this one is the **ledger** — every door in the wall, counted, with
 the file it is declared in and the guard that runs on it.
@@ -88,7 +94,6 @@ mutation; it is a different one.
 | `GET /api/code-use/summary` | `Server.kt` | none |
 | `GET /api/code-use/symbols` | `Server.kt` | none |
 | `GET /api/code-use/unresolved` | `Server.kt` | none |
-| `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |

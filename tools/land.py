@@ -178,6 +178,20 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     return 0
 
 
+_SUBJECTS: dict[str, str] = {}
+
+
+def _subject(item: dict) -> str:
+    """The first line of the branch tip's commit message: a branch name like
+    claude/distracted-mccarthy-deeb34 says nothing about what is landing."""
+    sha = item["sha"]
+    if sha not in _SUBJECTS:
+        result = subprocess.run(["git", "log", "-1", "--format=%s", sha], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, text=True)
+        _SUBJECTS[sha] = result.stdout.strip()
+    return _SUBJECTS[sha]
+
+
 def _when(iso: str | None) -> dt.datetime | None:
     try:
         return dt.datetime.fromisoformat(iso) if iso else None
@@ -255,6 +269,8 @@ def _superseded_by(queue: Path, item: dict) -> dict | None:
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     head = f"{item['id']}  {item['sha'][:9]}  by {item['by']}"
     lines = [f"{state:8} {head}"]
+    if _subject(item):
+        lines.append(f"         \u201c{_subject(item)}\u201d")
     if item.get("note"):
         lines.append(f"         note: {item['note']}")
     if state == PENDING and item.get("started"):
@@ -377,7 +393,10 @@ def _pretty_status(queue: Path, recent: int) -> None:
     rule = lambda title: print(st.dim("\u2500\u2500 ") + st.bold(title) + " " + st.dim("\u2500" * max(width - len(title) - 4, 0)))
 
     def who(item: dict) -> str:
-        return f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
+        line = f"{st.magenta(g['branch'] + ' ' + item['branch'])}  {st.dim(item['sha'][:9])}  {st.dim(g['user'] + ' ' + item['by'])}"
+        subject = _subject(item)
+        # The tip's commit subject, on its own line: the branch name rarely says what is landing.
+        return line + (f"\n      {subject[: width - 8]}" if subject else "")
 
     # Lander
     if _lander_running(queue):
@@ -400,21 +419,29 @@ def _pretty_status(queue: Path, recent: int) -> None:
     rule("landing")
     if not active:
         print(st.dim("  idle"))
+    # One progress block per batch: its branches share one merge, one regeneration and one guard.
+    batches: dict[str, list[dict]] = {}
     for item in active:
+        batches.setdefault(item.get("batch", item["id"]), []).append(item)
+    for members in batches.values():
+        item = members[0]
         running = _since(item["started"])
         step, last = _phase(item)
         gradle = _ran_gradle(item)
         typical = _typical(queue, gradle)
-        print(f"  {st.yellow(g['land'])} {who(item)}")
-        if item.get("note"):
-            print(f"    {st.dim(g['note'] + ' ' + item['note'])}")
+        if len(members) > 1:
+            print(f"  {st.dim('batch of ' + str(len(members)) + ', one guard for all:')}")
+        for member in members:
+            print(f"  {st.yellow(g['land'])} {who(member)}")
+            if member.get("note"):
+                print(f"    {st.dim(g['note'] + ' ' + member['note'][: width - 8])}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
             print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
         else:
             print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
-        print(f"    {st.dim('step')}  {step}")
+        print(f"    {st.dim('step')}  {step[: width - 12]}")
         if last:
             print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
         print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")

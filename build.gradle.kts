@@ -1112,9 +1112,11 @@ kotlin {
                 //   -Xplugin args (compilerPluginArgs == []) still produced 10
                 //   io.github.kyay10.wither frames. The practical consequence is that Wither
                 //   CANNOT be turned off at runtime -- only by removing the line below.
-                // - and it is not neutral: its IrGenerationExtension breaks local and class-member
-                //   `by provideDelegate` in box code. See dev_docs/k2_repl_provide_delegate.md and
-                //   the reproducer afield.examples.ProvideDelegateReplSmokeTest.
+                // - and it is not neutral: until 2026-10-04 its IrGenerationExtension failed every
+                //   box that called a local function (or a member of a local or anonymous class) as
+                //   a statement, with "... has no callableId". The jar is now built from
+                //   ~/temp/wither branch field/kotlin-2.5.0-beta1, which fixes that. See
+                //   dev_docs/k2_repl_provide_delegate.md and afield.ReplSnippetDeclarationsSmokeTest.
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
 
@@ -1825,6 +1827,11 @@ val recordTestTreeBaseline = tasks.register<Exec>("recordTestTreeBaseline") {
         "--snapshot", testTreeWriteBaselineFile.get().asFile.absolutePath,
         "--ran-dir", testTreeWriteRanDir.get().asFile.absolutePath,
     ))
+    // A regeneration run (`merge_regen.py`) puts JavaExec rewriters such as
+    // checkCompletionCorpusFixtures in the same invocation as citationGates. Snapshotting before
+    // they run charged their intended rewrites (182 corpus files) to the first test task's guard.
+    // Only Test tasks are guarded, so baselining after every scheduled JavaExec loses nothing.
+    mustRunAfter(tasks.withType<JavaExec>())
 }
 
 val checkTestTreeWrites = tasks.register<Exec>("checkTestTreeWrites") {
@@ -2637,7 +2644,7 @@ tasks.register("generateFieldAotCache") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/aot-classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${fieldAotRuntimeClasspath(runJvmTask.classpath)}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(fieldAotRuntimeClasspath(runJvmTask.classpath))}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -2786,6 +2793,13 @@ val buildFieldFdPass = tasks.register("buildFieldFdPass") {
     outputs.files(source.file("build/libfieldfdpass.so"), source.file("build/fieldfdpass-native.jar"))
     onlyIf { osName.startsWith("Linux") }
     doLast {
+        val cache = source.file("build/CMakeCache.txt").asFile
+        val cachedHome = cache.takeIf { it.isFile }?.readLines()
+            ?.firstOrNull { it.startsWith("CMAKE_HOME_DIRECTORY:INTERNAL=") }?.substringAfter('=')
+        if (cachedHome != null && File(cachedHome).canonicalFile != source.asFile.canonicalFile) {
+            logger.lifecycle("Checkout moved; rebuilding the FD helper's CMake output.")
+            delete(source.dir("build"))
+        }
         fun run(vararg command: String) {
             val process = ProcessBuilder(*command).directory(project.projectDir).inheritIO()
             process.environment()["JAVA_HOME"] = System.getProperty("java.home")
@@ -2906,13 +2920,19 @@ val electronInstall = tasks.register("electronInstall") {
     }
 }
 
+fun javaArgfileToken(value: String): String =
+    "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"")
+        .replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t") + "\""
+
+val fieldServerOnly = providers.gradleProperty("fieldServerOnly").map(String::toBoolean).orElse(false)
+
 tasks.register("dumpFieldLaunch") {
     group = "application"
     description = "Writes build/field-launch/{java,args} so ./field.sh and .\\field.ps1 can launch " +
         "afield.Server directly in a terminal (stdout stays a TTY, so the pinned console renders)."
-    dependsOn(tasks.named("jvmJar"))
+    dependsOn(tasks.named("jvmJar"), prepareSmileNative)
     dependsOn(tasks.named("generateLocalKeystore"))
-    dependsOn(electronInstall)
+    if (!fieldServerOnly.get()) dependsOn(electronInstall)
     personalJar?.let { dependsOn(it) }
     outputs.upToDateWhen { false }
 
@@ -2929,14 +2949,13 @@ tasks.register("dumpFieldLaunch") {
         val outDir = File(project.layout.buildDirectory.asFile.get(), "field-launch")
         outDir.mkdirs()
         File(outDir, "java").writeText(javaExecutable + System.lineSeparator())
-        // Java @argfile: one token per line. Paths are assumed free of whitespace, as elsewhere in
-        // this build (see the runDesktop Windows @argfile at the classpath block below).
+        // Java @argfile: quote every token so whitespace, backslashes and # survive on all OSes.
         File(outDir, "args").writeText(
             buildString {
-                jvmArgs.forEach { appendLine(it) }
+                jvmArgs.forEach { appendLine(javaArgfileToken(it)) }
                 appendLine("-cp")
-                appendLine(runJvmTask.classpath.asPath)
-                appendLine(mainClass)
+                appendLine(javaArgfileToken(runJvmTask.classpath.asPath))
+                appendLine(javaArgfileToken(mainClass))
             }
         )
 
@@ -2946,12 +2965,11 @@ tasks.register("dumpFieldLaunch") {
         val electronArgs = if (os.contains("windows") || os.contains("mac")) {
             emptyList()
         } else {
-            listOf(
-                "--ignore-gpu-blocklist", "--disable-gpu-process-crash-limit",
-                "--enable-gpu-rasterization", "--enable-zero-copy", "--ozone-platform-hint=auto",
-            )
+            listOf("--ozone-platform-hint=auto")
         }
-        File(outDir, "electron").writeText(electronHostBinary().absolutePath + System.lineSeparator())
+        File(outDir, "electron").writeText(
+            (if (fieldServerOnly.get()) "" else electronHostBinary().absolutePath) + System.lineSeparator()
+        )
         File(outDir, "electron-dir").writeText(electronDir.asFile.absolutePath + System.lineSeparator())
         File(outDir, "electron-args").writeText(
             electronArgs.joinToString(separator = System.lineSeparator(), postfix = if (electronArgs.isEmpty()) "" else System.lineSeparator())
@@ -3102,7 +3120,7 @@ tasks.register("runDesktop") {
         if (isWindows) {
             val argFile = File(project.layout.buildDirectory.asFile.get(), "tmp/classpath-argfile.txt")
             argFile.parentFile.mkdirs()
-            argFile.writeText("-cp\n${backendClasspath}\n")
+            argFile.writeText("-cp\n${javaArgfileToken(backendClasspath)}\n")
             backendCommand += "@${argFile.absolutePath}"
         } else {
             backendCommand += "-cp"
@@ -3123,13 +3141,7 @@ tasks.register("runDesktop") {
             .start()
         forwardProcessOutput(backendProcess)
         val isMac = os.contains("mac")
-        val linuxElectronGpuArgs = listOf(
-            "--ignore-gpu-blocklist",
-            "--disable-gpu-process-crash-limit",
-            "--enable-gpu-rasterization",
-            "--enable-zero-copy",
-            "--ozone-platform-hint=auto",
-        )
+        val linuxElectronGpuArgs = listOf("--ozone-platform-hint=auto")
         val electronCommand = if (isWindows) {
             listOf(electronHostBinary().absolutePath, ".")
         } else if (isMac) {
@@ -3915,35 +3927,6 @@ tasks.register<JavaExec>("runfilestore") {
     classpath = sourceSets["jvmMain"].runtimeClasspath
 
     mainClass.set("afield.ai.AI4FilestoreCliKt")
-    standardInput = System.`in`
-}
-
-tasks.register<JavaExec>("polishCompletionDocs") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI and regenerates the codebase reference"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    standardInput = System.`in`
-
-    // Source KDoc is the input to the committed codebase reference and KDoc
-    // worklist. Keep those derived files synchronized before the /welcome
-    // monitor reports the polish task as finished. A finalizer also repairs the
-    // reference after a failed AI run that managed to write a partial batch.
-    finalizedBy("generateCodebaseReference")
-}
-
-tasks.register<JavaExec>("polishCompletionDocsDryRun") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI without writing files"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    args("--dry-run")
     standardInput = System.`in`
 }
 

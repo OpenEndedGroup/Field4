@@ -2753,6 +2753,22 @@ fun registerBuiltinCommands() {
                 window.showProfilingTimeline();
             }
         },{
+            id:'disable-auto-displaying-editor',
+            label:"Disable Auto-displaying Editor",
+            detail:"Hide the editor and stop selection changes from opening it; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor !== false,
+            run: () => {
+                window.setAutoDisplayEditor(false);
+            }
+        },{
+            id:'auto-display-editor',
+            label:"Auto-display Editor",
+            detail:"Automatically show the editor when selecting a box; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor === false,
+            run: () => {
+                window.setAutoDisplayEditor(true);
+            }
+        },{
             id:'switch-to-monaco-editor',
             label:"Switch to Monaco Editor",
             detail:"Switch back to editing code",

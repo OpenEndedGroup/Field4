@@ -310,7 +310,8 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
             "<<you>>",
             "<<ai>>",
             "<<progress>>",
-            "<<progress-open>>"
+            "<<progress-open>>",
+            "<<queued>>"
         )
         val hits = markers.mapNotNull { marker ->
             val at = text.indexOf(marker, idx)
@@ -360,6 +361,10 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
                 flush()
                 currentRole = "progress-open"
             }
+            "<<queued>>" -> {
+                flush()
+                currentRole = "queued"
+            }
             else -> buffer.append(token)
         }
     }
@@ -398,7 +403,7 @@ fun aiChatHistoryToHtml(history: String?): String {
                 html.append("<div class=\"ai-chat-status-row\" aria-label=\"AI activity\">")
                 statusRowOpen = true
             }
-            html.append("<span class=\"ai-chat-status\">${escapeHtml(title.ifBlank { "AI activity" })}</span>")
+            html.append("<span class=\"ai-chat-status\">${shimmerIfLive(turn, escapeHtml(title.ifBlank { "AI activity" }))}</span>")
             continue
         }
         if (statusRowOpen) {
@@ -407,6 +412,12 @@ fun aiChatHistoryToHtml(history: String?): String {
         }
         if (progress) {
             html.append(renderProgressTurn(turn))
+        } else if (turn.role == "queued") {
+            // Sent while the turn runs (AiTurnInbox on the server): not part of the conversation until the
+            // agent reads it, so it has no ordinal and no rewind/edit.
+            html.append("<div class=\"ai-chat-turn you queued\">" +
+                "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
+                aiChatMarkdownToHtml(turn.content) + "</div>")
         } else {
             val badge = if (turn.role == "ai") {
                 val label = turn.model?.label() ?: "Model not recorded"
@@ -445,7 +456,12 @@ private fun renderProgressTurn(turn: ChatTurn): String {
     val summaryTitle = if (isEdit) "Edit" else title
     val fileHtml = if (file.isNotBlank()) "<span class=\"ai-chat-progress-file\">${escapeHtml(file)}</span>" else ""
     return "<details class=\"ai-chat-progress\"$kind$open>" +
-        "<summary><span>${escapeHtml(summaryTitle)}</span>$fileHtml</summary>" +
+        "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
         aiChatMarkdownToHtml(body) +
         "</details>"
 }
+
+// `<<progress-open>>` is the newest activity of a turn still running with nothing streamed after it
+// (AiLiveConversation.render); the final render and an interrupted-turn recovery both demote it.
+private fun shimmerIfLive(turn: ChatTurn, html: String): String =
+    if (turn.role == "progress-open") "<span class=\"ai-chat-shimmer\">$html</span>" else html

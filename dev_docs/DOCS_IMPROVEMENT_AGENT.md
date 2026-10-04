@@ -1,5 +1,12 @@
 # The documentation annotation layer, and the coding agent behind it
 
+> Current installation defaults (2026-10-04): HTTPS binds `127.0.0.1` and the application-wide
+> browser-origin guard is enabled. `AFIELD_BIND_HOST=0.0.0.0` and
+> `AFIELD_API_REQUIRE_SAME_SITE=0` explicitly restore the older network/origin exposure.
+> Exposure measurements below describe that older or explicitly permissive posture; they are
+> historical evidence, not the fresh-install defaults. See `public/docs/server_surface.md`.
+
+
 Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`,
 `src/jvmMain/kotlin/afield/server/docsPass.kt` and `src/commonMain/resources/docsAnnotations.js`.
 
@@ -277,7 +284,7 @@ faithfully follow.
   remote browser clients, so the binding stayed and the routes grew guards. If a future
   Field wants a loopback-only mode, that is a server-wide switch and a different change.
 - **The rest of the API is still unauthenticated, and that is the largest thing on this
-  page.** 49 of 56 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
+  page.** 48 of 55 mutating HTTP routes have no route-specific guard, and `0.0.0.0` plus "Ktor's
   CORS plugin does not run at all for a request with no `Origin`" means `curl` from any
   host on the Wi-Fi reaches every one of them. Demonstrated 2026-08-12 rather than
   asserted: `GET https://192.168.2.125:9492/api/instance-info` — the machine's own LAN
@@ -301,7 +308,7 @@ worklog decays and this one should not:
 added, when one is removed, and — the case a count could never see — when one quietly
 loses its guard.
 
-**49 of 56 state-changing HTTP routes have no route-specific access control**, and there is no
+**48 of 55 state-changing HTTP routes have no route-specific access control**, and there is no
 `install(Authentication)` anywhere in the tree.
 
 That was 36 of 40 until 2026-08-22, and the difference is not thirteen new routes — it is

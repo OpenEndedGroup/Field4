@@ -304,6 +304,16 @@ class AnthropicBridge(
                 )
             }
 
+            // What the person wrote while this round ran (AiTurnInbox): a text block after the tool results,
+            // which must come first in the message. Their images are dropped, as a turn's own are here.
+            callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
+                val text = AiTurnInbox.modelText(taken)
+                resultBlocks += ContentBlockParam.ofText(TextBlockParam.builder().text(text).build())
+                if (taken.any { it.images.isNotEmpty() }) warn("images sent while the turn ran are ignored by the Anthropic bridge.")
+                info("user interjection: ${taken.size} message(s), ${text.length} chars")
+                toolIo("user_interjection", mapOf("round" to (rounds + 1), "messages" to taken.size, "text" to text))
+            }
+
             messages += MessageParam.builder()
                 .role(MessageParam.Role.USER)
                 .contentOfBlockParams(resultBlocks)

@@ -25,8 +25,20 @@ try {
     await frame();
     near(rect().left,r0.left-40,0.5,'wheel pan x');near(rect().top,r0.top-25,0.5,'wheel pan y');
 
+    // The wheel is latched to the canvas: its next event pans even over an output area.
+    const output=box.querySelector('.outputArea');
+    check(output,'CameraAlpha has an output area');
+    const rl=rect();
+    output.dispatchEvent(new WheelEvent('wheel',{deltaX:0,deltaY:30,bubbles:true,cancelable:true}));
+    await frame();
+    near(rect().top,rl.top-30,0.5,'latched wheel over an output area');
+    await pause(400); // let the wheel latch expire before the next gesture
+
     const r1=rect();
-    viewport.dispatchEvent(new MouseEvent('mousemove',{buttons:4,movementX:15,movementY:-10,clientX:5,clientY:5,bubbles:true,cancelable:true}));
+    // A middle drag is latched from its mousedown on the canvas.
+    viewport.dispatchEvent(new MouseEvent('mousedown',{button:1,buttons:4,clientX:5,clientY:5,bubbles:true,cancelable:true}));
+    viewport.dispatchEvent(new MouseEvent('mousemove',{buttons:4,movementX:15,movementY:-10,clientX:20,clientY:-5,bubbles:true,cancelable:true}));
+    viewport.dispatchEvent(new MouseEvent('mouseup',{button:1,buttons:0,clientX:20,clientY:-5,bubbles:true,cancelable:true}));
     await frame();
     near(rect().left,r1.left+15,0.5,'middle-drag x');near(rect().top,r1.top-10,0.5,'middle-drag y');
 

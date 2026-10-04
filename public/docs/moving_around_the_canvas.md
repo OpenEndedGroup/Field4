@@ -14,6 +14,9 @@ All of them change what you are looking at and never the document itself.
   point under it stays put. The zoom runs from 10% to 400%.
 - **Reset Canvas Zoom** in the command palette returns to 100%, keeping the centre of the window
   where it is.
+- **`Alt+H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
+  panel) also returns to 100%, and closes every output panel. Use it when a panel has grown to fill
+  the window: the wheel and pinch then go to the panel, so you cannot zoom or scroll away from it.
 
 ## Stepping between boxes
 
