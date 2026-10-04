@@ -890,11 +890,17 @@ pre code {
     background: var(--field-hover-strong);
 }
 
-/* Push-to-talk (voiceInput.js): red while recording, pulsing while Whisper works. */
+/* Push-to-talk (voiceInput.js). Recording speaks in your colour (the chat's orange), transcribing
+   in Field's (cyan); the capsule fills while the mic is live. */
 .ai-chat-input button.ai-chat-mic {
-    font-size: 14px;
-    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 9px;
+    color: var(--field-fg);
+    opacity: 0.45;
     touch-action: none;
+    transition: opacity 120ms, color 120ms;
 }
 
 .ai-chat-input button.ai-chat-mic:hover,
@@ -903,18 +909,22 @@ pre code {
 }
 
 .ai-chat-input button.ai-chat-mic.recording {
-    background: #b3261e;
-    opacity: 1;
+    color: var(--ai-chat-you-fg);
+    background: var(--field-editor-bg);
+}
+
+.ai-chat-input button.ai-chat-mic.recording .ai-chat-mic-capsule {
+    fill: currentColor;
 }
 
 .ai-chat-input button.ai-chat-mic.transcribing {
-    opacity: 1;
-    animation: ai-chat-mic-pulse 0.8s ease-in-out infinite alternate;
+    color: var(--ai-chat-ai-fg);
+    animation: ai-chat-mic-pulse 0.7s ease-in-out infinite alternate;
 }
 
 @keyframes ai-chat-mic-pulse {
-    from { background: var(--field-editor-bg); }
-    to { background: var(--field-hover-strong); }
+    from { opacity: 0.35; }
+    to { opacity: 1; }
 }
 
 .ai-chat-thread {
