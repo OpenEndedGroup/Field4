@@ -1630,6 +1630,23 @@ val citationGates = tasks.register<org.gradle.api.tasks.testing.Test>("citationG
         citationGuardTestClasses.forEach(::includeTestsMatching)
         isFailOnNoMatchingTests = true
     }
+    // Progress, one line per guard class as it starts and finishes. The task runs for minutes inside
+    // every landing, and `tools/land.py status` reads these lines to say which guard it is on.
+    val guardTotal = citationGuardTestClasses.size
+    var guardsDone = 0
+    addTestListener(object : TestListener {
+        override fun beforeSuite(suite: TestDescriptor) {
+            if (suite.className != null) println("citationGates: running ${suite.className!!.substringAfterLast('.')}")
+        }
+        override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+            val name = suite.className ?: return
+            guardsDone++
+            val seconds = (result.endTime - result.startTime) / 1000.0
+            println("citationGates: [$guardsDone/$guardTotal] ${name.substringAfterLast('.')} ${result.resultType} in ${"%.1f".format(seconds)}s")
+        }
+        override fun beforeTest(testDescriptor: TestDescriptor) {}
+        override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+    })
     // These guards read documentation, not just classes, so Gradle must be told: without this the
     // task is UP-TO-DATE after a pure Markdown edit and the guards "pass" without running. Measured
     // on 2026-08-19 — a deliberately planted bad fence went green until `--rerun-tasks`. A guard
@@ -2748,10 +2765,30 @@ val buildFieldBrowserBridge = tasks.register("buildFieldBrowserBridge") {
     }
 }
 
+// The Linux RTT view reverses the native-handle handoff: the JVM sends dma-buf FDs to Electron.
+val buildFieldFdPass = tasks.register("buildFieldFdPass") {
+    group = "application"
+    description = "Builds the isolated JNI FD sender used by the Linux Electron RTT view."
+    val source = layout.projectDirectory.dir("native/field-fdpass")
+    inputs.files(source.file("CMakeLists.txt"), source.file("src/fdpass.c"),
+        source.file("java/fieldfdpass/UnixFdPassNative.java"))
+    outputs.files(source.file("build/libfieldfdpass.so"), source.file("build/fieldfdpass-native.jar"))
+    onlyIf { osName.startsWith("Linux") }
+    doLast {
+        fun run(vararg command: String) {
+            val process = ProcessBuilder(*command).directory(project.projectDir).inheritIO()
+            process.environment()["JAVA_HOME"] = System.getProperty("java.home")
+            if (process.start().waitFor() != 0) throw GradleException("FD helper build failed: ${command.joinToString(" ")}")
+        }
+        run("cmake", "-S", source.asFile.absolutePath, "-B", source.dir("build").asFile.absolutePath)
+        run("cmake", "--build", source.dir("build").asFile.absolutePath)
+    }
+}
+
 val electronInstall = tasks.register("electronInstall") {
     group = "application"
     description = "Installs Electron wrapper dependencies in electron/."
-    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge)
+    dependsOn(tasks.named("npmInstall"), buildFieldBrowserBridge, buildFieldFdPass)
 
     doLast {
         val isMac = System.getProperty("os.name").lowercase().contains("mac")

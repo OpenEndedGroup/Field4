@@ -890,6 +890,33 @@ pre code {
     background: var(--field-hover-strong);
 }
 
+/* Push-to-talk (voiceInput.js): red while recording, pulsing while Whisper works. */
+.ai-chat-input button.ai-chat-mic {
+    font-size: 14px;
+    opacity: 0.6;
+    touch-action: none;
+}
+
+.ai-chat-input button.ai-chat-mic:hover,
+.ai-chat-window.ai-chat-voice-target button.ai-chat-mic {
+    opacity: 1;
+}
+
+.ai-chat-input button.ai-chat-mic.recording {
+    background: #b3261e;
+    opacity: 1;
+}
+
+.ai-chat-input button.ai-chat-mic.transcribing {
+    opacity: 1;
+    animation: ai-chat-mic-pulse 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes ai-chat-mic-pulse {
+    from { background: var(--field-editor-bg); }
+    to { background: var(--field-hover-strong); }
+}
+
 .ai-chat-thread {
     display: flex;
     flex-direction: column;

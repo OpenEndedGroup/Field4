@@ -20,7 +20,7 @@ rather than tuning a stiffness against a damping ratio.
 
 ## Half-life is the dial
 
-Two shapes, one dial. `damper` is the plain exponential: it leaves at full speed
+There are two shapes, both set by a half-life. `damper` is the plain exponential: it leaves at full speed
 and slows as it arrives, so it eases out but not in. `spring` carries a velocity
 of its own and is *critically damped*, the fastest approach that still arrives
 without overshooting or ringing. The grey marks below sit one and two half-lives
@@ -93,9 +93,11 @@ where the damper needs 109.
 Every step here is *exact* — the analytic solution of the spring's differential
 equation, not a numerical integration — so one step of `dt` lands where ten steps
 of `dt / 10` do, and the motion does not change shape when the frame rate does.
-`MovementTest.aSpringStepIsExactWhateverTheStepSize` pins that at 1e-4 over a
-fifty-fold change in step size. Holden's `fast_negexp` polynomial is the one thing
-not carried across; a real `exp` is what makes the exactness true.
+
+??? aside "How exactness is checked"
+    `MovementTest.aSpringStepIsExactWhateverTheStepSize` checks the step-size claim
+    at 1e-4 over a fifty-fold change in step size. Holden's `fast_negexp` polynomial
+    is the one thing not carried across; a real `exp` is what makes each step exact.
 
 Two more members round the object out. `decay(x, v, halflife, dt)` runs the same
 shape on a pair heading for zero rather than for a goal, which is the offset half
@@ -165,7 +167,7 @@ showSignals(
 In the top panel the compensated trace lies on the goal and the plain one runs
 parallel below it. The bottom panel measures that gap. The plain spring settles at
 84.1 units against the yellow line's continuous-time 86.6, half a frame of travel
-short of it, which is the whole error a per-frame spring introduces. The
+short of it: that half frame is the only error a per-frame spring adds. The
 compensated one sits within 2.5 units of zero, and at 1.5 lags it runs *ahead* of
 the goal by 46. `lagToHalflife` goes the other way, if what you know is how much
 lag you are willing to accept.
@@ -416,7 +418,7 @@ rest in one move.
 
 ## Two dials decide what it feels like
 
-`MovementParams` has ten fields and two of them carry most of the character.
+Two of the `MovementParams` fields carry most of the character.
 `directionalAcceleration` decides *where the acceleration is allowed to point*:
 at 0 all of it goes at the velocity error, which turns readily and loses speed
 doing it; at 1 it can only push along the requested direction, so it holds its
