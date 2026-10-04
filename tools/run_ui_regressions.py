@@ -3895,6 +3895,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="study-build-failure-view",
+            description="A failed StudyBuild card's \"Show where it fails\" opens the closed output panel of the box its failure names, without changing the selection or opening that box's code, and says so beside the link when the box is not in the document.",
+            commands=[
+                "new-box --name StudyBuildFailureViewRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="h2-domain-explorer",
             description="A .h2 on a plain domain object opens a real property table -- one row per property, with its declared type and value -- and not the one-cell toString() fallback a non-collection used to get.",
             commands=[
