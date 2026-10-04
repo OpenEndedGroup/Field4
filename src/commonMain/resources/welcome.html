@@ -120,9 +120,13 @@
         .hero {
             padding: 16px;
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: 1fr;
             gap: 10px;
             align-items: center;
+        }
+
+        .hero .button-row {
+            justify-content: flex-start;
         }
 
         .hero h1 {
@@ -1942,7 +1946,7 @@
 
 <main id="welcome-root">
     <section class="panel hero">
-        Field·4
+        <h1>Field·4</h1>
         <p>Make a moving drawing, change its code, and see the result. Start here; explore the panels when you need them.</p>
         <div class="button-row">
             <button id="open-first-steps" type="button">Start here: a moving drawing</button>

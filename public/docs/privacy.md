@@ -55,5 +55,4 @@ an unauthenticated code-execution environment: read [server access](server_surfa
 
 Field's code is **AGPL-3.0-or-later**; see the repository's
 [LICENSE](https://github.com/OpenEndedGroup/Field4/blob/main/LICENSE). Vendored components and
-optional integrations can have their own licenses. This names the project's license rather than
-promising that every bundled dependency uses it.
+optional integrations can have their own licenses.
