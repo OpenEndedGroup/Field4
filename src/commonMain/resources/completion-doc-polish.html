@@ -239,8 +239,11 @@
         const lines = String(logText || "").split(/\r?\n/);
         const edits = [];
         const seen = new Set();
+        // The CLI prints one marker line per edit it applied; tool-call lines are only a fallback for
+        // logs written before it did, and miss edits made from inside a tool program.
+        const marked = lines.some((line) => line.includes("[completion-doc-polish-edit] "));
         lines.forEach((line) => {
-            if (!line.includes("ReplaceInFileRequest")) return;
+            if (!line.includes(marked ? "[completion-doc-polish-edit] " : "ReplaceInFileRequest")) return;
             const payload = parseJsonPayload(line);
             if (!payload || typeof payload.file !== "string" || typeof payload.newText !== "string") return;
             const key = `${payload.file}\n${payload.newText}`;
@@ -419,7 +422,12 @@
         const transcript = document.getElementById("transcript");
         const wasNearBottom = transcript.scrollTop + transcript.clientHeight >= transcript.scrollHeight - 24;
 
-        document.getElementById("subtitle").textContent = cache.message || latestStatus.message || "ready";
+        // After a run the cache holds only what it left behind; say what it took, not just what remains.
+        const atStart = Number(latestStatus.docsAtStart) || 0;
+        const finished = !latestStatus.running && atStart > 0 && (state === "succeeded" || state === "failed");
+        document.getElementById("subtitle").textContent = finished
+            ? `Last run started with ${countLabel(atStart, "doc")}; ${countLabel(Math.max(0, atStart - docs), "doc")} integrated into source, ${docs} left. ${cache.message || ""}`.trim()
+            : (cache.message || latestStatus.message || "ready");
         document.getElementById("docs-ready").textContent = countLabel(docs, "doc");
         document.getElementById("files-ready").textContent = countLabel(files, "file");
         document.getElementById("cache-size").textContent = bytesLabel(cache.sizeBytes);

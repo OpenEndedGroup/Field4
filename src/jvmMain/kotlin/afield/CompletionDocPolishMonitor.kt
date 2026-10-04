@@ -62,6 +62,7 @@ object CompletionDocPolishMonitor {
                 dryRun = dryRun,
                 startedAtEpochMs = startedAtEpochMs,
                 message = "Starting $taskName...",
+                docsAtStart = cache.pendingDocCount,
                 logPath = runStore.newLogPath(startedAtEpochMs, runId).absolutePathString()
             )
             process = null
@@ -173,23 +174,33 @@ object CompletionDocPolishMonitor {
         return runCatching {
             val root = json.parseToJsonElement(Files.readString(cachePath, StandardCharsets.UTF_8)).jsonObject
             val records = root["records"]?.jsonObject.orEmpty()
-            val docs = records.values.filter { value ->
+            val allDocs = records.values.filter { value ->
                 value.jsonObject["documentation"]?.jsonPrimitive?.contentOrNull?.isNotBlank() == true
+            }
+            // Only declarations in our tree are polishable; the rest are counted, never offered.
+            val docs = allDocs.filter { value ->
+                afield.ai.core.completion.Ai4CompletionDoc.isInOurTree(
+                    value.jsonObject["sourcePath"]?.jsonPrimitive?.contentOrNull.orEmpty()
+                )
             }
             val sourceFiles = docs
                 .mapNotNull { value -> value.jsonObject["sourcePath"]?.jsonPrimitive?.contentOrNull?.takeIf(String::isNotBlank) }
                 .toSet()
+            val libraryDocs = allDocs.size - docs.size
             CompletionDocPolishCacheSummary(
                 cachePath = cachePath.absolutePathString(),
                 exists = true,
                 pendingDocCount = docs.size,
                 pendingSourceFileCount = sourceFiles.size,
+                libraryDocCount = libraryDocs,
                 sizeBytes = cachePath.fileSize(),
                 lastModifiedEpochMs = cachePath.getLastModifiedTime().toMillis(),
                 message = if (docs.isEmpty()) {
-                    "Generated completion-doc cache has no polishable records."
+                    "Generated completion-doc cache has no polishable records" +
+                        (if (libraryDocs > 0) " ($libraryDocs outside src/, which polish skips)." else ".")
                 } else {
-                    "${docs.size} docs across ${sourceFiles.size} files are ready."
+                    "${docs.size} docs across ${sourceFiles.size} files are ready" +
+                        (if (libraryDocs > 0) " ($libraryDocs more outside src/, which polish skips)." else ".")
                 }
             )
         }.getOrElse { error ->
@@ -224,6 +235,7 @@ object CompletionDocPolishMonitor {
             exitCode = saved.exitCode,
             message = saved.message,
             logPath = saved.logPath,
+            docsAtStart = saved.docsAtStart,
             log = StringBuilder(restored.logTail)
         )
         if (state.running) {
@@ -269,6 +281,7 @@ object CompletionDocPolishMonitor {
         val exitCode: Int? = null,
         val message: String = "",
         val logPath: String = "",
+        val docsAtStart: Int = 0,
         val log: StringBuilder = StringBuilder()
     ) {
         fun toPersisted(): PersistedCompletionDocPolishRun =
@@ -282,7 +295,8 @@ object CompletionDocPolishMonitor {
                 finishedAtEpochMs = finishedAtEpochMs,
                 exitCode = exitCode,
                 message = message,
-                logPath = logPath
+                logPath = logPath,
+                docsAtStart = docsAtStart
             )
 
         fun toStatus(cache: CompletionDocPolishCacheSummary): CompletionDocPolishStatus =
@@ -298,6 +312,7 @@ object CompletionDocPolishMonitor {
                 exitCode = exitCode,
                 message = message,
                 logPath = logPath,
+                docsAtStart = docsAtStart,
                 logTail = log.toString()
             )
     }

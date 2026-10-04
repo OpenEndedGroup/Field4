@@ -153,6 +153,8 @@ data class CompletionDocPolishCacheSummary(
     val exists: Boolean = false,
     val pendingDocCount: Int = 0,
     val pendingSourceFileCount: Int = 0,
+    /** Cached docs for declarations outside src/ (dependency jars): counted, not in [pendingDocCount], never polished. */
+    val libraryDocCount: Int = 0,
     val sizeBytes: Long = 0,
     val lastModifiedEpochMs: Long = 0,
     val message: String = ""
@@ -171,6 +173,8 @@ data class CompletionDocPolishStatus(
     val exitCode: Int? = null,
     val message: String = "",
     val logPath: String = "",
+    /** [CompletionDocPolishCacheSummary.pendingDocCount] when this run started, so a finished run can say what it took. */
+    val docsAtStart: Int = 0,
     val logTail: String = ""
 )
 

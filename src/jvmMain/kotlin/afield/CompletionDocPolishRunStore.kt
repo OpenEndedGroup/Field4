@@ -27,7 +27,8 @@ internal data class PersistedCompletionDocPolishRun(
     val finishedAtEpochMs: Long = 0,
     val exitCode: Int? = null,
     val message: String = "",
-    val logPath: String = ""
+    val logPath: String = "",
+    val docsAtStart: Int = 0
 )
 
 internal data class RestoredCompletionDocPolishRun(

@@ -137,6 +137,7 @@ fun main(args: Array<String>) {
         appendLine("Use AttachmentRequest to inspect specific files from src-manifest.txt.")
         appendLine("Prefer ReplaceInFileRequest for small KDoc edits. Use EditFile only as a last resort when exact snippet replacement is impossible.")
         appendLine("Do not make behavior changes. Keep Kotlin signatures intact.")
+        appendLine("Skip cache records whose sourcePath is not under src/ (jar: library sources): they cannot be edited, and their cache entries stay as they are.")
         appendLine("Prefer integrating useful generated docs into real KDoc near source declarations.")
         appendLine("Keep KDoc concise and specific. Remove or rewrite cache entries only when they are obsolete, duplicated, or clearly superseded by source KDoc.")
         appendLine("Make small, reviewable documentation edits. Avoid rewriting implementation bodies or unrelated formatting.")
@@ -363,7 +364,13 @@ private fun completionDocCacheStatus(cacheFile: Path): CompletionDocCacheStatus 
     if (recordCount <= 0) {
         return CompletionDocCacheStatus(false, "cache has no records.", shouldRemoveIfNonDryRun = true)
     }
-    return CompletionDocCacheStatus(true, "cache has $recordCount record(s).")
+    // Refuse before the model is started when nothing in the cache is a declaration polish may edit.
+    val inTree = records.elements().asSequence()
+        .count { Ai4CompletionDoc.isInOurTree(it.path("sourcePath").asText("")) }
+    if (inTree <= 0) {
+        return CompletionDocCacheStatus(false, "cache has $recordCount record(s), none for a declaration under src/.")
+    }
+    return CompletionDocCacheStatus(true, "cache has $inTree record(s) under src/ (${recordCount - inTree} outside, left alone).")
 }
 
 private fun resolveAttachment(
@@ -444,6 +451,7 @@ private fun replaceInFile(
         dryRun = dryRun,
         action = if (dryRun) "DRY RUN patch" else "Patched"
     )
+    if (response.success && path != cacheFile) printAppliedEdit(file, req, dryRun)
     return ReplaceInFileResponse(
         response.success,
         response.message ?: "",
@@ -451,6 +459,23 @@ private fun replaceInFile(
         occurrences,
         after.length
     )
+}
+
+/**
+ * One line per applied source edit, however the model called the tool (directly or from inside a tool
+ * program). The polish page reads its Edits panel from these lines, not from the model's tool calls.
+ */
+internal const val APPLIED_EDIT_MARKER = "[completion-doc-polish-edit] "
+
+private fun printAppliedEdit(file: String, req: ReplaceInFileRequest, dryRun: Boolean) {
+    val payload = kotlinx.serialization.json.buildJsonObject {
+        put("file", kotlinx.serialization.json.JsonPrimitive(file))
+        put("oldText", kotlinx.serialization.json.JsonPrimitive(req.oldText))
+        put("newText", kotlinx.serialization.json.JsonPrimitive(req.newText))
+        put("expectedOccurrences", kotlinx.serialization.json.JsonPrimitive(req.expectedOccurrences))
+        put("dryRun", kotlinx.serialization.json.JsonPrimitive(dryRun))
+    }
+    println(APPLIED_EDIT_MARKER + payload)
 }
 
 private fun applyContentChange(

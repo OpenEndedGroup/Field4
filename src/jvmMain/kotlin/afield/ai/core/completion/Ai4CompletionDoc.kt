@@ -112,6 +112,10 @@ object Ai4CompletionDoc {
                 sourceHash = definitionSnippet.sourceHash
             )?.let { return generatedDocumentationMarkdown(it.documentation, cached = true) }
 
+            // Library declarations (jar sources) are not ours to document: polish cannot edit them,
+            // so a generated doc for one only costs tokens and then sits in the cache forever.
+            if (!isInOurTree(definition.filePath)) return ""
+
             val generated = generateDoc(
                 fileKey = fileKey,
                 symbol = symbol,
@@ -303,6 +307,14 @@ object Ai4CompletionDoc {
             .filterNot { it.startsWith("jar:") }
             .mapNotNull(::sourceRootOf)
             .toSet()
+
+    /**
+     * Whether [sourcePath] — as the source index records it — is a declaration in this repository's
+     * tree (any `src/` source set, `src/personal` included) rather than a dependency's sources jar.
+     * The index stores our files repo-relative and library sources as `jar:` URLs.
+     */
+    fun isInOurTree(sourcePath: String): Boolean =
+        sourcePath.startsWith("src/") && !sourcePath.contains("..")
 
     /** The first two path segments of [path] — `src/jvmMain` for `src/jvmMain/kotlin/afield/Boxes.kt`. */
     private fun sourceRootOf(path: String): String? {
