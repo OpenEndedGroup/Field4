@@ -123,7 +123,10 @@ class MqttBroker(
             val input = BufferedInputStream(socket.getInputStream())
             val first = Mqtt.read(input, maxPacketSize) as? MqttPacket.Connect ?: return socket.close()
             if (first.protocolLevel != 4 && first.protocolLevel != 3) {
-                socket.getOutputStream().write(Mqtt.encode(MqttPacket.ConnAck(false, 1))); return socket.close()
+                // An MQTT 5 client parses CONNACK as v5 (with a properties length), so it gets the v5
+                // form with 0x84 "unsupported protocol version" (MQTT 5 §3.2.2.2); older ones get 3.1.1's 0x01.
+                val refusal = if (first.protocolLevel >= 5) byteArrayOf(0x20, 3, 0, 0x84.toByte(), 0) else Mqtt.encode(MqttPacket.ConnAck(false, 1))
+                socket.getOutputStream().write(refusal); return socket.close()
             }
             val id = first.clientId.ifEmpty {
                 if (!first.cleanSession) {

@@ -195,7 +195,7 @@ class MqttBrokerClientTest {
         assertFalse(s.count.get() > 1)
 
         Socket("127.0.0.1", b.port).use { sock ->
-            sock.getOutputStream().write(Mqtt.encode(MqttPacket.Connect("v5", protocolLevel = 5)))
+            sock.getOutputStream().write(Mqtt.encode(MqttPacket.Connect("v2", protocolLevel = 2)))
             assertEquals(MqttPacket.ConnAck(false, 1), Mqtt.read(BufferedInputStream(sock.getInputStream())))
         }
     }
