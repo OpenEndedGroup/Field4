@@ -89,7 +89,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
         val label = binding.builds.stages().first { it.id == job.stage }.label
         var lastPublished = System.nanoTime()
         var published = job
-        fun publish() = reportBuildProgress(reportProgress, label, job, binding.builds.resultNotes(job.id))
+        fun publish() = reportBuildProgress(reportProgress, label, job, binding.builds.resultNotes(job.id), failureView(binding, job))
         publish()
         fun terminal() = job.status !in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)
         fun changed() = q.afterUpdated.isNotEmpty() && job.updated != q.afterUpdated
@@ -114,8 +114,38 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
             jobDetails(binding, job) + mapOf("terminal" to terminal(), "timedOut" to (!terminal() && !changed())))
     }
 
+    // The card's "Show where it fails" link, as a chat box link: only a failure against the current inputs has one.
+    private fun failureView(binding: BoxStudyBuildBinding, job: StudyBuildRecord): String? {
+        if (job.status != StudyBuildStatus.FAILED) return null
+        val view = job.problem?.let(::studyBuildGeometryView) ?: return null
+        val stage = binding.builds.stages().firstOrNull { it.id == job.stage }
+        if (stage == null || studyBuildUsedEarlierInputs(stage, job)) return null
+        val box = info.boxes[view.box]?.let { found ->
+            val name = found.name.replace("[", "").replace("]", "").ifBlank { view.box }
+            "[$name](field://box/${java.net.URLEncoder.encode(view.box, Charsets.UTF_8).replace("+", "%20")})"
+        } ?: "“${view.box}”"
+        return "The failing geometry is shown in red in the output of $box${view.caption?.let { ": $it" }.orEmpty()}."
+    }
+
+    /**
+     * For each of [runIds] that names a build attempt in this document, whether that attempt ran against
+     * earlier inputs ([studyBuildUsedEarlierInputs], as on the card). Other ids are absent, as are attempts
+     * of a runner whose inputs cannot be read now.
+     */
+    fun runsFromEarlierInputs(runIds: Set<String>): Map<String, Boolean> {
+        if (runIds.isEmpty()) return emptyMap()
+        val result = mutableMapOf<String, Boolean>()
+        for (binding in bindings()) {
+            val jobs = (runIds - result.keys).mapNotNull { id -> runCatching { binding.builds.job(id) }.getOrNull() }
+            if (jobs.isEmpty()) continue
+            val stages = try { binding.builds.stages() } catch (e: Exception) { continue }
+            for (job in jobs) result[job.id] = stages.firstOrNull { it.id == job.stage }.let { it == null || studyBuildUsedEarlierInputs(it, job) }
+        }
+        return result
+    }
+
     private fun reportBuildProgress(report: ((LlmProgressUpdate) -> Unit)?, label: String, job: StudyBuildRecord,
-        notes: List<StudyBuildNotice> = emptyList()) {
+        notes: List<StudyBuildNotice> = emptyList(), failureView: String? = null) {
         if (report == null) return
         val active = job.status in setOf(StudyBuildStatus.QUEUED, StudyBuildStatus.RUNNING)
         val state = when (job.status) {
@@ -128,6 +158,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
         val body = buildString {
             append(job.problem?.message ?: job.message)
             job.problem?.suggestions?.forEach { append("\n"); append(it) }
+            failureView?.let { append("\n"); append(it) }
             notes.forEach { append("\n"); append(it.message) }
             if (active) {
                 val elapsed = runCatching { java.time.Duration.between(java.time.Instant.parse(job.created), java.time.Instant.now()).seconds }.getOrDefault(0).coerceAtLeast(0)

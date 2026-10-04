@@ -303,7 +303,8 @@ return when progress changes. After completion, inspect the stage to check that 
 still current. **Queued** does not mean **built**, and an earlier successful build may no longer
 be current. Stopping an observation does not cancel the build. AI4 sees what the card shows:
 an attempt against earlier inputs is marked `fromEarlierInputs`, and its findings are left out of
-`openFindings`, so the agent does not report them as current errors.
+`openFindings`, so the agent does not report them as current errors. The geometry notes behind
+those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
 
 Name upstream stages in `dependencies`. The worker reads their captured files through
 `context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
@@ -356,10 +357,11 @@ throw StudyBuildFailure(StudyBuildProblem("stair-clash", "Wall W3 crosses the st
 ```
 
 Under the failure message, the card adds a red **Show where it fails…** link followed by the
-caption. The link selects that box and opens its output. `"box"` is required. `"caption"` and
+caption. The link selects that box and brings it into view. `"box"` is required. `"caption"` and
 `"viewId"`, the view inside that output, are optional. AI4's inspection reports the same box, with
-its name, as `geometryView`, so the agent can send you there or inspect the view. The link appears
-only while the attempt matches the current inputs.
+its name, as `geometryView`, so the agent can send you there or inspect the view, and the build's
+progress card in the chat links to the same box. Both links appear only while the attempt matches
+the current inputs.
 
 A failed retry preserves the previous result if that result
 still matches the current inputs. Cancellation is cooperative: call `context.checkCancelled()`

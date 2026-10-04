@@ -315,17 +315,29 @@ class StudyBuildToolsTest {
         val plan = Box("plan-box").also { it.name = "floor plan"; info.boxes[it.id] = it }
         var stair = "stair at 3"
         var view: Map<String, Any?> = mapOf("box" to plan.id, "caption" to "Stair opening", "viewId" to "view-1")
+        var gate: CountDownLatch? = null
         StudyBuilds(Files.createTempDirectory("failure-view").toFile(), listOf(StudyBuildStage("layout", "House layout", "v1", setOf("stair")) {
+            gate?.let { check(it.await(5, TimeUnit.SECONDS)) }
             throw StudyBuildFailure(StudyBuildProblem("overlap", "Two walls overlap", details = mapOf("geometryView" to view)))
         }), { mapOf("stair" to stair) }).use { builds ->
             box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
-            fun build() = call(info, StartStudyBuildRequest(box.id, "study", "layout", builds.stages().single().fingerprint!!,
-                waitSeconds = 5.0)).details["job"] as Map<*, *>
+            val events = java.util.concurrent.CopyOnWriteArrayList<LlmProgressUpdate>()
+            val ctx = ToolExecutionContext(fieldGraph = FieldGraphTools(info, host), reportProgress = { events += it })
+            fun execute(q: Any) = registry.executeByName(ctx, q.javaClass.simpleName, aiToolMapper.writeValueAsString(q)) as StudyBuildToolResult
+            fun build(): Map<*, *> {
+                events.clear()
+                return execute(StartStudyBuildRequest(box.id, "study", "layout", builds.stages().single().fingerprint!!,
+                    waitSeconds = 5.0)).details["job"] as Map<*, *>
+            }
+            // The chat's progress card for the finished attempt.
+            fun chatCard() = events.last { it.phase == "build_result" }.body
 
             val failed = build()
             assertEquals(StudyBuildStatus.FAILED, failed["status"])
             assertEquals(mapOf("box" to plan.id, "boxName" to "floor plan", "caption" to "Stair opening", "viewId" to "view-1"), failed["geometryView"])
             assertContains(aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study"))), "\"boxName\":\"floor plan\"")
+            // A field://box link, as AI4 itself writes them: it selects and centres the box, as the card's link does.
+            assertContains(chatCard(), "The failing geometry is shown in red in the output of [floor plan](field://box/plan-box): Stair opening.")
 
             stair = "stair at 4"
             val earlier = call(info, InspectStudyBuildsRequest(box.id, "study", failed["id"] as String)).details["job"] as Map<*, *>
@@ -336,8 +348,25 @@ class StudyBuildToolsTest {
 
             view = mapOf("box" to "not-in-this-document")
             assertEquals(mapOf("box" to "not-in-this-document", "boxName" to null, "caption" to null, "viewId" to null), build()["geometryView"])
+            // No link to a box this document does not have.
+            assertContains(chatCard(), "in the output of “not-in-this-document”.")
+            assertFalse(chatCard().contains("field://"))
             view = mapOf("caption" to "names no box")
             assertNull(build()["geometryView"])
+            assertFalse(chatCard().contains("shown in red"))
+
+            // An edit while the attempt runs: it still fails, but against inputs the design has left.
+            view = mapOf("box" to plan.id)
+            val release = CountDownLatch(1).also { gate = it }
+            val job = builds.start("layout", builds.stages().single().fingerprint!!)
+            stair = "stair at 5"
+            release.countDown()
+            events.clear()
+            val late = execute(WaitStudyBuildRequest(box.id, "study", job.id, 5.0)).details["job"] as Map<*, *>
+            assertEquals(StudyBuildStatus.FAILED, late["status"])
+            assertEquals(true, late["fromEarlierInputs"])
+            assertContains(chatCard(), "Two walls overlap")
+            assertFalse(chatCard().contains("shown in red"))
         }
     }
 }

@@ -309,7 +309,9 @@ class FieldGraphTools(
      */
     val origin: String = "",
 ) {
-    internal val geometryReviews by lazy { GeometryReviewTools(info) { action -> host.onOwner(info, action) } }
+    internal val geometryReviews by lazy {
+        GeometryReviewTools(info, { action -> host.onOwner(info, action) }) { runs -> studyBuilds.runsFromEarlierInputs(runs) }
+    }
     internal val studyBuilds by lazy { StudyBuildTools(info, bindings = {
         host.onOwner(info) { afield.stdlib.studyBuildBindings(info.boxes.values + info.root) }
     }, findings = { runs -> host.onOwner(info) { afield.stdlib.studyBuildFindings(info.boxes.values + info.root, runs) } }) }
