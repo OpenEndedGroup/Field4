@@ -306,7 +306,7 @@ exactly what a fresh `keybindings.yaml` says.
 
 <!-- BEGIN generated: default bindings -->
 
-**120 rebindable commands**, 54 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
+**122 rebindable commands**, 55 of them with a shortcut out of the box. Regenerate this table against a running Field with `tools/keybindings_defaults_table.py`.
 
 ### Global
 
@@ -367,6 +367,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `reloadPersonal` | *(none)* | both | Reload personal/ classes |
 | `reset` | *(none)* | both | Reset Kotlin Environment for Box |
 | `reset-canvas-zoom` | *(none)* | both | Reset Canvas Zoom |
+| `reset-view` | `alt+h` | both | Reset View |
 | `route` | *(none)* | both | Route (position-guided) |
 | `save-as-template` | *(none)* | both | Save selection as template |
 | `search-docs-and-code` | `cmd+shift+d` | both | Search Documentation & Code |
@@ -397,6 +398,7 @@ exactly what a fresh `keybindings.yaml` says.
 | `solo-previous-layer` | `alt+[` | both | Solo Previous Layer |
 | `switch-to-docs-iframe` | *(none)* | both | Read the Field Documentation |
 | `switch-to-monaco-editor` | *(none)* | both | Switch to Monaco Editor |
+| `toggle-box-snapping` | *(none)* | both | Toggle Box Snapping |
 | `toggle-keypress-display` | *(none)* | both | Toggle Keypress Display |
 | `toggle-notes-markdown-preview` | `cmd+shift+m` | both | Toggle Markdown Preview |
 | `un-nest` | *(none)* | both | Un-nest selection |
