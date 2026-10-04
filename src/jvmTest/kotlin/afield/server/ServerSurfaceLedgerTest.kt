@@ -743,8 +743,8 @@ class ServerSurfaceLedgerTest {
                 appendLine()
                 appendLine("${missing.size} in the CODE but not on the PAGE — add a row, and decide first")
                 appendLine("whether the new surface needed a guard. Every unguarded entry is reachable by")
-                appendLine("curl from any host on the LAN (the connector binds 0.0.0.0) and, for HTTP, from")
-                appendLine("any website you have open (the CORS config says anyHost()):")
+                appendLine("native clients if LAN binding is enabled; cross-site browser access also requires")
+                appendLine("disabling the default application-wide origin guard:")
                 missing.sorted().forEach { appendLine("  + | `$it` | ${discovered[it]} |") }
             }
             if (stale.isNotEmpty()) {
