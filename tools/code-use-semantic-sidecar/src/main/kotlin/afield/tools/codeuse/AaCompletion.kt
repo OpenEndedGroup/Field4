@@ -47,6 +47,7 @@ import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
 import org.jetbrains.kotlin.psi.KtSimpleNameExpression
+import org.jetbrains.kotlin.psi.KtUserType
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.KtValueArgumentList
 import org.jetbrains.org.objectweb.asm.AnnotationVisitor
@@ -1437,7 +1438,12 @@ class AaCompleter(
                 return out
             }
 
-            fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
+            /** The class a qualifier [ref] (written as [rawText]) names, if it names one. Shared by an
+             *  expression receiver ([resolveQualifier]) and a type reference's qualifier. */
+            fun resolveQualifierRef(
+                ref: KtNameReferenceExpression?,
+                rawText: String?,
+            ): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? {
                 // ASK THE RESOLVER FIRST. Everything below guesses candidate packages from the file's
                 // imports plus two hardcoded `afield` ones, which cannot see Kotlin's DEFAULT imports —
                 // `java.lang` above all — so `Math.` resolved to no qualifier at all and fell through to
@@ -1447,12 +1453,10 @@ class AaCompleter(
                 // `import x.Y as Z` alias. The reference knows the answer; the file's real import scope is
                 // exactly what it resolves against.
                 runCatching {
-                    val ref = (recv as? KtNameReferenceExpression)
-                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression
                     val sym = ref?.mainReference?.resolveToSymbol()
                     if (sym is org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol) return sym
                 }
-                val text = recv.text?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
+                val text = rawText?.trim()?.takeIf { it.isNotEmpty() && it.none { ch -> ch.isWhitespace() } }
                     ?: return null
                 val parts = text.split('.')
                 if (parts.any { it.isEmpty() }) return null
@@ -1495,6 +1499,13 @@ class AaCompleter(
                 }
                 return null
             }
+
+            fun resolveQualifier(recv: KtExpression): org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol? =
+                resolveQualifierRef(
+                    (recv as? KtNameReferenceExpression)
+                        ?: (recv as? KtQualifiedExpression)?.selectorExpression as? KtNameReferenceExpression,
+                    recv.text,
+                )
 
             /**
              * Everything reachable through a class qualifier: enum entries, `values()`/`valueOf()`/
@@ -1623,6 +1634,43 @@ class AaCompleter(
                 }.getOrDefault(emptyList())
 
                 return emptyList()
+            }
+
+            // A dot inside a TYPE REFERENCE: `prop<afield.‸stdlib.Vec4>(x)`, `fromContextWithNameOrNull<
+            // afield.four.‸targets.ComputeTarget>("…")`, `var f: java.util.‸concurrent.Future<T>`. A
+            // qualified type is a `KtUserType` with a qualifier, not a `KtQualifiedExpression`, so the dot
+            // path below bailed with "no qualified expr" — 55 misses per editing bucket in the caret sweep,
+            // every one of them a `prop<…>` or `fromContextWithNameOrNull<…>` path in a box written after
+            // the floors were cut. It only ever worked while TYPING, and by accident: with the rest of the
+            // line gone, `prop<afield.` parses as the comparison `prop < afield.`. Checked before the
+            // expression path so `foo.bar<afield.‸X>()` does not answer with `foo`'s members. Only what can
+            // stand in a type is offered: a class's nested classifiers, a package's sub-packages and
+            // classifiers — never a callable.
+            val typeQualifier = if (!isDot) null else
+                PsiTreeUtil.getParentOfType(leaf, KtUserType::class.java, false)?.qualifier
+            if (typeQualifier != null) {
+                val path = typeQualifier.text.orEmpty().filterNot { it.isWhitespace() }
+                val cls = resolveQualifierRef(typeQualifier.referenceExpression as? KtNameReferenceExpression, path)
+                val out = when {
+                    cls != null -> {
+                        val label = runCatching { cls.classId?.asFqNameString() }.getOrNull() ?: path
+                        listOf(cls.staticDeclaredMemberScope, cls.staticMemberScope, cls.declaredMemberScope)
+                            .flatMap { scope ->
+                                runCatching {
+                                    scope.classifiers(match).mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }.toList()
+                                }.getOrDefault(emptyList())
+                            }
+                            .distinct()
+                            .map { AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, label, "class") }
+                    }
+                    isPackageName(path, index) -> packageCandidates(path, index)
+                        .filter { it.kind == AaCandidate.Kind.CLASSIFIER }
+                    else -> emptyList()
+                }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
+                return@analyze AaCompletionResult(
+                    out,
+                    if (out.isEmpty()) "0 matched; type qualifier=$path ${if (cls != null) "class" else "package"}" else "",
+                )
             }
 
             if (isDot) {
