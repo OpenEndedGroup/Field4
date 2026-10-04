@@ -208,7 +208,7 @@ class ServerSurfaceLedgerTest {
 
     private fun kotlinFiles(): List<File> = KotlinRouteScan.serverKotlinFiles(repositoryRoot())
 
-    private val surface: Surface by lazy {
+    private val surface: Surface by perClass("surface") {
         val reads = sortedMapOf<String, Pair<String, String>>()
         val allMethod = sortedMapOf<String, Pair<String, String>>()
         val mounts = sortedMapOf<String, Pair<String, String>>()
@@ -317,7 +317,7 @@ class ServerSurfaceLedgerTest {
      * table a row belongs to is decided by [select] on the cells rather than by position —
      * a row's identity should not depend on how many prose paragraphs sit above it.
      */
-    private val ledger: List<List<String>> by lazy {
+    private val ledger: List<List<String>> by perClass("ledger") {
         val page = File(repositoryRoot(), ledgerPage)
         assertTrue(page.isFile, "the ledger page $ledgerPage is missing; this test has no fixture without it")
         page.readLines()
@@ -776,7 +776,21 @@ class ServerSurfaceLedgerTest {
         return candidate
     }
 
+
+    /**
+     * `by lazy`, but computed once per test CLASS rather than once per test method: JUnit makes a
+     * fresh instance for every @Test, so an instance `lazy` over a whole-tree scan reran that scan for
+     * each test. Measured in a landing at load 40: DocumentedApiEvaluationTest 940 s and
+     * ServerSurfaceLedgerTest 122 s. Everything cached here is read-only.
+     */
+    private fun <T> perClass(key: String, compute: () -> T): Lazy<T> = lazy {
+        @Suppress("UNCHECKED_CAST")
+        PER_CLASS.getOrPut(key) { compute() as Any } as T
+    }
+
     private companion object {
+        private val PER_CLASS = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
         /**
          * The verb column for a `route(…) { handle { … } }`, which names no verb and answers
          * all of them. Spelled identically in [FieldApiCorsExposureTest], because the two
