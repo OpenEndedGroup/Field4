@@ -150,3 +150,23 @@ or the network is down) it says which, rather than reporting that you are up to 
 
     Anyone whose update check spans that commit sees the trailer's text verbatim, instead of the
     subject of the newest commit. Several notices in one range are all shown, deduplicated.
+
+## Project-owned Kotlin extensions
+
+Reusable local code can live outside a Field checkout. Set `AFIELD_EXTENSION_DIRS`
+(or Gradle's `-PfieldExtensionDirs`) to one or more directory roots, separated by
+this platform's path separator (`:` on macOS/Linux, `;` on Windows). Each root
+contains `kotlin/`, `resources/`, or both. Paths containing spaces work unchanged.
+Missing roots fail the build with their path rather than silently dropping code.
+
+```bash
+AFIELD_EXTENSION_DIRS="$HOME/my-project/extensions" ./field.sh "$HOME/my-project/workspace"
+```
+
+These roots join `src/personal` in the existing isolated `personalJar` compilation
+and classloader. Core Field cannot depend on them; boxes can import their classes.
+Use the same setting when rebuilding `personalJar`, then use `reloadPersonal` or
+restart Field. External Gradle scripts are not executed automatically; additional
+third-party dependencies still use Field's existing dependency configuration.
+Keep extension sources and document templates in the project's own version control.
+For external templates, use the `afield.personalTemplates.dir` setting above.
