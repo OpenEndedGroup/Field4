@@ -899,6 +899,23 @@ const showMonaco = () => {
         }, 0)
 }
 
+const AUTO_DISPLAY_EDITOR_KEY = "field.editor.autoDisplay"
+try {
+        window.fieldAutoDisplayEditor = window.localStorage.getItem(AUTO_DISPLAY_EDITOR_KEY) !== "false"
+} catch (_) {
+        window.fieldAutoDisplayEditor = true
+}
+
+window.setAutoDisplayEditor = (enabled) => {
+        window.fieldAutoDisplayEditor = enabled
+        try {
+                window.localStorage.setItem(AUTO_DISPLAY_EDITOR_KEY, String(enabled))
+        } catch (_) {}
+        if (window.fieldDisplayMode === "no-editor" || window.fieldDisplayMode === "editor-only") return
+        if (!enabled) hideMonaco()
+        else if (window.selectedList && window.selectedList.length === 1) showMonaco()
+}
+
 const NOTES_MARKDOWN_MODE_KEY = "field.notes.markdownMode"
 
 const readNotesMarkdownMode = () => {

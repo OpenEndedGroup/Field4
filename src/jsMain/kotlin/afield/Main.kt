@@ -4442,6 +4442,7 @@ private fun deactivateSpatialNavMode() {
     spatialNavAnchor = null
     spatialNavTargets.clear()
     clearSpatialNavOverlay()
+    if (!shouldAutoDisplayEditor()) return
     try {
         switchToMonaco()
     } catch (_: dynamic) {
