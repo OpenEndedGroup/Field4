@@ -7,380 +7,79 @@
     <script>
         document.title = "Field Code Use";
     </script>
-    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field-tool-pages.css">
     <style>
-        :root {
-            --bg: #141414;
-            --panel: #222;
-            --panel-strong: #171717;
-            --border: rgba(72, 201, 255, 0.22);
-            --border-strong: rgba(72, 201, 255, 0.48);
-            --cyan: rgb(72, 201, 255);
-            --text: rgba(225, 238, 244, 0.96);
-            --soft: rgba(164, 193, 210, 0.92);
-            --danger: #ff7979;
-            --ok: #86efac;
+        main { width: min(1280px, 96vw); }
+        h2 { margin-bottom: 0; }
+        .panel-header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+        .panel-header .muted { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+        .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tabs button[aria-pressed="true"] { border-color: var(--field-cyan); color: var(--field-cyan); }
+        .chip b.ok { color: var(--ok); } .chip b.bad { color: var(--danger); }
+        .table-wrap { overflow: auto; max-height: calc(100vh - 270px); }
+        table { min-width: 860px; }
+        th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+        td.code { max-width: min(440px, 42vw); }
+        .code-block, .chat-markdown pre {
+            max-width: 100%; max-height: 360px; overflow: auto; white-space: pre;
+            background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px;
         }
-
-        * {
-            box-sizing: border-box;
+        .code-block code { display: block; background: transparent !important; color: inherit; white-space: pre; }
+        .hljs { color: #d7dce2; background: transparent !important; }
+        .hljs-keyword, .hljs-built_in, .hljs-selector-tag, .hljs-type { color: #7aa2f7; }
+        .hljs-title, .hljs-title.class_, .hljs-title.function_ { color: #d2a8ff; }
+        .hljs-string, .hljs-attr, .hljs-regexp { color: #8ccf7e; }
+        .hljs-number, .hljs-literal, .hljs-variable, .hljs-operator { color: #79c0ff; }
+        .hljs-comment, .hljs-code, .hljs-formula { color: #7b8491; font-style: italic; }
+        .ok { color: var(--ok); }
+        .bad { color: var(--danger); }
+        .empty { padding: 14px; color: var(--soft); border: 1px dashed var(--border); border-radius: 6px; }
+        .chat-layout { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 12px; align-items: start; }
+        .chat-log { min-height: 220px; max-height: 520px; overflow: auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; }
+        .chat-turn { display: grid; gap: 4px; padding: 10px 0; border-top: 1px solid var(--border); }
+        .chat-turn:first-child { border-top: 0; }
+        .chat-role { color: var(--soft); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+        .chat-text { line-height: 1.5; overflow-wrap: anywhere; }
+        .chat-text pre, .chat-text code { white-space: pre-wrap; }
+        .chat-markdown table { width: auto; min-width: 0; margin: 6px 0; }
+        .chat-markdown th { position: static; background: none; }
+        .chat-markdown h1, .chat-markdown h2, .chat-markdown h3, .chat-markdown h4 {
+            margin: 10px 0 4px; font-size: 14px; font-weight: 400; color: var(--field-cyan); text-transform: none; letter-spacing: 0; display: block;
         }
-
-        html,
-        body {
-            margin: 0;
-            min-height: 100%;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Iosevka Web", system-ui, sans-serif;
-            font-weight: 300;
-            font-size: 13px;
-        }
-
-        body {
-            padding: 16px;
-        }
-
-        button {
-            font: inherit;
-            color: var(--text);
-            background: rgba(0, 0, 0, 0.46);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 7px 9px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            border-color: var(--border-strong);
-        }
-
-        .shell {
-            width: min(1280px, calc(100vw - 32px));
-            margin: 0 auto;
-            display: grid;
-            gap: 12px;
-        }
-
-        .topbar,
-        .panel {
-            border: 5px solid #000;
-            border-radius: 10px;
-            background: var(--panel);
-        }
-
-        .topbar {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 12px;
-            align-items: center;
-            padding: 12px;
-        }
-
-        h1 {
-            margin: 0;
-            color: var(--cyan);
-            font-size: 22px;
-            font-weight: 400;
-        }
-
-        .subtitle,
-        .muted {
-            color: var(--soft);
-        }
-
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(8, minmax(0, 1fr));
-            gap: 8px;
-            width: 100%;
-            min-width: 0;
-            padding: 0 5px;
-        }
-
-        .metric {
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            background: var(--panel-strong);
-            padding: 9px;
-            min-width: 0;
-        }
-
-        .metric span {
-            display: block;
-            color: var(--soft);
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-
-        .metric strong {
-            display: block;
-            margin-top: 5px;
-            color: var(--cyan);
-            font-size: 18px;
-            font-weight: 400;
-            overflow-wrap: anywhere;
-        }
-
-        .panel {
-            padding: 12px;
-            min-width: 0;
-        }
-
-        .panel-header {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .panel-header h2 {
-            margin: 0;
-            font-size: 15px;
-            font-weight: 400;
-            color: var(--cyan);
-            white-space: nowrap;
-        }
-
-        .panel-header .muted {
-            min-width: 0;
-            overflow-wrap: anywhere;
-            text-align: right;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .tabs button[aria-pressed="true"] {
-            border-color: var(--border-strong);
-            color: var(--cyan);
-            background: rgba(72, 201, 255, 0.10);
-        }
-
-        .table-wrap {
-            overflow: auto;
-            max-height: calc(100vh - 270px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 860px;
-        }
-
-        th,
-        td {
-            padding: 8px 9px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            text-align: left;
-            vertical-align: top;
-        }
-
-        th {
-            position: sticky;
-            top: 0;
-            background: #111;
-            color: var(--soft);
-            font-weight: 400;
-            z-index: 1;
-        }
-
-        td.code {
-            max-width: min(440px, 42vw);
-        }
-
-        .code-block {
-            margin: 0;
-            max-width: 100%;
-            max-height: 360px;
-            overflow: auto;
-            white-space: pre;
-            color: rgba(235, 240, 246, 0.94);
-            background: rgba(0, 0, 0, 0.24);
-            border-radius: 6px;
-            padding: 8px;
-        }
-
-        .code-block code {
-            display: block;
-            padding: 0;
-            background: transparent !important;
-            color: inherit;
-            white-space: pre;
-        }
-
-        .hljs {
-            color: #d7dce2;
-            background: transparent !important;
-        }
-
-        .hljs-keyword,
-        .hljs-built_in,
-        .hljs-selector-tag,
-        .hljs-type {
-            color: #7aa2f7;
-        }
-
-        .hljs-title,
-        .hljs-title.class_,
-        .hljs-title.function_ {
-            color: #d2a8ff;
-        }
-
-        .hljs-string,
-        .hljs-attr,
-        .hljs-regexp {
-            color: #8ccf7e;
-        }
-
-        .hljs-number,
-        .hljs-literal,
-        .hljs-variable,
-        .hljs-operator {
-            color: #79c0ff;
-        }
-
-        .hljs-comment,
-        .hljs-code,
-        .hljs-formula {
-            color: #7b8491;
-            font-style: italic;
-        }
-
-        .ok {
-            color: var(--ok);
-        }
-
-        .bad {
-            color: var(--danger);
-        }
-
-        .empty {
-            padding: 18px;
-            color: var(--soft);
-            border: 1px dashed rgba(255, 255, 255, 0.16);
-            border-radius: 8px;
-        }
-
-        .chat-layout {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 260px;
-            gap: 12px;
-            align-items: start;
-        }
-
-        .chat-log {
-            min-height: 220px;
-            max-height: 420px;
-            overflow: auto;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            background: var(--panel-strong);
-            padding: 10px;
-        }
-
-        .chat-turn {
-            display: grid;
-            gap: 5px;
-            padding: 9px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .chat-turn:last-child {
-            border-bottom: 0;
-        }
-
-        .chat-role {
-            color: var(--cyan);
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-
-        .chat-text {
-            line-height: 1.45;
-            overflow-wrap: anywhere;
-        }
-
-        .chat-text pre,
-        .chat-text code {
-            white-space: pre-wrap;
-        }
-
-        .chat-input-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 8px;
-            margin-top: 10px;
-        }
-
+        .chat-markdown p { color: var(--text); margin: 4px 0; }
+        .chat-input-row { margin-top: 10px; }
         textarea {
-            width: 100%;
-            min-height: 78px;
-            resize: vertical;
-            font: inherit;
-            color: var(--text);
-            background: rgba(0, 0, 0, 0.46);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 9px;
+            width: 100%; min-height: 72px; resize: vertical; font: inherit; font-size: 12px; color: var(--field-cyan);
+            background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(72, 201, 255, 0.35); border-radius: 7px; padding: 8px 10px;
         }
-
-        textarea:focus {
-            outline: none;
-            border-color: var(--border-strong);
-        }
-
-        .prompt-list {
-            display: grid;
-            gap: 8px;
-        }
-
-        .prompt-list button {
-            text-align: left;
-        }
-
-        .db-path {
-            overflow-wrap: anywhere;
-        }
-
-        [hidden] {
-            display: none !important;
-        }
-
-        @media (max-width: 920px) {
-            .topbar,
-            .panel-header,
-            .chat-layout,
-            .chat-input-row {
-                grid-template-columns: 1fr;
-            }
-
-            .summary-grid {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-        }
-
-        @media (min-width: 921px) and (max-width: 1180px) {
-            .summary-grid {
-                grid-template-columns: repeat(4, minmax(0, 1fr));
-            }
-        }
+        textarea::placeholder { color: rgba(164, 193, 210, 0.8); }
+        textarea:focus { border-color: var(--field-cyan); }
+        .prompt-list { display: grid; gap: 8px; }
+        .prompt-list button { text-align: left; }
+        @media (max-width: 920px) { header, .chat-layout { grid-template-columns: 1fr; } }
     </style>
 </head>
-<body>
-<main class="shell">
-    <section class="topbar">
+<body class="field-webgl-page">
+<script src="/fieldWebglBackground.js"></script>
+<script>window.FieldWebGLBackground?.install(document.body, { fixed: true });</script>
+<main>
+    <header>
         <div>
             <h1>Code-use telemetry</h1>
-            <div class="subtitle">Executed snippets, runtime outcomes, launch lifecycle, and background symbol-use analysis.</div>
+            <p>Executed snippets, runtime outcomes, launch lifecycle, and background symbol-use analysis.</p>
+            <div class="chips" aria-label="Summary">
+                <span class="chip">telemetry <b id="metric-status">checking</b></span>
+                <span class="chip"><b id="metric-snippets">0</b> snippets</span>
+                <span class="chip"><b id="metric-compiles">0</b> compiles</span>
+                <span class="chip"><b id="metric-evals">0</b> evals</span>
+                <span class="chip"><b id="metric-launches">0</b> lifecycle</span>
+                <span class="chip"><b id="metric-dropped">0</b> dropped</span>
+                <span class="chip">analyzer <b id="metric-analyzer">source-index</b></span>
+                <span class="chip">evidence <b id="metric-confidence">0% K2</b></span>
+                <span class="chip"><b id="metric-analysis-queue">0</b> queued</span>
+            </div>
         </div>
         <div class="tabs" role="group" aria-label="Views">
             <button type="button" data-tab="timeline" aria-pressed="true">Timeline</button>
@@ -389,24 +88,13 @@
             <button type="button" data-tab="symbols" aria-pressed="false">Symbols</button>
             <button type="button" data-tab="unresolved" aria-pressed="false">Unresolved</button>
             <button id="refresh" type="button">Refresh</button>
+            <a href="/welcome">welcome</a>
         </div>
-    </section>
+    </header>
 
-    <section class="summary-grid" aria-label="Summary">
-        <div class="metric"><span>Status</span><strong id="metric-status">checking</strong></div>
-        <div class="metric"><span>Snippets</span><strong id="metric-snippets">0</strong></div>
-        <div class="metric"><span>Compiles</span><strong id="metric-compiles">0</strong></div>
-        <div class="metric"><span>Evals</span><strong id="metric-evals">0</strong></div>
-        <div class="metric"><span>Lifecycle</span><strong id="metric-launches">0</strong></div>
-        <div class="metric"><span>Dropped</span><strong id="metric-dropped">0</strong></div>
-        <div class="metric"><span>Analyzer</span><strong id="metric-analyzer">source-index</strong></div>
-        <div class="metric"><span>Evidence</span><strong id="metric-confidence">0% K2</strong></div>
-        <div class="metric"><span>Analysis Queue</span><strong id="metric-analysis-queue">0</strong></div>
-    </section>
-
-    <section class="panel" id="ai4-chat-panel">
+    <section id="ai4-chat-panel">
         <div class="panel-header">
-            <h2>AI4 Code-use Chat</h2>
+            <h2>AI4 chat</h2>
             <div id="chat-status" class="muted">disconnected</div>
         </div>
         <div class="chat-layout">
@@ -415,8 +103,8 @@
                     <div class="empty">Ask AI4 about the code-use database, semantic source lookup, hot symbols, failure evidence, or related Field source.</div>
                 </div>
                 <form id="chat-form" class="chat-input-row">
-                    <textarea id="chat-input" autocomplete="off" spellcheck="false" placeholder="Ask AI4 to inspect the code-use database..."></textarea>
-                    <button id="chat-send" type="submit">Send</button>
+                    <textarea id="chat-input" autocomplete="off" spellcheck="false" placeholder="Ask AI4 to inspect the code-use database... (Enter to send, Shift+Enter for a new line)"></textarea>
+                    <button id="chat-send" type="submit" hidden>Send</button>
                 </form>
             </div>
             <div class="prompt-list" aria-label="Prompt starters">
@@ -428,7 +116,7 @@
         </div>
     </section>
 
-    <section class="panel" id="panel-timeline">
+    <section id="panel-timeline">
         <div class="panel-header">
             <h2>Recent Snippets</h2>
             <div id="database-path" class="muted db-path"></div>
@@ -436,7 +124,7 @@
         <div id="timeline"></div>
     </section>
 
-    <section class="panel" id="panel-failures" hidden>
+    <section id="panel-failures" hidden>
         <div class="panel-header">
             <h2>Compiler And Runtime Failures</h2>
             <div class="muted">failed snippets are kept as design evidence</div>
@@ -444,7 +132,7 @@
         <div id="failures"></div>
     </section>
 
-    <section class="panel" id="panel-launches" hidden>
+    <section id="panel-launches" hidden>
         <div class="panel-header">
             <h2>Launch Lifecycle</h2>
             <div class="muted">execute, launch, continue, and running-state transitions</div>
@@ -452,7 +140,7 @@
         <div id="launches"></div>
     </section>
 
-    <section class="panel" id="panel-symbols" hidden>
+    <section id="panel-symbols" hidden>
         <div class="panel-header">
             <h2>Symbol Browser</h2>
             <div id="analyzer-status" class="muted">source-index-backed symbol uses from the background analyzer</div>
@@ -460,7 +148,7 @@
         <div id="symbols"></div>
     </section>
 
-    <section class="panel" id="panel-unresolved" hidden>
+    <section id="panel-unresolved" hidden>
         <div class="panel-header">
             <h2>Unresolved Calls</h2>
             <div class="muted">analyzer debugging queue</div>
@@ -470,6 +158,10 @@
 </main>
 
 <script src="/highlight.min.js"></script>
+<script type="module">
+    import { renderFieldMarkdown } from "/markdownView.js";
+    window.renderCodeUseMarkdown = renderFieldMarkdown;
+</script>
 <script>
     const state = {
         activeTab: "timeline",
@@ -807,7 +499,10 @@
 
         const body = document.createElement("div");
         body.className = "chat-text";
-        if (options.rawHtml) {
+        if (options.markdown && window.renderCodeUseMarkdown && !/^\s*</.test(html || "")) {
+            body.classList.add("chat-markdown");
+            window.renderCodeUseMarkdown(body, html || "");
+        } else if (options.rawHtml) {
             body.innerHTML = html || "";
         } else {
             body.textContent = html || "";
@@ -888,7 +583,7 @@
             if (payload.phase === 20 || payload.value) {
                 const pending = document.getElementById("chat-pending");
                 if (pending) pending.remove();
-                appendChatTurn("AI4", payload.value || "", { rawHtml: true });
+                appendChatTurn("AI4", payload.value || "", { rawHtml: true, markdown: true });
                 chatState.pendingCallback = "";
                 document.getElementById("chat-send").disabled = false;
                 setChatStatus(chatState.connected ? "connected" : "disconnected", !chatState.connected);
@@ -973,6 +668,12 @@
         const text = input.value;
         input.value = "";
         sendChatPrompt(text);
+    });
+    document.getElementById("chat-input").addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
+        event.preventDefault();
+        if (document.getElementById("chat-send").disabled) return;
+        document.getElementById("chat-form").requestSubmit();
     });
     document.querySelectorAll("[data-prompt]").forEach((button) => {
         button.addEventListener("click", () => {
