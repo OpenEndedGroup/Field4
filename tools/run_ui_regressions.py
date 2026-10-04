@@ -4158,6 +4158,18 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-camera",
+            description="Wheel pan, middle-drag pan and pinch zoom move the boxes, the connection overlay and the drawing layer through one camera.",
+            document=f"ui-regression-canvas-camera-{int(time.time())}",
+            commands=[
+                "new-box --name CameraAlpha --alias camera_alpha --x 200 --y 160",
+                "new-box --name CameraBeta --alias camera_beta --x 520 --y 320",
+                "connect @camera_alpha @camera_beta",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-camera.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="profiling-timeline",
             description="Record real box coroutines, brush CPU/allocation samples, navigate to code, and retain or replace a latched capture.",
             document=f"ui-regression-profile-{int(time.time())}",

@@ -143,7 +143,7 @@ fun onRemoteDrawingScene(json: String) {
     }
 }
 
-/** Called by every writer of [mainTranslation]: Field panned or zoomed, so the drawing follows. */
+/** Called by `applyViewportTranslation`, the camera's one writer: Field panned or zoomed, so the drawing follows. */
 fun drawingLayerViewportChanged(x: Double, y: Double) {
     handle?.setCamera(x / mainZoom, y / mainZoom, mainZoom)
 }
