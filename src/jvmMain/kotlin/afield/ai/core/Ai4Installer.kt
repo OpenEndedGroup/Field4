@@ -231,8 +231,9 @@ fun primitiveKind(value: Any?): String = when (value) {
     else -> ""
 }
 
-fun primitiveToolValue(value: Any?): Any? = when (value) {
-    is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double, is String -> value
+fun primitiveToolValue(value: Any?, maxChars: Int = 6000): Any? = when (value) {
+    is String -> clipToolText(value, maxChars)
+    is Boolean, is Byte, is Short, is Int, is Long, is Float, is Double -> value
     is Char -> value.toString()
     else -> null
 }
@@ -353,7 +354,7 @@ class Ai4CodeToolProviders(
                         valueKind = kind,
                         type = runCatching { shortenType(result.type) }.getOrDefault(runtimeTypeName(value)),
                         runtimeType = runtimeTypeName(value),
-                        primitiveValue = primitiveToolValue(value),
+                        primitiveValue = primitiveToolValue(value, req.maxChars),
                         primitiveKind = primitiveKind(value),
                         stringValue = stringValue,
                         html = html,
