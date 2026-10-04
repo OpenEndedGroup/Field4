@@ -1,25 +1,10 @@
 #!/bin/sh
-# macOS .command file - double-clickable from Finder
-# This opens a Terminal window and runs Field4
-
-# Get the directory where this script is located
-DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$DIR"
-
-echo "==================================="
-echo "Starting Field4..."
-echo "==================================="
-echo ""
-
-# Run the gradle wrapper
-./gradlew runDesktop
-
-# Keep terminal open if there's an error
-if [ $? -ne 0 ]; then
-    echo ""
-    echo "==================================="
-    echo "Field4 exited with an error."
-    echo "Press Enter to close this window."
-    echo "==================================="
-    read -n 1 -s
+# Finder opens this in Terminal; use the same checked launcher as a shell launch.
+DIR="$(cd "$(dirname "$0")" && pwd)" || exit 1
+AFIELD_FIELD_SH_NO_TERMINAL=1 "$DIR/field.sh" "$@"
+FIELD_STATUS=$?
+if [ "$FIELD_STATUS" -ne 0 ]; then
+    printf '\nField exited with an error. Press Enter to close this window.\n'
+    read -r answer
 fi
+exit "$FIELD_STATUS"
