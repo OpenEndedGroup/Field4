@@ -245,6 +245,13 @@ def _typical(queue: Path, gradle: bool) -> float | None:
     return sorted(took)[len(took) // 2] if took else None
 
 
+def _superseded_by(queue: Path, item: dict) -> dict | None:
+    """A later landing of the same branch, which makes this bounce history rather than news."""
+    later = [other for other in _items(queue, LANDED)
+             if other["branch"] == item["branch"] and other.get("finished", "") > item.get("finished", "")]
+    return later[0] if later else None
+
+
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     head = f"{item['id']}  {item['sha'][:9]}  by {item['by']}"
     lines = [f"{state:8} {head}"]
@@ -291,6 +298,12 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         elif item.get("push"):
             lines.append("         push requested")
     elif state == BOUNCED:
+        fixed = _superseded_by(queue, item) if queue is not None else None
+        if fixed:
+            lines[0] = f"resolved {head}"
+            lines.append(f"         bounced {_span(_since(item.get('finished')))} ago, then landed as {fixed['id']} "
+                         f"-> main {fixed.get('landed_as', '')[:9]}")
+            return "\n".join(lines)
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
     return "\n".join(lines)
@@ -438,6 +451,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+        elif _superseded_by(queue, item):
+            continue  # bounced, then landed: history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
@@ -523,7 +538,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         if recent:
             print(f"\nrecent {state} (oldest first):")
             for item in recent:
-                print(_describe(state, item))
+                print(_describe(state, item, queue))
     return 0
 
 
