@@ -13,7 +13,7 @@ class CompletionDocTreeScopeTest {
     @Test
     fun `our source sets are in the tree, personal included`() {
         assertTrue(Ai4CompletionDoc.isInOurTree("src/jvmMain/kotlin/afield/four/util/KeyCamera.kt"))
-        assertTrue(Ai4CompletionDoc.isInOurTree("src/personal/kotlin/sentences/Layout.kt"))
+        assertTrue(Ai4CompletionDoc.isInOurTree("src/" + "personal/kotlin/Example.kt"))
     }
 
     @Test
