@@ -1599,6 +1599,11 @@ function renderChatMessages(messages, markdown, options) {
         });
         messages.innerHTML = aiChatHistoryToHtml(text);
         messages.__chatMarkdown = text;
+        // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
+        // otherwise restart the sweep on every render and it would never get across the text.
+        messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
+                el.getAnimations().forEach(animation => { animation.startTime = 0; });
+        });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
         const images = Array.from(messages.querySelectorAll("img"));
