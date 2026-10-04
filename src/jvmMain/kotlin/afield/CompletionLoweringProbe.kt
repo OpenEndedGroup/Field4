@@ -224,9 +224,18 @@ object CompletionLoweringProbe {
     private data class Floor(val bucket: String, val minAttempts: Int, val minPercent: Int, val observed: Int)
 
     /**
-     * The floors, all cut **3 points** below the number measured over the whole harvested corpus (5277
-     * carets, 480–698 per bucket — the `n=` each verdict line prints is the honest statement of how much
-     * each floor rests on).
+     * The floors, first cut **3 points** below the number measured over the whole harvested corpus on
+     * 2026-08-07 (182 boxes, 5277 carets, 480–698 per bucket — the `n=` each verdict line prints is the
+     * honest statement of how much each floor rests on).
+     *
+     * Re-cut 2026-10-04 over 595 boxes (17,426 carets) as max(old floor, measured − 3), so none fell.
+     * `observed` is the 2026-10-04 number. Where measured − 3 was below the old floor, the old floor
+     * stands with a thinner margin, 1.3 to 2.9 points. At ~1600 carets per bucket that is still 23 to 39
+     * carets of headroom, more than the ~15 the August margin bought. Those thin margins are deliberate:
+     * on the original 182 boxes today's engine reproduces the August numbers, so the newer boxes are
+     * simply harder (one sweep of the 413 newer boxes alone measured `pkg/keep` at 91% before the
+     * type-position fix). The margin is what makes the two `pkg` keep buckets catch that fix regressing:
+     * losing its 42 carets puts both under their floors.
      *
      * 3 points, not 5, and not 1. The margin has to cover the ordering churn a candidate-set change causes
      * near a truncation boundary, and nothing more: the buckets are deterministic given the same corpus and
@@ -243,19 +252,19 @@ object CompletionLoweringProbe {
     private val FLOORS = listOf(
         // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
         // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
-        Floor("dot/0/blank", minAttempts = 1420, minPercent = 94, observed = 97),
-        Floor("dot/0/keep", minAttempts = 1420, minPercent = 93, observed = 96),
+        Floor("dot/0/blank", minAttempts = 1420, minPercent = 95, observed = 98),
+        Floor("dot/0/keep", minAttempts = 1420, minPercent = 93, observed = 95),
         // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
-        Floor("dot/2/blank", minAttempts = 1420, minPercent = 94, observed = 97),
-        Floor("dot/2/keep", minAttempts = 1420, minPercent = 93, observed = 96),
+        Floor("dot/2/blank", minAttempts = 1420, minPercent = 95, observed = 98),
+        Floor("dot/2/keep", minAttempts = 1420, minPercent = 93, observed = 95),
         // Name position: scope, the index, and implicit-receiver extensions.
-        Floor("name/2/blank", minAttempts = 2040, minPercent = 91, observed = 94),
-        Floor("name/2/keep", minAttempts = 1720, minPercent = 91, observed = 94),
+        Floor("name/2/blank", minAttempts = 2040, minPercent = 92, observed = 95),
+        Floor("name/2/keep", minAttempts = 1720, minPercent = 92, observed = 96),
         // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
-        Floor("pkg/0/blank", minAttempts = 1550, minPercent = 94, observed = 97),
-        Floor("pkg/0/keep", minAttempts = 1550, minPercent = 93, observed = 96),
-        Floor("pkg/2/blank", minAttempts = 1550, minPercent = 94, observed = 97),
-        Floor("pkg/2/keep", minAttempts = 1550, minPercent = 94, observed = 97),
+        Floor("pkg/0/blank", minAttempts = 1550, minPercent = 94, observed = 95),
+        Floor("pkg/0/keep", minAttempts = 1550, minPercent = 93, observed = 95),
+        Floor("pkg/2/blank", minAttempts = 1550, minPercent = 94, observed = 96),
+        Floor("pkg/2/keep", minAttempts = 1550, minPercent = 94, observed = 96),
         // The headline number, gated too — not because the buckets don't cover it, but because it is what
         // gets quoted, and a change that trades one bucket off against another should have to say so.
         Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 96),
