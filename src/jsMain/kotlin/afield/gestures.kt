@@ -1380,13 +1380,11 @@ class CanvasGestures(
         return uid.toString()
     }
 
-    private fun captureLayoutSnapshot(parent: SVGSVGElement, ox: Double, oy: Double) {
+    private fun captureLayoutSnapshot(parent: SVGSVGElement) {
         val parentRect = parent.getBoundingClientRect()
         val boxElements = boxes()
         val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
-        val worldRects = screenRects.mapValues { (_, rect) ->
-            DOMRect((rect.x - ox) / mainZoom, (rect.y - oy) / mainZoom, rect.width / mainZoom, rect.height / mainZoom)
-        }
+        val worldRects = screenRects.mapValues { (box, rect) -> CanvasCamera.paneOf(box).worldRect(rect) }
         val boxByUid = boxElements.mapNotNull { box ->
             uidOrNull(box)?.let { it to box }
         }.toMap()
@@ -1463,7 +1461,7 @@ class CanvasGestures(
 
         val shouldCapture = !translationOnly || !hasValidCachedLayoutForTranslation()
         if (shouldCapture) {
-            captureLayoutSnapshot(parent, ox, oy)
+            captureLayoutSnapshot(parent)
         }
 
         val vbw = cachedViewportWidth

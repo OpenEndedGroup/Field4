@@ -318,14 +318,7 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
  */
 fun restoreScrollPosition(position: ScrollPosition) {
     try {
-        if (position.zoom != null && position.zoom != mainZoom) {
-            panViewportForDrawingLayer(position.x, position.y, position.zoom)
-            return
-        }
-        mainTranslation = listOf(position.x, position.y)
-        drawingLayerViewportChanged(position.x, position.y)
-        mainCanvas.style.transform = mainCanvasTransform(position.x, position.y)
-        updateBackgroundGrid(position.x, position.y, panning = false)
+        moveCanvasCamera(position.x, position.y, position.zoom ?: mainZoom)
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
         console.warn("Error restoring scroll position:", e)
@@ -899,7 +892,8 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
     }
     val view = bookmark.scrollPosition?.let {
         val z = it.zoom ?: mainZoom
-        R(-it.x / z, -it.y / z, window.innerWidth / z, window.innerHeight / z, null)
+        val view = CanvasCamera.main.rect
+        R((view.x - it.x) / z, (view.y - it.y) / z, view.w / z, view.h / z, null)
     }
     val all = rects + panels + listOfNotNull(view)
     if (all.isEmpty()) return svg

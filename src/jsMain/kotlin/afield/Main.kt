@@ -347,7 +347,11 @@ external var originatingMouseDown: MouseEvent
 lateinit var moveHandler: (dynamic) -> Set_rect?
 lateinit var resizeHandler: (dynamic) -> Unit
 lateinit var monacoResizeHandler: (dynamic) -> Unit
-var mainTranslation = listOf(0.0, 0.0)
+/**
+ * The main pane's translation, in window pixels. Read-only: the camera moves through
+ * [applyViewportTranslation] (or [moveCanvasCamera] from outside this file). See [CanvasCamera].
+ */
+val mainTranslation: List<Double> get() = listOf(CanvasCamera.main.tx, CanvasCamera.main.ty)
 
 /**
  * The canvas zoom. The camera is `screen = world * mainZoom + mainTranslation`: translation stays
@@ -355,13 +359,10 @@ var mainTranslation = listOf(0.0, 0.0)
  * zoom 1) and the scale is applied about the canvas origin (`transform-origin: 0 0`).
  * Anything that turns a screen measurement into a world one has to divide by it.
  */
-var mainZoom = 1.0
-    private set
+val mainZoom: Double get() = CanvasCamera.zoom
 
 const val MIN_CANVAS_ZOOM = 0.1
 const val MAX_CANVAS_ZOOM = 4.0
-
-fun mainCanvasTransform(x: Double, y: Double): String = "translate(${x}px, ${y}px) scale($mainZoom)"
 
 /** The viewBox for a window-sized SVG layer drawn in world coordinates. */
 fun worldViewBox(width: Double, height: Double): String =
@@ -888,13 +889,7 @@ private fun ensureActorArcLayer(): SVGSVGElement {
  */
 private fun boxWorldRect(uid: String): DOMRect? {
     val el = findBoxElementByUid(uid) ?: return null
-    val r = el.getBoundingClientRect()
-    return DOMRect(
-        (r.x - mainTranslation[0]) / mainZoom,
-        (r.y - mainTranslation[1]) / mainZoom,
-        r.width / mainZoom,
-        r.height / mainZoom
-    )
+    return CanvasCamera.paneOf(el).worldRect(el.getBoundingClientRect())
 }
 
 private fun drawActorArc(arc: ActorArc) {
@@ -903,9 +898,7 @@ private fun drawActorArc(arc: ActorArc) {
     val svgNs = "http://www.w3.org/2000/svg"
     val layer = ensureActorArcLayer()
 
-    val vbw = window.innerWidth.toDouble()
-    val vbh = window.innerHeight.toDouble()
-    layer.setAttribute("viewBox", worldViewBox(vbw, vbh))
+    layer.setAttribute("viewBox", CanvasCamera.main.worldViewBox())
 
     val key = arcKey(arc)
     val existing = activeArcs[key]
@@ -2226,42 +2219,55 @@ private fun editorSyncDebug(box: HTMLElement, property: String): String {
     }
 }
 
+/**
+ * The one writer of the canvas camera: moves [pane]'s column and row to ([nextX], [nextY]) and
+ * sets the shared zoom, then brings every layer that copies the camera along.
+ */
 private fun applyViewportTranslation(
     nextX: Double,
     nextY: Double,
     panning: Boolean = false,
     refreshSpatial: Boolean = true,
     syncServer: Boolean = true,
-    zoom: Double = mainZoom
+    zoom: Double = mainZoom,
+    pane: CanvasPane = CanvasCamera.main
 ) {
     val zoomChanged = zoom != mainZoom
-    mainZoom = zoom
-    val mc = mainCanvas.unsafeCast<dynamic>()
-    (mc as HTMLElement).style.transform = mainCanvasTransform(nextX, nextY)
-    mainTranslation = listOf(nextX, nextY)
-    mc.data_x = nextX
-    mc.data_y = nextY
+    CanvasCamera.zoom = zoom
+    CanvasCamera.x[pane.col] = nextX
+    CanvasCamera.y[pane.row] = nextY
+    mainCanvas.style.transform = CanvasCamera.main.canvasTransform()
+    syncInitialPlaceholderLayerTransform()
 
-    updateBackgroundGrid(nextX, nextY, panning = panning)
+    updateBackgroundGrid(mainTranslation[0], mainTranslation[1], panning = panning)
 
     if (syncServer) {
+        val r = CanvasCamera.main.rect
         send(
             Message("set-viewport").payload(
-                Set_rect(
-                    uid = "root",
-                    property = "viewport",
-                    value = Rect(nextX, nextY, window.innerWidth.toDouble(), window.innerHeight.toDouble())
-                )
+                Set_rect(uid = "root", property = "viewport", value = Rect(mainTranslation[0], mainTranslation[1], r.w, r.h))
             )
         )
     }
 
-    drawingLayerViewportChanged(nextX, nextY)
+    drawingLayerViewportChanged(mainTranslation[0], mainTranslation[1])
     canvasGestures.requestConnectionGroupRebuild(translationOnly = !zoomChanged)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
+}
+
+/** Moves the main pane's camera, for callers outside this file (bookmark restore). */
+fun moveCanvasCamera(nextX: Double, nextY: Double, zoom: Double = mainZoom) {
+    cancelNavigationPanAnimation()
+    applyViewportTranslation(nextX, nextY, zoom = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM))
+}
+
+/** Pans the pane under the pointer by a screen delta (wheel and middle-drag). */
+private fun panCanvasBy(dx: Double, dy: Double, pane: CanvasPane) {
+    cancelNavigationPanAnimation()
+    applyViewportTranslation(pane.tx + dx, pane.ty + dy, panning = true, pane = pane)
 }
 
 /** The drawing layer was panned or zoomed from inside Excalidraw; move Field's canvas to match. */
@@ -2274,8 +2280,9 @@ fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double) {
     } else {
         // Excalidraw's range is wider than Field's. Keep the world point at the window centre
         // fixed while clamping, or the translation (computed for the unclamped zoom) would jump.
-        val cx = window.innerWidth / 2.0
-        val cy = window.innerHeight / 2.0
+        val r = CanvasCamera.main.rect
+        val cx = r.x + r.w / 2.0
+        val cy = r.y + r.h / 2.0
         val worldX = (cx - nextX) / zoom
         val worldY = (cy - nextY) / zoom
         applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped)
@@ -2289,16 +2296,20 @@ fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double) {
 fun setCanvasZoom(zoom: Double, anchorX: Double, anchorY: Double) {
     val next = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
     if (next == mainZoom) return
-    val worldX = (anchorX - mainTranslation[0]) / mainZoom
-    val worldY = (anchorY - mainTranslation[1]) / mainZoom
+    val pane = CanvasCamera.paneAt(anchorX, anchorY)
+    val worldX = pane.worldX(anchorX)
+    val worldY = pane.worldY(anchorY)
     cancelNavigationPanAnimation()
-    applyViewportTranslation(anchorX - worldX * next, anchorY - worldY * next, zoom = next)
+    applyViewportTranslation(anchorX - worldX * next, anchorY - worldY * next, zoom = next, pane = pane)
     bumpBackgroundVisibility()
 }
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
-fun resetCanvasZoom() = setCanvasZoom(1.0, window.innerWidth / 2.0, window.innerHeight / 2.0)
+fun resetCanvasZoom() {
+    val r = CanvasCamera.main.rect
+    setCanvasZoom(1.0, r.x + r.w / 2.0, r.y + r.h / 2.0)
+}
 
 private fun registerCanvasZoomActions() {
     val reset: dynamic = js("({})")
@@ -2356,8 +2367,9 @@ private fun frameRectsFor(box: HTMLElement): List<Rect> {
  * The parts of the window not covered by [FRAME_OCCLUDERS]: each overlay splits every free
  * rectangle it touches into the strips left, right, above and below it.
  */
-private fun frameFreeSpaces(padding: Double = 16.0, gap: Double = 14.0): List<Rect> {
-    var spaces = listOf(Rect(padding, padding, window.innerWidth - 2 * padding, window.innerHeight - 2 * padding))
+private fun frameFreeSpaces(pane: CanvasPane, padding: Double = 16.0, gap: Double = 14.0): List<Rect> {
+    val p = pane.rect
+    var spaces = listOf(Rect(p.x + padding, p.y + padding, p.w - 2 * padding, p.h - 2 * padding))
     for (selector in FRAME_OCCLUDERS) {
         document.querySelectorAll(selector).asList().forEach { node ->
             val overlay = node as? HTMLElement ?: return@forEach
@@ -2399,9 +2411,10 @@ fun frameSelected() {
     }
     val rects = boxes.flatMap { frameRectsFor(it) }
     if (rects.isEmpty()) return
-    val z0 = mainZoom
-    val t0x = mainTranslation[0]
-    val t0y = mainTranslation[1]
+    val pane = CanvasCamera.paneOf(boxes.first())
+    val z0 = pane.zoom
+    val t0x = pane.tx
+    val t0y = pane.ty
     // The target in world coordinates, so the fit does not depend on the zoom we start from.
     val wx = (rects.minOf { it.x } - t0x) / z0
     val wy = (rects.minOf { it.y } - t0y) / z0
@@ -2410,8 +2423,9 @@ fun frameSelected() {
 
     val ceiling = max(z0, 1.0)
     fun zoomFor(space: Rect) = min(ceiling, 0.94 * min(space.w / ww, space.h / wh)).coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
-    val whole = Rect(16.0, 16.0, window.innerWidth - 32.0, window.innerHeight - 32.0)
-    val free = frameFreeSpaces().maxWithOrNull(compareBy<Rect>({ zoomFor(it) }, { it.w * it.h }))
+    val p = pane.rect
+    val whole = Rect(p.x + 16.0, p.y + 16.0, p.w - 32.0, p.h - 32.0)
+    val free = frameFreeSpaces(pane).maxWithOrNull(compareBy<Rect>({ zoomFor(it) }, { it.w * it.h }))
     val space = if (free != null && zoomFor(free) >= 0.5 * zoomFor(whole)) free else whole
     val z1 = zoomFor(space)
     val t1x = space.x + space.w / 2 - (wx + ww / 2) * z1
@@ -2435,7 +2449,7 @@ fun frameSelected() {
         val z = z0 * (z1 / z0).pow(e)
         val sx = s0x + (s1x - s0x) * e
         val sy = s0y + (s1y - s0y) * e
-        applyViewportTranslation(sx - cx * z, sy - cy * z, panning = u < 1.0, syncServer = u >= 1.0, zoom = z)
+        applyViewportTranslation(sx - cx * z, sy - cy * z, panning = u < 1.0, syncServer = u >= 1.0, zoom = z, pane = pane)
         if (u < 1.0) window.requestAnimationFrame { step(it) } else bumpBackgroundVisibility()
     }
     window.requestAnimationFrame { step(it) }
@@ -2447,58 +2461,27 @@ private fun cancelNavigationPanAnimation() {
     navigationPanAnimationHandle = null
 }
 
-/** Pans the main canvas by a screen-space delta (wheel and middle-drag panning). */
-private fun panCanvasBy(dx: Double, dy: Double) {
-    cancelNavigationPanAnimation()
-
-    val mc = mainCanvas.unsafeCast<dynamic>()
-    val x = ((mc.data_x as? Number)?.toDouble() ?: 0.0) + dx
-    val y = ((mc.data_y as? Number)?.toDouble() ?: 0.0) + dy
-
-    (mc as HTMLElement).style.transform = mainCanvasTransform(x, y)
-    mainTranslation = listOf(x, y)
-    drawingLayerViewportChanged(x, y)
-
-    mc.data_x = x
-    mc.data_y = y
-    syncInitialPlaceholderLayerTransform()
-
-    updateBackgroundGrid(x, y, panning = true)
-
-    send(
-        Message("set-viewport").payload(
-            Set_rect(
-                uid = "root",
-                property = "viewport",
-                Rect(x, y, window.innerWidth.toDouble(), window.innerHeight.toDouble())
-            )
-        )
-    )
-
-    canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
-    repositionSlideNoteOverlayIfVisible()
-    if (spatialNavActive) {
-        refreshSpatialNavTargets()
-    }
-}
-
 /*
  * A canvas pan or zoom that starts on the canvas keeps the canvas until it ends, even when the
  * pointer then crosses an output area. Wheel gestures have no end event, so a wheel latch lasts
  * until the wheel has been idle for CANVAS_WHEEL_LATCH_MS (trackpad momentum keeps it alive); a
  * middle drag is latched from mousedown to mouseup. While latched, window capture-phase listeners
  * take the events before any output area can, and `canvas-pan-latched` on <body> turns off pointer
- * events inside output areas so iframes cannot swallow them (field.css).
+ * events inside output areas so iframes cannot swallow them (field.css). The latch also keeps the
+ * pane the gesture started in, so a pan never jumps to another pane when the pointer crosses a
+ * divider.
  */
 private const val CANVAS_WHEEL_LATCH_MS = 250
 private var canvasWheelLatchTimer: Int? = null
 private var canvasDragLatched = false
+private var canvasPanLatchPane: CanvasPane = CanvasCamera.main
 
 private fun updateCanvasPanLatchClass() {
     document.body?.classList?.toggle("canvas-pan-latched", canvasWheelLatchTimer != null || canvasDragLatched)
 }
 
-private fun latchCanvasWheel() {
+private fun latchCanvasWheel(pane: CanvasPane) {
+    canvasPanLatchPane = pane
     canvasWheelLatchTimer?.let { window.clearTimeout(it) }
     canvasWheelLatchTimer = window.setTimeout({
         canvasWheelLatchTimer = null
@@ -2524,9 +2507,9 @@ private fun installCanvasPanLatch() {
         if (event.ctrlKey || event.metaKey) {
             setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
         } else {
-            panCanvasBy(-event.deltaX, -event.deltaY)
+            panCanvasBy(-event.deltaX, -event.deltaY, canvasPanLatchPane)
         }
-        latchCanvasWheel()
+        latchCanvasWheel(canvasPanLatchPane)
     }, capture)
 
     window.addEventListener("mousedown", { e ->
@@ -2535,6 +2518,7 @@ private fun installCanvasPanLatch() {
         val target = event.target as? Element ?: return@addEventListener
         if (!mainViewport.contains(target) || target.closest(".outputArea") != null) return@addEventListener
         canvasDragLatched = true
+        canvasPanLatchPane = CanvasCamera.paneAt(event.clientX.toDouble(), event.clientY.toDouble())
         updateCanvasPanLatchClass()
         event.preventDefault() // no autoscroll
     }, capture)
@@ -2549,7 +2533,7 @@ private fun installCanvasPanLatch() {
         }
         event.preventDefault()
         event.stopPropagation()
-        panCanvasBy(event.asDynamic().movementX as Double, event.asDynamic().movementY as Double)
+        panCanvasBy(event.asDynamic().movementX as Double, event.asDynamic().movementY as Double, canvasPanLatchPane)
     }, capture)
 
     window.addEventListener("mouseup", { e ->
@@ -2562,15 +2546,16 @@ private fun animateViewportTranslation(
     nextX: Double,
     nextY: Double,
     durationMs: Double = 220.0,
-    refreshSpatialDuringAnimation: Boolean = spatialNavActive
+    refreshSpatialDuringAnimation: Boolean = spatialNavActive,
+    pane: CanvasPane = CanvasCamera.main
 ) {
-    val startX = mainTranslation[0]
-    val startY = mainTranslation[1]
+    val startX = pane.tx
+    val startY = pane.ty
     val dx = nextX - startX
     val dy = nextY - startY
     val distance = kotlin.math.sqrt(dx * dx + dy * dy)
     if (distance < 1.0 || durationMs <= 0.0) {
-        applyViewportTranslation(nextX, nextY, panning = false, refreshSpatial = refreshSpatialDuringAnimation)
+        applyViewportTranslation(nextX, nextY, panning = false, refreshSpatial = refreshSpatialDuringAnimation, pane = pane)
         return
     }
 
@@ -2601,7 +2586,8 @@ private fun animateViewportTranslation(
             nextY = y,
             panning = false,
             refreshSpatial = refreshSpatialDuringAnimation,
-            syncServer = done
+            syncServer = done,
+            pane = pane
         )
 
         if (done) {
@@ -2614,15 +2600,6 @@ private fun animateViewportTranslation(
     navigationPanAnimationHandle = window.requestAnimationFrame { ts -> frame(ts) }
 }
 
-private fun centerViewportOn(rect: Rect) {
-    val dx = window.innerWidth / 2.0 - (rect.x + rect.w / 2.0)
-    val dy = window.innerHeight / 2.0 - (rect.y + rect.h / 2.0)
-    val nextX = mainTranslation[0] + dx
-    val nextY = mainTranslation[1] + dy
-
-    applyViewportTranslation(nextX, nextY, panning = false)
-}
-
 private fun isOverlayVisible(element: Element?): Boolean {
     if (element == null) return false
     val style = window.getComputedStyle(element)
@@ -2633,14 +2610,18 @@ private fun isOverlayVisible(element: Element?): Boolean {
     return rect.width > 1.0 && rect.height > 1.0
 }
 
-private fun navigationSafeViewportRect(padding: Double = 16.0, occluderGap: Double = 14.0): Rect {
-    val viewportWidth = window.innerWidth.toDouble()
-    val viewportHeight = window.innerHeight.toDouble()
+private fun navigationSafeViewportRect(
+    padding: Double = 16.0,
+    occluderGap: Double = 14.0,
+    pane: CanvasPane = CanvasCamera.main
+): Rect {
+    val p = pane.rect
+    val viewportWidth = p.w
     val base = Rect(
-        padding,
-        padding,
-        (viewportWidth - padding * 2.0).coerceAtLeast(1.0),
-        (viewportHeight - padding * 2.0).coerceAtLeast(1.0)
+        p.x + padding,
+        p.y + padding,
+        (p.w - padding * 2.0).coerceAtLeast(1.0),
+        (p.h - padding * 2.0).coerceAtLeast(1.0)
     )
 
     val occluderRects = listOf(".docs-iframe-container", ".monaco-editor-container")
@@ -2679,7 +2660,8 @@ internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
     val rect = target.getBoundingClientRect()
     if (rect.width <= 0.0 || rect.height <= 0.0) return
 
-    val safe = navigationSafeViewportRect()
+    val pane = CanvasCamera.paneOf(target)
+    val safe = navigationSafeViewportRect(pane = pane)
     val safeRight = safe.right
     val safeBottom = safe.bottom
     val marginX = min(48.0, safe.w * 0.2)
@@ -2715,10 +2697,11 @@ internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
 
     if (abs(dx) < 0.5 && abs(dy) < 0.5) return
     animateViewportTranslation(
-        nextX = mainTranslation[0] + dx,
-        nextY = mainTranslation[1] + dy,
+        nextX = pane.tx + dx,
+        nextY = pane.ty + dy,
         durationMs = 420.0,
-        refreshSpatialDuringAnimation = spatialNavActive
+        refreshSpatialDuringAnimation = spatialNavActive,
+        pane = pane
     )
 }
 
@@ -2726,7 +2709,9 @@ internal fun ensureBoxVisibleForNavigation(target: HTMLElement) {
 private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
     val rect = target.getBoundingClientRect()
     if (rect.width <= 0.0 || rect.height <= 0.0) return
-    var spaces = listOf(Rect(16.0, 16.0, window.innerWidth - 32.0, window.innerHeight - 32.0))
+    val pane = CanvasCamera.paneOf(target)
+    val p = pane.rect
+    var spaces = listOf(Rect(p.x + 16.0, p.y + 16.0, p.w - 32.0, p.h - 32.0))
     for (selector in listOf(".docs-iframe-container", ".monaco-editor-container", "#document-guide")) {
         val overlay = document.querySelector(selector) ?: continue
         if (!isOverlayVisible(overlay)) continue
@@ -2742,12 +2727,13 @@ private fun centerBoxForMarkdownNavigation(target: HTMLElement) {
             ).filter { it.w >= 96 && it.h >= 96 }
         }
     }
-    val safe = spaces.maxByOrNull { it.w * it.h } ?: navigationSafeViewportRect()
+    val safe = spaces.maxByOrNull { it.w * it.h } ?: navigationSafeViewportRect(pane = pane)
     animateViewportTranslation(
-        nextX = mainTranslation[0] + safe.x + safe.w / 2 - rect.left - rect.width / 2,
-        nextY = mainTranslation[1] + safe.y + safe.h / 2 - rect.top - rect.height / 2,
+        nextX = pane.tx + safe.x + safe.w / 2 - rect.left - rect.width / 2,
+        nextY = pane.ty + safe.y + safe.h / 2 - rect.top - rect.height / 2,
         durationMs = 420.0,
-        refreshSpatialDuringAnimation = spatialNavActive
+        refreshSpatialDuringAnimation = spatialNavActive,
+        pane = pane
     )
 }
 
@@ -3928,10 +3914,7 @@ private fun initialPlaceholderLayer(): HTMLElement {
 
 private fun syncInitialPlaceholderLayerTransform() {
     val layer = initialBoxPlaceholderLayer ?: return
-    val canvas = if (::mainCanvas.isInitialized) mainCanvas.asDynamic() else null
-    val x = (canvas?.data_x as? Number)?.toDouble() ?: 0.0
-    val y = (canvas?.data_y as? Number)?.toDouble() ?: 0.0
-    layer.style.transform = "translate(${x}px, ${y}px)"
+    layer.style.transform = CanvasCamera.main.canvasTransform()
 }
 
 private fun renderInitialBoxPlaceholders(frames: List<InitialBoxFrame>) {
@@ -4875,13 +4858,10 @@ private fun openUserConfigProxyBox(path: String, fileName: String, mimeType: Str
         }
     }
 
-    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
-    val x = window.innerWidth.toDouble() / 2.0 -
-            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
-            FILE_PROXY_MENU_BOX_OFFSET_X
-    val y = window.innerHeight.toDouble() / 2.0 -
-            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
-            FILE_PROXY_MENU_BOX_OFFSET_Y
+    val pane = CanvasCamera.main
+    val view = pane.rect
+    val x = pane.worldX(view.x + view.w / 2.0) - FILE_PROXY_MENU_BOX_OFFSET_X
+    val y = pane.worldY(view.y + view.h / 2.0) - FILE_PROXY_MENU_BOX_OFFSET_Y
 
     sendCreateFileProxyBox(
         CreateFileProxyBox(
@@ -4956,13 +4936,12 @@ private fun showDropMenu(event: dynamic, build: (x: Double, y: Double) -> List<D
         action()
     }
 
-    val canvasDyn = mainCanvas.unsafeCast<dynamic>()
-    val x = ((event.pageX as? Number)?.toDouble() ?: 0.0) -
-            ((canvasDyn.data_x as? Number)?.toDouble() ?: 0.0) -
-            FILE_PROXY_MENU_BOX_OFFSET_X
-    val y = ((event.pageY as? Number)?.toDouble() ?: 0.0) -
-            ((canvasDyn.data_y as? Number)?.toDouble() ?: 0.0) -
-            FILE_PROXY_MENU_BOX_OFFSET_Y
+    // A world point, so the drop lands under the pointer at any zoom.
+    val pageX = (event.pageX as? Number)?.toDouble() ?: 0.0
+    val pageY = (event.pageY as? Number)?.toDouble() ?: 0.0
+    val pane = CanvasCamera.paneAt(pageX, pageY)
+    val x = pane.worldX(pageX) - FILE_PROXY_MENU_BOX_OFFSET_X
+    val y = pane.worldY(pageY) - FILE_PROXY_MENU_BOX_OFFSET_Y
 
     val options = build(x, y)
     val count = options.size.coerceAtLeast(1)
@@ -6754,13 +6733,14 @@ suspend fun main() {
             event.preventDefault()
             event.stopPropagation()
             setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
-            latchCanvasWheel()
+            latchCanvasWheel(CanvasCamera.paneAt(event.clientX.toDouble(), event.clientY.toDouble()))
         } else if (event.target is SVGElement) {
         } else {
             event.preventDefault()
             event.stopPropagation()
-            panCanvasBy(-event.deltaX, -event.deltaY)
-            latchCanvasWheel()
+            val pane = CanvasCamera.paneAt(event.clientX.toDouble(), event.clientY.toDouble())
+            panCanvasBy(-event.deltaX, -event.deltaY, pane)
+            latchCanvasWheel(pane)
         }
 
         null
@@ -6768,8 +6748,6 @@ suspend fun main() {
     installCanvasPanLatch()
 
 
-    mainCanvas.unsafeCast<dynamic>().data_x = 0
-    mainCanvas.unsafeCast<dynamic>().data_y = 0
     syncInitialPlaceholderLayerTransform()
     updateBackgroundGrid(0.0, 0.0, panning = false)
 
@@ -7516,7 +7494,7 @@ suspend fun main() {
             Set_rect(
                 uid = "root",
                 property = "viewport",
-                Rect(0.0, 0.0, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+                Rect(0.0, 0.0, CanvasCamera.main.rect.w, CanvasCamera.main.rect.h)
             )
         )
     )
