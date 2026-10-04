@@ -1624,6 +1624,12 @@ fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
                     lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
                     return@inMain
                 }
+                // Retired after it was built but before this ran: its document's last client left
+                // (see [Box.disposeKi]). Compiling the intro now would only be refused.
+                if (ki.isDisposed) {
+                    lprintln("info,ki,startup", "skip #$startupId engine disposed before its imports ran box=${box.kotlinStartupLabel()}")
+                    return@inMain
+                }
 
                 // Evaluate the stdlib intro on the main RunLoop — the single eval thread — so
                 // it never races (or corrupts the K2 evaluator's snippet-classloader chain
