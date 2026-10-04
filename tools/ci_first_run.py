@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 from pathlib import Path
 import signal
 import socket
@@ -61,7 +62,8 @@ def main() -> int:
                                     stdout=log, stderr=subprocess.STDOUT,
                                     start_new_session=os.name != "nt")
             try:
-                deadline = time.monotonic() + args.timeout
+                started = time.monotonic()
+                deadline = started + args.timeout
                 while time.monotonic() < deadline:
                     if proc.poll() is not None:
                         raise RuntimeError(f"Launcher exited before health (exit {proc.returncode}); inspect {log_path}")
@@ -81,11 +83,17 @@ def main() -> int:
                 for path in ("/welcome", "/index.html?file=firstRunSmoke", "/afield.mjs"):
                     code, body = request(path)
                     assert code == 200 and len(body) > 100, (path, code, len(body))
+                for name, count in (("first-steps", 1), ("first-graphics", 2)):
+                    code, body = request("/api/starting-points/open?name=" + name, method="POST")
+                    opened = json.loads(body)
+                    assert code == 200 and opened["numBoxes"] == count, opened
+                    assert (workspace / opened["filename"] / "metadata.edn").is_file(), opened
                 code, _ = request("/api/instance-info", origin="https://foreign.example")
                 assert code == 403, ("cross-site read", code)
-                evidence = {"ok": True, "platform": os.name, "repo": str(root), "serverPid": identity["pid"],
+                evidence = {"ok": True, "platform": platform.platform(), "architecture": platform.machine(),
+                            "launchSeconds": round(time.monotonic() - started, 1), "downloadBytes": "not measured", "repo": str(root), "serverPid": identity["pid"],
                             "checks": ["health", "checkout/workspace identity", "welcome HTML", "editor HTML",
-                                       "built browser module", "default cross-site refusal"],
+                                       "built browser module", "newcomer template copies", "default cross-site refusal"],
                             "limits": "Server-only smoke; no desktop, GPU, Python/JEP, AI or optional services qualified."}
                 (report_dir / "result.json").write_text(json.dumps(evidence, indent=2) + "\n")
                 print(json.dumps(evidence, indent=2), flush=True)
