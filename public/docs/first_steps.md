@@ -113,9 +113,15 @@ ui.eval("""
 ui.pause(800)
 ```
 
-Launch **1 · Launch the renderer**, then **2 · Launch the triangle**. A native window draws a
-colored triangle. Stop the triangle before stopping the renderer. Its code and GLSL shader
-properties come from the worked [graphics curriculum](afield_four_graphics.md).
+1. Click the **1 · Launch the renderer** box to select it and open its code. Press **Alt+Up**
+   (**Option+Up** on macOS). A separate, initially black graphics window opens.
+2. Return to Field, click the **2 · Launch the triangle** box, and press **Alt+Up**
+   (**Option+Up** on macOS). The graphics window now shows a colored triangle.
+3. To stop, select the triangle box and press **Alt+Down** (**Option+Down** on macOS).
+   Then select the renderer box and press the same shortcut.
+
+The Kotlin code and GLSL shader properties come from the worked
+[graphics curriculum](afield_four_graphics.md).
 
 
 ```diffstatic_runner {capture-profile="linux-nvidia" data-lang=kotlin capture="native-window" native-wait-frames="4" trim-native=true screenshot="assets/first_steps/triangle.png" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_graphics_native.yaml" capture-box="first_graphics_triangle" wait="0.25" timeout="120" embed=true hidden=true name="first-graphics-triangle" alt="The first native graphics window draws a blue-to-green triangle on black."}
