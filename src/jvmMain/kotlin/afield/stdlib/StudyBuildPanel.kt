@@ -92,12 +92,16 @@ internal fun studyBuildCardHtml(prefix: String, runner: String, stages: List<Stu
 }
 
 /**
- * Whether the stage's latest attempt ran against inputs other than its current ones, so its failure
- * and findings describe an earlier design. A stage that cannot be fingerprinted now (missing input,
- * dependency not current) counts as changed.
+ * Whether [job] ran against inputs other than [state]'s current ones, so its failure and findings
+ * describe an earlier design. A stage that cannot be fingerprinted now (missing input, dependency
+ * not current) counts as changed. The card and the agent's build tools both ask this.
  */
+internal fun studyBuildUsedEarlierInputs(state: StudyStageState, job: StudyBuildRecord): Boolean =
+    job.fingerprint != state.fingerprint
+
+/** [studyBuildUsedEarlierInputs] for the stage's latest attempt, the one the card shows. */
 internal fun studyBuildLatestUsedEarlierInputs(state: StudyStageState): Boolean =
-    state.latest != null && state.latest.fingerprint != state.fingerprint
+    state.latest != null && studyBuildUsedEarlierInputs(state, state.latest)
 
 /** One stage's section of the card. [stages] names blocking stages by label. */
 internal fun studyBuildStageHtml(state: StudyStageState, stages: List<StudyStageState>,

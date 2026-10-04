@@ -267,4 +267,77 @@ class StudyBuildToolsTest {
             assertTrue(builds.history().isEmpty())
         }
     }
+
+    @Test fun findingsOfAnAttemptWithEarlierInputsAreMarkedAndNotOpen() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        var plan: String? = "stair at 3"
+        StudyBuilds(Files.createTempDirectory("earlier-findings").toFile(), listOf(StudyBuildStage("layout", "House layout", "v1", setOf("plan")) {
+            throw StudyBuildFailure(StudyBuildProblem("overlap", "Two walls overlap"))
+        }), { plan?.let { mapOf("plan" to it) }.orEmpty() }).use { builds ->
+            val job = builds.start("layout", builds.stages().single().fingerprint!!)
+            fun finding(note: String, kind: String, status: String) =
+                StudyBuildFinding(job.id, note, "view-1", box.id, box.id, "Wall W3 crosses the stair", kind, status, 0, false, true)
+            val tools = StudyBuildTools(info, { listOf(BoxStudyBuildBinding(box, "study", builds)) }, { runs ->
+                listOf(finding("note-error", "error", "open"), finding("note-old", "warning", "resolved")).filter { it.runId in runs } })
+            assertEquals(StudyBuildStatus.FAILED, (tools.wait(WaitStudyBuildRequest(box.id, "study", job.id, 5.0)).details["job"] as Map<*, *>)["status"])
+            fun inspect() = tools.inspect(InspectStudyBuildsRequest(box.id, "study")).details
+            fun latest() = ((inspect()["stages"] as List<*>).single() as Map<*, *>)["latest"] as Map<*, *>
+            fun reviews(job: Map<*, *>) = (job["reviewFindings"] as List<*>).map { it as Map<*, *> }
+
+            val now = latest()
+            assertEquals(false, now["fromEarlierInputs"])
+            assertEquals(1, now["openFindings"])
+            assertEquals(listOf("note-error" to false, "note-old" to false), reviews(now).map { it["noteId"] to it["fromEarlierInputs"] })
+
+            plan = "stair at 4"
+            // The card's own predicate: the agent and the person get the same verdict.
+            assertTrue(studyBuildLatestUsedEarlierInputs(builds.stages().single()))
+            val history = (inspect()["history"] as List<*>).single() as Map<*, *>
+            val byId = tools.inspect(InspectStudyBuildsRequest(box.id, "study", job.id)).details["job"] as Map<*, *>
+            for (earlier in listOf(latest(), history, byId)) {
+                assertEquals(true, earlier["fromEarlierInputs"])
+                assertEquals(0, earlier["openFindings"])
+                // The discussion keeps its own status; what changed is whether it describes the current design.
+                assertEquals(listOf("open" to true, "resolved" to true), reviews(earlier).map { it["status"] to it["fromEarlierInputs"] })
+            }
+            plan = null
+            assertEquals(true, latest()["fromEarlierInputs"])
+            plan = "stair at 3"
+            assertEquals(false, latest()["fromEarlierInputs"])
+            assertEquals(1, latest()["openFindings"])
+        }
+    }
+
+    @Test fun aFailureAgainstCurrentInputsNamesTheBoxThatDrawsIt() {
+        val info = session()
+        val box = Box("source").also { info.boxes[it.id] = it }
+        val plan = Box("plan-box").also { it.name = "floor plan"; info.boxes[it.id] = it }
+        var stair = "stair at 3"
+        var view: Map<String, Any?> = mapOf("box" to plan.id, "caption" to "Stair opening", "viewId" to "view-1")
+        StudyBuilds(Files.createTempDirectory("failure-view").toFile(), listOf(StudyBuildStage("layout", "House layout", "v1", setOf("stair")) {
+            throw StudyBuildFailure(StudyBuildProblem("overlap", "Two walls overlap", details = mapOf("geometryView" to view)))
+        }), { mapOf("stair" to stair) }).use { builds ->
+            box.properties["_studyBuilds:study"] = BoxStudyBuildBinding(box, "study", builds)
+            fun build() = call(info, StartStudyBuildRequest(box.id, "study", "layout", builds.stages().single().fingerprint!!,
+                waitSeconds = 5.0)).details["job"] as Map<*, *>
+
+            val failed = build()
+            assertEquals(StudyBuildStatus.FAILED, failed["status"])
+            assertEquals(mapOf("box" to plan.id, "boxName" to "floor plan", "caption" to "Stair opening", "viewId" to "view-1"), failed["geometryView"])
+            assertContains(aiToolMapper.writeValueAsString(call(info, InspectStudyBuildsRequest(box.id, "study"))), "\"boxName\":\"floor plan\"")
+
+            stair = "stair at 4"
+            val earlier = call(info, InspectStudyBuildsRequest(box.id, "study", failed["id"] as String)).details["job"] as Map<*, *>
+            assertEquals(true, earlier["fromEarlierInputs"])
+            // The card shows no "Show where it fails" for an earlier design; the saved diagnostic still names the view.
+            assertNull(earlier["geometryView"])
+            assertContains(aiToolMapper.writeValueAsString(earlier["problem"]), "plan-box")
+
+            view = mapOf("box" to "not-in-this-document")
+            assertEquals(mapOf("box" to "not-in-this-document", "boxName" to null, "caption" to null, "viewId" to null), build()["geometryView"])
+            view = mapOf("caption" to "names no box")
+            assertNull(build()["geometryView"])
+        }
+    }
 }

@@ -15,7 +15,11 @@ import afield.stdlib.StudyStageState
 import afield.stdlib.StudyBuildFinding
 import afield.stdlib.StudyBuildNotice
 import afield.stdlib.StudyBuildNoticeKind
+import afield.stdlib.studyBuildGeometryView
+import afield.stdlib.studyBuildUsedEarlierInputs
+import afield.ai.core.aiToolMapper
 import com.fasterxml.jackson.annotation.JsonClassDescription
+import com.fasterxml.jackson.module.kotlin.convertValue
 
 @JsonClassDescription("List live derived-stage build runners in this document. Each belongs to a source box and reports dependency currency, current results and the latest attempt. Start here before requesting a build.")
 @AgentToolMeta("builds", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
@@ -58,8 +62,12 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
 
     fun inspect(q: InspectStudyBuildsRequest): StudyBuildToolResult = guarded {
         val binding = runner(q.boxId, q.name)
-        val details = if (q.jobId.isNotBlank()) jobDetails(binding, binding.builds.job(q.jobId))
-            else mapOf("stages" to binding.builds.stages().map(::stageSummary), "history" to binding.builds.history(q.offset, q.limit).map(::jobSummary))
+        val details = if (q.jobId.isNotBlank()) jobDetails(binding, binding.builds.job(q.jobId)) else {
+            val stages = binding.builds.stages()
+            // A retained attempt of a stage the recipe no longer defines cannot match any current inputs.
+            mapOf("stages" to stages.map(::stageSummary), "history" to binding.builds.history(q.offset, q.limit)
+                .map { job -> jobSummary(job, stages.firstOrNull { it.id == job.stage }) })
+        }
         StudyBuildToolResult(true, "Build state inspected", details + mapOf("boxId" to q.boxId, "name" to q.name))
     }
 
@@ -141,7 +149,7 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
     // Frozen source remains in input.json. Ordinary orchestration must not resend it to the model.
     private fun jobDetails(binding: BoxStudyBuildBinding, job: StudyBuildRecord): Map<String, Any?> {
         val stage = binding.builds.stages().first { it.id == job.stage }
-        return mapOf("boxId" to binding.owner.id, "name" to binding.name, "job" to jobSummary(job),
+        return mapOf("boxId" to binding.owner.id, "name" to binding.name, "job" to jobSummary(job, stage),
             "directory" to binding.builds.attemptDirectory(job.id).absolutePath,
             "facts" to job.facts, "artifacts" to job.artifacts,
             "resultNotes" to binding.builds.resultNotes(job.id),
@@ -150,14 +158,24 @@ internal class StudyBuildTools(private val info: SessionInformation, private val
                 "reason" to stage.reason, "blockedBy" to stage.blockedBy))
     }
 
-    private fun jobSummary(job: StudyBuildRecord): Map<String, Any?> = mapOf("id" to job.id, "stage" to job.stage,
-        "status" to job.status, "fingerprint" to job.fingerprint, "progress" to job.progress,
-        "message" to job.message, "cancelRequested" to job.cancelRequested, "updated" to job.updated,
-        "artifactCount" to job.artifacts.size, "problem" to job.problem, "reviewFindings" to findings(setOf(job.id)))
+    // What the card shows: an attempt against earlier inputs has no open findings and no "Show where it fails" link.
+    private fun jobSummary(job: StudyBuildRecord, stage: StudyStageState?): Map<String, Any?> {
+        val earlier = stage == null || studyBuildUsedEarlierInputs(stage, job)
+        val reviews = findings(setOf(job.id))
+        val view = job.problem?.takeIf { !earlier }?.let(::studyBuildGeometryView)
+        return mapOf("id" to job.id, "stage" to job.stage,
+            "status" to job.status, "fingerprint" to job.fingerprint, "fromEarlierInputs" to earlier, "progress" to job.progress,
+            "message" to job.message, "cancelRequested" to job.cancelRequested, "updated" to job.updated,
+            "artifactCount" to job.artifacts.size, "problem" to job.problem,
+            "openFindings" to if (earlier) 0 else reviews.count { it.status != "resolved" },
+            "reviewFindings" to reviews.map { aiToolMapper.convertValue<Map<String, Any?>>(it) + ("fromEarlierInputs" to earlier) }) +
+            view?.let { mapOf("geometryView" to mapOf("box" to it.box, "boxName" to info.boxes[it.box]?.name,
+                "caption" to it.caption, "viewId" to it.viewId)) }.orEmpty()
+    }
 
     private fun stageSummary(stage: StudyStageState): Map<String, Any?> = mapOf("id" to stage.id, "label" to stage.label,
-        "fingerprint" to stage.fingerprint, "current" to stage.current?.let(::jobSummary),
-        "latest" to stage.latest?.let(::jobSummary), "reason" to stage.reason, "blockedBy" to stage.blockedBy,
+        "fingerprint" to stage.fingerprint, "current" to stage.current?.let { jobSummary(it, stage) },
+        "latest" to stage.latest?.let { jobSummary(it, stage) }, "reason" to stage.reason, "blockedBy" to stage.blockedBy,
         "inputHelp" to stage.inputHelp, "resultNotes" to stage.resultNotes)
 }
 
