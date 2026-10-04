@@ -15,6 +15,16 @@ const AI_CHAT_MAX_H_PX = 560;
 const AI_CHAT_MIN_W = 320;
 const AI_CHAT_MIN_H = 180;
 const AUTO_SIZE_PASSES = [0, 1, 2, 4, 8, 14, 22];
+// Content auto-size grows a panel at once but shrinks it only after the content has measured
+// smaller for this long, and then to the largest size it needed meanwhile: a panel re-rendered on
+// every progress tick holds still instead of following each frame down and back up.
+const AUTO_SIZE_SHRINK_SETTLE_MS = 500;
+// Whether a panel could be narrower takes a second layout (see `naturalWidthAtBase`), so it is
+// asked at most this often while content keeps changing, and always on a sequence's last pass.
+const AUTO_SIZE_WIDTH_CHECK_MS = 200;
+// Auto-size never makes a panel taller than this share of the window, so its resize corner can
+// always be brought on screen. Content past it scrolls inside the panel; a drag can still go taller.
+const AUTO_MAX_VIEWPORT_H_RATIO = 0.8;
 
 // --- Disclosure handling (new behavior) ---
 function disclosureInterface(container) {
@@ -45,13 +55,73 @@ function disclosureInterface(container) {
                 return rect.width > 0 || rect.height > 0;
         }
 
+        // Canvas zoom is a CSS `scale()` on the main canvas, so client rects are screen pixels while
+        // a panel's size, padding and scroll extents are layout pixels. Rect-derived measurements are
+        // divided by this before they become a size. Grow-only sizing hid the mismatch when zoomed
+        // out; a panel that can shrink would have crept smaller on every pass.
+        function layoutScale(element) {
+                if (!(element instanceof HTMLElement) || !(element.offsetWidth > 0)) return 1;
+                const rectWidth = element.getBoundingClientRect().width;
+                if (!(rectWidth > 0) || Math.abs(rectWidth - element.offsetWidth) <= 1) return 1;
+                return rectWidth / element.offsetWidth;
+        }
+
         function headerWidth(d) {
                 if (!d || !d.hdr) return CLOSED_W;
                 const rect = d.hdr.getBoundingClientRect();
-                return Math.max(Math.ceil(rect.width), Math.ceil(d.hdr.scrollWidth), CLOSED_W);
+                return Math.max(Math.ceil(rect.width / layoutScale(d.hdr)), Math.ceil(d.hdr.scrollWidth), CLOSED_W);
         }
 
-        function rangeContentSize(root) {
+        const NO_CLIP = Object.freeze({ right: Number.POSITIVE_INFINITY, bottom: Number.POSITIVE_INFINITY });
+
+        function isPixelLength(value) {
+                return /^\d*\.?\d+px$/.test(normalizedCssValue(value));
+        }
+
+        // A scroller that sets its own bound shows the reader that bound, and what lies past it is
+        // reached by scrolling it rather than by a taller panel. The StudyBuild failure details are a
+        // `<pre>` with `max-height:320px; overflow:auto`, but its text still has client rects all the
+        // way down, so measuring it unclipped sized the panel for the whole diagnostic. Only a bound
+        // the scroller sets itself counts. One that takes its height from the panel (`height:100%`, a
+        // `flex:1` transcript like the AI chat's) is left unclipped, since its content is the only
+        // evidence of how tall the panel should be.
+        function clipsAxis(element, style, axis) {
+                const overflow = normalizedCssValue(axis === "width" ? style.overflowX : style.overflowY);
+                if (!overflow || overflow === "visible" || normalizedCssValue(style.display) === "contents") return false;
+                if (isPixelLength(axis === "width" ? style.maxWidth : style.maxHeight)) return true;
+                const inline = axis === "width" ? element.style.width : element.style.height;
+                return hasConcreteCssSize(inline) && !inline.includes("%");
+        }
+
+        // Returns `clipFor(element)`: the right and bottom edges (client coordinates) that content
+        // inside `element` is visible within, from every self-bounded scroller between it and `root`,
+        // `element` included.
+        function contentClipper(root) {
+                const cache = new Map();
+                const clipFor = (element) => {
+                        if (!(element instanceof Element) || element === root) return NO_CLIP;
+                        if (cache.has(element)) return cache.get(element);
+                        const outer = clipFor(element.parentElement);
+                        let clip = outer;
+                        if (element instanceof HTMLElement) {
+                                const style = getComputedStyle(element);
+                                const clipsX = clipsAxis(element, style, "width");
+                                const clipsY = clipsAxis(element, style, "height");
+                                if (clipsX || clipsY) {
+                                        const rect = element.getBoundingClientRect();
+                                        clip = {
+                                                right: clipsX ? Math.min(outer.right, rect.right) : outer.right,
+                                                bottom: clipsY ? Math.min(outer.bottom, rect.bottom) : outer.bottom
+                                        };
+                                }
+                        }
+                        cache.set(element, clip);
+                        return clip;
+                };
+                return clipFor;
+        }
+
+        function rangeContentSize(root, clipFor = () => NO_CLIP, scale = 1) {
                 if (!(root instanceof Element)) return { width: 0, height: 0 };
                 const ownerDocument = root.ownerDocument || document;
                 const range = ownerDocument.createRange();
@@ -75,9 +145,10 @@ function disclosureInterface(container) {
                         while (textNode) {
                                 range.selectNodeContents(textNode);
                                 const rects = Array.from(range.getClientRects ? range.getClientRects() : []);
+                                const clip = clipFor(textNode.parentElement);
                                 rects.forEach((rect) => {
-                                        width = Math.max(width, Math.ceil(rect.right - box.left));
-                                        height = Math.max(height, Math.ceil(rect.bottom - box.top));
+                                        width = Math.max(width, Math.ceil((Math.min(rect.right, clip.right) - box.left) / scale));
+                                        height = Math.max(height, Math.ceil((Math.min(rect.bottom, clip.bottom) - box.top) / scale));
                                 });
                                 textNode = walker.nextNode();
                         }
@@ -132,7 +203,9 @@ function disclosureInterface(container) {
                         hasConcreteCssSize(node.getAttribute(attrName) || "");
         }
 
-        function parentContentExtent(node, axis) {
+        // These compare client rects (screen pixels under canvas zoom) with CSS padding (layout
+        // pixels), so the padding and the 2px tolerance are scaled by `scale` to match.
+        function parentContentExtent(node, axis, scale = 1) {
                 const parent = node?.parentElement;
                 if (!(parent instanceof Element)) return 0;
                 const rect = parent.getBoundingClientRect();
@@ -140,33 +213,33 @@ function disclosureInterface(container) {
                 if (axis === "width") {
                         return Math.max(
                                 0,
-                                rect.width - parsePixels(style.paddingLeft) - parsePixels(style.paddingRight)
+                                rect.width - (parsePixels(style.paddingLeft) + parsePixels(style.paddingRight)) * scale
                         );
                 }
                 return Math.max(
                         0,
-                        rect.height - parsePixels(style.paddingTop) - parsePixels(style.paddingBottom)
+                        rect.height - (parsePixels(style.paddingTop) + parsePixels(style.paddingBottom)) * scale
                 );
         }
 
-        function fillsParentExtent(node, rect, axis) {
-                const parentExtent = parentContentExtent(node, axis);
+        function fillsParentExtent(node, rect, axis, scale = 1) {
+                const parentExtent = parentContentExtent(node, axis, scale);
                 if (parentExtent <= 0) return false;
                 const size = axis === "width" ? rect.width : rect.height;
-                return Math.abs(size - parentExtent) <= 2;
+                return Math.abs(size - parentExtent) <= 2 * scale;
         }
 
-        function alignsWithParentEdge(node, rect, axis) {
+        function alignsWithParentEdge(node, rect, axis, scale = 1) {
                 const parent = node?.parentElement;
                 if (!(parent instanceof Element)) return false;
                 const parentRect = parent.getBoundingClientRect();
                 const style = getComputedStyle(parent);
                 if (axis === "width") {
-                        const parentRight = parentRect.right - parsePixels(style.paddingRight);
-                        return Math.abs(rect.right - parentRight) <= 2;
+                        const parentRight = parentRect.right - parsePixels(style.paddingRight) * scale;
+                        return Math.abs(rect.right - parentRight) <= 2 * scale;
                 }
-                const parentBottom = parentRect.bottom - parsePixels(style.paddingBottom);
-                return Math.abs(rect.bottom - parentBottom) <= 2;
+                const parentBottom = parentRect.bottom - parsePixels(style.paddingBottom) * scale;
+                return Math.abs(rect.bottom - parentBottom) <= 2 * scale;
         }
 
         function axisOverflows(node, axis) {
@@ -186,7 +259,7 @@ function disclosureInterface(container) {
                         display === "list-item";
         }
 
-        function shouldUseRectExtent(node, rect, axis) {
+        function shouldUseRectExtent(node, rect, axis, scale = 1) {
                 if (!(node instanceof Element)) return false;
 
                 const size = axis === "width" ? rect.width : rect.height;
@@ -203,7 +276,7 @@ function disclosureInterface(container) {
                 // padding on every pass creates a slow 480 -> 504 -> ... feedback loop. Canvas
                 // backing-store dimensions are especially misleading here: they are resolution,
                 // not requested CSS layout size.
-                if (!overflow && fillsParentExtent(node, rect, axis)) return false;
+                if (!overflow && fillsParentExtent(node, rect, axis, scale)) return false;
 
                 if (
                         node instanceof SVGElement ||
@@ -228,19 +301,19 @@ function disclosureInterface(container) {
                         return true;
                 }
 
-                if (isStretchDisplay(display) && (fillsParentExtent(node, rect, axis) || alignsWithParentEdge(node, rect, axis))) {
+                if (isStretchDisplay(display) && (fillsParentExtent(node, rect, axis, scale) || alignsWithParentEdge(node, rect, axis, scale))) {
                         return false;
                 }
 
-                const parentExtent = parentContentExtent(node, axis);
-                if (parentExtent > 0 && size < parentExtent - 2) {
+                const parentExtent = parentContentExtent(node, axis, scale);
+                if (parentExtent > 0 && size < parentExtent - 2 * scale) {
                         return true;
                 }
 
                 return node.children.length === 0;
         }
 
-        function svgIntrinsicSize(svg) {
+        function svgIntrinsicSize(svg, scale = 1) {
                 if (!(svg instanceof SVGElement)) return { width: 0, height: 0 };
 
                 let width = 0;
@@ -268,8 +341,8 @@ function disclosureInterface(container) {
                 }
 
                 const rect = svg.getBoundingClientRect();
-                width = Math.max(width, Math.ceil(rect.width));
-                height = Math.max(height, Math.ceil(rect.height));
+                width = Math.max(width, Math.ceil(rect.width / scale));
+                height = Math.max(height, Math.ceil(rect.height / scale));
                 return { width, height };
         }
 
@@ -301,11 +374,11 @@ function disclosureInterface(container) {
                 const box = typeof d.wrap.closest === "function" ? d.wrap.closest(".box") : null;
                 if (!box) return 0;
                 return Math.max(0, Math.floor(
-                        box.getBoundingClientRect().right - d.wrap.getBoundingClientRect().left
+                        (box.getBoundingClientRect().right - d.wrap.getBoundingClientRect().left) / layoutScale(d.cw)
                 ));
         }
 
-        function iframeIntrinsicSize(iframe) {
+        function iframeIntrinsicSize(iframe, scale = 1) {
                 if (!(iframe instanceof HTMLIFrameElement)) return { width: 0, height: 0 };
 
                 let width = Math.max(
@@ -321,11 +394,11 @@ function disclosureInterface(container) {
 
                 if (width <= 0) {
                         const rect = iframe.getBoundingClientRect();
-                        width = Math.ceil(Math.max(iframe.clientWidth || 0, rect.width || 0));
+                        width = Math.ceil(Math.max(iframe.clientWidth || 0, (rect.width || 0) / scale));
                 }
                 if (height <= 0) {
                         const rect = iframe.getBoundingClientRect();
-                        height = Math.ceil(Math.max(iframe.clientHeight || 0, rect.height || 0));
+                        height = Math.ceil(Math.max(iframe.clientHeight || 0, (rect.height || 0) / scale));
                 }
 
                 return { width, height };
@@ -336,7 +409,7 @@ function disclosureInterface(container) {
                 return node.closest(".js-plotly-plot, .plotly-graph-div");
         }
 
-        function plotlyIntrinsicSize(root) {
+        function plotlyIntrinsicSize(root, scale = 1) {
                 if (!(root instanceof Element)) return { width: 0, height: 0 };
 
                 const fullLayout = root._fullLayout || {};
@@ -351,8 +424,8 @@ function disclosureInterface(container) {
 
                 if (width <= 0 || height <= 0) {
                         const rect = root.getBoundingClientRect();
-                        width = Math.max(width, Math.ceil(rect.width || 0));
-                        height = Math.max(height, Math.ceil(rect.height || 0));
+                        width = Math.max(width, Math.ceil((rect.width || 0) / scale));
+                        height = Math.max(height, Math.ceil((rect.height || 0) / scale));
                 }
 
                 return { width, height };
@@ -360,7 +433,7 @@ function disclosureInterface(container) {
 
         function contentSizeForDisclosure(d) {
                 if (!d || d.inline) {
-                        return { width: 0, height: 0 };
+                        return { width: 0, height: 0, reachesBottom: false };
                 }
 
                 const style = getComputedStyle(d.cw);
@@ -371,23 +444,32 @@ function disclosureInterface(container) {
                 const paddingX = paddingLeft + paddingRight;
                 const paddingY = paddingTop + paddingBottom;
                 const box = d.cw.getBoundingClientRect();
+                const scale = layoutScale(d.cw);
+                const clipFor = contentClipper(d.cw);
                 const clientWidth = Math.ceil(d.cw.clientWidth || 0);
                 const clientHeight = Math.ceil(d.cw.clientHeight || 0);
                 const scrollWidth = Math.ceil(d.cw.scrollWidth || 0);
                 const scrollHeight = Math.ceil(d.cw.scrollHeight || 0);
+                const availableHeight = clientHeight - paddingY;
                 const hasIframeContent = !!d.cw.querySelector("iframe");
                 let width = 0;
                 let height = 0;
+                // Whether anything reaches the panel's bottom edge -- a `height:100%` wrapper, a
+                // `flex:1` column, every iframe (`.disclosure-content iframe` is `height:100%`).
+                // Such content takes the panel's height rather than stating one, and none of it is
+                // counted below, so a panel holding it must not shrink to what *was* counted.
+                let reachesBottom = false;
 
                 if (scrollWidth > clientWidth + 1) {
                         width = Math.max(width, scrollWidth);
                 }
                 if (scrollHeight > clientHeight + 1) {
-                        height = Math.max(height, scrollHeight);
+                        // scrollHeight already includes the vertical padding added back below.
+                        height = Math.max(height, scrollHeight - paddingY);
                 }
 
                 if (!hasIframeContent) {
-                        const rangeSize = rangeContentSize(d.cw);
+                        const rangeSize = rangeContentSize(d.cw, clipFor, scale);
                         // rangeContentSize is measured from the disclosure border edge, so it
                         // already includes the leading padding. Remove that here; both sides are
                         // added exactly once below.
@@ -398,62 +480,71 @@ function disclosureInterface(container) {
                 Array.from(d.cw.querySelectorAll("*")).forEach((node) => {
                         if (!(node instanceof Element) || !isElementVisible(node)) return;
 
+                        // Nothing inside a self-bounded scroller can make the panel larger than
+                        // the scroller itself (see `clipsAxis`).
+                        const clip = clipFor(node.parentElement);
+                        const limitWidth = (clip.right - box.left) / scale - paddingLeft;
+                        const limitHeight = (clip.bottom - box.top) / scale - paddingTop;
+                        const rect = node.getBoundingClientRect();
+                        if (rect.height > 0 &&
+                                (Math.min(rect.bottom, clip.bottom) - box.top) / scale - paddingTop >= availableHeight - 2) {
+                                reachesBottom = true;
+                        }
+
                         // Rich visualizers can state their preferred outer layout size while
                         // remaining responsive with max-width:100%. This lets the disclosure jump
                         // directly to the intended size instead of trying to infer it from a child
                         // that is temporarily constrained to the current disclosure width.
                         const intrinsicWidth = parsePixels(node.dataset?.afieldIntrinsicWidth || "");
                         const intrinsicHeight = parsePixels(node.dataset?.afieldIntrinsicHeight || "");
-                        if (intrinsicWidth > 0) width = Math.max(width, intrinsicWidth);
-                        if (intrinsicHeight > 0) height = Math.max(height, intrinsicHeight);
+                        if (intrinsicWidth > 0) width = Math.max(width, Math.min(intrinsicWidth, limitWidth));
+                        if (intrinsicHeight > 0) height = Math.max(height, Math.min(intrinsicHeight, limitHeight));
 
                         const plotlyRoot = plotlyRootFor(node);
                         if (plotlyRoot) {
                                 if (plotlyRoot !== node) return;
-                                const plotlySize = plotlyIntrinsicSize(plotlyRoot);
-                                width = Math.max(width, plotlySize.width);
-                                height = Math.max(height, plotlySize.height);
+                                const plotlySize = plotlyIntrinsicSize(plotlyRoot, scale);
+                                width = Math.max(width, Math.min(plotlySize.width, limitWidth));
+                                height = Math.max(height, Math.min(plotlySize.height, limitHeight));
                                 return;
                         }
 
                         if (node instanceof HTMLIFrameElement) {
-                                const iframeSize = iframeIntrinsicSize(node);
+                                const iframeSize = iframeIntrinsicSize(node, scale);
                                 // An iframe stacked under a sibling -- the `.h2` explorer sits below its
                                 // own summary row of `outliner` / `columns` links, in one flex column --
                                 // starts partway down the content box, so its own height is not the whole
                                 // content height. Every non-iframe node below already measures from the
                                 // content edge; the iframe branch skipping that left the panel short by
                                 // exactly the height of whatever sat above the frame.
-                                const frameRect = node.getBoundingClientRect();
-                                const offsetLeft = Math.max(0, frameRect.left - box.left - paddingLeft);
-                                const offsetTop = Math.max(0, frameRect.top - box.top - paddingTop);
+                                const offsetLeft = Math.max(0, (rect.left - box.left) / scale - paddingLeft);
+                                const offsetTop = Math.max(0, (rect.top - box.top) / scale - paddingTop);
                                 if (iframeSize.width > 0) {
-                                        width = Math.max(width, Math.ceil(offsetLeft + iframeSize.width));
+                                        width = Math.max(width, Math.min(Math.ceil(offsetLeft + iframeSize.width), limitWidth));
                                 }
                                 if (iframeSize.height > 0) {
-                                        height = Math.max(height, Math.ceil(offsetTop + iframeSize.height));
+                                        height = Math.max(height, Math.min(Math.ceil(offsetTop + iframeSize.height), limitHeight));
                                 }
                                 return;
                         }
 
-                        const rect = node.getBoundingClientRect();
-                        if (shouldUseRectExtent(node, rect, "width")) {
-                                width = Math.max(width, Math.ceil(rect.right - box.left - paddingLeft));
+                        if (shouldUseRectExtent(node, rect, "width", scale)) {
+                                width = Math.max(width, Math.ceil((Math.min(rect.right, clip.right) - box.left) / scale - paddingLeft));
                         }
-                        if (shouldUseRectExtent(node, rect, "height")) {
-                                height = Math.max(height, Math.ceil(rect.bottom - box.top - paddingTop));
+                        if (shouldUseRectExtent(node, rect, "height", scale)) {
+                                height = Math.max(height, Math.ceil((Math.min(rect.bottom, clip.bottom) - box.top) / scale - paddingTop));
                         }
 
                         if (node instanceof SVGElement) {
-                                const svgSize = svgIntrinsicSize(node);
-                                width = Math.max(width, svgSize.width);
-                                height = Math.max(height, svgSize.height);
+                                const svgSize = svgIntrinsicSize(node, scale);
+                                width = Math.max(width, Math.min(svgSize.width, limitWidth));
+                                height = Math.max(height, Math.min(svgSize.height, limitHeight));
                         }
                 });
 
                 width = Math.max(width + paddingX, headerWidth(d), fillWidthForDisclosure(d));
                 height = Math.max(height + paddingY, 20);
-                return { width, height };
+                return { width, height, reachesBottom };
         }
 
         function scheduleAutoSize(id, reason = "content") {
@@ -469,6 +560,7 @@ function disclosureInterface(container) {
                 if (!st.open) return;
 
                 const token = st.autoSizeToken;
+                const lastPass = AUTO_SIZE_PASSES.length - 1;
                 const runPass = (index) => {
                         requestAnimationFrame(() => {
                                 const current = disclosures.get(id);
@@ -478,20 +570,53 @@ function disclosureInterface(container) {
                                 const natural = contentSizeForDisclosure(current);
                                 const currentWidth = Number(state.width) || DEFAULT_W;
                                 const currentHeight = Number(state.height) || DEFAULT_H;
-                                const clamped = clampSizeForId(
-                                        id,
-                                        Math.max(natural.width, headerWidth(current), currentWidth),
-                                        Math.max(natural.height, 20, currentHeight)
-                                );
+                                const now = Date.now();
+                                const grown = clampAutoSizeForId(id, natural.width, Math.max(natural.height, 20));
 
-                                state.width = clamped.width;
-                                state.height = clamped.height;
+                                // Width grows at once when content overflows the panel. Otherwise it is
+                                // the width a fresh panel would give this content, which takes a
+                                // measurement at that panel's width (`naturalWidthAtBase`).
+                                let width = currentWidth;
+                                if (grown.width > currentWidth) {
+                                        width = settleShrink(state, "width", grown.width, currentWidth, false, now);
+                                } else if (Math.abs(currentWidth - baseWidthForId(id)) <= 2 && natural.width >= currentWidth - 2) {
+                                        // Content reaching the edge of a panel already at a fresh panel's
+                                        // width: that measurement is this one.
+                                        width = settleShrink(state, "width", currentWidth, currentWidth, false, now);
+                                } else if (index === lastPass || now - (state.widthCheckedAt || 0) >= AUTO_SIZE_WIDTH_CHECK_MS) {
+                                        state.widthCheckedAt = now;
+                                        const target = clampAutoSizeForId(id, naturalWidthAtBase(id, current, natural), 20).width;
+                                        width = settleShrink(state, "width", target, currentWidth, false, now);
+                                }
+                                // The height was measured at the old width, so when the width moves it
+                                // holds, and the next pass measures again at the new one.
+                                const height = settleShrink(state, "height", grown.height, currentHeight,
+                                        width !== currentWidth || (natural.reachesBottom && natural.height < currentHeight - 2), now);
+
+                                state.width = width;
+                                state.height = height;
                                 state.pendingAutoSize = true;
                                 states.set(id, state);
                                 applyOpen(id, current);
+                                if (width < currentWidth || height < currentHeight) {
+                                        verifyShrink(id, current, state, natural, { width: currentWidth, height: currentHeight });
+                                }
                                 refreshConnectionLayoutForNested(id);
 
-                                if (index >= AUTO_SIZE_PASSES.length - 1) {
+                                if (index >= lastPass) {
+                                        const settling = [state.pendingShrink?.width, state.pendingShrink?.height].filter(Boolean);
+                                        if (settling.length) {
+                                                // A shrink is still settling and no later pass is coming, so
+                                                // come back for it once it has settled.
+                                                const since = Math.min(...settling.map((shrink) => shrink.since));
+                                                const wait = AUTO_SIZE_SHRINK_SETTLE_MS - (Date.now() - since);
+                                                window.setTimeout(() => {
+                                                        const latest = ensureState(id);
+                                                        if (!latest.open || latest.autoSizeToken !== token) return;
+                                                        runPass(lastPass);
+                                                }, Math.max(16, wait));
+                                                return;
+                                        }
                                         state.pendingAutoSize = false;
                                         state.lastAutoSizedContentVersion = state.contentVersion || 0;
                                         states.set(id, state);
@@ -507,6 +632,80 @@ function disclosureInterface(container) {
                 };
 
                 runPass(0);
+        }
+
+        // The size content auto-size gives a panel on one axis this pass. Growth is immediate. A
+        // shrink waits until the content has measured smaller for AUTO_SIZE_SHRINK_SETTLE_MS, then
+        // goes to the largest size it needed in that time. The pending shrink lives on the panel
+        // state, not the pass sequence, so a panel re-rendered faster than the settle time still
+        // shrinks once its content stays small. `holds` is content that says nothing about how
+        // small the panel could be. Auto-size used to be grow-only, and a panel that once held a
+        // long diagnostic stayed that tall, its resize corner thousands of pixels down.
+        function settleShrink(state, axis, target, current, holds, now) {
+                const pending = state.pendingShrink || (state.pendingShrink = { width: null, height: null });
+                if (target >= current - 2 || holds) {
+                        pending[axis] = null;
+                        return holds ? current : Math.max(target, current);
+                }
+                const shrink = pending[axis] || (pending[axis] = { since: now, to: target });
+                shrink.to = Math.max(shrink.to, target);
+                if (now - shrink.since < AUTO_SIZE_SHRINK_SETTLE_MS) return current;
+                pending[axis] = null;
+                return shrink.to;
+        }
+
+        function baseWidthForId(id) {
+                return clampSizeForId(id, DEFAULT_W, DEFAULT_H).width;
+        }
+
+        // The width this content takes in a panel opened fresh, which `primeAutoSizeForOpen` lays
+        // out at DEFAULT_W too. A panel measured at its own width cannot say how wide it should be:
+        // text wraps to whatever width it is given, so its lines reach about as far as the panel
+        // does. Following them in would creep the panel narrower a word at a time, and a panel that
+        // had shrunk to its header for narrow content would squeeze the next paragraph into that
+        // column. Measured at one fixed width, the answer does not depend on how wide the panel is
+        // now. The panel keeps its height meanwhile, and every scroll position is put back.
+        function naturalWidthAtBase(id, d, natural) {
+                const base = baseWidthForId(id);
+                if (Math.abs((Number(ensureState(id).width) || DEFAULT_W) - base) <= 1) return natural.width;
+                const scrolled = [d.cw, ...d.cw.querySelectorAll("*")]
+                        .filter((element) => element.scrollTop || element.scrollLeft)
+                        .map((element) => [element, element.scrollTop, element.scrollLeft]);
+                const previous = { width: d.cw.style.width, wrapWidth: d.wrap.style.width };
+                d.selfResizeUntil = Date.now() + 250;
+                d.cw.style.width = `${base}px`;
+                d.wrap.style.width = `${base}px`;
+                const atBase = contentSizeForDisclosure(d);
+                d.cw.style.width = previous.width;
+                d.wrap.style.width = previous.wrapWidth;
+                scrolled.forEach(([element, top, left]) => {
+                        element.scrollTop = top;
+                        element.scrollLeft = left;
+                });
+                return atBase.width;
+        }
+
+        // Re-measure straight after a shrink, in the same frame, so a wrong guess is never painted.
+        // Content that now overflows (a trailing margin the rect extents missed, text rewrapped
+        // taller in a narrower panel) gets the room it needs. Content that measures shorter than it
+        // did before the panel shrank (a `height:50%` child) was tracking the panel, not stating a
+        // height, and following it down would halve the panel each time, so the panel gets its old
+        // height back.
+        function verifyShrink(id, d, state, before, previous) {
+                const after = contentSizeForDisclosure(d);
+                const width = after.width > state.width + 1 ? after.width : state.width;
+                let height = state.height;
+                if (after.height > state.height + 1) {
+                        height = after.height;
+                } else if (state.height < previous.height && after.height < before.height - 2 && !after.reachesBottom) {
+                        height = previous.height;
+                }
+                if (width === state.width && height === state.height) return;
+                const clamped = clampAutoSizeForId(id, width, height);
+                state.width = clamped.width;
+                state.height = clamped.height;
+                states.set(id, state);
+                applyOpen(id, d);
         }
 
         /**
@@ -675,6 +874,19 @@ function disclosureInterface(container) {
                 };
         }
 
+        // `clampSizeForId` for a size content auto-size chose, which also may not make a panel taller
+        // than AUTO_MAX_VIEWPORT_H_RATIO of the window. Ids with their own height cap keep it; sizes a
+        // person drags go through `clampSizeForId` alone.
+        function clampAutoSizeForId(id, width, height) {
+                const clamped = clampSizeForId(id, width, height);
+                const bounds = boundsForId(id);
+                if (!Number.isFinite(bounds.maxH)) {
+                        const viewportH = Math.max(window.innerHeight || 0, DEFAULT_H);
+                        clamped.height = clamp(clamped.height, bounds.minH, Math.floor(viewportH * AUTO_MAX_VIEWPORT_H_RATIO));
+                }
+                return clamped;
+        }
+
         function applySizeBoundsForId(id, d) {
                 if (!d || d.inline) return;
                 if (id !== "nested") {
@@ -840,19 +1052,22 @@ function disclosureInterface(container) {
                 d.cw.style.display = "block";
                 d.cw.style.visibility = "hidden";
                 d.cw.style.padding = d.cw.dataset.origPadding || "0px";
-                d.cw.style.width = `${st.width || DEFAULT_W}px`;
+                // The same width the auto-size passes measure at (`naturalWidthAtBase`), so a panel
+                // opens at the width those passes keep.
+                d.cw.style.width = `${baseWidthForId(id)}px`;
                 d.cw.style.height = "auto";
                 d.cw.style.overflow = "visible";
-                d.wrap.style.width = `${st.width || DEFAULT_W}px`;
+                d.wrap.style.width = `${baseWidthForId(id)}px`;
 
                 const natural = contentSizeForDisclosure(d);
-                const clamped = clampSizeForId(
+                const clamped = clampAutoSizeForId(
                         id,
                         Math.max(natural.width, headerWidth(d)),
                         Math.max(natural.height, 20)
                 );
                 st.width = clamped.width;
                 st.height = clamped.height;
+                st.pendingShrink = null;
                 states.set(id, st);
 
                 d.cw.style.display = previous.display;
