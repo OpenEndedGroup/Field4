@@ -248,6 +248,44 @@ object CompletionAaE2EProbe {
         // A JDK package is full of package-private helpers the box cannot name.
         absent("JDK package hides package-private classes", atomic, atomic.indexOf("AtomicLong"), "Striped64")
 
+        // The same paths on the caret's OWN `import` line, where every package answered 0 with "no
+        // qualified expr": the sidecar left the import the caret was on inside its synthetic wrapper
+        // function, where an import is a syntax error. Nothing looked wrong from the panel, because an
+        // empty AA answer hands the request to K1, which filled it — so the backend=AA that `check`
+        // asserts is the whole point of these. The star and alias forms are the path of `import a.b.*`
+        // and `import a.b.C as D`, typed in place.
+        println("── the caret's own import line ──")
+        for ((desc, line, want) in listOf(
+            Triple("a package's top-level fun", "import kotlin.math.‸", "sin"),
+            Triple("a package nobody imported", "import afield.pd.‸", "PdInstance"),
+            Triple("a sub-package at a prefix", "import afield.four.fab‸", "fabricated"),
+            Triple("a root package", "import kot‸", "kotlin"),
+            Triple("a JDK class", "import java.util.concurrent.atomic.‸", "AtomicLong"),
+            Triple("the path of a star import", "import afield.morpho.‸*", "MorphoCircuit"),
+            Triple("the path of an aliased import", "import afield.four.fabricated.FabricateMat‸ as FM", "FabricateMaterial"),
+            Triple("an enum's entry", "import afield.stdlib.Functions.RectifyMode.‸", "FULL"),
+            Triple("a Java class's static", "import java.lang.Math.‸", "toRadians"),
+        )) {
+            val s = line.replace("‸", "") + "\nval q = 1"
+            check("import line → $desc", s, line.indexOf('‸'), want, "AA+import")
+        }
+        val importMath = "import kotlin.math.\nval q = 1"
+        run {
+            // Inserted as a NAME: `import kotlin.math.sin(` does not parse.
+            total++
+            val m = meta(runBlocking { runCatching { active.complete(importMath, importMath.indexOf('\n')) }.getOrNull() })
+            val row = m.firstOrNull { it.text.trimEnd('(') == "sin" }
+            if (row?.text == "sin" && active.lastCompletionBackend == KotlinEngineConfig.CompletionBackend.AA) {
+                pass++; println("  ✓ [AA+import] an import line inserts `sin` without a call's `(`")
+            } else println("  ✗ [AA+import] an import line inserts '${row?.text}' (backend=${active.lastCompletionBackend})")
+        }
+        // Kotlin imports an enum's entries but not its `values`; and the other lines' imports are hoisted
+        // as before, the alias form included, when the caret is in the body.
+        val importEnum = "import afield.stdlib.Functions.RectifyMode.\nval q = 1"
+        absent("import line offers no enum `values`", importEnum, importEnum.indexOf('\n'), "values")
+        val aliased = "import afield.four.fabricated.FabricateMaterial as FM\nval m: FM = TODO()\nm.alpha"
+        check("an aliased import on another line still resolves", aliased, aliased.length, "alphaMode", "AA+import")
+
         // …and the seam that actually bit the human. An unresolved receiver must produce NOTHING, so
         // KI2 falls through to K1. When AA instead answered it with every prefix-matching extension in
         // its index (an error type is a subtype of everything, so they all "applied"), the non-empty

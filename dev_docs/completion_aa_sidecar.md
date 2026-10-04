@@ -218,6 +218,18 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
   `recv.__fieldCaret__`; as a bonus this gives the IDE's extension-applicability checker the selector it
   needs, which could never be built at a bare dot before. Only when the slot really is empty: if the next
   character could continue an identifier there *is* a selector, and appending would rename it.
+- **The box's own `import` lines → the header, the caret's included.** The snippet is pasted inside
+  `fun __c() { … }`, where an import is a syntax error, so `hoistImports` blanks each whole-line import in
+  place (same length, so offsets survive) and the header carries it. The line the caret was typing a path
+  on used to stay in the body, so every import-line completion (`import kotlin.math.‸`, `import afield.pd.‸`)
+  answered 0 with "no qualified expr", and the empty answer handed it to K1 without any sign in the panel.
+  `importPathAt` now moves that line too: the header gets its text up to the caret, plus the caret marker
+  when no name is typed yet, and the caret goes with it. `completeAt` answers it in its own branch: root
+  packages after `import `; under a package, its sub-packages, classes and top-level callables (on-demand
+  scan and JDK classes included, a function inserted without `(`, one row per name); under a class, its
+  nested classifiers, enum entries, Java statics or object members. Past the path (`import a.b.*‸`,
+  `import a.b.C as D‸`) the line is left where it was. `completion.lowering-invariant.probe` skips import
+  lines; `kotlin.completion-aa-e2e.probe` covers them.
 - **Analysis** (`completeAt`, `:381`) runs inside `analyze(file) { … }`:
   - **Dot completion** (`recv.` / safe `recv?.`, `:401`): resolves the receiver's expression type, then
     lists substituted member callables via `type.scope.getCallableSignatures(...)`, nested classifiers
