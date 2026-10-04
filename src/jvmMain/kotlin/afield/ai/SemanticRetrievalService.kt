@@ -9,6 +9,7 @@ import ai.onnxruntime.providers.CoreMLFlags
 import afield.Box
 import afield.SavingContext
 import afield.broadcastWelcomeEvent
+import afield.currentFieldPreferences
 import afield.home
 import afield.logger.lprintln
 import kotlinx.serialization.Serializable
@@ -114,6 +115,8 @@ data class SemanticRetrievalStatus(
     val corpusFingerprint: String = "",
     val currentCorpusFingerprint: String = "",
     val indexStale: Boolean = false,
+    // Documents added, removed or saved since the index was built (-1: the index predates this count).
+    val staleDocuments: Int = -1,
     val message: String = ""
 )
 
@@ -366,6 +369,8 @@ object SemanticRetrievalService {
     private const val INTENT_VECTOR = "intentVector"
     private const val IMPLEMENTATION_VECTOR = "implementationVector"
     private const val META_FILE = "field-semantic-search.meta"
+    // One `name:mtime:size` line per workspace document, as seen when the index was built.
+    private const val DOCUMENTS_FILE = "field-semantic-search.documents"
     private const val SETTINGS_STATUS_TTL_MS = 15_000L
     val availableCorpora: List<String> = listOf("field-internals", "workspace", "documentation")
 
@@ -696,6 +701,7 @@ object SemanticRetrievalService {
 
             lprintln("info,semantic-search", "semantic retrieval rebuild started")
             updateRebuildStatus("collecting", "Collecting semantic search capsules...")
+            val documentsAtStart = workspaceFingerprintSignature()
             val build = buildCapsules()
             val capsules = build.capsules
             updateRebuildStatus("embedding", "Preparing ${capsules.size} semantic search capsule(s)...", capsules.size)
@@ -762,9 +768,11 @@ object SemanticRetrievalService {
                 "capsuleBackend=source-index+workspace",
                 "workspaceDocuments=${build.workspaceDocuments}",
                 "workspaceSidecarFiles=${build.workspaceSidecarFiles}",
-                "corpusFingerprint=${build.corpusFingerprint}"
+                "corpusFingerprint=${build.corpusFingerprint}",
+                "workspaceRoot=${workspaceRootPath()?.toString().orEmpty()}"
             ).joinToString("\n")
             Files.writeString(path.resolve(META_FILE), meta, StandardCharsets.UTF_8)
+            Files.writeString(path.resolve(DOCUMENTS_FILE), documentsAtStart, StandardCharsets.UTF_8)
             val status = computeStatus(
                 "Built semantic retrieval index with ${capsules.size} capsule(s) in ${System.currentTimeMillis() - started}ms."
             )
@@ -916,10 +924,68 @@ object SemanticRetrievalService {
             currentCorpusFingerprint = currentFingerprint,
             indexStale = exists && currentFingerprint.isNotBlank() &&
                     (indexedFingerprint.isBlank() || indexedFingerprint != currentFingerprint),
+            staleDocuments = if (exists) staleDocumentCount() else -1,
             message = message.ifBlank { if (config.enabled) embedderMessage else "Semantic search is off." }
         )
         lastStatus = status
         return status
+    }
+
+    private fun staleDocumentCount(): Int {
+        val file = indexPath().resolve(DOCUMENTS_FILE)
+        if (!Files.isRegularFile(file)) return -1
+        val built = runCatching { Files.readAllLines(file, StandardCharsets.UTF_8) }.getOrNull() ?: return -1
+        return changedDocumentNames(built, workspaceFingerprintSignature().lines()).size
+    }
+
+    /** Names of documents whose `name:mtime:size` line differs between two signatures, either way round. */
+    internal fun changedDocumentNames(before: List<String>, after: List<String>): Set<String> {
+        val a = before.filter { it.isNotBlank() }.toSet()
+        val b = after.filter { it.isNotBlank() }.toSet()
+        return ((a - b) + (b - a)).mapTo(sortedSetOf()) { it.substringBeforeLast(':').substringBeforeLast(':') }
+    }
+
+    // --- idle rebuild: keep a stale index current without anyone pressing "Rebuild index" ---
+    private const val IDLE_CHECK_MS = 10L * 60_000L
+    private const val IDLE_QUIET_MS = 30L * 60_000L       // no document saved for this long
+    private const val IDLE_MIN_INTERVAL_MS = 6L * 3_600_000L // and the last build is at least this old
+    @Volatile private var idleWatcherStarted = false
+
+    /**
+     * Starts a daemon that rebuilds a stale index once the workspace has been quiet for
+     * [IDLE_QUIET_MS]. It only touches an index this workspace built (the meta's `workspaceRoot`),
+     * since the index is shared machine-wide and an automation server has a workspace of its own.
+     * `AFIELD_SEMANTIC_IDLE_REBUILD=0` turns it off.
+     */
+    fun startIdleRebuildWatcher() {
+        if (idleWatcherStarted) return
+        idleWatcherStarted = true
+        val setting = firstNonBlank(System.getProperty("afield.semanticSearch.idleRebuild"), System.getenv("AFIELD_SEMANTIC_IDLE_REBUILD"))
+        if (setting == "0" || setting.equals("false", ignoreCase = true)) return
+        thread(name = "semantic-retrieval-idle-rebuild", isDaemon = true, priority = Thread.MIN_PRIORITY) {
+            while (true) {
+                Thread.sleep(IDLE_CHECK_MS)
+                runCatching { if (idleRebuildDue()) startRebuild() }
+                    .onFailure { lprintln("warning,semantic-search", "idle rebuild check failed: ${it.message ?: it.javaClass.simpleName}") }
+            }
+        }
+    }
+
+    private fun idleRebuildDue(): Boolean {
+        if (!currentConfig().enabled || rebuildStatus.running) return false
+        if (runCatching { currentFieldPreferences().quietMode }.getOrDefault(false)) return false
+        if (!indexExists()) return false
+        val meta = readMeta()
+        val root = workspaceRootPath()?.toString() ?: return false
+        if (meta["workspaceRoot"] != root) return false
+        val now = System.currentTimeMillis()
+        val builtAt = meta["builtAtEpochMs"]?.toLongOrNull() ?: 0L
+        if (now - builtAt < IDLE_MIN_INTERVAL_MS) return false
+        val lastSave = workspaceFingerprintSignature().lines()
+            .mapNotNull { it.substringBeforeLast(':').substringAfterLast(':').toLongOrNull() }
+            .maxOrNull() ?: return false
+        if (now - lastSave < IDLE_QUIET_MS) return false
+        return staleDocumentCount() != 0 && computeStatus("").indexStale
     }
 
     private fun indexExists(): Boolean =
