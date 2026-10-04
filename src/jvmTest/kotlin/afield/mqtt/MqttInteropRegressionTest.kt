@@ -13,41 +13,14 @@ import kotlin.test.assertTrue
 /** Bugs found running against mosquitto 2.1.2, pinned without needing mosquitto installed. */
 class MqttInteropRegressionTest {
 
-    /** Mosquitto sends one copy per matching subscription; each handler must still fire once. */
-    @Test
-    fun overlappingSubscriptionCopiesDispatchOnce() {
-        ServerSocket(0).use { server ->
-            val fake = thread(isDaemon = true) {
-                server.accept().use { s ->
-                    val input = s.getInputStream()
-                    assertTrue(Mqtt.read(input) is MqttPacket.Connect)
-                    s.getOutputStream().write(Mqtt.encode(MqttPacket.ConnAck(false, 0)))
-                    // wait for both subscriptions, then send what mosquitto sends: two copies
-                    var subs = 0
-                    while (subs < 2) {
-                        val p = Mqtt.read(input) ?: return@thread
-                        if (p is MqttPacket.Subscribe) { subs += p.filters.size; s.getOutputStream().write(Mqtt.encode(MqttPacket.SubAck(p.packetId, p.filters.map { 0 }))) }
-                    }
-                    val pub = Mqtt.encode(MqttPacket.Publish("a/b", "v".encodeToByteArray()))
-                    s.getOutputStream().write(pub + pub)
-                    Thread.sleep(400)
-                    // a later identical message (outside the copy window) is a new message
-                    s.getOutputStream().write(pub + pub)
-                    Thread.sleep(400)
-                }
-            }
-            MqttClient("tcp://127.0.0.1:${server.localPort}", autoReconnect = false).use { c ->
-                assertTrue(c.awaitConnected())
-                val plus = CopyOnWriteArrayList<MqttMessage>()
-                val hash = CopyOnWriteArrayList<MqttMessage>()
-                c.subscribe("a/+") { plus += it }
-                c.subscribe("a/#") { hash += it }
-                fake.join(3000)
-                assertEquals(2, plus.size, "a/+ handler: $plus")
-                assertEquals(2, hash.size, "a/# handler: $hash")
-            }
-        }
-    }
+    // Overlapping filters: MqttCoverScenarios, run against MqttBroker here and mosquitto in the interop test.
+    private fun scenarios(block: MqttCoverScenarios.() -> Unit) = MqttBroker().use { b -> MqttCoverScenarios(b.url).use(block) }
+
+    @Test fun overlappingHandlersGetOneCopyEach() = scenarios { overlappingHandlersGetOneCopyEach() }
+    @Test fun identicalRepeatsAllArrive() = scenarios { identicalRepeatsAllArrive() }
+    @Test fun retainedReplayToSubsumedLateSubscriber() = scenarios { retainedReplayToSubsumedLateSubscriber() }
+    @Test fun coverSwapsWithoutLoss() = scenarios { coverSwapsWithoutLoss() }
+    @Test fun qosUpgradeResubscribesCover() = scenarios { qosUpgradeResubscribesCover() }
 
     /** Nothing reaches the socket before CONNECT, nor between CONNECT and CONNACK; it is queued instead. */
     @Test

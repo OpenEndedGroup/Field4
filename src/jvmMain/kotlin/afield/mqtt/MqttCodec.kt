@@ -302,6 +302,48 @@ object MqttTopic {
     }
 
     /**
+     * Whether every topic [g] matches is also matched by [f] (both valid filters). `a/#` subsumes
+     * `a`, `a/+` and `a/b/c`; `a/+` subsumes `a/b`; `#` and `+/#` subsume each other; every filter
+     * subsumes itself. A filter whose first level is a wildcard never subsumes one whose first level
+     * is a literal `$`-level, since leading wildcards do not match `$` topics (§4.7.2).
+     */
+    fun subsumes(f: String, g: String): Boolean {
+        val a = f.split('/')
+        val b = g.split('/')
+        if ((a[0] == "+" || a[0] == "#") && b[0].startsWith("$")) return false
+        var i = 0
+        while (true) {
+            // g ends here, so it matches topics of exactly this depth; f must match them too: f ends
+            // here as well, or its only remaining level is `#`, which also matches the parent.
+            if (i == b.size) return a.size == b.size || (a.size == b.size + 1 && a[i] == "#")
+            if (i == a.size) return false
+            val x = a[i]
+            val y = b[i]
+            when {
+                x == "#" -> return true
+                // g's `#` matches any depth from here, including the parent level (depth i). Only
+                // `+/#` at the first level covers that, because a topic of depth 0 does not exist.
+                y == "#" -> return i == 0 && x == "+" && a.size == 2 && a[1] == "#"
+                x == "+" -> {}
+                y == "+" -> return false
+                x != y -> return false
+            }
+            i++
+        }
+    }
+
+    /**
+     * The smallest set of filters that matches every topic [filters] match: each filter subsumed by
+     * another is dropped (of two equivalent ones, the lexicographically smaller is kept), and each
+     * kept filter takes the highest QoS among the filters it covers.
+     */
+    fun cover(filters: Map<String, QoS>): Map<String, QoS> {
+        val keys = filters.keys
+        val kept = keys.filter { f -> keys.none { g -> g != f && subsumes(g, f) && (!subsumes(f, g) || g < f) } }
+        return kept.associateWith { k -> QoS.of(filters.filterKeys { subsumes(k, it) }.values.maxOf { it.value }) }
+    }
+
+    /**
      * Whether [topic] matches [filter]. `sport/#` matches `sport` itself; `+` matches an empty level;
      * a filter starting with a wildcard does not match a topic starting with `$` (§4.7.2).
      */

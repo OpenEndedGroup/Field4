@@ -162,7 +162,13 @@ class MqttClient(
     /** Called on the reader thread for every message, before any subscription callback. Keep it short. */
     val onReceive = CopyOnWriteArrayList<(MqttMessage) -> Unit>()
 
+    /** Local handlers. Separate from [brokerSubscriptions], the cover of their filters. */
     private val subscriptions = CopyOnWriteArrayList<MqttSubscription>()
+    /** Filters subscribed at the broker on this connection, with their QoS. Guarded by [coverLock]. */
+    private val brokerSubs = LinkedHashMap<String, QoS>()
+    private val coverLock = Any()
+    /** Retained messages the client has seen, by topic, replayed to handlers the cover hides from the broker. */
+    private val retainedCache = ConcurrentHashMap<String, MqttMessage>()
     private val ids = AtomicInteger(0)
     private val pendingAcks = ConcurrentHashMap<Int, CompletableFuture<Unit>>()
     /** Unacknowledged QoS 1 publishes, re-sent with DUP after a reconnect. */
@@ -209,6 +215,9 @@ class MqttClient(
         require(MqttTopic.isValidName(topic)) { "'$topic' is not a topic you can publish to (no + or #, not empty)" }
         check(!isClosed) { "client closed" }
         val f = CompletableFuture<Unit>()
+        if (retain) {
+            if (payload.isEmpty()) retainedCache.remove(topic) else retainedCache[topic] = MqttMessage(topic, payload, qos, retained = true)
+        }
         if (qos == QoS.AT_MOST_ONCE) {
             if (send(MqttPacket.Publish(topic, payload, qos, retain))) { sent.incrementAndGet(); f.complete(Unit) }
             else f.completeExceptionally(IOException("not connected to $url"))
@@ -225,25 +234,65 @@ class MqttClient(
     fun publish(topic: String, payload: String, qos: QoS = QoS.AT_MOST_ONCE, retain: Boolean = false) =
         publish(topic, payload.encodeToByteArray(), qos, retain)
 
-    /** Subscribe to [filter] (`+` one level, `#` the rest). Retained matches arrive at once. */
+    /**
+     * Subscribe to [filter] (`+` one level, `#` the rest). Retained matches arrive at once.
+     *
+     * The broker sees only a *cover* of the local filters ([MqttTopic.cover]): a filter another one
+     * already subsumes (`a/+` under `a/#`) sends no SUBSCRIBE, so the broker sends each message
+     * once and each matching handler gets it once. Such a filter's retained replay comes from the
+     * client's cache of retained messages seen, which knows only what the cover has delivered.
+     */
     fun subscribe(filter: String, qos: QoS = QoS.AT_MOST_ONCE, handler: (MqttMessage) -> Unit): MqttSubscription {
         require(MqttTopic.isValidFilter(filter)) { "'$filter' is not a valid topic filter" }
         val s = MqttSubscription(filter, qos, handler, this)
-        val already = subscriptions.any { it.filter == filter && it.qos.value >= qos.value }
-        subscriptions.add(s)
-        if (!already) send(MqttPacket.Subscribe(nextId(), listOf(filter to qos)))
+        synchronized(coverLock) {
+            subscriptions.add(s)
+            val sent = updateCover()
+            // No SUBSCRIBE covering it went out, so the broker will not replay retained messages for it.
+            // (Disconnected: the SUBSCRIBE on connect replays them.)
+            val hidden = sent != null && sent.keys.none { MqttTopic.subsumes(it, filter) }
+            if (hidden) retainedCache.values.filter { MqttTopic.matches(filter, it.topic) }.forEach { m ->
+                dispatch(Runnable { if (!s.isClosed) { s.count.incrementAndGet(); s.handler(m) } })
+            }
+        }
         return s
     }
 
     internal fun unsubscribe(s: MqttSubscription) {
         if (s.isClosed) return
         s.isClosed = true
-        subscriptions.remove(s)
-        if (subscriptions.none { it.filter == s.filter }) send(MqttPacket.Unsubscribe(nextId(), listOf(s.filter)))
+        synchronized(coverLock) {
+            subscriptions.remove(s)
+            updateCover()
+        }
+    }
+
+    /**
+     * Bring the broker's subscriptions to the cover of the local filters. New or upgraded filters
+     * are subscribed before superseded ones are unsubscribed, so no matching message falls in a gap
+     * (one may arrive twice during the swap). Not connected: nothing is sent; connecting resends all.
+     */
+    private fun updateCover(): Map<String, QoS>? = synchronized(coverLock) {
+        if (out == null) return@synchronized null
+        val wanted = MqttTopic.cover(subscriptions.groupBy { it.filter }.mapValues { (_, l) -> QoS.of(l.maxOf { it.qos.value }) })
+        val add = wanted.filter { (f, q) -> brokerSubs[f] != q }
+        val remove = brokerSubs.keys.filter { it !in wanted }
+        if (add.isNotEmpty()) {
+            if (!send(MqttPacket.Subscribe(nextId(), add.toList()))) return@synchronized null
+            brokerSubs.putAll(add)
+        }
+        if (remove.isNotEmpty()) {
+            if (!send(MqttPacket.Unsubscribe(nextId(), remove))) return@synchronized null
+            remove.forEach { brokerSubs.remove(it) }
+        }
+        add
     }
 
     /** The live subscriptions' filters. */
     val filters: List<String> get() = subscriptions.map { it.filter }.distinct()
+
+    /** The filters subscribed at the broker: the cover of [filters]. */
+    val brokerSubscriptions: Map<String, QoS> get() = synchronized(coverLock) { brokerSubs.toMap() }
 
     private fun run() {
         var backoff = 250L
@@ -280,18 +329,20 @@ class MqttClient(
         if (ack.returnCode != 0) {
             throw MqttProtocolException("broker refused: ${Mqtt.connackReason(ack.returnCode)}")
         }
-        out = o
+        synchronized(coverLock) {
+            brokerSubs.clear(); out = o
+            // Queued publishes first, under the lock so no SUBSCRIBE overtakes them: a retained message
+            // published before a subscribe call, while connecting, must reach the broker first, or
+            // the subscription gets it live, not retained.
+            unacked.values.sortedBy { it.packetId }.forEach { send(it.copy(dup = true)) }
+        }
         s.soTimeout = 250 // so the reader can check the keepalive clock
         pingSentNanos = 0L
         isConnected = true
         lastError = null
         connections.incrementAndGet()
-        // Subscriptions are per connection with a clean session: make them again.
-        // Queued publishes first: a retained message published before a subscribe call, while
-        // connecting, must reach the broker first, or the subscription gets it live, not retained.
-        unacked.values.sortedBy { it.packetId }.forEach { send(it.copy(dup = true)) }
-        val grouped = subscriptions.groupBy { it.filter }.map { (f, l) -> f to QoS.of(l.maxOf { it.qos.value }) }
-        if (grouped.isNotEmpty()) send(MqttPacket.Subscribe(nextId(), grouped))
+        // Subscriptions are per connection with a clean session: make the cover again.
+        updateCover()
         synchronized(lock) { connectedFuture.complete(Unit) }
         val ev = MqttConnectionEvent(true, "connected to $url")
         onConnection.forEach { cb -> dispatch(Runnable { cb(ev) }) }
@@ -332,9 +383,14 @@ class MqttClient(
                 received.incrementAndGet()
                 latest[p.topic] = m
                 onReceive.forEach { runCatching { it(m) } }
-                val matching = subscriptions.filter { MqttTopic.matches(it.filter, p.topic) }
-                if (isOverlapCopy(p, matching)) return
-                matching.forEach { s ->
+                if (p.retain) {
+                    if (p.payload.isEmpty()) retainedCache.remove(p.topic) else retainedCache[p.topic] = m
+                } else retainedCache[p.topic]?.let { old ->
+                    // A live message is not marked retained even when it was published retained, so a
+                    // different live payload may have replaced the retained one: forget rather than replay stale.
+                    if (!old.payload.contentEquals(p.payload)) retainedCache.remove(p.topic)
+                }
+                subscriptions.filter { MqttTopic.matches(it.filter, p.topic) }.forEach { s ->
                     dispatch(Runnable {
                         if (!s.isClosed) { s.count.incrementAndGet(); s.handler(m) }
                     })
@@ -350,34 +406,11 @@ class MqttClient(
         }
     }
 
-    private class Copies(val topic: String, val payload: ByteArray, val retain: Boolean, var remaining: Int, val nanos: Long)
-    private val expectedCopies = ArrayDeque<Copies>()
-
-    /**
-     * Mosquitto (like most brokers, and as 3.1.1 §3.3.5 allows) sends one copy of a message per
-     * matching subscription, so `a/+` and `a/#` together deliver `a/b` twice — and every copy
-     * already reaches every matching handler here. When a message matches N distinct filters, the
-     * next N − 1 identical copies within [COPY_WINDOW_NANOS] are acknowledged but not dispatched.
-     * A broker that sends one copy (the embedded one) loses at most one genuine identical repeat
-     * inside that window.
-     */
-    private fun isOverlapCopy(p: MqttPacket.Publish, matching: List<MqttSubscription>): Boolean = synchronized(expectedCopies) {
-        val now = System.nanoTime()
-        while (expectedCopies.isNotEmpty() && now - expectedCopies.first().nanos > COPY_WINDOW_NANOS) expectedCopies.removeFirst()
-        val hit = expectedCopies.firstOrNull { it.topic == p.topic && it.retain == p.retain && it.payload.contentEquals(p.payload) }
-        if (hit != null) {
-            if (--hit.remaining == 0) expectedCopies.remove(hit)
-            return true
-        }
-        val n = matching.map { it.filter }.distinct().size
-        if (n > 1) expectedCopies.addLast(Copies(p.topic, p.payload, p.retain, n - 1, now))
-        false
-    }
-
     private fun drop(reason: String) {
         val s = socket ?: return
         socket = null; out = null; input = null
         try { s.close() } catch (_: IOException) {}
+        synchronized(coverLock) { brokerSubs.clear() } // after close, so a writer blocked under the lock is released
         if (isConnected) {
             isConnected = false
             synchronized(lock) { connectedFuture = CompletableFuture() }
@@ -397,10 +430,6 @@ class MqttClient(
         pendingAcks.values.forEach { it.completeExceptionally(IOException("client closed")) }
         pendingAcks.clear()
         thread.interrupt()
-    }
-
-    companion object {
-        internal const val COPY_WINDOW_NANOS = 250_000_000L
     }
 
     override fun toString() = "MqttClient($url, ${if (isConnected) "connected" else "disconnected"}, ${subscriptions.size} subscriptions)"

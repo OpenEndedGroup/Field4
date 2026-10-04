@@ -58,11 +58,33 @@ User page: `public/docs/mqtt.md`. Demo: `public/docs/assets/mqtt_demo/`.
     `-V mqttv5` is refused and the broker stays healthy.
   - mosquitto logs scanned for protocol errors / malformed packets: none.
   - Bugs it found, fixed with regression tests in `MqttInteropRegressionTest` (no mosquitto
-    needed): mosquitto sends one copy per matching subscription, so overlapping filters (`a/+`
-    and `a/#`) fired every handler twice — the client now swallows the N-1 identical copies that
-    arrive within 250 ms (a genuine identical repeat inside that window, on a single-copy broker,
-    is lost); the client could write a PUBLISH or SUBSCRIBE before CONNECT (now nothing goes out
+    needed): the client could write a PUBLISH or SUBSCRIBE before CONNECT (now nothing goes out
     before CONNACK; it is queued); an MQTT 5 CONNECT got a 3.1.1 CONNACK that `mosquitto_pub`
     reported as "Malformed packet" (now a v5 CONNACK, reason 0x84 "unsupported protocol version").
+  - Mosquitto sends one copy per matching subscription, so overlapping filters (`a/+` and `a/#`)
+    fired every handler twice. A first fix (32c29e39f) swallowed identical copies within 250 ms,
+    which also swallowed genuine repeated readings; it is gone. Now the client keeps its handlers
+    apart from the filters it subscribes at the broker, which are a *cover*
+    (`MqttTopic.subsumes` / `MqttTopic.cover`): a filter another one subsumes sends no SUBSCRIBE,
+    a filter that subsumes others is subscribed first and the subsumed ones unsubscribed after
+    (no gap; a message may arrive twice during the swap), a higher-QoS filter re-subscribes its
+    cover at that QoS, unsubscribing recomputes the same way, and reconnecting subscribes the
+    cover. Each PUBLISH goes once to every handler whose filter matches. `MqttCoverScenarios`
+    runs against both brokers: one copy per overlapping handler, 10 identical payloads in ~100 ms
+    all arrive, retained replay to a subsumed late subscriber, cover swap under a QoS 1 stream
+    with no loss, QoS upgrade.
+  - Retained replay for a subsumed filter comes from a client-side cache of retained messages
+    seen (retain flag set; emptied by an empty retained payload; updated by the client's own
+    retained publishes). It knows only what the cover delivered, and since brokers forward live
+    messages without the retain flag, a different live payload on a cached topic evicts the entry
+    rather than risk replaying a stale value — so after that, a subsumed late subscriber gets no
+    replay for that topic.
+  - Known limitation: filters that overlap without either subsuming the other (`a/+/c` and
+    `a/b/+`) are both subscribed, and mosquitto sends `a/b/c` twice; each matching handler gets
+    both. Not deduplicated: in 3.1.1 nothing identifies two copies as the same message (QoS 1/2
+    packet ids differ per copy, QoS 0 has none), and a time window drops real repeats. The correct
+    method is MQTT 5 subscription identifiers (each copy names its subscription), which this
+    3.1.1 client does not speak. Retained messages re-replayed when a new cover filter or a QoS
+    upgrade makes the broker resend them also reach existing handlers again.
 - Not checked: TLS, WebSockets, persistent sessions against mosquitto (`cleanSession = false`),
   username/password against an authenticating broker, other brokers (EMQX, HiveMQ, AWS IoT).

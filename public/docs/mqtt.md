@@ -147,5 +147,7 @@ restarts or the network drops. `print(mqtt)` shows its state and message counts.
 - MQTT 3.1.1 only; MQTT 5 brokers accept 3.1.1 clients, so this matters only for v5-only features.
 - No TLS (`mqtts://`, port 8883) and no WebSocket transport.
 - QoS 2 is accepted but delivered as QoS 1: a message can arrive twice, never zero times.
+- Two subscriptions that overlap without one containing the other, such as `a/+/c` and `a/b/+`, receive `a/b/c` twice from most brokers. Overlaps where one filter contains the other (`a/+` and `a/#`) deliver once.
+- A subscription inside one you already have (`a/b` after `a/#`) gets its retained messages from what this connection has already seen, not from the broker.
 - The built-in broker keeps no sessions between connections and has no authentication.
 - `mqttBroker()` refuses packets over 1 MiB (`MqttBroker(maxPacketSize = ...)` raises it). Mosquitto 2.1 also drops a client that sends a 3 MB message unless `max_packet_size` is raised in its config.

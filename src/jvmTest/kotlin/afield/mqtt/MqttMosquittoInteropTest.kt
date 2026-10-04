@@ -346,4 +346,19 @@ class MqttMosquittoInteropTest {
         // the broker is still healthy for 3.1.1 afterwards
         assertEquals(0, pub(b.port, "-t", "v4", "-m", "x").first)
     }
+
+    // ---- subscription cover against mosquitto (one copy per matching subscription) ---------
+
+    private fun scenarios(block: MqttCoverScenarios.() -> Unit) {
+        need(mosquitto)
+        val m = mosquittoBroker()
+        MqttCoverScenarios(m.url).use(block)
+        assertEquals(emptyList(), protocolErrors(m.logText()))
+    }
+
+    @Test fun coverOverlappingHandlersGetOneCopyEach() = scenarios { overlappingHandlersGetOneCopyEach() }
+    @Test fun coverIdenticalRepeatsAllArrive() = scenarios { identicalRepeatsAllArrive() }
+    @Test fun coverRetainedReplayToSubsumedLateSubscriber() = scenarios { retainedReplayToSubsumedLateSubscriber() }
+    @Test fun coverSwapsWithoutLoss() = scenarios { coverSwapsWithoutLoss() }
+    @Test fun coverQosUpgradeResubscribes() = scenarios { qosUpgradeResubscribesCover() }
 }
