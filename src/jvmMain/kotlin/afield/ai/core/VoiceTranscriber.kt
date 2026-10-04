@@ -17,6 +17,8 @@ import java.io.BufferedWriter
 import java.io.File
 import java.util.Base64
 import java.util.concurrent.Executors
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 /**
  * Local speech-to-text for AI4 push-to-talk.
@@ -39,9 +41,21 @@ object VoiceTranscriber {
     }
     private var process: Process? = null
     private var input: BufferedWriter? = null
-    private var output: BufferedReader? = null
+    private var replies: LinkedBlockingQueue<String>? = null
+    private var stderrLog: File? = null
     private var backend = ""
     private var nextId = 0
+
+    /** Longest wait for the worker's ready line; the first start downloads the model (~1.6 GB). */
+    internal var startupTimeoutMillis = envMillis("FIELD_VOICE_STARTUP_TIMEOUT_MS", 15 * 60_000L)
+    /** Longest wait for one clip's transcript before the worker is presumed hung and restarted. */
+    internal var replyTimeoutMillis = envMillis("FIELD_VOICE_TIMEOUT_MS", 60_000L)
+    /** The worker command; tests substitute a fake worker. */
+    internal var workerCommand: () -> List<String> = { listOf(pythonExecutable(), "-u", workerScript().path) }
+    internal var notifier: (String) -> Unit = { text -> runCatching { notify(text, "AI4 voice") } }
+
+    private fun envMillis(name: String, default: Long) =
+        System.getenv(name)?.toLongOrNull()?.takeIf { it > 0 } ?: default
 
     fun install() {
         handlers["ai-transcribe"] = mutableSetOf({ message, reply ->
@@ -85,31 +99,89 @@ object VoiceTranscriber {
 
     private fun ensureWorker() {
         if (process?.isAlive == true) return
-        val python = pythonExecutable()
-        val script = workerScript()
-        notify("Loading Whisper (the first use downloads the model)...", "AI4 voice")
-        val started = ProcessBuilder(python, "-u", script.path)
-            .redirectError(ProcessBuilder.Redirect.DISCARD)
+        stopWorker()
+        val command = workerCommand()
+        notifier("Loading Whisper (the first use downloads the model)...")
+        val log = File.createTempFile("field-voice-worker-", ".log").apply { deleteOnExit() }
+        val started = ProcessBuilder(command)
+            .redirectError(ProcessBuilder.Redirect.to(log))
             .start()
-        val reader = started.inputStream.bufferedReader()
-        val ready = reader.readLine()?.let { Json.parseToJsonElement(it).jsonObject }
+        // stdout is drained by its own thread so every read below can time out.
+        val queue = LinkedBlockingQueue<String>()
+        Thread({
+            runCatching { started.inputStream.bufferedReader().forEachLine { queue.put(it) } }
+            queue.put(EOF)
+        }, "field-voice-worker-stdout").apply { isDaemon = true }.start()
+        val ready = nextJson(queue, startupTimeoutMillis)
         if (ready == null || ready["ready"]?.jsonPrimitive?.booleanOrNull != true) {
             started.destroyForcibly()
-            val why = ready?.get("error")?.jsonPrimitive?.content ?: "the worker exited during startup"
-            error("Voice input unavailable with $python: $why")
+            started.waitFor(2, TimeUnit.SECONDS)
+            val why = ready?.get("error")?.jsonPrimitive?.content
+                ?: if (started.isAlive || queue.isEmpty()) "the worker did not report ready within ${startupTimeoutMillis / 1000} s"
+                else "the worker exited during startup"
+            val stderr = stderrTail(log)
+            log.delete()
+            error("Voice input unavailable with ${command.first()}: $why$stderr")
         }
         backend = ready["backend"]?.jsonPrimitive?.content.orEmpty()
         process = started
         input = started.outputStream.bufferedWriter()
-        output = reader
-        lprintln("info,ai4", "Voice worker ready: $backend ${ready["model"]?.jsonPrimitive?.content.orEmpty()} via $python")
+        replies = queue
+        stderrLog = log
         val model = ready["model"]?.jsonPrimitive?.content.orEmpty()
         val note = ready["note"]?.jsonPrimitive?.content.orEmpty()
-        notify("Voice input ready: $model, $backend" + if (note.isNotBlank()) ". $note" else "", "AI4 voice")
+        lprintln("info,ai4", "Voice worker ready: $backend $model via ${command.first()}")
+        notifier("Voice input ready: $model, $backend" + if (note.isNotBlank()) ". $note" else "")
         if (note.isNotBlank()) lprintln("warning,ai4", "Voice worker: $note")
     }
 
-    private fun transcribe(request: AiTranscribeRequest): AiTranscribeResponse {
+    private val EOF = "\u0000eof"
+
+    /** The next JSON object line, skipping anything else the worker printed; null on EOF or timeout. */
+    private fun nextJson(queue: LinkedBlockingQueue<String>, timeoutMillis: Long): JsonObject? {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (true) {
+            val left = (deadline - System.nanoTime()) / 1_000_000
+            if (left <= 0) return null
+            val line = queue.poll(left, TimeUnit.MILLISECONDS) ?: return null
+            if (line == EOF) { queue.put(EOF); return null }
+            val parsed = runCatching { Json.parseToJsonElement(line) as? JsonObject }.getOrNull()
+            if (parsed != null) return parsed
+        }
+    }
+
+    /** The end of what the worker wrote to stderr (a Python traceback, usually), for an error message. */
+    private fun stderrTail(log: File?): String {
+        val text = runCatching { log?.readText().orEmpty() }.getOrDefault("")
+        val tail = text.trim().takeLast(1500)
+        return if (tail.isBlank()) "" else "\nWorker stderr:\n$tail"
+    }
+
+    /** The reply for request [id]. A reply to an earlier request (one that timed out) is dropped. */
+    private fun awaitReply(id: Int): JsonObject? {
+        val queue = replies ?: return null
+        val deadline = System.nanoTime() + replyTimeoutMillis * 1_000_000
+        while (true) {
+            val left = (deadline - System.nanoTime()) / 1_000_000
+            val reply = nextJson(queue, left) ?: return null
+            if (reply["id"]?.jsonPrimitive?.intOrNull == id) return reply
+            lprintln("warning,ai4", "Voice worker: dropped a reply for request ${reply["id"]}, waiting for $id")
+        }
+    }
+
+    /** Stops the worker; the next request starts a fresh one. */
+    internal fun forceRestart() = stopWorker()
+
+    private fun stopWorker() {
+        process?.destroyForcibly()
+        process = null
+        input = null
+        replies = null
+        stderrLog?.delete()
+        stderrLog = null
+    }
+
+    internal fun transcribe(request: AiTranscribeRequest): AiTranscribeResponse {
         ensureWorker()
         val clip = File.createTempFile("field-voice-", ".f32")
         try {
@@ -123,13 +195,19 @@ object VoiceTranscriber {
             }.toString()
             val result = try {
                 input!!.apply { write(line); newLine(); flush() }
-                output!!.readLine()?.let { Json.parseToJsonElement(it) as JsonObject }
+                awaitReply(id)
             } catch (t: Throwable) {
                 null
             } ?: run {
+                val alive = process?.isAlive == true
                 process?.destroyForcibly()
-                process = null
-                error("The voice worker stopped; it will restart on the next press.")
+                process?.waitFor(2, TimeUnit.SECONDS)
+                val stderr = stderrTail(stderrLog)
+                stopWorker()
+                error(
+                    (if (alive) "The voice worker did not answer within ${replyTimeoutMillis / 1000} s and was restarted"
+                    else "The voice worker stopped") + "; it will start again on the next press.$stderr"
+                )
             }
             if (result["ok"]?.jsonPrimitive?.booleanOrNull != true) {
                 return AiTranscribeResponse(false, message = result["error"]?.jsonPrimitive?.content ?: "transcription failed")
