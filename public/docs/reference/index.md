@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16255 public symbols across 462 source files**, 9647 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16309 public symbols across 465 source files**, 9674 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -29,6 +29,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Languages](languages.md) | 105 | 2852 | 1267 (44%) | Field's small languages, from the host side. |
 | [Workspace](workspace.md) | 26 | 378 | 263 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 5 | 180 | 177 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
+| [Video](video.md) | 3 | 54 | 27 (50%) |  |
 
 ## Every file
 
@@ -312,6 +313,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Parameters.kt](polytopes.md#parameters-kt) | Polytopes | 29 | 22 | Naming a subset of elements, and attaching a number to each one. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [ParamQuery.kt](synthesis.md#paramquery-kt) | Synthesis | 57 | 5 | The synth-facing head of the graph-query layer: turn a `PathSet` into a set of *drivable parameters*. | [Querying object graphs](../graph_query.md) |
 | [Parser.kt](languages.md#parser-kt) | Languages | 5 | 5 | FieldML's second stage: tokens in, the surface tree out, by recursive descent with precedence climbing for the operators. |  |
+| [particletracker.kt](video.md#particletracker-kt) | Video | 14 | 7 |  | [Video particles](../particle_video.md) |
+| [particlevideo.kt](video.md#particlevideo-kt) | Video | 37 | 17 |  | [Video particles](../particle_video.md) |
+| [particlevideoview.kt](video.md#particlevideoview-kt) | Video | 3 | 3 |  | [Video particles](../particle_video.md) |
 | [PatAlgebra.kt](patterns.md#patalgebra-kt) | Patterns | 66 | 65 | The parameter-application algebra: combining patterns of different types, and choosing whose rhythm survives. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md), [A pattern as a function generator](../marf.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
 | [PatClock.kt](patterns.md#patclock-kt) | Patterns | 14 | 11 | The transport everything scheduled in `afield.four.synth` reads: one monotonic number that can be paused, sought and subdivided, so that patterns, Boolean networks and audio launches share a single notion of the current time. |  |
 | [PatComposition.kt](patterns.md#patcomposition-kt) | Patterns | 53 | 53 | Compositional structure: the transforms that build a piece out of a pattern, and the pitch vocabulary — scales, named chords, and voice leading. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [How completions are ranked](../completion_ranking.md), [Faust](../faust.md) |
