@@ -3,367 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
-    <title>Completion Doc Polish</title>
-    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/iosevka.css" as="style">
+    <title>Completion doc polish</title>
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field-tool-pages.css">
     <style>
-        :root {
-            --bg: rgb(12, 12, 12);
-            --panel: rgb(25, 25, 25);
-            --panel-2: rgb(19, 19, 19);
-            --border: rgba(230, 240, 245, 0.14);
-            --border-strong: rgba(230, 240, 245, 0.32);
-            --text: rgba(235, 242, 246, 0.95);
-            --soft: rgba(168, 183, 192, 0.95);
-            --accent: rgb(224, 241, 249);
-            --danger: rgb(255, 120, 120);
-            --ok: rgb(174, 240, 198);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Iosevka Web", ui-monospace, monospace;
-            font-weight: 300;
-            overflow: hidden;
-        }
-
-        body {
-            padding: 20px;
-        }
-
-        main {
-            position: relative;
-            z-index: 1;
-            width: min(1180px, calc(100vw - 40px));
-            margin: 0 auto;
-            display: grid;
-            grid-template-rows: auto auto auto minmax(190px, 0.9fr) minmax(0, 1fr);
-            gap: 12px;
-            height: calc(100vh - 40px);
-            min-height: 0;
-        }
-
-        header,
-        section {
-            border: 1px solid var(--border);
-            background: var(--panel);
-            border-radius: 8px;
-        }
-
-        header {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 12px;
-            align-items: center;
-            padding: 14px;
-        }
-
-        h1,
-        h2 {
-            margin: 0;
-            font-weight: 400;
-            letter-spacing: 0;
-        }
-
-        h1 {
-            font-size: 20px;
-        }
-
-        h2 {
-            color: var(--soft);
-            font-size: 12px;
-        }
-
-        button,
-        a.button {
-            font: inherit;
-            font-size: 12px;
-            color: var(--text);
-            background: var(--panel-2);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 7px 9px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        button:hover,
-        a.button:hover {
-            border-color: var(--border-strong);
-        }
-
-        button:disabled {
-            color: var(--soft);
-            cursor: default;
-            opacity: 0.55;
-        }
-
-        .header-actions,
-        .metrics,
-        .activity-list {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .metric {
-            display: grid;
-            gap: 4px;
-            min-width: 136px;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-        }
-
-        .metric-label,
-        .activity-label {
-            color: var(--soft);
-            font-size: 10px;
-            text-transform: lowercase;
-        }
-
-        .metric-value {
-            color: var(--accent);
-            font-size: 16px;
-        }
-
-        .overview {
-            display: grid;
-            gap: 12px;
-            padding: 12px;
-        }
-
-        .status-line {
-            display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 10px;
-            align-items: baseline;
-            min-width: 0;
-            font-size: 12px;
-        }
-
-        .status-value {
-            min-width: 0;
-            overflow-wrap: anywhere;
-        }
-
-        .status-value.running,
-        .status-value.succeeded {
-            color: var(--ok);
-        }
-
-        .status-value.failed {
-            color: var(--danger);
-        }
-
-        .activity {
-            display: grid;
-            gap: 8px;
-            padding: 12px;
-            min-height: 0;
-        }
-
-        .activity-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-            align-items: stretch;
-            max-height: 190px;
-            overflow: auto;
-        }
-
-        .activity-item {
-            min-width: 0;
-            padding: 8px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-            color: var(--soft);
-            font-size: 11px;
-            line-height: 1.35;
-            overflow-wrap: anywhere;
-        }
-
-        .activity-title {
-            color: var(--text);
-            font-size: 12px;
-        }
-
-        .activity-detail {
-            margin-top: 3px;
-            color: var(--soft);
-            font-size: 10px;
-        }
-
-        .transcript {
-            display: grid;
-            grid-template-rows: auto minmax(0, 1fr);
-            gap: 8px;
-            padding: 12px;
-            min-height: 0;
-        }
-
-        .edits {
-            display: grid;
-            grid-template-rows: auto minmax(0, 1fr);
-            gap: 8px;
-            padding: 12px;
-            min-height: 0;
-        }
-
-        .edit-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 10px;
-            min-height: 0;
-            overflow: auto;
-        }
-
-        .edit-card {
-            min-width: 0;
-            display: grid;
-            grid-template-rows: auto auto auto;
-            gap: 8px;
-            align-content: start;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-        }
-
-        .edit-card-header {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 8px;
-            align-items: baseline;
-        }
-
-        .edit-file {
-            min-width: 0;
-            color: var(--accent);
-            font-size: 12px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .edit-kind {
-            color: var(--soft);
-            font-size: 10px;
-            white-space: nowrap;
-        }
-
-        .edit-doc {
-            color: var(--text);
-            font-size: 12px;
-            line-height: 1.45;
-        }
-
-        .edit-doc p {
-            margin: 0 0 6px;
-        }
-
-        .edit-doc ul {
-            margin: 4px 0 0;
-            padding-left: 18px;
-        }
-
-        .edit-doc code {
-            padding: 0 3px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            background: rgb(8, 8, 8);
-            color: var(--accent);
-        }
-
-        .edit-code {
-            max-height: 210px;
-            overflow: auto;
-        }
-
-        .edit-code code {
-            display: block;
-            white-space: pre;
-            font: 11px/1.42 "Iosevka Web", ui-monospace, monospace;
-        }
-
-        .tok-comment {
-            color: rgb(137, 155, 166);
-        }
-
-        .tok-keyword {
-            color: rgb(232, 232, 232);
-        }
-
-        .tok-string {
-            color: rgb(174, 240, 198);
-        }
-
-        .tok-number {
-            color: rgb(205, 220, 230);
-        }
-
-        .tok-type {
-            color: rgb(188, 208, 220);
-        }
-
-        .empty-edit {
-            padding: 12px;
-            border: 1px dashed var(--border);
-            border-radius: 7px;
-            color: var(--soft);
-            font-size: 12px;
-        }
-
-        pre {
-            margin: 0;
-            min-height: 0;
-            overflow: auto;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: rgb(6, 6, 6);
-            color: var(--text);
-            font: 12px/1.45 "Iosevka Web", ui-monospace, monospace;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-        }
-
-        @media (max-width: 760px) {
-            body {
-                padding: 10px;
-                overflow: auto;
-            }
-
-            main {
-                width: calc(100vw - 20px);
-                height: auto;
-                min-height: calc(100vh - 20px);
-                grid-template-rows: auto;
-            }
-
-            header,
-            .edit-card-header,
-            .status-line {
-                grid-template-columns: 1fr;
-            }
-
-            .edit-list {
-                grid-template-columns: 1fr;
-                max-height: 60vh;
-            }
-        }
+        .chip b.running { color: var(--cyan); } .chip b.succeeded { color: var(--ok); } .chip b.failed { color: var(--danger); }
+        #message.running { color: var(--cyan); } #message.succeeded { color: var(--ok); } #message.failed { color: var(--danger); }
+        .paths td:first-child { color: var(--soft); white-space: nowrap; width: 8em; }
+        .paths td:last-child { color: var(--accent); overflow-wrap: anywhere; }
+        .activity-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; max-height: 220px; overflow: auto; }
+        .activity-item { min-width: 0; padding: 8px 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--soft); overflow-wrap: anywhere; line-height: 1.4; }
+        .activity-title { color: var(--text); }
+        .activity-detail { margin-top: 3px; font-size: 11px; }
+        .edit-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px; }
+        .edit-card { min-width: 0; display: grid; gap: 8px; align-content: start; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; }
+        .edit-card-header { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; min-width: 0; }
+        .edit-file { min-width: 0; color: var(--field-cyan); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .edit-kind { font-size: 11px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 0 5px; color: var(--soft); white-space: nowrap; }
+        .edit-doc { line-height: 1.5; }
+        .edit-doc p { margin: 0 0 6px; color: var(--text); }
+        .edit-doc ul { margin: 4px 0 0; padding-left: 18px; }
+        .edit-code { max-height: 210px; overflow: auto; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--field-border); border-radius: 7px; padding: 8px 10px; }
+        .edit-code code { display: block; white-space: pre; font-size: 11px; line-height: 1.42; color: var(--text); }
+        .tok-comment { color: rgb(137, 155, 166); }
+        .tok-keyword { color: var(--accent); }
+        .tok-string { color: var(--ok); }
+        .tok-number, .tok-type { color: var(--field-cyan); }
+        .empty-edit { padding: 14px; color: var(--soft); border: 1px dashed var(--border); border-radius: 6px; }
+        #transcript { max-height: 40vh; overflow: auto; }
     </style>
 </head>
 <body class="field-webgl-page">
@@ -374,62 +42,46 @@
 <main>
     <header>
         <div>
-            <h1>Completion Doc Polish</h1>
-            <h2 id="subtitle">checking</h2>
+            <h1>Completion doc polish</h1>
+            <p id="subtitle">checking</p>
+            <div class="chips">
+                <span class="chip">ready <b id="docs-ready">0</b></span>
+                <span class="chip">across <b id="files-ready">0</b></span>
+                <span class="chip">cache <b id="cache-size">missing</b></span>
+                <span class="chip">task <b id="task-state">idle</b></span>
+            </div>
         </div>
-        <div class="header-actions">
-            <button id="run-polish" type="button">Run polish</button>
-            <button id="refresh" type="button">Refresh</button>
-            <a class="button" href="/welcome" target="_self">Welcome</a>
+        <div class="row">
+            <a href="/welcome">welcome</a>
         </div>
     </header>
 
-    <section class="overview">
-        <div class="metrics">
-            <div class="metric">
-                <span class="metric-label">docs ready</span>
-                <span id="docs-ready" class="metric-value">0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">files ready</span>
-                <span id="files-ready" class="metric-value">0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">cache</span>
-                <span id="cache-size" class="metric-value">missing</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">task</span>
-                <span id="task-state" class="metric-value">idle</span>
-            </div>
+    <section>
+        <h2>1 · Polish</h2>
+        <p id="message">checking</p>
+        <div class="row">
+            <button id="run-polish" type="button" class="primary">Run polish</button>
+            <button id="refresh" type="button">Refresh</button>
         </div>
-        <div class="status-line">
-            <span class="activity-label">message</span>
-            <span id="message" class="status-value">checking</span>
-        </div>
-        <div class="status-line">
-            <span class="activity-label">cache path</span>
-            <span id="cache-path" class="status-value"></span>
-        </div>
-        <div class="status-line">
-            <span class="activity-label">run log</span>
-            <span id="run-log-path" class="status-value"></span>
-        </div>
+        <table class="paths">
+            <tr><td>cache path</td><td id="cache-path"></td></tr>
+            <tr><td>run log</td><td id="run-log-path"></td></tr>
+        </table>
     </section>
 
-    <section class="activity">
-        <h2>Activity</h2>
+    <section>
+        <h2>2 · Activity</h2>
         <div id="activity-list" class="activity-list"></div>
     </section>
 
-    <section class="edits">
-        <h2>Edits</h2>
+    <section>
+        <h2>3 · Edits</h2>
         <div id="edit-list" class="edit-list"></div>
     </section>
 
-    <section class="transcript">
+    <section>
         <h2>Terminal output</h2>
-        <pre id="transcript"></pre>
+        <pre id="transcript" class="log"></pre>
     </section>
 </main>
 
@@ -772,9 +424,9 @@
         document.getElementById("files-ready").textContent = countLabel(files, "file");
         document.getElementById("cache-size").textContent = bytesLabel(cache.sizeBytes);
         document.getElementById("task-state").textContent = state;
-        document.getElementById("task-state").className = `metric-value ${state}`;
+        document.getElementById("task-state").className = state;
         document.getElementById("message").textContent = latestStatus.message || cache.message || "";
-        document.getElementById("message").className = `status-value ${state}`;
+        document.getElementById("message").className = state;
         document.getElementById("cache-path").textContent = cache.cachePath || "";
         document.getElementById("run-log-path").textContent = latestStatus.logPath || "No persisted run yet.";
 
