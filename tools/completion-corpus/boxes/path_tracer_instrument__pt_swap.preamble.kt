@@ -5,9 +5,6 @@ import afield.four.fabricated.PathTracingRenderer
 var Box.tracer by Inheritance<PathTracingRenderer>() /**/
 val Once.tracer by Onceing<PathTracingRenderer>() /**/
 val Why.tracer by Whying() /**/
-var Box.tracer by Inheritance<PathTracingRenderer>() /*from:pt_tracer*/ /**/
-val Once.tracer by Onceing<PathTracingRenderer>() /*from:pt_tracer*/ /**/
-val Why.tracer by Whying() /*from:pt_tracer*/ /**/
 var Box.log by Inheritance<PathTraceConvergence>() /*from:pt_tracer*/ /**/
 val Once.log by Onceing<PathTraceConvergence>() /*from:pt_tracer*/ /**/
 val Why.log by Whying() /*from:pt_tracer*/ /**/
