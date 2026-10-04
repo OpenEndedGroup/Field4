@@ -29,6 +29,8 @@ class ImpossibilityClaimContractTest {
     private val devDocs = File(root, "dev_docs")
 
     companion object {
+        private val REAL_INVENTORY = java.util.concurrent.ConcurrentHashMap<String, ImpossibilityClaimGuard.Inventory>()
+
         /**
          * Pages with claims, and the floor on how many each keeps.
          *
@@ -96,6 +98,13 @@ class ImpossibilityClaimContractTest {
 
     private fun pages(): List<File> = ImpossibilityClaimGuard.markdownUnder(devDocs)
 
+    /**
+     * The real corpus's inventory, computed once per class: JUnit makes a fresh instance for every
+     * test, and four tests each re-ran the same full scan of dev_docs. Read-only.
+     */
+    private val realInventory: ImpossibilityClaimGuard.Inventory
+        get() = REAL_INVENTORY.getOrPut(root.path) { ImpossibilityClaimGuard.inventory(root, pages()) }
+
     // ---------------------------------------------------------------------------------------------
     // Premise
     // ---------------------------------------------------------------------------------------------
@@ -152,7 +161,7 @@ class ImpossibilityClaimContractTest {
     /** The load-bearing assertion: nothing in `dev_docs` asserts an impossibility without evidence. */
     @Test
     fun everyImpossibilityClaimInDevDocsCarriesItsEvidence() {
-        val inv = ImpossibilityClaimGuard.inventory(root, pages())
+        val inv = realInventory
         println("--- dev_docs impossibility-claim inventory ---")
         println(inv.render())
         println("scanned: ${pages().size} markdown pages under dev_docs")
@@ -178,7 +187,7 @@ class ImpossibilityClaimContractTest {
      */
     @Test
     fun theClaimPopulationIsFlooredInBothDirections() {
-        val inv = ImpossibilityClaimGuard.inventory(root, pages())
+        val inv = realInventory
         val evidenceBearing = inv.byMarker(ImpossibilityClaimGuard.Marker.REPRODUCER).size +
             inv.byMarker(ImpossibilityClaimGuard.Marker.CITATION).size
         val waivers = inv.byMarker(ImpossibilityClaimGuard.Marker.NOT_A_LIMITATION).size
@@ -227,7 +236,7 @@ class ImpossibilityClaimContractTest {
      */
     @Test
     fun theAnnotatedPageLedgerIsNeitherShortNorStale() {
-        val inv = ImpossibilityClaimGuard.inventory(root, pages())
+        val inv = realInventory
         val perPage = inv.claims.groupingBy { it.page }.eachCount()
 
         // Printed so that refreshing ANNOTATED_PAGES after a deliberate change is a copy rather than a
@@ -503,7 +512,7 @@ class ImpossibilityClaimContractTest {
      */
     @Test
     fun plantingUnmarkedClaimsBesideTheRealCorpusIsDetected() {
-        val real = ImpossibilityClaimGuard.inventory(root, pages())
+        val real = realInventory
         assertEquals(
             0, real.unmarked.size,
             "the baseline half of the counterfactual must be clean, or the comparison proves nothing",
