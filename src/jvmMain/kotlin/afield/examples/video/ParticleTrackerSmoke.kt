@@ -34,8 +34,8 @@ object ParticleTrackerSmoke {
         check(video.frame(0).samples.size > 16000) { "Dense example underfilled" }
         val metadata = JSONObject(Files.readString(first.tracksFile.resolveSibling("tracks.pvt.run.json")))
         check(metadata.getString("backend") == "torchvision-raft-large" && metadata.getString("device") == "cuda")
-        video.renderMovie(out.resolve("particles.mp4"), pointRadius = .7)
-        ImageIO.write(video.image(minOf(180, video.frameCount - 1), pointRadius = .7), "png", out.resolve("particles.png").toFile())
+        video.renderMovie(out.resolve("particles.mp4"), pointRadius = .7, drawPoints = true, trailLength = 0)
+        ImageIO.write(video.image(minOf(180, video.frameCount - 1), pointRadius = .7, drawPoints = true, trailLength = 0), "png", out.resolve("particles.png").toFile())
         ImageIO.write(video.image(minOf(180, video.frameCount - 1), pointRadius = .3,
             color = ParticleColor.IDENTITY, trailLength = 12), "png", out.resolve("identities.png").toFile())
         Files.writeString(out.resolve("run.json"), JSONObject(mapOf(

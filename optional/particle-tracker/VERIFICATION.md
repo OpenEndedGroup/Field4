@@ -18,8 +18,8 @@ file modification time. It rendered the complete particle movie and identity/tra
 Kotlin. It then cancelled another genuine forced run and verified that the previous successful
 entry remained valid and that launcher staging files were cleaned.
 
-Six Kotlin fixture tests cover binary corruption, lifecycles and ancestry, interpolation,
-colors and drawing, gzip parity and option validation. Four dependency-free launcher tests
+Seven Kotlin fixture tests cover binary corruption, lifecycles and ancestry, interpolation,
+colors and drawing (including every bend of an independent L-shaped polyline and stable ID selection), gzip parity and option validation. Four dependency-free launcher tests
 cover key invalidation and integrity; two publisher tests cover whole-trajectory subsets and
 atomic export failure. The imported C++ unit suite passes, including its independent synthetic
 translation check (mean error approximately 0.000288 pixels).
@@ -38,3 +38,12 @@ The strict clean docs build passes: 2,134/2,134 distinct local references resolv
 `/Field4/`. The Starting point index and KDoc attachment guards also pass. The Tailscale preview
 returns HTTP 200 for the page, portable reader file and Starting point; video byte ranges return
 206. The lander owns the full repository guard; these checks are not a claim that it passed.
+
+The revised viewer defaults to line-only trajectories with stable identity colors. Actual Kotlin
+exports draw all 24,000 target tracks with twelve-frame history and an ID-modulo-16 diagnostic
+selection with twenty-five-frame history. The same paths are composited over the actual source
+for alignment inspection. All four polyline/comparison movies decode all 300 frames / 12 seconds.
+Three separate moments were visually inspected. Real Field controls changed time from 7.2 to
+4.8 seconds and history from 24 to 50 frames, with points disabled; the image-change assertion
+passed. The two guards that bounced the first landing (documented API evaluation and reference
+page navigation) now pass their focused JVM tests.

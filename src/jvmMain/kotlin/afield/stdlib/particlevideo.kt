@@ -145,12 +145,12 @@ class ParticleVideo private constructor(
 
     /**
      * Trails ending at [frame], one path per currently visible identity, in processed coordinates.
-     * [stride] subsamples identities in their frame order, useful for drawing dense runs.
+     * [stride] selects stable identities by ID modulo, useful for drawing dense runs without flicker.
      */
     fun trails(frame: Int, length: Int = 12, stride: Int = 1, scale: Double = 1.0,
                color: ParticleColor = ParticleColor.IDENTITY): List<FLine> {
         require(length > 0 && stride > 0 && scale.isFinite() && scale > 0)
-        return this.frame(frame).samples.filterIndexed { i, _ -> i % stride == 0 }.map { current ->
+        return this.frame(frame).samples.filter { it.id % stride == 0L }.map { current ->
             val offsets = byTrack.getValue(current.id)
             val start = maxOf(0, frame - length + 1)
             // Consecutive per-track frames make the sample range directly addressable.

@@ -358,6 +358,7 @@ nav:
       - Languages: reference/languages.md
       - Workspace: reference/workspace.md
       - Machine learning: reference/machine-learning.md
+      - Video: reference/video.md
     # Directly under Reference since its hand-written companion, linear_algebra.md, moved to the
     # head of "Drawing From Data": this page is generated (tools/linalg-generator), so it stays.
     - Generated Vector API: linear_algebra_api.md

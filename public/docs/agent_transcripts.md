@@ -89,6 +89,14 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### particle_video_reader
+
+Inspect recorded trajectories as continuous polylines, with time, history length, identity color
+and sampling-density controls. This portable example reads the same complete-trajectory subset
+as the [Video particles](particle_video.md) walkthrough; it runs without a neural environment.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video_reader/metadata.edn)
+
 ### hello_display
 
 Minimal blank-canvas macro that creates one runnable output box.

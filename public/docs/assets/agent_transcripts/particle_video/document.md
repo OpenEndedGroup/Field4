@@ -11,20 +11,20 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="particle_video_track" index="0" -->
 
 ```edn [field-box id="particle_video_track" role="properties"]
-{"id" "particle_video_track" "index" 0 "name" "3 · track a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · track a movie" "_tombstone" false "frame" #afield/rect [920.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_track_code_.kt" "lines" 10 "characters" 359 "sha256" "64939fb58f33a1ae610109bac2ab124bd58a07aa36ae1364d16da32ff3deb86c"}]}
+{"id" "particle_video_track" "index" 0 "name" "3 · track a movie" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "3 · track a movie" "_tombstone" false "frame" #afield/rect [920.0 40.0 400.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "particle_video_track_code_.kt" "lines" 10 "characters" 347 "sha256" "cf00b07c31a67ae3f8e37a241306890f1c7a893a137a041cddc567cd8059856a"}]}
 ```
 
 ```kotlin [field-property box="particle_video_track" name="code" path="particle_video_track_code_.kt"]
 val tracker = particleTracker()
-suspend fun trackMovie() {
+suspend fun process() {
     val run = tracker.track(
         "public/docs/assets/particle_video/source.mkv",
         ParticleTrackingOptions(particles = 24000, colorLimit = 1.0),
     )
     println("cached=${run.cacheHit}; tracks=${run.tracksFile}")
-    particleVideoView(run.load(), pointRadius = .45)
+    particleVideoView(run.load(), stride = 16)
 }
-start(::trackMovie)
+start(::process)
 ```
 
 ## 2. 2 · scrub recorded particles

@@ -2,7 +2,7 @@
 
 Bidirectional pretrained Torchvision RAFT-large supplies dense flow to a C++17 particle engine.
 Kotlin launches cached jobs, reads `PVTRACK1` tracks without Python, scrubs trajectories and renders
-sampled-color particles. Nothing here is installed or downloaded by Field startup, compilation or
+sampled-color or identity-colored trajectory polylines. Nothing here is installed or downloaded by Field startup, compilation or
 ordinary tests. See [the public walkthrough](../../public/docs/particle_video.md).
 
 Prepare an isolated Python environment explicitly (Python 3.10–3.12, preferably 3.11):
@@ -62,7 +62,10 @@ Run it through `tools/field_backdoor.py run-jvm-main` with the selected Python e
 executes real CUDA inference, repeats the request offline, checks Python/Kotlin record and lifecycle
 parity, exports Kotlin-rendered media, and cancels another real job. It is intentionally outside the
 automatic portable smoke catalog, because it needs the prepared optional environment and a GPU.
-`tools/export_particle_video_docs.py` publishes those verified media and a compressed representative
+`ParticlePolylineExport TRACK_FILE OUTPUT_DIR` renders line-only movies from the cached file.
+Use `trailLength`, `stride`, `lineWidth` and `drawPoints` to control Kotlin image/movie drawing.
+The Field viewer defaults to polylines with points disabled; history, stable-ID selection and
+line width are adjustable. `tools/export_particle_video_docs.py --polylines-run OUTPUT_DIR` publishes those verified media and a compressed representative
 subset of the same tracks for the portable Starting point.
 
 ## Provenance

@@ -35,14 +35,14 @@ operations:
       properties:
         code: |
           val tracker = particleTracker()
-          suspend fun trackMovie() {
+          suspend fun process() {
               val run = tracker.track(
                   "public/docs/assets/particle_video/source.mkv",
                   ParticleTrackingOptions(particles = 24000, colorLimit = 1.0),
               )
               println("cached=${run.cacheHit}; tracks=${run.tracksFile}")
-              particleVideoView(run.load(), pointRadius = .45)
+              particleVideoView(run.load(), stride = 16)
           }
-          start(::trackMovie)
+          start(::process)
   - execute: { box: particle_video_guide }
   - execute: { box: particle_video_reader }

@@ -1,6 +1,6 @@
 # Video particles
 
-Turn a movie into moving points, then use their positions, colors and trajectories in Field.
+Turn a movie into trajectories, then inspect their motion as continuous polylines in Field.
 The optional PyTorch tracker follows frame-to-frame motion; the Kotlin reader and visualizer play
 the recorded result without a Python process or a neural model.
 
@@ -9,10 +9,10 @@ example or track your own movie.
 
 ## A dance in 24,000 particles
 
-These points follow the folds of a hand-colored Lumière serpentine dance. Their colors come from
-the current video frame, including the film's deliberate changes of tint. The source is on the
-left; the Kotlin-rendered particles are on the right.
-
+Each polyline joins consecutive recorded positions of **one identity**. The recent path shows
+bends, stalls and sudden jumps that dots alone conceal. The source dance is on the left;
+stable identity-colored trajectories are on the right. These colors stay fixed through the film's
+intentional recoloring, so the motion is easier to follow.
 <video controls muted loop playsinline preload="metadata" width="1600" height="600" poster="../assets/particle_video/comparison.png" style="width:100%;height:auto">
   <source src="assets/particle_video/comparison.mp4" type="video/mp4">
 </video>
@@ -20,26 +20,38 @@ left; the Kotlin-rendered particles are on the right.
 The example uses **24,000 target particles at the source's full 400 × 300 resolution**, 25 frames
 per second, and 20 RAFT updates in each direction. Increasing the particle count adds sampling
 density without running a separate neural prediction per particle. Tracking runs offline; playback
-uses the recorded positions. The film's apparent motion and recoloring both remain visible.
+uses the recorded positions.
 
-The [source video](assets/particle_video/source.mp4) and
-[particle-only video](assets/particle_video/particles.mp4) are available separately. The footage is
+For readable individual paths, the comparison shows identities with `id % 16 == 0`, about 1,500
+at a time, with **25 frames / one second of history**. The underlying run still tracks 24,000.
+The [full-density polyline movie](assets/particle_video/polylines-full.mp4) draws every live
+trajectory with 12 frames of history and source colors. The
+[source video](assets/particle_video/source.mp4) and original
+[dot-only movie](assets/particle_video/particles.mp4) are also available. The footage is
 [public domain on Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Loie_Fuller_-_Vue_Lumi%C3%A8re_No_76_-_Serpentine_Dance_-_1896.ogv).
 Its historical filename refers to Loïe Fuller; the performer is not verified as Fuller herself.
+
+Each path ends at its current recorded position; earlier vertices belong to earlier frames.
+Watch the same polylines over a dimmed source to check the endpoints against the fabric:
+
+<video controls muted loop playsinline preload="metadata" width="800" height="600" poster="../assets/particle_video/polylines-overlay.png" style="width:100%;height:auto">
+  <source src="assets/particle_video/polylines-overlay.mp4" type="video/mp4">
+</video>
 
 ## Scrub recorded tracks
 
 The second Starting point box loads a small, representative subset of the same trajectories. It
 keeps every sample of each selected identity, so time, births, retirement and colors are preserved.
-The full-density movie above uses all particles. Move **movie time**, switch **identity colors**,
-or turn on **trails** to inspect motion independently of the source's changing tint.
+Move **movie time**, adjust **history (frames)** and **line width**, or switch **identity colors**
+to inspect motion independently of the source's changing tint. Lines are the default; **points**
+adds endpoint dots. **Trajectory stride** thins displayed identities without changing the tracks.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/particle_video/field-view.png" capture="box" open-outputs="true" wait="2" padding="12" timeout="120" w="900" h="900" hidden=true embed=true name="particle-video-reader" alt="Actual Kotlin particle reader and scrubber with movie-time, identity-color and trail controls" macro-file="../../dev_docs/agents/transcripts/docs_capture/particle_video_view.yaml" capture-box="particle_video_view"}
 val video = loadParticleVideo("public/docs/assets/particle_video/example.pvt.gz")
 particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
 ```
 
-With identity colors and trails enabled, the same reader shows where each trajectory moves:
+At another time, a longer history reveals the shape of the recorded paths:
 
 ![Identity colors and trails at 4.8 seconds](assets/particle_video/field-controls.png)
 
@@ -55,13 +67,13 @@ val frame = video.at(2.35) // interpolate matching IDs between recorded frames
 val points = frame.samples.map { it.position }
 val rgb = frame.samples.map { vec(it.red, it.green, it.blue, 1) }
 val trajectory = video.trajectory(frame.samples.first().id)
-val paths = video.trails(frame.index, length = 18, stride = 8)
+val paths = video.trails(frame.index, length = 25, stride = 16)
 val gpuPoints = frame.points(pointSize = 2.0, color = ParticleColor.SAMPLED)
 ```
 
 `points()` returns a single `FLine` with per-node colors for a node-color-aware renderer such as
 Field's Vulkan drawing. The 2D `particleVideoView()` rasterizes sampled colors directly in Kotlin.
-`video.image(frame)` gives a `BufferedImage`; `video.renderMovie(path)` exports that same Kotlin
+`video.image(frame)` draws polylines into a `BufferedImage`; `video.renderMovie(path)` exports that same Kotlin
 drawing through FFmpeg. Reading tracks and making geometry need no FFmpeg; movie export does.
 
 ## Track your own movie
@@ -91,13 +103,13 @@ result. Change the input filename and particle count for your own movie:
 
 ```diffstatic {data-lang=kotlin}
 val tracker = particleTracker()
-suspend fun trackMovie() {
+suspend fun process() {
     val run = tracker.track("my-movie.mp4",
         ParticleTrackingOptions(particles = 24000, colorLimit = 1.0))
     println("cached=${run.cacheHit}")
-    particleVideoView(run.load())
+    particleVideoView(run.load(), stride = 16)
 }
-start(::trackMovie)
+start(::process)
 ```
 
 Stopping or rerunning that box cancels its subprocess work. Repeating the same successful request

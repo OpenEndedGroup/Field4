@@ -96,6 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "particle_video_reader",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
