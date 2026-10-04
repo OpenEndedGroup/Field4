@@ -188,8 +188,9 @@ class Ai4ChatGraphWiringTest {
         val info = document()
         val tools = FieldGraphTools(info, host)
         val b = tools.newBox(NewBoxRequest("Gone"))
-        BoxOutputLog.record(b.uid, "out", "hello")
+        BoxOutputLog.record(b.uid, "out", "hello", document = info.filename)
+        assertEquals("hello", BoxOutputLog.since(b.uid, 0, document = info.filename).entries.single().text)
         tools.deleteBox(DeleteBoxRequest("Gone"))
-        assertTrue(BoxOutputLog.since(b.uid, 0).entries.isEmpty(), "-delete-box clears the log")
+        assertTrue(BoxOutputLog.since(b.uid, 0, document = info.filename).entries.isEmpty(), "-delete-box clears the document-scoped log")
     }
 }

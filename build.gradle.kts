@@ -464,7 +464,18 @@ fun fieldAotBuildFingerprint(
 // launch -cp: the app loads it through afield.PersonalLayer, a URLClassLoader parented to the
 // app loader, so the whole layer can eventually be dropped and rebuilt without restarting.
 // The path is announced to the app via a system property rather than the classpath.
-val hasPersonalLayer = file("src/personal/kotlin").exists()
+// Optional project-owned extensions share the existing isolated personal compilation.
+// Never add these roots to core: the dependency direction remains extension -> Field.
+val externalExtensionRoots = (providers.gradleProperty("fieldExtensionDirs").orNull
+    ?: providers.environmentVariable("AFIELD_EXTENSION_DIRS").orNull).orEmpty()
+    .split(File.pathSeparatorChar).filter { it.isNotBlank() }.map { file(it.trim()).canonicalFile }
+    .distinct().onEach { root ->
+        require(root.isDirectory && (File(root, "kotlin").isDirectory || File(root, "resources").isDirectory)) {
+            "Field extension root must contain kotlin/ or resources/: $root"
+        }
+    }
+val personalSourceRoots = (listOf(file("src/personal")) + externalExtensionRoots).distinctBy { it.canonicalPath }
+val hasPersonalLayer = personalSourceRoots.any { File(it, "kotlin").isDirectory || File(it, "resources").isDirectory }
 val personalLayerJar: File = layout.buildDirectory.file("personal/afield-personal.jar").get().asFile
 /** Must match `afield.PersonalLayer.CLASSPATH_PROPERTY`. */
 val personalLayerProperty = "afield.personal.classpath"
@@ -839,8 +850,8 @@ kotlin {
             compilations.create("personal") {
                 associateWith(jvmMainCompilation)
                 defaultSourceSet {
-                    kotlin.setSrcDirs(listOf(file("src/personal/kotlin")))
-                    resources.setSrcDirs(listOf(file("src/personal/resources")))
+                    kotlin.setSrcDirs(personalSourceRoots.map { File(it, "kotlin") })
+                    resources.setSrcDirs(personalSourceRoots.map { File(it, "resources") })
                 }
             }
         }
@@ -1101,9 +1112,11 @@ kotlin {
                 //   -Xplugin args (compilerPluginArgs == []) still produced 10
                 //   io.github.kyay10.wither frames. The practical consequence is that Wither
                 //   CANNOT be turned off at runtime -- only by removing the line below.
-                // - and it is not neutral: its IrGenerationExtension breaks local and class-member
-                //   `by provideDelegate` in box code. See dev_docs/k2_repl_provide_delegate.md and
-                //   the reproducer afield.examples.ProvideDelegateReplSmokeTest.
+                // - and it is not neutral: until 2026-10-04 its IrGenerationExtension failed every
+                //   box that called a local function (or a member of a local or anonymous class) as
+                //   a statement, with "... has no callableId". The jar is now built from
+                //   ~/temp/wither branch field/kotlin-2.5.0-beta1, which fixes that. See
+                //   dev_docs/k2_repl_provide_delegate.md and afield.ReplSnippetDeclarationsSmokeTest.
                 implementation(files("libs/wither-annotations.jar"))
                 implementation(files("libs/wither-plugin.jar"))
 
@@ -3909,35 +3922,6 @@ tasks.register<JavaExec>("runfilestore") {
     classpath = sourceSets["jvmMain"].runtimeClasspath
 
     mainClass.set("afield.ai.AI4FilestoreCliKt")
-    standardInput = System.`in`
-}
-
-tasks.register<JavaExec>("polishCompletionDocs") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI and regenerates the codebase reference"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    standardInput = System.`in`
-
-    // Source KDoc is the input to the committed codebase reference and KDoc
-    // worklist. Keep those derived files synchronized before the /welcome
-    // monitor reports the polish task as finished. A finalizer also repairs the
-    // reference after a failed AI run that managed to write a partial batch.
-    finalizedBy("generateCodebaseReference")
-}
-
-tasks.register<JavaExec>("polishCompletionDocsDryRun") {
-    javaLauncher.set(javaToolchains.fieldLauncher())
-    group = "application"
-    description = "Runs AI4 completion-doc cache/source polishing CLI without writing files"
-
-    classpath = sourceSets["jvmMain"].runtimeClasspath
-
-    mainClass.set("afield.ai.core.completion.Ai4CompletionDocPolishCliKt")
-    args("--dry-run")
     standardInput = System.`in`
 }
 

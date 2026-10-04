@@ -495,6 +495,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "attic",
             "notes",
             "geometryReviews",
+            "geometryAppearance",
             "fragment",
             "stackSL",
             "rectSL",
@@ -550,6 +551,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "ai4_auto_name_signature",
             "ai4_chat_history",
             "ai4_chat_running",
+            // The same conversation as a tree with checkpoints (afield.ai.core.AiSessionTree).
+            "ai4_session",
             "fileManagerAccessHistory"
         )
 
@@ -597,6 +600,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // which now requires every key here to have a matching ioPersistentProperties pattern.
             "notes" to "md",
             "ai4_chat_history" to "md",
+            "ai4_session" to "jsonl",
             "metadata" to "yaml"
         )
 
@@ -791,7 +795,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         // Likewise its last-run line notes (Forth, Clojure, Python), never evicted before.
                         afield.stdlib.LastRunNotes.forgetBox(target)
                         // And its output history, which nothing will read again (review, 2026-09-29).
-                        BoxOutputLog.clear(target.id)
+                        BoxOutputLog.clear(target.id, outputDocument(target))
                     }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")
@@ -1548,6 +1552,10 @@ import kotlin.math.*
 import kotlinx.coroutines.yield
 import kotlinx.coroutines.runBlocking
 import afield.ai.core.aiTool
+import afield.ai.core.agentExtension
+import afield.ai.core.ToolEffect
+import afield.ai.core.ToolExposure
+import afield.ai.core.BranchConflict
 import afield.rectsl.registerRectslStudioTools
 import afield.rectsl.renderRectslToImages
 """

@@ -1476,7 +1476,9 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
-    BoxOutputLog.observeBroadcast(message)
+    // Resolve the exact owner for the log as well as the wire recipients.
+    val logDocument=documents.values.singleOrNull { it.filename.matches(document.toRegex()) }?.filename.orEmpty()
+    BoxOutputLog.observeBroadcast(message,logDocument)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -2205,6 +2207,7 @@ class Server {
             UserThemeManager.start()
             UserKeybindingsManager.start()
             NetStats.start() // pinned "net" row: WebSocket packet/KB rates to/from the front end
+            SemanticRetrievalService.startIdleRebuildWatcher() // rebuilds a stale semantic index once the workspace is quiet
 
             // The loop below saves every ~5 s; this saves what it has not reached when Field stops.
             DocumentShutdownFlush.install()
@@ -3870,7 +3873,7 @@ class Server {
                                     projects,
                                     currentRuntimeInfo(),
                                     PythonInterface.currentPythonSettingsStatus(),
-                                    CompletionDocPolishMonitor.status(),
+                                    CompletionDocDrafts.summary(),
                                     AiToolUseImprovementMonitor.status(),
                                     codeUseSummary,
                                     semanticSettings
@@ -3921,24 +3924,6 @@ class Server {
                                     write("\n")
                                     flush()
                                 }
-                            }
-                        }
-
-                        get("/api/completion-doc-polish") {
-                            call.respond(CompletionDocPolishMonitor.status())
-                        }
-
-                        post("/api/completion-doc-polish") {
-                            try {
-                                val request = runCatching { call.receive<CompletionDocPolishRunRequest>() }
-                                    .getOrElse { CompletionDocPolishRunRequest() }
-                                call.respond(CompletionDocPolishMonitor.start(request.dryRun))
-                            } catch (e: Exception) {
-                                lprintln("error,server", "completion-doc polish launch failed: ${e.message}")
-                                call.respond(
-                                    HttpStatusCode.InternalServerError,
-                                    mapOf("error" to "completion-doc polish launch failed")
-                                )
                             }
                         }
 
@@ -5053,7 +5038,7 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name == "slider-update" || message.name == "button-update")
+                                            if (message.name == "slider-update" || message.name == "button-update" || message.name == "output-request")
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }

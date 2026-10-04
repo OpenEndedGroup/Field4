@@ -393,7 +393,7 @@ fun Box.three(
     block: ThreeSceneBuilder.() -> Unit,
 ): ThreeGeometryViewState {
     val builder = ThreeSceneBuilder(samplesPerCubic).apply(block)
-    val uid = "${this.id}_$name"
+    val uid = threeViewerUid(this, name)
     // The size must be in **pixels on the iframe itself**, and that is not decoration.
     //
     // `field.css:491` says `.disclosure-content iframe { width: 100% !important; height: 100% !important }`,
@@ -418,7 +418,7 @@ fun Box.three(
             "style='border:none;padding:0;margin:0;$sizing;height:${height}px'>"
     )
     val view = threeViewFor(uid)
-    view.bindSource(this)
+    view.bindSource(this, "${this.id}_$name")
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }

@@ -4,7 +4,7 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16211 public symbols across 458 source files**, 9623 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16255 public symbols across 462 source files**, 9647 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
@@ -27,7 +27,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Audio](audio.md) | 20 | 916 | 313 (34%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 105 | 2852 | 1267 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 22 | 334 | 239 (71%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 26 | 378 | 263 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 5 | 180 | 177 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 
 ## Every file
@@ -69,6 +69,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [booleannetworks.kt](data.md#booleannetworks-kt) | Data | 32 | 25 | Synchronous Boolean networks and the pictures you draw of them. | [Boolean networks to FLine examples](../boolean_networks_examples.md), [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSequencing.kt](patterns.md#booleannetworksequencing-kt) | Patterns | 36 | 21 | Gives a `BooleanNetwork`'s states a duration, which is all it takes to read one as music. | [Boolean network music examples](../boolean_network_music_examples.md) |
 | [BooleanNetworkSoundDocs.kt](audio.md#booleannetworksounddocs-kt) | Audio | 14 | 12 |  |  |
+| [BoxStudyBuilds.kt](workspace.md#boxstudybuilds-kt) | Workspace | 2 | 2 |  | [Studies](../studies.md) |
 | [bspot.kt](graphics.md#bspot-kt) | Graphics | 10 | 10 | One-to-one matching between two equally sized 2D point clouds, at a million points a side, using BSP-OT: every source point gets exactly one target and every target is used exactly once, with the total squared travel distance kept small. | [A Drawn Morph, Heard](../chain_drawn_morph.md) |
 | [Buf.kt](synthesis.md#buf-kt) | Synthesis | 22 | 22 | Bulk float-array arithmetic for the synthesis graph, written against the Java Vector API. |  |
 | [cached.kt](workspace.md#cached-kt) | Workspace | 3 | 3 |  |  |
@@ -458,6 +459,9 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [stdlib.kt](workspace.md#stdlib-kt) | Workspace | 75 | 72 | The general-purpose helpers that every Field box already has in scope. | [Running code in a box](../running_code.md) |
 | [stippletransport.kt](machine-learning.md#stippletransport-kt) | Machine learning | 13 | 13 |  |  |
 | [Strand.kt](simulation.md#strand-kt) | Simulation | 27 | 27 | A rope inside somebody else's `SimdVerlet`: the one-dimensional sibling of `Cloth`, and the same shape of thing. |  |
+| [StudyBuildFindings.kt](workspace.md#studybuildfindings-kt) | Workspace | 0 | 0 |  |  |
+| [StudyBuildPanel.kt](workspace.md#studybuildpanel-kt) | Workspace | 0 | 0 |  |  |
+| [StudyBuilds.kt](workspace.md#studybuilds-kt) | Workspace | 42 | 22 |  | [Studies](../studies.md) |
 | [StudyEvidence.kt](workspace.md#studyevidence-kt) | Workspace | 38 | 25 |  |  |
 | [StudyFrames.kt](workspace.md#studyframes-kt) | Workspace | 5 | 5 |  |  |
 | [StudyKeys.kt](workspace.md#studykeys-kt) | Workspace | 0 | 0 |  |  |

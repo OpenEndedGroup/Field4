@@ -1,0 +1,274 @@
+package afield.ai.agent
+
+import afield.ReadOnlyDocuments
+import afield.SessionInformation
+import afield.ai.core.*
+import afield.graphics.ThreeReviewInbox
+import afield.graphics.GeometryFinding
+import afield.graphics.geometryReviewSurfacesOwnedBy
+import afield.graphics.threeViewsOwnedBy
+import com.fasterxml.jackson.annotation.JsonClassDescription
+import com.fasterxml.jackson.annotation.JsonIgnore
+import kotlinx.serialization.json.*
+import java.security.MessageDigest
+import java.util.Base64
+
+@JsonClassDescription("List live Three.js and custom canvas review views owned by this document, with source boxes, geometry revisions and unresolved note counts. Start here to find a viewId; views in other documents are excluded.")
+@AgentToolMeta("geometry", ToolExposure.DIRECT, effects = [ToolEffect.READ_DOCUMENT])
+data class ListGeometryViewsRequest(val unused: Int = 0)
+
+@JsonClassDescription("Style named solid parts in an existing document-owned Three.js viewer. Inspect its current part IDs and revision first. RGB colours are 0..1; unlit preserves colour without lighting; xrayOpacity=1 keeps a part legible when the surrounding surfaces fade. Stores presentation on the source box, surviving rebuilds with the same part IDs. Does not alter geometry, checks, camera, selection, notes or build currency. replace=true replaces this view's whole style map; an empty replacement restores defaults.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
+data class StyleGeometryPartsRequest(val viewId: String, val expectedRevision: String,
+    val parts: List<GeometryPartColor>, val unlit: Boolean = false,
+    val xrayOpacity: Double? = null, val replace: Boolean = false)
+
+data class GeometryPartColor(val partId: String, val color: List<Double>)
+
+
+@JsonClassDescription("Read a page of geometry annotation summaries, without opening a browser or acknowledging any note. Open notes are the default. ReadGeometryNoteRequest returns a complete note and its saved pictures. Original annotation revisions can differ from the current geometry revision.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
+data class ReadGeometryReviewsRequest(val viewId: String, val includeResolved: Boolean = false, val offset: Int = 0, val limit: Int = 10)
+
+@JsonClassDescription("Read one geometry annotation including its original feature/view reference, replies and resolution history. Attaches the saved context and crop as actual images when available. These are historical pictures of the annotated revision, not freshly rendered current geometry. Reading does not resolve the note or change the user's selection.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
+data class ReadGeometryNoteRequest(val viewId: String, val noteId: String, val includeImages: Boolean = true)
+
+@JsonClassDescription("Append a durable finding, decision or verification reply to a geometry note without changing its open/resolved status. Supply the current geometry revision actually checked and the note version from the latest read; stale writes are refused.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
+data class ReplyGeometryNoteRequest(val viewId: String, val noteId: String, val text: String, val actor: String, val checkedRevision: String, val expectedVersion: Int)
+
+@JsonClassDescription("Explicitly resolve a verified geometry note, or reopen it (status: resolved or open). Supply an explanation, current geometry revision actually checked, and latest note version. Never resolve merely because a note was read or geometry rebuilt. Preserves the original note, pictures, replies and history.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
+data class ReviewGeometryNoteRequest(val viewId: String, val noteId: String, val status: String, val summary: String, val actor: String, val checkedRevision: String, val expectedVersion: Int)
+
+@JsonClassDescription("Ask for review of a geometry finding in the existing annotation inbox. Supply a complete stateJson from InspectGeometryViewRequest with an actual point/region selection. Captures fresh context/crop images in an independent viewer; never moves the user's camera or changes build acceptance. kind is error (a failed check), warning (a suspected problem), or question (a decision needed). key identifies the check and subject; runId identifies its build/diagnostic attempt. Repeated identical reports reuse the thread. State what happens if left unchanged in consequence, and what feedback is needed in prompt. A repair that can proceed autonomously should say so rather than unnecessarily requiring user approval.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.MUTATE_DOCUMENT, ToolEffect.CAPTURE_IMAGE, ToolEffect.FILESYSTEM_WRITE])
+data class ReportGeometryFindingRequest(
+    val viewId: String, val expectedRevision: String, val stateJson: String,
+    val key: String, val kind: String, val stage: String, val runId: String,
+    val producer: String, val text: String, val consequence: String, val prompt: String,
+)
+
+@JsonClassDescription("Inspect current Three.js geometry in a separate capture browser and receive a fresh picture, compact part hierarchy and complete restorable state. Never moves the user's camera or publishes a manual selection. Get expectedRevision from ListGeometryViewsRequest. stateJson must be the COMPLETE state returned by a previous inspection, never a fabricated partial state. Use camera and target to change framing in viewer coordinates (Y up). Optionally adjust explode/visibility/x-ray/section or pick the nearest visible feature. includeMetadata adds full source provenance and redundant part-tree details; normally leave false. Historical notes remain readable with ReadGeometryNoteRequest.")
+@AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.CAPTURE_IMAGE])
+data class InspectGeometryViewRequest(
+    val viewId: String,
+    val expectedRevision: String,
+    val noteId: String = "",
+    val stateJson: String = "",
+    val explode: Double? = null,
+    val hidden: List<String>? = null,
+    val xray: Boolean? = null,
+    val xrayOpacity: Double? = null,
+    val sectionNormal: List<Double>? = null,
+    val sectionFraction: Double = 0.5,
+    val pick: GeometryPick? = null,
+    val region: GeometryRegion? = null,
+    val camera: List<Double>? = null,
+    val target: List<Double>? = null,
+    val includeMetadata: Boolean = false,
+)
+
+data class GeometryPick(val x: Double, val y: Double, val kind: String = "face")
+data class GeometryRegion(val cx: Double, val cy: Double, val width: Double, val height: Double, val angle: Double = 0.0)
+
+data class GeometryToolResult(
+    val success: Boolean,
+    val message: String,
+    val details: Map<String, Any?> = emptyMap(),
+    val warnings: List<String> = emptyList(),
+    @get:JsonIgnore override val toolImages: List<ToolImage> = emptyList(),
+) : CarriesToolImages, SummarisesForToolLog {
+    val imageCount: Int get() = toolImages.size
+    override fun toolLogSummary(): String = "success=$success images=$imageCount $message"
+}
+
+/** Document-scoped adapters over the same inbox used by the viewer and external inspection tools. */
+internal class GeometryReviewTools(
+    private val info: SessionInformation,
+    private val onOwner: (() -> GeometryToolResult) -> GeometryToolResult,
+) {
+    private data class ReviewView(val uid: String, val reviewInbox: ThreeReviewInbox, val kind: String, val captureBox: String?) {
+        fun reviews(includeResolved: Boolean = false) = reviewInbox.snapshot(includeResolved)
+    }
+    private fun views(): List<ReviewView> {
+        val boxes = info.boxes.values + info.root
+        return threeViewsOwnedBy(boxes).map { ReviewView(it.uid, it.reviewInbox, "threejs", it.reviewInbox.owner?.id) } +
+            geometryReviewSurfacesOwnedBy(boxes).map { ReviewView(it.uid, it.reviewInbox, "canvas", it.outputBox.id) }
+    }
+
+    private fun view(id: String): ReviewView = views().firstOrNull { it.uid == id }
+        ?: error("No live geometry view '$id' in this document. Call ListGeometryViewsRequest; run its source box if needed.")
+
+    private fun guarded(action: () -> GeometryToolResult): GeometryToolResult = try { onOwner(action) }
+    catch (e: IllegalArgumentException) { GeometryToolResult(false, e.message ?: "Invalid geometry review request") }
+    catch (e: IllegalStateException) { GeometryToolResult(false, e.message ?: "Geometry review is unavailable") }
+
+    fun list(): GeometryToolResult = guarded {
+        val entries = views().map { view ->
+            val snapshot = view.reviews()
+            mapOf("viewId" to view.uid, "viewKind" to view.kind, "captureBox" to view.captureBox, "captureTool" to (if (view.kind == "threejs") "InspectGeometryViewRequest" else "ViewBoxOutputRequest"), "sourceBox" to view.reviewInbox.owner?.id,
+                "sourceName" to view.reviewInbox.owner?.name, "revision" to snapshot["revision"]?.plain(),
+                "openCount" to snapshot["openCount"]?.plain(), "resolvedCount" to snapshot["resolvedCount"]?.plain())
+        }
+        GeometryToolResult(true, "${entries.size} geometry views in ${info.documentName}", mapOf("views" to entries))
+    }
+
+    fun read(request: ReadGeometryReviewsRequest): GeometryToolResult = guarded {
+        require(request.offset >= 0 && request.limit in 1..30) { "Use offset >= 0 and limit between 1 and 30" }
+        val snapshot = view(request.viewId).reviews(request.includeResolved)
+        val notes = snapshot.getValue("notes").jsonArray
+        val page = notes.drop(request.offset).take(request.limit).map { entry ->
+            val note = entry.jsonObject
+            val text = note["text"]?.jsonPrimitive?.contentOrNull.orEmpty()
+            val summary = note.filterKeys { it in setOf("id", "status", "version", "artifactDigest", "createdAt", "sourceBox", "finding", "stale") }.mapValues { it.value.plain() }
+            summary + mapOf("text" to text.take(1200), "textTruncated" to (text.length > 1200),
+                "hasImages" to (note["evidence"] is JsonObject),
+                "replyCount" to ((note["replies"] as? JsonArray)?.size ?: 0),
+                "partId" to ((note["selection"] as? JsonObject)?.get("partId")?.plain()))
+        }
+        GeometryToolResult(true, "${page.size} of ${notes.size} notes; reading leaves their status unchanged",
+            snapshot.filterKeys { it !in setOf("notes", "selection") }.mapValues { it.value.plain() } +
+                mapOf("notes" to page, "offset" to request.offset, "total" to notes.size,
+                    "nextOffset" to (request.offset + page.size).takeIf { it < notes.size }))
+    }
+
+    fun note(request: ReadGeometryNoteRequest): GeometryToolResult = guarded {
+        val view = view(request.viewId)
+        val snapshot = view.reviews(true)
+        val note = findNote(snapshot, request.noteId)
+        val images = mutableListOf<ToolImage>()
+        val warnings = mutableListOf<String>()
+        if (request.includeImages) {
+            val evidence = note["evidence"] as? JsonObject
+            if (evidence == null) warnings += "This note has no saved pictures; none have been reconstructed."
+            else for (kind in listOf("context", "crop")) {
+                val hash = (evidence[kind] as? JsonObject)?.get("sha256")?.jsonPrimitive?.contentOrNull
+                val bytes = hash?.let { view.reviewInbox.image(it) }
+                if (bytes == null || sha256(bytes) != hash) warnings += "The saved $kind image is missing or differs from its recorded hash."
+                else images += ToolImage("data:image/png;base64," + Base64.getEncoder().encodeToString(bytes),
+                    "Saved $kind image for note ${request.noteId}, view ${request.viewId}, annotated geometry ${note["artifactDigest"]?.jsonPrimitive?.contentOrNull}. Historical evidence; current geometry is ${snapshot["revision"]?.jsonPrimitive?.contentOrNull}.")
+            }
+        }
+        GeometryToolResult(true, "Read annotation ${request.noteId}", mapOf("viewId" to request.viewId,
+            "currentRevision" to snapshot["revision"]?.plain(), "note" to note.plain()), warnings, images)
+    }
+
+    fun reply(request: ReplyGeometryNoteRequest): GeometryToolResult = update(request.viewId, buildJsonObject {
+        put("id", request.noteId); put("reply", request.text); put("actor", request.actor)
+        put("checkedRevision", request.checkedRevision); put("expectedVersion", request.expectedVersion)
+    })
+
+    fun review(request: ReviewGeometryNoteRequest): GeometryToolResult = update(request.viewId, buildJsonObject {
+        put("id", request.noteId); put("status", request.status); put("summary", request.summary); put("actor", request.actor)
+        put("checkedRevision", request.checkedRevision); put("expectedVersion", request.expectedVersion)
+    })
+
+    private fun update(viewId: String, request: JsonObject): GeometryToolResult = guarded {
+        check(!info.readOnly && !ReadOnlyDocuments.global) { "This document is read-only" }
+        val updated = view(viewId).reviewInbox.updateNote(request)
+        GeometryToolResult(true, "Annotation updated", updated.mapValues { it.value.plain() })
+    }
+
+    fun report(request: ReportGeometryFindingRequest): GeometryToolResult {
+        val prepared = guarded {
+            GeometryFinding(request.key, request.kind, request.stage, request.runId, request.producer, request.consequence, request.prompt).json()
+            require(request.text.isNotBlank() && request.text.length <= 16_000) { "Explain the finding in 1..16000 characters" }
+            require(request.stateJson.isNotBlank()) { "Inspect and select the feature before reporting it" }
+            check(!info.readOnly && !ReadOnlyDocuments.global) { "Document is read-only" }
+            GeometryToolResult(true, "Finding prepared")
+        }
+        if (!prepared.success) return prepared
+        val capture = inspect(InspectGeometryViewRequest(request.viewId, request.expectedRevision, stateJson = request.stateJson), request.text)
+        if (!capture.success) return capture
+        return guarded {
+            check(!info.readOnly && !ReadOnlyDocuments.global) { "Document is read-only" }
+            // receive checks the revision again on the document thread: a late capture
+            // cannot become a finding against a newer design.
+            val record = Json.parseToJsonElement(aiToolMapper.writeValueAsString(capture.details.getValue("observation"))).jsonObject
+            val finding = GeometryFinding(request.key, request.kind, request.stage, request.runId, request.producer, request.consequence, request.prompt).json()
+            val result = view(request.viewId).reviewInbox.receive(JsonObject(record + ("finding" to finding)), true)
+            GeometryToolResult(true, result["message"]?.jsonPrimitive?.contentOrNull ?: "Finding recorded",
+                mapOf("viewId" to request.viewId, "noteId" to result["id"]?.plain(), "existing" to (result["existing"]?.plain() ?: false), "buildAcceptanceChanged" to false))
+        }
+    }
+
+    fun inspect(request: InspectGeometryViewRequest, observationText: String? = null): GeometryToolResult {
+        val prepared = guarded {
+            require(request.expectedRevision.isNotBlank()) { "Supply the geometry revision from ListGeometryViewsRequest" }
+            require(request.noteId.isEmpty() || request.stateJson.isEmpty()) { "Restore a note or a view state, not both" }
+            require(request.stateJson.length <= 128_000) { "Inspection state is too large" }
+            listOf("camera" to request.camera, "target" to request.target).forEach { (name, vector) ->
+                require(vector == null || vector.size == 3 && vector.all(Double::isFinite)) { "$name must be a finite 3-vector in viewer coordinates (Y up)" }
+            }
+            require(request.camera == null || request.target == null || request.camera != request.target) { "Camera and target must be different" }
+            require(request.explode == null || request.explode.isFinite() && request.explode >= 0) { "Explode must be a finite non-negative distance" }
+            require(request.hidden == null || request.hidden.size <= 10_000) { "Too many hidden parts" }
+            require(request.xrayOpacity == null || request.xrayOpacity.isFinite() && request.xrayOpacity in 0.03..1.0) { "X-ray opacity must be between 0.03 and 1" }
+            require(request.sectionFraction.isFinite() && request.sectionFraction in 0.0..1.0) { "Section fraction must be between 0 and 1" }
+            request.sectionNormal?.let { require(it.size == 3 && it.all(Double::isFinite) && it.any { v -> v != 0.0 }) { "Section normal must be a finite, nonzero 3-vector" } }
+            request.pick?.let { require(it.x in 0.0..1.0 && it.y in 0.0..1.0 && it.kind in setOf("point", "face", "edge", "vertex")) { "Pick coordinates must be normalized and kind point, face, edge or vertex" } }
+            request.region?.let { require(it.cx in 0.0..1.0 && it.cy in 0.0..1.0 && it.width > 0 && it.width <= 1 && it.height > 0 && it.height <= 1 && it.angle.isFinite()) { "Invalid normalized inspection rectangle" } }
+            require(request.pick == null || request.region == null) { "Pick a point or a region, not both" }
+            val target = view(request.viewId)
+            require(target.kind == "threejs") { "This is a custom canvas. Use ViewBoxOutputRequest for output box ${target.captureBox}; ReadGeometryNoteRequest returns saved annotation pictures." }
+            val snapshot = target.reviews(true)
+            check(snapshot["revision"]?.jsonPrimitive?.contentOrNull == request.expectedRevision) { "Geometry changed; inspect the current revision before capturing" }
+            val note = request.noteId.takeIf { it.isNotEmpty() }?.let { findNote(snapshot, it) }
+            require(note == null || note["artifactDigest"]?.jsonPrimitive?.contentOrNull == request.expectedRevision) { "That note belongs to older geometry. ReadGeometryNoteRequest returns its saved pictures; inspect the current geometry separately." }
+            val state = request.stateJson.takeIf { it.isNotBlank() }?.let { Json.parseToJsonElement(it).jsonObject }
+            require(state == null || state["artifactDigest"]?.jsonPrimitive?.contentOrNull == request.expectedRevision) { "Inspection state belongs to different geometry" }
+            require(state == null || state["partIds"] is JsonArray && state["camera"] is JsonArray && state["target"] is JsonArray) {
+                "stateJson requires the complete state from a previous inspection, including partIds, camera and target. Use camera/target arguments for framing without restoring state."
+            }
+            if (observationText != null) require(state?.get("selection") is JsonObject) { "The inspected state has no selected feature" }
+            GeometryToolResult(true, "Inspection prepared", mapOf("note" to note?.plain(), "state" to state?.plain(), "observationText" to observationText))
+        }
+        if (!prepared.success) return prepared
+        val result = GeometryViewCapture.capture(request, prepared.details)
+        if (!result.success) return result
+        val current = guarded {
+            check(view(request.viewId).reviews()["revision"]?.jsonPrimitive?.contentOrNull == request.expectedRevision) { "Geometry changed during capture; inspect the new revision before continuing" }
+            GeometryToolResult(true, "Revision unchanged")
+        }
+        return if (current.success) result else result.copy(success = false, message = current.message)
+    }
+
+    fun style(request: StyleGeometryPartsRequest): GeometryToolResult = guarded {
+        check(!info.readOnly && !ReadOnlyDocuments.global) { "Document is read-only" }
+        val target = threeViewsOwnedBy(info.boxes.values + info.root).singleOrNull { it.uid == request.viewId }
+            ?: error("No solid viewer with that ID in this document")
+        require(request.parts.size <= 10000 && request.parts.map { it.partId }.toSet().size == request.parts.size) { "Supply at most 10000 distinct part IDs" }
+        val styles = request.parts.associate { it.partId to afield.graphics.ThreePartAppearance(it.color, request.unlit, request.xrayOpacity) }
+        target.styleParts(request.expectedRevision, styles, request.replace)
+        GeometryToolResult(true, "Updated part appearance; geometry is unchanged", mapOf("viewId" to target.uid, "revision" to request.expectedRevision, "styledParts" to styles.size))
+    }
+
+    private fun findNote(snapshot: JsonObject, id: String): JsonObject = snapshot.getValue("notes").jsonArray
+        .map { it.jsonObject }.firstOrNull { it["id"]?.jsonPrimitive?.contentOrNull == id }
+        ?: error("No note '$id' in this view. ReadGeometryReviewsRequest lists available notes.")
+
+    private fun sha256(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+}
+
+/** Keep kotlinx JSON out of Jackson's reflection path and preserve JSON null/number semantics. */
+internal fun JsonElement.plain(): Any? = when (this) {
+    JsonNull -> null
+    is JsonObject -> mapValues { it.value.plain() }
+    is JsonArray -> map { it.plain() }
+    is JsonPrimitive -> if (isString) content else booleanOrNull ?: longOrNull ?: doubleOrNull ?: content
+}
+
+internal fun registerGeometryReviewTools(tools: ToolRegistry) {
+    tools.register(StyleGeometryPartsRequest::class.java, { it.fieldGraph != null }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.style(req) }
+    tools.register(ListGeometryViewsRequest::class.java, { it.fieldGraph != null }) { ctx, _ -> ctx.fieldGraph!!.geometryReviews.list() }
+    tools.register(ReadGeometryReviewsRequest::class.java, { it.fieldGraph != null }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.read(req) }
+    tools.register(ReadGeometryNoteRequest::class.java, { it.fieldGraph != null }) { ctx, req ->
+        ctx.fieldGraph!!.geometryReviews.note(req.copy(includeImages = req.includeImages && ctx.fieldGraph.seesOutput))
+    }
+    tools.register(ReplyGeometryNoteRequest::class.java, { it.fieldGraph != null }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.reply(req) }
+    tools.register(ReviewGeometryNoteRequest::class.java, { it.fieldGraph != null }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.review(req) }
+    tools.register(InspectGeometryViewRequest::class.java, { it.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.inspect(req) }
+    tools.register(ReportGeometryFindingRequest::class.java, { it.fieldGraph?.seesOutput == true }) { ctx, req -> ctx.fieldGraph!!.geometryReviews.report(req) }
+}

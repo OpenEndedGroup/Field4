@@ -582,18 +582,25 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
               return true;
             }
           };
-          const iframeReady = (iframe) => {
+          const iframeBlocker = (iframe) => {
             try {
               const doc = iframe.contentDocument;
-              if (!doc || doc.readyState !== "complete") {
-                return false;
-              }
+              if (!doc || doc.readyState !== "complete") return "iframe document is still loading";
+              // A loaded document can still be waiting for geometry, tool imports or async mount.
+              const viewer = iframe.contentWindow.FieldViewer?.captureStatus?.();
+              if (viewer?.error) return viewer.error;
+              if (viewer && !viewer.ready) return "viewer geometry or tools are still preparing";
+              if (Array.from(doc.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode))
+                return "iframe output is busy";
               const statusEl = doc.getElementById("status");
-              return !blockedStatusText(statusEl && statusEl.textContent);
+              return blockedStatusText(statusEl && statusEl.textContent) ? statusEl.textContent : null;
             } catch (error) {
-              return true;
+              // Cross-origin outputs have no inspectable DOM. A failing readiness API on our own
+              // output is different: retain its diagnostic instead of accepting a broken capture.
+              return error.name === "SecurityError" ? null : String(error.message || error);
             }
           };
+          const iframeReady = iframe => !iframeBlocker(iframe);
           /**
            * A GEOMETRY signature of the laid-out output: sizes only, never pixel content.
            *
@@ -749,7 +756,8 @@ internal fun requestBoxScreenshot(page: Page, req: BoxScreenshotRequest, prepTim
               const notReadyBox = findBox(request.uid);
               if (notReadyBox && !readyFn(notReadyBox)) {
                 const area = notReadyBox.querySelector(".outputArea");
-                const blocking = area ? visibleStatusTexts(area).filter(blockedStatusText) : [];
+                const blocking = area ? [...visibleStatusTexts(area).filter(blockedStatusText),
+                  ...Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean)] : [];
                 lastMessage = blocking.length
                   ? "output not ready: " + blocking.join(" | ")
                   : "output not ready (an iframe has not navigated or finished loading)";
@@ -938,18 +946,25 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
               return true;
             }
           };
-          const iframeReady = (iframe) => {
+          const iframeBlocker = (iframe) => {
             try {
               const doc = iframe.contentDocument;
-              if (!doc || doc.readyState !== "complete") {
-                return false;
-              }
+              if (!doc || doc.readyState !== "complete") return "iframe document is still loading";
+              // A loaded document can still be waiting for geometry, tool imports or async mount.
+              const viewer = iframe.contentWindow.FieldViewer?.captureStatus?.();
+              if (viewer?.error) return viewer.error;
+              if (viewer && !viewer.ready) return "viewer geometry or tools are still preparing";
+              if (Array.from(doc.querySelectorAll('[aria-busy="true"]')).some(isVisibleNode))
+                return "iframe output is busy";
               const statusEl = doc.getElementById("status");
-              return !blockedStatusText(statusEl && statusEl.textContent);
+              return blockedStatusText(statusEl && statusEl.textContent) ? statusEl.textContent : null;
             } catch (error) {
-              return true;
+              // Cross-origin outputs have no inspectable DOM. A failing readiness API on our own
+              // output is different: retain its diagnostic instead of accepting a broken capture.
+              return error.name === "SecurityError" ? null : String(error.message || error);
             }
           };
+          const iframeReady = iframe => !iframeBlocker(iframe);
           /**
            * A GEOMETRY signature of the laid-out output: sizes only, never pixel content.
            *
@@ -1095,7 +1110,10 @@ internal fun requestWindowScreenshot(page: Page, req: WindowScreenshotRequest, p
                 await Promise.resolve(window.fieldBackdoorPrepareWindowScreenshot(request));
                 const currentBox = findBox(request.uid);
                 if (!currentBox || !readyFn(currentBox)) {
-                  lastMessage = "output not ready (missing, busy, or an iframe has not finished loading)";
+                  const area = currentBox?.querySelector(".outputArea");
+                  const blocking = area ? Array.from(area.querySelectorAll("iframe")).map(iframeBlocker).filter(Boolean) : [];
+                  lastMessage = blocking.length ? "output not ready: " + blocking.join(" | ")
+                    : "output not ready (missing, busy, or an iframe has not finished loading)";
                   await sleep(${SCREENSHOT_POLL_INTERVAL_MS});
                   continue;
                 }
