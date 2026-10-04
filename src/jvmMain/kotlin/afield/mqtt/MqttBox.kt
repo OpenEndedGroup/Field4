@@ -4,7 +4,9 @@ package afield.mqtt
 
 import afield.Box
 import afield.Runloop
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -105,10 +107,26 @@ object MqttConnections {
     private fun watch(url: String, c: MqttClient) {
         val h = histories.computeIfAbsent(url) { ConcurrentHashMap() }
         // Recorded on the reader thread from whatever the client's subscriptions bring in.
-        c.onReceive.add { m -> m.number?.let { v -> h.computeIfAbsent(m.topic) { History(historyLength) }.add(v) } }
+        fun add(key: String, v: Double) = h.computeIfAbsent(key) { History(historyLength) }.add(v)
+        c.onReceive.add { m ->
+            val plain = m.text.trim().toDoubleOrNull()
+            if (plain != null) add(m.topic, plain)
+            else if (m.payload.size < 4096 && m.payload.firstOrNull()?.toInt()?.toChar() in setOf('{', '[')) {
+                // JSON: every numeric leaf, under "topic|dotted.path", for series(topic, path).
+                fun walk(e: JsonElement, path: String, depth: Int) {
+                    when (e) {
+                        is JsonPrimitive -> if (!e.isString) e.content.toDoubleOrNull()?.let { add(if (path.isEmpty()) m.topic else "${m.topic}|$path", it) }
+                        is JsonObject -> if (depth < 4) e.forEach { (k, v) -> walk(v, if (path.isEmpty()) k else "$path.$k", depth + 1) }
+                        is JsonArray -> if (depth < 4 && e.size <= 64) e.forEachIndexed { i, v -> walk(v, if (path.isEmpty()) "$i" else "$path.$i", depth + 1) }
+                    }
+                }
+                m.jsonOrNull?.let { walk(it, "", 0) }
+            }
+        }
     }
 
-    internal fun history(url: String, topic: String): List<Double> = histories[url]?.get(topic)?.toList() ?: emptyList()
+    internal fun history(url: String, topic: String, path: String? = null): List<Double> =
+        histories[url]?.get(if (path == null) topic else "$topic|$path")?.toList() ?: emptyList()
 
     internal fun subscribe(box: Box, client: MqttClient, key: String, filter: String, qos: QoS, handler: (String, MqttMessage) -> Unit) {
         val k = "${box.id}|${client.url}|$key"
@@ -173,6 +191,12 @@ class BoxMqtt internal constructor(private val box: Box, val client: MqttClient)
         MqttConnections.subscribe(box, client, key, filter, QoS.of(qos), handler)
     }
 
+    /**
+     * Subscribe to [filter] with no callback, so [latest], [number] and [series] fill in for its
+     * topics. A connection only receives topics something has subscribed to.
+     */
+    fun track(filter: String, qos: Int = 0) = subscribe(filter, qos, key = "track:$filter") { _, _ -> }
+
     /** End this box's subscription under [key], or all of them on this broker. */
     fun unsubscribe(key: String? = null) = MqttConnections.unsubscribe(box, client.url, key)
 
@@ -209,9 +233,10 @@ class BoxMqtt internal constructor(private val box: Box, val client: MqttClient)
 
     /**
      * The recent numeric values on [topic], oldest first (up to `MqttConnections.historyLength`), for
-     * `showSignals("temp" to mqtt.series("sensors/a/temp"))`.
+     * `showSignals("temp" to mqtt.series("sensors/a/temp"))`. With [path], a number inside a JSON
+     * payload, as in [MqttMessage.number]: `series("sensors/garden/env", "temp")`.
      */
-    fun series(topic: String): List<Double> = MqttConnections.history(client.url, topic)
+    fun series(topic: String, path: String? = null): List<Double> = MqttConnections.history(client.url, topic, path)
 
     /** Disconnect from this broker and forget its subscriptions (every box's). */
     fun close() = MqttConnections.closeClient(client.url)
