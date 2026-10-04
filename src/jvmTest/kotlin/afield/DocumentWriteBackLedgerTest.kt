@@ -335,7 +335,7 @@ class DocumentWriteBackLedgerTest {
     @Test
     fun aReadOnlyLoadDoesNotSeedAgentGuides() {
         // The eighth producer, and the only one on the load path: `SavingContext.load` calls
-        // `ensureDirectory`, which seeds AGENTS.md and README.md into any document directory
+        // `ensureDirectory`, which seeds AGENTS.md into any document directory
         // lacking them. Nothing to do with saving, and nothing the funnel guard can see.
         val readOnly = tempDocument("guides")
         session(readOnly, readOnly = true)
@@ -428,8 +428,8 @@ class DocumentWriteBackLedgerTest {
          * Three of them are the document: `metadata.edn`, `document.md`, and a `_code_.kt` sidecar
          * because `code` is in `Box.ioSeparateProperties`.
          *
-         * The other three are the surprise, and they are the bug in miniature. `AGENTS.md` and
-         * `README.md` come from `ensureAgentGuides`, which `ensureDirectory` calls on *every* load
+         * The other two are the surprise, and they are the bug in miniature. `AGENTS.md` comes
+         * from `ensureAgentGuides` (README.md stopped being seeded in 511779c13), which `ensureDirectory` calls on *every* load
          * and save. `history_metrics.edn` is there because `checkDifference` counts writing a file
          * that did not exist as an alteration, so a first save is "altered" and the whole
          * `if (altered)` fan-out runs.
@@ -445,8 +445,7 @@ class DocumentWriteBackLedgerTest {
             "document.md",
             "sample_code_.kt",
             "history_metrics.edn",
-            "AGENTS.md",
-            "README.md"
+            "AGENTS.md"
         )
 
         /**
