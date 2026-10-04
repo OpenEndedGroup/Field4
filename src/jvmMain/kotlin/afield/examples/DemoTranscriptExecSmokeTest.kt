@@ -902,6 +902,14 @@ object DemoTranscriptExecSmokeTest {
                 println("[compile]   $id: code_language=$codeLanguage, not Kotlin — skipped")
                 continue
             }
+            // The other way a box becomes a guest one: it sits beneath a `mainLanguage` root
+            // (`fieldcv_webcam`'s cells hang off a `mainLanguage: python` box rather than carrying
+            // `code_language` themselves).
+            val guestRoot = guestLanguageRoot(target)
+            if (guestRoot != null) {
+                println("[compile]   $id: beneath mainLanguage=$guestRoot root, not Kotlin — skipped")
+                continue
+            }
             val diags = compileBoxOnly(target)
             if (diags.isEmpty()) {
                 println("[compile]   $id: PASS")
@@ -915,6 +923,26 @@ object DemoTranscriptExecSmokeTest {
             }
         }
         if (demoOk) println("[compile] PASS $name")
+    }
+
+    /**
+     * The guest `mainLanguage` of the nearest ancestor language root, or null when [box] is Kotlin.
+     * `kotlinjs` roots are not guest here: their heads go through the KotlinJS pass above.
+     */
+    private fun guestLanguageRoot(box: Box): String? {
+        val seen = HashSet<Box>()
+        var frontier = box.parents.toList()
+        while (frontier.isNotEmpty()) {
+            val next = ArrayList<Box>()
+            for (p in frontier) {
+                if (!seen.add(p)) continue
+                val lang = p.getPropertyRaw("mainLanguage")?.toString()?.trim().orEmpty()
+                if (lang.isNotEmpty() && !lang.equals("kotlin", true) && !lang.equals("kotlinjs", true)) return lang
+                next.addAll(p.parents)
+            }
+            frontier = next
+        }
+        return null
     }
 
     /**
