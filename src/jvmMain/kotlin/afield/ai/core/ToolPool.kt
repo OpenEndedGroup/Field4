@@ -106,7 +106,8 @@ class ToolDiagnostics internal constructor(private val tool: BoxTool) {
     }
 
     /** Recent calls for this tool source, including diagnostics retained before a restart. */
-    @Synchronized fun calls(): List<ToolCallEvidence> {
+    @Synchronized
+    fun calls(): List<ToolCallEvidence> {
         val disk = directory()?.listFiles { f -> f.name.startsWith("call-") }?.mapNotNull {
             runCatching { aiToolMapper.readValue<ToolCallEvidence>(it) }.getOrNull()
         }.orEmpty()

@@ -275,7 +275,8 @@ data class ThreeGeometryPayload(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val revision: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceBox: String? = null,
     /** Server-owned document identity for optional camera linking; not geometry identity. */
-    @EncodeDefault(EncodeDefault.Mode.NEVER) val cameraLinkScope: String? = null,
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraLinkScope: String? = null,
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
     val points: ThreeGeometryData? = null,
