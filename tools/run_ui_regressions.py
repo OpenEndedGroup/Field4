@@ -4180,6 +4180,19 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-split",
+            description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, persists, and unsplits cleanly.",
+            document=f"ui-regression-canvas-split-{int(time.time())}",
+            commands=[
+                "new-box --name SplitA --x 100 --y 100",
+                "new-box --name SplitB --x 500 --y 100",
+                "new-box --name SplitC --x 100 --y 400",
+                "new-box --name SplitD --x 500 --y 400",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="profiling-timeline",
             description="Record real box coroutines, brush CPU/allocation samples, navigate to code, and retain or replace a latched capture.",
             document=f"ui-regression-profile-{int(time.time())}",

@@ -1,7 +1,7 @@
 # Split panes for the box canvas — scouting and plan
 
-Status: P0 (the camera seam) built on `canvas/split-panes-p0`; nothing user-visible yet.
-Scouted 2026-10-04.
+Status: P0 (the camera seam) landed on `main` 2026-10-04. P1 (static split, palette commands)
+built on `canvas/split-panes-p1`. Scouted 2026-10-04.
 
 Decided (Marc, 2026-10-04): **quadrant membership by position** (Option Q below), **shared zoom**,
 **split, not freeze** (every pane scrolls along its linked axes).
@@ -214,13 +214,52 @@ What P0 built:
 - Gate: a UI regression that splits 2×2, wheels in D, and asserts that B's X and C's Y moved
   while A did not.
 
+What P1 built:
+
+- **Spike.** In headless Chrome 143, `moveBefore` kept an iframe's `window` state across a move
+  and `appendChild` reloaded it. Electron 44 is newer Chromium, so the same should hold, though
+  it has not been tried there. `moveNode` in `canvasCamera.kt` falls back to `insertBefore`.
+- **Split state.** `CanvasCamera.splitAt(clientX?, clientY?)` creates the split, and a null
+  coordinate means no divider on that axis. The world lines are the world point under each
+  divider, and every pane starts at the current camera, so nothing moves.
+  `loadSplit` applies the root `panes` property. `constrain` clamps each column and row to its
+  quadrant, and on a zoom it keeps the other columns and rows anchored at their divider edge.
+- **Pane DOM.** Split, `mainViewport` holds one `.field-pane` per pane, and each pane holds a
+  canvas. The main pane (bottom-right) holds `mainCanvas` itself. Unsplit, the DOM is exactly
+  what it was before panes existed.
+- **Placing boxes.** `place(box)` runs from `applyFrameToBox`, from a MutationObserver on
+  `mainCanvas` (every box is created there), and at drag end.
+- **Background.** `fieldWebglBackground.js` takes an optional 7th argument: a list of panes,
+  each drawn scissored with its own translation and its own vignette (`u_pane`). The inline
+  fallback in Main.kt ignores it and draws the main camera across the window.
+- **Persistence.** The root property `panes` holds `{sx, wx, sy, wy}` and is listed in
+  `uiResyncProperties`, `ioPersistentProperties` and `triggersSave`.
+- **Palette commands:** **Split Canvas Here** (2×2), **Split Canvas Columns Here**, **Split
+  Canvas Rows Here** and **Remove Canvas Split**. Each command puts the divider where the
+  pointer was. `window.splitCanvasAt` and `window.canvasPanesState()` are there for tests.
+- **Regression `canvas-split`.** It checks quadrant membership, that a split moves nothing, the
+  row and column scroll linking, the clamp, persistence, and unsplitting. Negative control:
+  disabling `place` fails it with `quadrants: {"SplitA":"1,1",...}`.
+
+Known gaps after P1, each owned by a later phase:
+
+- **P2.** A box dragged across a divider is clipped while it moves. At drop it re-homes to the
+  quadrant its frame now has, but that frame was computed through the origin pane's camera, so
+  the box can jump. There are no divider handles yet.
+- **P3.** The connection splines, offscreen hints, snapping guides and end markers still draw
+  through the main pane's camera, so they are clipped to the main pane
+  (`--field-main-pane-clip`). A connection between panes is visible only where it crosses D.
+- **P4.** The drawing layer is clipped to the main pane, so strokes in the other quadrants are
+  hidden while the canvas is split.
+- `set-viewport` reports the main pane.
+
 **P2: interaction.**
 
 - crossing a divider during a drag and reparenting on drop
 - resize, marquee, new box at cursor
 - frameSelected and navigation per pane
 - splitter grip and divider dragging
-- clamping each pane at its `wx`/`wy`
+- ~~clamping each pane at its `wx`/`wy`~~ (done in P1)
 
 **P3: overlays.**
 

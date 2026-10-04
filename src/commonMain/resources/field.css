@@ -1509,8 +1509,39 @@ body {
 .field-main-canvas {
     position: relative;
     z-index: 1;
-    /* mainCanvasTransform() is translate(t) scale(mainZoom): screen = world * zoom + t. */
+    /* CanvasPane.canvasTransform() is translate(t) scale(zoom): screen = world * zoom + t. */
     transform-origin: 0 0;
+}
+
+/* Split canvas (canvasCamera.kt): each pane clips its own transformed canvas. The left column and
+   top row carry the dividers, so no pane's content origin moves. */
+.field-pane {
+    position: absolute;
+    z-index: 1;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.field-pane-canvas {
+    width: 0;
+    height: 0;
+    overflow: visible;
+}
+
+.field-pane-left {
+    border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.field-pane-top {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+/* Layers still drawn through the main pane's camera; see syncMainPaneClip in Main.kt. */
+.connection-spline-layer,
+.overlay-svg-layer,
+.front-connection-layer,
+.field-drawing-layer {
+    clip-path: var(--field-main-pane-clip, none);
 }
 
 .monaco-editor .margin-view-overlays .codicon-folding-collapsed,
