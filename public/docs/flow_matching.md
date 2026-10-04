@@ -1,9 +1,5 @@
 # Flow Matching
 
-For uniform image-area sources, stipple densities and a shared network with independent
-transport and movie times, see [Stipple Transport & Transport-Space Video](stipple_transport.md).
-That experimental PyTorch trainer exports a model Field can query without Python.
-
 `flowMatch` fits a velocity field that carries one cloud of points onto another. Integrating that
 field from `t = 0` to `t = 1` moves the first distribution onto the second, and stopping part-way
 gives every stage in between. The input is a few hundred to a few thousand points in two or three
@@ -29,7 +25,7 @@ val morph = flowMatch(to = cloudB, from = cloudA)
 val halfway = morph.transport(cloudA, to = 0.5) // a real intermediate distribution
 ```
 
-## Learning a shape, and sampling from it
+## Sampling new points shaped like a cloud
 
 With no `from` cloud the particles start from a standard Gaussian, which makes the result a
 generator: `sample` draws points that were not in the training data but are shaped like it.
@@ -100,7 +96,7 @@ everything you pass in and get back is in your own coordinates. And 2D against 3
 data rather than by an argument: a cloud whose `z` never varies trains as a two-dimensional problem
 and its samples come back on that same plane. `FlowMatchOptions.dimension` overrides that.
 
-## Two clouds, and a source topology that has to match
+## Moving one cloud onto another
 
 Given a `from` cloud the field becomes a map between two shapes, and `transport` can stop at any
 `t`. `transport(cloudA, to = 0.5)` is a genuine intermediate distribution rather than a vertex-wise
@@ -175,9 +171,8 @@ open source   (segment -> ring)   mean landing error ${"%.2f".format(miss(fromSe
 ![Left: a small purple circle with four cyan curves stepping outward from it, the outermost sitting on a thick grey target ring. Right: a purple straight line beside the same grey target ring, with cyan curves that cross themselves and never settle onto it](assets/flow_matching/topology.png)
 
 The numbers under the figure are roughly 0.3 units against 67 on a radius-100 ring. The topology
-mismatch costs more than every other setting on this page combined, and no amount of extra training
-reduces it — a longer run fits the crossing-averaged velocity more precisely, which is the wrong
-target. Give a closed target a closed source, an open target an open one.
+mismatch costs more than every other setting on this page combined, and training longer does not
+help: a longer run only fits the crossing-averaged velocity more precisely. Give a closed target a closed source, an open target an open one.
 
 `FlowCoupling` has a third option, `MINIBATCH_OT`, which pairs points within each batch by solving
 the assignment that minimises total squared travel. It cuts the training loss by about ten times
@@ -470,19 +465,19 @@ mean landing error ${"%.2f".format(
 
 ## Settings that change the result
 
-Four of `FlowMatchOptions`'s fields account for most of the variation, and two of them have defaults
-that are not the obvious choice.
+A few of `FlowMatchOptions`'s fields account for most of the variation, and the first two have
+defaults that may surprise you.
 
 `activation` defaults to `leaky` rather than `tanh`. A velocity field has to keep growing away from
 the data — near `t = 0` the right answer is roughly `-x`, without bound — and a saturating unit
-cannot, so it bends the far field back on itself. Measured on the ring above, `tanh` gives about four
-times the radial spread of `leaky` or `relu` at equal cost. This is the largest single lever here.
+cannot, so it bends the far field back on itself. On the ring above, `tanh` gives about four times
+the radial spread of `leaky` or `relu` at equal cost, more than any other setting changes it.
 
 `finalLearningRate` decays the rate linearly across the run, and defaults to doing so. RMSProp
 rescales the gradient to roughly unit length, so a constant rate keeps taking same-sized steps
-however close to the answer it already is, and the fit settles at a floor set by the rate. With a
-constant rate, more steps made the paired tube land *further* from its target; with the decay, more
-steps help. It took the ring's radial spread from 9.2 to 3.6.
+however close to the answer it already is, and the fit settles at a floor set by the rate. At a
+constant rate, more steps can leave the result *further* from its target; with the decay, more
+steps help, and the ring's radial spread drops from 9.2 to 3.6.
 
 `steps` is then the quality knob worth reaching for first, and the dominant cost: roughly 0.08 ms
 per step at the default batch, so 6000 steps is about half a second. `hidden` defaults to two layers
@@ -515,3 +510,7 @@ multi-output regression head that `flowMatch` trains, which is usable on its own
 `mixtureSource` builds the matched-topology source a multi-component target needs. Both are on
 [Particle rules that were trained](neural_particles.md), along with what the loss on this page does
 and does not tell you.
+
+See also [Stipple Transport & Transport-Space Video](stipple_transport.md), which carries a uniform
+sheet onto a stippled image and animates between images with one network, trained in PyTorch and
+queried from Field without Python.
