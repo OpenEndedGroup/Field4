@@ -220,7 +220,7 @@ if (depth.consume()) tex.recordUpload(commandBuffer)
     [Which code on this page runs](#which-code-on-this-page-runs) says which blocks on the page are
     illustration and which you can paste.
 
-Two things about the worker are worth knowing:
+The worker handles frames like this:
 
 - **Frames are dropped, not queued.** `submit` overwrites anything not yet picked up. Inference is
   slower than capture, so a queue would only grow, and every frame in it would be staler than the
