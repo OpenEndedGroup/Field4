@@ -39,6 +39,9 @@ REGENERATORS: dict[str, tuple[list[str], dict[str, str]]] = {
     ),
 }
 
+# Regenerators that are Gradle Test tasks (see regenerate() for why they get their own build).
+TEST_TASK_REGENERATORS = {"citationGates"}
+
 # Guards that only compare a committed artifact with its generator's output.
 PURE_DRIFT_CHECKS = {"checkCodebaseReference", "checkAgentTranscripts", "checkCompletionCorpusFixtures"}
 
@@ -64,16 +67,21 @@ def regenerate(repo: Path, changed: set[str]) -> tuple[int, set[str]]:
     """Rerun every generator whose inputs are in [changed], in ONE Gradle invocation, and stage what
     they wrote. Returns (exit code, the guard tasks whose drift check that has made redundant)."""
     selected = [guard for guard in guards_for_paths(changed) if guard.task in REGENERATORS]
-    if selected:
-        # One Gradle start instead of one per generator: under load each start (configuration,
-        # up-to-date checks, a compile check) cost minutes on its own.
+    # Fused into as few Gradle starts as is safe: under load each start (configuration, up-to-date
+    # checks, a compile check) cost minutes. But a regenerator that is a Test task runs on its own:
+    # every Test task is finalised by checkTestTreeWrites, which in a shared build also sees what
+    # the other generators legitimately wrote, and bounced two landings for 182 identical-byte
+    # rewrites of the completion corpus.
+    groups = [[g for g in selected if g.task not in TEST_TASK_REGENERATORS],
+              [g for g in selected if g.task in TEST_TASK_REGENERATORS]]
+    for group in filter(None, groups):
         gradle_args: list[str] = []
         env = dict(os.environ)
-        for guard in selected:
+        for guard in group:
             args, extra_env = REGENERATORS[guard.task]
             gradle_args += args
             env.update(extra_env)
-        print(f"merge_regen: regenerating {', '.join(g.description for g in selected)} ({' '.join(gradle_args)})")
+        print(f"merge_regen: regenerating {', '.join(g.description for g in group)} ({' '.join(gradle_args)})")
         code = subprocess.run([str(repo / "gradlew"), "--continue", *gradle_args], cwd=repo, env=env).returncode
         if code != 0:
             print("merge_regen: regeneration failed; the merge is left uncommitted for you to inspect", file=sys.stderr)
