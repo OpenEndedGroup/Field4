@@ -184,6 +184,12 @@
     backdrop-filter: blur(15px);
 }
 
+/* A canvas pan that started on the canvas passes over output areas (installCanvasPanLatch in Main.kt). */
+body.canvas-pan-latched .outputArea,
+body.canvas-pan-latched .outputArea * {
+    pointer-events: none !important;
+}
+
 .disclosure-group {
     max-width: 520px;
     min-width: 220px;

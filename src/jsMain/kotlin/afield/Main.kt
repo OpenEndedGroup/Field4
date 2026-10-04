@@ -32,6 +32,7 @@ import kotlinx.serialization.encodeToString
 import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
+import org.w3c.dom.events.WheelEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import org.w3c.dom.url.URLSearchParams
@@ -2444,6 +2445,117 @@ private fun cancelNavigationPanAnimation() {
     navigationPanAnimationGeneration += 1
     navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
     navigationPanAnimationHandle = null
+}
+
+/** Pans the main canvas by a screen-space delta (wheel and middle-drag panning). */
+private fun panCanvasBy(dx: Double, dy: Double) {
+    cancelNavigationPanAnimation()
+
+    val mc = mainCanvas.unsafeCast<dynamic>()
+    val x = ((mc.data_x as? Number)?.toDouble() ?: 0.0) + dx
+    val y = ((mc.data_y as? Number)?.toDouble() ?: 0.0) + dy
+
+    (mc as HTMLElement).style.transform = mainCanvasTransform(x, y)
+    mainTranslation = listOf(x, y)
+    drawingLayerViewportChanged(x, y)
+
+    mc.data_x = x
+    mc.data_y = y
+    syncInitialPlaceholderLayerTransform()
+
+    updateBackgroundGrid(x, y, panning = true)
+
+    send(
+        Message("set-viewport").payload(
+            Set_rect(
+                uid = "root",
+                property = "viewport",
+                Rect(x, y, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+            )
+        )
+    )
+
+    canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
+    repositionSlideNoteOverlayIfVisible()
+    if (spatialNavActive) {
+        refreshSpatialNavTargets()
+    }
+}
+
+/*
+ * A canvas pan or zoom that starts on the canvas keeps the canvas until it ends, even when the
+ * pointer then crosses an output area. Wheel gestures have no end event, so a wheel latch lasts
+ * until the wheel has been idle for CANVAS_WHEEL_LATCH_MS (trackpad momentum keeps it alive); a
+ * middle drag is latched from mousedown to mouseup. While latched, window capture-phase listeners
+ * take the events before any output area can, and `canvas-pan-latched` on <body> turns off pointer
+ * events inside output areas so iframes cannot swallow them (field.css).
+ */
+private const val CANVAS_WHEEL_LATCH_MS = 250
+private var canvasWheelLatchTimer: Int? = null
+private var canvasDragLatched = false
+
+private fun updateCanvasPanLatchClass() {
+    document.body?.classList?.toggle("canvas-pan-latched", canvasWheelLatchTimer != null || canvasDragLatched)
+}
+
+private fun latchCanvasWheel() {
+    canvasWheelLatchTimer?.let { window.clearTimeout(it) }
+    canvasWheelLatchTimer = window.setTimeout({
+        canvasWheelLatchTimer = null
+        updateCanvasPanLatchClass()
+    }, CANVAS_WHEEL_LATCH_MS)
+    updateCanvasPanLatchClass()
+}
+
+private fun releaseCanvasDragLatch() {
+    if (!canvasDragLatched) return
+    canvasDragLatched = false
+    updateCanvasPanLatchClass()
+}
+
+private fun installCanvasPanLatch() {
+    val capture = json("capture" to true, "passive" to false)
+
+    window.addEventListener("wheel", { e ->
+        if (canvasWheelLatchTimer == null) return@addEventListener
+        val event = e.unsafeCast<WheelEvent>()
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.ctrlKey || event.metaKey) {
+            setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+        } else {
+            panCanvasBy(-event.deltaX, -event.deltaY)
+        }
+        latchCanvasWheel()
+    }, capture)
+
+    window.addEventListener("mousedown", { e ->
+        val event = e.unsafeCast<MouseEvent>()
+        if (event.button.toInt() != 1) return@addEventListener
+        val target = event.target as? Element ?: return@addEventListener
+        if (!mainViewport.contains(target) || target.closest(".outputArea") != null) return@addEventListener
+        canvasDragLatched = true
+        updateCanvasPanLatchClass()
+        event.preventDefault() // no autoscroll
+    }, capture)
+
+    window.addEventListener("mousemove", { e ->
+        if (!canvasDragLatched) return@addEventListener
+        val event = e.unsafeCast<MouseEvent>()
+        if (event.buttons.toInt() and 4 == 0) {
+            // The release happened somewhere we did not hear it (outside the window).
+            releaseCanvasDragLatch()
+            return@addEventListener
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        panCanvasBy(event.asDynamic().movementX as Double, event.asDynamic().movementY as Double)
+    }, capture)
+
+    window.addEventListener("mouseup", { e ->
+        if (e.unsafeCast<MouseEvent>().button.toInt() == 1) releaseCanvasDragLatch()
+    }, capture)
+    window.addEventListener("blur", { releaseCanvasDragLatch() })
 }
 
 private fun animateViewportTranslation(
@@ -6622,45 +6734,9 @@ suspend fun main() {
         }
     }
     mainViewport.onmousemove = { event ->
-        if (event.buttons.toInt() === 4) {
-            // this is actually a drag gesture
-            cancelNavigationPanAnimation()
-            event.preventDefault()
-            event.stopPropagation()
-
-            var mc = mainCanvas.unsafeCast<dynamic>()
-            val x: Number = (mc.data_x ?: 0.0) + event.unsafeCast<dynamic>().movementX
-            val y: Number = (mc.data_y ?: 0.0) + event.unsafeCast<dynamic>().movementY
-
-            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
-            mainTranslation = listOf(x.toDouble(), y.toDouble())
-            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
-
-            println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
-
-            mc.data_x = x
-            mc.data_y = y
-            syncInitialPlaceholderLayerTransform()
-
-            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
-
-            send(
-                Message("set-viewport").payload(
-                    Set_rect(
-                        uid = "root",
-                        property = "viewport",
-                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
-                    )
-                )
-            )
-
-            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
-            repositionSlideNoteOverlayIfVisible()
-            if (spatialNavActive) {
-                refreshSpatialNavTargets()
-            }
-        } else
-            canvasGestures.move(event)
+        // A middle drag that started on the canvas is latched and handled by installCanvasPanLatch;
+        // one that started in an output area belongs to that output area.
+        if (event.buttons.toInt() and 4 == 0) canvasGestures.move(event)
     }
 
 
@@ -6677,48 +6753,18 @@ suspend fun main() {
             event.preventDefault()
             event.stopPropagation()
             setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+            latchCanvasWheel()
         } else if (event.target is SVGElement) {
         } else {
-
-            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
-
-            var mc = mainCanvas.unsafeCast<dynamic>()
-            val x: Number = (mc.data_x ?: 0.0) - event.deltaX
-            val y: Number = (mc.data_y ?: 0.0) - event.deltaY
-
-            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
-            mainTranslation = listOf(x.toDouble(), y.toDouble())
-            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
-
-            println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
-
-            mc.data_x = x
-            mc.data_y = y
-            syncInitialPlaceholderLayerTransform()
-
-            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
-
-            send(
-                Message("set-viewport").payload(
-                    Set_rect(
-                        uid = "root",
-                        property = "viewport",
-                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
-                    )
-                )
-            )
-
-            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
-            repositionSlideNoteOverlayIfVisible()
-            if (spatialNavActive) {
-                refreshSpatialNavTargets()
-            }
+            panCanvasBy(-event.deltaX, -event.deltaY)
+            latchCanvasWheel()
         }
 
         null
     }
+    installCanvasPanLatch()
 
 
     mainCanvas.unsafeCast<dynamic>().data_x = 0
