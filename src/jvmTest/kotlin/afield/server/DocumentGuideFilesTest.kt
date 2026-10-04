@@ -138,7 +138,7 @@ class DocumentGuideFilesTest {
         } finally { root.deleteRecursively() }
     }
 
-    /** A reconnecting page polls for guides before its session is back; it must get an answer, not an NPE. */
+    // A reconnecting page polls for guides before its session is back; it must get an answer, not an NPE.
     @Test fun aRequestWithNoSessionIsAnsweredSoThePageRetries() {
         val old = handlers["document-guide"]
         try {
