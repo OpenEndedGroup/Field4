@@ -953,6 +953,14 @@ function disclosureInterface(container) {
                         return;
                 }
                 const st = ensureState(id);
+                // Already open: nothing to lay out again. Every streamed AI chat update calls open(), and
+                // re-running the open layout re-measured the panel, which collapsed the chat's own scroller
+                // for an instant and dropped the reader to the top on every update of a turn.
+                if (st.open && d.wrap.classList.contains("open") && d.cw.style.display !== "none") {
+                        bindContentLoadEvents(id, d);
+                        observeContentTargets(id, d);
+                        return;
+                }
                 if (!st.width) st.width = DEFAULT_W;
                 if (!st.height) st.height = DEFAULT_H;
                 primeAutoSizeForOpen(id, d);
