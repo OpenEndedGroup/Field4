@@ -1434,6 +1434,39 @@ class UiRegressionWaiverWiringTests(unittest.TestCase):
         self.assertEqual(carrying, {"error-fix-import-executes", "remote-ar-head"})
 
 
+class MonacoContextMenuPropertyListTests(unittest.TestCase):
+    """monaco-context-menu-actions counts one Edit action per `monacoPropertyNames` entry.
+
+    Its hand-kept copy of that list missed "msl" and then "rectSL", so the regression failed
+    on a stale list rather than on the editor. The list is now read from the Kotlin source.
+    """
+
+    def test_the_generated_check_carries_the_whole_source_list(self) -> None:
+        import run_ui_regressions  # noqa: PLC0415
+
+        names = run_ui_regressions.monaco_property_names()
+        source = run_ui_regressions.MONACO_PROPERTY_NAMES_SOURCE.read_text(encoding="utf-8")
+        # The descriptions are the parallel array the actions take their labels from. Matching its
+        # length shows the parser read to the end of the names rather than stopping early.
+        descriptions = re.search(r"val monacoPropertyDescriptions = arrayOf\((.*?)\n\)", source, re.S)
+        self.assertIsNotNone(descriptions)
+        self.assertEqual(len(names), len(re.findall(r'"[^"]*"', descriptions.group(1))))
+        self.assertEqual(len(names), len(set(names)), names)
+        js = run_ui_regressions.monaco_context_menu_actions_js()
+        self.assertIn(json.dumps(names), js)
+        self.assertNotIn("__MONACO_PROPERTY_NAMES__", js)
+
+    def test_a_source_without_the_array_is_an_error_not_an_empty_list(self) -> None:
+        import run_ui_regressions  # noqa: PLC0415
+
+        with tempfile.TemporaryDirectory() as root:
+            moved = Path(root) / "BootstrapMonacoInit.kt"
+            moved.write_text("internal val somethingElse = arrayOf(\"code\")\n", encoding="utf-8")
+            with mock.patch.object(run_ui_regressions, "MONACO_PROPERTY_NAMES_SOURCE", moved):
+                with self.assertRaises(RuntimeError):
+                    run_ui_regressions.monaco_property_names()
+
+
 def _emitted_command(args: list[str]) -> str:
     """The `--command` string run_field_tests.py hands to field_backdoor.py for a jvm-main test."""
     cmd, _ = build_backdoor_command(

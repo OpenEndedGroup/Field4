@@ -768,32 +768,35 @@ class KotlinInterface2(
                         "K1 completion setup exception: ${throwable.javaClass.simpleName}: ${throwable.message}"
                     )
                 }
-                if (box != null) {
-                    Box.withBoxContext(box) {
-                        created.exec(
-                            intro,
-                            onCompileError = completionSetupCompileError,
-                            onEvalError = completionSetupEvalError,
-                            onEvalException = completionSetupEvalException,
-                            implicits = implicits
-                        )
-                        if (completionPreamble.isNotBlank()) {
+                // The editor's interpreter, not the box's code: keep it out of the box's profile lanes.
+                withContext(ProfileExempt) {
+                    if (box != null) {
+                        Box.withBoxContext(box) {
                             created.exec(
-                                completionPreamble,
+                                intro,
                                 onCompileError = completionSetupCompileError,
                                 onEvalError = completionSetupEvalError,
                                 onEvalException = completionSetupEvalException,
                                 implicits = implicits
                             )
+                            if (completionPreamble.isNotBlank()) {
+                                created.exec(
+                                    completionPreamble,
+                                    onCompileError = completionSetupCompileError,
+                                    onEvalError = completionSetupEvalError,
+                                    onEvalException = completionSetupEvalException,
+                                    implicits = implicits
+                                )
+                            }
                         }
+                    } else {
+                        created.exec(
+                            intro,
+                            onCompileError = completionSetupCompileError,
+                            onEvalError = completionSetupEvalError,
+                            onEvalException = completionSetupEvalException
+                        )
                     }
-                } else {
-                    created.exec(
-                        intro,
-                        onCompileError = completionSetupCompileError,
-                        onEvalError = completionSetupEvalError,
-                        onEvalException = completionSetupEvalException
-                    )
                 }
                 k1CompletionDelegateBootstrapped = true
                 k1CompletionDelegatePreambleFingerprint = preambleFingerprint

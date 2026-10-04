@@ -18,6 +18,18 @@ class ProfileOrigin(val box: Box, val strand: String = "code") : AbstractCorouti
 }
 
 /**
+ * Field's own work that runs in a box's context without being the box's code, such as bootstrapping
+ * the editor's completion interpreter. [CoroutineProfiles] does not charge it to the box's lanes.
+ *
+ * A separate element rather than a [ProfileOrigin] flag, because `Box.withBoxContext` mints a fresh
+ * origin whenever it meets a different one, and an element survives that merge. Without it, a cold
+ * completion bootstrap (~20 ms, ~6.5 MB of script classloader) landed in whichever box capture was
+ * recording when its off-thread compile finished.
+ */
+internal object ProfileExempt : AbstractCoroutineContextElement(ProfileExemptKey)
+internal object ProfileExemptKey : CoroutineContext.Key<ProfileExempt>
+
+/**
  * Box-owned continuation instrumentation, shared by Runloop and SimulationClock. A continuation's CPU/heap counters exclude its suspended lifetime.
  * No timers or allocations on the disabled dispatch path. Export copies happen on request, not per
  * resume. A process permits one capture at a time; document isolation also applies to stop/snapshot.
@@ -36,7 +48,9 @@ object CoroutineProfiles {
     fun resume(context: CoroutineContext, task: Runnable) {
         val capture = active
         val origin = context[ProfileOrigin]
-        if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }
+        if (capture == null || origin == null || origin.document != capture.document || context[ProfileExemptKey] != null) {
+            task.run(); return
+        }
         val now = System.nanoTime()
         if (now >= capture.deadlineNs) { finish(capture, now); task.run(); return }
         val lane = capture.beginResume(context[Job], origin, now, context[CoroutineName]?.name.orEmpty())
