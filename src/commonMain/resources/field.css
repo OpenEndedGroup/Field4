@@ -994,6 +994,18 @@ pre code {
     font-style: italic;
 }
 
+/* The conversation itself reads larger than the chat's chrome (progress, status, actions). */
+.ai-chat-turn .ai-chat-markdown {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.ai-chat-turn .ai-chat-markdown h1,
+.ai-chat-turn .ai-chat-markdown h2,
+.ai-chat-turn .ai-chat-markdown h3 {
+    font-size: 14px;
+}
+
 .ai-chat-turn.you .ai-chat-markdown {
     text-align: right;
     color: var(--ai-chat-you-fg, var(--field-fg));
