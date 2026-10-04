@@ -2,7 +2,6 @@ package afield.ai.core
 
 import afield.Box
 import afield.Runloop
-import afield.notify
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.JsonNode
 import com.openai.core.JsonValue
@@ -17,6 +16,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.reflect.KProperty
 import kotlin.reflect.KType
@@ -67,6 +67,7 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
         boxId = this.id,
         box = this,
         params = builder.params.toList(),
+        tests = builder.tests.toList(),
         body = body,
         meta = ToolMeta(
             namespace = builder.namespace ?: name.substringBefore('.', "doc").ifBlank { "doc" },
@@ -76,22 +77,17 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
         sourceRevision = afield.sourceRevision((getPropertyRaw("code") as? String).orEmpty()).take(16),
     )
     DocumentToolRegistry.register(documentKeyFor(this), tool)
-    runCatching { notify("Registered AI tool '$name'", "AI tools") }
+    LogDispatcher.log("info,ai.tools", "Registered AI tool '$name'")
     return tool
 }
 
 /**
  * [BoxTool.wireName]: a tool name the model providers accept (`^[A-Za-z0-9_-]{1,64}$`). A name that is too
- * long keeps its first 55 characters and gains a hash of the whole name, so two long names that share a start
- * stay distinct. Distinct names can still meet (`house.check` and `house_check`):
- * [DocumentToolRegistry.register] refuses the second.
+ * requires an alias carries a readable prefix and a hash of the complete authored name.
+ * A dotted name and its underscore spelling remain distinct. Registration still refuses any
+ * collision with a built-in or another tool's transport identity.
  */
-internal fun wireToolName(name: String): String {
-    val safe = name.replace(Regex("[^A-Za-z0-9_-]"), "_").ifEmpty { "_" }
-    if (safe.length <= 64) return safe
-    val hash = java.security.MessageDigest.getInstance("SHA-256").digest(name.toByteArray()).joinToString("") { "%02x".format(it) }.take(8)
-    return safe.take(55) + "_" + hash
-}
+internal fun wireToolName(name: String): String = boxToolWireName(name)
 
 /**
  * Built-in tool names a box tool may not take: core's, and whatever is registered through
@@ -119,6 +115,7 @@ class BoxToolBuilder internal constructor(
 ) {
     internal var description: String = ""
     internal val params = mutableListOf<BoxToolArg<*>>()
+    internal val tests = mutableListOf<BoxToolTest>()
     internal var body: (suspend BoxToolScope.() -> Any?)? = null
     internal var namespace: String? = null
     internal var exposure: ToolExposure = ToolExposure.DIRECT
@@ -162,6 +159,27 @@ class BoxToolBuilder internal constructor(
     /** The tool body. Runs on the runloop with the box in scope; may call `frame()`/`delay()`. */
     fun action(body: suspend BoxToolScope.() -> Any?) {
         this.body = body
+    }
+
+    /** Attach an explicit, executable example to this tool. Tests run only when requested.
+     * Supply ordinary arguments; [verify] must throw when the returned result is wrong.
+     * A test may call a mutating tool: run those tests in a disposable project.
+     */
+    fun test(name: String, arguments: Map<String, Any?> = emptyMap(), verify: (Any) -> Unit) {
+        require(name.isNotBlank() && tests.none { it.name == name }) { "A tool test needs a unique name" }
+        tests += BoxToolTest(name, aiToolMapper.writeValueAsString(arguments), verify)
+    }
+
+    /**
+     * Attach an example that must reject its arguments with a specific diagnostic.
+     * [messageContains] must occur in the thrown exception message or structured tool error.
+     * An unexpected success or unrelated error fails the test; cancellation always propagates.
+     * Like [test], this invokes the real tool and should use a disposable project for mutations.
+     */
+    fun testFailure(name: String, arguments: Map<String, Any?> = emptyMap(), messageContains: String) {
+        require(name.isNotBlank() && tests.none { it.name == name }) { "A tool test needs a unique name" }
+        require(messageContains.isNotBlank()) { "Name the diagnostic an expected failure must contain" }
+        tests += BoxToolTest(name, aiToolMapper.writeValueAsString(arguments), messageContains)
     }
 
     internal fun register(arg: BoxToolArg<*>) {
@@ -280,6 +298,16 @@ data class BoxToolImages(
         }
 }
 
+// Transport names are bounded ASCII identifiers. Keep authored names (including namespaces)
+// in Field/MCP, and use a stable alias only on transports with stricter naming rules.
+internal fun boxToolWireName(name: String): String {
+    if (name.matches(Regex("[a-zA-Z0-9_-]{1,64}")) && !name.startsWith("_field_")) return name
+    val readable = name.map { if (it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '_' || it == '-') it else '_' }.joinToString("").take(32)
+    val hash = MessageDigest.getInstance("SHA-256").digest(name.toByteArray(Charsets.UTF_8))
+        .take(12).joinToString("") { "%02x".format(it) }
+    return "_field_${readable}_$hash"
+}
+
 // -- The tool --------------------------------------------------------------------
 
 class BoxTool internal constructor(
@@ -288,22 +316,24 @@ class BoxTool internal constructor(
     val boxId: String,
     internal val box: Box,
     internal val params: List<BoxToolArg<*>>,
+    internal val tests: List<BoxToolTest> = emptyList(),
     internal val body: suspend BoxToolScope.() -> Any?,
     val meta: ToolMeta = ToolMeta(namespace = name.substringBefore('.', "doc").ifBlank { "doc" }),
     /** A hash of the registering box's code when it registered this, for capability checkpoints. */
     val sourceRevision: String = "",
 ) {
-    /**
-     * The name a model sees and calls: [name] with every character outside `[A-Za-z0-9_-]` made `_`
-     * (`paint.look` → `paint_look`), because OpenAI and Anthropic refuse any other tool name. The registry
-     * answers to either.
-     */
-    val wireName: String get() = wireToolName(name)
+    /** Exact provider source at registration; a later source edit cannot relabel old evidence. */
+    val source: String = box.getPropertyRaw("code") as? String ?: ""
+    val sourceHash: String = ToolPool.hash(source)
+    /** Local diagnostic records, shared by chat, MCP and direct Kotlin calls. */
+    val diagnostics: ToolDiagnostics = ToolDiagnostics(this)
 
     /** JSON-Schema for the parameters (kotlinx form), reusing the static-tool emitter. */
     val parametersSchema: JsonObject by lazy { buildParamsSchema(params) }
 
-    /** Build the OpenAI SDK function-tool descriptor from [parametersSchema]. */
+    val wireName: String get() = boxToolWireName(name)
+
+    /** Build the SDK descriptor, using a portable alias when the authored name needs one. */
     fun toFunctionTool(): FunctionTool {
         val paramsBuilder = FunctionTool.Parameters.builder()
         // Iterate the kotlinx schema object directly (it is a Map<String, JsonElement>), converting
@@ -314,15 +344,16 @@ class BoxTool internal constructor(
         val builder = FunctionTool.builder()
             .name(wireName)
             .parameters(paramsBuilder.build())
-            // Not strict: our schema does not guarantee additionalProperties:false + all-required.
+            // Optional/defaulted parameters mean this is not an all-required strict schema.
             .strict(false)
-        if (description.isNotBlank()) builder.description(description)
+        val transportDescription = if (wireName != name) "Field tool: $name. $description" else description
+        if (transportDescription.isNotBlank()) builder.description(transportDescription)
         return builder.build()
     }
 
     /** Core execution: bind+coerce [argsJson], then run the body. `suspend`. */
     suspend fun call(argsJson: String, ctx: ToolExecutionContext? = null): Any =
-        runBody(bindFromJson(argsJson), ctx)
+        diagnostics.record(argsJson, if (ctx == null) "kotlin" else "agent") { runBody(bindFromJson(argsJson), ctx) }
 
     /**
      * Terse positional call from box code: `a(src, listOf(0.0))`. Values are coerced by
@@ -330,11 +361,11 @@ class BoxTool internal constructor(
      * (e.g. inside `start { }` / `frames { }`).
      */
     suspend operator fun invoke(vararg positional: Any?): Any =
-        runBody(bindFromPositional(positional.toList()), null)
+        diagnostics.record(aiToolMapper.writeValueAsString(positional.toList()), "kotlin") { runBody(bindFromPositional(positional.toList()), null) }
 
     /** Named call from box code: `a.call("source" to src)`. `suspend`. */
     suspend fun call(vararg named: Pair<String, Any?>): Any =
-        runBody(bindFromNodes(named.toMap().mapValues { aiToolMapper.valueToTree<JsonNode>(it.value) }), null)
+        call(aiToolMapper.writeValueAsString(named.toMap()))
 
     /** Bridge for the synchronous agent tool loop (runs off the runloop, on an IO thread). */
     internal fun runBlockingFromToolLoop(ctx: ToolExecutionContext, argsJson: String): Any =
@@ -356,10 +387,27 @@ class BoxTool internal constructor(
         }
     }
 
+    /** Run the attached examples through the same binding/execution path as AI4. */
+    suspend fun test(): List<ToolTestOutcome> {
+        checkToolRunloopDispatch()
+        return tests.map { example ->
+        evaluateToolTest(example, { call(example.arguments) }) { result ->
+            withContext(Runloop.runLoop.main + Box.boxContextElement(box)) { example.verify(result) }
+        }
+        }.also { diagnostics.recordTests(it) }
+    }
+
     // --- argument binding & coercion ---
 
     private fun bindFromJson(argsJson: String): Map<String, Any?> {
         val root: JsonNode = aiToolMapper.readTree(argsJson.ifBlank { "{}" })
+        require(root.isObject) { "Arguments for tool '$name' must be a JSON object." }
+        val allowed = params.map { it.name }.toSet()
+        val unknown = root.fieldNames().asSequence().filter { it !in allowed }.toList()
+        require(unknown.isEmpty()) {
+            "Unknown argument(s) ${unknown.joinToString()} for tool '$name'. " +
+                "Allowed arguments: ${allowed.joinToString().ifEmpty { "none" }}."
+        }
         return bindFromNodes(params.associate { it.name to root.get(it.name) })
     }
 
@@ -410,6 +458,7 @@ internal fun buildParamsSchema(params: List<BoxToolArg<*>>): JsonObject {
     return buildJsonObject {
         put("type", "object")
         put("properties", properties)
+        put("additionalProperties", false)
         if (required.isNotEmpty()) put("required", JsonArray(required.map { JsonPrimitive(it) }))
     }
 }
@@ -453,6 +502,10 @@ object DocumentToolRegistry {
             "aiTool(\"${tool.name}\") has the name of a built-in tool; choose another name."
         }
         synchronized(tools) {
+            val existing = tools[tool.name]
+            require(existing == null || existing.boxId == tool.boxId) {
+                "aiTool(\"${tool.name}\") is already owned by box ${existing!!.box.name.ifBlank { existing.boxId }}; choose another name."
+            }
             tools.values.filter { it.name != tool.name && it.wireName == tool.wireName }.forEach { other ->
                 require(other.boxId == tool.boxId) {
                     "aiTool(\"${tool.name}\") would reach the model as ${tool.wireName}, the same name as " +

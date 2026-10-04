@@ -181,6 +181,7 @@ class AnthropicBridge(
         }
 
         val callCtx = ctx.copy(
+            reportProgress = onProgress ?: ctx.reportProgress,
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line)) } },
         )
@@ -220,6 +221,7 @@ class AnthropicBridge(
             val resultBlocks = mutableListOf<ContentBlockParam>()
             for (use in toolUses) {
                 val name = use.name()
+                log.toolActivity(name)
                 val argsJson = runCatching { toJsonString(use._input()) }.getOrElse { "{}" }
                 info("tool: name=$name id=${use.id()} args=${truncate(argsJson, 400)}")
                 toolIo("tool_call", mapOf("round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "arguments" to argsJson))
@@ -241,6 +243,9 @@ class AnthropicBridge(
                 val toolMs = (System.nanoTime() - started) / 1_000_000
                 toolElapsedMs += toolMs
                 val resultJson = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
+                if (runCatching { aiToolMapper.readTree(resultJson).let { it["success"]?.asBoolean() == false || it["error"]?.asBoolean() == true } }.getOrDefault(false)) {
+                    log.userNotice("An action could not finish. Details are in the chat and Tool pool.", attention = true)
+                }
                 val summary = truncate(resultJson, 300)
                 transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson, elapsedMs = toolMs)
                 transcript += afield.ai.core.program.nestedTranscriptEntries(use.id(), result)
@@ -441,6 +446,7 @@ class AnthropicBridge(
                 if (delay != null && attempt < maxRateLimitRetries) {
                     val wait = min(delay, maxRateLimitDelayMs)
                     warn("rate limited (attempt ${attempt + 1}/$maxRateLimitRetries); waiting ${wait}ms.")
+                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait + 999) / 1000}s; completed work is kept.", attention = true)
                     Thread.sleep(wait)
                     attempt++
                     continue

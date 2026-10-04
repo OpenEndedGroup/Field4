@@ -37,6 +37,7 @@ import kotlinx.serialization.Serializable
  * That is what lets the editable path, the inspector and the twelve tests that pin the current
  * payload carry on without a second thought — and `ThreeScenePayloadCompatibilityTest` holds it there.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawStyle(
     /** `"surface"`, `"lines"` or `"points"` — which three.js object class draws this. */
@@ -67,6 +68,9 @@ data class ThreeDrawStyle(
     val opacity: Float = 1f,
     /** Display data colours without lighting modulation. */
     val unlit: Boolean = false,
+    /** Optional display opacity multiplier in X-ray mode; null follows the viewer slider. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val xrayOpacity: Float? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",

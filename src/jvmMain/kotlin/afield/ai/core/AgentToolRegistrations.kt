@@ -50,6 +50,8 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                 })
             }
         }
+        afield.ai.agent.registerGeometryReviewTools(tools)
+        afield.ai.agent.registerStudyBuildTools(tools)
 
 
         // Commentary: handler can be a no-op acknowledgement; we extract text from call args anyway.
@@ -77,7 +79,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                     normalizedCandidate.endsWith("/$normalizedRequested")
                 }
 
-            if (hit != null) {
+            val resolved = if (hit != null) {
                 val related = RelatedContextDiscovery.forPath(hit.fileName)
                 AttachmentResponse(
                     file = hit.fileName,
@@ -92,6 +94,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
                         "No attachment or resolvable file named '$requested'. Call ListAttachments first."
                     )
             }
+            resolved.excerpt(req)
         }
 
         // Kotlin-only tools (only work if provider is supplied in ctx)

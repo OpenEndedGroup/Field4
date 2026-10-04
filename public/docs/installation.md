@@ -91,6 +91,20 @@ The right side is a stack of collapsible panels, one per part of Field:
   inside a document is in [AI features](aiFeatures.md).
 - **Preferences** and the **OSC editor**.
 
+### Personal templates
+
+The Welcome screen also discovers document templates in `src/personal/templates/`
+(relative to Field's working directory) and `~/.afield/templates/`. Put each template
+in its own folder with its `metadata.edn` and document files. These use the same search
+and **Templates** list as bundled templates. Opening one creates an independent editable
+copy in the current workspace; it does not modify the template or upgrade existing copies.
+
+`-Dafield.personalTemplates.dir=/path/to/templates` changes the user-level directory.
+For duplicate names, bundled templates take precedence, then checkout-local personal
+templates, then user-level templates. Give private templates distinctive names.
+`src/personal` is excluded from Git; keep private template backups/versioning separately.
+Templates carry code: opening the copy does not automatically run its boxes.
+
 ## Troubleshooting
 
 _Field·4_ is still beta software. Report reproducible problems through the public repository's

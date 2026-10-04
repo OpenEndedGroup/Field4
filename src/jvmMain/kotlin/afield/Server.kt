@@ -1476,7 +1476,9 @@ actual fun _send(message: Message) {
 @OptIn(DelicateCoroutinesApi::class)
 fun _send(message: Message, document: String = ".*") {
     recordControllerOutputMessage(document, message)
-    BoxOutputLog.observeBroadcast(message)
+    // Resolve the exact owner for the log as well as the wire recipients.
+    val logDocument=documents.values.singleOrNull { it.filename.matches(document.toRegex()) }?.filename.orEmpty()
+    BoxOutputLog.observeBroadcast(message,logDocument)
     val documentRegex = document.toRegex()
     val m = Json.encodeToString(message)
     sessions.forEach { (session, info) ->
@@ -5054,7 +5056,7 @@ class Server {
                                                     t.printStackTrace()
                                                 }
                                             }
-                                            if (message.name == "slider-update" || message.name == "button-update")
+                                            if (message.name == "slider-update" || message.name == "button-update" || message.name == "output-request")
                                                 orderedControls.send(dispatch)
                                             else launch(block = dispatch)
                                         }

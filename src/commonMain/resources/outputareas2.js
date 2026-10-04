@@ -473,7 +473,7 @@ function disclosureInterface(container) {
                         requestAnimationFrame(() => {
                                 const current = disclosures.get(id);
                                 const state = ensureState(id);
-                                if (!current || current.inline || !state.open || state.autoSizeToken !== token) return;
+                                if (!current || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
 
                                 const natural = contentSizeForDisclosure(current);
                                 const currentWidth = Number(state.width) || DEFAULT_W;
@@ -663,8 +663,12 @@ function disclosureInterface(container) {
                 };
         }
 
-        function clampSizeForId(id, width, height) {
+        function clampSizeForId(id, width, height, userSized = false) {
                 const bounds = boundsForId(id);
+                // Chat's cap chooses an initial size; it must not undo the reader's resize.
+                if (id === "ai-chat" && userSized) {
+                        bounds.maxW = bounds.maxH = Number.POSITIVE_INFINITY;
+                }
                 return {
                         width: clamp(width, bounds.minW, bounds.maxW),
                         height: clamp(height, bounds.minH, bounds.maxH)
@@ -760,14 +764,16 @@ function disclosureInterface(container) {
                 if (d.inline) return;
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
-                const rect = d.cw.getBoundingClientRect();
-                const clamped = clampSizeForId(id, Math.max(rect.width, 50), Math.max(d.cw.clientHeight, 20));
+                // Persist layout pixels, not the canvas-zoomed screen rectangle.
+                const clamped = clampSizeForId(id, d.cw.offsetWidth, d.cw.offsetHeight, true);
                 const changed = Math.abs((st.width || DEFAULT_W) - clamped.width) > 2 ||
                         Math.abs((st.height || DEFAULT_H) - clamped.height) > 2;
                 st.width = clamped.width;
                 st.height = clamped.height;
                 if (changed) {
                         st.userSized = true;
+                        st.autoSizeToken++;
+                        st.pendingAutoSize = false;
                 }
                 states.set(id, st);
                 d.wrap.style.width = `${st.width}px`;
@@ -788,7 +794,7 @@ function disclosureInterface(container) {
                 if (d.inline) return;
                 const st = ensureState(id);
                 applySizeBoundsForId(id, d);
-                const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H);
+                const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H, st.userSized);
                 const w = clamped.width;
                 const h = clamped.height;
                 st.width = w;
@@ -963,8 +969,10 @@ function disclosureInterface(container) {
                 }
                 if (!st.width) st.width = DEFAULT_W;
                 if (!st.height) st.height = DEFAULT_H;
-                primeAutoSizeForOpen(id, d);
-                applyOpen(id, d);
+                if (!st.open) {
+                        primeAutoSizeForOpen(id, d);
+                        applyOpen(id, d);
+                }
                 st.open = true;
                 states.set(id, st);
                 bindContentLoadEvents(id, d);
@@ -1211,6 +1219,20 @@ function disclosureInterface(container) {
 
                         event.preventDefault();
                         event.stopPropagation();
+                        const reviewView = link.getAttribute("data-review-view");
+                        const reviewNote = link.getAttribute("data-review-note");
+                        if (reviewView && reviewNote) {
+                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(error => {
+                                        let feedback = link.nextElementSibling;
+                                        if (!feedback?.classList.contains("review-link-error")) {
+                                                feedback = document.createElement("p"); feedback.className = "review-link-error";
+                                                feedback.style.cssText = "color:#ff7070;user-select:text";
+                                                feedback.setAttribute("aria-live", "polite"); link.after(feedback);
+                                        }
+                                        feedback.textContent = error.message;
+                                });
+                                return;
+                        }
                         selectBoxByUidFromOutput(
                                 navigation.uid,
                                 navigation.property,
@@ -1269,6 +1291,35 @@ function findBoxByUid(uid) {
                 if (box.uid === uid) return box;
         }
         return null;
+}
+
+// Open the existing review thread in its output, without opening Monaco or restoring a camera.
+async function revealGeometryReview(uid, viewId, noteId) {
+        const box = findBoxByUid(uid);
+        const frames = [...(box?.querySelectorAll('.outputArea iframe') || [])];
+        const viewer = frames.find(frame => {
+                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
+                catch (_) { return false; }
+        });
+        if (!window.revealBoxOutputs?.(uid, viewer || null)) throw Error('The review output is unavailable. Run its source box first.');
+        const targets = new Set([window, ...frames.map(frame => frame.contentWindow).filter(Boolean)]);
+        const requestId = crypto.randomUUID();
+        return new Promise((resolve, reject) => {
+                const send = () => targets.forEach(target => target.postMessage({type:'field-review-open', requestId, viewId, noteId}, location.origin));
+                const finish = error => {
+                        clearTimeout(timer); window.removeEventListener('message', receive);
+                        frames.forEach(frame => frame.removeEventListener('load', send));
+                        if (error) reject(error); else resolve();
+                };
+                const receive = event => {
+                        if (event.origin !== location.origin || !targets.has(event.source) || event.data?.type !== 'field-review-opened' || event.data.requestId !== requestId) return;
+                        finish(event.data.ok ? null : Error(event.data.error || 'Could not open this review.'));
+                };
+                const timer = setTimeout(() => finish(Error('The review view did not respond. Run its source box, then try again.')), 8000);
+                window.addEventListener('message', receive);
+                frames.forEach(frame => frame.addEventListener('load', send));
+                send();
+        });
 }
 
 function parseAfieldRef(raw) {
@@ -1520,39 +1571,63 @@ function chatPinnedToBottom(messages) {
 function renderChatMessages(messages, markdown, options) {
         if (!messages) return;
         const forceBottom = !!(options && options.forceBottom);
-        // Both measured before the teardown, because the teardown is what loses the position.
-        const stick = forceBottom || chatPinnedToBottom(messages);
-        const previousTop = messages.scrollTop;
+        const text = markdown || "";
+        if (!forceBottom && messages.__chatMarkdown === text) return;
 
-        messages.innerHTML = aiChatHistoryToHtml(markdown || "");
-        decorateAfieldLinks(messages);
-        applyCodeHighlight(messages);
-
-        if (!stick) {
-                const maxTop = Math.max(0, messages.scrollHeight - messages.clientHeight);
-                messages.scrollTop = Math.min(previousTop, maxTop);
-                // Deliberately no image handler on this path: the reader is parked somewhere above,
-                // content grows below them, and browser scroll anchoring already holds them there.
-                // Re-asserting a stored offset later would fight whatever they did in the meantime.
-                return;
+        // A new streamed chunk can arrive before the previous chunk's images have loaded.
+        // Carry the intended position forward instead of recording a temporarily clamped offset.
+        const pending = messages.__chatScrollRestore;
+        const restore = {
+                stick: forceBottom || (pending ? pending.stick : chatPinnedToBottom(messages)),
+                top: pending ? pending.top : messages.scrollTop
+        };
+        messages.__chatScrollRestore = restore;
+        if (!messages.__chatScrollInputBound) {
+                const cancelRestore = () => { messages.__chatScrollRestore = null; };
+                for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+                        messages.addEventListener(event, cancelRestore, {passive: true});
+                }
+                messages.__chatScrollInputBound = true;
         }
 
+        // Keep known image aspect ratios through DOM replacement, avoiding collapsed screenshots.
+        const dimensions = new Map();
+        messages.querySelectorAll("img").forEach(img => {
+                const width = img.naturalWidth || Number(img.getAttribute("width"));
+                const height = img.naturalHeight || Number(img.getAttribute("height"));
+                if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
+        });
+        messages.innerHTML = aiChatHistoryToHtml(text);
+        messages.__chatMarkdown = text;
+        decorateAfieldLinks(messages);
+        applyCodeHighlight(messages);
+        const images = Array.from(messages.querySelectorAll("img"));
+        images.forEach(img => {
+                const size = dimensions.get(img.getAttribute("src"));
+                if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
+                        img.width = size.width;
+                        img.height = size.height;
+                }
+        });
+
         const settle = () => {
-                messages.scrollTop = messages.scrollHeight;
+                // Old image callbacks cannot override a newer render or the reader's own gesture.
+                if (messages.__chatScrollRestore !== restore) return;
+                messages.scrollTop = restore.stick ? messages.scrollHeight : restore.top;
+        };
+        const finish = () => {
+                settle();
+                if (images.every(img => img.complete) && messages.__chatScrollRestore === restore) {
+                        messages.__chatScrollRestore = null;
+                }
         };
         settle();
-        // An inline screenshot gains its height after this call returns, so settle again per image
-        // rather than guessing a delay that is always wrong on one machine or another.
-        messages.querySelectorAll("img").forEach((img) => {
+        images.forEach(img => {
                 if (img.complete) return;
-                const once = () => {
-                        img.removeEventListener("load", once);
-                        img.removeEventListener("error", once);
-                        settle();
-                };
-                img.addEventListener("load", once);
-                img.addEventListener("error", once);
+                img.addEventListener("load", finish, {once: true});
+                img.addEventListener("error", finish, {once: true});
         });
+        requestAnimationFrame(finish);
 }
 
 // Fetch on panel creation, without replacing a newer streamed/local turn or another box's chat.

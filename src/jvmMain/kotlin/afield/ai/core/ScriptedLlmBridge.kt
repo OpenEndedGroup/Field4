@@ -84,6 +84,7 @@ class ScriptedLlmBridge(
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
         val callCtx = ctx.copy(
+            reportProgress = onProgress ?: ctx.reportProgress,
             promoted = ctx.promoted ?: state.promotedTools,
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line, phase = "tool")) } },
         )

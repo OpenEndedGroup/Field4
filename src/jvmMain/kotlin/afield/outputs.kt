@@ -70,10 +70,18 @@ class DefaultOutput : HasOutput {
     }
 }
 
+/** Exact document identity for box output; identical box IDs in other documents are unrelated. */
+internal fun outputDocument(box: Box): String = if (box.isInsideInitialized()) box.inside.filename else ""
+
+internal fun sendBoxOutput(box: Box, message: Message) {
+    val document=outputDocument(box)
+    if(document.isNotBlank()) _send(message, document=Regex.escape(document))
+}
+
 private fun Box.sendOutputControl(action: String, channel: String? = null) {
     val channelValue = channel?.trim()?.takeIf { it.isNotEmpty() }
     output.retainedAreas.control(action, channelValue)
-    send(Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
+    sendBoxOutput(this, Message("output-control").payload(OutputControl(uid = id, action = action, channel = channelValue)))
 }
 
 /** Opens the named output [channel] by sending an output-control message to this box. */

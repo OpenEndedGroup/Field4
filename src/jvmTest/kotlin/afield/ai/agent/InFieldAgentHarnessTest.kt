@@ -16,6 +16,7 @@ import afield.createAgentBox
 import afield.dispatchExecutionOutput
 import afield.payload
 import afield.Set_output
+import afield.outputDocument
 import afield.thisSessionInfo
 import kotlinx.coroutines.Job
 import kotlinx.serialization.json.JsonPrimitive
@@ -71,7 +72,7 @@ class InFieldAgentHarnessTest {
                     dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = 1, html = line + "\n", kind = "normal", frame = 0), null)
                 }
                 fake.display.forEach { (channel, html) ->
-                    BoxOutputLog.observeBroadcast(Message("set-output").payload(Set_output(box.id, "outputarea", channel, html)))
+                    BoxOutputLog.observeBroadcast(Message("set-output").payload(Set_output(box.id, "outputarea", channel, html)), outputDocument(box))
                 }
                 if (fake.error != null) {
                     dispatchExecutionOutput(box, trace.reply, Output(uid = box.id, line = 1, html = fake.error, kind = "err", frame = 0), null)
@@ -271,7 +272,7 @@ class InFieldAgentHarnessTest {
         val marker = BoxOutputLog.mark()
         thread(isDaemon = true) {
             Thread.sleep(200)
-            BoxOutputLog.record(box.uid, "out", "arrived")
+            BoxOutputLog.record(box.uid, "out", "arrived", document=info.filename)
         }
         val found = tools.readOutput(ReadBoxOutputRequest("Later", since = marker, contains = "arrived", waitSeconds = 5.0))
         assertTrue(found.success && found.found == true)

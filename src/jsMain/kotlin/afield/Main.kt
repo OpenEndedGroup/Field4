@@ -2074,6 +2074,98 @@ private fun navigateToBoxProperty(
     return true
 }
 
+/** Reveal a box's output without selecting its code or changing a viewer camera. */
+private fun revealBoxOutputs(uid: String, requestedOutput: HTMLElement? = null): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    openNestedDisclosuresForNavigation(box)
+    val area = box.querySelector(".outputArea") as? HTMLElement ?: return false
+    openAllOutputDisclosures(area)
+    setTimeout({
+        // outputArea is a zero-width positioning anchor. Navigate to rendered
+        // content, preferably the requested viewer, rather than that anchor.
+        val target = requestedOutput?.takeIf { area.contains(it) }
+            ?: area.querySelector(".disclosure-content") as? HTMLElement
+            ?: box
+        ensureBoxVisibleForNavigation(target)
+    }, 50)
+    return true
+}
+
+// Reuse the canvas/disclosure navigation used by links, without opening source for output review.
+private fun navigateDocumentBox(req: DocumentBoxNavigation, done: (DocumentBoxNavigationResult) -> Unit) {
+    fun fail(message: String, channels: List<String> = emptyList()) = done(DocumentBoxNavigationResult(
+        false, req.uid, req.surface, req.channel, channels, message))
+    val box = findBoxElementByUid(req.uid) ?: return fail("Box is not present in this document view.")
+    var chosenChannel = req.channel
+    val target: HTMLElement
+    when (req.surface) {
+        "editor" -> {
+            navigateToBoxProperty(req.uid, req.property, req.line, req.line, center=true)
+            target = box
+        }
+        "box" -> {
+            openNestedDisclosuresForNavigation(box)
+            centerBoxForMarkdownNavigation(box)
+            target = box
+        }
+        "output" -> {
+            val area = box.querySelector(".outputArea") as? HTMLElement
+                ?: return fail("No output is displayed. Run its source box first.")
+            val group = area.querySelector(".disclosure-group") ?: return fail("No output channels are available.")
+            val disclosures = group.children.asList().filter { it.classList.contains("disclosure") }
+            val channels = disclosures.mapNotNull { it.asDynamic().__disclosureId as? String }
+            if (chosenChannel.isBlank()) {
+                if (channels.size != 1) return fail("Specify an output channel.", channels)
+                chosenChannel = channels.single()
+            }
+            val disclosure = disclosures.firstOrNull { it.asDynamic().__disclosureId == chosenChannel }
+                ?: return fail("Output channel is unavailable. Choose a listed channel or run its source box first.", channels)
+            target = disclosure.querySelector(".disclosure-content") as? HTMLElement
+                ?: return fail("Output channel has no rendered content.", channels)
+            val api = disclosureInterfaceFor(group) ?: return fail("Output controls are not ready.", channels)
+            openNestedDisclosuresForNavigation(box)
+            area.style.visibility = "visible"
+            area.style.height = "auto"
+            (api.open as (String) -> Unit).invoke(chosenChannel)
+
+        }
+        else -> return fail("surface must be editor, box, or output")
+    }
+    val began = window.performance.now()
+    var lastWidth = -1.0
+    var lastHeight = -1.0
+    var changedAt = began
+    fun finish() {
+        val rect = target.getBoundingClientRect()
+        val safe = navigationSafeViewportRect()
+        val visible = rect.width > 0 && rect.height > 0 && rect.right > safe.x && rect.left < safe.right &&
+            rect.bottom > safe.y && rect.top < safe.bottom && window.getComputedStyle(target).visibility != "hidden"
+        done(DocumentBoxNavigationResult(visible, req.uid, req.surface, chosenChannel,
+            message=if (visible) "Revealed in a connected Field document view." else "Target is not visible in this frontend.",
+            visible=visible))
+    }
+    // Opening a disclosure can grow its initial 480px width after iframe load.
+    // Centre its settled size, then verify it stayed stable throughout the pan.
+    fun settle() {
+        val rect = target.getBoundingClientRect()
+        val now = window.performance.now()
+        if (now - began > 4000) { fail("Output layout did not settle. Wait for it to load, then retry."); return }
+        if (abs(rect.width-lastWidth) > 1 || abs(rect.height-lastHeight) > 1) {
+            lastWidth=rect.width; lastHeight=rect.height; changedAt=now
+        }
+        val loading = target.querySelectorAll("iframe").asList().any { frame ->
+            runCatching { frame.asDynamic().contentDocument?.readyState == "loading" }.getOrDefault(false)
+        }
+        if (now-changedAt < 300 || loading) { window.setTimeout({ settle() }, 100); return }
+        centerBoxForMarkdownNavigation(target)
+        window.setTimeout({
+            val after = target.getBoundingClientRect()
+            if (abs(after.width-lastWidth) > 1 || abs(after.height-lastHeight) > 1) settle() else finish()
+        }, 480)
+    }
+    if (req.surface == "output") settle() else window.setTimeout({ finish() }, 600)
+}
+
 private fun editorIsSyncedFor(box: HTMLElement, property: String): Boolean {
     val expected = boxPropertyText(box, property)?.takeIf { it.isNotBlank() } ?: return true
     val actual = globalEditorText() ?: return false
@@ -5186,6 +5278,7 @@ suspend fun main() {
         { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
             navigateToBoxProperty(uid, property, scrollToLine, highlightLine, center = true)
         }
+    window.asDynamic().revealBoxOutputs = { uid: String, output: HTMLElement? -> revealBoxOutputs(uid, output) }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
@@ -6249,6 +6342,14 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("navigate-document-box") { message, reply ->
+        val req = Json.decodeFromJsonElement<DocumentBoxNavigation>(message.payload!!)
+        navigateDocumentBox(req) { result ->
+            message.replyTo?.let { reply(Message(it).payload(result)) }
+        }
+        Handled.yes
+    }
+
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
@@ -7050,6 +7151,10 @@ suspend fun main() {
         // don't re-select the box — that would disrupt the main editor.
         val insideEmbeddedEditor = originalTarget?.closest(".monaco-editor") != null && insideOutputArea
         if (insideEmbeddedEditor) return@on
+
+        // Review links navigate outputs. Selecting their source on pointer-down
+        // would open Monaco before the link's click handler can run.
+        if (insideOutputArea && originalTarget?.closest("a[data-review-view][data-review-note]") != null) return@on
 
         // If the click originates from a disclosure header (output area UI),
         // don't intercept — let the disclosure handle its own alt-click removal.

@@ -495,6 +495,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             "attic",
             "notes",
             "geometryReviews",
+            "geometryAppearance",
             "fragment",
             "stackSL",
             "rectSL",
@@ -794,7 +795,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
                         // Likewise its last-run line notes (Forth, Clojure, Python), never evicted before.
                         afield.stdlib.LastRunNotes.forgetBox(target)
                         // And its output history, which nothing will read again (review, 2026-09-29).
-                        BoxOutputLog.clear(target.id)
+                        BoxOutputLog.clear(target.id, outputDocument(target))
                     }
 
                     val countMessage = formatBoxCountMessage(selected.size, targets.size, "Deleted")

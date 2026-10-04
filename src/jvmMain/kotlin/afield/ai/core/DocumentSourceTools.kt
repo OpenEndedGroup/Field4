@@ -3,6 +3,10 @@ package afield.ai.core
 import afield.*
 import afield.server.DocumentGuideFiles
 import com.fasterxml.jackson.annotation.JsonClassDescription
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.Json
+import java.util.UUID
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.yaml.snakeyaml.Yaml
@@ -15,9 +19,12 @@ data class DocumentSourceReadRequest(val uid: String, val property: String = "co
 @JsonClassDescription("Replace one live text property only if its revision matches the latest DocumentSourceRead. Does not launch or reload. Refuses a concurrent edit or a read-only document.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.MUTATE_DOCUMENT])
 data class DocumentSourcePatchRequest(val uid: String, val property: String, val revision: String, val contents: String)
-@JsonClassDescription("Select an explicit box UID, center it on the canvas, and open the requested editor property and optional line. Sends the existing frontend navigation command.")
+@JsonClassDescription("Navigate directly inside the current Field document by box UID. surface=editor opens source at property/line; surface=box reveals the box; surface=output opens and reveals its named output channel without opening Monaco or changing a viewer camera. A blank channel is accepted only when one output exists; otherwise returns available channels. Does not execute code. Waits for a connected frontend acknowledgement; success does not certify output contents. Prefer this over keyboard search or canvas panning.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [])
-data class DocumentBoxNavigateRequest(val uid: String, val property: String = "code", val line: Int? = null)
+data class DocumentBoxNavigateRequest(
+    val uid: String, val property: String = "code", val line: Int? = null,
+    val surface: String = "editor", val channel: String = ""
+)
 
 @JsonClassDescription("Export a live graph snapshot; see provenance warnings before publishing.")
 @AgentToolMeta("source", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_WRITE])
@@ -73,11 +80,34 @@ internal class DocumentSourceTools(private val info: SessionInformation) {
         }
     }
 
-    fun navigate(req: DocumentBoxNavigateRequest): Map<String, Any> = onOwner {
-        val box = target(req.uid)
-        _send(Message("select-and-edit-box").payload(SelectAndEditBox(box.id, req.property, req.line, req.line, center=true)), document = Regex.escape(info.filename))
-        mapOf("success" to true, "uid" to box.id, "property" to req.property,
-            "message" to "Navigation requested in the document's connected front end.")
+    fun navigate(req: DocumentBoxNavigateRequest): DocumentBoxNavigationResult {
+        require(req.surface in setOf("editor", "box", "output")) { "surface must be editor, box, or output" }
+        require(req.surface == "output" || req.channel.isEmpty()) { "channel requires surface=output" }
+        if (Runloop.isMainThread) return DocumentBoxNavigationResult(false, req.uid, req.surface, req.channel,
+            message="Navigation waits for the frontend; call it off the Runloop.")
+        return runBlocking {
+            val response = CompletableDeferred<DocumentBoxNavigationResult>()
+            val callback = "document-navigation-" + UUID.randomUUID()
+            try {
+                withContext(Runloop.runLoop.main) {
+                    val box = target(req.uid) // Only this document; never a global UID lookup.
+                    handlers[callback] = mutableSetOf({ message, _ ->
+                        runCatching { Json.decodeFromJsonElement(DocumentBoxNavigationResult.serializer(), message.payload!!) }
+                            .onSuccess { if (it.uid == box.id && it.surface == req.surface) response.complete(it) }
+                        Handled.yes
+                    })
+                    val message = Message("navigate-document-box").payload(DocumentBoxNavigation(
+                        box.id, req.surface, req.channel, req.property, req.line))
+                    message.replyTo = callback
+                    _send(message, document=Regex.escape(info.filename))
+                }
+                withTimeoutOrNull(5000) { response.await() } ?: DocumentBoxNavigationResult(
+                    false, req.uid, req.surface, req.channel,
+                    message="No frontend confirmed navigation. Open this document in Field with the current frontend, then retry.")
+            } finally {
+                withContext(kotlinx.coroutines.NonCancellable + Runloop.runLoop.main) { handlers.remove(callback) }
+            }
+        }
     }
 
     fun export(req: DocumentSourceExportRequest): Map<String, Any> {

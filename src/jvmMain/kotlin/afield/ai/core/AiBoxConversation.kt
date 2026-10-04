@@ -6,6 +6,23 @@ import afield.Box
 object AiBoxConversation {
     const val PROPERTY = "ai4_chat_history"
     const val RUNNING_PROPERTY = "ai4_chat_running"
+    private const val TURN_SEQUENCE_PROPERTY = "_ai4_chat_turn_sequence"
+    private const val TURN_FAILURE_PROPERTY = "_ai4_chat_turn_failure"
+    private const val TURN_ROUNDS_PROPERTY = "_ai4_chat_turn_rounds"
+    private const val TURN_CAPPED_PROPERTY = "_ai4_chat_turn_capped"
+
+    // Runtime-only lifecycle evidence, separate from the persisted prose transcript.
+    internal fun turnSequence(box: Box): Long = (box.getPropertyRaw(TURN_SEQUENCE_PROPERTY) as? Long) ?: 0L
+    internal fun turnFailure(box: Box): String? = (box.getPropertyRaw(TURN_FAILURE_PROPERTY) as? String)?.takeIf { it.isNotBlank() }
+    internal fun turnRounds(box: Box): Int = box.getPropertyRaw(TURN_ROUNDS_PROPERTY) as? Int ?: -1
+    internal fun turnCapped(box: Box): Boolean = box.getPropertyRaw(TURN_CAPPED_PROPERTY) == true
+    internal fun completed(box: Box, rounds: Int, capped: Boolean) {
+        box.setPropertyRaw(TURN_ROUNDS_PROPERTY, rounds, doResync = false)
+        box.setPropertyRaw(TURN_CAPPED_PROPERTY, capped, doResync = false)
+    }
+    internal fun failed(box: Box, message: String) {
+        box.setPropertyRaw(TURN_FAILURE_PROPERTY, message, doResync = false)
+    }
 
     fun read(box: Box): String = box.getPropertyRaw(PROPERTY) as? String ?: ""
 
@@ -20,6 +37,11 @@ object AiBoxConversation {
     }
 
     fun running(box: Box, value: Boolean) {
+        if (value) {
+            box.setPropertyRaw(TURN_SEQUENCE_PROPERTY, turnSequence(box) + 1, doResync = false)
+            box.setPropertyRaw(TURN_FAILURE_PROPERTY, "", doResync = false)
+            completed(box, -1, false)
+        }
         box.setPropertyRaw(RUNNING_PROPERTY, value, doResync = false)
         markPending(box)
     }

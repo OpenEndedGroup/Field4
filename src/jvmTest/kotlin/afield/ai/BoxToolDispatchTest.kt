@@ -10,7 +10,7 @@ import kotlinx.coroutines.withTimeout
 import kotlin.test.*
 
 class BoxToolDispatchTest {
-    private fun tool() = BoxTool("dispatch.check", "Dispatch regression", "dispatch-test", Box("dispatch-test"), emptyList(), {
+    private fun tool() = BoxTool("dispatch.check", "Dispatch regression", "dispatch-test", Box("dispatch-test"), emptyList(), body = {
         fail("A blocked owner must be rejected before the body is dispatched")
     })
 
