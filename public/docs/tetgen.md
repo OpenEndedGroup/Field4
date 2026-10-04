@@ -1,16 +1,5 @@
 # Filling a solid: tetrahedral meshing with TetGen
 
-*Every public declaration used below carries its own KDoc, and all of it is browsable on the
-[Simulation](reference/simulation.md) reference page, beside the Kratos solver this feeds and the
-real-time particle stack it does not — start from
-[`Tetgen`](reference/simulation.md#tetgen-kt-tetgen),
-[`TetMesh`](reference/simulation.md#tetgen-kt-tetmesh) and
-[`TetgenLibrary`](reference/simulation.md#tetgen-kt-tetgenlibrary) in `afield.tetgen`.
-`dev_docs/TETGEN.md` carries the mesher comparison that chose
-this route, and the numbers on this page were produced in this repository on an Apple M-series
-laptop, natively, with no container. The one exception is labelled where it appears: the beam
-deflections under [Into Kratos](#into-kratos) come from the solver container.*
-
 [Manifold](manifold.md) gives Field surfaces that are guaranteed closed. A closed surface is a
 boundary: it says where the part stops. It says nothing about the inside, and every question worth
 asking about a part — how much does it deflect, where does it get hot, where does it crack — is a
@@ -18,8 +7,8 @@ question about the inside.
 
 A tetrahedral mesh is the inside, written down. [TetGen](https://wias-berlin.de/software/tetgen/)
 takes the closed triangle surface and fills the volume it bounds with tetrahedra whose faces match
-that surface exactly. `afield.tetgen` is 685 lines of Kotlin over 263 lines of C++ over TetGen 1.6.0,
-through Panama/FFM.
+that surface exactly. In a box, `Tetgen.tetrahedralize` takes a closed `TriMesh` and returns a
+`TetMesh`. This one fills an L-shaped part built with Manifold:
 
 ```diffstatic {data-lang=kotlin}
 import afield.manifold.*
@@ -33,19 +22,29 @@ mesh.cellCount     // 10093
 mesh.volume()      // 81000.00000000007, against Manifold's exact 81000.0
 ```
 
-## Why this exists
+Every public declaration carries KDoc, browsable on the [Simulation](reference/simulation.md)
+reference page: start from [`Tetgen`](reference/simulation.md#tetgen-kt-tetgen),
+[`TetMesh`](reference/simulation.md#tetgen-kt-tetmesh) and
+[`TetgenLibrary`](reference/simulation.md#tetgen-kt-tetgenlibrary).
+
+## What a tetrahedral mesh is for
 
 Field's Kratos bridge solves conduction and flow on a fixed background grid: it samples a signed
 distance function onto the grid and cuts the body out of it. That is an *embedded* formulation, and
-it is the cheaper thing to do. Structural mechanics cannot work that way, because
-**Kratos has no immersed structural element**: `dev_docs/TETGEN.md` records a sweep of the 312 public
-names in `StructuralMechanicsApplication` finding not one matching `embedded`, `shifted` or `sbm`.
-`structural.bodyFitted` therefore needs a mesh whose boundary really is the part's surface.
+it is the cheaper thing to do. Structural mechanics in Kratos cannot work that way, because Kratos
+has no immersed structural element, so `structural.bodyFitted` needs a mesh whose boundary really is
+the part's surface.
 
-A second reason decided the choice, rather than merely forcing it.
-Sampling a distance function onto grid nodes destroys a sharp edge *before the mesher ever sees it*.
-Refining the grid only buys a smaller rounded radius. Structural stress concentrates at exactly
-those edges. [The sharp edge](#the-sharp-edge) below measures both halves of that on this machine.
+There is a second reason. Sampling a distance function onto grid nodes rounds off a sharp edge
+before the mesher ever sees it, and refining the grid only makes the rounded radius smaller.
+Structural stress concentrates at exactly those edges. [The sharp edge](#the-sharp-edge) below
+shows both.
+
+??? aside "Where the numbers on this page come from"
+    They were produced in this repository on an Apple M-series laptop, natively, with no container,
+    except the beam deflections under [Into Kratos](#into-kratos), which come from the solver
+    container. `dev_docs/TETGEN.md` has the mesher comparison that chose TetGen, including a sweep of
+    `StructuralMechanicsApplication` for an immersed element.
 
 ## The first mesh
 
@@ -150,8 +149,8 @@ The bracket below makes that concrete. At `targetEdgeLength = 3.0` its worst ele
 scores `1.7361` and has a radius ratio of `0.5851` — a perfectly usable element. Meanwhile 26 of the
 31 elements below radius ratio `0.10` sit **inside** the `1.2` bound, and the worst of those has a
 radius-edge ratio of `0.9263`, which is nearer the regular tetrahedron's floor of `0.6124` than to
-the bound. The criterion is not merely a loose proxy for the thing you care about; on the tail it
-ranks the two in opposite orders.
+the bound. On the tail, the radius-edge ratio ranks elements in the opposite order to the radius
+ratio.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/tetgen/quality.png" alt="two stacked output panels. The upper one plots 'radius ratio over 66489 elements' as a histogram, x axis '3 r_in / r_circ' from 0 to about 1, y axis 'elements' to 6000: a long flat tail hugging zero from 0.05 up to about 0.5, then a steep climb to a peak just under 7000 elements around 0.9, and a sharp drop in the last bin. Almost the whole population sits in the good half of the axis. The lower panel, 'the 400 worst elements, in place', draws those elements alone against black, so they hang in space as a few hundred slivers and flat wedges holding the silhouette of the bracket; they are thickest in two dense knots where the bores are and thin everywhere else. Its footer reads 1459 verts, 1584 tris, extent 80.000 x 40.000 x 70.000, chi=709, open (0 boundary loops), and 'radius ratio 0.0362 to 0.2886 - densest around the three bores, and scattered everywhere else'" wait="12" capture="box" open-outputs="true" padding="20" requires="tetgen,manifold" name="quality" embed=true}
 :::static
@@ -248,9 +247,8 @@ What tightening does buy is the *bulk* of the tail. The first percentile improve
 
 ??? aside "This disagrees with `dev_docs/TETGEN.md`, on a different body"
     That page records that `1.2` removed the last poor element "for no measurable cost", measured on
-    a slab welded to a ball. On this bracket it removes nothing and costs 20%. Both runs are real;
-    the difference is the geometry, and the useful conclusion is that the default is a default and
-    not a finding. Sweep it on your own part — the sweep above is fifteen lines and five seconds.
+    a slab welded to a ball. On this bracket it removes nothing and costs 20%. The difference is
+    the geometry: the default is a starting point, so sweep it on your own part.
 
 ## Sizing
 
@@ -321,9 +319,9 @@ That is the whole reason to prefer it to a level set, and it shows up two ways: 
 volume, and against the formulation TetGen replaced.
 
 A `2 × 3 × 4` box has an exact volume of `24`. Through Manifold's 12-triangle surface and TetGen at
-`targetEdgeLength = 0.5`, Field gets `23.999999999999936` — a relative error of `2.7e-15`, three
-ulps. Not close: the same number, to within double-precision arithmetic on 3,059 tetrahedra. A
-mesher that rounded the corners could not land there.
+`targetEdgeLength = 0.5`, Field gets `23.999999999999936`, a relative error of `2.7e-15` (three
+ulps) on 3,059 tetrahedra: exact, up to double-precision rounding. A mesher that rounded the
+corners could not land there.
 
 The comparison that matters is against the route this replaced. The figure below marches the *same*
 box out of its own distance function, which is what an embedded formulation does before it ever sees
@@ -528,9 +526,9 @@ The three acceptances are all correct answers.
 which is unoriented — a set of facets, not an oriented boundary. So an inside-out cube meshes the
 cube. [Manifold behaves differently on the same input](manifold.md): an inwardly-wound closed
 surface is a legal manifold there with a *negative* volume, and the next Boolean computes the
-complement of what you meant. Two libraries, one mesh, opposite answers, neither of them wrong. If
-you are pushing a repaired scan through both, `TriMesh.diagnose()` reporting `INVERTED_ORIENTATION`
-matters to the Manifold half and not to this one.
+complement of what you meant. If you are pushing a repaired scan through both,
+`TriMesh.diagnose()` reporting `INVERTED_ORIENTATION` matters to the Manifold half and not to this
+one.
 
 The coincident-corner cube is not a failure either: collapsing one corner of a unit cube onto its
 neighbour really does leave a body of volume `2/3`, and TetGen meshed exactly that. This is the
@@ -558,10 +556,8 @@ against `Solid.volume` before you trust a result.
     it gave up on. `Q` does not suppress it and `TETLIBRARY` does not redirect it. In a live Field
     session that directory is wherever the server was launched from.
 
-    They are TetGen's own debugging aid and they are genuinely useful — the pair from a failed
-    Boolean is a Medit-readable dump of exactly which facets tangled — but nothing asks before
-    writing them. `TetgenWorkingDirectoryLitterTest` pins the behaviour and cleans up after itself.
-    Field does not relocate them; `dev_docs/TETGEN.md` says why.
+    They are TetGen's own debugging aid: the pair from a failed Boolean is a Medit-readable dump of
+    exactly which facets tangled. Delete them when you are done with them.
 
 ### `preserveSurface` on a Boolean result
 
@@ -578,7 +574,7 @@ you have measured your own case. On the bracket at `targetEdgeLength = 3.0`:
 
 </div>
 
-Not "somewhat worse": 56% of the elements are slivers and the worst is degenerate to five decimal
+With `-Y`, 56% of the elements are slivers and the worst is degenerate to five decimal
 places. `-Y` refuses to add the boundary points that refinement needs, and on a surface a Boolean
 produced — with the long thin triangles a cylinder-through-a-block leaves — there is nowhere else for
 the refinement to go. The size request goes with it: 509 elements when you asked for something 130
