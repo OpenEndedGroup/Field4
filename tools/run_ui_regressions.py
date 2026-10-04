@@ -3885,6 +3885,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="output-panel-shrink",
+            description="An auto-sized output panel follows its content down as well as up in height and width, sizes a capped scroller by its cap, measures width at a fresh panel's width so wrapped text does not creep, holds still while content alternates, ignores canvas zoom and stays within the window; a hand-sized panel keeps its size.",
+            commands=[
+                "new-box --name OutputPanelShrinkRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="h2-domain-explorer",
             description="A .h2 on a plain domain object opens a real property table -- one row per property, with its declared type and value -- and not the one-cell toString() fallback a non-collection used to get.",
             commands=[

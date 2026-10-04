@@ -22,19 +22,21 @@ start from what you see.
 | a panel opens at 200px and never grows, with a small frame in the corner of it | your iframe declares a percentage width, and something suppressed the other measurement source | [no measurement source at all](#a-frame-with-nothing-to-report) |
 | a panel is short by the height of whatever sits above its frame | a frame's own height is being read as the whole content height | [height is measured from the content edge](#height-is-measured-from-the-content-edge) |
 | a docs figure is far wider than its box, or its right-hand column is cropped off | the screenshot-prep pass and the auto-sizer are chasing each other | [the screenshot pass is a second sizer](#the-screenshot-pass-is-a-second-sizer) |
+| a panel stays taller than what it shows, with empty space below | something in it stretches to the panel's height instead of having one | [a panel follows its content back down](#a-panel-follows-its-content-back-down) |
+| a panel stops at most of the window's height and scrolls | auto-size never goes past 80% of the window | [a panel follows its content back down](#a-panel-follows-its-content-back-down) |
 | a panel ignores the size the content asked for | somebody dragged that panel once | [a dragged panel stops listening](#a-dragged-panel-stops-listening) |
 
 ## Where a width can come from
 
-`contentSizeForDisclosure` (`src/commonMain/resources/outputareas2.js:361#function contentSizeForDisclosure`)
+`contentSizeForDisclosure` (`src/commonMain/resources/outputareas2.js:434#function contentSizeForDisclosure`)
 walks every visible node inside the panel and collects candidate widths. They are candidates, not a
 priority chain: the last line of the function is a `Math.max` over the largest node width, the
 header, and the fill-width fallback
-(`src/commonMain/resources/outputareas2.js:454#width + paddingX, headerWidth(d), fillWidthForDisclosure(d)`).
+(`src/commonMain/resources/outputareas2.js:545#width + paddingX, headerWidth(d), fillWidthForDisclosure(d)`).
 The largest candidate wins, and a source with nothing to report contributes zero.
 
 For an iframe, `iframeIntrinsicSize`
-(`src/commonMain/resources/outputareas2.js:308#function iframeIntrinsicSize`) has four places to
+(`src/commonMain/resources/outputareas2.js:381#function iframeIntrinsicSize`) has four places to
 look and takes the max of them:
 
 - the `width` **attribute** on the tag;
@@ -44,12 +46,12 @@ look and takes the max of them:
 - and, only if all three came back non-positive, the frame's own `getBoundingClientRect().width`.
 
 The first two go through `parsePixels`
-(`src/commonMain/resources/outputareas2.js:34#function parsePixels`), which is `parseFloat` and
+(`src/commonMain/resources/outputareas2.js:44#function parsePixels`), which is `parseFloat` and
 nothing else. This is where a percentage width goes wrong. A percentage does not parse as zero:
 `parseFloat("100%")` is 100, so a `width:100%` frame reports an intrinsic width of 100 pixels.
 
 That has two effects. First, the 100 loses the final `Math.max` to the header's floor. `headerWidth`
-(`src/commonMain/resources/outputareas2.js:48#function headerWidth`) never returns less than
+(`src/commonMain/resources/outputareas2.js:69#function headerWidth`) never returns less than
 `CLOSED_W`, so 100 pixels of claimed width produces a 200-pixel panel, which looks the same as
 having no width at all.
 
@@ -69,7 +71,7 @@ pixel width beats a percentage, for the same reason and with the same effect.
 return on its sixth line
 (`src/commonMain/resources/iframe_autosize.js:6#toLowerCase() === "off") return`), before it
 registers any listener. No `afield-iframe-size` event is ever dispatched, so the parent's handler
-(`src/commonMain/resources/outputareas2.js:560#addEventListener("afield-iframe-size"`) never runs and
+(`src/commonMain/resources/outputareas2.js:818#addEventListener("afield-iframe-size"`) never runs and
 `data-afield-intrinsic-width` never appears on the tag.
 
 Combine that with a width the panel cannot use (a percentage, which reports a nonsense 100, or no
@@ -80,9 +82,9 @@ Each half is reasonable on its own. `autosize="off"` is right for a frame that s
 content: its document is taller than the frame, and letting it report its scroll height would grow
 the panel forever. A percentage width is right for a frame that should be as wide as whatever holds
 it. Field recognises the pair and handles it.
-`src/commonMain/resources/outputareas2.js:283#function isFillWidthIframe` is the three-part test —
+`src/commonMain/resources/outputareas2.js:356#function isFillWidthIframe` is the three-part test —
 autosize off, no reported intrinsic width, and no *concrete* inline width, where "concrete" is
-`hasConcreteCssSize` (`src/commonMain/resources/outputareas2.js:96#function hasConcreteCssSize`) and
+`hasConcreteCssSize` (`src/commonMain/resources/outputareas2.js:167#function hasConcreteCssSize`) and
 excludes the CSS-wide keywords, `auto`, the intrinsic keywords, a literal zero, and any percentage.
 
 A frame that passes all three is a **fill frame**: it has no width of its own, so it takes the
@@ -120,7 +122,7 @@ way:
 
 Every other measurement in `contentSizeForDisclosure` looks *inward*, at a descendant, and asks how
 much room it needs. `fillWidthForDisclosure`
-(`src/commonMain/resources/outputareas2.js:298#function fillWidthForDisclosure`) looks outward
+(`src/commonMain/resources/outputareas2.js:371#function fillWidthForDisclosure`) looks outward
 instead. It walks up to the enclosing `.box` and returns `box.right - wrap.left`: the distance from
 the panel's own left edge to the right edge of the box that owns it.
 
@@ -129,7 +131,7 @@ panel's current width back. The box's width was set by you, or by a drag, before
 
 This width is a minimum, never a cap. A non-nested panel is left
 `maxW: Number.POSITIVE_INFINITY`
-(`src/commonMain/resources/outputareas2.js:592#maxW: Number.POSITIVE_INFINITY`), so content with a
+(`src/commonMain/resources/outputareas2.js:850#maxW: Number.POSITIVE_INFINITY`), so content with a
 real intrinsic width wider than its box still wins and overflows, which is what a wide table
 wants. With no enclosing box, on a standalone page, it returns 0.
 
@@ -189,16 +191,53 @@ picture is taken, so a panel in a docs figure can differ from the one you see in
 Height has one source and no fallbacks worth the name: the bottom edge of the lowest visible
 descendant, taken relative to the top of the panel's content box and with the leading padding
 removed, which is
-`src/commonMain/resources/outputareas2.js:444#Math.ceil(rect.bottom - box.top - paddingTop)` —
+`src/commonMain/resources/outputareas2.js:535#(Math.min(rect.bottom, clip.bottom) - box.top) / scale - paddingTop))` —
 the width axis does the mirror of it on
-`src/commonMain/resources/outputareas2.js:441#Math.ceil(rect.right - box.left - paddingLeft)`. A
-node counts for how far down the content box it reaches, not for its own height.
+`src/commonMain/resources/outputareas2.js:532#(Math.min(rect.right, clip.right) - box.left) / scale - paddingLeft))`. A
+node counts for how far down the content box it reaches, not for its own height. Dividing by
+`scale` turns a zoomed canvas's screen pixels back into the panel's own pixels.
+
+A scroller that sets its own limit counts at that limit. Give an element `overflow:auto` and a
+`max-height` (or an inline pixel `height`) and the panel makes room for the scroller, not for
+everything inside it. A `<pre>` capped at 320 pixels holding a long log counts as 320 pixels, and
+the rest is reached by scrolling the `<pre>`
+(`src/commonMain/resources/outputareas2.js:88#function clipsAxis`). A scroller whose height comes
+from the panel, such as a `height:100%` or `flex:1` column, has no limit of its own, so its whole
+content still counts.
 
 Iframes follow the same rule
-(`src/commonMain/resources/outputareas2.js:419#if (node instanceof HTMLIFrameElement) {`): the
+(`src/commonMain/resources/outputareas2.js:512#if (node instanceof HTMLIFrameElement) {`): the
 panel adds the frame's offset from the content edge to its declared height
-(`src/commonMain/resources/outputareas2.js:434#Math.ceil(offsetTop + iframeSize.height)`). If you
+(`src/commonMain/resources/outputareas2.js:526#Math.ceil(offsetTop + iframeSize.height)`). If you
 see a panel that is short by the height of a row above its frame, this is the code to check.
+
+## A panel follows its content back down
+
+A panel grows as soon as its content needs more room. It shrinks once its content has needed less
+for half a second (`src/commonMain/resources/outputareas2.js:21#const AUTO_SIZE_SHRINK_SETTLE_MS`),
+and then only to the largest size the content needed in that time. A panel whose content is
+re-rendered faster than that, such as a build panel ticking through its progress, holds still while
+the content changes and shrinks once when it settles
+(`src/commonMain/resources/outputareas2.js:644#function settleShrink`).
+
+A panel whose content reaches its bottom edge without having a height of its own keeps the height it
+has. That covers a `height:100%` wrapper, a `flex:1` column, and any iframe, since
+`.disclosure-content iframe` is `height:100%`
+(`src/commonMain/resources/outputareas2.js:491#reachesBottom = true`). Such content would shrink
+along with the panel, so it says nothing about how short the panel could be.
+
+Width follows the content the same way, but it is measured differently. Text wraps to whatever width
+it is given, so a panel measured at its own width always looks about full. Instead, the content is
+measured at the width a fresh panel opens at, 480 pixels
+(`src/commonMain/resources/outputareas2.js:668#function naturalWidthAtBase`). A panel is as wide as
+its content would make a newly opened panel, or wider if something in it does not wrap. A long
+paragraph comes out a little under 480 pixels wide, short lines come out as wide as the longest of
+them, and a table that does not fit grows the panel to fit it.
+
+Auto-size never makes a panel taller than 80% of the window
+(`src/commonMain/resources/outputareas2.js:27#const AUTO_MAX_VIEWPORT_H_RATIO`), so you can always
+bring its resize corner on screen. Content past that scrolls inside the panel. Dragging the corner
+can still make the panel taller, and a dragged panel keeps its size from then on.
 
 ## The screenshot pass is a second sizer
 
@@ -236,18 +275,18 @@ has its own copy of the fill-frame test
 ## A dragged panel stops listening
 
 None of the above applies to a panel a person has resized. `rememberSize` sets `userSized`
-(`src/commonMain/resources/outputareas2.js:711#st.userSized = true`) the first time a panel's
+(`src/commonMain/resources/outputareas2.js:986#st.userSized = true`) the first time a panel's
 measured size differs from its stored size by more than 2px, and every auto-size entry point is
 gated on it. `autosize="fixed"` in the channel spec turns the whole mechanism off up front
-(`src/commonMain/resources/outputareas2.js:665#autoSizeModeForDisclosure(d) !== "fixed"`).
+(`src/commonMain/resources/outputareas2.js:940#autoSizeModeForDisclosure(d) !== "fixed"`).
 
 Because `userSized` sticks, a sizing problem only shows on a panel nobody has resized: a fresh box,
 or a docs capture.
 
 A drag is recorded by a `ResizeObserver` on the panel box
-(`src/commonMain/resources/outputareas2.js:833#d.userResizeObserver = new ResizeObserver`) rather
+(`src/commonMain/resources/outputareas2.js:1113#d.userResizeObserver = new ResizeObserver`) rather
 than by a `mouseup` on the panel
-(`src/commonMain/resources/outputareas2.js:818#d.cw.addEventListener("mouseup"`), so releasing the
+(`src/commonMain/resources/outputareas2.js:1098#d.cw.addEventListener("mouseup"`), so releasing the
 grip over an iframe still counts: a mouse event inside an iframe never reaches the page holding the
 panel. The three functions that resize the box themselves, `applyOpen`, `primeAutoSizeForOpen` and
 `applyClosed`, mark `selfResizeUntil` so that their own resizing is not mistaken for a drag.
@@ -256,6 +295,9 @@ panel. The three functions that resize the box themselves, `applyOpen`, `primeAu
     `tools/run_ui_regressions.py:3651#id="h2-panel-sizing"` opens a real box in a browser at
     `--w 1040 --h 200`, waits for the auto-size passes to settle, and checks that the panel tracks
     the box's width without overhanging it, and that the frame inside keeps its declared height.
+    `tools/run_ui_regressions.py#id="output-panel-shrink"` drives one panel through a capped
+    `<pre>`, tall, fill, short and wide content, a re-rendered paragraph, rapid alternation, the
+    window cap, a zoomed canvas and a drag, and checks the width and height after each.
     The lazy-output and value-viewer frames are not under any geometry check, and the two
     `isFillWidthIframe` copies are never compared. The full census is in
     `dev_docs/OUTPUT_PANEL_SIZING_COVERAGE.md`.
