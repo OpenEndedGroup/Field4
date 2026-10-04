@@ -85,4 +85,27 @@ class SourceStudyTest {
         assertEquals("live", editor.text)
         assertFailsWith<StudyRejection> { s.check("broken") }
     }
+
+    @Test fun jsonSourcesSurviveReloadAndRestoreSeparatelyFromMetadata() = withDir { dir ->
+        val editor = Editor("{}")
+        fun jsonStudy() = SourceStudy(dir, "json", editor.read, editor.replace,
+            { source, _ -> StudyAdmission(source) })
+        val first = """{"value":1}"""
+        val second = """{"value":2}"""
+        val s = jsonStudy()
+        val r1 = s.edit(SourceStudy.EMPTY, SourceStudy.hash(editor.text), first, "first JSON")
+        val r2 = s.edit(r1.id, SourceStudy.hash(editor.text), second, "second JSON")
+        assertEquals(first, File(dir, "${r1.id}.source.json").readText())
+        val again = jsonStudy()
+        assertEquals(r2.id, again.resume())
+        assertEquals(second, again.revision().source)
+        assertEquals(listOf(r1.id, r2.id), again.allRevisions().map { it.id })
+        val restored = again.restore(r2.id, SourceStudy.hash(editor.text), r1.id)
+        val reloaded = jsonStudy()
+        assertEquals(restored.id, reloaded.resume())
+        assertEquals(first, reloaded.revision().source)
+        assertEquals(3, reloaded.history().size)
+        File(dir, "${r1.id}.source.json").writeText("tampered")
+        assertFailsWith<StudyRejection> { jsonStudy().revision(r1.id) }
+    }
 }

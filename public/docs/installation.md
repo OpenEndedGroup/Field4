@@ -180,6 +180,19 @@ The right side is a stack of collapsible panels, one per part of Field:
   inside a document is in [AI features](aiFeatures.md).
 - **Preferences** and the **OSC editor**.
 
+### Personal templates
+
+You can add your own templates to the **Templates** list. Field looks in
+`src/personal/templates/` (relative to Field's working directory) and in
+`~/.afield/templates/`; put each template in its own folder, with its `metadata.edn` and
+document files. Opening one makes an editable copy in the current workspace. The template itself
+is left alone, and copies you made earlier are not updated. Opening a copy does not run its boxes.
+
+To keep your templates somewhere else, start Field with
+`-Dafield.personalTemplates.dir=/path/to/templates`. When two templates share a name, a bundled
+one wins, then one in `src/personal`, then one in your own directory, so give yours distinctive
+names. Git ignores `src/personal`, so back those templates up yourself.
+
 ## Browser or server-only use
 
 ```diffstatic {data-lang=bash}
@@ -281,3 +294,21 @@ or the network is down) it says which, rather than reporting that you are up to 
 
     Anyone whose update check spans that commit sees the trailer's text verbatim, instead of the
     subject of the newest commit. Several notices in one range are all shown, deduplicated.
+
+## Project-owned Kotlin extensions
+
+Kotlin code you reuse across documents can live in your own project, outside the Field checkout.
+Set `AFIELD_EXTENSION_DIRS` (or Gradle's `-PfieldExtensionDirs`) to one or more directories,
+separated by `:` on macOS and Linux or `;` on Windows. Each directory holds `kotlin/`,
+`resources/`, or both. If a directory is missing, the build stops and names it. To launch Field
+with one extension directory and a workspace from the same project:
+
+```diffstatic {data-lang=bash}
+AFIELD_EXTENSION_DIRS="$HOME/my-project/extensions" ./field.sh "$HOME/my-project/workspace"
+```
+
+This code is compiled together with `src/personal`, and boxes can import its classes. After you
+change it, rebuild `personalJar` with the same setting, then run `reloadPersonal` or restart
+Field. Gradle scripts in these directories are not run; third-party libraries are added the same
+way as for the rest of Field. To keep the project's templates beside its code, point
+`afield.personalTemplates.dir` (see [Personal templates](#personal-templates)) into the project.

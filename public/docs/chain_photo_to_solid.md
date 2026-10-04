@@ -101,13 +101,12 @@ coincident face, or an intersection that misclassified a shell changes one side 
 The companion `vol(A − B) = vol(A) − vol(A ∩ B)` is checked in the same box.
 
 The renders come from `TriMesh.renderPng`, a CPU rasteriser with a depth-tested wireframe. It does
-not use AWT, so it is safe to call from a box on macOS.
+not use AWT, so it is safe to call from a box on macOS. For a lit picture instead of a wireframe,
+the same mounted relief and its frame can go through the GPU path tracer:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/chain_photo_to_solid/mounted_path_trace.png" capture="native-window" native-wait-frames="3" wait-output=true wait-output-kind="all" wait-output-contains="photo_mount_trace study converged" embed=true hidden=true timeout="300" requires="manifold" name="elsewhere-photo_mount_trace" alt="The mounted relief and its frame, lit and rendered with the GPU path tracer." macro-file="../../dev_docs/agents/transcripts/photo_mount_path_trace.yaml" capture-box="photo_mount_trace" capture-profile="linux-nvidia"}
 // Built and launched from dev_docs/agents/transcripts/photo_mount_path_trace.yaml.
 ```
-
-The mounted relief and its frame, lit and rendered with the GPU path tracer.
 
 ### Asking for normals breaks the round trip
 

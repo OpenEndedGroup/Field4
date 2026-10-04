@@ -31,6 +31,40 @@ whole turns); saved images remain visible but must be attached again for fresh i
 Existing conversations from versions before this feature need to be exported before restarting
 those versions, because their transcripts lived only in memory.
 
+### Writing while it works
+
+You can keep typing while a reply is in progress. A message sent then appears at
+the end of the conversation marked *queued*, and the model reads it after the
+step it is on, between one tool call and the next, so you can correct or redirect
+a long task without waiting for it to finish. Once read, the message moves to the
+point in the reply where the model saw it. If the reply finishes first, the queued
+message is sent as your next message; several queued messages go together.
+
+### Going back
+
+Hover over one of your messages and two buttons appear. **rewind** takes the
+conversation back to just before that message; **edit** does the same and puts
+the message back in the input, so you can change it and send it again. Nothing
+is thrown away: the turns after that point stay as a branch. `/branches` lists
+the branches and `/branch 1` switches to one.
+
+If the turns you rewound changed the document, Field asks whether to undo those
+changes too. It undoes the box edits those turns made, and only those, and
+deletes the boxes they created. An edit someone has changed since is left alone,
+and so is a created box someone has since edited, moved or connected to another;
+the reply names the boxes it kept and why.
+The shape of the conversation is kept in `<box-id>_ai4_session_.jsonl` beside the
+transcript, with its images in the document's `ai4_blobs` folder.
+
+`/context` shows what the last turn sent besides the conversation itself: each
+part of the instructions, its size, and what the provider keeps of it. That
+differs by provider. OpenAI keeps the conversation on its side, so the stable
+instructions go into it once and the context that changes between turns is added
+with every turn, which makes a long conversation grow; this was measured to cost
+less than sending it separately, because the conversation stays cacheable.
+Anthropic gets the stable instructions with every request and the changing context
+with the newest request only.
+
 You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
@@ -240,6 +274,117 @@ AgentToolExtensions.register(
 
 A closed gate removes the tool from the list the model is shown, rather than
 leaving it visible and failing when called.
+
+A tool most conversations never need can be listed by name only. Its schema is
+sent the first time the model asks for it, and stays for the rest of that
+conversation:
+
+```diffstatic {data-lang=kotlin}
+aiTool("survey.export") {
+    describe("Write the survey as CSV.")
+    exposure(ToolExposure.DEFERRED)
+    effects(ToolEffect.FILESYSTEM_WRITE)
+    action { /* … */ }
+}
+```
+
+`effects(...)` says what a call does. A tool that declares
+`ToolEffect.MUTATE_DOCUMENT` is refused on a read-only document before its action
+runs, and MCP clients see the declaration as `readOnlyHint` and `destructiveHint`.
+For `AgentToolExtensions.register` the same two settings are
+`meta = ToolMeta(namespace, exposure, effects)`.
+
+### Many calls at once
+
+The chat has a tool for writing small programs over its other tools. When a
+request means a dozen similar calls (run every box, try eight values, tag every
+note that has a TODO), the model can send one short JavaScript program instead,
+and only what the program returns comes back into the conversation. Your tools
+are callable from those programs like the built-in ones: `tools.MeasureRoom({...})`,
+and a box-authored tool by its own name or the name the model sees,
+`tools["echo.box"]({...})` or `tools.echo_box({...})`. The model sees a box tool's
+name with every character other than letters, digits, `_` and `-` turned into `_`,
+because the model providers accept no others, so two tools whose names would meet
+that way (`house.check` and `house_check`) cannot both be registered. In the panel,
+a program's line opens to show each call it made and how long it took.
+
+A call that fails stops the program. If a tool could not run, or its result says
+`success: false` or `error: true`, the call throws a `ToolFailure` whose `result` is
+what the tool returned, so the steps after a failed check do not run unless the
+program catches it. `tools.MeasureRoom.raw({...})` returns the result without
+throwing, for a program that looks at failures on purpose. A tool that ran and
+reports a verdict, such as `qualified: false` or a list of holds, has not failed;
+`check(r.qualified, "the openings are not qualified")` is how a program stops on it.
+
+`progress("Checking 12 window placements")` shows a line in the panel while the
+program runs; `text(...)` lines come back to the model when it ends. A program has
+60 seconds unless it asks for more, at most 300, and is never retried. A tool call
+it makes that waits (`timeoutSeconds`, `waitSeconds`) waits no longer than the
+program has left, so a long job should be started and its handle returned, not
+waited for inside the program. A result too large to keep in the conversation is
+stored whole, and the call's record names it (`evidence: "ai4ev:…"`) for
+`ReadToolEvidenceRequest` to read back.
+
+Programs run in a sandbox that reaches the tools and nothing else: no files,
+network, timers or Java. Edits a program makes are applied as it goes, exactly as
+the same calls made one at a time would be, so a program that stops halfway leaves
+its earlier edits in place, undoable like any other.
+
+### More than a tool: `agentExtension`
+
+A box can give the agent more than tools. Inside `agentExtension { }` it can add
+context the agent reads at the start of every turn, look at each tool call before
+it runs and refuse it, look at the result afterwards, and add chat commands:
+
+```diffstatic {data-lang=kotlin}
+agentExtension("studio") {
+    context("tempo") { "The piece is at 96 bpm; keep edits in time." }
+    beforeTool({ it == "DeleteBoxRequest" }) { refuse("Ask before deleting boxes in this document.") }
+    afterTool { call, result -> if (!result.ok) println("${call.name} failed: ${result.summary}") }
+    command("tempo", "show the tempo") { "**96 bpm**" }
+}
+```
+
+An extension follows the same rules as `aiTool`: re-running the box replaces the
+whole extension, a run that no longer declares a part removes it, and deleting the
+box removes all of it. It applies to conversations about its own document. Each
+hook has a quarter of a second; one that throws or takes longer is skipped and
+reported in the log, so a broken hook cannot stop the agent. A `beforeTool` marked
+`mandatory = true` is a guard instead: if it throws or does not answer within its
+`timeoutMs`, the call is refused rather than run. Keep the checks that must hold
+(a design revision, a qualification) in the tool that does the work as well, where
+no extension can be missing. Context arrives marked
+as coming from the document rather than as instructions, at most 4,000 characters a
+part. `/help` lists the commands extensions add. [AI4 paints](ai4_painting.md)
+is a whole studio built this way, and [Experimenting with AI4](ai4_experiments.md)
+adds a tool to it in the middle of a conversation.
+
+Some state belongs to the conversation rather than to the document: a canvas the
+agent paints on, a simulation it is steering. `branchState` hands that state to the
+chat, which keeps a copy with every turn:
+
+```diffstatic {data-lang=kotlin}
+agentExtension("studio") {
+    branchState("canvas",
+        save = { file -> canvas.saveState(file.path) },
+        restore = { file -> canvas = file?.let { PaintCanvas.load(it.path) } ?: PaintCanvas() })
+}
+```
+
+Field calls `save` before and after every chat turn in the document and keeps
+each copy once, by content, in the document's `ai4_blobs/state` folder. Rewinding
+the chat to a request calls `restore` with the state from just before that request.
+Switching to another branch with `/branch` restores the state at the end of that
+branch. `restore` gets `null` when the conversation has no copy, for example a
+conversation that began before the extension existed.
+
+Before restoring, Field saves the state as it is and compares it with the state the
+conversation last left. If something else changed it in the meantime, a person
+dragging or a tool run from outside the chat, the state is left as it is and the
+chat says so. `onConflict = BranchConflict.RESTORE` restores anyway, for state that
+belongs to the conversation alone; the replaced state stays saved either way.
+`resumeOnOpen = true` restores the state where the document's latest conversation
+left it when the document opens. Leave it off for state the document saves itself.
 
 ### Returning something the model can read — and see
 

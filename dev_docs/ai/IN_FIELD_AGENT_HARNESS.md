@@ -178,8 +178,8 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 
 ## Eval suite
 
-`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), twelve tasks (the last five, added
-2026-09-30, are graded by pixels):
+`InFieldAgentEvals` (`ai/agent/InFieldAgentEvals.kt`), seventeen tasks: five graded by pixels (added
+2026-09-30), and five added 2026-10-02 to measure what AI4 took from Pi ([AI4_PI_LESSONS.md](AI4_PI_LESSONS.md)):
 
 | id | goal (short) | starts from |
 | --- | --- | --- |
@@ -195,6 +195,22 @@ the turn began, so setup output cannot satisfy it), `output-ints-include:B:1,2,3
 | bars-visible | percent-height bars that render 0 px tall → visible | displaying box |
 | bars-sorted-red | bars sorted as *displayed* (another box's stylesheet reverses them), tallest red | two boxes |
 | bars-one-row | ten 28 px bars in one row (they wrap at the panel's width) | displaying box |
+| audit-failing | Report prints which of Cell01..Cell10 fail when run | ten boxes, three throwing |
+| sweep-parameter | run Sq for k = 1..8, Results prints the eight outputs, Sq left at k = 1 | one box |
+| tag-todos | insert `// reviewed` into the five of twelve boxes with a TODO, running nothing | twelve boxes |
+| four-turns | four user turns in one conversation: Counter 1..3, 1..5, squares, then Total | empty |
+| revise-table | three user turns revising one displayed table | empty |
+
+The first three are made of many similar calls and their scripted solutions are tool programs
+(`RunToolProgramRequest`); the last two are several turns of one conversation
+(`AgentTaskRequest.followUps`, `--follow-up`). Two A/B flags run either kind against its old
+behaviour in the same build: `programs=off` (`--programs off`) withholds the program tool, and
+`context=legacy` (`--context legacy`) puts the instructions back inside the stored message. Three check
+kinds came with them: `effects-absent:<EFFECT>` and `effects-present:<EFFECT>`, over every call the turn
+made including a program's nested ones (a call with undeclared effects fails `effects-absent`), and
+`tool-used:<Name>`. `tools/test_agent_check_parse.py` keeps `parse_agent_check` in step with
+`AgentCheck.parse`. Live runs are capped at 17 tasks. Reports carry `cacheReadTokens`,
+`cacheWriteTokens`, `programCalls`, `nestedCalls`, `turns` and `contextPlacement`.
 
 Each task has a scripted solution in real Kotlin. The first scripted run against real Field caught
 an error in the harness's own instructions: a child does **not** see a parent's plain `val`

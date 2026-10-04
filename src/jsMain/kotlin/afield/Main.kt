@@ -32,6 +32,7 @@ import kotlinx.serialization.encodeToString
 import org.w3c.dom.*
 import org.w3c.dom.events.KeyboardEvent
 import org.w3c.dom.events.MouseEvent
+import org.w3c.dom.events.WheelEvent
 import org.w3c.dom.svg.SVGElement
 import org.w3c.dom.svg.SVGSVGElement
 import org.w3c.dom.url.URLSearchParams
@@ -2074,6 +2075,98 @@ private fun navigateToBoxProperty(
     return true
 }
 
+/** Reveal a box's output without selecting its code or changing a viewer camera. */
+private fun revealBoxOutputs(uid: String, requestedOutput: HTMLElement? = null): Boolean {
+    val box = findBoxElementByUid(uid) ?: return false
+    openNestedDisclosuresForNavigation(box)
+    val area = box.querySelector(".outputArea") as? HTMLElement ?: return false
+    openAllOutputDisclosures(area)
+    setTimeout({
+        // outputArea is a zero-width positioning anchor. Navigate to rendered
+        // content, preferably the requested viewer, rather than that anchor.
+        val target = requestedOutput?.takeIf { area.contains(it) }
+            ?: area.querySelector(".disclosure-content") as? HTMLElement
+            ?: box
+        ensureBoxVisibleForNavigation(target)
+    }, 50)
+    return true
+}
+
+// Reuse the canvas/disclosure navigation used by links, without opening source for output review.
+private fun navigateDocumentBox(req: DocumentBoxNavigation, done: (DocumentBoxNavigationResult) -> Unit) {
+    fun fail(message: String, channels: List<String> = emptyList()) = done(DocumentBoxNavigationResult(
+        false, req.uid, req.surface, req.channel, channels, message))
+    val box = findBoxElementByUid(req.uid) ?: return fail("Box is not present in this document view.")
+    var chosenChannel = req.channel
+    val target: HTMLElement
+    when (req.surface) {
+        "editor" -> {
+            navigateToBoxProperty(req.uid, req.property, req.line, req.line, center=true)
+            target = box
+        }
+        "box" -> {
+            openNestedDisclosuresForNavigation(box)
+            centerBoxForMarkdownNavigation(box)
+            target = box
+        }
+        "output" -> {
+            val area = box.querySelector(".outputArea") as? HTMLElement
+                ?: return fail("No output is displayed. Run its source box first.")
+            val group = area.querySelector(".disclosure-group") ?: return fail("No output channels are available.")
+            val disclosures = group.children.asList().filter { it.classList.contains("disclosure") }
+            val channels = disclosures.mapNotNull { it.asDynamic().__disclosureId as? String }
+            if (chosenChannel.isBlank()) {
+                if (channels.size != 1) return fail("Specify an output channel.", channels)
+                chosenChannel = channels.single()
+            }
+            val disclosure = disclosures.firstOrNull { it.asDynamic().__disclosureId == chosenChannel }
+                ?: return fail("Output channel is unavailable. Choose a listed channel or run its source box first.", channels)
+            target = disclosure.querySelector(".disclosure-content") as? HTMLElement
+                ?: return fail("Output channel has no rendered content.", channels)
+            val api = disclosureInterfaceFor(group) ?: return fail("Output controls are not ready.", channels)
+            openNestedDisclosuresForNavigation(box)
+            area.style.visibility = "visible"
+            area.style.height = "auto"
+            (api.open as (String) -> Unit).invoke(chosenChannel)
+
+        }
+        else -> return fail("surface must be editor, box, or output")
+    }
+    val began = window.performance.now()
+    var lastWidth = -1.0
+    var lastHeight = -1.0
+    var changedAt = began
+    fun finish() {
+        val rect = target.getBoundingClientRect()
+        val safe = navigationSafeViewportRect()
+        val visible = rect.width > 0 && rect.height > 0 && rect.right > safe.x && rect.left < safe.right &&
+            rect.bottom > safe.y && rect.top < safe.bottom && window.getComputedStyle(target).visibility != "hidden"
+        done(DocumentBoxNavigationResult(visible, req.uid, req.surface, chosenChannel,
+            message=if (visible) "Revealed in a connected Field document view." else "Target is not visible in this frontend.",
+            visible=visible))
+    }
+    // Opening a disclosure can grow its initial 480px width after iframe load.
+    // Centre its settled size, then verify it stayed stable throughout the pan.
+    fun settle() {
+        val rect = target.getBoundingClientRect()
+        val now = window.performance.now()
+        if (now - began > 4000) { fail("Output layout did not settle. Wait for it to load, then retry."); return }
+        if (abs(rect.width-lastWidth) > 1 || abs(rect.height-lastHeight) > 1) {
+            lastWidth=rect.width; lastHeight=rect.height; changedAt=now
+        }
+        val loading = target.querySelectorAll("iframe").asList().any { frame ->
+            runCatching { frame.asDynamic().contentDocument?.readyState == "loading" }.getOrDefault(false)
+        }
+        if (now-changedAt < 300 || loading) { window.setTimeout({ settle() }, 100); return }
+        centerBoxForMarkdownNavigation(target)
+        window.setTimeout({
+            val after = target.getBoundingClientRect()
+            if (abs(after.width-lastWidth) > 1 || abs(after.height-lastHeight) > 1) settle() else finish()
+        }, 480)
+    }
+    if (req.surface == "output") settle() else window.setTimeout({ finish() }, 600)
+}
+
 private fun editorIsSyncedFor(box: HTMLElement, property: String): Boolean {
     val expected = boxPropertyText(box, property)?.takeIf { it.isNotBlank() } ?: return true
     val actual = globalEditorText() ?: return false
@@ -2352,6 +2445,117 @@ private fun cancelNavigationPanAnimation() {
     navigationPanAnimationGeneration += 1
     navigationPanAnimationHandle?.let { window.cancelAnimationFrame(it) }
     navigationPanAnimationHandle = null
+}
+
+/** Pans the main canvas by a screen-space delta (wheel and middle-drag panning). */
+private fun panCanvasBy(dx: Double, dy: Double) {
+    cancelNavigationPanAnimation()
+
+    val mc = mainCanvas.unsafeCast<dynamic>()
+    val x = ((mc.data_x as? Number)?.toDouble() ?: 0.0) + dx
+    val y = ((mc.data_y as? Number)?.toDouble() ?: 0.0) + dy
+
+    (mc as HTMLElement).style.transform = mainCanvasTransform(x, y)
+    mainTranslation = listOf(x, y)
+    drawingLayerViewportChanged(x, y)
+
+    mc.data_x = x
+    mc.data_y = y
+    syncInitialPlaceholderLayerTransform()
+
+    updateBackgroundGrid(x, y, panning = true)
+
+    send(
+        Message("set-viewport").payload(
+            Set_rect(
+                uid = "root",
+                property = "viewport",
+                Rect(x, y, window.innerWidth.toDouble(), window.innerHeight.toDouble())
+            )
+        )
+    )
+
+    canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
+    repositionSlideNoteOverlayIfVisible()
+    if (spatialNavActive) {
+        refreshSpatialNavTargets()
+    }
+}
+
+/*
+ * A canvas pan or zoom that starts on the canvas keeps the canvas until it ends, even when the
+ * pointer then crosses an output area. Wheel gestures have no end event, so a wheel latch lasts
+ * until the wheel has been idle for CANVAS_WHEEL_LATCH_MS (trackpad momentum keeps it alive); a
+ * middle drag is latched from mousedown to mouseup. While latched, window capture-phase listeners
+ * take the events before any output area can, and `canvas-pan-latched` on <body> turns off pointer
+ * events inside output areas so iframes cannot swallow them (field.css).
+ */
+private const val CANVAS_WHEEL_LATCH_MS = 250
+private var canvasWheelLatchTimer: Int? = null
+private var canvasDragLatched = false
+
+private fun updateCanvasPanLatchClass() {
+    document.body?.classList?.toggle("canvas-pan-latched", canvasWheelLatchTimer != null || canvasDragLatched)
+}
+
+private fun latchCanvasWheel() {
+    canvasWheelLatchTimer?.let { window.clearTimeout(it) }
+    canvasWheelLatchTimer = window.setTimeout({
+        canvasWheelLatchTimer = null
+        updateCanvasPanLatchClass()
+    }, CANVAS_WHEEL_LATCH_MS)
+    updateCanvasPanLatchClass()
+}
+
+private fun releaseCanvasDragLatch() {
+    if (!canvasDragLatched) return
+    canvasDragLatched = false
+    updateCanvasPanLatchClass()
+}
+
+private fun installCanvasPanLatch() {
+    val capture = json("capture" to true, "passive" to false)
+
+    window.addEventListener("wheel", { e ->
+        if (canvasWheelLatchTimer == null) return@addEventListener
+        val event = e.unsafeCast<WheelEvent>()
+        event.preventDefault()
+        event.stopPropagation()
+        if (event.ctrlKey || event.metaKey) {
+            setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+        } else {
+            panCanvasBy(-event.deltaX, -event.deltaY)
+        }
+        latchCanvasWheel()
+    }, capture)
+
+    window.addEventListener("mousedown", { e ->
+        val event = e.unsafeCast<MouseEvent>()
+        if (event.button.toInt() != 1) return@addEventListener
+        val target = event.target as? Element ?: return@addEventListener
+        if (!mainViewport.contains(target) || target.closest(".outputArea") != null) return@addEventListener
+        canvasDragLatched = true
+        updateCanvasPanLatchClass()
+        event.preventDefault() // no autoscroll
+    }, capture)
+
+    window.addEventListener("mousemove", { e ->
+        if (!canvasDragLatched) return@addEventListener
+        val event = e.unsafeCast<MouseEvent>()
+        if (event.buttons.toInt() and 4 == 0) {
+            // The release happened somewhere we did not hear it (outside the window).
+            releaseCanvasDragLatch()
+            return@addEventListener
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        panCanvasBy(event.asDynamic().movementX as Double, event.asDynamic().movementY as Double)
+    }, capture)
+
+    window.addEventListener("mouseup", { e ->
+        if (e.unsafeCast<MouseEvent>().button.toInt() == 1) releaseCanvasDragLatch()
+    }, capture)
+    window.addEventListener("blur", { releaseCanvasDragLatch() })
 }
 
 private fun animateViewportTranslation(
@@ -5186,6 +5390,7 @@ suspend fun main() {
         { uid: String, property: String, scrollToLine: Int?, highlightLine: Int? ->
             navigateToBoxProperty(uid, property, scrollToLine, highlightLine, center = true)
         }
+    window.asDynamic().revealBoxOutputs = { uid: String, output: HTMLElement? -> revealBoxOutputs(uid, output) }
     window.unsafeCast<dynamic>().selectBox = ::selectBox
     window.unsafeCast<dynamic>().deselectBox = ::deselectBox
     window.asDynamic().fieldBackdoorPrepareBoxScreenshot = { raw: dynamic -> prepareBoxScreenshotJson(raw) }
@@ -6249,6 +6454,14 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("navigate-document-box") { message, reply ->
+        val req = Json.decodeFromJsonElement<DocumentBoxNavigation>(message.payload!!)
+        navigateDocumentBox(req) { result ->
+            message.replyTo?.let { reply(Message(it).payload(result)) }
+        }
+        Handled.yes
+    }
+
     // Slideshow handlers
     handlers.put("select-and-edit-box") { message, _ ->
         val sel = Json.decodeFromJsonElement<SelectAndEditBox>(message.payload!!)
@@ -6521,45 +6734,9 @@ suspend fun main() {
         }
     }
     mainViewport.onmousemove = { event ->
-        if (event.buttons.toInt() === 4) {
-            // this is actually a drag gesture
-            cancelNavigationPanAnimation()
-            event.preventDefault()
-            event.stopPropagation()
-
-            var mc = mainCanvas.unsafeCast<dynamic>()
-            val x: Number = (mc.data_x ?: 0.0) + event.unsafeCast<dynamic>().movementX
-            val y: Number = (mc.data_y ?: 0.0) + event.unsafeCast<dynamic>().movementY
-
-            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
-            mainTranslation = listOf(x.toDouble(), y.toDouble())
-            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
-
-            println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
-
-            mc.data_x = x
-            mc.data_y = y
-            syncInitialPlaceholderLayerTransform()
-
-            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
-
-            send(
-                Message("set-viewport").payload(
-                    Set_rect(
-                        uid = "root",
-                        property = "viewport",
-                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
-                    )
-                )
-            )
-
-            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
-            repositionSlideNoteOverlayIfVisible()
-            if (spatialNavActive) {
-                refreshSpatialNavTargets()
-            }
-        } else
-            canvasGestures.move(event)
+        // A middle drag that started on the canvas is latched and handled by installCanvasPanLatch;
+        // one that started in an output area belongs to that output area.
+        if (event.buttons.toInt() and 4 == 0) canvasGestures.move(event)
     }
 
 
@@ -6576,48 +6753,18 @@ suspend fun main() {
             event.preventDefault()
             event.stopPropagation()
             setCanvasZoom(mainZoom * exp(-event.deltaY * 0.01), event.clientX.toDouble(), event.clientY.toDouble())
+            latchCanvasWheel()
         } else if (event.target is SVGElement) {
         } else {
-
-            cancelNavigationPanAnimation()
             event.preventDefault()
             event.stopPropagation()
-
-            var mc = mainCanvas.unsafeCast<dynamic>()
-            val x: Number = (mc.data_x ?: 0.0) - event.deltaX
-            val y: Number = (mc.data_y ?: 0.0) - event.deltaY
-
-            (mc as HTMLElement).style.transform = mainCanvasTransform(x.toDouble(), y.toDouble())
-            mainTranslation = listOf(x.toDouble(), y.toDouble())
-            drawingLayerViewportChanged(x.toDouble(), y.toDouble())
-
-            println(" main translation now ${x} ${y} ${window.innerWidth} ${window.innerHeight}")
-
-            mc.data_x = x
-            mc.data_y = y
-            syncInitialPlaceholderLayerTransform()
-
-            updateBackgroundGrid(x.toDouble(), y.toDouble(), panning = true)
-
-            send(
-                Message("set-viewport").payload(
-                    Set_rect(
-                        uid = "root",
-                        property = "viewport",
-                        Rect(x.toDouble(), y.toDouble(), window.innerWidth.toDouble(), window.innerHeight.toDouble())
-                    )
-                )
-            )
-
-            canvasGestures.requestConnectionGroupRebuild(translationOnly = true)
-            repositionSlideNoteOverlayIfVisible()
-            if (spatialNavActive) {
-                refreshSpatialNavTargets()
-            }
+            panCanvasBy(-event.deltaX, -event.deltaY)
+            latchCanvasWheel()
         }
 
         null
     }
+    installCanvasPanLatch()
 
 
     mainCanvas.unsafeCast<dynamic>().data_x = 0
@@ -7050,6 +7197,10 @@ suspend fun main() {
         // don't re-select the box — that would disrupt the main editor.
         val insideEmbeddedEditor = originalTarget?.closest(".monaco-editor") != null && insideOutputArea
         if (insideEmbeddedEditor) return@on
+
+        // Review links navigate outputs. Selecting their source on pointer-down
+        // would open Monaco before the link's click handler can run.
+        if (insideOutputArea && originalTarget?.closest("a[data-review-view][data-review-note]") != null) return@on
 
         // If the click originates from a disclosure header (output area UI),
         // don't intercept — let the disclosure handle its own alt-click removal.

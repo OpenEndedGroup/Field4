@@ -268,6 +268,30 @@ fun restoreOutputAreaState(state: Map<String, Map<String, Boolean>>, closeUnreco
 }
 
 /**
+ * The way out of a panel that has swallowed the screen: canvas zoom back to 100% and every output
+ * panel closed. A panel that fills the window takes the wheel (and Ctrl-wheel) for itself, so you
+ * cannot zoom or scroll away from it; this needs neither. Pan is left where it is.
+ */
+@OptIn(ExperimentalJsExport::class)
+@JsExport
+fun resetViewAndCloseOutputs() {
+    var closed = 0
+    (document.body?.getElementsByClassName("box")?.asList() ?: emptyList()).forEach { raw ->
+        val box = raw as? HTMLElement ?: return@forEach
+        val inter = disclosureApiFor(box) ?: return@forEach
+        (inter.ids() as Array<String>).forEach { channel ->
+            if (channel != "nested" && inter.isOpen(channel) as Boolean) {
+                inter.close(channel)
+                closed++
+            }
+        }
+    }
+    resetCanvasZoom()
+    notify(if (closed == 0) "Zoom reset" else "Zoom reset, $closed output panel${if (closed == 1) "" else "s"} closed", "bookmarks")
+    refreshBookmarksPanel(force = true)
+}
+
+/**
  * Captures complete current state as a bookmark
  */
 fun captureBookmark(bookmarkNumber: Int): Bookmark {
@@ -609,6 +633,14 @@ fun registerBookmarkActions() {
         bookmarkActions.push(restoreAction)
     }
 
+    val resetAction = js("{}")
+    resetAction.id = "reset-view"
+    resetAction.label = "Reset View"
+    resetAction.detail = "Zoom back to 100% and close every output panel"
+    resetAction.keys = "alt+h"
+    resetAction.run = { resetViewAndCloseOutputs() }
+    bookmarkActions.push(resetAction)
+
     val panelAction = js("{}")
     panelAction.id = "show-bookmarks"
     panelAction.label = "Show Bookmarks"
@@ -684,6 +716,11 @@ fun refreshBookmarksPanel(force: Boolean = false) {
     val slots = loadBookmarks().bookmarks.associateBy { it.id }
     panel.status.textContent = "${slots.size} of 9 slots saved · Shift+F1–F9 restores, Cmd+Shift+F1–F9 saves"
     panel.body.innerHTML = ""
+    val top = FieldPanel.el("div", "field-panel-actions bookmark-top", null)
+    top.appendChild(panelButton("Reset view", "Zoom back to 100% and close every output panel (Alt+H)") {
+        resetViewAndCloseOutputs()
+    })
+    panel.body.appendChild(top)
     for (slot in 1..9) {
         panel.body.appendChild(bookmarkCard(slot, slots["bookmark_$slot"]))
     }

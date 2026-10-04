@@ -3,339 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="color-scheme" content="dark">
-    <title>AI Tool Use Improvement</title>
+    <title>AI tool use improvement</title>
     <script>
-        document.title = "AI Tool Use Improvement";
+        document.title = "AI tool use improvement";
     </script>
-    <link rel="preload" href="/woff2/iosevka-regular.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="/iosevka.css" as="style">
+    <link rel="preload" href="/woff2/iosevka-semicondensedlight.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/iosevka.css">
+    <link rel="stylesheet" href="/field-tool-pages.css">
     <style>
-        :root {
-            --bg: rgb(12, 12, 12);
-            --panel: rgb(25, 25, 25);
-            --panel-2: rgb(19, 19, 19);
-            --border: rgba(230, 240, 245, 0.14);
-            --border-strong: rgba(230, 240, 245, 0.32);
-            --text: rgba(235, 242, 246, 0.95);
-            --soft: rgba(168, 183, 192, 0.95);
-            --accent: rgb(224, 241, 249);
-            --danger: rgb(255, 120, 120);
-            --ok: rgb(174, 240, 198);
-        }
-
-        * {
-            box-sizing: border-box;
-        }
-
-        html,
-        body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            background: var(--bg);
-            color: var(--text);
-            font-family: "Iosevka Web", ui-monospace, monospace;
-            font-weight: 300;
-            overflow: hidden;
-        }
-
-        body {
-            padding: 20px;
-        }
-
-        main {
-            position: relative;
-            z-index: 1;
-            width: min(1180px, calc(100vw - 40px));
-            height: calc(100vh - 40px);
-            min-height: 0;
-            margin: 0 auto;
-            display: grid;
-            grid-template-rows: auto auto auto auto minmax(210px, 0.9fr) minmax(180px, 0.7fr);
-            gap: 12px;
-        }
-
-        header,
-        section {
-            border: 1px solid var(--border);
-            background: var(--panel);
-            border-radius: 8px;
-        }
-
-        header {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 12px;
-            align-items: center;
-            padding: 14px;
-        }
-
-        h1,
-        h2 {
-            margin: 0;
-            font-weight: 400;
-            letter-spacing: 0;
-        }
-
-        h1 {
-            font-size: 20px;
-        }
-
-        h2 {
-            color: var(--soft);
-            font-size: 12px;
-        }
-
-        button,
-        a.button {
-            font: inherit;
-            font-size: 12px;
-            color: var(--text);
-            background: var(--panel-2);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 7px 9px;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        button:hover,
-        a.button:hover {
-            border-color: var(--border-strong);
-        }
-
-        button:disabled {
-            color: var(--soft);
-            cursor: default;
-            opacity: 0.55;
-        }
-
-        .header-actions,
-        .metrics {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .metrics,
-        .paths,
-        .activity {
-            padding: 12px;
-        }
-
-        .metric {
-            display: grid;
-            gap: 4px;
-            min-width: 136px;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-        }
-
-        .metric-label,
-        .path-label {
-            color: var(--soft);
-            font-size: 10px;
-            text-transform: lowercase;
-        }
-
-        .metric-value {
-            color: var(--accent);
-            font-size: 16px;
-        }
-
-        .metric-value.failed {
-            color: var(--danger);
-        }
-
-        .metric-value.succeeded {
-            color: var(--ok);
-        }
-
-        .paths,
-        .worktrees {
-            display: grid;
-            gap: 8px;
-        }
-
-        .worktree-list {
-            display: grid;
-            gap: 8px;
-        }
-
-        .worktree-row {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 10px;
-            align-items: center;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-        }
-
-        .worktree-title {
-            display: flex;
-            gap: 8px;
-            align-items: baseline;
-            min-width: 0;
-        }
-
-        .worktree-id {
-            color: var(--accent);
-            white-space: nowrap;
-        }
-
-        .worktree-status {
-            color: var(--soft);
-        }
-
-        .worktree-path {
-            margin-top: 4px;
-            color: var(--soft);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .worktree-actions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-
-        .path-row {
-            display: grid;
-            grid-template-columns: 120px minmax(0, 1fr);
-            gap: 10px;
-            align-items: baseline;
-            min-width: 0;
-        }
-
-        .path-value {
-            color: var(--accent);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .activity {
-            min-height: 0;
-            display: grid;
-            grid-template-rows: auto minmax(0, 1fr);
-            gap: 8px;
-        }
-
-        .artifacts {
-            min-height: 0;
-            display: grid;
-            grid-template-rows: auto minmax(0, 1fr);
-            gap: 8px;
-            padding: 12px;
-        }
-
-        .artifact-header {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .artifact-tabs {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .artifact-tabs button.active {
-            border-color: var(--border-strong);
-            color: var(--accent);
-        }
-
-        #artifact-body {
-            min-height: 0;
-            overflow: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: rgb(6, 6, 6);
-            padding: 14px;
-            font-size: 12px;
-            line-height: 1.45;
-        }
-
-        #artifact-body.empty {
-            color: var(--soft);
-        }
-
-        .markdown h1,
-        .markdown h2,
-        .markdown h3 {
-            margin: 0.8em 0 0.35em;
-            color: var(--accent);
-            font-weight: 500;
-        }
-
-        .markdown h1:first-child,
-        .markdown h2:first-child,
-        .markdown h3:first-child,
-        .markdown p:first-child {
-            margin-top: 0;
-        }
-
-        .markdown p {
-            margin: 0.5em 0;
-        }
-
-        .markdown ul {
-            margin: 0.4em 0 0.7em 1.4em;
-            padding: 0;
-        }
-
-        .markdown code {
-            color: var(--accent);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 4px;
-            padding: 0 3px;
-        }
-
-        .markdown pre,
-        .patch-view {
-            margin: 0;
-            white-space: pre-wrap;
-            overflow-wrap: anywhere;
-            color: var(--text);
-        }
-
-        .markdown pre {
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            background: var(--panel-2);
-        }
-
-        #message {
-            color: var(--soft);
-        }
-
-        #transcript {
-            min-height: 0;
-            margin: 0;
-            padding: 12px;
-            overflow: auto;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            background: rgb(6, 6, 6);
-            color: var(--text);
-            white-space: pre-wrap;
-            font: inherit;
-            font-size: 12px;
-            line-height: 1.35;
-        }
+        .section-header { display: flex; gap: 12px; align-items: baseline; justify-content: space-between; }
+        .section-header h2 { margin-bottom: 0; }
+        .chip b.succeeded, .state-succeeded { color: var(--ok); }
+        .chip b.failed { color: var(--danger); }
+        .chip b.running { color: var(--cyan); }
+        .artifact-tabs { display: flex; gap: 8px; }
+        .artifact-tabs button.active { border-color: var(--field-cyan); color: var(--field-cyan); }
+        .paths td:first-child { color: var(--soft); white-space: nowrap; width: 8em; }
+        .paths td:last-child { color: var(--accent); overflow-wrap: anywhere; }
+        .worktree-list { display: grid; gap: 8px; margin-top: 10px; }
+        .worktree-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; }
+        .worktree-title { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+        .worktree-id { color: var(--accent); white-space: nowrap; }
+        .worktree-status { color: var(--soft); }
+        .worktree-path { margin-top: 4px; color: var(--soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .worktree-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+        .worktree-actions button { padding: 5px 10px; }
+        #artifact-body { max-height: 70vh; overflow: auto; margin-top: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; line-height: 1.5; }
+        #artifact-body.empty { color: var(--soft); }
+        .markdown h1, .markdown h2, .markdown h3 { margin: 0.9em 0 0.35em; font-size: 14px; font-weight: 400; color: var(--field-cyan); text-transform: none; letter-spacing: 0; display: block; }
+        .markdown h1:first-child, .markdown h2:first-child, .markdown h3:first-child, .markdown p:first-child { margin-top: 0; }
+        .markdown p { color: var(--text); margin: 0.5em 0; }
+        .markdown ul { margin: 0.4em 0 0.7em 1.4em; padding: 0; }
+        .markdown pre { padding: 8px 10px; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--field-border); border-radius: 7px; }
+        .patch-view { white-space: pre-wrap; overflow-wrap: anywhere; }
+        #transcript { max-height: 40vh; overflow: auto; margin-top: 10px; color: var(--soft); }
     </style>
 </head>
 <body class="field-webgl-page">
@@ -346,52 +47,56 @@
 <main>
     <header>
         <div>
-            <h1>AI Tool Use Improvement</h1>
-            <h2 id="subtitle">checking logs</h2>
+            <h1>AI tool use improvement</h1>
+            <p id="subtitle">checking logs</p>
+            <div class="chips">
+                <span class="chip">recent <b id="recent-logs">0</b></span>
+                <span class="chip">all <b id="all-logs">0</b></span>
+                <span class="chip">size <b id="log-size">0 B</b></span>
+                <span class="chip">state <b id="task-state">idle</b></span>
+            </div>
         </div>
-        <div class="header-actions">
-            <button id="run-review" type="button">Review logs</button>
-            <button id="run-apply" type="button">Generate proposal</button>
-            <button id="clear-reviewed" type="button">Mark reviewed</button>
-            <a class="button" href="/welcome">Welcome</a>
+        <div class="row">
+            <a href="/welcome">welcome</a>
         </div>
     </header>
 
-    <section class="metrics">
-        <div class="metric"><span class="metric-label">recent logs</span><span id="recent-logs" class="metric-value">0</span></div>
-        <div class="metric"><span class="metric-label">all logs</span><span id="all-logs" class="metric-value">0</span></div>
-        <div class="metric"><span class="metric-label">size</span><span id="log-size" class="metric-value">0 B</span></div>
-        <div class="metric"><span class="metric-label">state</span><span id="task-state" class="metric-value">idle</span></div>
+    <section>
+        <h2>1 · Review</h2>
+        <p>Reads the recent AI4 tool I/O logs and writes a report and a dry-run patch. <em>Generate proposal</em> does the same work in a worktree you can try and merge; <em>Mark reviewed</em> archives the logs so the next review starts fresh.</p>
+        <div class="row">
+            <button id="run-review" type="button" class="primary">Review logs</button>
+            <button id="run-apply" type="button">Generate proposal</button>
+            <button id="clear-reviewed" type="button">Mark reviewed</button>
+        </div>
+        <table class="paths">
+            <tr><td>log dir</td><td id="log-dir"></td></tr>
+            <tr><td>report</td><td id="report-path"></td></tr>
+            <tr><td>dry patch</td><td id="patch-path"></td></tr>
+        </table>
     </section>
 
-    <section class="paths">
-        <div class="path-row"><span class="path-label">log dir</span><span id="log-dir" class="path-value"></span></div>
-        <div class="path-row"><span class="path-label">report</span><span id="report-path" class="path-value"></span></div>
-        <div class="path-row"><span class="path-label">dry patch</span><span id="patch-path" class="path-value"></span></div>
-    </section>
-
-    <section class="worktrees">
-        <div class="path-row"><span class="path-label">worktrees</span><span id="worktree-summary" class="path-value">none</span></div>
+    <section>
+        <h2>2 · Proposals <span class="count" id="worktree-summary">none</span></h2>
         <div id="worktree-list" class="worktree-list"></div>
     </section>
 
-    <section class="artifacts">
-        <div class="artifact-header">
-            <div>
-                <h2>review output</h2>
-                <div id="next-step" class="path-label">Run a review to generate a report and patch.</div>
-            </div>
+    <section>
+        <div class="section-header">
+            <h2>3 · Output</h2>
             <div class="artifact-tabs">
                 <button id="show-report" type="button" class="active">Report</button>
                 <button id="show-patch" type="button">Patch</button>
             </div>
         </div>
+        <p id="next-step">Run a review to generate a report and patch.</p>
         <div id="artifact-body" class="empty">No report yet.</div>
     </section>
 
-    <section class="activity">
-        <div id="message">Ready.</div>
-        <pre id="transcript">No task output yet.</pre>
+    <section>
+        <h2>Task log</h2>
+        <p id="message">Ready.</p>
+        <pre id="transcript" class="log">No task output yet.</pre>
     </section>
 </main>
 
@@ -538,7 +243,7 @@
         document.getElementById("all-logs").textContent = countLabel(logs.logCount, "log");
         document.getElementById("log-size").textContent = bytesLabel(logs.sizeBytes);
         document.getElementById("task-state").textContent = state;
-        document.getElementById("task-state").className = `metric-value ${state}`;
+        document.getElementById("task-state").className = state;
         document.getElementById("message").textContent = latestStatus.message || logs.message || "";
         document.getElementById("log-dir").textContent = logs.logDir || "";
         document.getElementById("report-path").textContent = logs.reportPath || "";

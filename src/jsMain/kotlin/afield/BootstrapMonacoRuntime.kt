@@ -208,6 +208,18 @@ fun monacoStartSelectionMonitor() {
     monitorSelection()
 }
 
+/**
+ * True while the keyboard is in a text field inside a box's output area — the AI chat input, a
+ * `stringInput`. Clicking one selects its box, and the editor that opens must not take the
+ * keyboard back out of it.
+ */
+private fun keyboardIsInOutputField(): Boolean {
+    val el: dynamic = kotlinx.browser.document.activeElement ?: return false
+    if (el.closest(".outputArea") == null) return false
+    val tag = ((el.tagName as? String) ?: "").lowercase()
+    return tag == "input" || tag == "textarea" || tag == "select" || el.isContentEditable == true
+}
+
 private fun monitorSelection() {
     val w = js("window")
     val next = w.selectedList ?: js("[]")
@@ -318,7 +330,7 @@ private fun monitorSelection() {
             if (state != null && !suppressRestore && displayMode != "no-editor") {
                 window.setTimeout({
                     globalEditor.restoreViewState(js("JSON.parse")(state))
-                    globalEditor.focus()
+                    if (!keyboardIsInOutputField()) globalEditor.focus()
                 }, 0)
             }
             currentValueAtOrigination = code

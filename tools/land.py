@@ -245,6 +245,13 @@ def _typical(queue: Path, gradle: bool) -> float | None:
     return sorted(took)[len(took) // 2] if took else None
 
 
+def _superseded_by(queue: Path, item: dict) -> dict | None:
+    """A later landing of the same branch, which makes this bounce history rather than news."""
+    later = [other for other in _items(queue, LANDED)
+             if other["branch"] == item["branch"] and other.get("finished", "") > item.get("finished", "")]
+    return later[0] if later else None
+
+
 def _describe(state: str, item: dict, queue: Path | None = None) -> str:
     head = f"{item['id']}  {item['sha'][:9]}  by {item['by']}"
     lines = [f"{state:8} {head}"]
@@ -272,6 +279,10 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         lines.append(f"         log: {item.get('log', '')}")
     elif state == PENDING:
         lines.append(f"         waiting {_span(_since(item.get('enqueued')))}")
+        if item.get("blocked"):
+            b = item["blocked"]
+            lines.append(f"         BLOCKED {_span(_since(b.get('since')))}: uncommitted edits in {b.get('where')} to "
+                         + ", ".join(b.get("files", [])) + " (lands as soon as they are committed)")
     elif state == LANDED:
         took = _took(item)
         how = "Gradle guard" if _ran_gradle(item) else "no Gradle"
@@ -287,6 +298,12 @@ def _describe(state: str, item: dict, queue: Path | None = None) -> str:
         elif item.get("push"):
             lines.append("         push requested")
     elif state == BOUNCED:
+        fixed = _superseded_by(queue, item) if queue is not None else None
+        if fixed:
+            lines[0] = f"resolved {head}"
+            lines.append(f"         bounced {_span(_since(item.get('finished')))} ago, then landed as {fixed['id']} "
+                         f"-> main {fixed.get('landed_as', '')[:9]}")
+            return "\n".join(lines)
         lines.append(f"         {_span(_since(item.get('finished')))} ago: {' '.join(str(item.get('reason', '?')).split())}")
         lines.append(f"         log: {item.get('log', '')}")
     return "\n".join(lines)
@@ -383,21 +400,29 @@ def _pretty_status(queue: Path, recent: int) -> None:
     rule("landing")
     if not active:
         print(st.dim("  idle"))
+    # One progress block per batch: its branches share one merge, one regeneration and one guard.
+    batches: dict[str, list[dict]] = {}
     for item in active:
+        batches.setdefault(item.get("batch", item["id"]), []).append(item)
+    for members in batches.values():
+        item = members[0]
         running = _since(item["started"])
         step, last = _phase(item)
         gradle = _ran_gradle(item)
         typical = _typical(queue, gradle)
-        print(f"  {st.yellow(g['land'])} {who(item)}")
-        if item.get("note"):
-            print(f"    {st.dim(g['note'] + ' ' + item['note'])}")
+        if len(members) > 1:
+            print(f"  {st.dim('batch of ' + str(len(members)) + ', one guard for all:')}")
+        for member in members:
+            print(f"  {st.yellow(g['land'])} {who(member)}")
+            if member.get("note"):
+                print(f"    {st.dim(g['note'] + ' ' + member['note'][: width - 8])}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
             print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
         else:
             print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
-        print(f"    {st.dim('step')}  {step}")
+        print(f"    {st.dim('step')}  {step[: width - 12]}")
         if last:
             print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
         print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")
@@ -413,6 +438,10 @@ def _pretty_status(queue: Path, recent: int) -> None:
     for n, item in enumerate(waiting, 1):
         eta = f"  starts ~{_span(ahead)}" if typical else ""
         print(f"  {st.dim(str(n) + '.')} {st.cyan(g['wait'])} {who(item)}  {st.dim('waiting ' + _span(_since(item.get('enqueued'))) + eta)}")
+        if item.get("blocked"):
+            b = item["blocked"]
+            print(f"     {st.yellow(g['bounce'] + ' blocked ' + _span(_since(b.get('since'))))} "
+                  + st.yellow("by uncommitted edits in " + str(b.get("where")) + ": " + ", ".join(b.get("files", []))))
         ahead += typical
     print()
 
@@ -430,6 +459,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
                   f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)} \u00b7 {how}") if took is not None else ""))
+        elif _superseded_by(queue, item):
+            continue  # bounced, then landed: history, not news
         else:
             reason = " ".join(str(item.get("reason", "?")).split())
             print(f"  {st.red(g['bounce'])} {who(item)}  {st.dim(ago + ' ago')}")
@@ -504,6 +535,9 @@ def cmd_status(args: argparse.Namespace) -> int:
         for n, item in enumerate(waiting, 1):
             estimate = f", starts in about {_span(ahead)}" if typical else ""
             print(f"  {n}. {item['id']}  {item['sha'][:9]}  by {item['by']}  waiting {_span(_since(item.get('enqueued')))}{estimate}")
+            if item.get("blocked"):
+                b = item["blocked"]
+                print(f"     BLOCKED {_span(_since(b.get('since')))} by uncommitted edits in {b.get('where')}: " + ", ".join(b.get("files", [])))
             ahead += typical
     else:
         print("\nqueued   nothing")
@@ -512,7 +546,7 @@ def cmd_status(args: argparse.Namespace) -> int:
         if recent:
             print(f"\nrecent {state} (oldest first):")
             for item in recent:
-                print(_describe(state, item))
+                print(_describe(state, item, queue))
     return 0
 
 
@@ -659,6 +693,34 @@ def _requeue(queue: Path, item: dict, why: str) -> None:
     _move(queue, item, PENDING)
 
 
+def _main_holder(primary: Path) -> Path | None:
+    """The worktree with main checked out, if any (usually the primary)."""
+    current = None
+    for line in _git(primary, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            current = Path(line.split(" ", 1)[1])
+        elif line == "branch refs/heads/main":
+            return current
+    return None
+
+
+def _blocking_edits(primary: Path, item: dict) -> list[str]:
+    """Uncommitted files in main's checkout that this branch changes: a fast-forward would refuse
+    to overwrite them. That is nobody's fault in the branch, so it waits rather than bounces."""
+    holder = _main_holder(primary)
+    if holder is None:
+        return []
+    # Raw output: _git strips, and stripping eats the leading space of " M path", the first line's
+    # status column, which turned "seed.txt" into "eed.txt".
+    status = subprocess.run(["git", "status", "--porcelain", "-uall"], cwd=holder,
+                            stdout=subprocess.PIPE, text=True).stdout
+    dirty = {line[3:].split(" -> ")[-1].strip('"') for line in status.splitlines() if len(line) > 3}
+    if not dirty:
+        return []
+    changed = set(_git(primary, "diff", "--name-only", f"refs/heads/main...{item['sha']}", check=False).split())
+    return sorted(dirty & changed)
+
+
 def _push_main(primary: Path, sha: str, out) -> str | None:
     """Push main to origin. None on success, else why not. Never forces, never touches local main."""
     out.write(f"merge_regen: pushing main {sha[:9]} to origin\n")
@@ -798,14 +860,17 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
                 _move(queue, item, LANDED)
             return "green"
         if why != "main moved":
-            if len(members) > 1:
-                # Usually one branch touches a file someone has dirty in the primary: narrow it down.
-                for item in members:
+            # Someone made an edit in main's checkout during the round. The branches are fine; they
+            # wait (the next poll marks exactly which are blocked, and by which files). A refusal the
+            # pre-check cannot explain must not loop forever, so the third one bounces.
+            for item in members:
+                item["ff_refusals"] = item.get("ff_refusals", 0) + 1
+                if item["ff_refusals"] >= 3:
+                    item.update(reason=why, finished=_now())
+                    _move(queue, item, BOUNCED)
+                else:
                     _requeue(queue, item, f"{batch_id}: {why}")
-                return "red"
-            members[0].update(reason=why, finished=_now())
-            _move(queue, members[0], BOUNCED)
-            return "bounced"
+            return "blocked"
         with log.open("a") as out:
             out.write("main moved during the landing; starting again on the new main\n")
         live = members
@@ -837,11 +902,28 @@ def cmd_run(args: argparse.Namespace) -> int:
         limit, bisecting, suspects = args.batch, None, set()
         while True:
             pending = _items(queue, PENDING)
+            ready = []
+            for item in pending:
+                blocking = _blocking_edits(primary, item)
+                if blocking:
+                    if item.get("blocked", {}).get("files") != blocking:
+                        item["blocked"] = {"files": blocking, "since": item.get("blocked", {}).get("since", _now()),
+                                           "where": str(_main_holder(primary))}
+                        _move(queue, item, PENDING)
+                elif item.get("blocked"):
+                    item.pop("blocked")
+                    _move(queue, item, PENDING)
+                    ready.append(item)
+                else:
+                    ready.append(item)
+            pending = ready
             if pending:
                 batch = pending[:limit]
                 wt = _lander_worktree(primary, args.worktree)  # re-created if something removed it
                 print(f"land: {_now()} landing {len(batch)}: " + ", ".join(i["branch"] for i in batch), flush=True)
                 result = _land_batch(batch, primary, wt, queue, bisecting)
+                if result == "blocked":
+                    continue
                 if result == "red":
                     # Halve and retry from the oldest. Each round builds on the current main, so a pair
                     # that only breaks together is caught too: the earlier lands, the later fails on it.
@@ -858,7 +940,10 @@ def cmd_run(args: argparse.Namespace) -> int:
                     state, done = _find(queue, item["id"]) or ("?", item)
                     print(_describe(state, done, queue), flush=True)
                 continue
-            if args.once:
+            if args.once and not _items(queue, PENDING):
+                return 0
+            if args.once and not ready:
+                print("land: everything left is blocked by uncommitted edits in main's checkout; exiting", flush=True)
                 return 0
             time.sleep(POLL_SECONDS)
     finally:

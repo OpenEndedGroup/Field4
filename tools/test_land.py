@@ -88,6 +88,23 @@ class LandQueueTest(unittest.TestCase):
         self.assertIn("bounced", status.stdout)
         self.assertIn("a guard failed", status.stdout)
 
+    def test_a_branch_touching_a_dirty_primary_file_waits_instead_of_bouncing(self) -> None:
+        wt = self.branch_with("mu", "mu.txt")
+        (wt / "seed.txt").write_text("mu changes seed\n")
+        self.git(wt, "commit", "-qam", "mu edits seed")
+        (self.primary / "seed.txt").write_text("someone's uncommitted edit\n")
+        self.land(wt, "enqueue")
+        self.land(self.branch_with("nu", "nu.txt"), "enqueue")
+        self.run_lander()
+        self.assertEqual(self.states(), {"mu": "pending", "nu": "landed"})
+        self.assertEqual(self.guard_calls(), 1, "a blocked branch must not cost a guard run")
+        self.assertIn("BLOCKED", self.land(self.primary, "status", "--plain").stdout)
+        self.assertIn("seed.txt", self.land(self.primary, "status", "--plain").stdout)
+        self.assertEqual((self.primary / "seed.txt").read_text(), "someone's uncommitted edit\n")
+        self.git(self.primary, "checkout", "--", "seed.txt")  # they finish (here: discard) their edit
+        self.run_lander()
+        self.assertEqual(self.states()["mu"], "landed")
+
     def test_dirty_files_in_the_primary_survive_the_fast_forward(self) -> None:
         (self.primary / "seed.txt").write_text("someone else's uncommitted edit\n")
         self.land(self.branch_with("gamma", "gamma.txt"), "enqueue")

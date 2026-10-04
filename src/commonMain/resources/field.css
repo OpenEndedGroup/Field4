@@ -184,6 +184,12 @@
     backdrop-filter: blur(15px);
 }
 
+/* A canvas pan that started on the canvas passes over output areas (installCanvasPanLatch in Main.kt). */
+body.canvas-pan-latched .outputArea,
+body.canvas-pan-latched .outputArea * {
+    pointer-events: none !important;
+}
+
 .disclosure-group {
     max-width: 520px;
     min-width: 220px;
@@ -890,11 +896,17 @@ pre code {
     background: var(--field-hover-strong);
 }
 
-/* Push-to-talk (voiceInput.js): red while recording, pulsing while Whisper works. */
+/* Push-to-talk (voiceInput.js). Recording speaks in your colour (the chat's orange), transcribing
+   in Field's (cyan); the capsule fills while the mic is live. */
 .ai-chat-input button.ai-chat-mic {
-    font-size: 14px;
-    opacity: 0.6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 9px;
+    color: var(--field-fg);
+    opacity: 0.45;
     touch-action: none;
+    transition: opacity 120ms, color 120ms;
 }
 
 .ai-chat-input button.ai-chat-mic:hover,
@@ -903,18 +915,22 @@ pre code {
 }
 
 .ai-chat-input button.ai-chat-mic.recording {
-    background: #b3261e;
-    opacity: 1;
+    color: var(--ai-chat-you-fg);
+    background: var(--field-editor-bg);
+}
+
+.ai-chat-input button.ai-chat-mic.recording .ai-chat-mic-capsule {
+    fill: currentColor;
 }
 
 .ai-chat-input button.ai-chat-mic.transcribing {
-    opacity: 1;
-    animation: ai-chat-mic-pulse 0.8s ease-in-out infinite alternate;
+    color: var(--ai-chat-ai-fg);
+    animation: ai-chat-mic-pulse 0.7s ease-in-out infinite alternate;
 }
 
 @keyframes ai-chat-mic-pulse {
-    from { background: var(--field-editor-bg); }
-    to { background: var(--field-hover-strong); }
+    from { opacity: 0.35; }
+    to { opacity: 1; }
 }
 
 .ai-chat-thread {
@@ -948,19 +964,53 @@ pre code {
     gap: 2px 12px;
     margin: 2px 6px;
     color: var(--ai-chat-ai-fg, var(--field-fg-muted));
-    opacity: 0.75;
     font: 10px/1.5 var(--field-font);
 }
 
 .ai-chat-status {
     min-width: 0;
     overflow-wrap: anywhere;
+    opacity: 0.75;
 }
 
 .ai-chat-status + .ai-chat-status::before {
     content: "·";
     margin-right: 12px;
     opacity: 0.5;
+}
+
+/* The live tail of a running turn ("Waiting for model"): a bright band sweeps through the text.
+   The text rests at its neighbours' dimmed level (the 0.75 above, moved into the colour so the
+   band can reach full brightness). outputareas2.js pins each sweep's startTime to the document
+   clock, so re-rendering the thread for the next status continues the sweep instead of
+   restarting it. */
+.ai-chat-status:has(> .ai-chat-shimmer) {
+    opacity: 1;
+}
+
+.ai-chat-shimmer {
+    --ai-chat-shimmer-rest: color-mix(in srgb, var(--ai-chat-ai-fg, var(--field-fg-muted)) 75%, transparent);
+    color: transparent;
+    background: linear-gradient(100deg,
+        var(--ai-chat-shimmer-rest) 40%,
+        var(--field-fg-strong) 50%,
+        var(--ai-chat-shimmer-rest) 60%) 0 0 / 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: ai-chat-shimmer 2s linear infinite;
+}
+
+@keyframes ai-chat-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-chat-shimmer {
+        animation: none;
+        color: var(--field-fg-strong);
+        background: none;
+    }
 }
 
 .ai-chat-progress summary {
@@ -994,9 +1044,61 @@ pre code {
     font-style: italic;
 }
 
+/* The conversation itself reads larger than the chat's chrome (progress, status, actions). */
+.ai-chat-turn .ai-chat-markdown {
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.ai-chat-turn .ai-chat-markdown h1,
+.ai-chat-turn .ai-chat-markdown h2,
+.ai-chat-turn .ai-chat-markdown h3 {
+    font-size: 14px;
+}
+
 .ai-chat-turn.you .ai-chat-markdown {
     text-align: right;
     color: var(--ai-chat-you-fg, var(--field-fg));
+}
+
+/* A message sent while the turn runs, before the agent has read it. */
+.ai-chat-turn.queued {
+    border-right-style: dashed;
+    opacity: 0.65;
+}
+
+.ai-chat-queued-label {
+    font-size: 9px;
+    font-style: normal;
+    opacity: 0.8;
+    margin-bottom: 2px;
+}
+
+/* Rewind / edit-and-resend on a request: quiet until the turn is hovered. The server refuses them while a turn runs. */
+.ai-chat-turn-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+}
+
+.ai-chat-turn.you:hover .ai-chat-turn-actions,
+.ai-chat-turn.you:focus-within .ai-chat-turn-actions {
+    opacity: 1;
+}
+
+.ai-chat-turn-action {
+    font: inherit;
+    font-size: 11px;
+    font-style: normal;
+    padding: 0 6px;
+    min-height: 18px;
+    border: 1px solid var(--field-border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--field-fg-muted, var(--field-fg));
+    cursor: pointer;
 }
 
 .ai-chat-turn.ai .ai-chat-markdown {
@@ -5186,6 +5288,7 @@ body.mode-editor-only .field-toast {
 .field-panel-toggle input { margin: 0; accent-color: rgb(var(--field-accent-rgb)); }
 
 /* Bookmarks panel (bookmarks.kt) */
+.bookmark-top { justify-content: flex-end; }
 .bookmark-detail { display: grid; grid-template-columns: 168px minmax(0, 1fr); gap: 8px; }
 .bookmark-map { width: 168px; height: 104px; background: #111111; border-radius: 5px; display: block; }
 .bookmark-map .bm-box { fill: #3a3a3a; }

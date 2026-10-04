@@ -3,7 +3,11 @@
 *Investigated 2026-08-25. Base commit `4c235bbeb`.*
 *Updated later the same day: Defect A is **FIXED** in the vendored fork — see
 [Defect A, fixed](#defect-a-fixed) — and the five rungs it was masking now show Defect B. The
-`by keyCamera(...)` idiom works again. Defect B is unchanged and still open.*
+`by keyCamera(...)` idiom works again.*
+*Updated 2026-10-04: Defect B is **FIXED** in Field's build of the Wither plugin, with Wither still
+on — see [Defect B](#defect-b--local--class-member-by-providedelegate-fields-wither-wiring-fixable).
+Every `provideDelegate` rung now evaluates, and its trigger turned out to be much wider than
+`provideDelegate`: any call, as a statement, to a local function.*
 
 ## TL;DR
 
@@ -19,14 +23,14 @@ inferred. The box reported a compiler exception and the following line never ran
 
 **It works again as of the 2.4.20 fork uplift.** Defect A, the fork-side half, was root-caused and
 patched; `cross-snippet-provideDelegate` — the `by keyCamera(...)` shape, provider AOT-compiled
-outside the snippet — is now a *working* rung of `kotlin.repl.provide-delegate`. Everything below
-about the boundary and about Defect B still stands, and the rung table was re-measured rather than
-re-asserted.
+outside the snippet — is now a *working* rung of `kotlin.repl.provide-delegate`. Since 2026-10-04
+every other rung works too (Defect B), and that test asserts it.
 
 `by` delegation is *not* broken in general. The boundary is exactly `provideDelegate`.
 
-There were **two independent causes**. One is Field's (a compiler plugin on the app classpath) and is
-still open; the other was in the vendored Kotlin compiler fork and has been fixed there.
+There were **two independent causes**, both now fixed. One was Field's (a compiler plugin on the app
+classpath, fixed in that plugin on 2026-10-04); the other was in the vendored Kotlin compiler fork and
+was fixed there on 2026-08-25.
 
 ## The boundary between working and failing
 
@@ -79,6 +83,27 @@ ruled out by the same run, since in it the *local* and *class-member* rungs comp
 correctly while this one still fails (reproducer: `ProvideDelegateReplSmokeTest.kt#fun main(args: Array<String>)`).
 
 ## Defect B — local / class-member `by provideDelegate`. Field's Wither wiring. Fixable.
+
+> **Fixed 2026-10-04**, in Field's build of Wither (`~/temp/wither`, branch
+> `field/kotlin-2.5.0-beta1`; the jar is `libs/wither-plugin.jar`). Wither's IR pass finds its own
+> `with(...)` / `context(...)` calls by reading the `callableId` of **every call that stands as a
+> statement**, and `IrFunction.callableId` throws for a function whose parent is neither a package
+> nor a class with a `ClassId`: a local function, or a member of a local or anonymous class. The pass
+> now checks the callee's name and parent first; for every call where the old check did not throw,
+> the new check gives the same answer.
+>
+> That explains the table below. The anonymous `ReadWriteProperty`'s `setValue` body, `v = value`,
+> is a call to the setter of `v`, a member of an anonymous class, standing as a statement.
+> `ReadOnlyProperty` has no `setValue`, so its rungs never wrote a property and never tripped it; an
+> anonymous `ReadOnlyProperty` whose `getValue` assigns its own `var` failed the same way
+> (`ReplSnippetDeclarationsSmokeTest` case LF9, measured against the old jar). The far commoner
+> trigger in box code is a local function called for its effect — `run { fun bump() { … }; bump() }`
+> — reported as found by the in-box agent on 2026-10-04 and in a 2026-09-16 note; cases LF1–LF9 and
+> the backdoor-box test `kotlin.repl-local-fun-statements.box` cover those. A local function whose
+> call is the *value* of its block (`run { fun f() = 1; f() }`) never failed, because that call is
+> a `return`, not a statement.
+>
+> What follows is the investigation as it stood before the fix.
 
 ```
 org.jetbrains.kotlin.fir.pipeline.IrGenerationExtensionException:
@@ -248,6 +273,14 @@ Consequences worth knowing, because they were measured, not predicted:
 - Defect B is therefore now the *whole* of what remains, and the recommendation below stands
   unchanged.
 
+**Superseded 2026-10-04:** Defect B is fixed in Wither itself, with Wither still on, so the tradeoff
+below no longer arises. The observation that Wither cannot be turned off at runtime still holds.
+The two paragraphs below also assume `kotlin.wither-plugin.smoke` was green. It was not: it was red,
+and registered as an accepted failure, from 2026-08-25 until 2026-10-04. The cause was Wither's IR
+pass never matching its own `with(...)` call. The callee sits under the file facade class `WithKt`,
+not the package, so the `<with holder>` error call reached codegen. Wither face220 fixed that, and
+the smoke is green; the details are in the `WitherSmokeTest` KDoc.
+
 **Defect B is fixable, but the fix is a product decision I did not take unilaterally.** Removing
 `implementation(files("libs/wither-plugin.jar"))` from `build.gradle.kts:943` demonstrably fixes it,
 but it would disable the deliberate Wither experiment (`build.gradle.kts:937` labels it
@@ -265,8 +298,8 @@ adding a second behaviour change on top of the deliverable. *(The claim that it 
 
 ## Reproducers
 
-Committed, and green today — they characterize the broken behaviour rather than asserting the fixed
-one, so the suite stays honest instead of red:
+Committed. Until 2026-10-04 the jvm-main smoke characterized the broken behaviour; since both
+defects are fixed it asserts that every rung evaluates:
 
 ```
 python3 tools/run_field_tests.py --refresh-catalog --id kotlin.repl.provide-delegate
@@ -277,8 +310,8 @@ python3 tools/run_field_tests.py --refresh-catalog --id kotlin.repl.provide-dele
 loudly instead of making the crash assertions vacuous), pins each failure to *its own* signature so
 a different crash cannot satisfy it, and keeps a bidirectional ledger over the rung sets.
 
-**It is designed to go red when the compiler is fixed.** That is the alarm working. When it does,
-move the newly-passing rung from `FAILING` to `WORKING` and update this page.
+It was designed to go red when either defect was fixed, and it did, twice: on 2026-08-25 for
+Defect A and on 2026-10-04 for Defect B, when its nine failing rungs moved to the working ledger.
 
 Its teeth were verified by counterfactual: with `build.gradle.kts:943` commented out, the smoke
 fails with
@@ -336,4 +369,4 @@ println("REACHED-RUNTIME abcd=" + abcd)
 
 `metadata_store/provide_delegate_defect/metadata.edn` — open that document in Field and run its
 three boxes top to bottom. They show, side by side, the broken idiom, the working control, and the
-workaround.
+workaround. The document predates both fixes: box 1 now compiles and runs, so its comments are stale.

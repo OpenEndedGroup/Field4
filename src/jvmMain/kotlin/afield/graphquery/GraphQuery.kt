@@ -222,6 +222,11 @@ class PathSet internal constructor(
 
     fun firstOrNull(): GraphPathRef? = refs.firstOrNull()
 
+    /**
+     * Returns the first path reference in this set.
+     *
+     * @throws IllegalStateException if the set is empty.
+     */
     fun first(): GraphPathRef = refs.firstOrNull() ?: error("PathSet is empty")
 
     /** Look up a single literal path — case-insensitive, like the patterns — or null. */

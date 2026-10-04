@@ -3710,6 +3710,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-camera-link",
+            description="Opt-in camera links align model space across origins, axes and units while leaving display and notes independent.",
+            commands=[
+                "new-box --name LinkedCameraRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-mixed-review",
+            description="Moving ordinary geometry beside canonical parts invalidates notes while preserving the view.",
+            commands=[
+                "new-box --name MixedReviewRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-feature-review",
             description="Pick ordinary mesh faces, FLine strokes and points without construction-specific metadata.",
             commands=[
@@ -3844,6 +3864,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="ai-chat-resize",
+            description="Chat retains manual size, draft and reading position through streamed text and images, reopen and canvas zoom.",
+            commands=[
+                "new-box --name ChatResizeRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="viewer-panel-sizing",
             description="An embedded viewer panel reaches the size the viewer declares, instead of opening at the DEFAULT_W/DEFAULT_H constants. See dev_docs/OUTPUT_PANEL_SIZING.md.",
             commands=[
@@ -3851,6 +3881,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 2.0",
                 shell_join(["page-eval", "--body", "--file", str(files["viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="output-panel-shrink",
+            description="An auto-sized output panel follows its content down as well as up in height and width, sizes a capped scroller by its cap, measures width at a fresh panel's width so wrapped text does not creep, holds still while content alternates, ignores canvas zoom and stays within the window; a hand-sized panel keeps its size.",
+            commands=[
+                "new-box --name OutputPanelShrinkRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
@@ -4104,6 +4144,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 })]),
             ],
             screenshot="macro run guide_capture",
+        ),
+        UiRegression(
+            id="ai-chat-scroll",
+            description="The AI chat keeps a reader's place through re-renders of a transcript full of inline images, parked mid-history or at the bottom.",
+            document=f"ui-regression-chat-scroll-{int(time.time())}",
+            commands=[
+                "new-box --name ChatScroll --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-scroll.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ChatScroll", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
             id="simulation-clock",

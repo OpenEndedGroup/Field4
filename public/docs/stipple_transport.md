@@ -4,17 +4,18 @@ A stippled image can be represented as a deformation that redistributes a unifor
 The useful result is the learned velocity field and its flow map: particles, coordinate lattices,
 curves and sampling coordinates can all pass through the same field.
 
-This experiment extends [Field's static flow matching](flow_matching.md) with an optional PyTorch
-trainer and a portable CPU model loader. A movie uses **one network**:
+This page extends [Field's static flow matching](flow_matching.md) with an optional PyTorch
+trainer and a portable CPU model loader. A movie uses one network:
 
 <p style="font-size:1.3em"><i>v</i><sub>θ</sub>(x, y, t, τ) → (<i>v</i><sub>x</sub>, <i>v</i><sub>y</sub>)</p>
 
 Here `t` is **transport time**, the variable integrated by the ODE; `tau` is **movie time**, held
 fixed during each solve. A particle sheet is chosen once. Each movie frame recomputes the deformation
-of those canonical coordinates, preserving particle identity without claiming physical object
-correspondence. Velocity queries return transport velocity, not motion with respect to movie time.
+of those canonical coordinates, so each particle keeps its identity from frame to frame (it does
+not follow a physical object). Velocity queries return transport velocity, the speed along `t`;
+they say nothing about motion from one movie frame to the next.
 
-## One image, and how its source area is allocated
+## Transporting one image
 
 Target image pixels contribute mass proportional to darkness. Stochastic stipples sample that mass,
 then training adds Gaussian target jitter with standard deviation `sigma`. The stipples represent
@@ -27,21 +28,22 @@ Training samples source and target points, draws transport time uniformly, and r
 sample one target frame per batch at its discrete movie time. No interpolated targets supervise
 the intermediate movie conditions.
 
-The figures below come from actual offline PyTorch evaluation. Colored dots retain their canonical
+The figures below come from offline PyTorch evaluation. Colored dots retain their canonical
 colors; the thin lattice is arbitrary geometry that was never training data. Grey dots mark known
 endpoint targets. The last panel shows trajectories and transport-velocity vectors.
 
 ![Uniform source, partially formed ring, reconstructed ring, warped lattice and velocity trajectories from the trained static model](assets/stipple_transport/static-ring.png)
 
 The ring's sliced distribution distance falls from **0.233** for the uniform source to **0.014**
-after transport. A learned image transport gives a similar reduction on a filled letter C. These
-are small illustrative experiments, not optimal density fits.
+after transport, and a filled letter C reduces by a similar amount. These small models illustrate
+the idea; they are not tuned density fits.
 
 ## Coupling changes the deformation
 
 Random pairing is enough to learn density. Recursive spatial matching (BSP) splits each minibatch
 into equal-mass halves along the widest combined axis, then pairs matching leaves. It preserves
-both empirical marginals and avoids an assignment cost matrix, but is not exact optimal transport.
+both empirical marginals and avoids an assignment cost matrix, though it only approximates optimal
+transport.
 
 ![Letter C learned with random source-target pairing; trajectories turn extensively](assets/stipple_transport/image-random.png)
 
@@ -59,7 +61,7 @@ Same architecture, seed, training budget, target jitter and canonical evaluation
 The path and integration improvements matter more here than the small density difference.
 Sliced W1 compares projected quantiles, so it notices density proportions that a shape-only
 nearest-neighbor score may miss. Turning is the sum of discrete direction changes along a
-trajectory; it is a diagnostic, not a curvature integral with units of inverse length.
+trajectory, a rough diagnostic with no units.
 
 ## Two images, including unseen movie time
 
@@ -73,24 +75,24 @@ available at evaluation. The middle movie condition was never a training frame.
 </video>
 
 The video's four panels traverse the same canonical particles: `t=1`, `t=.5`, `t=tau`, and a fixed
-`tau=.5` while transport time rises and falls. The intermediate movie shape is a learned function,
-not a blend of target point positions or independently trained network weights. Its artistic value
-is open to inspection; there is no ground-truth intermediate letter to score.
+`tau=.5` while transport time rises and falls. The intermediate shape comes from the network
+itself; nothing blends the two letters' points or two networks' weights. There is no correct
+intermediate letter to score it against, so judge it by eye.
 
 ## A short density movie
 
 Sixteen grayscale target frames describe a moving ring changing into two blobs and back. A shared
 conditioned field deforms the same 1,600 particles and coordinate lattice through that sequence.
-This is a synthetic density movie; it does not infer optical flow or object identity.
+The movie is a synthetic density; the model knows nothing about optical flow or objects.
 
-**Original density video.** These are the 16 grayscale frames used to generate the training
+The first video is the 16 grayscale frames used to generate the training
 stipples, played at four frames per second. Darkness supplies the target probability mass.
 
 <video controls muted loop playsinline preload="metadata" width="480" poster="../assets/stipple_transport/source-density.png">
   <source src="../assets/stipple_transport/source-density.mp4" type="video/mp4">
 </video>
 
-**Learned transport.** The same source particle identities and lattice pass through four slices
+The second shows the learned transport: the same source particle identities and lattice pass through four slices
 of transport and movie time:
 
 <video controls muted loop playsinline preload="metadata" width="960" poster="../assets/stipple_transport/short-video.png">
@@ -111,9 +113,9 @@ Two equal-budget 8,000-step fine-tunes from the same longer-trained checkpoint s
 | Mean particle second difference over 17 movie samples | 0.0803 | 0.0519 |
 | Largest per-particle movie step | 0.3779 | 0.2472 |
 
-Regularization buys smoother movie motion here at a cost in density accuracy. The shown movie uses
-that regularized branch. Its penalty approximates `∂v/∂tau` at fixed `(x,y,t)`; it is distinct from
-the trajectory diagnostics above. Held-out targets are freshly stippled samples of the known
+Regularization makes the movie motion smoother and the density less accurate. The movie above uses
+the regularized model. Its penalty approximates `∂v/∂tau` at fixed `(x,y,t)`; it is distinct from
+the trajectory measures above. Held-out targets are freshly stippled samples of the known
 procedural density movie, which makes an interpolation check possible for this example.
 The [measurement record](assets/stipple_transport/measurements.json) includes per-frame results,
 integration convergence, path diagnostics and the training/device options.
@@ -121,7 +123,7 @@ integration convergence, path diagnostics and the training/device options.
 ## Use the trained warp in Field
 
 The portable loader is CPU-only and requires no Python or Torch at runtime. The supplied model has
-**8,770 parameters**, three width-64 SiLU hidden layers, raw `(x,y,t,tau)` inputs and a linear
+8,770 parameters, three width-64 SiLU hidden layers, raw `(x,y,t,tau)` inputs and a linear
 two-component velocity output. All inputs and velocities are normalized; scale geometry after
 transport if working in ordinary Field coordinates. A point's z coordinate is preserved.
 
@@ -154,7 +156,7 @@ Neither time is clamped in the query API. Freeze, scrub, reverse and extrapolate
 arguments; negative times and overshoot are extrapolation experiments. Different geometry can use
 different transport depths at the same movie condition. Curves and outlines must be sampled finely
 enough to resolve deformation between their vertices. CPU evaluation is useful for moderate geometry
-counts; these captures do not establish real-time performance for large GPU particle sets.
+counts; large particle sets at frame rate would need a GPU evaluator, which does not exist yet.
 
 ## Train your own
 
@@ -181,15 +183,15 @@ playback direction and overshoot. `--device cpu` supports machines without CUDA.
 
 Outputs include reloadable `.pt` checkpoints, portable JSON models, figures, optional videos and
 measurements. Temporal models can also bake velocities onto a spatial/transport/movie lattice in
-NPZ format. This is an export bridge for later shader integration, not an implemented GPU texture
-consumer. Native GPU network evaluation remains deferred until this representation warrants it.
+NPZ format, ready for a shader to read; nothing in Field reads it on the GPU yet.
 
 Library examples, format layout and the full control reference are in the repository's
 `optional/transport-flow/README.md`, and `run.py --help` lists the command-line controls.
 
-## Deliberately unsafe weight-space comparison
+## Blending network weights
 
-`demo --unsafe-weights` also trains S by fine-tuning C, and compares its checkpoint midpoint against
+Blending the weights of two trained networks is a tempting shortcut to an in-between shape, and
+usually a poor one. `demo --unsafe-weights` trains S by fine-tuning C, and compares its checkpoint midpoint against
 a blend with an independently initialized S model. These are separate static networks, not the
 movie-conditioned architecture. Field exposes `unsafeBlendWeights` for the same experiment.
 
@@ -197,7 +199,6 @@ movie-conditioned architecture. Field exposes `unsafeBlendWeights` for the same 
 
 ![Halfway weight interpolation between C and an independently initialized S model](assets/stipple_transport/unsafe-independent.png)
 
-The grey reference in these side figures is C, not a target for the interpolated function. Neither
-side experiment promises useful interpolation. Shared training ancestry can help align internal
+The grey reference in these figures is C, shown for comparison. Neither blend is reliably useful. Shared training ancestry can help align internal
 representations; independent models can permute hidden units while representing similar functions.
-The shared movie-conditioned field remains the primary temporal design.
+For animation, use the movie-conditioned field above.

@@ -68,14 +68,19 @@ try {
         const material=new THREE.MeshStandardMaterial({opacity:.5,transparent:true});
         const mesh=new THREE.Mesh(geometry,material);mesh.position.set(200,0,0);root.add(mesh);
         const data=await exportViewerGLB(root,{xray:true,opacity:.2,units:'mm'});
+        material.userData.fieldXrayOpacity=1;
+        const retained=await exportViewerGLB(root,{xray:true,opacity:.2,units:'mm'});
         const unchanged=material.opacity===.5&&geometry.getAttribute('position').count===4&&mesh.position.x===200;
         root.visible=false;let empty=false;try{await exportViewerGLB(root)}catch(e){empty=e.message.includes('no visible geometry')}
-        geometry.dispose();material.dispose();return {data,unchanged,empty};
+        geometry.dispose();material.dispose();return {data,retained,unchanged,empty};
     })()`);
     const fixture=decode(direct.data), fp=fixture.json.meshes[0].primitives[0], xyz=fixture.accessor(fp.attributes.POSITION);
     expect(xyz.length===9 && xyz[0]===200 && xyz[3]===300, 'Only active draw range is exported and object transform is baked');
     expect(fixture.json.nodes.some(n=>n.scale?.[0]===.001 || n.matrix?.[0]===.001), 'Millimetres are converted to glTF metres');
     expect(fixture.json.accessors[fp.attributes.COLOR_0].type==='VEC4' && fixture.accessor(fp.attributes.COLOR_0)[3]===.25 && Math.abs(fixture.json.materials[fp.material].pbrMetallicRoughness.baseColorFactor[3]-.1)<1e-6, 'Varying vertex opacity uses standard RGBA and composes with authored material opacity and X-ray');
+    const retained=decode(direct.retained), rp=retained.json.meshes[0].primitives[0];
+    expect(Math.abs(retained.json.materials[rp.material].pbrMetallicRoughness.baseColorFactor[3]-.5)<1e-6,
+        'Per-part X-ray opacity survives GLB export while preserving authored material opacity');
     expect(direct.unchanged && direct.empty, 'Detached export preserves source resources and reports empty scenes');
     api.restore(original);await delay(1200);const count=w.FieldViewer.renderStats().frames;await delay(600);
     expect(count===w.FieldViewer.renderStats().frames, 'Export does not start idle rendering');
