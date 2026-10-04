@@ -64,6 +64,10 @@ uv run python tools/docs_notes.py revise --jobs 4 --commit
 A run keeps each agent's prompt, complete log and recorded outcomes in
 `.field-backdoor/docs-notes/runs/<run>/`.
 
+The queue can also hold the KDoc that completion drafts for undocumented declarations.
+`import-drafts` adds each draft as a note on its declaration, tagged `@kdoc-draft`, and from then
+on it is worked like one of yours. See [AI documentation polish](ai_doc_polish.md).
+
 ### From the welcome page
 
 **Revision pass**, in the *Documentation notes* card of `/welcome`'s AI panel, opens

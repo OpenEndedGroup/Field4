@@ -403,7 +403,7 @@ fun aiChatHistoryToHtml(history: String?): String {
                 html.append("<div class=\"ai-chat-status-row\" aria-label=\"AI activity\">")
                 statusRowOpen = true
             }
-            html.append("<span class=\"ai-chat-status\">${escapeHtml(title.ifBlank { "AI activity" })}</span>")
+            html.append("<span class=\"ai-chat-status\">${shimmerIfLive(turn, escapeHtml(title.ifBlank { "AI activity" }))}</span>")
             continue
         }
         if (statusRowOpen) {
@@ -456,7 +456,12 @@ private fun renderProgressTurn(turn: ChatTurn): String {
     val summaryTitle = if (isEdit) "Edit" else title
     val fileHtml = if (file.isNotBlank()) "<span class=\"ai-chat-progress-file\">${escapeHtml(file)}</span>" else ""
     return "<details class=\"ai-chat-progress\"$kind$open>" +
-        "<summary><span>${escapeHtml(summaryTitle)}</span>$fileHtml</summary>" +
+        "<summary><span>${shimmerIfLive(turn, escapeHtml(summaryTitle))}</span>$fileHtml</summary>" +
         aiChatMarkdownToHtml(body) +
         "</details>"
 }
+
+// `<<progress-open>>` is the newest activity of a turn still running with nothing streamed after it
+// (AiLiveConversation.render); the final render and an interrupted-turn recovery both demote it.
+private fun shimmerIfLive(turn: ChatTurn, html: String): String =
+    if (turn.role == "progress-open") "<span class=\"ai-chat-shimmer\">$html</span>" else html

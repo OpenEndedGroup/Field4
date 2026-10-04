@@ -93,17 +93,16 @@ The right side is a stack of collapsible panels, one per part of Field:
 
 ### Personal templates
 
-The Welcome screen also discovers document templates in `src/personal/templates/`
-(relative to Field's working directory) and `~/.afield/templates/`. Put each template
-in its own folder with its `metadata.edn` and document files. These use the same search
-and **Templates** list as bundled templates. Opening one creates an independent editable
-copy in the current workspace; it does not modify the template or upgrade existing copies.
+You can add your own templates to the **Templates** list. Field looks in
+`src/personal/templates/` (relative to Field's working directory) and in
+`~/.afield/templates/`; put each template in its own folder, with its `metadata.edn` and
+document files. Opening one makes an editable copy in the current workspace. The template itself
+is left alone, and copies you made earlier are not updated. Opening a copy does not run its boxes.
 
-`-Dafield.personalTemplates.dir=/path/to/templates` changes the user-level directory.
-For duplicate names, bundled templates take precedence, then checkout-local personal
-templates, then user-level templates. Give private templates distinctive names.
-`src/personal` is excluded from Git; keep private template backups/versioning separately.
-Templates carry code: opening the copy does not automatically run its boxes.
+To keep your templates somewhere else, start Field with
+`-Dafield.personalTemplates.dir=/path/to/templates`. When two templates share a name, a bundled
+one wins, then one in `src/personal`, then one in your own directory, so give yours distinctive
+names. Git ignores `src/personal`, so back those templates up yourself.
 
 ## Troubleshooting
 
@@ -153,20 +152,18 @@ or the network is down) it says which, rather than reporting that you are up to 
 
 ## Project-owned Kotlin extensions
 
-Reusable local code can live outside a Field checkout. Set `AFIELD_EXTENSION_DIRS`
-(or Gradle's `-PfieldExtensionDirs`) to one or more directory roots, separated by
-this platform's path separator (`:` on macOS/Linux, `;` on Windows). Each root
-contains `kotlin/`, `resources/`, or both. Paths containing spaces work unchanged.
-Missing roots fail the build with their path rather than silently dropping code.
+Kotlin code you reuse across documents can live in your own project, outside the Field checkout.
+Set `AFIELD_EXTENSION_DIRS` (or Gradle's `-PfieldExtensionDirs`) to one or more directories,
+separated by `:` on macOS and Linux or `;` on Windows. Each directory holds `kotlin/`,
+`resources/`, or both. If a directory is missing, the build stops and names it. To launch Field
+with one extension directory and a workspace from the same project:
 
 ```diffstatic {data-lang=bash}
 AFIELD_EXTENSION_DIRS="$HOME/my-project/extensions" ./field.sh "$HOME/my-project/workspace"
 ```
 
-These roots join `src/personal` in the existing isolated `personalJar` compilation
-and classloader. Core Field cannot depend on them; boxes can import their classes.
-Use the same setting when rebuilding `personalJar`, then use `reloadPersonal` or
-restart Field. External Gradle scripts are not executed automatically; additional
-third-party dependencies still use Field's existing dependency configuration.
-Keep extension sources and document templates in the project's own version control.
-For external templates, use the `afield.personalTemplates.dir` setting above.
+This code is compiled together with `src/personal`, and boxes can import its classes. After you
+change it, rebuild `personalJar` with the same setting, then run `reloadPersonal` or restart
+Field. Gradle scripts in these directories are not run; third-party libraries are added the same
+way as for the rest of Field. To keep the project's templates beside its code, point
+`afield.personalTemplates.dir` (see [Personal templates](#personal-templates)) into the project.

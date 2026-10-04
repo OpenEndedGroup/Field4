@@ -2322,14 +2322,21 @@ fun installAi4() {
                         branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
                 AiSessionTree.recordTurn(box, savedHistory, history(), meta)
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
-            if (failure != null) AiBoxConversation.failed(box,
-                "AI ${exec.kind} ${if (isAiTurnCancellation(failure)) "cancelled" else "failed"}: ${failure.message ?: failure::class.java.simpleName}")
-            val undelivered = synchronized(turnInboxes) {
-                turnInboxes.remove(boxChatKey, inbox)
-                activeBoxChats.remove(boxChatKey)
-                inbox.close()
+            // Releasing the box must survive a failure that also breaks the reporting: a NoClassDefFoundError
+            // from classes rewritten under a live JVM threw out of `failed`, and the stale key refused every
+            // later turn in that box until restart.
+            var undelivered = emptyList<AiTurnInbox.Pending>()
+            try {
+                if (failure != null) AiBoxConversation.failed(box,
+                    "AI ${exec.kind} ${if (isAiTurnCancellation(failure)) "cancelled" else "failed"}: ${failure.message ?: failure::class.java.simpleName}")
+            } finally {
+                undelivered = synchronized(turnInboxes) {
+                    turnInboxes.remove(boxChatKey, inbox)
+                    activeBoxChats.remove(boxChatKey)
+                    inbox.close()
+                }
+                AiBoxConversation.running(box, false)
             }
-            AiBoxConversation.running(box, false)
             if (undelivered.isNotEmpty()) startFollowUpTurn(sessionInfo, undelivered)
         }
         Handled.yes

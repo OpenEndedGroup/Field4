@@ -14,7 +14,7 @@ lprintln("info,mypage", "something happened")
 
 `"info,mypage"` is a **channel**. It is not a level, and it is not a logger name. It is a
 comma-separated list of *tags*, and every consumer downstream selects on those tags. There
-are **997**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
+are **996**<!--count:lprintlnChannelCallSites--> places in `src/jvmMain` that call
 `lprintln` with the channel written out as a literal, spelling
 **234**<!--count:logChannelStrings--> distinct channel strings between them, so the
 vocabulary is already large and the channel strings are not easily renamed.
@@ -35,9 +35,9 @@ and is open at runtime: `addSink`, `removeSink`, `setSinks`, and `withSink`, whi
 add/remove pair so an early return cannot leak one. A sink is a `fun interface`
 with one method, so a lambda is a sink.
 
-Eight<!--count:logSinkImplementations--> of them exist in the tree — `StdoutLog`,
+Seven<!--count:logSinkImplementations--> of them exist in the tree — `StdoutLog`,
 `PinnedConsoleSink`, `LogStream`, `NotifyLog` (which also raises a desktop notification),
-`SilentLog`, two CLI sinks and `TputLog`. Adding a ninth from a box takes one line:
+`SilentLog`, a CLI sink and `TputLog`. Adding an eighth from a box takes one line:
 
 <!--
 FIELD_TEST

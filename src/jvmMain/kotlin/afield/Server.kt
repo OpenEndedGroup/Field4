@@ -3874,7 +3874,7 @@ class Server {
                                     projects,
                                     currentRuntimeInfo(),
                                     PythonInterface.currentPythonSettingsStatus(),
-                                    CompletionDocPolishMonitor.status(),
+                                    CompletionDocDrafts.summary(),
                                     AiToolUseImprovementMonitor.status(),
                                     codeUseSummary,
                                     semanticSettings
@@ -3925,24 +3925,6 @@ class Server {
                                     write("\n")
                                     flush()
                                 }
-                            }
-                        }
-
-                        get("/api/completion-doc-polish") {
-                            call.respond(CompletionDocPolishMonitor.status())
-                        }
-
-                        post("/api/completion-doc-polish") {
-                            try {
-                                val request = runCatching { call.receive<CompletionDocPolishRunRequest>() }
-                                    .getOrElse { CompletionDocPolishRunRequest() }
-                                call.respond(CompletionDocPolishMonitor.start(request.dryRun))
-                            } catch (e: Exception) {
-                                lprintln("error,server", "completion-doc polish launch failed: ${e.message}")
-                                call.respond(
-                                    HttpStatusCode.InternalServerError,
-                                    mapOf("error" to "completion-doc polish launch failed")
-                                )
                             }
                         }
 
@@ -5831,7 +5813,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *
  * ## Why this is off by default, which is the uncomfortable part
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **49 of 56
+ * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **48 of 55
  * state-changing HTTP routes have no route-specific access control**, `POST
  * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
  * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
@@ -5848,7 +5830,7 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  *    `curl` recipes in its own dev_docs.
  *
  * So: default-permissive, because turning it on is a behaviour change to a running system
- * that nobody is awake to notice, and because a silent default-deny on 49 routes is how you
+ * that nobody is awake to notice, and because a silent default-deny on 48 routes is how you
  * discover which of them the human's own tooling was using. Loud either way, because the
  * failure mode this whole area is about is capability you did not know you had.
  */
@@ -5857,7 +5839,7 @@ internal fun Application.installFieldApiSameSiteGuard() {
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 49 of its 56 state-changing routes have no route-specific " +
+            "Field's HTTP API is unauthenticated: 48 of its 55 state-changing routes have no route-specific " +
                 "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
                 "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
                 "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
