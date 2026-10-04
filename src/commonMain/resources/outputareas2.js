@@ -1857,7 +1857,7 @@ function ensureAiChat(container, uid, property) {
                 return true;
         }
 
-        function submitPrompt() {
+        function submitPrompt(options = {}) {
                 const text = textarea.value.trim();
                 if (!text && attachments.length === 0) return;
                 if (text.startsWith("/")) {
@@ -1879,7 +1879,10 @@ function ensureAiChat(container, uid, property) {
                         renderMessages({ forceBottom: true });
                 }
                 const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
-                sendAiChat(buildAiChatPayload(chatUid(), chatProperty(), text, images));
+                const payload = buildAiChatPayload(chatUid(), chatProperty(), text, images);
+                if (options.dictated) payload.dictated = true;
+                noteAiChatUsed(container);
+                sendAiChat(payload);
                 attachments.length = 0;
                 renderPreview();
         }
@@ -1890,7 +1893,23 @@ function ensureAiChat(container, uid, property) {
                     submitPrompt();
             }
         });
-        sendButton.addEventListener("click", submitPrompt);
+        sendButton.addEventListener("click", () => submitPrompt());
+        textarea.addEventListener("focus", () => noteAiChatUsed(container));
+
+        // Push-to-talk: hold to record, release to transcribe into this chat (`voiceInput.js`).
+        const micButton = document.createElement("button");
+        micButton.className = "ai-chat-mic";
+        micButton.type = "button";
+        micButton.title = `Hold to talk (or hold ${window.fieldVoice?.hotkeyLabel || "the push-to-talk key"} anywhere)`;
+        micButton.textContent = "\u{1F399}";
+        micButton.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                micButton.setPointerCapture?.(event.pointerId);
+                window.fieldVoice?.start(container);
+        });
+        const micUp = () => window.fieldVoice?.stop();
+        micButton.addEventListener("pointerup", micUp);
+        micButton.addEventListener("pointercancel", () => window.fieldVoice?.cancel());
 
         textarea.addEventListener("paste", (event) => {
                 const items = event.clipboardData?.items;
@@ -1913,6 +1932,7 @@ function ensureAiChat(container, uid, property) {
 
         inputWrap.appendChild(preview);
         inputWrap.appendChild(textarea);
+        inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
 
         root.appendChild(messages);
@@ -1920,7 +1940,7 @@ function ensureAiChat(container, uid, property) {
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code"};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2209,12 +2229,76 @@ function openAiChatForBox(uid, property) {
         const inter = disclosureInterface(contain);
         const content = inter.upsertDisclosure("ai-chat", "AI Chat", "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__");
         const chat = ensureAiChat(content, uid, property || "code");
+        noteAiChatUsed(content);
         inter.open("ai-chat");
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
 }
 
+// ---- voice target ----------------------------------------------------------
+//
+// Push-to-talk needs a chat to talk into without a click. The target is sticky: the last box you
+// selected that has a chat open, or the last chat you typed into, whichever happened later. Selecting
+// a box without a chat leaves the target where it was; with no live target at all, the selected box
+// gets a chat opened for it.
+
+let stickyAiChat = null;
+
+function noteAiChatUsed(container) {
+        if (container && container.__aiChat) stickyAiChat = container;
+}
+
+// Output panels are not DOM children of their box, so a box's chat is found by the uid it carries.
+function aiChatContainerForBox(box) {
+        const uid = box?.uid;
+        if (!uid) return null;
+        for (const root of document.querySelectorAll(".ai-chat-window")) {
+                if (root.dataset.uid !== uid) continue;
+                const container = root.parentElement;
+                if (container && container.__aiChat && !container.closest("#controller-chat-root")) return container;
+        }
+        return null;
+}
+
+function liveAiChat(container) {
+        return !!(container && container.isConnected && container.__aiChat && container.contains(container.__aiChat.root));
+}
+
+window.addEventListener("field-selection-changed", () => {
+        const uid = controllerChatSelectedUid();
+        const container = uid ? aiChatContainerForBox(findBoxByUid(uid)) : null;
+        if (container) stickyAiChat = container;
+});
+
+function aiChatVoiceTarget() {
+        if (liveAiChat(stickyAiChat)) return stickyAiChat;
+        const uid = controllerChatSelectedUid();
+        if (!uid) return null;
+        const existing = aiChatContainerForBox(findBoxByUid(uid));
+        if (existing) return (stickyAiChat = existing);
+        openAiChatForBox(uid, window.currentSelectedProperty || "code");
+        return (stickyAiChat = aiChatContainerForBox(findBoxByUid(uid)));
+}
+
+// What the conversation is about, for Whisper's vocabulary prompt: the chat so far, the box's
+// code, and the names of the boxes on the canvas.
+function aiChatVoiceContext(container) {
+        const chat = container?.__aiChat;
+        const uid = chat?.root?.dataset.uid || chat?.uid || "";
+        const box = uid ? findBoxByUid(uid) : null;
+        const names = Array.from(document.querySelectorAll(".box"))
+                .map((element) => element.name || element.getAttribute?.("data-name") || "")
+                .filter((name) => typeof name === "string" && name.trim().length > 0);
+        return {
+                history: container?.__aiChatHistory || "",
+                code: readBoxProperty(box, chat?.root?.dataset.property || chat?.property || "code"),
+                boxNames: names
+        };
+}
+
+window.aiChatVoiceTarget = aiChatVoiceTarget;
+window.aiChatVoiceContext = aiChatVoiceContext;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
 installControllerChatProjection();

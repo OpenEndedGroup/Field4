@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld("fieldElectron", {
   captureHistoryScreenshot() {
     return ipcRenderer.invoke("field4-history-capture-window");
   },
+  // "granted" | "denied" | "restricted" | "not-determined" (macOS); always "granted" elsewhere.
+  microphoneAccess() {
+    return ipcRenderer.invoke("field4-microphone-access");
+  },
   diagnostic(event, details = {}) {
     ipcRenderer.send("field4-renderer-diagnostic", { event, details });
   },

@@ -39,7 +39,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 120 | nothing |
+| `/ws` **command** names (`handlers`) | 122 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -266,7 +266,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-120 command names, in the `handlers` table. This is the real command API, it is roughly twice
+122 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -292,6 +292,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `templating.kt` | 3 |
 | `ElectronRTTView.kt` | 2 |
 | `UserKeybindingsManager.kt` | 2 |
+| `VoiceTranscriber.kt` | 2 |
 | `chat.kt` | 2 |
 | `ButtonControlHandler.kt` | 1 |
 | `CoroutineProfiling.kt` | 1 |
@@ -314,6 +315,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `chat.kt` | proxies to the configured chat server |
 | `ElectronRTTView.kt` | an RTT view that box code has already created: `subscribe` points that view's frame-ready pushes at the caller's socket and starts receiving the view's IOSurface ring from its per-view Mach service (local processes only), and `release` frees a ring slot. Both name a view by an unguessable id (pid + nanoTime) and do nothing for an unknown one. The worst a frame can do is redirect or stall one view's frames |
 | `UserKeybindingsManager.kt` | reload the user keybindings file; report the command inventory |
+| `VoiceTranscriber.kt` | AI4 push-to-talk: starts (once) and feeds a local Python Whisper worker, `python/fieldvoice/whisper_worker.py`, under the interpreter Field's Python boxes resolved or `FIELD_VOICE_PYTHON`. Each clip is written to a temp file, transcribed and deleted; the reply is text. No document or box state. No guard beyond the `/ws` boundary, decided 2026-10-04: the client supplies only audio bytes and prompt text, never a path, executable or code, so the worst a hostile frame can do is spend GPU time or start the worker |
 | `ButtonControlHandler.kt` | one control-widget callback |
 | `CoroutineProfiling.kt` | starts, latches, and reads bounded in-memory coroutine captures for the attached document; at most one recording process-wide, with a 30-second maximum |
 | `DocsSearchInstaller.kt` | documentation search |
@@ -361,6 +363,8 @@ in-route same-site check stops a web page.
 | `ai-assist` | `Ai4Installer.kt` |
 | `ai-chat-history` | `Ai4Installer.kt` |
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
+| `ai-transcribe` | `VoiceTranscriber.kt` |
+| `ai-transcribe-warm` | `VoiceTranscriber.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
 | `chat_input` | `Ai4Installer.kt` |
@@ -501,7 +505,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 120 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 122 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove
