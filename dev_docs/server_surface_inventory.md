@@ -88,7 +88,6 @@ mutation; it is a different one.
 | `GET /api/code-use/summary` | `Server.kt` | none |
 | `GET /api/code-use/symbols` | `Server.kt` | none |
 | `GET /api/code-use/unresolved` | `Server.kt` | none |
-| `GET /api/completion-doc-polish` | `Server.kt` | none |
 | `GET /api/docs-annotations` | `docsAnnotations.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass` | `docsPass.kt` | loopback + same-site |
 | `GET /api/docs-improvement/pass/diff` | `docsPass.kt` | loopback + same-site |

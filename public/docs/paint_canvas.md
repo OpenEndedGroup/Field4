@@ -1,9 +1,5 @@
 # Paint and pencil from FLines
 
-*The classes on this page are `PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes` and their enums in
-`afield.paint`, and each carries its own KDoc. The document that ships as an openable starting point
-is [paint_canvas](agent_transcripts.md#paint_canvas).*
-
 `PaintCanvas` turns any [FLine](fline_examples.md) into a brushstroke of simulated oil paint, a
 pencil line, hatching, a stippled area or a hand-drawn outline. The
 simulation is the `paint` crate from
@@ -11,7 +7,9 @@ simulation is the `paint` crate from
 a brush as individual bristles that carry paint and run out. Paint mixes on the canvas like pigment,
 so blue into yellow makes green. Each stroke stays wet, stiffening and drying over simulated minutes.
 Field calls it through a small native library, which you build once (see
-[Building the library](#building-the-library)).
+[Building the library](#building-the-library)). The examples below are also in the
+[paint_canvas](agent_transcripts.md#paint_canvas) starting point, and the classes they use
+(`PaintCanvas`, `PaintBrush`, `Pencil`, `Tubes`, in `afield.paint`) each have their own KDoc.
 
 Here is a canvas, a brush and three strokes. The brush is loaded before the first stroke and again
 before the second. The third stroke is a zigzag with no reload, so the brush runs dry along it.

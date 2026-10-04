@@ -400,21 +400,29 @@ def _pretty_status(queue: Path, recent: int) -> None:
     rule("landing")
     if not active:
         print(st.dim("  idle"))
+    # One progress block per batch: its branches share one merge, one regeneration and one guard.
+    batches: dict[str, list[dict]] = {}
     for item in active:
+        batches.setdefault(item.get("batch", item["id"]), []).append(item)
+    for members in batches.values():
+        item = members[0]
         running = _since(item["started"])
         step, last = _phase(item)
         gradle = _ran_gradle(item)
         typical = _typical(queue, gradle)
-        print(f"  {st.yellow(g['land'])} {who(item)}")
-        if item.get("note"):
-            print(f"    {st.dim(g['note'] + ' ' + item['note'])}")
+        if len(members) > 1:
+            print(f"  {st.dim('batch of ' + str(len(members)) + ', one guard for all:')}")
+        for member in members:
+            print(f"  {st.yellow(g['land'])} {who(member)}")
+            if member.get("note"):
+                print(f"    {st.dim(g['note'] + ' ' + member['note'][: width - 8])}")
         if typical:
             frac = running / typical
             tail = f"~{_span(typical - running)} left" if running < typical else st.yellow(f"{_span(running - typical)} over typical")
             print(f"    {st.cyan(_bar(min(frac, 1.0)))}  {st.bold(_span(running))} {st.dim('/ ~' + _span(typical))}  {tail}")
         else:
             print(f"    {st.bold(_span(running))} {st.dim('elapsed, no typical duration yet')}")
-        print(f"    {st.dim('step')}  {step}")
+        print(f"    {st.dim('step')}  {step[: width - 12]}")
         if last:
             print(f"    {st.dim('last')}  {st.dim(last[: width - 12])}")
         print(f"    {st.dim(g['log'] + ' ' + item.get('log', ''))}")

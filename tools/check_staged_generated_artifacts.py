@@ -339,6 +339,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--skip",
+        metavar="TASK,...",
+        default="",
+        help=(
+            "guard tasks not to run because the caller just regenerated their artifacts, which makes "
+            "their drift check true by construction (tools/merge_regen.py passes these)"
+        ),
+    )
+    parser.add_argument(
         "--report",
         action="store_true",
         help=(
@@ -364,7 +373,7 @@ def _report(selected: list[Guard], scope: str) -> int:
     return 0
 
 
-def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
+def _run_merge_check(repo: Path, since: str, report: bool = False, skip: frozenset[str] = frozenset()) -> int:
     """Guard whatever a merge just brought in.
 
     Deliberately advisory. Git ignores a ``post-merge`` hook's exit status, so this cannot and
@@ -377,7 +386,7 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
         return 0
 
     changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD", f"{since}..HEAD")
-    selected = guards_for_paths(changed)
+    selected = [guard for guard in guards_for_paths(changed) if guard.task not in skip]
     if not selected:
         return 0
     if report:
@@ -425,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = _repo_root()
 
     if args.since:
-        return _run_merge_check(repo, args.since, args.report)
+        return _run_merge_check(repo, args.since, args.report, frozenset(filter(None, args.skip.split(","))))
 
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)

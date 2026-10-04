@@ -205,7 +205,12 @@ internal class DocumentGuideNotes(private val boxes: Collection<Box>) {
 @RunsAt(installHandlers)
 fun documentGuideHandlers() {
     handlers["document-guide"] = mutableSetOf({ message, reply ->
-        val info = thisSessionInfo.get()
+        // A reconnecting page polls for guides before its session is re-established; answer so it retries.
+        val info: SessionInformation? = thisSessionInfo.get()
+        if (info == null) {
+            reply(Message(message.replyTo ?: "document-guide").payload(DocumentGuideResponse(ok = false, error = "This page has no document session yet")))
+            return@mutableSetOf Handled.yes
+        }
         val readOnly = ReadOnlyDocuments.blocksWritesFromCurrentSession()
         val result = try {
             val request = Json.decodeFromJsonElement<DocumentGuideRequest>(message.payload!!)

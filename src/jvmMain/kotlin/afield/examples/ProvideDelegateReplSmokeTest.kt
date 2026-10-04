@@ -18,70 +18,50 @@ expect:
     - "provideDelegate REPL characterization passed"
 */
 /**
- * Characterization of a real, user-facing defect: **`operator fun provideDelegate` does not
- * compile in Field's K2 REPL**, so the box idiom `var kc by keyCamera(camera=camera)` — which
- * `public/docs/afield_four_graphics.md:787` documents — cannot be run.
+ * `operator fun provideDelegate` in Field's K2 REPL, in every position box code can put it — the
+ * box idiom `var kc by keyCamera(camera=camera)` (`public/docs/afield_four_graphics.md:787`) among
+ * them. This began as a *characterization* of two crashes; both are fixed, and it now asserts that
+ * every rung evaluates.
  *
- * ## Status after the 2.4.20 uplift (2026-08-25)
+ * ## History
  *
- * The alarm below fired, as designed. [DEFECT_A] was root-caused and patched in the fork, and this
- * test was re-measured rather than re-asserted: `cross-snippet-provideDelegate` — the
- * `by keyCamera(...)` shape — **now works**, so `var kc by keyCamera(...)` compiles in a box again.
- * The five rungs that had been characterized as [DEFECT_A] now fail with [DEFECT_B] instead: they
- * all embed [PROVIDER_DECL], whose anonymous `ReadWriteProperty` trips B on its own, so A was
- * merely failing first. That leaves [DEFECT_B] as the whole of what is left, and it is still
- * Field's own (the Wither jar reaching the compiler by ServiceLoader).
+ * The test pinned the crash signatures while they existed, and was built to go red when either was
+ * fixed. That alarm fired twice:
  *
- * ## Why this test is GREEN while the feature is BROKEN
+ *  - **2026-08-25**, [DEFECT_A] was fixed in the fork: `cross-snippet-provideDelegate`, the
+ *    `by keyCamera(...)` shape, started working, and the five rungs that embed [PROVIDER_DECL] moved
+ *    from A to [DEFECT_B] (A had only been failing first).
+ *  - **2026-10-04**, [DEFECT_B] was fixed in Field's build of the Wither plugin, and the nine rungs
+ *    in [PROVIDE_DELEGATE] moved from failing to working.
  *
- * This is a *characterization* test: it pins the behaviour that exists today, including the exact
- * crash signatures, so the finding cannot be lost again. It is deliberately green on a broken
- * REPL. **If someone fixes the underlying compiler, this test goes red** — that is the intended
- * alarm, not a regression. When it does, read [DEFECT_A] / [DEFECT_B] below, delete the rung from
- * the failing ledger, and move it to the working one.
+ * ## The two causes
  *
- * ## The boundary, which is the actual finding
- *
- * `by` delegation is *not* broken in general. What breaks is precisely `provideDelegate`:
- *
- *  - `val a: Int by lazy { 42 }` — works.
- *  - `val a: Int by Holder()` where `Holder : ReadWriteProperty` — works.
- *  - `var a: Int by Provider()` where `Provider` has `operator fun provideDelegate` — **crashes**,
- *    in all four positions tested (script top level, local in a function, class member, and
- *    reached through a factory function).
- *
- * ## Two independent causes
- *
- * [DEFECT_A] **FIXED 2026-08-25** — was `IrPropertySymbolImpl is unbound` thrown inside
+ * [DEFECT_A] was `IrPropertySymbolImpl is unbound`, thrown inside
  * `org.jetbrains.kotlin.fir.backend.Fir2IrConverter.runSourcesConversion`, with no Field frame and
- * no compiler-plugin frame between `K2ReplCompiler.compileImpl` and the throw. Correctly placed in
- * the vendored fork, and the "not fixable from Field's own source" reading of that was too strong:
- * it was fixable *in the fork*, once root-caused. A REPL-level delegated property is resolved
- * through a disposable FIR copy of itself (`replSnippetDelegatedPropertyCopies`, which upstream
- * needs because the Analysis API forbids resolving a sibling member mid-resolution) and the
- * resolved delegate expression is then installed into the real property — but with `provideDelegate`
- * that expression carries a `::x` callable reference resolved against the *copy*, which is not a
- * snippet-class member and never gets IR. The fix records the original on the copy and maps back to
- * it in `Fir2IrDeclarationStorage.prepareProperty`. Nothing carries this signature any more; the
- * constant stays because the history is the point of a characterization test.
+ * no compiler-plugin frame between `K2ReplCompiler.compileImpl` and the throw. A REPL-level
+ * delegated property is resolved through a disposable FIR copy of itself
+ * (`replSnippetDelegatedPropertyCopies`, which upstream needs because the Analysis API forbids
+ * resolving a sibling member mid-resolution), and the resolved delegate expression is then
+ * installed into the real property — but with `provideDelegate` that expression carries a `::x`
+ * callable reference resolved against the *copy*, which is not a snippet-class member and never
+ * gets IR. The fork records the original on the copy and maps back to it in
+ * `Fir2IrDeclarationStorage.prepareProperty`.
  *
- * [DEFECT_B] **local / class-member** `by provideDelegate` — `IrGenerationExtensionException:
- * IrFunctionImpl … has no callableId`, thrown out of the Wither plugin's
- * `WitherReceiverTransformer`. Wither reaches the compiler by ServiceLoader because
- * `libs/wither-plugin.jar` is an `implementation` dependency (`build.gradle.kts:943`); with that
- * one line removed both of these rungs compile and evaluate correctly. So this half *is* Field's
- * to fix, and the fix is a build-graph change with a cost (it would disable the Wither
- * experiment and `WitherSmokeTest`), which is why it is written up rather than applied here.
+ * [DEFECT_B] was `IrGenerationExtensionException: IrFunctionImpl … has no callableId`, thrown from
+ * the Wither plugin's `WitherReceiverTransformer`. To find its own `with(...)` calls, that IR pass
+ * read the `callableId` of every call standing as a statement, and `callableId` throws for a
+ * function that is local or a member of a local or anonymous class. The `v = value` in
+ * [PROVIDER_DECL]'s anonymous `ReadWriteProperty` is such a call (the setter of `v`), which is
+ * why that interface failed and `ReadOnlyProperty`, with no setter to call, did not. Wither now
+ * checks the callee's name and parent before asking. Local functions called as statements failed
+ * the same way; `afield.ReplSnippetDeclarationsSmokeTest` cases LF1–LF9 cover those.
  *
  * House style, applied deliberately:
  *  - **asserts its own premise first** — [assertReplItselfWorks] proves plain evaluation and the
- *    non-`provideDelegate` delegates still yield `42`. Without it, a REPL that failed *everything*
- *    would make the crash assertions below vacuously true and this test a tautology.
- *  - **counterfactual floored at a number** — the working rungs must equal exactly `42`, not
- *    merely "not crash"; the failing rungs must each produce at least one diagnostic AND carry
- *    their specific signature, so a *different* crash cannot silently satisfy them.
+ *    non-`provideDelegate` delegates yield `42` before anything else is judged.
+ *  - **floored at a number** — every rung must produce its exact value, not merely "not crash".
  *  - **bidirectional ledger** — [assertLedger] checks missing, stale, and set equality across the
- *    expected-working and expected-failing rung names.
+ *    declared and observed rung names.
  */
 object ProvideDelegateReplSmokeTest {
 
@@ -89,13 +69,10 @@ object ProvideDelegateReplSmokeTest {
     const val DEFECT_A = "IrPropertySymbolImpl is unbound"
 
     /**
-     * Signature of the Wither-plugin failure. Its trigger is **not** `provideDelegate` and not
-     * local-ness: it is an anonymous object implementing `kotlin.properties.ReadWriteProperty`
-     * created inside a function body. Isolated by falsifying, in order, anonymous objects in
-     * general, properties inside anonymous objects, `operator fun` enclosures, snippet-declared
-     * operator interfaces, and precompiled interfaces in general (`Runnable`, `Comparator`,
-     * `Iterator`, `CharSequence` and even `ReadOnlyProperty` are all fine). `ReadWriteProperty` is
-     * the only one that fails. See `dev_docs/k2_repl_provide_delegate.md`.
+     * Signature of the Wither-plugin failure, fixed 2026-10-04. Its trigger was not
+     * `provideDelegate` and not local-ness: it was a call, as a statement, to a function with no
+     * `callableId` — here the setter of a property of an anonymous `ReadWriteProperty`. See
+     * `dev_docs/k2_repl_provide_delegate.md`.
      */
     const val DEFECT_B = "has no callableId"
 
@@ -116,9 +93,8 @@ class Provider {
 
     /**
      * A provider whose `provideDelegate` returns a **named** holder instead of an anonymous
-     * `ReadWriteProperty`. This one declares and compiles fine, and it is the control that keeps
-     * [DEFECT_A] and [DEFECT_B] apart — because [PROVIDER_DECL] cannot even be *declared* without
-     * tripping [DEFECT_B].
+     * `ReadWriteProperty`. It was the control that kept [DEFECT_A] and [DEFECT_B] apart while both
+     * were open, because [PROVIDER_DECL] could not even be *declared* without tripping [DEFECT_B].
      */
     private const val NAMED_PROVIDER_DECL = """
 import kotlin.properties.ReadWriteProperty
@@ -176,11 +152,11 @@ a
      * Working rungs that need a **prior snippet**, kept apart from [WORKING] only because they carry
      * one; they are asserted identically.
      *
-     * `cross-snippet-provideDelegate` moved here from [FAILING] on 2026-08-25, when DEFECT_A was
+     * `cross-snippet-provideDelegate` moved here from the failing ledger on 2026-08-25, when DEFECT_A was
      * root-caused and fixed in the vendored fork. It is the `by keyCamera(...)` shape — the provider
      * is AOT-compiled outside the snippet being compiled — so this is the rung that says the
-     * user-facing idiom works again. It must keep using [NAMED_PROVIDER_DECL]: with [PROVIDER_DECL]
-     * it would trip [DEFECT_B], which is still open, and pass or fail for the wrong reason.
+     * user-facing idiom works again. It used [NAMED_PROVIDER_DECL] because [PROVIDER_DECL] tripped
+     * [DEFECT_B] until 2026-10-04; it keeps it, so the AOT-style named provider stays covered.
      */
     private val WORKING_WITH_PRIOR: Map<String, Pair<String, String>> = linkedMapOf(
         "cross-snippet-provideDelegate" to
@@ -188,22 +164,18 @@ a
     )
 
     /**
-     * Rungs that must fail to compile, each with the signature it must fail with, and each with an
-     * optional prior snippet evaluated first.
-     *
-     * At script top level `provideDelegate` fails *universally* — the variants below cover `val` as
-     * well as `var`, an extension `provideDelegate` as well as a member one, a generic provider, and
-     * a provider declared in an **earlier snippet** rather than the same one. That last is the shape
-     * closest to `by keyCamera(...)`, whose provider is AOT-compiled in `afield.four.util` and so is
-     * never part of the snippet being compiled.
+     * Every `provideDelegate` position probed, as (prior snippet, source, expected value). These
+     * were the failing ledger until 2026-10-04, all with [DEFECT_B]: `val` as well as `var`, an
+     * extension `provideDelegate` as well as a member one, a generic provider, a factory function,
+     * a local, and a class member, plus two rungs with no delegate machinery at all.
      */
-    private val FAILING: Map<String, Triple<String?, String, String>> = linkedMapOf(
+    private val PROVIDE_DELEGATE: Map<String, Triple<String?, String, String>> = linkedMapOf(
         "toplevel-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "var abcd: Int by Provider()\nabcd\n", DEFECT_B),
+            Triple(null, PROVIDER_DECL + "var abcd: Int by Provider()\nabcd\n", EXPECTED_VALUE),
         "factoryfn-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "fun provider(): Provider = Provider()\nvar abcd: Int by provider()\nabcd\n", DEFECT_B),
+            Triple(null, PROVIDER_DECL + "fun provider(): Provider = Provider()\nvar abcd: Int by provider()\nabcd\n", EXPECTED_VALUE),
         "toplevel-val-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "val abcd: Int by Provider()\nabcd\n", DEFECT_B),
+            Triple(null, PROVIDER_DECL + "val abcd: Int by Provider()\nabcd\n", EXPECTED_VALUE),
         "generic-provideDelegate" to Triple(
             null,
             """
@@ -222,7 +194,7 @@ class GProvider<T>(val initial: T) {
 var abcd: Int by GProvider(42)
 abcd
 """,
-            DEFECT_B,
+            EXPECTED_VALUE,
         ),
         "extension-provideDelegate" to Triple(
             null,
@@ -241,31 +213,32 @@ operator fun Plain.provideDelegate(thisRef: Any?, property: KProperty<*>): ReadW
 var abcd: Int by Plain()
 abcd
 """,
-            DEFECT_B,
+            EXPECTED_VALUE,
         ),
-        // --- DEFECT_B rungs. Note the trigger is NOT `provideDelegate` and NOT local-ness. ---
-        // The minimal trigger, with no delegate machinery in it at all: an anonymous object
-        // implementing kotlin.properties.ReadWriteProperty, created inside a function body.
+        // --- The DEFECT_B trigger with no delegate machinery in it at all: an anonymous object
+        // implementing kotlin.properties.ReadWriteProperty, created inside a function body. ---
         "anon-readwriteproperty-in-fun" to Triple(
             null,
             """
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 fun make(): ReadWriteProperty<Any?, Int> = object : ReadWriteProperty<Any?, Int> {
-    private var v = 42
+    private var v = 0
     override fun getValue(thisRef: Any?, property: KProperty<*>): Int = v
     override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) { v = value }
 }
-make().javaClass.simpleName.isNotEmpty()
+val p = make()
+p.setValue(null, String::length, 42)
+p.getValue(null, String::length)
 """,
-            DEFECT_B,
+            EXPECTED_VALUE,
         ),
-        // Declaring the idiomatic provider is already enough — it is never used with `by` here.
-        "declare-provideDelegate-only" to Triple(null, PROVIDER_DECL + "42\n", DEFECT_B),
+        // Declaring the idiomatic provider used to be enough — it is never used with `by` here.
+        "declare-provideDelegate-only" to Triple(null, PROVIDER_DECL + "42\n", EXPECTED_VALUE),
         "local-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "fun demo(): Int {\n    var abcd: Int by Provider()\n    return abcd\n}\ndemo()\n", DEFECT_B),
+            Triple(null, PROVIDER_DECL + "fun demo(): Int {\n    var abcd: Int by Provider()\n    return abcd\n}\ndemo()\n", EXPECTED_VALUE),
         "classmember-provideDelegate" to
-            Triple(null, PROVIDER_DECL + "class Owner { var abcd: Int by Provider() }\nOwner().abcd\n", DEFECT_B),
+            Triple(null, PROVIDER_DECL + "class Owner { var abcd: Int by Provider() }\nOwner().abcd\n", EXPECTED_VALUE),
     )
 
     private const val EXPECTED_VALUE = "42"
@@ -302,9 +275,9 @@ make().javaClass.simpleName.isNotEmpty()
     }
 
     /**
-     * Premise gate. If the REPL cannot evaluate `40 + 2`, or cannot handle the two *non*
-     * `provideDelegate` delegate forms, then every crash assertion further down would pass for the
-     * wrong reason. Fail here, loudly, instead.
+     * Premise gate. If the REPL cannot evaluate `40 + 2`, or cannot handle the *non*
+     * `provideDelegate` delegate forms, the `provideDelegate` rungs below are not the problem. Fail
+     * here, loudly, instead.
      */
     private fun assertReplItselfWorks(observedWorking: MutableMap<String, String>) {
         println("  premise: the REPL and non-provideDelegate delegation still work...")
@@ -327,110 +300,75 @@ make().javaClass.simpleName.isNotEmpty()
     }
 
     /**
-     * Each failing rung must fail, must produce at least one diagnostic, and must carry *its own*
-     * signature — so that a different compiler crash cannot quietly keep this test green.
+     * Every [PROVIDE_DELEGATE] rung must compile cleanly and produce its value. A rung that fails is
+     * classified by signature, so a returning [DEFECT_A] or [DEFECT_B] reads as that regression
+     * rather than as an unknown crash.
      */
-    private fun assertProvideDelegateStillBroken(observedFailing: MutableMap<String, String>) {
-        println("  characterizing the provideDelegate failures...")
+    private fun assertProvideDelegateWorks(observedWorking: MutableMap<String, String>) {
+        println("  provideDelegate in every position...")
         // Measure every rung, print the table, and only then judge. A compiler change moves rungs in
         // GROUPS -- fixing DEFECT_A on 2026-08-25 moved one rung to working and re-pointed five more
         // at DEFECT_B in a single step -- and failing on the first mismatch reports one rung while
-        // hiding the shape of the move, which is exactly what you need to update the ledger.
-        val measured = FAILING.mapValues { (_, spec) -> evaluate("measure", spec.second, spec.first) }
+        // hiding the shape of the move.
+        val measured = PROVIDE_DELEGATE.mapValues { (_, spec) -> evaluate("measure", spec.second, spec.first) }
         println("  measured ledger (what this compiler actually does):")
         measured.forEach { (label, run) ->
-            val signature = FAILING.getValue(label).third
+            val expected = PROVIDE_DELEGATE.getValue(label).third
             val joined = run.diagnostics.joinToString("\n")
             println(
                 "    %-34s %s".format(
                     label,
                     when {
-                        run.value != null -> "NOW WORKS -> ${run.value}"
-                        run.diagnostics.isEmpty() -> "no value and no diagnostic (a third mode)"
-                        joined.contains(signature) -> "broken as characterized ($signature)"
-                        joined.contains(DEFECT_A) -> "fails with DEFECT_A, characterized as '$signature'"
-                        joined.contains(DEFECT_B) -> "fails with DEFECT_B, characterized as '$signature'"
-                        else -> "UNKNOWN signature: ${run.diagnostics.first().take(140)}"
+                        run.diagnostics.isEmpty() && run.value?.contains(expected) == true -> "works -> ${run.value}"
+                        run.diagnostics.isEmpty() -> "WRONG VALUE: ${run.value}, expected $expected"
+                        joined.contains(DEFECT_A) -> "REGRESSED to DEFECT_A ($DEFECT_A)"
+                        joined.contains(DEFECT_B) -> "REGRESSED to DEFECT_B ($DEFECT_B)"
+                        else -> "FAILS: ${run.diagnostics.first().take(140)}"
                     }
                 )
             )
         }
-        FAILING.forEach { (label, spec) ->
-            val signature = spec.third
+        PROVIDE_DELEGATE.forEach { (label, spec) ->
+            val expected = spec.third
             val run = measured.getValue(label)
-            require(run.value == null) {
-                "rung '$label' now EVALUATES (got ${run.value}). If provideDelegate has been " +
-                    "fixed, that is good news: move '$label' from FAILING to WORKING and update " +
-                    "dev_docs/k2_repl_provide_delegate.md."
+            require(run.diagnostics.isEmpty()) {
+                "rung '$label' should compile and evaluate cleanly but reported " +
+                    "${run.diagnostics.size} diagnostic(s): ${run.diagnostics}"
             }
-            require(run.diagnostics.isNotEmpty()) {
-                "rung '$label' produced no value AND no diagnostic — that is a third, unknown " +
-                    "failure mode and must be investigated, not absorbed."
+            val value = run.value
+            require(value != null && value.contains(expected)) {
+                "rung '$label' should evaluate to $expected, got: $value"
             }
-            val joined = run.diagnostics.joinToString("\n")
-            require(joined.contains(signature)) {
-                "rung '$label' failed, but NOT with its characterized signature '$signature'. " +
-                    "Observed instead:\n$joined"
-            }
-            observedFailing[label] = signature
-            println("    broken-as-characterized  $label -> $signature")
+            observedWorking[label] = value
         }
     }
 
     /** Bidirectional: missing, stale, and set equality, in both directions. */
-    private fun assertLedger(
-        observedWorking: Map<String, String>,
-        observedFailing: Map<String, String>,
-    ) {
+    private fun assertLedger(observedWorking: Map<String, String>) {
         println("  ledger: missing / stale / set equality...")
-        val expectedWorking = WORKING.keys + WORKING_WITH_PRIOR.keys
-        val expectedFailing = FAILING.keys
+        val expectedWorking = WORKING.keys + WORKING_WITH_PRIOR.keys + PROVIDE_DELEGATE.keys
 
         val missingWorking = expectedWorking - observedWorking.keys
         val staleWorking = observedWorking.keys - expectedWorking
-        val missingFailing = expectedFailing - observedFailing.keys
-        val staleFailing = observedFailing.keys - expectedFailing
 
         require(missingWorking.isEmpty()) { "ledger: working rungs declared but never observed: $missingWorking" }
         require(staleWorking.isEmpty()) { "ledger: working rungs observed but not declared: $staleWorking" }
-        require(missingFailing.isEmpty()) { "ledger: failing rungs declared but never observed: $missingFailing" }
-        require(staleFailing.isEmpty()) { "ledger: failing rungs observed but not declared: $staleFailing" }
         require(observedWorking.keys == expectedWorking) { "ledger: working set mismatch" }
-        require(observedFailing.keys == expectedFailing) { "ledger: failing set mismatch" }
-        require(expectedWorking.intersect(expectedFailing).isEmpty()) {
-            "ledger: a rung cannot be both expected-working and expected-failing"
-        }
 
-        // Floors near the numbers this test is proud of, so a silently-shrinking matrix fails.
-        // 7 working = seven distinct non-provideDelegate spellings of `by`, which is the breadth
-        // that licenses "the defect is provideDelegate, not delegation". 8 failing = every
-        // provideDelegate variant probed (val/var, member/extension, generic, cross-snippet,
-        // local, class member).
-        // Floors, not equalities: rungs may be added. 8 and 9, not 7 and 10, since 2026-08-25 —
-        // `cross-snippet-provideDelegate` moved from failing to working when DEFECT_A was fixed.
-        require(observedWorking.size >= 8) { "expected at least 8 working rungs, got ${observedWorking.size}" }
-        require(observedFailing.size >= 9) { "expected at least 9 failing rungs, got ${observedFailing.size}" }
-
-        // One distinct failure signature since 2026-08-25: [DEFECT_A] is fixed in the fork, so
-        // [DEFECT_B] is the whole of what remains. The check stays an exact set rather than a
-        // subset — if DEFECT_A ever reappears here, that is a regression in the fork patch and this
-        // is where it should be caught, not absorbed as "still two defects, as documented".
-        val signatures = observedFailing.values.toSet()
-        require(signatures == setOf(DEFECT_B)) {
-            "failure signatures drifted from the characterized set (expected only DEFECT_B, since " +
-                "DEFECT_A was fixed in the fork on 2026-08-25): $signatures"
-        }
-        println("    working=${observedWorking.size} failing=${observedFailing.size} signatures=${signatures.size}")
+        // A floor, not an equality: rungs may be added, but a silently-shrinking matrix fails. 17 =
+        // seven non-provideDelegate spellings of `by`, the cross-snippet rung, and the nine
+        // provideDelegate positions that were the failing ledger until 2026-10-04.
+        require(observedWorking.size >= 17) { "expected at least 17 working rungs, got ${observedWorking.size}" }
+        println("    working=${observedWorking.size}")
     }
 
     fun runTests(): Boolean {
         return try {
             println("Running provideDelegate REPL characterization...")
             val observedWorking = linkedMapOf<String, String>()
-            val observedFailing = linkedMapOf<String, String>()
             assertReplItselfWorks(observedWorking)
-            assertProvideDelegateStillBroken(observedFailing)
-            assertLedger(observedWorking, observedFailing)
+            assertProvideDelegateWorks(observedWorking)
+            assertLedger(observedWorking)
             println("✅ provideDelegate REPL characterization passed")
             true
         } catch (t: Throwable) {
