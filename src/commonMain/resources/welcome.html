@@ -1943,6 +1943,13 @@
 <main id="welcome-root">
     <section class="panel hero">
         Field·4
+        <p>Make a moving drawing, change its code, and see the result. Start here; explore the panels when you need them.</p>
+        <div class="button-row">
+            <button id="open-first-steps" type="button">Start here: a moving drawing</button>
+            <a class="button-link" href="/field-docs/first_steps/">Five-minute guide</a>
+            <button id="open-first-graphics" type="button">Next: native graphics</button>
+        </div>
+        <p class="starting-points-hint">The first drawing needs no GPU driver, Python or AI key. Each button opens an editable copy in your workspace. Native graphics needs Vulkan.</p>
         <div class="button-row">
             <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
             <a class="button-link" href="/field-docs/">/docs + notes</a>
@@ -2208,13 +2215,14 @@
                         </div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
-                                <span class="ai-docs-label">Code-use telemetry</span>
+                                <span class="ai-docs-label">Local code-use history</span>
                                 <span id="code-use-state">checking</span>
                             </div>
                             <div class="ai-docs-actions">
                                 <button id="open-code-use-browser" type="button">Open browser</button>
                             </div>
                             <div id="code-use-status" aria-live="polite"></div>
+                            <p class="starting-points-hint">Saved locally, including source and diagnostics. AI tools can read this history when used. <a href="/field-docs/privacy/">What stays local and what leaves</a></p>
                         </div>
                         <div class="semantic-search-panel">
                             <div class="semantic-search-header">
@@ -3850,8 +3858,12 @@
             if (payload && payload.filename) openDocument(payload.filename);
         } catch (error) {
             console.error("Failed to open starting point", name, error);
+            setCreateStatus(`Could not open ${name}: ${error.message}. See the installation guide or report the error.`, true);
         }
     }
+
+    document.getElementById("open-first-steps").addEventListener("click", () => openStartingPoint("first-steps"));
+    document.getElementById("open-first-graphics").addEventListener("click", () => openStartingPoint("first-graphics"));
 
     function revealDocumentLabel() {
         const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();

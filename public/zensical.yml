@@ -11,6 +11,8 @@ nav:
   # for, and an arc one heading over from it was an arc nobody found.
   - Start Here:
     - Installation: installation.md
+    - Your First Five Minutes: first_steps.md
+    - Your Code, AI and Local History: privacy.md
     - Survival Guide: survivalGuide.md
     - Kotlin Syntax Overview: kotlin_overview.md
     # Above the Tour, not after it: "Where to Go Next" is the arc's exit ramp onto the rest of the

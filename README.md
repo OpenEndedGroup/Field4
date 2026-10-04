@@ -3,6 +3,18 @@
 Field 4 is a Kotlin-based live-coding environment for graphics, exploratory
 data visualization, and new media art.
 
+Edit a number, launch the code, and watch a drawing change. Inspect values beside the code,
+stop the animation, and keep the edited document. The first example runs without a GPU driver,
+Python or an AI key.
+
+[![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
+
+[Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
+[Your first five minutes](public/docs/first_steps.md)
+
+**AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
+provider/account. [What stays local and what leaves](public/docs/privacy.md).
+
 Project site and user documentation: https://openendedgroup.com/field4
 
 ## Status
@@ -87,6 +99,10 @@ optional Python prerequisites or Vulkan diagnostics. It prints a package install
 requires explicit confirmation before running commands. Reopen it with `./field.sh --setup`
 (Windows: `field.bat --setup`). Noninteractive launches skip the questions; automation may set
 `AFIELD_FIRST_RUN=skip`.
+
+When Welcome opens, click **Start here: a moving drawing**. It gives you an editable copy with
+launch, edit, inspect, stop and reopen instructions. **Next: native graphics** opens a small
+Vulkan example when you are ready for a native window.
 
 Check prerequisites without downloading or building with `./field.sh --check-install`.
 For browser/SSH use without Electron or native UI bridge compilers, use `./field.sh --server-only`.

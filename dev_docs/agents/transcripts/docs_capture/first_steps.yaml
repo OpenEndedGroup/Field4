@@ -1,0 +1,24 @@
+name: first_steps
+description: Capture the first-steps template, using its shipped code.
+operations:
+- create:
+    box: first_steps_drawing
+    name: First steps · a moving drawing
+    frame:
+      x: 70.0
+      y: 70.0
+      w: 350.0
+      h: 100.0
+    properties:
+      code: "// Launch: Alt+Up. Stop: Alt+Down. On a Mac, Alt is Option.\nvar petals\
+        \ = 5 // Change 5 to 8, then launch again.\nprintln(petals) // Field shows\
+        \ this value beside the code.\nvar phase = 0.0\n\nloop {\n    phase += 0.025\n\
+        \    val curve = fline {\n        for (i in 0..360) {\n            val angle\
+        \ = i * Math.PI / 180.0\n            val radius = 100.0 + 35.0 * Math.sin(petals\
+        \ * angle + phase)\n            val x = 160.0 + radius * Math.cos(angle)\n\
+        \            val y = 160.0 + radius * Math.sin(angle)\n            if (i ==\
+        \ 0) moveTo(x, y) else lineTo(x, y)\n        }\n        thickness = 2.5\n\
+        \        color = vec(0.3, 0.85, 1.0, 1.0)\n    }\n    lines(curve, w = 320.0,\
+        \ h = 320.0)\n    true\n}\n\n// Field autosaves edits. Stop, close this tab,\
+        \ then reopen your copy\n// from Welcome: your edited code is there; launch\
+        \ it to animate again.\n"
