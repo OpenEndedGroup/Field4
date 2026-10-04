@@ -948,19 +948,53 @@ pre code {
     gap: 2px 12px;
     margin: 2px 6px;
     color: var(--ai-chat-ai-fg, var(--field-fg-muted));
-    opacity: 0.75;
     font: 10px/1.5 var(--field-font);
 }
 
 .ai-chat-status {
     min-width: 0;
     overflow-wrap: anywhere;
+    opacity: 0.75;
 }
 
 .ai-chat-status + .ai-chat-status::before {
     content: "·";
     margin-right: 12px;
     opacity: 0.5;
+}
+
+/* The live tail of a running turn ("Waiting for model"): a bright band sweeps through the text.
+   The text rests at its neighbours' dimmed level (the 0.75 above, moved into the colour so the
+   band can reach full brightness). outputareas2.js pins each sweep's startTime to the document
+   clock, so re-rendering the thread for the next status continues the sweep instead of
+   restarting it. */
+.ai-chat-status:has(> .ai-chat-shimmer) {
+    opacity: 1;
+}
+
+.ai-chat-shimmer {
+    --ai-chat-shimmer-rest: color-mix(in srgb, var(--ai-chat-ai-fg, var(--field-fg-muted)) 75%, transparent);
+    color: transparent;
+    background: linear-gradient(100deg,
+        var(--ai-chat-shimmer-rest) 40%,
+        var(--field-fg-strong) 50%,
+        var(--ai-chat-shimmer-rest) 60%) 0 0 / 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: ai-chat-shimmer 2s linear infinite;
+}
+
+@keyframes ai-chat-shimmer {
+    from { background-position: 100% 0; }
+    to { background-position: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-chat-shimmer {
+        animation: none;
+        color: var(--field-fg-strong);
+        background: none;
+    }
 }
 
 .ai-chat-progress summary {
