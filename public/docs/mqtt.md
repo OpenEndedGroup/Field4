@@ -148,3 +148,4 @@ restarts or the network drops. `print(mqtt)` shows its state and message counts.
 - No TLS (`mqtts://`, port 8883) and no WebSocket transport.
 - QoS 2 is accepted but delivered as QoS 1: a message can arrive twice, never zero times.
 - The built-in broker keeps no sessions between connections and has no authentication.
+- `mqttBroker()` refuses packets over 1 MiB (`MqttBroker(maxPacketSize = ...)` raises it). Mosquitto 2.1 also drops a client that sends a 3 MB message unless `max_packet_size` is raised in its config.

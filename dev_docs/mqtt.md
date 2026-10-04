@@ -41,4 +41,28 @@ User page: `public/docs/mqtt.md`. Demo: `public/docs/assets/mqtt_demo/`.
 - Guards: checkCodebaseReference, checkKDocAttachment, citationGates green (after recounting
   `logging.md` lprintln numerals). `run_python_tests.py`: 977/982, the 2 failures are
   `test_check_doc_offline_links` wanting `python_cv.md` in CARRIER_PAGES — present at base, untouched.
-- Not checked: interop with a third-party broker or client (mosquitto not installed), MQTT 5, TLS.
+- Interop with Eclipse Mosquitto 2.1.2 (Homebrew), `MqttMosquittoInteropTest`, opt-in: it skips
+  through a JUnit assumption when `mosquitto` is absent (`MOSQUITTO_HOME` overrides the search),
+  starts its own broker on a free port per test, and destroys every process in teardown.
+  - `MqttClient` -> `mosquitto`: connect; `+` and `#` subscriptions; QoS 0 and 1 both ways
+    (mosquitto logs our PUBACK); retained both ways and cleared by an empty retained publish;
+    last will on a socket closed with RST and no DISCONNECT, none on `close()`; keepalive 1 s
+    (>= 3 PINGREQ, no timeout, no reconnect); broker restart -> reconnect + resubscribe;
+    20 kB and 3 MB payloads both ways (needs `max_packet_size` in mosquitto.conf: 2.1's default
+    disconnects with "oversize packet"); unicode topics both ways; `mosquitto_pub -q 2` to a
+    QoS 2 subscription arrives once and the PUBREC/PUBREL/PUBCOMP flow completes (mosquitto
+    grants QoS 2 to us; the downgrade to 1 is only our broker's).
+  - `mosquitto_pub`/`mosquitto_sub -V mqttv311` -> `MqttBroker`: `+`/`#`, QoS 0/1/2 (2 completes
+    as PUBREC/PUBCOMP, forwarded as 1), retained + clear, will of a SIGKILLed `mosquitto_sub`,
+    3 MB payload (with `maxPacketSize` raised; the default is 1 MiB), unicode topics.
+    `-V mqttv5` is refused and the broker stays healthy.
+  - mosquitto logs scanned for protocol errors / malformed packets: none.
+  - Bugs it found, fixed with regression tests in `MqttInteropRegressionTest` (no mosquitto
+    needed): mosquitto sends one copy per matching subscription, so overlapping filters (`a/+`
+    and `a/#`) fired every handler twice — the client now swallows the N-1 identical copies that
+    arrive within 250 ms (a genuine identical repeat inside that window, on a single-copy broker,
+    is lost); the client could write a PUBLISH or SUBSCRIBE before CONNECT (now nothing goes out
+    before CONNACK; it is queued); an MQTT 5 CONNECT got a 3.1.1 CONNACK that `mosquitto_pub`
+    reported as "Malformed packet" (now a v5 CONNACK, reason 0x84 "unsupported protocol version").
+- Not checked: TLS, WebSockets, persistent sessions against mosquitto (`cleanSession = false`),
+  username/password against an authenticating broker, other brokers (EMQX, HiveMQ, AWS IoT).
