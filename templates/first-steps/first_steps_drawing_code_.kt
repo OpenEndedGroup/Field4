@@ -4,19 +4,25 @@ println(petals) // Field shows this value beside the code.
 var phase = 0.0
 
 loop {
-    phase += 0.025
-    val curve = fline {
-        for (i in 0..360) {
-            val angle = i * Math.PI / 180.0
-            val radius = 100.0 + 35.0 * Math.sin(petals * angle + phase)
-            val x = 160.0 + radius * Math.cos(angle)
-            val y = 160.0 + radius * Math.sin(angle)
-            if (i == 0) moveTo(x, y) else lineTo(x, y)
+    phase += 0.045
+    // Each curve is a little further into the wave: together they make a ribbon.
+    val ribbon = (0..23).map { layer ->
+        val depth = layer / 23.0
+        fline {
+            for (i in 0..180) {
+                val angle = i * Math.PI / 90.0
+                val wave = Math.sin(petals * angle + phase - 4.0 * depth)
+                val radius = 35.0 + 90.0 * depth + 18.0 * wave
+                val twist = angle + 0.4 * Math.sin(phase + 2.0 * depth)
+                val x = 160.0 + radius * Math.cos(twist)
+                val y = 160.0 + radius * Math.sin(twist)
+                if (i == 0) moveTo(x, y) else lineTo(x, y)
+            }
+            thickness = 0.8
+            color = vec(0.55 + 0.4 * depth, 0.85 + 0.15 * depth, 1.0, 0.8)
         }
-        thickness = 2.5
-        color = vec(0.3, 0.85, 1.0, 1.0)
     }
-    lines(curve, w = 320.0, h = 320.0)
+    lines(ribbon, w = 320.0, h = 320.0)
     true
 }
 

@@ -12,13 +12,18 @@ operations:
     properties:
       code: "// Launch: Alt+Up. Stop: Alt+Down. On a Mac, Alt is Option.\nvar petals\
         \ = 5 // Change 5 to 8, then launch again.\nprintln(petals) // Field shows\
-        \ this value beside the code.\nvar phase = 0.0\n\nloop {\n    phase += 0.025\n\
-        \    val curve = fline {\n        for (i in 0..360) {\n            val angle\
-        \ = i * Math.PI / 180.0\n            val radius = 100.0 + 35.0 * Math.sin(petals\
-        \ * angle + phase)\n            val x = 160.0 + radius * Math.cos(angle)\n\
-        \            val y = 160.0 + radius * Math.sin(angle)\n            if (i ==\
-        \ 0) moveTo(x, y) else lineTo(x, y)\n        }\n        thickness = 2.5\n\
-        \        color = vec(0.3, 0.85, 1.0, 1.0)\n    }\n    lines(curve, w = 320.0,\
-        \ h = 320.0)\n    true\n}\n\n// Field autosaves edits. Stop, close this tab,\
-        \ then reopen your copy\n// from Welcome: your edited code is there; launch\
-        \ it to animate again.\n"
+        \ this value beside the code.\nvar phase = 0.0\n\nloop {\n    phase += 0.045\n\
+        \    // Each curve is a little further into the wave: together they make a\
+        \ ribbon.\n    val ribbon = (0..23).map { layer ->\n        val depth = layer\
+        \ / 23.0\n        fline {\n            for (i in 0..180) {\n             \
+        \   val angle = i * Math.PI / 90.0\n                val wave = Math.sin(petals\
+        \ * angle + phase - 4.0 * depth)\n                val radius = 35.0 + 90.0\
+        \ * depth + 18.0 * wave\n                val twist = angle + 0.4 * Math.sin(phase\
+        \ + 2.0 * depth)\n                val x = 160.0 + radius * Math.cos(twist)\n\
+        \                val y = 160.0 + radius * Math.sin(twist)\n              \
+        \  if (i == 0) moveTo(x, y) else lineTo(x, y)\n            }\n           \
+        \ thickness = 0.8\n            color = vec(0.55 + 0.4 * depth, 0.85 + 0.15\
+        \ * depth, 1.0, 0.8)\n        }\n    }\n    lines(ribbon, w = 320.0, h = 320.0)\n\
+        \    true\n}\n\n// Field autosaves edits. Stop, close this tab, then reopen\
+        \ your copy\n// from Welcome: your edited code is there; launch it to animate\
+        \ again.\n"

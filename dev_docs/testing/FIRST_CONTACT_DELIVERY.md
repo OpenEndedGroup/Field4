@@ -12,8 +12,11 @@
   edit, relaunched with keyboard input, checked the resulting value in the actual output DOM, and
   stopped. The capture is reproducible through its docs fence and macro. Both early five-petal and
   final eight-petal frames were visually inspected. No computed output was substituted.
-- README GIF is a scaled conversion of the 14-second recording at its original playback speed.
+- README GIF is a scaled conversion of the recording at its original playback speed.
   The docs MP4 remains the runner's original.
+- The first drawing now renders 24 layered paths with a travelling wave and changing twist.
+  The real editor capture was regenerated and inspected at five and eight petals; the beginner
+  edit, inline value and launch/stop gestures are unchanged.
 - The launch recording demonstrates only Alt+Up. Its capture checks the actual key overlay reads
   `Alt+↑` (or `⌥↑` on macOS); four Node tests cover modifier ordering, duplicate mouse events,
   typing and macOS chords (`node --test tools/test_keycast.cjs`).

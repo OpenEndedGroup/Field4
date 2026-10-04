@@ -32,7 +32,7 @@ ui.pause(1200)
 
 1. Select **First steps · a moving drawing** to open its code.
 2. Press **Alt+Up** to launch it. On macOS, use **Option+Up**. Open the output disclosure below
-   the box if the drawing is collapsed. A cyan curve moves as its phase changes.
+   the box if the drawing is collapsed. Fine blue-white curves ripple and twist together.
 3. Change `var petals = 5` to `var petals = 8`, then press **Alt+Up** again. The shape changes;
    `println(petals)` shows the actual value beside the code. Editing alone does not evaluate code.
 4. Press **Alt+Down** (**Option+Down** on macOS) to stop. The drawing freezes.
@@ -43,9 +43,12 @@ ui.pause(1200)
 If a window manager intercepts the shortcuts, use Field's editor command palette (**F1**) to
 find the launch and stop commands. Press **?** on the canvas for the shortcut card.
 
-The drawing is a real `FLine`, rendered into the browser output. Its loop computes a fresh path
-from `petals` and `phase`; no native Vulkan window is involved. The code is in the document,
+The drawing uses real `FLine` paths, rendered into the browser output. Its loop computes a ribbon
+from `petals` and `phase`; no native Vulkan window is involved. Each layer follows the same wave
+with a small delay, making the lines bunch together and spread apart. The code is in the document,
 including the comments that walk through these steps.
+
+The fine-line motion takes inspiration from [Étienne Jacob’s animation gallery](https://bleuje.com/animationsite/2024_1/).
 
 ## See it happen
 
