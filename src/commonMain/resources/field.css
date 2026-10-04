@@ -1011,6 +1011,19 @@ pre code {
     color: var(--ai-chat-you-fg, var(--field-fg));
 }
 
+/* A message sent while the turn runs, before the agent has read it. */
+.ai-chat-turn.queued {
+    border-right-style: dashed;
+    opacity: 0.65;
+}
+
+.ai-chat-queued-label {
+    font-size: 9px;
+    font-style: normal;
+    opacity: 0.8;
+    margin-bottom: 2px;
+}
+
 /* Rewind / edit-and-resend on a request: quiet until the turn is hovered. The server refuses them while a turn runs. */
 .ai-chat-turn-actions {
     display: flex;

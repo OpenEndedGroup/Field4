@@ -577,6 +577,11 @@ fun installAi4() {
     val threadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
+    /**
+     * The running turn's [AiTurnInbox] per box chat key. Its monitor also guards [activeBoxChats] wherever a
+     * turn starts or ends, so a message is either queued in a live turn's inbox or starts a turn of its own.
+     */
+    val turnInboxes = ConcurrentHashMap<String, AiTurnInbox>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
     /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
     val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
@@ -747,6 +752,28 @@ fun installAi4() {
             ?.let { File(it).name }
             ?: "global-chat"
 
+    /**
+     * Messages a turn ended without delivering (the model stopped calling tools first) become the box's next
+     * turn, one request for all of them, sent through `ai-assist` as the panel sent them.
+     */
+    fun startFollowUpTurn(info: SessionInformation, leftovers: List<AiTurnInbox.Pending>) {
+        val assist = AiTurnInbox.combined(leftovers) ?: return
+        ai4Scope.launch {
+            val previousInfo = thisSessionInfo.get()
+            val previousSession = thisSession.get()
+            thisSessionInfo.set(info)
+            leftovers.lastOrNull { it.session != null }?.session?.let { thisSession.set(it) }
+            try {
+                handle(Message("ai-assist").payload(assist)) { }
+            } catch (t: Throwable) {
+                lprintln("warning,ai4", "Could not start a turn for the messages sent during the last one: ${t.message ?: t::class.java.simpleName}")
+            } finally {
+                if (previousInfo == null) thisSessionInfo.remove() else thisSessionInfo.set(previousInfo)
+                if (previousSession == null) thisSession.remove() else thisSession.set(previousSession)
+            }
+        }
+    }
+
     fun parseFileRef(raw: String, defaultProperty: String? = null): FileRef? {
         if (!raw.startsWith("afield://")) return null
         val parts = raw.removePrefix("afield://").split("/", limit = 3)
@@ -908,8 +935,11 @@ fun installAi4() {
             agentMemoryByKey.keys.removeIf { it.startsWith(key) }
             send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", "")))
         }
+        // A panel opened mid-turn shows what is waiting for that turn too; the saved transcript never holds it.
+        val queued = turnInboxes[key]?.queuedMarkdown().orEmpty()
+        val shown = AiBoxConversation.read(target).let { if (queued.isEmpty()) it else it.trimEnd() + "\n" + queued }
         reply(Message("ai-chat-history").payload(AiBoxChatReply(
-            request.uid, AiBoxConversation.read(target), if (busy) "Wait for the current AI turn before clearing." else ""
+            request.uid, shown, if (busy) "Wait for the current AI turn before clearing." else ""
         )))
         Handled.yes
     })
@@ -1119,6 +1149,19 @@ fun installAi4() {
                 "misheard identifiers, names and symbols. If a correction changes what you would do, " +
                 "say which reading you took.]\n\n" + expandedExtraPrompt
         } else expandedExtraPrompt
+
+        // Sent from the panel while this box's turn runs: give it to that turn (AiTurnInbox), never refuse it.
+        fun queueForRunningTurn(): Boolean {
+            if (!exec.queueIfBusy || exec.kind != "general") return false
+            val shown = (listOf(expandedExtraPrompt.trim()) + exec.images.map { "![attachment]($it)" })
+                .filter { it.isNotBlank() }.joinToString("\n\n")
+            val pending = AiTurnInbox.Pending(shown, modelUserPrompt, exec.images, exec, thisSession.get())
+            val inbox = synchronized(turnInboxes) { turnInboxes[boxChatKey]?.takeIf { it.offer(pending) } } ?: return false
+            inbox.onQueued?.invoke()
+            return true
+        }
+        if (boxChatKey in activeBoxChats && queueForRunningTurn()) return@mutableSetOf Handled.yes
+
         val agentMemory = agentMemoryByKey.computeIfAbsent(conversationKey) { AgentMemoryState() }
 
         val preamblePropertyRegex =
@@ -1755,7 +1798,13 @@ fun installAi4() {
             }
         }
 
-        if (!activeBoxChats.add(boxChatKey)) {
+        val inbox = AiTurnInbox()
+        val started = synchronized(turnInboxes) {
+            activeBoxChats.add(boxChatKey).also { if (it) turnInboxes[boxChatKey] = inbox }
+        }
+        if (!started) {
+            // A turn began after the check above; or the box is busy with something that takes no messages.
+            if (queueForRunningTurn()) return@mutableSetOf Handled.yes
             notify("This box already has an AI turn running.", "AI4")
             return@mutableSetOf Handled.yes
         }
@@ -1811,12 +1860,24 @@ fun installAi4() {
                     live = latestProgressOpen, finalText = aiText.takeIf { it.isNotEmpty() }, additions = additions)
             }
 
+            // The panel is sent the transcript plus whatever waits in the inbox; only the transcript is saved.
+            fun sendToPanel(markdown: String) {
+                val queued = inbox.queuedMarkdown()
+                val shown = if (queued.isEmpty()) markdown else markdown.trimEnd() + "\n" + queued
+                _send(Message("set-output").payload(Set_output(box.id, "outputarea", "ai-chat", shown)), document = escapedDocPath)
+            }
+
             fun pushLiveConversation(latestProgressOpen: Boolean = true) {
                 if (!streamActive.get()) return
-                val payload = Set_output(box.id, "outputarea", "ai-chat",
-                    renderLiveConversation(latestProgressOpen = latestProgressOpen))
-                saveHistory(payload.value)
-                _send(Message("set-output").payload(payload), document = escapedDocPath)
+                val markdown = renderLiveConversation(latestProgressOpen = latestProgressOpen)
+                saveHistory(markdown)
+                sendToPanel(markdown)
+            }
+
+            inbox.onQueued = { pushLiveConversation(latestProgressOpen = true) }
+            inbox.onDelivered = { taken ->
+                synchronized(liveLock) { taken.forEach { liveConversation.user(it.shown) } }
+                pushLiveConversation(latestProgressOpen = true)
             }
 
             fun visibleUserBlockForKind(): String = when (exec.kind) {
@@ -1868,8 +1929,7 @@ fun installAi4() {
                     additions = additions
                 )
                 saveHistory(next)
-                val payload = Set_output(box.id, "outputarea", "ai-chat", next)
-                _send(Message("set-output").payload(payload), document = escapedDocPath)
+                sendToPanel(next)
                 return next
             }
 
@@ -1930,6 +1990,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -1966,6 +2027,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = chatGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onTextDelta = { chunk ->
@@ -2017,6 +2079,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -2052,6 +2115,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -2087,6 +2151,7 @@ fun installAi4() {
                             documentGuides = documentGuides,
                             focus = focus,
                             fieldGraph = replyGraph,
+                            inbox = inbox,
                             workspaceSymbolSearch = workspaceSymbolSearch,
                             dynamicTools = documentAiTools,
                             onProgress = progressCallback
@@ -2179,8 +2244,7 @@ fun installAi4() {
                         additions = additions
                     )
                     saveHistory(next)
-                    val payload = Set_output(box.id, "outputarea", "ai-chat", next)
-                    _send(Message("set-output").payload(payload), document = escapedDocPath)
+                    sendToPanel(next)
                     val changedEntries = provisionalDelta(provisionalBeforeAi, provisionalEntries(docPath))
                     if (changedEntries.isNotEmpty()) {
                         setProvisionalArchive(
@@ -2260,8 +2324,13 @@ fun installAi4() {
             }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
             if (failure != null) AiBoxConversation.failed(box,
                 "AI ${exec.kind} ${if (isAiTurnCancellation(failure)) "cancelled" else "failed"}: ${failure.message ?: failure::class.java.simpleName}")
-            activeBoxChats.remove(boxChatKey)
+            val undelivered = synchronized(turnInboxes) {
+                turnInboxes.remove(boxChatKey, inbox)
+                activeBoxChats.remove(boxChatKey)
+                inbox.close()
+            }
             AiBoxConversation.running(box, false)
+            if (undelivered.isNotEmpty()) startFollowUpTurn(sessionInfo, undelivered)
         }
         Handled.yes
     })

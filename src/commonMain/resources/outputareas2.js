@@ -2070,6 +2070,8 @@ function ensureAiChat(container, uid, property) {
                 const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
                 const payload = buildAiChatPayload(chatUid(), chatProperty(), text, images);
                 if (options.dictated) payload.dictated = true;
+                // While this box's turn runs, the server gives the message to that turn instead of refusing it.
+                payload.queueIfBusy = true;
                 noteAiChatUsed(container);
                 sendAiChat(payload);
                 attachments.length = 0;

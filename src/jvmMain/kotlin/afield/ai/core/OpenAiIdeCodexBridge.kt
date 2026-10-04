@@ -586,6 +586,13 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
+            // What the person wrote while this round ran (AiTurnInbox), after every call's output.
+            callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
+                val text = AiTurnInbox.modelText(taken)
+                toolOutputs += buildMessageItem(ResponseInputItem.Message.Role.USER, text, taken.flatMap { it.images })
+                info("user interjection: ${taken.size} message(s), ${text.length} chars")
+                toolIo("user_interjection", mapOf("round" to (rounds + 1), "messages" to taken.size, "text" to text))
+            }
 
             info("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
