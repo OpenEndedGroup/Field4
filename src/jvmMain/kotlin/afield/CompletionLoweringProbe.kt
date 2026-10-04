@@ -72,7 +72,8 @@ expect:
  *   AFIELD_LOWERING_CORPUS        comma-separated dirs (default: starting points + templates)
  *   AFIELD_LOWERING_DOCS          max documents (default 200)
  *   AFIELD_LOWERING_CARETS        carets sampled per box (default 4)
- *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 4000 — i.e. the whole corpus)
+ *   AFIELD_LOWERING_MAX_REQUESTS  cap on completion requests (default 0, no cap; a cap that cuts the
+ *                                 sweep short fails the gate, so use it with `--report`)
  *   AFIELD_LOWERING_SEED          RNG seed (default 42)
  *   AFIELD_LOWERING_JSON          write the machine summary here (default build/completion-lowering/report.json)
  *   AFIELD_LOWERING_SKIP_RECALL   set to 1 to run the invariant only
@@ -236,33 +237,34 @@ object CompletionLoweringProbe {
      * towards 60, widen the sample rather than the margin.
      *
      * `minAttempts` is ~90% of the sample size observed with the same corpus; it only falls if the corpus
-     * shrinks or the caret sweep stops recognising a kind of site.
+     * shrinks or the caret sweep stops recognising a kind of site. Re-cut 2026-10-04 on the 595-box corpus
+     * (17,426 questions, 1579–2272 per bucket), three times the corpus the recall floors were cut on.
      */
     private val FLOORS = listOf(
         // A bare `recv.` — the hardest and most-typed question, and the one that regresses first when
         // member/extension discovery breaks (this bucket is how "extensions by receiver" was measured).
-        Floor("dot/0/blank", minAttempts = 432, minPercent = 94, observed = 97),
-        Floor("dot/0/keep", minAttempts = 432, minPercent = 93, observed = 96),
+        Floor("dot/0/blank", minAttempts = 1420, minPercent = 94, observed = 97),
+        Floor("dot/0/keep", minAttempts = 1420, minPercent = 93, observed = 96),
         // Two characters typed: prefix filtering plus resolution. A gap to `dot/0` is a discovery problem.
-        Floor("dot/2/blank", minAttempts = 432, minPercent = 94, observed = 97),
-        Floor("dot/2/keep", minAttempts = 432, minPercent = 93, observed = 96),
+        Floor("dot/2/blank", minAttempts = 1420, minPercent = 94, observed = 97),
+        Floor("dot/2/keep", minAttempts = 1420, minPercent = 93, observed = 96),
         // Name position: scope, the index, and implicit-receiver extensions.
-        Floor("name/2/blank", minAttempts = 628, minPercent = 91, observed = 94),
-        Floor("name/2/keep", minAttempts = 528, minPercent = 91, observed = 94),
+        Floor("name/2/blank", minAttempts = 2040, minPercent = 91, observed = 94),
+        Floor("name/2/keep", minAttempts = 1720, minPercent = 91, observed = 94),
         // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
-        Floor("pkg/0/blank", minAttempts = 466, minPercent = 94, observed = 97),
-        Floor("pkg/0/keep", minAttempts = 466, minPercent = 93, observed = 96),
-        Floor("pkg/2/blank", minAttempts = 466, minPercent = 94, observed = 97),
-        Floor("pkg/2/keep", minAttempts = 466, minPercent = 94, observed = 97),
+        Floor("pkg/0/blank", minAttempts = 1550, minPercent = 94, observed = 97),
+        Floor("pkg/0/keep", minAttempts = 1550, minPercent = 93, observed = 96),
+        Floor("pkg/2/blank", minAttempts = 1550, minPercent = 94, observed = 97),
+        Floor("pkg/2/keep", minAttempts = 1550, minPercent = 94, observed = 97),
         // The headline number, gated too — not because the buckets don't cover it, but because it is what
         // gets quoted, and a change that trades one bucket off against another should have to say so.
         Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 96),
     )
 
-    /** The sweep must have asked something like the whole corpus (5277 questions); a truncated sweep is
-     *  not a gate — and with the cap raised past what the corpus yields, a short run means something
-     *  stopped producing questions. */
-    private const val MIN_REQUESTS = 4800
+    /** The sweep must have asked something like the whole corpus (17,426 questions on 2026-10-04). With no
+     *  cap, a short run means something stopped producing questions; a cap that cuts the sweep short is
+     *  its own failure ("the sweep covered the whole corpus"). */
+    private const val MIN_REQUESTS = 15680
 
     @JvmStatic
     fun main(args: Array<String>) {
@@ -285,11 +287,12 @@ object CompletionLoweringProbe {
             .split(',').map { it.trim() }.filter { it.isNotEmpty() }.map(::File).filter { it.isDirectory }
         val maxDocs = env("AFIELD_LOWERING_DOCS", "200").toInt()
         val caretsPerBox = env("AFIELD_LOWERING_CARETS", "4").toInt()
-        // High enough to sweep the whole corpus (~4.6k questions at 4 carets per kind per box, ~2 minutes
-        // at the measured p50): a cap that BINDS turns the report into a sample, and makes the numbers
-        // depend on how many questions the corpus happens to yield. It stays a knob so an exploration run
-        // can be quick — but the gate needs the whole sweep, which is why MIN_REQUESTS is a floor too.
-        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "8000").toInt()
+        // No cap by default (0). A cap that BINDS turns the report into a sample, and makes the numbers
+        // depend on how many questions the corpus happens to yield. The old fixed cap of 8000 did exactly
+        // that once the corpus tripled: the round-robin queue cut each box's later questions, so `dot/2`
+        // fell under its sample-size floor while `dot/0` looked fine. It stays a knob so an exploration
+        // run can be quick, but a cap that cuts the sweep short fails the gate.
+        val maxRequests = env("AFIELD_LOWERING_MAX_REQUESTS", "0").toInt()
         val seed = env("AFIELD_LOWERING_SEED", "42").toLong()
         val jsonOut = File(env("AFIELD_LOWERING_JSON", "build/completion-lowering/report.json"))
         val skipRecall = env("AFIELD_LOWERING_SKIP_RECALL", "0") == "1"
@@ -380,6 +383,8 @@ object CompletionLoweringProbe {
         val missedNames = Counter<String>()
         val missExamples = mutableListOf<String>()
         var requests = 0
+        var available = 0   // questions the corpus yields
+        var asked = 0       // of those, how many the cap let through
         val times = mutableListOf<Long>()
         if (!skipRecall) {
             println()
@@ -420,13 +425,16 @@ object CompletionLoweringProbe {
             }
             val queue = ArrayList<Ask>()
             var round = 0
-            while (queue.size < maxRequests) {
+            while (maxRequests <= 0 || queue.size < maxRequests) {
                 val added = perCase.count { round < it.size }
                 if (added == 0) break
                 perCase.forEach { if (round < it.size) queue += it[round] }
                 round++
             }
-            for (ask in queue.take(maxRequests)) {
+            available = perCase.sumOf { it.size }
+            val sweep = if (maxRequests > 0) queue.take(maxRequests) else queue
+            asked = sweep.size
+            for (ask in sweep) {
                 val (c, t, typed, mode) = ask
                 val (snippet, cursor) = snippetFor(c.code, t.offset, mode)
                 if (cursor > snippet.length) continue
@@ -502,6 +510,11 @@ object CompletionLoweringProbe {
         )
         if (!skipRecall) {
             hard("the sweep actually ran", requests >= MIN_REQUESTS, "$requests requests (floor $MIN_REQUESTS)")
+            hard(
+                "the sweep covered the whole corpus", asked == available,
+                "$asked of $available questions asked" +
+                    if (asked < available) " — AFIELD_LOWERING_MAX_REQUESTS=$maxRequests made this a sample" else "",
+            )
             for (f in FLOORS) {
                 val n = if (f.bucket == "TOTAL") attempts.counts.values.sum() else attempts.counts[f.bucket] ?: 0
                 val h = if (f.bucket == "TOTAL") recall.counts.values.sum() else recall.counts[f.bucket] ?: 0
