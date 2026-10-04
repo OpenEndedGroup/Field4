@@ -4194,6 +4194,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-split-drawing",
+            description="On a split canvas the drawing layer has one Excalidraw per pane following that pane's camera; a mark drawn in a side pane lands under the pointer, reaches every mount and the server, and survives unsplitting.",
+            document=f"ui-regression-canvas-split-drawing-{int(time.time())}",
+            commands=[
+                "new-box --name DrawA --x 100 --y 100",
+                "new-box --name DrawD --x 500 --y 400",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drawing.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="canvas-split-drag",
             description="On a split canvas, a box dragged across a divider is not clipped mid-drag and lands where it was dropped, in the other pane's camera.",
             document=f"ui-regression-canvas-split-drag-{int(time.time())}",

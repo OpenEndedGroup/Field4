@@ -2,8 +2,8 @@
 
 Status: P0 (the camera seam) landed on `main` 2026-10-04. P1 (static split, palette commands),
 P2 (divider handles, corner grip, marquee) and P3 (connections, hints, arcs, snapping guides,
-bookmarks) built on `canvas/split-panes-p1`. P4 (drawing layer per pane) and dragging a box
-across a divider are not started. Scouted 2026-10-04.
+bookmarks), P4 (drawing layer per pane) and dragging a box across a divider are built on
+`canvas/split-panes-p1`. Scouted 2026-10-04.
 
 Decided (Marc, 2026-10-04): **quadrant membership by position** (Option Q below), **shared zoom**,
 **split, not freeze** (every pane scrolls along its linked axes).
@@ -261,7 +261,7 @@ Known gaps after P1, each owned by a later phase:
 deferred ("I don't need dragging across dividers right now, but drag handles on the dividers are
 very important").
 
-- ~~crossing a divider during a drag and reparenting on drop~~ (deferred; the P1 jump remains)
+- ~~crossing a divider during a drag and reparenting on drop~~ (deferred, then built 2026-10-05; see below)
 - ~~resize, marquee, new box at cursor~~
 - ~~frameSelected and navigation per pane~~
 - ~~splitter grip and divider dragging~~
@@ -334,7 +334,67 @@ Negative controls:
 - The bookmark echo check alone has slack, because after the clamp every pane shares the
   split-time camera. The divider checks are what catch the echo.
 
-**P4: Excalidraw per pane.**
+**Dragging a box across a divider.** Built 2026-10-05.
+
+- **At drag start** (`CanvasCamera.beginBoxDrag`), each dragged top-level box moves, with
+  `moveBefore` so its outputs keep their state, onto an unclipped `.field-drag-canvas` above the
+  panes. There is one per origin pane, carrying that pane's camera in window coordinates. Nothing
+  moves on screen, and the box is no longer cut off at the divider.
+  - `paneOf` maps a box on a drag canvas to its origin pane.
+  - `visibleRect` doesn't clip it, so its connections follow it across the divider.
+- **At drop** (`endBoxDrag`), the box's on-screen top-left corner picks the destination pane, as
+  its frame origin picks the quadrant. A box over a different pane gets the frame that keeps it
+  where it was let go, seen through that pane's camera. If the corner falls outside every pane,
+  the frame is clamped into the destination's quadrant.
+  - Main.kt applies those frames, sends them as one `set-rects`, then `place`s the boxes.
+- **Regression `canvas-split-drag`** does a real Playwright drag, with `drag-box --hold`, a
+  page-eval while the button is held, then `mouse-up`. Mid-drag it checks the box is on a drag
+  canvas and visible past the divider. After the drop it checks: no jump, the box is in the right
+  pane, the frame is through the right pane's camera, and the drag canvas is gone.
+  - Negative control: skipping the frame recompute fails with `box jumped on drop`.
+
+**P4: Excalidraw per pane.** Built 2026-10-05, without rebuilding the vendored bundle; the
+existing `mountDrawingLayer` surface was enough.
+
+- **One mount per pane** (`syncPaneMounts` in `drawingLayer.kt`). Each mount's host
+  (`.field-drawing-pane`) is sized to its pane, and its camera is `(pane.t - pane origin) / zoom`.
+  Every mount holds the whole scene; because a pane only shows its own quadrant, nothing needs
+  clipping.
+  - The main pane's mount is kept across split changes, so its undo history survives. The other
+    mounts are rebuilt from its elements.
+  - Hosts stay in pane order.
+- **Scene sync.** A change in any mount goes to the server (`notation-scene`, as before) and
+  straight into the other mounts through `applyRemoteScene`. Server echoes apply to every mount.
+  - An Excalidraw pan in a pane (the hand tool, or the wheel while the layer is active) pans
+    that pane: `panViewportForDrawingLayer(..., pane)`.
+- **Toolbar.** Only the main pane's mount shows Excalidraw's UI. A blanket CSS rule hides every
+  child of a mirror's `.excalidraw-container` except the canvas wrapper, the SVG layer and the
+  text editor.
+  - The rule has to cover both layouts: narrow panes get Excalidraw's mobile layout
+    (`App-top-bar`, `App-bottom-bar`).
+  - It uses `!important` because Excalidraw's CSS loads later at equal specificity.
+  - A first cut also hid `.excalidraw__canvas-wrapper`, so marks drawn in a mirror never showed.
+- **Tool following.** While the layer is active, the pointer entering a pane (with no button
+  held) copies the current tool into that pane's mount and focuses it (`followPointerAcrossPanes`).
+- **Fallout:** `--field-main-pane-clip` and `syncMainPaneClip` are gone; nothing is clipped to the
+  main pane any more.
+- **Regression `canvas-split-drawing`** checks:
+  - four mounts, each on its pane and following its camera, with A and D panned apart;
+  - no Excalidraw controls in any mirror, in a pane narrow enough for the mobile layout;
+  - the tool following the pointer into A;
+  - a rectangle drawn in A (synthetic pointer events, spread over frames) landing at the world
+    point under the pointer in A's camera, in every mount and on the root box;
+  - A's static canvas on screen and painted;
+  - unsplitting leaving one mount with the mark.
+- **Negative controls:**
+  - every mount on the main camera → `mount 0 follows its pane in x: -470 vs 0`;
+  - the old CSS → `mirror 0 shows controls: ... App-top-bar | App-bottom-bar`;
+  - hiding the canvas wrapper → `pane A static canvas is on screen`.
+- **Two test-only traps,** neither of them a product bug:
+  - Excalidraw processes pointer moves once per frame, so a synchronous burst of moves finalises
+    an empty shape, and `restoreElements` then drops it in the other mounts.
+  - A tool chosen through the API commits on React's schedule, so the test waits for it before
+    moving the pointer.
 
 ## 7. Persistence
 

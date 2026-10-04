@@ -2255,27 +2255,12 @@ private fun applyViewportTranslation(
         )
     }
 
-    drawingLayerViewportChanged(mainTranslation[0], mainTranslation[1])
+    drawingLayerViewportChanged()
     canvasGestures.requestConnectionGroupRebuild(translationOnly = !zoomChanged)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
         refreshSpatialNavTargets()
     }
-}
-
-/**
- * The window-sized layers still drawn through one camera (connection splines and hints, snapping
- * guides, the drawing layer) follow the main pane, so while the canvas is split they are clipped to
- * it through `--field-main-pane-clip` (field.css).
- */
-private fun syncMainPaneClip() {
-    val clip = if (!CanvasCamera.isSplit) "none" else {
-        val r = CanvasCamera.main.rect
-        val w = window.innerWidth.toDouble()
-        val h = window.innerHeight.toDouble()
-        "inset(${r.y}px ${w - r.x - r.w}px ${h - r.y - r.h}px ${r.x}px)"
-    }
-    document.documentElement?.asDynamic()?.style?.setProperty("--field-main-pane-clip", clip)
 }
 
 /** Moves the main pane's camera, for callers outside this file (bookmark restore). */
@@ -2291,21 +2276,21 @@ private fun panCanvasBy(dx: Double, dy: Double, pane: CanvasPane) {
 }
 
 /** The drawing layer was panned or zoomed from inside Excalidraw; move Field's canvas to match. */
-fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double) {
-    if (nextX == mainTranslation[0] && nextY == mainTranslation[1] && zoom == mainZoom) return
+fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double, pane: CanvasPane = CanvasCamera.main) {
+    if (nextX == pane.tx && nextY == pane.ty && zoom == mainZoom) return
     cancelNavigationPanAnimation()
     val clamped = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
     if (clamped == zoom) {
-        applyViewportTranslation(nextX, nextY, zoom = zoom)
+        applyViewportTranslation(nextX, nextY, zoom = zoom, pane = pane)
     } else {
-        // Excalidraw's range is wider than Field's. Keep the world point at the window centre
+        // Excalidraw's range is wider than Field's. Keep the world point at the pane centre
         // fixed while clamping, or the translation (computed for the unclamped zoom) would jump.
-        val r = CanvasCamera.main.rect
+        val r = pane.rect
         val cx = r.x + r.w / 2.0
         val cy = r.y + r.h / 2.0
         val worldX = (cx - nextX) / zoom
         val worldY = (cy - nextY) / zoom
-        applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped)
+        applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped, pane = pane)
     }
 }
 
@@ -2392,7 +2377,6 @@ private fun registerCanvasZoomActions() {
     window.asDynamic().splitCanvasAt = { cx: Double?, cy: Double? -> CanvasCamera.splitAt(cx, cy) }
     window.asDynamic().canvasPanesState = { CanvasCamera.state() }
     CanvasCamera.onCameraLayoutChanged = {
-        syncMainPaneClip()
         applyViewportTranslation(mainTranslation[0], mainTranslation[1])
         canvasGestures.requestConnectionGroupRebuild(translationOnly = false)
     }

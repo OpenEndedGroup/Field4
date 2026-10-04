@@ -1544,9 +1544,18 @@ body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-/* The drawing layer still follows only the main pane's camera; see syncMainPaneClip in Main.kt. */
-.field-drawing-layer {
-    clip-path: var(--field-main-pane-clip, none);
+/* The drawing layer has one Excalidraw per pane (drawingLayer.kt), each sized to its pane. Only
+   the main pane's shows Excalidraw's toolbar and menus; the tool follows the pointer into the others. */
+.field-drawing-pane {
+    position: absolute;
+    overflow: hidden;
+}
+
+/* Everything but the drawing itself (and the text editor, for typing a label there). Narrow panes
+   get Excalidraw's mobile layout (App-top-bar, App-bottom-bar) as well as the desktop one, and
+   Excalidraw's own CSS loads after this file, hence the blanket rule and !important. */
+.field-drawing-mirror .excalidraw-container > :not(canvas):not(.excalidraw__canvas-wrapper):not(.SVGLayer):not(.excalidraw-textEditorContainer) {
+    display: none !important;
 }
 
 /* Divider handles: an invisible strip over the pane border that lights up on hover. */
