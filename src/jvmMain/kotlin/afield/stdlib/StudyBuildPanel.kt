@@ -211,13 +211,17 @@ internal fun studyBuildGeometryView(problem: StudyBuildProblem): StudyBuildGeome
     return StudyBuildGeometryView(text("box") ?: return null, text("caption"), text("viewId"))
 }
 
-/** A red link to the box that shows where this attempt fails, or "" when the attempt named none. */
+/**
+ * A red link that opens the output of the box showing where this attempt fails, or "" when the attempt
+ * named none. `data-box-reveal="output"` makes the output area's link handler reveal that box's output
+ * rather than open its code.
+ */
 internal fun studyBuildGeometryViewHtml(problem: StudyBuildProblem): String {
     val view = studyBuildGeometryView(problem) ?: return ""
     val uid = studyBuildEscape(view.box)
     val viewAttribute = view.viewId?.let { " data-review-view=\"${studyBuildEscape(it)}\"" }.orEmpty()
     val caption = view.caption?.let { " · ${studyBuildEscape(it)}" }.orEmpty()
-    return "<p class=\"study-build-geometry-view\"><a href=\"#box:$uid\" data-box-uid=\"$uid\"$viewAttribute>Show where it fails…</a>$caption</p>"
+    return "<p class=\"study-build-geometry-view\"><a href=\"#box:$uid\" data-box-uid=\"$uid\" data-box-reveal=\"output\"$viewAttribute>Show where it fails…</a>$caption</p>"
 }
 
 /**

@@ -357,11 +357,12 @@ throw StudyBuildFailure(StudyBuildProblem("stair-clash", "Wall W3 crosses the st
 ```
 
 Under the failure message, the card adds a red **Show where it fails…** link followed by the
-caption. The link selects that box and brings it into view. `"box"` is required. `"caption"` and
-`"viewId"`, the view inside that output, are optional. AI4's inspection reports the same box, with
-its name, as `geometryView`, so the agent can send you there or inspect the view, and the build's
-progress card in the chat links to the same box. Both links appear only while the attempt matches
-the current inputs.
+caption. The link opens that box's output and brings it into view, leaving your selection as it
+was. `"box"` is required. `"caption"` is optional, and so is `"viewId"`, which names a geometry view
+in that output for the link to scroll to. AI4's inspection reports the same box, with its name, as
+`geometryView`, so the agent can send you there or inspect the view, and the build's progress card
+in the chat links to the same box. Both links appear only while the attempt matches the current
+inputs.
 
 A failed retry preserves the previous result if that result
 still matches the current inputs. Cancellation is cooperative: call `context.checkCancelled()`

@@ -120,7 +120,7 @@ class StudyBuildPanelTest {
         val problem = job.problem!!
         assertEquals(StudyBuildGeometryView("plan\"box", "Walls <W3> & W4 overlap", "plan-view"), studyBuildGeometryView(problem))
         val link = studyBuildGeometryViewHtml(problem)
-        assertEquals("<p class=\"study-build-geometry-view\"><a href=\"#box:plan&quot;box\" data-box-uid=\"plan&quot;box\" data-review-view=\"plan-view\">Show where it fails…</a> · Walls &lt;W3&gt; &amp; W4 overlap</p>", link)
+        assertEquals("<p class=\"study-build-geometry-view\"><a href=\"#box:plan&quot;box\" data-box-uid=\"plan&quot;box\" data-box-reveal=\"output\" data-review-view=\"plan-view\">Show where it fails…</a> · Walls &lt;W3&gt; &amp; W4 overlap</p>", link)
         assertFalse(link.contains("data-review-note"))
 
         val diagnostic = studyBuildDiagnosticHtml(job, false)
@@ -133,7 +133,7 @@ class StudyBuildPanelTest {
         assertContains(studyBuildCardHtml("card", "house", listOf(state), emptyList()), ".card .study-build-geometry-view a{color:#ff6969;")
 
         val minimal = StudyBuildProblem("overlap", "Two walls overlap", details = mapOf("geometryView" to mapOf("box" to "plan-box")))
-        assertEquals("<p class=\"study-build-geometry-view\"><a href=\"#box:plan-box\" data-box-uid=\"plan-box\">Show where it fails…</a></p>", studyBuildGeometryViewHtml(minimal))
+        assertEquals("<p class=\"study-build-geometry-view\"><a href=\"#box:plan-box\" data-box-uid=\"plan-box\" data-box-reveal=\"output\">Show where it fails…</a></p>", studyBuildGeometryViewHtml(minimal))
         for (bad in listOf(mapOf("caption" to "no box"), mapOf("box" to " "), mapOf("box" to 3), "plan-box"))
             assertEquals("", studyBuildGeometryViewHtml(minimal.copy(details = mapOf("geometryView" to bad))), "$bad")
     }
