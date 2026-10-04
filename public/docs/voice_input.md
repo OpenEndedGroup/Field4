@@ -126,7 +126,12 @@ microphone". **On Linux**, check that PipeWire or PulseAudio is running and list
 **"no microphone found"** or **"the microphone is in use"**: check the system's sound input, and
 close other apps that are holding the microphone.
 
-**"The voice worker stopped"**: the recognizer process exited. The next press starts it again.
+**"The voice worker stopped"** or **"did not answer within 60 s and was restarted"**: the
+recognizer process exited or hung. The next press starts a fresh one. When the recognizer fails to
+start or dies, the end of what it printed (usually a Python traceback) is included in the
+message. Set `FIELD_VOICE_TIMEOUT_MS` to wait longer per clip, and
+`FIELD_VOICE_STARTUP_TIMEOUT_MS` (15 minutes by default) for the first start, which includes the
+download.
 
 To use a different Whisper model, set `FIELD_VOICE_MODEL` before starting Field: a Hugging Face
 repository for `mlx-whisper`, or a model name
@@ -141,4 +146,6 @@ for `faster-whisper` (for example `medium.en`).
     the priming result as the shape of the effect rather than its size. The browser half
     (recording, the key handling, target choice) was read from `voiceInput.js` and
     `outputareas2.js`, not exercised with a real microphone. `tools/test_whisper_worker.py` pins
-    the worker's line protocol with a stub backend.
+    the worker's line protocol with a stub backend, and `VoiceTranscriberTest` pins the Kotlin
+    side's timeout, stderr and reply-id handling against fake workers. Through `VoiceTranscriber`
+    itself the same clip took 4.9 s cold (model load included) and 0.38 s warm.
