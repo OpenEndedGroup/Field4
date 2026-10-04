@@ -234,8 +234,14 @@ object CompletionLoweringProbe {
      * carets of headroom, more than the ~15 the August margin bought. Those thin margins are deliberate:
      * on the original 182 boxes today's engine reproduces the August numbers, so the newer boxes are
      * simply harder (one sweep of the 413 newer boxes alone measured `pkg/keep` at 91% before the
-     * type-position fix). The margin is what makes the two `pkg` keep buckets catch that fix regressing:
-     * losing its 42 carets puts both under their floors.
+     * type-position fix).
+     *
+     * Re-measured the same day, after a package path started listing the contents of a package nobody
+     * imports (`afield.pd.‸PdInstance`, the JDK's `java.util.concurrent.atomic.‸`): the four `pkg` buckets
+     * went 95/95/96/96 → 97 and TOTAL 96 → 97, and `observed` says so. No floor moved, because measured − 3
+     * is still at or under each. The `pkg` margins are therefore 2.9 to 3.9 points again, 50 to 67 carets,
+     * and losing either fix alone (the type-position one is 42 carets per keep bucket, this one ~28) no
+     * longer breaks a floor. `kotlin.completion-aa-e2e.probe` pins each by name instead.
      *
      * 3 points, not 5, and not 1. The margin has to cover the ordering churn a candidate-set change causes
      * near a truncation boundary, and nothing more: the buckets are deterministic given the same corpus and
@@ -261,13 +267,13 @@ object CompletionLoweringProbe {
         Floor("name/2/blank", minAttempts = 2040, minPercent = 92, observed = 95),
         Floor("name/2/keep", minAttempts = 1720, minPercent = 92, observed = 96),
         // A fully-qualified path (`afield.stdlib.‸`). Its own kind because it is a different feature.
-        Floor("pkg/0/blank", minAttempts = 1550, minPercent = 94, observed = 95),
-        Floor("pkg/0/keep", minAttempts = 1550, minPercent = 93, observed = 95),
-        Floor("pkg/2/blank", minAttempts = 1550, minPercent = 94, observed = 96),
-        Floor("pkg/2/keep", minAttempts = 1550, minPercent = 94, observed = 96),
+        Floor("pkg/0/blank", minAttempts = 1550, minPercent = 94, observed = 97),
+        Floor("pkg/0/keep", minAttempts = 1550, minPercent = 93, observed = 97),
+        Floor("pkg/2/blank", minAttempts = 1550, minPercent = 94, observed = 97),
+        Floor("pkg/2/keep", minAttempts = 1550, minPercent = 94, observed = 97),
         // The headline number, gated too — not because the buckets don't cover it, but because it is what
         // gets quoted, and a change that trades one bucket off against another should have to say so.
-        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 96),
+        Floor("TOTAL", minAttempts = MIN_REQUESTS, minPercent = 93, observed = 97),
     )
 
     /** The sweep must have asked something like the whole corpus (17,426 questions on 2026-10-04). With no

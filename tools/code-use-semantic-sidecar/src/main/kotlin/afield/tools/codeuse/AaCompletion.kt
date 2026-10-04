@@ -376,10 +376,14 @@ data class AaSymbolIndex(
          * Scan [packages] on demand, for a package the prebuilt index does not cover — anything the
          * box imports that is not one of the REPL default imports (`sentences`, a user's own jar).
          * Same scan as [build]; separate entry point because it happens per request rather than per
-         * session, and is memoised by the caller (~0.3s per package, once).
+         * session, and is memoised by the caller. A directory root is read only under [packages]' own
+         * directories rather than walked whole: that walk was 80ms of the 150ms a package cost, on
+         * Field's 11k-file `build/classes`. Every jar is still opened (~60ms over 440 of them), since
+         * nothing records which jar holds which package. [AaSymbolIndex.allPackages] is therefore
+         * partial in the result; callers take only the packages' contents.
          */
         fun scanPackages(roots: List<Path>, packages: Set<String>): AaSymbolIndex =
-            if (packages.isEmpty()) EMPTY else build(roots, packages)
+            if (packages.isEmpty()) EMPTY else build(roots, packages, targeted = true)
 
         /**
          * Build the index, or load it from [cacheDir] when a cache keyed by the same classpath
@@ -433,7 +437,7 @@ data class AaSymbolIndex(
             return md.digest().joinToString("") { "%02x".format(it) }.take(24)
         }
 
-        private fun build(roots: List<Path>, packages: Set<String>): AaSymbolIndex {
+        private fun build(roots: List<Path>, packages: Set<String>, targeted: Boolean = false): AaSymbolIndex {
             val callables = HashMap<String, MutableSet<String>>()
             val classifiers = HashMap<String, MutableSet<String>>()
             val typeAliases = HashMap<String, MutableSet<String>>()
@@ -479,6 +483,18 @@ data class AaSymbolIndex(
                         java.util.zip.ZipFile(root.toFile()).use { zf ->
                             zf.entries().asSequence().filter { !it.isDirectory }.forEach { e ->
                                 consider(e.name) { zf.getInputStream(e).use { it.readBytes() } }
+                            }
+                        }
+                    }
+                } else if (targeted && Files.isDirectory(root)) {
+                    for (pkg in packages) {
+                        val dir = root.resolve(pkg.replace('.', '/'))
+                        if (!Files.isDirectory(dir)) continue
+                        runCatching {
+                            Files.list(dir).use { s ->
+                                s.filter { Files.isRegularFile(it) }.forEach { f ->
+                                    consider(root.relativize(f).toString().replace('\\', '/')) { Files.readAllBytes(f) }
+                                }
                             }
                         }
                     }
@@ -711,9 +727,9 @@ class AaCompleter(
     private val contextFile: KtFile,
     private val index: AaSymbolIndex,
     private val defaultImports: List<String>,
-    /** The session's binary roots, so a package the box imports but [index] does not cover (anything
-     *  outside [defaultImports] — `sentences`, a user's own jar) can be scanned on demand. Empty
-     *  disables that, leaving only the prebuilt index. */
+    /** The session's binary roots, so a package [index] does not cover can be scanned on demand: one the
+     *  box imports outside [defaultImports] (`sentences`, a user's own jar), or one a package path names
+     *  (`afield.pd.‸`, see [contentsOf]). Empty disables that, leaving only the prebuilt index. */
     private val binaryRoots: List<Path> = emptyList(),
 ) {
     /** One-line index size summary, for sidecar startup logging. */
@@ -752,22 +768,70 @@ class AaCompleter(
         val wanted = (fromBox + starPackagesOf(providedImports)).distinct()
             .filter { it !in index.callables && it !in index.classifiers }
         if (wanted.isEmpty()) return IndexScope(index, emptySet())
-        val missing = wanted.filter { !scanned.containsKey(it) }
-        if (missing.isNotEmpty()) {
-            val fresh = AaSymbolIndex.scanPackages(binaryRoots, missing.toSet())
-            for (pkg in missing) {
-                scanned[pkg] = AaSymbolIndex(
-                    fresh.callables.filterKeys { it == pkg },
-                    fresh.classifiers.filterKeys { it == pkg },
-                    fresh.typeAliases.filterKeys { it == pkg },
-                )
-            }
-        }
+        scanMissing(wanted)
         return IndexScope(
             wanted.fold(index) { acc, pkg -> acc + (scanned[pkg] ?: AaSymbolIndex.EMPTY) },
             wanted.filter { it in fromBox }.toSet(),
         )
     }
+
+    /** Scan whichever of [packages] [scanned] does not hold yet, in one walk of [binaryRoots]. */
+    private fun scanMissing(packages: List<String>) {
+        val missing = packages.filter { !scanned.containsKey(it) }
+        if (missing.isEmpty()) return
+        // Walking every root costs the same whether or not it finds anything, so skip the names it cannot
+        // find anything for, and memoise them as empty:
+        //  - a JDK package. It is not on the binary roots, it lives in a module. Nor could a jar add to it:
+        //    the JVM loads a package a boot-layer module owns from that module only, never the class path.
+        //  - a name no class file is in: a prefix of packages (`java`, `org.jetbrains`), or a class
+        //    star-imported for its statics (`import org.lwjgl.vulkan.VK10.*`, 75ms for nothing).
+        val (empty, onRoots) = missing.partition { pkg ->
+            pkg in jdkPackages || packagesWithClasses?.let { pkg !in it } == true
+        }
+        empty.forEach { scanned[it] = AaSymbolIndex.EMPTY }
+        if (onRoots.isEmpty()) return
+        val started = System.nanoTime()
+        val fresh = AaSymbolIndex.scanPackages(binaryRoots, onRoots.toSet())
+        for (pkg in onRoots) {
+            scanned[pkg] = AaSymbolIndex(
+                fresh.callables.filterKeys { it == pkg },
+                fresh.classifiers.filterKeys { it == pkg },
+                fresh.typeAliases.filterKeys { it == pkg },
+            )
+        }
+        System.err.println("[k2-completion] scanned ${onRoots.joinToString()} on demand in " +
+            "${(System.nanoTime() - started) / 1_000_000}ms: ${fresh.classifierCount} classifiers, " +
+            "${fresh.callableCount} callables")
+    }
+
+    /**
+     * What [index] knows about the single package [pkg], scanning it on demand if nothing imported it.
+     *
+     * A package path written out by hand — `afield.pd.‸PdInstance`, `prop<afield.four.fabricated.‸X>(x)`,
+     * `afield.four.audio.‸WavFloatArrayWriter` — names a package precisely BECAUSE the box did not import
+     * it. [index] holds only the imported packages' contents, so the panel listed the sub-packages
+     * ([AaSymbolIndex.allPackages] knows every package's name) and none of the classes: 56 of the caret
+     * sweep's misses over the boxes written after the floors were cut answered "0 matched in package".
+     * The scan is the same one [indexFor] does for a star import, memoised the same way, so a package
+     * costs one walk of the roots per session. It widens only this lookup: a package someone wrote out is
+     * not thereby imported, so name completion elsewhere does not start offering its contents.
+     */
+    private fun contentsOf(pkg: String, index: AaSymbolIndex): AaSymbolIndex {
+        if (pkg in index.callables || pkg in index.classifiers || pkg in index.typeAliases) return index
+        if (binaryRoots.isEmpty()) return index
+        scanMissing(listOf(pkg))
+        return scanned[pkg] ?: index
+    }
+
+    /** Every package a module in the running JDK's boot layer contains. See [scanMissing]. */
+    private val jdkPackages: Set<String> by lazy {
+        runCatching { ModuleLayer.boot().modules().flatMapTo(HashSet()) { it.descriptor.packages() } }
+            .getOrDefault(emptySet())
+    }
+
+    /** Every package some class file is in, on the roots or in the JDK; null when [index] did not record
+     *  them, which must not read as "no package has classes". See [scanMissing]. */
+    private val packagesWithClasses: Set<String>? by lazy { index.allPackages.toHashSet().takeIf { it.isNotEmpty() } }
 
     /**
      * @param snippet           the code being edited, WITHOUT any caret marker.
@@ -1398,7 +1462,7 @@ class AaCompleter(
              * private ones the index deliberately keeps (see [FacadeVisitor.visitMethod]).
              */
             var packageTruncated: String? = null
-            fun packageCandidates(pkg: String, index: AaSymbolIndex): List<AaCandidate> {
+            fun packageCandidates(pkg: String, index: AaSymbolIndex, withCallables: Boolean = true): List<AaCandidate> {
                 val out = ArrayList<AaCandidate>()
                 index.allPackages.asSequence()
                     .filter { it.startsWith("$pkg.") }
@@ -1406,12 +1470,27 @@ class AaCompleter(
                     .filter { it.isNotEmpty() && match(Name.identifier(it)) }
                     .distinct()
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "package")) }
-                index.classifiers[pkg].orEmpty().asSequence()
+                val contents = contentsOf(pkg, index)
+                contents.classifiers[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
-                index.typeAliases[pkg].orEmpty().asSequence()
+                contents.typeAliases[pkg].orEmpty().asSequence()
                     .filter { match(Name.identifier(it)) }
                     .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                // The JDK is not on the binary roots, so the ASM scan never sees `java.util.concurrent.atomic`'s
+                // classes, only the package's NAME, from the boot layer. AA's own package scope lists them: it
+                // enumerates a Java package, which it cannot do for a binary Kotlin one (the reason the ASM
+                // index exists; it answers 0 for `afield.pd`). The use-site check drops the package-private
+                // helpers a JDK package is full of (`java.util.ArrayPrefixHelpers`, `atomic.Striped64`).
+                if (pkg in jdkPackages) {
+                    runCatching {
+                        findPackage(FqName(pkg))?.packageScope?.classifiers(match).orEmpty()
+                            .filter { accessible(it) }
+                            .mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }
+                            .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, pkg, "class")) }
+                    }
+                }
+                if (!withCallables) return out
                 // At a BARE `kotlin.math.‸` too, capped rather than gated. This used to require a prefix,
                 // on the reasoning that `afield.stdlib.` would resolve thousands of symbols for one
                 // keystroke — but the consequence was that a fully-qualified call answered with
@@ -1419,7 +1498,7 @@ class AaCompleter(
                 // path was 7 of the caret sweep's misses per mode. Writing a package path out by hand is a
                 // deliberate act, and [PACKAGE_ENUMERATION_CAP] (800 resolutions, well inside the measured
                 // p50) bounds it. Truncation is reported in the note, as for the receiver index.
-                val callableNames = index.callables[pkg].orEmpty()
+                val callableNames = contents.callables[pkg].orEmpty()
                     .filter { prefix.isEmpty() || it.startsWith(prefix) }
                 // …but only a package that FITS. Resolving 800 of `afield.stdlib`'s 3947 top-level names in
                 // alphabetical order is the same "truncate the alphabet" mistake the transport used to
@@ -1663,8 +1742,7 @@ class AaCompleter(
                             .distinct()
                             .map { AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, label, "class") }
                     }
-                    isPackageName(path, index) -> packageCandidates(path, index)
-                        .filter { it.kind == AaCandidate.Kind.CLASSIFIER }
+                    isPackageName(path, index) -> packageCandidates(path, index, withCallables = false)
                     else -> emptyList()
                 }.filter(jsFilter).distinctBy { it.dedupKey }.sortedBy { it.name }
                 return@analyze AaCompletionResult(
