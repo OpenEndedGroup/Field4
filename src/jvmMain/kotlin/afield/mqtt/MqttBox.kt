@@ -208,6 +208,42 @@ class BoxMqtt internal constructor(private val box: Box, val client: MqttClient)
      */
     fun track(filter: String, qos: Int = 0) = subscribe(filter, qos, key = "track:$filter") { _, _ -> }
 
+    /**
+     * Forward every message matching [filter] as OSC through [osc] (`oscClient(host, port)`), to the
+     * address [address] makes from the topic (by default the topic itself: `sensors/a/temp` goes to
+     * `/sensors/a/temp`). A numeric payload is sent as one float, numeric JSON fields as one message
+     * each at `<address>/<field>`, anything else as one string.
+     */
+    fun toOsc(filter: String, osc: afield.stdlib.OscClient, address: (String) -> String = { "/$it" }) =
+        subscribe(filter, key = "osc:$filter") { topic, m ->
+            val base = address(topic)
+            val n = m.text.trim().toDoubleOrNull()
+            val json = if (n == null) m.jsonOrNull as? JsonObject else null
+            when {
+                n != null -> osc.send(base, n.toFloat())
+                json != null -> json.forEach { (k, v) ->
+                    (v as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toDoubleOrNull()?.let { osc.send("$base/$k", it.toFloat()) }
+                }
+                else -> osc.send(base, m.text)
+            }
+        }
+
+    /**
+     * Drive one DMX channel from a numeric topic: values in [range] map to 0..255 on 1-based
+     * [channel] of [universe] in [out] (`artnetOut(...)` / `sacnOut(...)`). [path] reads a JSON field.
+     */
+    fun toDmx(
+        topic: String,
+        out: afield.dmx.DmxOutput,
+        universe: Int,
+        channel: Int,
+        path: String? = null,
+        range: ClosedFloatingPointRange<Double> = 0.0..1.0,
+    ) = subscribe(topic, key = "dmx:$topic|$path|$universe:$channel") { _, m ->
+        val v = (if (path == null) m.number else m.number(path)) ?: return@subscribe
+        out.universe(universe).setLevel(channel, (v - range.start) / (range.endInclusive - range.start))
+    }
+
     /** End this box's subscription under [key], or all of them on this broker. */
     fun unsubscribe(key: String? = null) = MqttConnections.unsubscribe(box, client.url, key)
 

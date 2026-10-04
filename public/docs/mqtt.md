@@ -92,6 +92,30 @@ loop {
 as the second argument to `series` or `number`. On a message itself, `message.number("temp")`,
 `message.string("name")` and `message.json` do the same.
 
+## Passing messages on to OSC and DMX
+
+`toOsc` forwards a topic filter to an OSC receiver, such as TouchDesigner, Max or SuperCollider.
+A number goes as one float to an address made from the topic (`/sensors/kitchen/temp`); each
+numeric field of a JSON payload goes to its own address (`/sensors/garden/env/temp`):
+
+```diffstatic {data-lang=kotlin}
+mqtt.toOsc("sensors/#", oscClient("127.0.0.1", 7000))
+```
+
+`toDmx` drives one lighting channel from a numeric topic, scaling `range` to 0–255. The output is
+an Art-Net or sACN output from [Driving Lights](dmx_lighting.md):
+
+```diffstatic {data-lang=kotlin}
+import afield.dmx.*
+
+val out = artnetOut("192.168.1.50")
+mqtt.toDmx("sensors/hall/lux", out, universe = 1, channel = 1, range = 0.0..800.0)
+mqtt.toDmx("sensors/garden/env", out, universe = 1, channel = 2, path = "humidity", range = 0.0..100.0)
+```
+
+Both are subscriptions like any other: re-running the box replaces them, and `mqtt.unsubscribe()`
+ends them.
+
 ## Which broker
 
 `mqtt` on its own uses Field's built-in broker on port 1883 (or a free port, if something else
