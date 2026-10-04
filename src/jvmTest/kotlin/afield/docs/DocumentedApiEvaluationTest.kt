@@ -79,7 +79,21 @@ import kotlin.test.assertTrue
  */
 class DocumentedApiEvaluationTest {
 
+
+    /**
+     * `by lazy`, but computed once per test CLASS rather than once per test method: JUnit makes a
+     * fresh instance for every @Test, so an instance `lazy` over a whole-tree scan reran that scan for
+     * each test. Measured in a landing at load 40: DocumentedApiEvaluationTest 940 s and
+     * ServerSurfaceLedgerTest 122 s. Everything cached here is read-only.
+     */
+    private fun <T> perClass(key: String, compute: () -> T): Lazy<T> = lazy {
+        @Suppress("UNCHECKED_CAST")
+        PER_CLASS.getOrPut(key) { compute() as Any } as T
+    }
+
     private companion object {
+        private val PER_CLASS = java.util.concurrent.ConcurrentHashMap<String, Any>()
+
 
         /**
          * Floor on the documented APIs the transcript corpus reaches at all. Measured 2026-08-27:
@@ -362,7 +376,7 @@ class DocumentedApiEvaluationTest {
      * `public/docs` only, deliberately: `dev_docs` is a developer's notebook and is allowed to discuss
      * an API nobody runs. A *published* page is a promise.
      */
-    private val publishedPages by lazy {
+    private val publishedPages by perClass("publishedPages") {
         (File(root, "public/docs").listFiles { f -> f.isFile && f.extension == "md" } ?: emptyArray())
             .sortedBy { it.name }
             .map { it.name to it.readText() }
@@ -421,8 +435,8 @@ class DocumentedApiEvaluationTest {
             .filter { (_, raw) -> !requireFieldTest || FIELD_TEST_ID.containsMatchIn(raw) }
             .map { (name, raw) -> name to KotlinSourceText.stripComments(raw) }
 
-    private val smokeSources by lazy { sources("src/jvmMain/kotlin", requireFieldTest = true) }
-    private val testSources by lazy { sources("src/jvmTest/kotlin", requireFieldTest = false) }
+    private val smokeSources by perClass("smokeSources") { sources("src/jvmMain/kotlin", requireFieldTest = true) }
+    private val testSources by perClass("testSources") { sources("src/jvmTest/kotlin", requireFieldTest = false) }
 
     private fun evaluatingSmokes(api: String) = callersUnder(smokeSources, api)
 
