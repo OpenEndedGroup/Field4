@@ -3291,7 +3291,11 @@
         if (operationError) details.push(operationError);
         if (operationMessage) details.push(operationMessage);
         details.push(status.indexExists ? `index ${formatBytes(indexSize)}` : "no index");
-        if (status.indexStale) details.push("stale: rebuild needed");
+        if (status.indexStale) {
+            const built = status.lastBuildEpochMs ? ` since ${new Date(status.lastBuildEpochMs).toLocaleString()}` : "";
+            const changed = status.staleDocuments > 0 ? formatCount(status.staleDocuments, "document") : "workspace";
+            details.push(`${changed} changed${built}`);
+        }
         if (rebuildRunning && rebuild.step) details.push(rebuild.step);
         if (rebuildRunning && rebuild.indexedCapsules) details.push(formatCount(rebuild.indexedCapsules, "capsule"));
         if (capsules) details.push(formatCount(capsules, "capsule"));
@@ -3306,7 +3310,7 @@
         if (semantic.message && !operationMessage) details.push(semantic.message);
         setSemanticSearchStatus(
             details.join(" · "),
-            !busy && (!!operationError || status.indexStale || (config.enabled !== false && !vectorReady && !!config.modelPath))
+            !busy && (!!operationError || (config.enabled !== false && !vectorReady && !!config.modelPath))
         );
     }
 
