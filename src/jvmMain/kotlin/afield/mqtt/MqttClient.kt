@@ -282,9 +282,11 @@ class MqttClient(
         lastError = null
         connections.incrementAndGet()
         // Subscriptions are per connection with a clean session: make them again.
+        // Queued publishes first: a retained message published before a subscribe call, while
+        // connecting, must reach the broker first, or the subscription gets it live, not retained.
+        unacked.values.sortedBy { it.packetId }.forEach { send(it.copy(dup = true)) }
         val grouped = subscriptions.groupBy { it.filter }.map { (f, l) -> f to QoS.of(l.maxOf { it.qos.value }) }
         if (grouped.isNotEmpty()) send(MqttPacket.Subscribe(nextId(), grouped))
-        unacked.values.sortedBy { it.packetId }.forEach { send(it.copy(dup = true)) }
         synchronized(lock) { connectedFuture.complete(Unit) }
         val ev = MqttConnectionEvent(true, "connected to $url")
         onConnection.forEach { cb -> dispatch(Runnable { cb(ev) }) }

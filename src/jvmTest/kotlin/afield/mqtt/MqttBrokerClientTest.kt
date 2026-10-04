@@ -211,4 +211,16 @@ class MqttBrokerClientTest {
         assertEquals(7.0, MqttMessage("t", " 7 ".encodeToByteArray()).number)
         assertEquals("""{"a":1,"b":[true,"x"]}""", BoxMqtt.encode(mapOf("a" to 1, "b" to listOf(true, "x"))).decodeToString())
     }
+
+    @Test
+    fun `a retained publish made before connecting reaches a subscribe made after it as retained`() {
+        val b = broker()
+        val c = MqttClient(b.url, clientId = "early").owned() // not awaited: still connecting
+        val f = c.publish("early/scene", "dusk", QoS.AT_LEAST_ONCE, retain = true)
+        val got = CopyOnWriteArrayList<MqttMessage>()
+        c.subscribe("early/#") { got += it }
+        f.get(5, TimeUnit.SECONDS)
+        assertTrue(waitFor { got.isNotEmpty() })
+        assertTrue(got[0].retained, "delivered live, not as the retained copy")
+    }
 }

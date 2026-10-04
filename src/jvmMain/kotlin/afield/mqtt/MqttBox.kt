@@ -96,14 +96,20 @@ object MqttConnections {
     }
 
     /** The client for [url], made (and connected in the background) on first use. */
-    fun client(url: String, clientId: String? = null, will: MqttPacket.Will? = null, username: String? = null, password: String? = null): MqttClient =
-        clients.compute(url) { _, old ->
+    fun client(url: String, clientId: String? = null, will: MqttPacket.Will? = null, username: String? = null, password: String? = null): MqttClient {
+        var created = false
+        return clients.compute(url) { _, old ->
             if (old != null && !old.isClosed) old
             else MqttClient(
                 url, clientId = clientId ?: ("field4-" + java.util.UUID.randomUUID().toString().take(8)),
                 will = will, username = username, password = password, dispatch = ::dispatch,
-            ).also { c -> watch(url, c) }
-        }!!
+            ).also { c -> created = true; watch(url, c) }
+        }!!.also { c ->
+            // A box's first publish usually follows straight on; give a fresh connection a moment so
+            // QoS 0 messages are not dropped while it connects. An unreachable broker costs this once.
+            if (created) c.awaitConnected(1000)
+        }
+    }
 
     private fun watch(url: String, c: MqttClient) {
         val h = histories.computeIfAbsent(url) { ConcurrentHashMap() }
