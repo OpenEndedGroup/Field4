@@ -5,7 +5,7 @@ workspace as `first-steps` (or `first-steps-2` if that name is already taken). Y
 opening it never changes the shipped example. No GPU driver, Python or AI key is needed.
 
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x900" clip-selector="#docs-first-welcome" screenshot="assets/first_steps/welcome.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="first-welcome" alt="Welcome with the Start here: a moving drawing button at the top, beside the five-minute guide and Next: native graphics."}
-// Capture the current Welcome header and its full-width button rows.
+// Capture the compact Welcome action row and the first-document prompt.
 ui.eval("""
     const f = document.createElement("iframe")
     f.id = "docs-first-welcome"
@@ -49,7 +49,8 @@ including the comments that walk through these steps.
 
 ## See it happen
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1200x760" clip="0,0,1200,720" hide-toasts=true video="assets/first_steps/first-look.mp4" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_steps.yaml" capture-box="first_steps_drawing" fps="20" padding="0" wait="0" timeout="180" embed=true hidden=true name="first-look" alt="Field's real editor launches a cyan moving FLine drawing, changes its petal count from five to eight, relaunches it, and shows the value eight inline before stopping the animation."}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1200x760" clip="0,0,1200,720" hide-toasts=true video="assets/first_steps/first-look.mp4" macro-file="../../dev_docs/agents/transcripts/docs_capture/first_steps.yaml" capture-box="first_steps_drawing" fps="10" padding="0" wait="0" timeout="180" embed=true hidden=true name="first-look" alt="Field's real editor launches a cyan moving FLine drawing, changes its petal count from five to eight, relaunches it, and shows the value eight inline before stopping the animation."}
+ui.eval("document.getElementById('docs-first-welcome')?.remove(); return true")
 ui.openEditor("first_steps_drawing")
 ui.eval("""
     const c = document.querySelector(".monaco-editor-container")
@@ -57,9 +58,14 @@ ui.eval("""
     window.globalEditor.layout()
     return true
 """.trimIndent())
-ui.keypressDisplay(true)
 ui.clickSelector(".monaco-editor")
+ui.keypressDisplay(true)
 ui.press("Alt+ArrowUp")
+ui.eval("""
+    const label = document.querySelector('#keycast-overlay .keycast-text').textContent
+    if (!['Alt+↑', '⌥↑'].includes(label)) throw new Error('launch chord was not displayed once: ' + label)
+    return true
+""".trimIndent())
 ui.pause(2500)
 ui.eval("""
     const box = [...document.querySelectorAll(".box")].find(b => b.uid === "first_steps_drawing")

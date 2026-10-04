@@ -12,8 +12,11 @@
   edit, relaunched with keyboard input, checked the resulting value in the actual output DOM, and
   stopped. The capture is reproducible through its docs fence and macro. Both early five-petal and
   final eight-petal frames were visually inspected. No computed output was substituted.
-- README GIF is a scaled conversion of that recording at half playback speed for readability.
-  The docs MP4 remains the runner's original. The complete media addition is about 4.5 MB.
+- README GIF is a scaled conversion of the 14-second recording at its original playback speed.
+  The docs MP4 remains the runner's original.
+- The launch recording demonstrates only Alt+Up. Its capture checks the actual key overlay reads
+  `Alt+↑` (or `⌥↑` on macOS); four Node tests cover modifier ordering, duplicate mouse events,
+  typing and macOS chords (`node --test tools/test_keycast.cjs`).
 - `FirstContactStartingPointTest` passed (two tests): copied examples preserve code/sidecars and
   existing edits, and the recording's setup code matches the shipped beginner example.
 - Portable PowerShell checked the new SHA-256 helper against the standard `abc` fixture.
