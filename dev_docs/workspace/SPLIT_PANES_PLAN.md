@@ -1,7 +1,9 @@
 # Split panes for the box canvas — scouting and plan
 
-Status: P0 (the camera seam) built on `canvas/split-panes-p0`; nothing user-visible yet.
-Scouted 2026-10-04.
+Status: P0 (the camera seam) landed on `main` 2026-10-04. P1 (static split, palette commands),
+P2 (divider handles, corner grip, marquee) and P3 (connections, hints, arcs, snapping guides,
+bookmarks), P4 (drawing layer per pane) and dragging a box across a divider are built on
+`canvas/split-panes-p1`. Scouted 2026-10-04.
 
 Decided (Marc, 2026-10-04): **quadrant membership by position** (Option Q below), **shared zoom**,
 **split, not freeze** (every pane scrolls along its linked axes).
@@ -214,22 +216,185 @@ What P0 built:
 - Gate: a UI regression that splits 2×2, wheels in D, and asserts that B's X and C's Y moved
   while A did not.
 
-**P2: interaction.**
+What P1 built:
 
-- crossing a divider during a drag and reparenting on drop
-- resize, marquee, new box at cursor
-- frameSelected and navigation per pane
-- splitter grip and divider dragging
-- clamping each pane at its `wx`/`wy`
+- **Spike.** In headless Chrome 143, `moveBefore` kept an iframe's `window` state across a move
+  and `appendChild` reloaded it. Electron 44 is newer Chromium, so the same should hold, though
+  it has not been tried there. `moveNode` in `canvasCamera.kt` falls back to `insertBefore`.
+- **Split state.** `CanvasCamera.splitAt(clientX?, clientY?)` creates the split, and a null
+  coordinate means no divider on that axis. The world lines are the world point under each
+  divider, and every pane starts at the current camera, so nothing moves.
+  `loadSplit` applies the root `panes` property. `constrain` clamps each column and row to its
+  quadrant, and on a zoom it keeps the other columns and rows anchored at their divider edge.
+- **Pane DOM.** Split, `mainViewport` holds one `.field-pane` per pane, and each pane holds a
+  canvas. The main pane (bottom-right) holds `mainCanvas` itself. Unsplit, the DOM is exactly
+  what it was before panes existed.
+- **Placing boxes.** `place(box)` runs from `applyFrameToBox`, from a MutationObserver on
+  `mainCanvas` (every box is created there), and at drag end.
+- **Background.** `fieldWebglBackground.js` takes an optional 7th argument: a list of panes,
+  each drawn scissored with its own translation and its own vignette (`u_pane`). The inline
+  fallback in Main.kt ignores it and draws the main camera across the window.
+- **Persistence.** The root property `panes` holds `{sx, wx, sy, wy}` and is listed in
+  `uiResyncProperties`, `ioPersistentProperties` and `triggersSave`.
+- **Palette commands:** **Split Canvas Here** (2×2), **Split Canvas Columns Here**, **Split
+  Canvas Rows Here** and **Remove Canvas Split**. Each command puts the divider where the
+  pointer was. `window.splitCanvasAt` and `window.canvasPanesState()` are there for tests.
+- **Regression `canvas-split`.** It checks quadrant membership, that a split moves nothing, the
+  row and column scroll linking, the clamp, persistence, and unsplitting. Negative control:
+  disabling `place` fails it with `quadrants: {"SplitA":"1,1",...}`.
 
-**P3: overlays.**
+Known gaps after P1, each owned by a later phase:
 
-- per-pane and cross-pane connections, and offscreen hints
-- bookmarks
-- `set-viewport`
-- slideshow, actor arcs, spatial nav
+- **P2.** A box dragged across a divider is clipped while it moves. At drop it re-homes to the
+  quadrant its frame now has, but that frame was computed through the origin pane's camera, so
+  the box can jump. There are no divider handles yet. *(Handles done in P2; the drag across a
+  divider is deferred.)*
+- **P3.** The connection splines, offscreen hints, snapping guides and end markers still draw
+  through the main pane's camera, so they are clipped to the main pane
+  (`--field-main-pane-clip`). A connection between panes is visible only where it crosses D.
+  *(Done in P3.)*
+- **P4.** The drawing layer is clipped to the main pane, so strokes in the other quadrants are
+  hidden while the canvas is split.
+- `set-viewport` reports the main pane.
 
-**P4: Excalidraw per pane.**
+**P2: interaction.** Built 2026-10-05, except dragging a box across a divider, which Marc
+deferred ("I don't need dragging across dividers right now, but drag handles on the dividers are
+very important").
+
+- ~~crossing a divider during a drag and reparenting on drop~~ (deferred, then built 2026-10-05; see below)
+- ~~resize, marquee, new box at cursor~~
+- ~~frameSelected and navigation per pane~~
+- ~~splitter grip and divider dragging~~
+- ~~clamping each pane at its `wx`/`wy`~~ (done in P1)
+
+What P2 built:
+
+- **Divider handles** (`.field-pane-divider`, made by `makeDivider`). A 9 px strip sits over each
+  pane border and lights up on hover.
+  - Dragging it calls `moveDividers`. The world line stays with the divider: each pane keeps the
+    world point at its divider edge, so the content beside a divider travels with it.
+  - The move is persisted on release (`commitDividers`).
+  - Releasing within 3% of the window edge, or double-clicking the handle, removes that divider
+    (`removeDivider`). The other divider stays, and the remaining panes keep the bottom-right
+    pane's translation on the removed axis.
+- **Corner grip** (`.field-split-grip`, top-left, shown only while unsplit). Drag it out to split
+  where you release, with preview lines while dragging. Released within 24 px of the top edge it
+  makes columns only; within 24 px of the left edge, rows only.
+- **Marquee and the alt execution line** test each box's rect cut to its pane
+  (`CanvasCamera.visibleRect`). A box its pane hides cannot be selected.
+- **Persistence through the marked send.** The split is written with the JS-facing
+  `send("set-string", payload)`, which stamps the write with a client id and sequence. That way
+  `acceptSetStringSync` drops the server's echo of an older value. A divider drag, or an unsplit
+  followed quickly by a bookmark restore, sends several values, and an unmarked older echo
+  re-applied itself through `loadSplit`.
+
+**P3: overlays.** Built 2026-10-05.
+
+- ~~per-pane and cross-pane connections, and offscreen hints~~
+- ~~bookmarks~~
+- `set-viewport` still reports the main pane
+- ~~actor arcs~~. Slideshow annotations and spatial nav were already screen-anchored.
+
+What P3 built:
+
+- **One trick for every window-sized SVG layer** (splines, end markers, offscreen hints, actor
+  arcs). They keep drawing through the main pane's camera. The snapshot
+  (`captureLayoutSnapshot`) now maps each box's *on-screen* rect, cut to its pane, back through
+  that camera instead of using its true world rect. So every endpoint lands where the box is
+  seen, and a connection between panes runs straight across the divider. Unsplit, this is the
+  world rect, so nothing changed.
+- **Boxes their pane hides.** Such a box is drawn as a 1 px sliver on its pane's nearest edge
+  (`edgeSliver`). Its offscreen hint is computed against its own pane, from the unclipped rect.
+- **The translation-only cache** in the connection layer is off while split, because a pan in
+  one pane moves some boxes against the main camera.
+- **Snapping guides** are computed in world units. The `#snap-guides` group is translated from
+  the dragged box's pane into the main camera.
+- **Bookmarks.** `ScrollPosition` gains `panes` (the split JSON, empty for none), `paneX` and
+  `paneY`, all optional, so older bookmarks restore as before and keep the current split.
+  Restoring calls `CanvasCamera.restoreView`. When the split is unchanged, that moves only the
+  cameras and leaves the pane DOM alone. The bookmark minimap maps boxes through their own pane.
+- **The drawing layer** is the only layer still clipped to the main pane
+  (`--field-main-pane-clip`).
+
+Regression `canvas-split` now also covers:
+
+- connection ends meeting both boxes on screen while their panes are panned apart;
+- a bookmark save/unsplit/restore that survives the server echoes;
+- dragging a divider, including the content travelling with it, the handle following, and the
+  move persisting and surviving the echoes;
+- removing a divider by dragging it to the edge, and by double-clicking;
+- the corner grip.
+
+Negative controls:
+
+- Drawing connections from true world rects fails with `spline ends meet A and D on screen
+  (gap 158.1px)`.
+- Going back to the unmarked send fails with `double-click removed the last divider`: a stale
+  echo re-split the canvas.
+- The bookmark echo check alone has slack, because after the clamp every pane shares the
+  split-time camera. The divider checks are what catch the echo.
+
+**Dragging a box across a divider.** Built 2026-10-05.
+
+- **At drag start** (`CanvasCamera.beginBoxDrag`), each dragged top-level box moves, with
+  `moveBefore` so its outputs keep their state, onto an unclipped `.field-drag-canvas` above the
+  panes. There is one per origin pane, carrying that pane's camera in window coordinates. Nothing
+  moves on screen, and the box is no longer cut off at the divider.
+  - `paneOf` maps a box on a drag canvas to its origin pane.
+  - `visibleRect` doesn't clip it, so its connections follow it across the divider.
+- **At drop** (`endBoxDrag`), the box's on-screen top-left corner picks the destination pane, as
+  its frame origin picks the quadrant. A box over a different pane gets the frame that keeps it
+  where it was let go, seen through that pane's camera. If the corner falls outside every pane,
+  the frame is clamped into the destination's quadrant.
+  - Main.kt applies those frames, sends them as one `set-rects`, then `place`s the boxes.
+- **Regression `canvas-split-drag`** does a real Playwright drag, with `drag-box --hold`, a
+  page-eval while the button is held, then `mouse-up`. Mid-drag it checks the box is on a drag
+  canvas and visible past the divider. After the drop it checks: no jump, the box is in the right
+  pane, the frame is through the right pane's camera, and the drag canvas is gone.
+  - Negative control: skipping the frame recompute fails with `box jumped on drop`.
+
+**P4: Excalidraw per pane.** Built 2026-10-05, without rebuilding the vendored bundle; the
+existing `mountDrawingLayer` surface was enough.
+
+- **One mount per pane** (`syncPaneMounts` in `drawingLayer.kt`). Each mount's host
+  (`.field-drawing-pane`) is sized to its pane, and its camera is `(pane.t - pane origin) / zoom`.
+  Every mount holds the whole scene; because a pane only shows its own quadrant, nothing needs
+  clipping.
+  - The main pane's mount is kept across split changes, so its undo history survives. The other
+    mounts are rebuilt from its elements.
+  - Hosts stay in pane order.
+- **Scene sync.** A change in any mount goes to the server (`notation-scene`, as before) and
+  straight into the other mounts through `applyRemoteScene`. Server echoes apply to every mount.
+  - An Excalidraw pan in a pane (the hand tool, or the wheel while the layer is active) pans
+    that pane: `panViewportForDrawingLayer(..., pane)`.
+- **Toolbar.** Only the main pane's mount shows Excalidraw's UI. A blanket CSS rule hides every
+  child of a mirror's `.excalidraw-container` except the canvas wrapper, the SVG layer and the
+  text editor.
+  - The rule has to cover both layouts: narrow panes get Excalidraw's mobile layout
+    (`App-top-bar`, `App-bottom-bar`).
+  - It uses `!important` because Excalidraw's CSS loads later at equal specificity.
+  - A first cut also hid `.excalidraw__canvas-wrapper`, so marks drawn in a mirror never showed.
+- **Tool following.** While the layer is active, the pointer entering a pane (with no button
+  held) copies the current tool into that pane's mount and focuses it (`followPointerAcrossPanes`).
+- **Fallout:** `--field-main-pane-clip` and `syncMainPaneClip` are gone; nothing is clipped to the
+  main pane any more.
+- **Regression `canvas-split-drawing`** checks:
+  - four mounts, each on its pane and following its camera, with A and D panned apart;
+  - no Excalidraw controls in any mirror, in a pane narrow enough for the mobile layout;
+  - the tool following the pointer into A;
+  - a rectangle drawn in A (synthetic pointer events, spread over frames) landing at the world
+    point under the pointer in A's camera, in every mount and on the root box;
+  - A's static canvas on screen and painted;
+  - unsplitting leaving one mount with the mark.
+- **Negative controls:**
+  - every mount on the main camera → `mount 0 follows its pane in x: -470 vs 0`;
+  - the old CSS → `mirror 0 shows controls: ... App-top-bar | App-bottom-bar`;
+  - hiding the canvas wrapper → `pane A static canvas is on screen`.
+- **Two test-only traps,** neither of them a product bug:
+  - Excalidraw processes pointer moves once per frame, so a synchronous burst of moves finalises
+    an empty shape, and `restoreElements` then drops it in the other mounts.
+  - A tool chosen through the API commits on React's schedule, so the test waits for it before
+    moving the pointer.
 
 ## 7. Persistence
 

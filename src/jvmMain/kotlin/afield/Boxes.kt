@@ -503,6 +503,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // Drawing layer: the root box's "drawing" property is the document's Excalidraw scene
             // (src/jsMain/kotlin/afield/drawingLayer.kt). Same generic path as "bookmarks".
             "drawing",
+            // Split canvas: the root box's "panes" property is the split as JSON (dividers and the
+            // world lines they separate; src/jsMain/kotlin/afield/canvasCamera.kt).
+            "panes",
             "autorun",
             "layers",
             "layerFrames",
@@ -573,6 +576,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // (see the uiResyncProperties entry above and src/jsMain/kotlin/afield/bookmarks.kt).
             "bookmarks",
             "drawing",
+            "panes",
             "slideShow",
             "autorun",
             "layers",
@@ -1088,10 +1092,11 @@ fun doResync() {
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")
                         // The autosave loop only saves when something is pending here. Root
-                        // properties never become sidecars, so the drawing layer's scene marks
-                        // itself, or a document whose only change is a drawing would never save.
+                        // properties never become sidecars, so the drawing layer's scene and the
+                        // canvas split mark themselves, or a document whose only change is one of
+                        // them would never save.
                         val triggersSave = Box.ioSeparateProperties.containsKey(name) ||
-                            (box.id == "root" && name == "drawing")
+                            (box.id == "root" && (name == "drawing" || name == "panes"))
                         if (triggersSave && box.isInsideInitialized() && box.inside.writesToDisk) {
                             box.inside.markSidecarPending(box.id, name)
                         }

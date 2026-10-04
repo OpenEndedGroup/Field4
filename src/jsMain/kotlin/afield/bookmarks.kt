@@ -61,7 +61,14 @@ data class ScrollPosition(
     val x: Double,
     val y: Double,
     /** Canvas zoom; absent in bookmarks saved before zoom was recorded, which keep the current zoom. */
-    val zoom: Double? = null
+    val zoom: Double? = null,
+    /**
+     * The canvas split (the root `panes` JSON, empty for none) and each pane column's and row's
+     * translation; absent in bookmarks saved before split panes, which keep the current split.
+     */
+    val panes: String? = null,
+    val paneX: List<Double>? = null,
+    val paneY: List<Double>? = null
 )
 
 @Serializable
@@ -96,7 +103,10 @@ fun captureScrollPosition(): ScrollPosition {
     return ScrollPosition(
         x = mainTranslation[0],
         y = mainTranslation[1],
-        zoom = mainZoom
+        zoom = mainZoom,
+        panes = CanvasCamera.splitJson(),
+        paneX = CanvasCamera.panes.filter { it.row == 0 }.map { it.tx },
+        paneY = CanvasCamera.panes.filter { it.col == 0 }.map { it.ty }
     )
 }
 
@@ -318,7 +328,9 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
  */
 fun restoreScrollPosition(position: ScrollPosition) {
     try {
+        // Zoom first, so the panes' translations are clamped at the zoom they were saved at.
         moveCanvasCamera(position.x, position.y, position.zoom ?: mainZoom)
+        position.panes?.let { CanvasCamera.restoreView(it, position.paneX, position.paneY) }
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
         console.warn("Error restoring scroll position:", e)
@@ -863,10 +875,9 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
         if (uid == "root") return@forEach
         val r = box.getBoundingClientRect()
         if (r.width <= 0.0 || r.height <= 0.0) return@forEach
-        rects += R(
-            (r.left - mainTranslation[0]) / mainZoom, (r.top - mainTranslation[1]) / mainZoom,
-            r.width / mainZoom, r.height / mainZoom, uid
-        )
+        // Through the camera of the box's own pane, so a split canvas maps to true world positions.
+        val w = CanvasCamera.paneOf(box).worldRect(r)
+        rects += R(w.x, w.y, w.width, w.height, uid)
     }
     // The panels the bookmark keeps open, each hung under its header where the box lays it out
     // now, at the size the bookmark recorded (or its current size, for bookmarks that predate sizes).
@@ -883,8 +894,9 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
                 if (current == null || current == undefined) return@forEach
                 PanelSize((current.width as Number).toDouble(), (current.height as Number).toDouble())
             }
-            val x = (header.left - mainTranslation[0]) / mainZoom
-            val y = (header.top - mainTranslation[1]) / mainZoom
+            val pane = CanvasCamera.paneOf(box)
+            val x = pane.worldX(header.left)
+            val y = pane.worldY(header.top)
             // An open disclosure's rect already includes its content; a closed one is only the header.
             val headerHeight = if (header.height / mainZoom > size.height) 18.0 else header.height / mainZoom
             panels += R(x, y + headerHeight, size.width, size.height, uid)

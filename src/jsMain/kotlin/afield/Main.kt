@@ -889,7 +889,10 @@ private fun ensureActorArcLayer(): SVGSVGElement {
  */
 private fun boxWorldRect(uid: String): DOMRect? {
     val el = findBoxElementByUid(uid) ?: return null
-    return CanvasCamera.paneOf(el).worldRect(el.getBoundingClientRect())
+    // The arc layer draws through the main pane's camera; map where the box is seen through it, so
+    // an arc reaches a box in any pane (unsplit, this is the world rect).
+    val r = el.getBoundingClientRect()
+    return CanvasCamera.main.worldRect(CanvasCamera.visibleRect(el, r) ?: r)
 }
 
 private fun drawActorArc(arc: ActorArc) {
@@ -2232,11 +2235,13 @@ private fun applyViewportTranslation(
     zoom: Double = mainZoom,
     pane: CanvasPane = CanvasCamera.main
 ) {
-    val zoomChanged = zoom != mainZoom
+    val previousZoom = mainZoom
+    val zoomChanged = zoom != previousZoom
     CanvasCamera.zoom = zoom
-    CanvasCamera.x[pane.col] = nextX
-    CanvasCamera.y[pane.row] = nextY
-    mainCanvas.style.transform = CanvasCamera.main.canvasTransform()
+    if (pane.col < CanvasCamera.x.size) CanvasCamera.x[pane.col] = nextX
+    if (pane.row < CanvasCamera.y.size) CanvasCamera.y[pane.row] = nextY
+    CanvasCamera.constrain(pane, previousZoom)
+    CanvasCamera.applyTransforms()
     syncInitialPlaceholderLayerTransform()
 
     updateBackgroundGrid(mainTranslation[0], mainTranslation[1], panning = panning)
@@ -2250,7 +2255,7 @@ private fun applyViewportTranslation(
         )
     }
 
-    drawingLayerViewportChanged(mainTranslation[0], mainTranslation[1])
+    drawingLayerViewportChanged()
     canvasGestures.requestConnectionGroupRebuild(translationOnly = !zoomChanged)
     repositionSlideNoteOverlayIfVisible()
     if (refreshSpatial && spatialNavActive) {
@@ -2271,21 +2276,21 @@ private fun panCanvasBy(dx: Double, dy: Double, pane: CanvasPane) {
 }
 
 /** The drawing layer was panned or zoomed from inside Excalidraw; move Field's canvas to match. */
-fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double) {
-    if (nextX == mainTranslation[0] && nextY == mainTranslation[1] && zoom == mainZoom) return
+fun panViewportForDrawingLayer(nextX: Double, nextY: Double, zoom: Double, pane: CanvasPane = CanvasCamera.main) {
+    if (nextX == pane.tx && nextY == pane.ty && zoom == mainZoom) return
     cancelNavigationPanAnimation()
     val clamped = zoom.coerceIn(MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM)
     if (clamped == zoom) {
-        applyViewportTranslation(nextX, nextY, zoom = zoom)
+        applyViewportTranslation(nextX, nextY, zoom = zoom, pane = pane)
     } else {
-        // Excalidraw's range is wider than Field's. Keep the world point at the window centre
+        // Excalidraw's range is wider than Field's. Keep the world point at the pane centre
         // fixed while clamping, or the translation (computed for the unclamped zoom) would jump.
-        val r = CanvasCamera.main.rect
+        val r = pane.rect
         val cx = r.x + r.w / 2.0
         val cy = r.y + r.h / 2.0
         val worldX = (cx - nextX) / zoom
         val worldY = (cy - nextY) / zoom
-        applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped)
+        applyViewportTranslation(cx - worldX * clamped, cy - worldY * clamped, zoom = clamped, pane = pane)
     }
 }
 
@@ -2332,12 +2337,49 @@ private fun registerCanvasZoomActions() {
     snapping.detail = "Snap boxes to each other while dragging and resizing, as Caps Lock does"
     snapping.run = { boxSnappingSystem.toggleFromCommand() }
     builtin.push(snapping)
+    fun splitAction(id: String, label: String, detail: String, run: () -> Unit) {
+        val action: dynamic = js("({})")
+        action.id = id
+        action.label = label
+        action.detail = detail
+        action.run = run
+        builtin.push(action)
+    }
+    // The pointer is where the divider goes; from the palette that is where it was before opening it.
+    fun pointer(): Pair<Double, Double> {
+        val view = CanvasCamera.main.rect
+        val px = CanvasCamera.lastPointerX.takeIf { !it.isNaN() } ?: (view.x + view.w * 0.3)
+        val py = CanvasCamera.lastPointerY.takeIf { !it.isNaN() } ?: (view.y + view.h * 0.3)
+        return px to py
+    }
+    splitAction("split-canvas-here", "Split Canvas Here",
+        "Split the canvas into four panes at the pointer. Panes in a row scroll up and down together, panes in a column side to side together") {
+        val (px, py) = pointer()
+        CanvasCamera.splitAt(px, py)
+    }
+    splitAction("split-canvas-columns-here", "Split Canvas Columns Here",
+        "Split the canvas into a left and a right pane at the pointer; they scroll up and down together") {
+        CanvasCamera.splitAt(pointer().first, null)
+    }
+    splitAction("split-canvas-rows-here", "Split Canvas Rows Here",
+        "Split the canvas into a top and a bottom pane at the pointer; they scroll side to side together") {
+        CanvasCamera.splitAt(null, pointer().second)
+    }
+    splitAction("remove-canvas-split", "Remove Canvas Split", "Return the canvas to a single pane; every box stays where it is") {
+        CanvasCamera.splitAt(null, null)
+    }
     allActions.builtin = builtin
     updateActions()
     window.asDynamic().frameSelected = ::frameSelected
     window.asDynamic().setCanvasZoom = ::setCanvasZoom
     window.asDynamic().resetCanvasZoom = ::resetCanvasZoom
     window.asDynamic().canvasZoom = { mainZoom }
+    window.asDynamic().splitCanvasAt = { cx: Double?, cy: Double? -> CanvasCamera.splitAt(cx, cy) }
+    window.asDynamic().canvasPanesState = { CanvasCamera.state() }
+    CanvasCamera.onCameraLayoutChanged = {
+        applyViewportTranslation(mainTranslation[0], mainTranslation[1])
+        canvasGestures.requestConnectionGroupRebuild(translationOnly = false)
+    }
 }
 
 /** Overlays [frameSelected] keeps the selection out from under, in screen space. */
@@ -3334,7 +3376,12 @@ private fun renderWebGLBackground() {
     if (!::mainViewport.isInitialized) return
     val renderer = window.asDynamic().__fieldRenderWebglBackground
     if (renderer == null || renderer == js("undefined")) return
-    renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha, mainZoom)
+    // Split, each pane draws its own grid and vignette through its own camera.
+    val panes = if (!CanvasCamera.isSplit) null else CanvasCamera.panes.map { pane ->
+        val r = pane.rect
+        arrayOf(r.x, r.y, r.w, r.h, pane.tx, pane.ty)
+    }.toTypedArray()
+    renderer(mainTranslation[0], mainTranslation[1], dotAlphaSmall, dotAlphaLarge, axisAlpha, mainZoom, panes)
 }
 
 private fun stepBackgroundLerp(): Boolean {
@@ -3967,6 +4014,7 @@ private fun applyFrameToBox(box: HTMLElement, frame: Rect) {
     d.data_y = frame.y
     d.data_w = frame.w
     d.data_h = frame.h
+    CanvasCamera.place(box)
 }
 
 private fun applyBoxVisibilityImmediate(box: HTMLElement, includeOutputArea: Boolean = false) {
@@ -6421,6 +6469,11 @@ suspend fun main() {
                     if (u == "root") onRemoteDrawingScene(set.value)
                 }
 
+                "panes" -> {
+                    found.unsafeCast<dynamic>().panes = set.value
+                    if (u == "root") CanvasCamera.loadSplit(set.value)
+                }
+
                 else -> {
                     found.unsafeCast<dynamic>()[set.property] = set.value
                 }
@@ -6663,6 +6716,7 @@ suspend fun main() {
         }
 
     }.first()
+    CanvasCamera.installOnce()
 
     registerOnOpen(
         Message("hello").payload(
@@ -6700,7 +6754,7 @@ suspend fun main() {
     mainViewport.onmousedown = { event ->
         if (event.buttons.toInt() == 4) {
         } else {
-            if (event.target == mainViewport) {
+            if (CanvasCamera.isBackground(event.target)) {
                 canvasGestures.down(event)
             } else {
 
@@ -7152,12 +7206,23 @@ suspend fun main() {
         provideMissingMouseup(event)
         // Clear snap guides when drag ends
         boxSnappingSystem.clearSnapGuides()
+        // A split canvas: a box dropped over another pane keeps its place on screen in that pane.
+        val moved = CanvasCamera.endBoxDrag()
+        if (moved.isNotEmpty()) {
+            moved.forEach { (box, frame) -> applyFrameToBox(box, frame) }
+            send(Message("set-rects").payload(Set_rects(moved.mapNotNull { (box, frame) ->
+                (box.asDynamic().uid as? String)?.let { Set_rect(it, "frame", frame) }
+            })))
+        }
+        selected.copy().forEach { CanvasCamera.place(it) }
+        canvasGestures.requestConnectionGroupRebuild()
     }
 
     interactable.on("dragstart") { event ->
         if (pendingShiftToggleBox != null) {
             pendingShiftToggleHadDrag = true
         }
+        CanvasCamera.beginBoxDrag(selected.copy())
         selected.copy().forEach {
             it.asDynamic().originalMouseLocation = listOf(event.clientX, event.clientY)
             it.asDynamic().originalFramePosition = listOf(it.asDynamic().data_x, it.asDynamic().data_y)

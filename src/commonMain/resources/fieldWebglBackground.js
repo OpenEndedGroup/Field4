@@ -61,6 +61,9 @@
             uniform float u_axisAlpha;
             uniform float u_dpr;
             uniform float u_zoom;
+            // The pane being drawn, in device pixels from the top-left: x, y, width, height. The
+            // vignette darkens towards its edges, so each pane of a split canvas reads as a sheet.
+            uniform vec4 u_pane;
 
             float hash(vec2 p) {
                 p = fract(p * vec2(0.1031, 0.11369));
@@ -80,7 +83,7 @@
             void main() {
                 vec2 frag = vec2(gl_FragCoord.x, u_resolution.y - gl_FragCoord.y);
                 float falloff = 450.0 * u_dpr;
-                vec2 edgeDistance = min(frag, u_resolution - frag);
+                vec2 edgeDistance = min(frag - u_pane.xy, u_pane.xy + u_pane.zw - frag);
                 vec2 edgeProximity = 1.0 - clamp(edgeDistance / falloff, 0.0, 1.0);
                 float shade = min(length(edgeProximity), 1.0) * 0.28;
 
@@ -147,7 +150,8 @@
                 dotLargeAlpha: gl.getUniformLocation(program, "u_dotLargeAlpha"),
                 axisAlpha: gl.getUniformLocation(program, "u_axisAlpha"),
                 dpr: gl.getUniformLocation(program, "u_dpr"),
-                zoom: gl.getUniformLocation(program, "u_zoom")
+                zoom: gl.getUniformLocation(program, "u_zoom"),
+                pane: gl.getUniformLocation(program, "u_pane")
             };
 
             const state = {
@@ -162,9 +166,14 @@
                 dotLarge: numberOr(config.dotLarge, DEFAULTS.dotLarge),
                 axis: numberOr(config.axis, DEFAULTS.axis),
                 zoom: numberOr(config.zoom, 1),
+                panesKey: "",
+                panes: null,
                 renderCount: 0,
                 skippedCount: 0,
-                render(tx, ty, dotSmall, dotLarge, axis, zoom) {
+                // panes (optional): [[x, y, w, h, tx, ty], ...] in CSS pixels, one per pane of a
+                // split canvas, each drawn through its own translation. Absent, the whole canvas
+                // is one pane at (tx, ty).
+                render(tx, ty, dotSmall, dotLarge, axis, zoom, panes) {
                     const dpr = Math.max(1, window.devicePixelRatio || 1);
                     const cssWidth = config.fixed ? window.innerWidth : host.clientWidth;
                     const cssHeight = config.fixed ? window.innerHeight : host.clientHeight;
@@ -177,6 +186,8 @@
                     const nextAxis = numberOr(axis, 0);
                     // Optional: callers that predate canvas zoom pass five arguments.
                     const nextZoom = numberOr(zoom, state.zoom);
+                    const nextPanes = Array.isArray(panes) && panes.length ? panes : null;
+                    const nextPanesKey = nextPanes ? JSON.stringify(nextPanes) : "";
 
                     if (
                         state.hasFrame &&
@@ -188,7 +199,8 @@
                         state.dotSmall === nextDotSmall &&
                         state.dotLarge === nextDotLarge &&
                         state.axis === nextAxis &&
-                        state.zoom === nextZoom
+                        state.zoom === nextZoom &&
+                        state.panesKey === nextPanesKey
                     ) {
                         state.skippedCount += 1;
                         return false;
@@ -200,6 +212,8 @@
                     state.dotLarge = nextDotLarge;
                     state.axis = nextAxis;
                     state.zoom = nextZoom;
+                    state.panes = nextPanes;
+                    state.panesKey = nextPanesKey;
                     state.width = width;
                     state.height = height;
                     state.dpr = dpr;
@@ -221,7 +235,23 @@
                     gl.uniform1f(locations.axisAlpha, state.axis);
                     gl.uniform1f(locations.dpr, dpr);
                     gl.uniform1f(locations.zoom, state.zoom);
-                    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                    if (!state.panes) {
+                        gl.disable(gl.SCISSOR_TEST);
+                        gl.uniform4f(locations.pane, 0, 0, width, height);
+                        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                    } else {
+                        gl.enable(gl.SCISSOR_TEST);
+                        for (const p of state.panes) {
+                            const px = Math.round(p[0] * dpr), py = Math.round(p[1] * dpr);
+                            const pw = Math.round(p[2] * dpr), ph = Math.round(p[3] * dpr);
+                            // Scissor is bottom-up; the pane rect is top-down.
+                            gl.scissor(px, height - py - ph, pw, ph);
+                            gl.uniform4f(locations.pane, px, py, pw, ph);
+                            gl.uniform2f(locations.translation, numberOr(p[4], 0) * dpr, numberOr(p[5], 0) * dpr);
+                            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+                        }
+                        gl.disable(gl.SCISSOR_TEST);
+                    }
                     state.hasFrame = true;
                     state.renderCount += 1;
                     return true;
@@ -229,15 +259,15 @@
             };
 
             host.__fieldWebglBackground = state;
-            window.__fieldRenderWebglBackground = function (tx, ty, dotSmall, dotLarge, axis, zoom) {
+            window.__fieldRenderWebglBackground = function (tx, ty, dotSmall, dotLarge, axis, zoom, panes) {
                 if (host.__fieldWebglBackground && host.__fieldWebglBackground.ok) {
-                    return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis, zoom);
+                    return host.__fieldWebglBackground.render(tx, ty, dotSmall, dotLarge, axis, zoom, panes);
                 }
                 return false;
             };
 
             const rerender = function () {
-                state.render(state.tx, state.ty, state.dotSmall, state.dotLarge, state.axis);
+                state.render(state.tx, state.ty, state.dotSmall, state.dotLarge, state.axis, state.zoom, state.panes);
             };
             if (!config.fixed && window.ResizeObserver) {
                 new ResizeObserver(rerender).observe(host);

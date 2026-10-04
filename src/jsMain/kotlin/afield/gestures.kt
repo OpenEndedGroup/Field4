@@ -1358,6 +1358,10 @@ class CanvasGestures(
     private var cachedBoxes: List<HTMLElement> = emptyList()
     private var cachedBoxByUid: Map<String, HTMLElement> = emptyMap()
     private var cachedWorldRects: Map<HTMLElement, DOMRect> = emptyMap()
+
+    /** Split only: each box's unclipped rect, and its pane's rect, both through the main camera. */
+    private var cachedHintRects: Map<HTMLElement, DOMRect> = emptyMap()
+    private var cachedHintViewports: Map<HTMLElement, DOMRect> = emptyMap()
     private var cachedDomBoxCount: Int = -1
     private var connectionRebuildScheduled = false
     private var pendingTranslationOnlyRebuild = true
@@ -1384,7 +1388,25 @@ class CanvasGestures(
         val parentRect = parent.getBoundingClientRect()
         val boxElements = boxes()
         val screenRects = boxElements.associateWith { it.getBoundingClientRect() }
-        val worldRects = screenRects.mapValues { (box, rect) -> CanvasCamera.paneOf(box).worldRect(rect) }
+        // Every connection layer draws through the main pane's camera. A box's on-screen rect, cut
+        // to the pane showing it and mapped back through that camera, lands where the box is seen
+        // whichever pane it is in, so a connection between panes runs straight across the divider.
+        // Unsplit, this is the world rect. A box its pane hides entirely is drawn as a sliver on the
+        // pane edge nearest it, where its offscreen hint goes, from its unclipped rect.
+        val main = CanvasCamera.main
+        val worldRects = screenRects.mapValues { (box, rect) ->
+            main.worldRect(CanvasCamera.visibleRect(box, rect) ?: edgeSliver(rect, CanvasCamera.paneOf(box).rect))
+        }
+        if (CanvasCamera.isSplit) {
+            cachedHintRects = screenRects.mapValues { (_, rect) -> main.worldRect(rect) }
+            cachedHintViewports = boxElements.associateWith { box ->
+                val p = CanvasCamera.paneOf(box).rect
+                main.worldRect(DOMRect(p.x, p.y, p.w, p.h))
+            }
+        } else {
+            cachedHintRects = emptyMap()
+            cachedHintViewports = emptyMap()
+        }
         val boxByUid = boxElements.mapNotNull { box ->
             uidOrNull(box)?.let { it to box }
         }.toMap()
@@ -1397,7 +1419,18 @@ class CanvasGestures(
         cachedDomBoxCount = document.querySelectorAll(".box").length
     }
 
+    /** A 1-pixel rect on the edge of [pane] nearest [r] (a rect entirely outside it). */
+    private fun edgeSliver(r: DOMRect, pane: Rect): DOMRect {
+        val left = r.left.coerceIn(pane.x, pane.x + pane.w - 1.0)
+        val top = r.top.coerceIn(pane.y, pane.y + pane.h - 1.0)
+        val right = r.right.coerceIn(left + 1.0, pane.x + pane.w)
+        val bottom = r.bottom.coerceIn(top + 1.0, pane.y + pane.h)
+        return DOMRect(left, top, right - left, bottom - top)
+    }
+
     private fun hasValidCachedLayoutForTranslation(): Boolean {
+        // Split, a pan in one pane moves only some boxes against the main camera.
+        if (CanvasCamera.isSplit) return false
         if (cachedBoxes.isEmpty()) return false
         if (document.querySelectorAll(".box").length != cachedDomBoxCount) return false
         if (abs(window.innerWidth.toDouble() - cachedViewportWidth) > 0.5) return false
@@ -1615,7 +1648,11 @@ class CanvasGestures(
 
                 val r1 = worldRect.copyRect()
 
-                addOffscreenHintForViewport(worldRect, mainViewportRect)
+                // Split, a box is offscreen relative to its own pane.
+                addOffscreenHintForViewport(
+                    cachedHintRects[renderedFrom] ?: worldRect,
+                    cachedHintViewports[renderedFrom] ?: mainViewportRect
+                )
 
                 c?.let {
                     it.forEach { id ->
@@ -1818,7 +1855,7 @@ class CanvasGestures(
 
             var boxList = document.querySelectorAll(".box")
             rects = (0 until boxList.length).map { boxList.item(it) as HTMLElement }
-                .map { it to it.getBoundingClientRect() }
+                .mapNotNull { box -> CanvasCamera.visibleRect(box, box.getBoundingClientRect())?.let { box to it } }
 
             isExecutionLine = true
             start = e.x to e.y
@@ -1826,9 +1863,11 @@ class CanvasGestures(
             executionBreadthFirst = e.shiftKey
         } else {
 
+            // Only what is visible counts: a box's rect is cut to its pane, and one its pane hides
+            // cannot be selected.
             var boxList = document.querySelectorAll(".box")
             rects = (0 until boxList.length).map { boxList.item(it) as HTMLElement }
-                .map { it to it.getBoundingClientRect() }
+                .mapNotNull { box -> CanvasCamera.visibleRect(box, box.getBoundingClientRect())?.let { box to it } }
 
             isMarquee = true
             start = e.x to e.y
