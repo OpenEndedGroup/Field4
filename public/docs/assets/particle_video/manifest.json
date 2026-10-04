@@ -1,0 +1,92 @@
+{
+  "source_url": "https://commons.wikimedia.org/wiki/File:Loie_Fuller_-_Vue_Lumi%C3%A8re_No_76_-_Serpentine_Dance_-_1896.ogv",
+  "original_url": "https://upload.wikimedia.org/wikipedia/commons/a/a8/Loie_Fuller_-_Vue_Lumi%C3%A8re_No_76_-_Serpentine_Dance_-_1896.ogv",
+  "source_license": "Public domain; Commons PD-old-70-expired / PD-US-expired",
+  "excerpt_start_seconds": 4,
+  "excerpt_duration_seconds": 12,
+  "performer_identity": "not verified as Loie Fuller",
+  "options": {
+    "width": 0,
+    "fps": null,
+    "frames": 0,
+    "particles": 24000,
+    "min_track": 10,
+    "grace": 5,
+    "spacing": 0.0,
+    "confidence": 0.25,
+    "seed_confidence": 0.45,
+    "color_limit": 1.0,
+    "still_speed": 0.0,
+    "merge_distance": 0.0,
+    "merge_age": 30,
+    "merge_velocity": 1.5,
+    "seed_budget": 16,
+    "seed": 1,
+    "iterations": 20,
+    "weights": "C_T_SKHT_V2",
+    "device": "cuda",
+    "threads": 4
+  },
+  "environment": {
+    "python": "3.10.20",
+    "torch": "2.6.0+cu124",
+    "torchvision": "0.21.0+cu124",
+    "cuda": "12.4",
+    "hardware": {
+      "name": "NVIDIA GeForce RTX 4090",
+      "capability": [
+        8,
+        9
+      ]
+    },
+    "checkpoint_sha256": "ff5fadd56d26b40647388883af1547351ea17868b765c05b27231e72dd16a322",
+    "checkpoint_name": "raft_large_C_T_SKHT_V2-ff5fadd5.pth",
+    "ffmpeg": "ffmpeg version n8.1.2 Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "run": {
+    "frames": 300,
+    "records": 7184070,
+    "particlesAtFrame0": 22536,
+    "width": 400,
+    "cacheHitOnRepeat": true,
+    "backend": "torchvision-raft-large",
+    "trackingWallSeconds": 23.891057040003943,
+    "device": "cuda",
+    "renderPointRadius": 0.7,
+    "key": "2b87b69adaf09ba16312573ae32111de195cb4b879e3e4f86d29907d8b3c752e",
+    "height": 300
+  },
+  "subset": {
+    "rule": "keep complete trajectories with id % 16 == 0",
+    "records": 447108,
+    "intended_use": "portable reader and scrubber; full 24000-particle movie uses every exported sample"
+  },
+  "tool_sha256": {
+    "cached_track.py": "2451bda431fefc8ed77843a1d35e9f80c2b1bcfa2cad86a7a54aa434c7a523b0",
+    "neural_track.py": "1c639cdca35ba4c131c4409fa1c12187bf604b24b6a5ed4da012181ad2826c9e",
+    "pvt.py": "91654ed9beb3db6cc61539bd40ee0571a802cd703b5f01b633a306c7cd6f69ad",
+    "engine/dense.hpp": "770f541914bd65b8fa931ec869999525b9b3753469ab9e97bbd3764c8f73c734",
+    "engine/flow.hpp": "59ce60b17e6ae67f716c50d1d47f28addccb6237b676e4097a3466860d9658d0",
+    "engine/tracker.hpp": "796ac9923d968ff374fdcb7c97a496effb0a06062c6210973e98b4cca8f06fc0",
+    "engine/main.cpp": "5b2e8647a36b724c66a1ae68b245f4fff0cc2f7e1f614eb73060bc28e6c0aa49"
+  },
+  "files": {
+    "comparison.mp4": "07619844c6a8010cb173e720918994999bc00680789f2a75b74f4e61f12e0e51",
+    "comparison.png": "e76857c4745acebdbd4bd78d7dc3e7eb7656119955b1df6f43d4cdd93c4c38af",
+    "example.pvt.gz": "267ff78dea2ac5bda05631f9f8aa0b00e74949bf7bf5121fb592b7eca888da26",
+    "field-controls.png": "197a6bdc078ac31cfc4c9117299af5711ccc8d23b28e43ba78462d3d51c47400",
+    "field-view.png": "e96ea2c286a30f81f474d984f69336a86e01250bd58309dc11917fa0fec14be7",
+    "identities.png": "097df1453a90c360107ec54025f90403efc5be3186d3ff804226f1bc2455dc76",
+    "particles.mp4": "823925bdd355c9bd13c9cc45abb4ce39580eb5162ccb5cec793a4137c035824e",
+    "particles.png": "2c5e51e0c38f71d1f16ef8bd2e58315a7f570d77eb9fab6f14e741a337276f3f",
+    "source.mkv": "179c556e16bfdd17f554439adea4e92e9e6595cb2b72f1f2d4b968d354664a24",
+    "source.mp4": "4d9572e51bf1278062795885a836104a4745d15b2201fb44dff826705f1ebf0c"
+  },
+  "viewer_validation": {
+    "initial_seconds": 7.2,
+    "changed_seconds": 4.8,
+    "identity_colors": true,
+    "trails": true,
+    "updated_image": true
+  }
+}

@@ -286,6 +286,7 @@ nav:
       - Computed Ray Geometry: computed_ray_geometry.md
       - From Modules to Reconstruction: reconstruction_plumbing.md
       - Optical Flow: optical_flow.md
+      - Video Particles: particle_video.md
       - A Learned Shader Function: learned_shader.md
       - GPU Shader Learning: gpu_shader_learning.md
       - Progressive Path Tracing: path_tracing.md
