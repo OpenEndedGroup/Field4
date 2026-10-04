@@ -98,7 +98,8 @@ class InstructionFragmentsTest {
         assertTrue(fragments.single { it.source == "tools.progress" }.text.contains("observe the existing handle"))
         val builds = fragments.filter { it.source == "tools.house" }.joinToString { it.text }
         for (required in listOf("currency.isCurrent", "expectedRevision", "latest note version", "acceptance is not completion",
-            "fromEarlierInputs=true", "openFindings", "\"geometryView\" to mapOf(\"box\""))
+            "fromEarlierInputs=true", "openFindings", "Geometry notes from its findings carry the same fromEarlierInputs mark",
+            "\"geometryView\" to mapOf(\"box\""))
             assertTrue(builds.contains(required), required)
         assertTrue(fragments.single { it.source == "core.contract" }.text.contains("DocumentBoxNavigateRequest"))
         val attachments = fragments.filter { it.source == "tools.attachments" }.joinToString { it.text }

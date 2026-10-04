@@ -3,8 +3,14 @@ package afield.ai.agent
 import afield.Box
 import afield.SessionInformation
 import afield.ai.core.*
+import afield.graphics.GeometryFinding
 import afield.graphics.ThreeGeometryViewState
 import afield.graphics.threeViewFor
+import afield.stdlib.BoxStudyBuildBinding
+import afield.stdlib.StudyBuildFailure
+import afield.stdlib.StudyBuildProblem
+import afield.stdlib.StudyBuildStage
+import afield.stdlib.StudyBuilds
 import kotlinx.serialization.json.*
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
@@ -284,5 +290,43 @@ class GeometryReviewToolsTest {
         val blind = f.copy(ctx = ToolExecutionContext(fieldGraph = FieldGraphTools(f.info, host, seesOutput = false)))
         assertFalse(registry.isAvailable(blind.ctx, "InspectGeometryViewRequest"))
         assertEquals(0, call(blind, ReadGeometryNoteRequest(f.view.uid, id)).imageCount)
+    }
+
+    @Test fun findingsOfABuildAttemptWithEarlierInputsAreMarkedWhenRead() {
+        val f = fixture()
+        val source = f.view.reviewInbox.owner!!
+        var plan = "stair at 3"
+        StudyBuilds(Files.createTempDirectory("review-builds").toFile(), listOf(StudyBuildStage("layout", "House layout", "v1", setOf("plan")) {
+            throw StudyBuildFailure(StudyBuildProblem("overlap", "Two walls overlap"))
+        }), { mapOf("plan" to plan) }).use { builds ->
+            source.properties["_studyBuilds:study"] = BoxStudyBuildBinding(source, "study", builds)
+            val job = builds.start("layout", builds.stages().single().fingerprint!!)
+            assertTrue(f.ctx.fieldGraph!!.studyBuilds.wait(WaitStudyBuildRequest(source.id, "study", job.id, 5.0)).details["terminal"] == true)
+            fun saveFinding(runId: String?, text: String): String {
+                val finding = runId?.let { GeometryFinding("wall-stair", "error", "layout", it, "test", "The stair is blocked", "Move it?").json() }
+                val record = JsonObject(note(f.view, text = text) + listOfNotNull(finding?.let { "finding" to it }))
+                return f.view.reviewInbox.receive(record, true).getValue("id").jsonPrimitive.content
+            }
+            val fromBuild = saveFinding(job.id, "W3 crosses the stair")
+            val elsewhere = saveFinding("diagnostic-7", "From a check that is not a build attempt")
+            val plain = saveFinding(null, "Please inspect this corner")
+            fun read() = call(f, ReadGeometryReviewsRequest(f.view.uid))
+            fun marks() = (read().details["notes"] as List<*>).associate { (it as Map<*, *>)["id"] to it["fromEarlierInputs"] }
+            fun noteMark(id: String) = call(f, ReadGeometryNoteRequest(f.view.uid, id, includeImages = false)).details["fromEarlierInputs"]
+
+            assertEquals<Map<*, *>>(mapOf(fromBuild to false, elsewhere to null, plain to null), marks())
+            assertFalse(read().message.contains("earlier inputs"))
+            assertEquals(false, noteMark(fromBuild))
+
+            plan = "stair at 4"
+            // The build card's predicate: the agent and the person get the same verdict.
+            assertTrue(afield.stdlib.studyBuildLatestUsedEarlierInputs(builds.stages().single()))
+            assertEquals<Map<*, *>>(mapOf(fromBuild to true, elsewhere to null, plain to null), marks())
+            assertContains(read().message, "1 from a build attempt with earlier inputs")
+            // The discussion is still open; only its bearing on the current design changed.
+            assertEquals("open", (read().details["notes"] as List<*>).map { it as Map<*, *> }.single { it["id"] == fromBuild }["status"])
+            assertEquals(true, noteMark(fromBuild))
+            assertNull(noteMark(plain))
+        }
     }
 }
