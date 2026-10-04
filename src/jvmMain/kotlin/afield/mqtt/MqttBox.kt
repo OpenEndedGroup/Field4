@@ -22,7 +22,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
  * Lifecycle follows the house rule for launched things: clients and brokers are keyed (by url and
  * by port) and **survive a box being stopped** — a sensor feed should not drop because you stopped
  * the box that plots it. Re-running a box reuses them. Subscriptions are keyed by box and key, so a
- * re-run *replaces* its callback instead of adding a second one. Stopping is explicit:
+ * re-run *replaces* its callback instead of adding a second one. They are owned by the box as
+ * `ReleasePolicy.KEYED`, so deleting the box (or closing its document) unsubscribes them; otherwise:
  * [BoxMqtt.unsubscribe], [BoxMqtt.close], or [closeAll] from a "panic" box.
  */
 object MqttConnections {
@@ -136,6 +137,10 @@ object MqttConnections {
             } else {
                 old?.subscription?.close()
                 Slot(filter, client, handler).also { slot ->
+                    // KEYED: stop leaves it subscribed; deleting the box (or closing the document) releases it.
+                    box.runScopes.parent.own(afield.ReleasePolicy.KEYED) {
+                        if (slots.remove(k, slot)) slot.subscription.close()
+                    }
                     slot.subscription = client.subscribe(filter, qos) { m ->
                         Box.withBoxContextNow(box) {
                             try { slot.handler(m.topic, m) } catch (t: Throwable) { box.println("mqtt '$filter': $t") }

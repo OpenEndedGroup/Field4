@@ -57,4 +57,23 @@ class MqttDemoBundleTest {
         assertEquals(emptyList(), m.subscriptions)
         broker.close()
     }
+
+    @Test
+    fun `deleting a box releases its subscriptions`() {
+        val broker = MqttBroker()
+        val box = Box("mqtt-retire-box")
+        val m = box.mqtt(broker.url)
+        assertTrue(m.client.awaitConnected())
+        val got = java.util.concurrent.CopyOnWriteArrayList<String>()
+        m.subscribe("r") { _, msg -> got += msg.text }
+        m.track("t")
+        assertEquals(2, m.subscriptions.size)
+        afield.retireBoxes(listOf(box), "test")
+        assertEquals(emptyList(), m.subscriptions)
+        assertEquals(emptyList(), m.client.filters)
+        m.client.publish("r", "after", QoS.AT_LEAST_ONCE).get()
+        Thread.sleep(100)
+        assertEquals(emptyList(), got.toList())
+        broker.close()
+    }
 }
