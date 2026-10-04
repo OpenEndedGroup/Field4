@@ -33,10 +33,12 @@ try {
     check(hosts.length===4,'four mount hosts');
     s.panes.forEach((p,i)=>{
         const hr=hosts[i].getBoundingClientRect();
-        near(hr.left,p.rect[0],0.5,`mount ${i} left`);near(hr.width,p.rect[2],0.5,`mount ${i} width`);
+        // The mount covers the pane less its share of the 3 px dividers.
+        check(hr.left>=p.rect[0]-0.5&&hr.right<=p.rect[0]+p.rect[2]+0.5&&hr.width>=p.rect[2]-3.5,`mount ${i} on its pane: ${JSON.stringify(hr)} vs ${p.rect}`);
+        check(hr.top>=p.rect[1]-0.5&&hr.bottom<=p.rect[1]+p.rect[3]+0.5&&hr.height>=p.rect[3]-3.5,`mount ${i} on its pane vertically`);
         near(ds.panes[i].zoom,s.zoom,1e-4,`mount ${i} zoom`);
-        near(ds.panes[i].scrollX*s.zoom+p.rect[0],p.tx,1,`mount ${i} follows its pane in x`);
-        near(ds.panes[i].scrollY*s.zoom+p.rect[1],p.ty,1,`mount ${i} follows its pane in y`);
+        near(ds.panes[i].scrollX*s.zoom+hr.left,p.tx,1,`mount ${i} follows its pane in x`);
+        near(ds.panes[i].scrollY*s.zoom+hr.top,p.ty,1,`mount ${i} follows its pane in y`);
     });
     check(Math.abs(s.panes[0].tx-s.panes[3].tx)>50,'A and D cameras apart');
     check(hosts.slice(0,3).every(h=>h.classList.contains('field-drawing-mirror'))&&!hosts[3].classList.contains('field-drawing-mirror'),'only the main mount shows its UI');

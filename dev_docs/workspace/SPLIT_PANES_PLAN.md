@@ -277,6 +277,14 @@ What P2 built:
   - Releasing within 3% of the window edge, or double-clicking the handle, removes that divider
     (`removeDivider`). The other divider stays, and the remaining panes keep the bottom-right
     pane's translation on the removed axis.
+- **Divider look** (2026-10-05, Marc: black, 3 px, rounded inner corners, cyan when hovered or
+  dragged). Each pane gets a `.field-pane-frame` above its boxes, inset from its divider sides
+  (`CanvasPane.dividerInsets`: 1 px for the pane before a divider, 2 px for the pane after) with
+  those corners rounded (`frameRadius`). Its black `box-shadow` spread, clipped by the pane, paints
+  that pane's share of the bar, and the four frames together draw the cross. The pane rects
+  themselves are unchanged, so no camera arithmetic moved. Drawing-layer mounts use
+  `innerRect` and the same radius, so marks stop at the bars. The handle's hover stripe is cyan
+  and lies exactly over the bar.
 - **Corner grip** (`.field-split-grip`, top-left, shown only while unsplit). Drag it out to split
   where you release, with preview lines while dragging. Released within 24 px of the top edge it
   makes columns only; within 24 px of the left edge, rows only.

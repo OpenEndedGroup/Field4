@@ -116,9 +116,9 @@ private fun ensureLoaded(then: () -> Unit = {}) {
 
 private fun currentRootDrawing(): String? = findRootBoxElement()?.asDynamic()?.drawing as? String
 
-/** Excalidraw's camera for [pane]: its container sits at the pane's corner. */
+/** Excalidraw's camera for [pane]: its container sits at the corner of the pane's inner rect. */
 private fun cameraFor(pane: CanvasPane): Array<Double> {
-    val r = pane.rect
+    val r = pane.innerRect
     return arrayOf((pane.tx - r.x) / pane.zoom, (pane.ty - r.y) / pane.zoom, pane.zoom)
 }
 
@@ -157,7 +157,7 @@ private fun syncPaneMounts() {
             opts.initialCamera = cameraFor(panes[index])
             opts.onCamera = { scrollX: Double, scrollY: Double, zoom: Double ->
                 CanvasCamera.panes.getOrNull(index)?.let { pane ->
-                    val r = pane.rect
+                    val r = pane.innerRect
                     panViewportForDrawingLayer(scrollX * zoom + r.x, scrollY * zoom + r.y, zoom, pane)
                 }
             }
@@ -178,11 +178,13 @@ private fun syncPaneMounts() {
 }
 
 private fun layoutMountHost(el: HTMLElement, pane: CanvasPane, isMain: Boolean) {
-    val r = pane.rect
+    val r = pane.innerRect
     el.style.left = "${r.x}px"
     el.style.top = "${r.y}px"
     el.style.width = "${r.w}px"
     el.style.height = "${r.h}px"
+    // Rounded like the pane's frame, so marks stop at the dividers' curves too.
+    el.style.borderRadius = if (CanvasCamera.isSplit) pane.frameRadius() else ""
     el.classList.toggle("field-drawing-mirror", !isMain)
 }
 

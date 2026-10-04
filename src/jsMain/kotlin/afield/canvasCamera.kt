@@ -320,6 +320,11 @@ object CanvasCamera {
                     el.appendChild(canvas)
                     pane.canvas = canvas
                 }
+                // Above the boxes: its black spread paints this pane's share of the dividers.
+                val frame = document.createElement("div") as HTMLElement
+                frame.className = "field-pane-frame"
+                el.appendChild(frame)
+                pane.frame = frame
             }
             if (splitX != null) dividers += makeDivider(vertical = true)
             if (splitY != null) dividers += makeDivider(vertical = false)
@@ -458,6 +463,14 @@ object CanvasCamera {
             el.style.top = "${r.y}px"
             el.style.width = "${r.w}px"
             el.style.height = "${r.h}px"
+            pane.frame?.let { frame ->
+                val (top, right, bottom, left) = pane.dividerInsets()
+                frame.style.top = "${top}px"
+                frame.style.right = "${right}px"
+                frame.style.bottom = "${bottom}px"
+                frame.style.left = "${left}px"
+                frame.style.borderRadius = pane.frameRadius()
+            }
         }
         dividers.forEach { el ->
             if (el.classList.contains("field-pane-divider-v")) {
@@ -673,6 +686,49 @@ class CanvasPane(val col: Int, val row: Int) {
 
     /** The element holding this pane's boxes, transformed by its camera. */
     internal var canvas: HTMLElement? = null
+
+    /** The overlay whose rounded, black-spread outline draws this pane's side of the dividers. */
+    internal var frame: HTMLElement? = null
+
+    private val innerLeft get() = col == 1 && CanvasCamera.columns == 2
+    private val innerRight get() = col == 0 && CanvasCamera.columns == 2
+    private val innerTop get() = row == 1 && CanvasCamera.rows == 2
+    private val innerBottom get() = row == 0 && CanvasCamera.rows == 2
+
+    /**
+     * How far the visible part of this pane stops short of each divider, as (top, right, bottom,
+     * left) in pixels. A divider is [DIVIDER_THICKNESS] wide: the pane before it gives up
+     * [DIVIDER_BEFORE], the pane after it the rest, so the bar sits under the handle's stripe.
+     */
+    fun dividerInsets(): List<Double> = listOf(
+        if (innerTop) DIVIDER_THICKNESS - DIVIDER_BEFORE else 0.0,
+        if (innerRight) DIVIDER_BEFORE else 0.0,
+        if (innerBottom) DIVIDER_BEFORE else 0.0,
+        if (innerLeft) DIVIDER_THICKNESS - DIVIDER_BEFORE else 0.0,
+    )
+
+    /** [rect] less the dividers: what is visible of the pane, and where its drawing layer sits. */
+    val innerRect: Rect
+        get() {
+            val r = rect
+            val (top, right, bottom, left) = dividerInsets()
+            return Rect(r.x + left, r.y + top, r.w - left - right, r.h - top - bottom)
+        }
+
+    /** CSS border-radius for [innerRect]: every corner that touches a divider is rounded. */
+    fun frameRadius(): String {
+        fun corner(round: Boolean) = if (round) "${DIVIDER_RADIUS}px" else "0"
+        return listOf(
+            corner(innerTop || innerLeft), corner(innerTop || innerRight),
+            corner(innerBottom || innerRight), corner(innerBottom || innerLeft)
+        ).joinToString(" ")
+    }
+
+    companion object {
+        const val DIVIDER_THICKNESS = 3.0
+        const val DIVIDER_BEFORE = 1.0
+        const val DIVIDER_RADIUS = 7.0
+    }
 
     /** This pane's rectangle in window coordinates. */
     val rect: Rect
