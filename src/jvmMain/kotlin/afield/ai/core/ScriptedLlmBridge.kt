@@ -52,6 +52,8 @@ class ScriptedLlmBridge(
     private val tools = ToolRegistry().also(::registerBuiltInAgentTools)
     private var cursor = 0
     val received = mutableListOf<Received>()
+    /** The user messages handed over between rounds (AiTurnInbox), as the model would have read them. */
+    val interjections = mutableListOf<String>()
 
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("scripted", label)
 
@@ -117,6 +119,8 @@ class ScriptedLlmBridge(
                     transcript += afield.ai.core.program.nestedTranscriptEntries("scripted-$rounds", result)
                     onProgress?.invoke(LlmProgressUpdate("${step.tool} finished",
                         afield.ai.core.program.nestedTraceMarkdown(result) ?: json.take(300), phase = "tool_result"))
+                    // As the provider bridges do after a round; the script does not change, it is only recorded.
+                    callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { interjections += AiTurnInbox.modelText(it) }
                 }
             }
         }

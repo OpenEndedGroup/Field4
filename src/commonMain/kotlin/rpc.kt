@@ -177,7 +177,12 @@ data class AiAssist(
     val images: List<String> = emptyList(),
     val maxToolRounds: Int = 24,
     /** The prompt came from push-to-talk, so it may carry speech-recognition errors. */
-    val dictated: Boolean = false
+    val dictated: Boolean = false,
+    /**
+     * When the box already has a turn running, give this message to that turn instead of refusing it
+     * (`AiTurnInbox`). The chat panel sets it; a caller that waits for its own turn, like an agent task, does not.
+     */
+    val queueIfBusy: Boolean = false
 )
 
 /** Push-to-talk audio: base64 little-endian float32 mono PCM, plus Whisper's initial prompt. */

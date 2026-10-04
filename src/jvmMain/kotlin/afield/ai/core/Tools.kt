@@ -937,6 +937,11 @@ data class ToolExecutionContext(
     val promoted: MutableSet<String>? = null,
     /** Structured progress from native tools, scoped to this conversation. */
     val reportProgress: ((LlmProgressUpdate) -> Unit)? = null,
+    /**
+     * Messages the person sends while this turn runs. The bridges drain it after each tool round and
+     * send what it held as a user message alongside the tool results; null where nobody can write in.
+     */
+    val inbox: AiTurnInbox? = null,
 ) {
     /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
     fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true
