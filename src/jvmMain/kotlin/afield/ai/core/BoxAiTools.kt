@@ -68,10 +68,39 @@ fun Box.aiTool(name: String, build: BoxToolBuilder.() -> Unit): BoxTool {
         box = this,
         params = builder.params.toList(),
         body = body,
+        meta = ToolMeta(
+            namespace = builder.namespace ?: name.substringBefore('.', "doc").ifBlank { "doc" },
+            exposure = builder.exposure,
+            effects = builder.effects ?: setOf(ToolEffect.UNDECLARED),
+        ),
+        sourceRevision = afield.sourceRevision((getPropertyRaw("code") as? String).orEmpty()).take(16),
     )
     DocumentToolRegistry.register(documentKeyFor(this), tool)
     runCatching { notify("Registered AI tool '$name'", "AI tools") }
     return tool
+}
+
+/**
+ * [BoxTool.wireName]: a tool name the model providers accept (`^[A-Za-z0-9_-]{1,64}$`). A name that is too
+ * long keeps its first 55 characters and gains a hash of the whole name, so two long names that share a start
+ * stay distinct. Distinct names can still meet (`house.check` and `house_check`):
+ * [DocumentToolRegistry.register] refuses the second.
+ */
+internal fun wireToolName(name: String): String {
+    val safe = name.replace(Regex("[^A-Za-z0-9_-]"), "_").ifEmpty { "_" }
+    if (safe.length <= 64) return safe
+    val hash = java.security.MessageDigest.getInstance("SHA-256").digest(name.toByteArray()).joinToString("") { "%02x".format(it) }.take(8)
+    return safe.take(55) + "_" + hash
+}
+
+/**
+ * Built-in tool names a box tool may not take: core's, and whatever is registered through
+ * [AgentToolExtensions] when the box registers. A box tool with one of these names would be shadowed
+ * (built-ins win), so the model would call the built-in thinking it was the box's.
+ */
+internal object BuiltInToolNames {
+    private val core: Set<String> by lazy { runCatching { ToolRegistry().also { registerBuiltInAgentTools(it) }.handlerNames() }.getOrDefault(emptySet()) }
+    fun contains(name: String): Boolean = name in core || AgentToolExtensions.registeredNames().contains(name)
 }
 
 /** The document-registry key for a box (full document path; blank for unsaved docs). */
@@ -91,10 +120,34 @@ class BoxToolBuilder internal constructor(
     internal var description: String = ""
     internal val params = mutableListOf<BoxToolArg<*>>()
     internal var body: (suspend BoxToolScope.() -> Any?)? = null
+    internal var namespace: String? = null
+    internal var exposure: ToolExposure = ToolExposure.DIRECT
+    internal var effects: Set<ToolEffect>? = null
 
     /** Human-readable description shown to the agent. */
     fun describe(text: String) {
         description = text
+    }
+
+    /** The catalogue namespace; defaults to the part of the name before its first `.` (`rectsl.run` → `rectsl`), else `doc`. */
+    fun namespace(name: String) {
+        namespace = name
+    }
+
+    /**
+     * How the model meets this tool ([ToolExposure]): DIRECT (the default) sends its schema with every request;
+     * DEFERRED lists it by name and sends the schema only once the model asks; PROGRAM leaves it to tool programs.
+     */
+    fun exposure(exposure: ToolExposure) {
+        this.exposure = exposure
+    }
+
+    /**
+     * What calling it does ([ToolEffect]); `effects()` with nothing says "none". Undeclared by default. A tool
+     * declaring MUTATE_DOCUMENT is refused on a read-only document without its action running.
+     */
+    fun effects(vararg effects: ToolEffect) {
+        this.effects = effects.toSet()
     }
 
     /**
@@ -236,7 +289,17 @@ class BoxTool internal constructor(
     internal val box: Box,
     internal val params: List<BoxToolArg<*>>,
     internal val body: suspend BoxToolScope.() -> Any?,
+    val meta: ToolMeta = ToolMeta(namespace = name.substringBefore('.', "doc").ifBlank { "doc" }),
+    /** A hash of the registering box's code when it registered this, for capability checkpoints. */
+    val sourceRevision: String = "",
 ) {
+    /**
+     * The name a model sees and calls: [name] with every character outside `[A-Za-z0-9_-]` made `_`
+     * (`paint.look` → `paint_look`), because OpenAI and Anthropic refuse any other tool name. The registry
+     * answers to either.
+     */
+    val wireName: String get() = wireToolName(name)
+
     /** JSON-Schema for the parameters (kotlinx form), reusing the static-tool emitter. */
     val parametersSchema: JsonObject by lazy { buildParamsSchema(params) }
 
@@ -249,7 +312,7 @@ class BoxTool internal constructor(
             paramsBuilder.putAdditionalProperty(key, JsonValue.fromJsonNode(aiToolMapper.readTree(element.toString())))
         }
         val builder = FunctionTool.builder()
-            .name(name)
+            .name(wireName)
             .parameters(paramsBuilder.build())
             // Not strict: our schema does not guarantee additionalProperties:false + all-required.
             .strict(false)
@@ -374,10 +437,30 @@ object DocumentToolRegistry {
 
     private val byDocument = ConcurrentHashMap<String, ConcurrentHashMap<String, BoxTool>>()
 
-    /** Register (upsert by name) — re-running a box replaces its prior tool of the same name. */
+    /**
+     * Register (upsert by name) — re-running a box replaces its prior tool of the same name.
+     *
+     * A model sees a tool by its [BoxTool.wireName], so two tools whose names differ but whose wire names
+     * agree would be one tool to the model and whichever the registry found first to Field. The second is
+     * refused, with both names in the message; a tool from the same box replaces the one it collides with,
+     * since that is a box renaming its own tool between runs. A wire name a built-in tool already has is
+     * refused too.
+     */
     fun register(documentKey: String, tool: BoxTool) {
         val tools = byDocument.computeIfAbsent(documentKey) { ConcurrentHashMap() }
-        tools[tool.name] = tool
+        require(!BuiltInToolNames.contains(tool.name) && !BuiltInToolNames.contains(tool.wireName)) {
+            "aiTool(\"${tool.name}\") has the name of a built-in tool; choose another name."
+        }
+        synchronized(tools) {
+            tools.values.filter { it.name != tool.name && it.wireName == tool.wireName }.forEach { other ->
+                require(other.boxId == tool.boxId) {
+                    "aiTool(\"${tool.name}\") would reach the model as ${tool.wireName}, the same name as " +
+                        "aiTool(\"${other.name}\") in box ${other.box.name.ifBlank { other.boxId }}; rename one of them."
+                }
+                tools.remove(other.name, other)
+            }
+            tools[tool.name] = tool
+        }
         afield.LifecycleLedger.claim(
             AI_TOOL_KIND,
             "$documentKey:${tool.name}",

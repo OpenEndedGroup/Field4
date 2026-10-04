@@ -6,6 +6,7 @@ import com.anthropic.core.JsonValue
 import com.anthropic.errors.AnthropicServiceException
 import com.anthropic.errors.UnauthorizedException
 import com.anthropic.models.messages.Base64ImageSource
+import com.anthropic.models.messages.CacheControlEphemeral
 import com.anthropic.models.messages.ContentBlockParam
 import com.anthropic.models.messages.ImageBlockParam
 import com.anthropic.models.messages.Message
@@ -53,6 +54,12 @@ class AnthropicBridge(
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("anthropic", model)
     private val tools = ToolRegistry()
 
+    /**
+     * The same per-turn JSONL the OpenAI bridge writes (`~/.afield/logs/ai4_tool_io/`). Without it the
+     * tool-use improvement loop, and any usage count taken from those logs, only ever saw OpenAI turns.
+     */
+    private val toolIoLog: AiToolIoLogger? = AiToolIoLogger.fromEnvOrDefault(log)
+
     /** Per-thread message history (stateless API — we resend the full transcript each turn). */
     private val history = ConcurrentHashMap<String, MutableList<MessageParam>>()
 
@@ -95,7 +102,8 @@ class AnthropicBridge(
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult {
         val t0 = System.nanoTime()
         if (imageDataUrls.isNotEmpty()) {
@@ -107,6 +115,11 @@ class AnthropicBridge(
 
         val system = state.initialInstructions.ifBlank { OpenAiIdeCodexBridge.defaultThreadInstructions }
         val messages = history.getOrPut(state.localThreadId) { mutableListOf() }
+        // With a TurnContext: the stable instructions ride in the system prompt (cached), the volatile ones
+        // on the newest message only, and the stored history keeps just the durable prompt.
+        val tc = turnContext
+        val systemBlocks = anthropicSystemBlocks(system, tc?.ephemeralText(Stability.STABLE).orEmpty(), cached = tc != null)
+        val volatilePrefix = tc?.ephemeralText(Stability.VOLATILE).orEmpty()
 
         // Seed the initial file context once per thread (mirrors OpenAiIdeCodexBridge.startThread).
         if (messages.isEmpty() && state.initialFileText.isNotBlank()) {
@@ -128,27 +141,72 @@ class AnthropicBridge(
                 appendLine(fileText)
                 appendLine()
             }
-            appendLine(userPrompt)
+            appendLine(tc?.durablePrompt() ?: userPrompt)
         }
-        messages += userText(inputText)
+        val turnMessageIndex = messages.size
+        messages += userText(if (volatilePrefix.isEmpty()) inputText else "$volatilePrefix\n\n$inputText")
 
         info("convId=${state.conversationId} fileKey=${state.fileKey} inputChars=${inputText.length} maxOutputTokens=$maxOutputTokens")
 
-        val toolDefs = buildToolDefs(ctx)
+        // Field names match OpenAiIdeCodexBridge's, so one reader (tools/ai_tool_usage.py, the
+        // improvement monitor) covers both providers.
+        val toolIoSession = runCatching {
+            toolIoLog?.begin(
+                mapOf(
+                    "model" to model,
+                    "provider" to "anthropic",
+                    "reasoningEffort" to "provider-default",
+                    "conversationId" to state.conversationId,
+                    "localThreadId" to state.localThreadId,
+                    "fileKey" to state.fileKey,
+                    "inputChars" to inputText.length,
+                    "attachmentCount" to ctx.attachments.size,
+                    "imageCount" to imageDataUrls.size,
+                    "maxOutputTokens" to maxOutputTokens,
+                    "maxToolRounds" to maxToolRounds,
+                    "prompt" to inputText
+                )
+            )
+        }.onFailure { warn("tool I/O log unavailable: ${it.message ?: it::class.java.simpleName}") }.getOrNull()
+        var toolIoFailureReported = false
+        fun toolIo(event: String, fields: Map<String, Any?> = emptyMap()) {
+            val session = toolIoSession ?: return
+            val logger = toolIoLog ?: return
+            runCatching { logger.event(session, event, fields) }.onFailure {
+                if (!toolIoFailureReported) {
+                    toolIoFailureReported = true
+                    warn("tool I/O log write failed: ${it.message ?: it::class.java.simpleName}")
+                }
+            }
+        }
+
+        val callCtx = ctx.copy(
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line)) } },
+        )
+        // Rebuilt each round: a DescribeToolsRequest in one round adds schemas to the next.
+        fun toolDefs() = buildToolDefs(callCtx).let { if (tc != null) withToolCacheBreakpoint(it) else it }
         val commentary = mutableListOf<String>()
         val conversationAdditions = mutableListOf<String>()
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
 
         var inputTokens = 0L
         var outputTokens = 0L
+        var cacheReadTokens: Long? = null
+        var cacheWriteTokens: Long? = null
         fun countUsage(message: Message) {
             runCatching { message.usage() }.getOrNull()?.let {
                 inputTokens += it.inputTokens()
                 outputTokens += it.outputTokens()
+                it.cacheReadInputTokens().orElse(null)?.let { n -> cacheReadTokens = (cacheReadTokens ?: 0L) + n }
+                it.cacheCreationInputTokens().orElse(null)?.let { n -> cacheWriteTokens = (cacheWriteTokens ?: 0L) + n }
             }
         }
+        var toolElapsedMs = 0L
+        var activePhase = "model:initial"
+        try {
         var hitToolRoundCap = false
-        var response = createMessage(buildParams(system, messages, toolDefs, maxOutputTokens))
+        var response = createMessage(buildParams(systemBlocks, messages, toolDefs(), maxOutputTokens, cacheTail = tc != null))
         countUsage(response)
         onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
         messages += response.toParam()
@@ -164,18 +222,34 @@ class AnthropicBridge(
                 val name = use.name()
                 val argsJson = runCatching { toJsonString(use._input()) }.getOrElse { "{}" }
                 info("tool: name=$name id=${use.id()} args=${truncate(argsJson, 400)}")
+                toolIo("tool_call", mapOf("round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "arguments" to argsJson))
                 onProgress?.invoke(LlmProgressUpdate("Using $name", truncate(argsJson, 700)))
 
+                activePhase = "tool:$name"
+                val started = System.nanoTime()
                 val result: Any = try {
-                    tools.executeByName(ctx, name, argsJson)
+                    tools.executeByName(callCtx, name, argsJson)
                 } catch (e: Exception) {
+                    // A cancelled turn must end the turn, not become a tool error the model is asked about.
+                    if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=$name msg=${e.message}")
+                    toolIo("tool_exception", mapOf(
+                        "round" to (rounds + 1), "toolName" to name, "callId" to use.id(),
+                        "exceptionType" to e::class.java.name, "message" to (e.message ?: "")))
                     mapOf("error" to true, "tool" to name, "message" to (e.message ?: e::class.java.name))
                 }
+                val toolMs = (System.nanoTime() - started) / 1_000_000
+                toolElapsedMs += toolMs
                 val resultJson = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
                 val summary = truncate(resultJson, 300)
-                transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson)
-                onProgress?.invoke(LlmProgressUpdate("$name finished", summary))
+                transcript += LlmToolTranscriptEntry(name, use.id(), argsJson, summary, resultJson, elapsedMs = toolMs)
+                transcript += afield.ai.core.program.nestedTranscriptEntries(use.id(), result)
+                toolIo("tool_result", mapOf(
+                    "round" to (rounds + 1), "toolName" to name, "callId" to use.id(), "summary" to summary,
+                    "elapsedMs" to toolMs, "result" to resultJson,
+                    "imageCount" to ((result as? CarriesToolImages)?.toolImages?.size ?: 0)))
+                afield.ai.core.program.nestedToolIoEvents(rounds + 1, use.id(), result).forEach { (event, fields) -> toolIo(event, fields) }
+                onProgress?.invoke(LlmProgressUpdate("$name finished ($toolMs ms)", afield.ai.core.program.nestedTraceMarkdown(result) ?: summary))
 
                 if (name == Commentary::class.java.simpleName) {
                     runCatching { aiToolMapper.readValue(argsJson.ifBlank { "{}" }, Commentary::class.java).text }
@@ -237,7 +311,8 @@ class AnthropicBridge(
                 warn("maxToolRounds=$maxToolRounds reached; requesting a final answer without further tools.")
             }
             if (!includeTools) hitToolRoundCap = true
-            response = createMessage(buildParams(system, messages, if (includeTools) toolDefs else emptyList(), maxOutputTokens))
+            activePhase = if (includeTools) "model:followup" else "model:forced_final"
+            response = createMessage(buildParams(systemBlocks, messages, if (includeTools) toolDefs() else emptyList(), maxOutputTokens, cacheTail = tc != null))
             countUsage(response)
             onProgress?.invoke(LlmProgressUpdate("", modelIdentity = modelIdentity.copy(responseModel = response.model().asString())))
             messages += response.toParam()
@@ -253,6 +328,12 @@ class AnthropicBridge(
 
         val ms = (System.nanoTime() - t0) / 1_000_000
         info("done id=${response.id()} textChars=${text.length} commentary=${commentary.size} rounds=$rounds (${ms}ms)")
+        toolIo("session_end", mapOf(
+            "responseId" to response.id(), "textChars" to text.length, "commentaryCount" to commentary.size,
+            "toolCallCount" to transcript.size, "elapsedMs" to ms, "status" to "completed",
+            "toolElapsedMs" to toolElapsedMs, "rounds" to rounds,
+            "inputTokens" to inputTokens, "outputTokens" to outputTokens,
+            "cacheReadTokens" to cacheReadTokens, "cacheWriteTokens" to cacheWriteTokens))
 
         return OpenAiIdeCodexBridge.SendResult(
             threadState = state,
@@ -265,23 +346,46 @@ class AnthropicBridge(
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            cacheReadTokens = cacheReadTokens,
+            cacheWriteTokens = cacheWriteTokens,
+            contextReport = tc?.report("system+prefix")
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens, cacheWriteTokens = cacheWriteTokens)
+                ?.withTools(tools, callCtx)
         )
+        } catch (failure: Throwable) {
+            val cancelled = isAiTurnCancellation(failure)
+            toolIo(if (cancelled) "session_cancelled" else "session_failed", mapOf(
+                "status" to if (cancelled) "cancelled" else "failed",
+                "phase" to activePhase,
+                "elapsedMs" to (System.nanoTime() - t0) / 1_000_000,
+                "toolElapsedMs" to toolElapsedMs,
+                "exceptionType" to failure::class.java.name, "message" to (failure.message ?: "")))
+            throw failure
+        } finally {
+            // The volatile prefix was for this turn's requests only. Whatever happened, the stored message
+            // goes back to the durable text, so the next turn's history does not carry it.
+            if (volatilePrefix.isNotEmpty() && turnMessageIndex < messages.size) messages[turnMessageIndex] = userText(inputText)
+        }
     }
 
     // ---- request construction ------------------------------------------------
 
-    private fun buildParams(
-        system: String,
+    internal fun buildParams(
+        system: List<TextBlockParam>,
         messages: List<MessageParam>,
         toolDefs: List<Tool>,
-        maxOutputTokens: Long
+        maxOutputTokens: Long,
+        cacheTail: Boolean = false
     ): MessageCreateParams {
         val builder = MessageCreateParams.builder()
             .model(model)
             .maxTokens(maxOutputTokens)
-            .system(system)
+            .systemOfTextBlockParams(system)
             .messages(messages)
+        // Automatic caching: a breakpoint that moves with the end of the conversation, so each tool round
+        // reads the rounds before it from cache. With the tool and system breakpoints that makes three of four.
+        if (cacheTail) builder.cacheControl(CacheControlEphemeral.builder().build())
         toolDefs.forEach { builder.addTool(it) }
         return builder.build()
     }
@@ -491,3 +595,22 @@ internal fun decodeDataUrl(dataUrl: String): Pair<Base64ImageSource.MediaType, S
     }
     return mediaType to data
 }
+
+/**
+ * The system prompt as blocks: the thread's own instructions, then this turn's stable ephemeral ones. With
+ * [cached], the last block carries a cache breakpoint, so a conversation's every request reads the system
+ * prompt (and the tools before it) from cache until a stable instruction actually changes.
+ */
+internal fun anthropicSystemBlocks(threadInstructions: String, stableInstructions: String, cached: Boolean): List<TextBlockParam> {
+    val texts = listOf(threadInstructions, stableInstructions).filter { it.isNotBlank() }
+    return texts.mapIndexed { index, text ->
+        TextBlockParam.builder().text(text)
+            .apply { if (cached && index == texts.lastIndex) cacheControl(CacheControlEphemeral.builder().build()) }
+            .build()
+    }
+}
+
+/** The tool list with a cache breakpoint on its last definition: tools come first in the prompt, and rarely change. */
+internal fun withToolCacheBreakpoint(defs: List<Tool>): List<Tool> =
+    if (defs.isEmpty()) defs
+    else defs.dropLast(1) + defs.last().toBuilder().cacheControl(CacheControlEphemeral.builder().build()).build()

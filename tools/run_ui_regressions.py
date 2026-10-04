@@ -4106,6 +4106,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot="macro run guide_capture",
         ),
         UiRegression(
+            id="ai-chat-scroll",
+            description="The AI chat keeps a reader's place through re-renders of a transcript full of inline images, parked mid-history or at the bottom.",
+            document=f"ui-regression-chat-scroll-{int(time.time())}",
+            commands=[
+                "new-box --name ChatScroll --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-scroll.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ChatScroll", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="simulation-clock",
             description="Ordinary editor launch/stop/relaunch owns simulation children; frame budgets share the profiling brush.",
             document=f"ui-regression-simulation-{int(time.time())}",

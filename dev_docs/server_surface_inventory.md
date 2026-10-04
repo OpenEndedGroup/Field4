@@ -33,7 +33,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 122 | nothing |
+| `/ws` **command** names (`handlers`) | 126 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -260,7 +260,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-122 command names, in the `handlers` table. This is the real command API, it is roughly twice
+126 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -280,7 +280,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `agent_backdoor.kt` | 23 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
-| `Ai4Installer.kt` | 5 |
+| `Ai4Installer.kt` | 9 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
@@ -302,7 +302,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `templating.kt` | template read and write, under the templates directory |
@@ -355,12 +355,16 @@ in-route same-site check stops a web page.
 | `agent-window-screenshot` | `agent_backdoor.kt` |
 | `agent-window-video` | `agent_backdoor.kt` |
 | `ai-assist` | `Ai4Installer.kt` |
+| `ai-chat-command` | `Ai4Installer.kt` |
+| `ai-chat-context` | `Ai4Installer.kt` |
 | `ai-chat-history` | `Ai4Installer.kt` |
+| `ai-chat-rewind-world` | `Ai4Installer.kt` |
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
+| `chat_history` | `Ai4Installer.kt` |
 | `chat_input` | `Ai4Installer.kt` |
 | `checkbox-update` | `Server.kt` |
 | `cherry-pick-history-version` | `history.kt` |
@@ -499,7 +503,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 122 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 126 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

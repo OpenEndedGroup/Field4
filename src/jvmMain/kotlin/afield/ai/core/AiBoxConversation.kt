@@ -46,3 +46,39 @@ object AiBoxConversation {
             bounded + "\nEND SAVED BOX CONVERSATION\n"
     }
 }
+
+/**
+ * The document chat's transcript (the chat on the code-use page, about a whole document rather than one box).
+ *
+ * Until 2026-10-02 it lived only in the provider thread, so a restart lost it, and the page showed nothing
+ * of what came before. It is now `<document>/ai4_document_chat.md`, in the same `<<you>>` / `<<ai>>` markup
+ * as a box's chat. Not a root-box property: the root never writes sidecars, so an image in it would land
+ * inline in `metadata.edn`. Written only for a document that writes to disk; a read-only or scratch
+ * document's chat stays in memory, as before. A new provider thread is seeded from it exactly as a box
+ * chat's is ([AiBoxConversation.resumeContext]).
+ */
+object DocumentChatStore {
+    const val FILE = "ai4_document_chat.md"
+
+    private fun file(info: afield.SessionInformation?): java.io.File? =
+        info?.takeIf { it.writesToDisk }?.filename?.takeIf { it.isNotBlank() }?.let { java.io.File(it, FILE) }
+
+    fun read(info: afield.SessionInformation?): String =
+        file(info)?.takeIf { it.isFile }?.let { runCatching { it.readText() }.getOrNull() }.orEmpty()
+
+    fun appendTurn(info: afield.SessionInformation?, user: String, reply: String) {
+        val target = file(info) ?: return
+        val before = read(info)
+        val next = buildString {
+            if (before.isNotBlank()) { append(before.trimEnd('\n')); append("\n") }
+            append("<<you>>\n").append(user.trim()).append("\n<<ai>>\n").append(reply.trim()).append("\n")
+        }
+        runCatching {
+            target.parentFile?.mkdirs()
+            val tmp = java.io.File(target.parentFile, "$FILE.tmp")
+            tmp.writeText(next)
+            java.nio.file.Files.move(tmp.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        }
+    }
+}

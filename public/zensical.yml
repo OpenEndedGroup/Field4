@@ -319,10 +319,12 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Experimenting with AI4: ai4_experiments.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
     - Talking a Scene into Existence: rectsl_conversation.md
     - Talking to the StackSL in Your Shader: stackauto_conversation.md
+    - AI4 Paints: ai4_painting.md
     # After the four conversations rather than before them: those pages show a study being worked on,
     # and this one is the layer they share, which reads best once you have seen one.
     - Studies: studies.md

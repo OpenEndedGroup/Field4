@@ -150,7 +150,19 @@ class InFieldAgentHarnessTest {
         InFieldAgentEvals.TICKER_CODE to Fake(keepsRunning = true),
         InFieldAgentEvals.DIVIDER_CODE to Fake(error = "java.util.NoSuchElementException: List is empty."),
         InFieldAgentEvals.DIVIDER_FIXED to Fake(out = listOf("empty")),
-    ) + visualTable
+        InFieldAgentEvals.CELL_BAD to Fake(error = "java.util.NoSuchElementException: List is empty."),
+        InFieldAgentEvals.REPORT_CODE to Fake(out = listOf("Cell03, Cell07, Cell09")),
+        InFieldAgentEvals.RESULTS_CODE to Fake(out = listOf(InFieldAgentEvals.SWEEP_OUTPUTS.joinToString(" "))),
+        InFieldAgentEvals.COUNTER_3 to Fake(out = listOf("[1, 2, 3]")),
+        InFieldAgentEvals.COUNTER_5 to Fake(out = listOf("[1, 2, 3, 4, 5]")),
+        InFieldAgentEvals.COUNTER_SQUARES to Fake(out = listOf("[1, 4, 9, 16, 25]")),
+        InFieldAgentEvals.TOTAL_CODE to Fake(out = listOf("55")),
+        InFieldAgentEvals.POWERS_3 to Fake(display = mapOf("main" to "<table><tr><td>1</td><td>1</td></tr><tr><td>3</td><td>9</td></tr></table>")),
+        InFieldAgentEvals.POWERS_5 to Fake(display = mapOf("main" to "<table><tr><td>5</td><td>25</td></tr></table>")),
+        InFieldAgentEvals.POWERS_5_CUBES to Fake(display = mapOf("main" to "<table><tr><td>5</td><td>25</td><td>125</td></tr></table>")),
+    ) + (1..10).associate { InFieldAgentEvals.cellCode(it) to Fake(out = listOf("cell $it ok")) } +
+        (1..8).associate { k -> InFieldAgentEvals.sqCode(k) to Fake(out = listOf(InFieldAgentEvals.SWEEP_OUTPUTS[k - 1].toString())) } +
+        visualTable
 
     private fun document(name: String = "harness-test"): SessionInformation {
         val dir = Files.createTempDirectory("in-field-agent-").toFile().apply { deleteOnExit() }

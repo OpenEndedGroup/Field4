@@ -39,10 +39,50 @@ import kotlin.script.experimental.api.ResultValue
 import kotlin.script.experimental.api.ScriptDiagnostic
 
 @kotlinx.serialization.Serializable
-private data class AiBoxChatRequest(val uid: String, val clear: Boolean = false)
+private data class AiBoxChatRequest(
+    val uid: String,
+    val clear: Boolean = false,
+    /** Rewind to just before this user turn (0-based, as the panel numbers its own turns); -1 = no. */
+    val rewindTo: Int = -1,
+    /** The panel's copy of that turn's text, so a stale panel cannot rewind the wrong turn. */
+    val expectedText: String? = null,
+    /** Make this branch (as `/branches` numbers them) current; -1 = no. */
+    val switchTo: Int = -1,
+    val listBranches: Boolean = false,
+)
 
 @kotlinx.serialization.Serializable
-private data class AiBoxChatReply(val uid: String, val history: String, val error: String = "")
+private data class AiBoxChatReply(
+    val uid: String,
+    val history: String,
+    val error: String = "",
+    /** Markdown to show locally (the `/branches` table), never saved. */
+    val message: String = "",
+    /** The rewound turn's request, for "edit and resend" to put back in the input. */
+    val userText: String = "",
+    /** The turns a rewind left behind, and what of the document they changed — offered for undo, never undone unasked. */
+    val abandonedTurns: List<String> = emptyList(),
+    val undoableEdits: Int = 0,
+    val undoableBoxes: Int = 0,
+)
+
+@kotlinx.serialization.Serializable
+private data class AiChatCommandRequest(val uid: String, val name: String, val args: String = "")
+
+@kotlinx.serialization.Serializable
+private data class AiChatCommandReply(val uid: String, val known: Boolean, val markdown: String)
+
+@kotlinx.serialization.Serializable
+private data class AiChatRewindWorldRequest(val uid: String, val turns: List<String>)
+
+@kotlinx.serialization.Serializable
+private data class AiChatRewindWorldReply(val uid: String, val message: String, val success: Boolean)
+
+@kotlinx.serialization.Serializable
+private data class AiChatContextRequest(val uid: String)
+
+@kotlinx.serialization.Serializable
+private data class AiChatContextReply(val uid: String, val markdown: String)
 
 private val ai4Scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -538,6 +578,8 @@ fun installAi4() {
     val chatThreadByKey = ConcurrentHashMap<String, OpenAiIdeCodexBridge.ThreadState>()
     val activeBoxChats = ConcurrentHashMap.newKeySet<String>()
     val agentMemoryByKey = ConcurrentHashMap<String, AgentMemoryState>()
+    /** The last turn's [ContextReport] per box (`doc\u0000uid`), for `/context`. Metadata only, never the text. */
+    val lastContextByBox = ConcurrentHashMap<String, ContextReport>()
     var bridgeRevision = aiProviderConfigRevision()
 
     fun invalidateBridgesAfterSettingsChange() {
@@ -748,6 +790,65 @@ fun installAi4() {
         Handled.yes
     })
 
+    // `/context` in a box's chat: what the last turn sent besides the conversation, as a table.
+    handlers["ai-chat-context"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatContextRequest>(message.payload!!)
+        val report = lastContextByBox["${thisSessionInfo.get().filename}\u0000${request.uid}"]
+        val markdown = report?.toMarkdown()
+            ?: "_No AI turn has run in this box since Field started, or the last one sent its instructions inline " +
+                "(AFIELD_AI4_EPHEMERAL_INSTRUCTIONS=off, or the OpenRouter provider)._"
+        reply(Message("ai-chat-context").payload(AiChatContextReply(request.uid, markdown)))
+        Handled.yes
+    })
+
+    // After a rewind, and only when the person says so: undo the document edits the abandoned turns made
+    // (by their OperationTranscript origin, strictly — an edit changed since is skipped, not overwritten)
+    // and delete the boxes they created.
+    handlers["ai-chat-rewind-world"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatRewindWorldRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        val target = info.boxes[request.uid]
+        if (target == null) {
+            reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, "Box no longer exists.", false)))
+            return@mutableSetOf Handled.yes
+        }
+        val nodes = AiSessionTree.nodesInOrder(target, request.turns)
+        val origins = nodes.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
+        val undone = OperationTranscript.undoOrigins(info.filename, origins)
+        // Only boxes exactly as those turns left them: one a person has since edited, moved or wired stays.
+        val plan = AiWorldUndo.plan(nodes, info.boxes)
+        // Through the graph host, as the agent's own DeleteBox goes: the delete action needs this document as
+        // its session, which a bare Runloop dispatch did not give it, so the boxes were reported deleted and kept.
+        val host = afield.ai.agent.LiveFieldGraphHost
+        host.onOwner(info) { plan.delete.forEach { box -> host.delete(info, box) } }
+        val text = buildString {
+            append(undone.message)
+            if (plan.delete.isNotEmpty()) append(" Deleted ${plan.delete.size} box(es) those turns created: ${plan.delete.joinToString { it.name.ifBlank { it.id } }}.")
+            if (plan.keep.isNotEmpty()) append(" Kept ${plan.keep.size} they created: " +
+                plan.keep.joinToString { (box, why) -> "${box.name.ifBlank { box.id }} ($why)" } + ".")
+            append(" Box deletions and provisional edits accepted since are not undone.")
+        }
+        reply(Message("ai-chat-rewind-world").payload(AiChatRewindWorldReply(request.uid, text, undone.success)))
+        Handled.yes
+    })
+
+    // A slash command the panel does not know: an agentExtension { command(...) } in this document may.
+    // `__help` lists them, for /help.
+    handlers["ai-chat-command"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<AiChatCommandRequest>(message.payload!!)
+        val target = thisSessionInfo.get().boxes[request.uid]
+        val payload = when {
+            target == null -> AiChatCommandReply(request.uid, false, "")
+            request.name == "__help" -> AgentExtensionRegistry.commandHelp(target).let { lines ->
+                AiChatCommandReply(request.uid, lines.isNotEmpty(), if (lines.isEmpty()) "" else "**From this document's agent extensions**\n" + lines.joinToString("\n"))
+            }
+            else -> AgentExtensionRegistry.runCommand(target, request.name, request.args)
+                ?.let { AiChatCommandReply(request.uid, true, it) } ?: AiChatCommandReply(request.uid, false, "")
+        }
+        reply(Message("ai-chat-command").payload(payload))
+        Handled.yes
+    })
+
     handlers["ai-chat-history"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AiBoxChatRequest>(message.payload!!)
         val info = thisSessionInfo.get()
@@ -759,8 +860,47 @@ fun installAi4() {
         val key = "${thisSessionInfo.get().filename}\u0000${target.id}\u0000"
         val busy = request.clear && key in activeBoxChats
         if (key !in activeBoxChats) AiBoxConversation.recoverInterrupted(target)
+        val navigating = request.rewindTo >= 0 || request.switchTo >= 0
+        if (navigating || request.listBranches) {
+            if (key in activeBoxChats) {
+                reply(Message("ai-chat-history").payload(AiBoxChatReply(request.uid, AiBoxConversation.read(target),
+                    "Wait for the current AI turn before rewinding or switching branches.")))
+                return@mutableSetOf Handled.yes
+            }
+            val replyPayload = runCatching {
+                if (request.listBranches) {
+                    AiBoxChatReply(request.uid, AiBoxConversation.read(target), message = AiSessionTree.branches(target))
+                } else {
+                    // The states the conversation last left, for the restore below to tell its own changes from anyone else's.
+                    val expectedStates = AiSessionTree.lastKnownStates(target)
+                    val moved = if (request.rewindTo >= 0) AiSessionTree.rewind(target, request.rewindTo, request.expectedText)
+                        else AiSessionTree.switchTo(target, request.switchTo)
+                    // Branch state: provider threads are rebuilt from the new head's transcript, and agent memory
+                    // is the memory of the turn the head now ends with.
+                    threadByKey.keys.removeIf { it.startsWith(key) }
+                    chatThreadByKey.keys.removeIf { it.startsWith(key) }
+                    agentMemoryByKey.keys.removeIf { it.startsWith(key) }
+                    moved.restoredMemory?.let { snap -> agentMemoryByKey[key + "code"] = AgentMemoryState().also { it.restore(snap) } }
+                    lastContextByBox.remove("${info.filename}\u0000${target.id}")
+                    // An extension's own world (a canvas, a simulation) follows the conversation too, unless
+                    // something else changed it since; then its onConflict decides, and the reply says so.
+                    val restore = AgentExtensionRegistry.restoreBranchStates(target, moved.branchStates, expectedStates)
+                    AiSessionTree.noteStates(target, restore.effective)
+                    send(Message("set-output").payload(Set_output(target.id, "outputarea", "ai-chat", moved.markdown)))
+                    val origins = moved.abandoned.mapNotNull { AiSessionTree.opOf(it)?.third?.takeIf { o -> o.isNotBlank() } }.toSet()
+                    AiBoxChatReply(request.uid, moved.markdown, userText = moved.userText,
+                        message = restore.notes.joinToString("\n\n"),
+                        abandonedTurns = moved.abandoned.map { (it["id"] as kotlinx.serialization.json.JsonPrimitive).content },
+                        undoableEdits = OperationTranscript.countOrigins(info.filename, origins),
+                        undoableBoxes = moved.abandoned.sumOf { AiSessionTree.createdBoxesOf(it).size })
+                }
+            }.getOrElse { AiBoxChatReply(request.uid, AiBoxConversation.read(target), it.message ?: it::class.java.simpleName) }
+            reply(Message("ai-chat-history").payload(replyPayload))
+            return@mutableSetOf Handled.yes
+        }
         if (request.clear && !busy) {
             AiBoxConversation.write(target, "")
+            AiSessionTree.clear(target)
             threadByKey.keys.removeIf { it.startsWith(key) }
             chatThreadByKey.keys.removeIf { it.startsWith(key) }
             agentMemoryByKey.keys.removeIf { it.startsWith(key) }
@@ -823,8 +963,10 @@ fun installAi4() {
         // Native graph + execution tools (NewBox, RunBox, PatchBoxText, ReadBoxOutput...). The editor
         // kinds' reply rewrites this box's property, so their tools refuse to write it; the general
         // chat's reply is prose, so nothing is reply-owned there.
-        val replyGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo, box, exec.property)
-        val chatGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo)
+        // This turn's edits are recorded under its own origin, so rewinding it can undo exactly them.
+        val turnOrigin = "ai4:" + java.util.UUID.randomUUID().toString().take(8)
+        val replyGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo, box, exec.property, origin = turnOrigin)
+        val chatGraph = afield.ai.agent.FieldGraphTools.forTurn(sessionInfo, origin = turnOrigin)
         val escapedDocPath = Regex.escape(docPath)
         val fileKey = fileRefFor(docName, exec.uid, exec.property)
         val boxChatKey = "$docPath\u0000${box.id}\u0000"
@@ -1630,7 +1772,17 @@ fun installAi4() {
         currentThreads.keys.removeIf { it.startsWith(boxChatKey) && it != conversationKey }
         otherThreads.keys.removeIf { it.startsWith(boxChatKey) }
         val savedHistory = history()
+        // What the session tree records about this turn once it ends (AiSessionTree.recordTurn).
+        val turnMeta = java.util.concurrent.atomic.AtomicReference<AiSessionTree.TurnMeta?>(null)
+        val opFrom = OperationTranscript.turnBoundary(docPath)
+        // How the boxes this conversation created look as the turn starts, so a later world undo can tell
+        // whether a person changed one of them between turns (AiWorldUndo).
+        val createdBefore = runCatching { AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box)) }.getOrDefault(emptyMap())
+        // The document's extension branch states as the turn starts (AgentExtensionBuilder.branchState), taken
+        // in the turn's own coroutine: a paint canvas is tens of megabytes, too slow for the message handler.
+        val branchBefore = java.util.concurrent.atomic.AtomicReference<Map<String, String>>(emptyMap())
         ai4Scope.launch {
+            branchBefore.set(runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
             val chatResult: OpenAiIdeCodexBridge.SendResult?
             val editResult: IdeChatHelpers.HighLevelResult?
             val streamActive = AtomicBoolean(false)
@@ -2003,6 +2155,19 @@ fun installAi4() {
                 return@launch
             }
 
+            (chatResult?.contextReport ?: editResult?.contextReport)?.let { lastContextByBox["$docPath\u0000${box.id}"] = it }
+            turnMeta.set(AiSessionTree.TurnMeta(
+                kind = exec.kind, property = exec.property,
+                context = chatResult?.contextReport ?: editResult?.contextReport,
+                model = chatResult?.modelIdentity ?: turnModel,
+                inputTokens = chatResult?.inputTokens, outputTokens = chatResult?.outputTokens,
+                cacheReadTokens = chatResult?.cacheReadTokens, rounds = chatResult?.rounds ?: -1,
+                memory = agentMemory.snapshot(),
+                world = mapOf(
+                    "historyVersion" to runCatching { afield.HistoryMetrics.currentVersionIndex(docPath).toLong() }.getOrDefault(-1L),
+                    "topologyGeneration" to sessionInfo.topologyGeneration.toLong(),
+                ),
+            ))
             inMain {
                 if (chatResult != null) {
                     chatResult.modelIdentity?.let { turnModel = it }
@@ -2114,8 +2279,24 @@ fun installAi4() {
                 }
             }.join()
         }.invokeOnCompletion {
-            AiBoxConversation.running(box, false)
+            // A failed or cancelled turn is recorded too: its partial reply is in the transcript. The box stops
+            // being "running" only once the turn is recorded; clearing it first let the next request (a person's,
+            // or agent-task's, which waits on it) arrive while the turn still held the box, and be refused.
+            runCatching {
+                val opTo = OperationTranscript.turnBoundary(docPath)
+                val meta = (turnMeta.get() ?: AiSessionTree.TurnMeta(kind = exec.kind, property = exec.property, memory = agentMemory.snapshot()))
+                    .copy(opFrom = opFrom, opTo = opTo, origin = turnOrigin,
+                        createdBoxes = (replyGraph.created.toList() + chatGraph.created.toList()).distinct(),
+                        createdBefore = createdBefore,
+                        createdAfter = runCatching {
+                            AiWorldUndo.fingerprints(sessionInfo.boxes, AiSessionTree.createdAlongHead(box) + replyGraph.created + chatGraph.created)
+                        }.getOrDefault(emptyMap()),
+                        branchBefore = branchBefore.get(),
+                        branchAfter = runCatching { AgentExtensionRegistry.snapshotBranchStates(box) }.getOrDefault(emptyMap()))
+                AiSessionTree.recordTurn(box, savedHistory, history(), meta)
+            }.onFailure { lprintln("warning,ai4", "session tree: could not record the turn: ${it.message}") }
             activeBoxChats.remove(boxChatKey)
+            AiBoxConversation.running(box, false)
         }
         Handled.yes
     })
@@ -2128,6 +2309,15 @@ fun installAi4() {
         Handled.yes
     })
     
+    // The saved document chat, for the page to show what came before (DocumentChatStore).
+    handlers["chat_history"] = mutableSetOf({ _, reply ->
+        val markdown = DocumentChatStore.read(currentSessionInfoOrNull())
+        reply(Message("chat_history").payload(kotlinx.serialization.json.buildJsonObject {
+            put("markdown", kotlinx.serialization.json.JsonPrimitive(markdown))
+        }))
+        Handled.yes
+    })
+
     handlers["chat_input"] = mutableSetOf({ message, reply ->
         invalidateBridgesAfterSettingsChange()
         val input = Json.decodeFromJsonElement<Chat_input>(message.payload!!)
@@ -2142,7 +2332,8 @@ fun installAi4() {
         val chatDocPath = chatSession?.filename.orEmpty()
         val documentGuides = chatSession?.let { DocumentGuideTools.forSession(it) }
         val fileKey = "chat:$chatDocPath"
-        val state = chatThreadFor(fileKey, "")
+        // A fresh thread (after a restart, or a settings change) is seeded from the saved document chat.
+        val state = chatThreadFor(fileKey, "", history = DocumentChatStore.read(chatSession))
         val agentMemory = agentMemoryByKey.computeIfAbsent(fileKey) { AgentMemoryState() }
         
         ai4Scope.launch {
@@ -2371,6 +2562,7 @@ fun installAi4() {
                 )
 
                 chatThreadByKey[fileKey] = result.threadState
+                DocumentChatStore.appendTurn(chatSession, input.value, result.text)
                 
                 // Format response with markdown
                 val responseWithChecklist = buildString {
