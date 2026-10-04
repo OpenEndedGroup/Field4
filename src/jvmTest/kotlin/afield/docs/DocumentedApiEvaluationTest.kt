@@ -94,6 +94,14 @@ class DocumentedApiEvaluationTest {
     private companion object {
         private val PER_CLASS = java.util.concurrent.ConcurrentHashMap<String, Any>()
 
+        /** A whole identifier: the class the published-page match delimits by. */
+        private val IDENTIFIER = Regex("""[\p{L}\p{N}_$]+""")
+
+        /** A name written as a call, as [callersUnder] has always defined one. */
+        private val CALLED = Regex("""\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^<>\n]{0,60}>)?\s*[({]""")
+
+        fun identifiers(text: String): Set<String> = IDENTIFIER.findAll(text).mapTo(HashSet()) { it.value }
+
 
         /**
          * Floor on the documented APIs the transcript corpus reaches at all. Measured 2026-08-27:
@@ -385,8 +393,18 @@ class DocumentedApiEvaluationTest {
     private fun pagesNaming(api: String, pages: List<Pair<String, String>> = publishedPages): List<String> {
         // Prose and inline code name APIs without calling them. Match whole identifiers so
         // marksOf is visible but marksOfTree and _marksOf are not mistaken for that API.
-        val rx = Regex("""(?<![\p{L}\p{N}_$])${Regex.escape(api)}(?![\p{L}\p{N}_$])""")
-        return pages.filter { (_, text) -> rx.containsMatchIn(text) }.map { it.first }
+        val tokens = if (pages === publishedPages) publishedPageTokens else pages.map { (name, text) -> name to identifiers(text) }
+        return tokens.filter { (_, ids) -> api in ids }.map { it.first }
+    }
+
+    /**
+     * Each published page's whole identifiers, computed once. "Is [api] a whole identifier on this
+     * page" is exactly "is it in this set": an identifier here is a maximal run of `[\p{L}\p{N}_$]`,
+     * the class the old per-API lookaround regex delimited by. The old form ran one regex per API
+     * over every page, 960 APIs x 4.6 MB, and was most of this guard's time.
+     */
+    private val publishedPageTokens by perClass("publishedPageTokens") {
+        publishedPages.map { (name, text) -> name to identifiers(text) }
     }
 
     @Test
@@ -415,9 +433,13 @@ class DocumentedApiEvaluationTest {
      * exercised. None of them runs it.
      */
     private fun callersUnder(sources: List<Pair<String, String>>, api: String): List<String> {
-        val rx = Regex("""\b${Regex.escape(api)}\s*(?:<[^<>\n]{0,60}>)?\s*[({]""")
-        return sources.filter { (_, text) -> rx.containsMatchIn(text) }.map { it.first }
+        val index = if (sources === smokeSources) smokeCallIndex else if (sources === testSources) testCallIndex else callIndex(sources)
+        return index.filter { (_, called) -> api in called }.map { it.first }
     }
+
+    /** Per file, every name written as a call (`name(`, `name {`, `name<T>(`), found in one pass. */
+    private fun callIndex(sources: List<Pair<String, String>>): List<Pair<String, Set<String>>> =
+        sources.map { (name, text) -> name to CALLED.findAll(text).map { it.groupValues[1] }.toSet() }
 
     /**
      * `file name -> text`, read once. Fourteen APIs against fourteen hundred files is twenty thousand
@@ -437,6 +459,8 @@ class DocumentedApiEvaluationTest {
 
     private val smokeSources by perClass("smokeSources") { sources("src/jvmMain/kotlin", requireFieldTest = true) }
     private val testSources by perClass("testSources") { sources("src/jvmTest/kotlin", requireFieldTest = false) }
+    private val smokeCallIndex by perClass("smokeCallIndex") { callIndex(smokeSources) }
+    private val testCallIndex by perClass("testCallIndex") { callIndex(testSources) }
 
     private fun evaluatingSmokes(api: String) = callersUnder(smokeSources, api)
 
