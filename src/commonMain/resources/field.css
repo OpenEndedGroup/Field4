@@ -1536,12 +1536,14 @@ body {
     z-index: 2;
 }
 
-.field-pane-left {
-    border-right: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-.field-pane-top {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+/* Each pane's frame is inset from its divider sides (dividerInsets) with those corners rounded
+   (frameRadius); its black spread, clipped by the pane, paints the pane's share of a 3 px divider,
+   so together the frames draw a black cross with rounded inner corners. It sits above the boxes. */
+.field-pane-frame {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: 0 0 0 24px #000;
 }
 
 /* The drawing layer has one Excalidraw per pane (drawingLayer.kt), each sized to its pane. Only
@@ -1580,9 +1582,11 @@ body {
     cursor: row-resize;
 }
 
+/* The stripe covers the 3 px black bar exactly (the handle starts 4 px before the divider line, and
+   the bar runs from 1 px before it to 2 px after). */
 .field-pane-divider:hover,
 .field-pane-divider.dragging {
-    background: linear-gradient(var(--divider-direction, 90deg), transparent 3px, rgba(255, 255, 255, 0.45) 3px, rgba(255, 255, 255, 0.45) 6px, transparent 6px);
+    background: linear-gradient(var(--divider-direction, 90deg), transparent 3px, #00e5ff 3px, #00e5ff 6px, transparent 6px);
 }
 
 .field-pane-divider-h:hover,
