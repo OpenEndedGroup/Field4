@@ -147,40 +147,21 @@ data class RuntimeInfo(
     val runloopSchedulingStatus: RunloopSchedulingStatus = RunloopSchedulingStatus()
 )
 
+/**
+ * The KDoc completion drafted for undocumented declarations, as the welcome page shows it. The drafts
+ * are worked by the docs revision pass (`tools/docs_notes.py import-drafts`, then a pass on
+ * /docs-pass.html), not by a tool of their own.
+ */
 @Serializable
-data class CompletionDocPolishCacheSummary(
+data class CompletionDocDraftSummary(
     val cachePath: String = "",
     val exists: Boolean = false,
-    val pendingDocCount: Int = 0,
-    val pendingSourceFileCount: Int = 0,
-    /** Cached docs for declarations outside src/ (dependency jars): counted, not in [pendingDocCount], never polished. */
-    val libraryDocCount: Int = 0,
-    val sizeBytes: Long = 0,
-    val lastModifiedEpochMs: Long = 0,
+    /** Drafts for declarations under src/ (any source set, src/personal included). */
+    val draftCount: Int = 0,
+    val fileCount: Int = 0,
+    /** Drafts for declarations outside src/ (dependency jars): never imported. */
+    val outsideCount: Int = 0,
     val message: String = ""
-)
-
-@Serializable
-data class CompletionDocPolishStatus(
-    val cache: CompletionDocPolishCacheSummary = CompletionDocPolishCacheSummary(),
-    val running: Boolean = false,
-    val status: String = "idle",
-    val runId: String = "",
-    val taskName: String = "",
-    val dryRun: Boolean = false,
-    val startedAtEpochMs: Long = 0,
-    val finishedAtEpochMs: Long = 0,
-    val exitCode: Int? = null,
-    val message: String = "",
-    val logPath: String = "",
-    /** [CompletionDocPolishCacheSummary.pendingDocCount] when this run started, so a finished run can say what it took. */
-    val docsAtStart: Int = 0,
-    val logTail: String = ""
-)
-
-@Serializable
-data class CompletionDocPolishRunRequest(
-    val dryRun: Boolean = false
 )
 
 @Serializable
@@ -291,7 +272,7 @@ data class WelcomeDocsResponse(
         configPath = "",
         message = "not loaded"
     ),
-    val completionDocPolish: CompletionDocPolishStatus = CompletionDocPolishStatus(),
+    val completionDocDrafts: CompletionDocDraftSummary = CompletionDocDraftSummary(),
     val aiToolUseImprovement: AiToolUseImprovementStatus = AiToolUseImprovementStatus(),
     val codeUse: CodeUseSummary = CodeUseSummary(
         enabled = false,

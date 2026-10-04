@@ -30,7 +30,7 @@ compares them and recommends one shape.
 3. **Two harnesses for one job.** Both drive an agent through some Kotlin, constrained to KDoc,
    held to the same rules. Only one has worktrees, partitioning, journals and landing.
 
-## Recommendation: polish becomes a source of notes for the revision pass
+## Recommendation (taken): polish becomes a source of notes for the revision pass
 
 Keep the fast drafter as it is. It runs on demand inside completion and is cheap, and as of this
 change it skips declarations outside `src/`. Replace the polish *agent run* with this:
@@ -60,10 +60,30 @@ The alternative is to bolt the pieces onto polish: feed it notes and memories, g
 and a land step. That rebuilds `docs_notes.py` inside a Gradle task, and leaves two harnesses to
 drift apart.
 
-## Done in this change (independent of the decision)
+## What was built (2026-10-04, chosen by Marc)
 
-- Edits made from inside a tool program now appear in the Edits panel.
-- The header says what a run took, not only what is left.
-- Declarations outside `src/` are rejected before any model call, in the drafter, in the polish
-  CLI and in the page's count.
-- The polish agent's instructions include `DOCS_WRITING_RULES.md`.
+- `tools/docs_notes.py import-drafts` (and **Import completion KDoc drafts** on `docs-pass.html`)
+  makes a `kdoc-draft` note for every cached draft whose declaration is under `src/`, still
+  exists, and has no KDoc yet. The note id is derived from the cache key, so importing again adds
+  nothing. `pageUrl` is the file's `reference/source/…` page, which `resolve_page_source` already
+  maps back to the Kotlin. The draft's identity (key, symbol, model, cache path) is kept in
+  `source.draft`, the free-form part of the note that the Kotlin store preserves.
+- `sync_draft` follows a draft by blame, like any note. When blame loses it, it finds the
+  declaration again by name.
+- `REQUEST_KINDS` (Python) and `queuedDocsAnnotationKinds` (Kotlin) make a draft count as queued
+  work, everywhere a human note does.
+- The agent prompt has a "KDoc drafts" paragraph, and `render_note` labels a draft as not the
+  human's words.
+- After each partition, a draft resolved while its declaration still has no KDoc counts as
+  declined. Its key goes into `generated_completion_docs.declined.json` beside the cache, and
+  `GeneratedCompletionDocCache.isDeclined` keeps completion from showing or regenerating it.
+  Python never writes the cache itself, because the server holds it in memory and rewrites it
+  whole.
+- Retired: `polishCompletionDocs` / `polishCompletionDocsDryRun`, `Ai4CompletionDocPolishCli`,
+  `CompletionDocPolishMonitor` and its run store, `/completion-doc-polish.html`,
+  `/api/completion-doc-polish`. The welcome card (`CompletionDocDrafts.summary()`) counts the
+  drafts and opens `docs-pass.html`.
+- Kept from the first step: declarations outside `src/` are never drafted
+  (`Ai4CompletionDoc.isInOurTree`, checked before any model call).
+
+Not done: `public/docs/ai_doc_polish.md` has no capture of the import button yet.
