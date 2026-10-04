@@ -159,7 +159,7 @@ this platform's path separator (`:` on macOS/Linux, `;` on Windows). Each root
 contains `kotlin/`, `resources/`, or both. Paths containing spaces work unchanged.
 Missing roots fail the build with their path rather than silently dropping code.
 
-```bash
+```diffstatic {data-lang=bash}
 AFIELD_EXTENSION_DIRS="$HOME/my-project/extensions" ./field.sh "$HOME/my-project/workspace"
 ```
 
