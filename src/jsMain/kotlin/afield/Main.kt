@@ -2247,10 +2247,14 @@ private fun applyViewportTranslation(
     updateBackgroundGrid(mainTranslation[0], mainTranslation[1], panning = panning)
 
     if (syncServer) {
-        val r = CanvasCamera.main.rect
+        // `viewport` keeps its meaning from before panes: the main pane's translation from its own
+        // corner and its size, so the world it shows at zoom 1 is (-x, -y, w, h). Unsplit the
+        // corner is the window's and nothing changed.
+        val main = CanvasCamera.main
+        val r = main.rect
         send(
             Message("set-viewport").payload(
-                Set_rect(uid = "root", property = "viewport", value = Rect(mainTranslation[0], mainTranslation[1], r.w, r.h))
+                Set_rect(uid = "root", property = "viewport", value = Rect(main.tx - r.x, main.ty - r.y, r.w, r.h))
             )
         )
     }

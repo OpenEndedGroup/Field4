@@ -214,6 +214,30 @@ object CanvasCamera {
         }
     }
 
+    /**
+     * The world rectangle each pane of a saved split ([splitJson], with each column's and row's
+     * translation) shows at [zoom], at the current window size; null when there is no split or the
+     * translations do not match it. For the bookmark minimap.
+     */
+    fun viewsOf(splitJson: String, columnX: List<Double>, rowY: List<Double>, zoom: Double): List<Rect>? {
+        val state = SplitState.parse(splitJson) ?: return null
+        if (columnX.size != state.columns || rowY.size != state.rows) return null
+        fun span(fraction: Double?, total: Double, index: Int): Pair<Double, Double> = when {
+            fraction == null -> 0.0 to total
+            index == 0 -> 0.0 to total * fraction
+            else -> total * fraction to total - total * fraction
+        }
+        val w = window.innerWidth.toDouble()
+        val h = window.innerHeight.toDouble()
+        return (0 until state.rows).flatMap { r ->
+            (0 until state.columns).map { c ->
+                val (left, width) = span(state.sx, w, c)
+                val (top, height) = span(state.sy, h, r)
+                Rect((left - columnX[c]) / zoom, (top - rowY[r]) / zoom, width / zoom, height / zoom)
+            }
+        }
+    }
+
     /** The split as JSON for the root box and for bookmarks; empty when the canvas is not split. */
     fun splitJson(): String = if (isSplit) currentState().toJson() else ""
 
