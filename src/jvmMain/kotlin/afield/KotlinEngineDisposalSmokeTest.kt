@@ -4,6 +4,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlin.script.experimental.api.KotlinType
 import kotlin.script.experimental.api.ResultWithDiagnostics
 import kotlin.system.exitProcess
@@ -44,6 +47,11 @@ expect:
  *    The compile succeeds, or is refused if the disposal won the race, and is never a compiler
  *    exception.
  *  - **C.** A fresh engine still compiles and evaluates afterwards.
+ *  - **D.** A box retired while `box.ki` is still building its engine: [Box.disposeKi] returns
+ *    without waiting for the build, and the engine the build returns is disposed, is never stored,
+ *    and its stdlib bootstrap would skip. The build is held open just after [makeKI] returns, the
+ *    point at which the old `disposeKi`, seeing an uninitialized lazy, skipped the box and the engine
+ *    outlived it.
  */
 object KotlinEngineDisposalSmokeTest {
 
@@ -107,6 +115,35 @@ object KotlinEngineDisposalSmokeTest {
             } finally {
                 c.dispose()
             }
+
+            // D: retired mid-build, with a real engine.
+            val root = Box("disposal-D-root")
+            val session = SessionInformation(filename = "<disposal-D>", documentName = "disposal-D", root = root, ephemeral = true)
+            root.inside = session
+            val d = Box("disposal-D").also { it.inside = session }
+            val built = CountDownLatch(1)
+            val finish = CountDownLatch(1)
+            var superseded: () -> Boolean = { false }
+            d.kiBuilder = { box, reason, isSuperseded ->
+                superseded = isSuperseded
+                makeKI(box, reason, isSuperseded).also {
+                    built.countDown()
+                    finish.await(60, TimeUnit.SECONDS)
+                }
+            }
+            val reading = async(Dispatchers.Default) { d.ki }
+            withContext(Dispatchers.IO) { built.await(120, TimeUnit.SECONDS) }
+            val started = System.nanoTime()
+            d.disposeKi()
+            val disposeMs = (System.nanoTime() - started) / 1_000_000
+            check("D disposeKi did not wait for the build", !reading.isCompleted, "returned in $disposeMs ms with the build still open")
+            check("D bootstrap sees the retire", superseded(), "superseded=${superseded()}")
+            finish.countDown()
+            val orphan = reading.await()
+            check("D engine built mid-retire is disposed", orphan.isDisposed, "isDisposed=${orphan.isDisposed}")
+            check("D and never stored", d.liveKi == null, "liveKi=${d.liveKi}")
+            val late = (orphan as KotlinInterface2).compile("val x = 1")
+            check("D its compiles are refused", isRefusal(late), describe(late))
         }
 
         if (failures.isNotEmpty()) {
