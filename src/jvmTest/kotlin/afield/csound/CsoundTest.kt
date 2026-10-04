@@ -77,6 +77,35 @@ class CsoundTest {
         }
     }
 
+    // The defaults come from Csound's channel list, so a chn_k the regex could not see (a string
+    // variable for the name) still gets its default, and a commented-out one does not.
+    @Test fun channelDefaultsComeFromCsoundsChannelList() {
+        if (!available()) return
+        val orc = """
+            Sname = "gain"
+            chn_k Sname, 1, 2, 0.5, 0, 1
+            ; chn_k "ghost", 1, 2, 7, 0, 10
+            chn_k "level", 2, 2, 0.25, 0, 1
+            chn_S "label", 1
+            instr 1
+              k1 chnget "gain"
+              chnset k1, "level"
+            endin
+        """
+        CsoundInstance(orc, "i1 0 0.1").use { cs ->
+            assertEquals(0.5, cs.channel("gain"))
+            val byName = cs.channels().associateBy { it.name }
+            assertTrue("ghost" !in byName, "listed: ${byName.keys}")
+            val gain = byName.getValue("gain")
+            assertEquals(CsoundNative.CONTROL_CHANNEL, gain.kind)
+            assertEquals(CsoundInstance.ControlHints(2, 0.5, 0.0, 1.0), gain.hints)
+            val level = byName.getValue("level")
+            assertEquals(0.25, level.hints?.default)
+            assertEquals(CsoundNative.STRING_CHANNEL, byName.getValue("label").kind)
+            assertEquals(null, byName.getValue("label").hints)
+        }
+    }
+
     @Test fun oddSizedRendersJoinUpExactly() {
         if (!available()) return
         val whole = CsoundInstance(sine, "i1 0 1").use { cs -> FloatArray(300).also { cs.render(it, FloatArray(300), 300) } }

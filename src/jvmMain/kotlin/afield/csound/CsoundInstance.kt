@@ -161,7 +161,7 @@ class CsoundInstance(
         pendingL = FloatArray(ksmps)
         pendingR = FloatArray(ksmps)
         repeat(ksmps) { spinL.push(0f); spinR.push(0f) }
-        applyDeclaredDefaults(orchestra)
+        applyDeclaredDefaults()
     }
 
     /**
@@ -170,12 +170,15 @@ class CsoundInstance(
      * `chnget "cutoff"` read 0 until something wrote it: a `butterlp` at 0 Hz, and a silent box. Field
      * is the host, so it writes the default once, before the first note's init pass. Only at
      * construction: a live recompile must not reset a channel Field has since set.
+     *
+     * The declared channels come from Csound itself ([channels], `csoundListChannels`), not from the
+     * orchestra text: a `chn_k` whose name is a string variable, one inside an `#include`, or one in
+     * a macro is found the same way as a literal one, and a commented-out `chn_k` is not found.
      */
-    private fun applyDeclaredDefaults(orchestra: String) {
-        val declared = Regex("""^\s*chn_k\s+"([^"]+)"""", RegexOption.MULTILINE).findAll(orchestra).map { it.groupValues[1] }.toSet()
-        for (name in declared) {
-            val h = hints(name) ?: continue
-            if (h.default != 0.0 && channel(name) == 0.0) setChannel(name, h.default)
+    private fun applyDeclaredDefaults() {
+        for (c in channels()) {
+            val h = c.hints ?: continue
+            if (c.kind == CsoundNative.CONTROL_CHANNEL && h.default != 0.0 && channel(c.name) == 0.0) setChannel(c.name, h.default)
         }
     }
 
@@ -374,6 +377,48 @@ class CsoundInstance(
             ControlHints(behav, h.get(JAVA_DOUBLE, 8), h.get(JAVA_DOUBLE, 16), h.get(JAVA_DOUBLE, 24))
         }
     }
+
+    /**
+     * Every channel the running orchestra has allocated, as Csound lists them (`csoundListChannels`):
+     * those declared with `chn_k`/`chn_a`/`chn_S` and those a `chnget`/`chnset` created. A control
+     * channel carries its [ControlHints] when `chn_k` declared any.
+     */
+    fun channels(): List<ChannelInfo> = lock.withLock {
+        if (closed) return emptyList()
+        Arena.ofConfined().use { a ->
+            val out = a.allocate(ADDRESS)
+            val n = CsoundNative.listChannels(cs, out)
+            val list = out.get(ADDRESS, 0)
+            if (n <= 0 || list == MemorySegment.NULL) return emptyList()
+            try {
+                val all = list.reinterpret(n * CsoundNative.CHANNEL_INFO_SIZE)
+                (0 until n).map { i ->
+                    val base = i * CsoundNative.CHANNEL_INFO_SIZE
+                    val type = all.get(JAVA_INT, base + 8)
+                    val h = base + CsoundNative.CHANNEL_INFO_HINTS_OFFSET
+                    val behav = all.get(JAVA_INT, h)
+                    ChannelInfo(
+                        name = CsoundNative.cString(all.get(ADDRESS, base)),
+                        kind = type and CsoundNative.CHANNEL_TYPE_MASK,
+                        input = type and CsoundNative.INPUT_CHANNEL != 0,
+                        output = type and CsoundNative.OUTPUT_CHANNEL != 0,
+                        hints = if (behav == 0) null
+                        else ControlHints(behav, all.get(JAVA_DOUBLE, h + 8), all.get(JAVA_DOUBLE, h + 16), all.get(JAVA_DOUBLE, h + 24)),
+                    )
+                }
+            } finally {
+                CsoundNative.deleteChannelList(cs, list)
+            }
+        }
+    }
+
+    /**
+     * One allocated channel. [kind] is [CsoundNative.CONTROL_CHANNEL], [CsoundNative.AUDIO_CHANNEL] or
+     * [CsoundNative.STRING_CHANNEL]; [input]/[output] are the direction bits Csound holds, which accumulate: a `chnget` or `chnset`
+     * anywhere in the orchestra adds its direction, so a `chn_k "gain", 1` read by `chnget` was listed as
+     * both in this checkout's pinned Csound. Read them as "something uses it this way", not as the declared `imode`.
+     */
+    data class ChannelInfo(val name: String, val kind: Int, val input: Boolean, val output: Boolean, val hints: ControlHints?)
 
     /** A channel's declared range: `chn_k "name", imode, itype, idflt, imin, imax`. [type] 1 integer, 2 linear, 3 exponential. */
     data class ControlHints(val type: Int, val default: Double, val min: Double, val max: Double)
