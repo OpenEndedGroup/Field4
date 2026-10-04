@@ -10,6 +10,11 @@ _Field·4_ has and will continue to have enthusiastic support for AI-forward cod
 
 ## Starting places
 
+See [the first drawing](first_steps.md), then open **Start here: a moving drawing** on Welcome.
+Change a number, launch, inspect, stop and reopen your saved copy. It needs no GPU driver or AI key.
+Field's code is AGPL-3.0-or-later; [your code, AI and local history](privacy.md) explains the
+local services and optional external providers.
+
 If you aren't reading this documentation inside *Field·4* itself, then you'll want to read the [Installation instructions](installation.md) or perhaps [take a tour](funFeatures.md).
 
 Alternatively, the [Survival Guide](survivalGuide.md) is a good cheat-sheet.

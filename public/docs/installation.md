@@ -130,8 +130,8 @@ The launcher then opens Field's desktop app. Press `?` for help, or consult the
 The first tab in the desktop app is the welcome page, also at `https://localhost:9092/welcome` in
 a browser:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons to open the welcome document, open the docs with notes, and shut Field down, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
-// /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" clip-selector="#docs-welcome-frame" screenshot="assets/welcome/welcome-page.png" padding="0" wait="0" timeout="120" embed=true hidden=true name="welcome-page" alt="The welcome page in a fresh workspace. Across the top, Field·4 and buttons for Start here: a moving drawing, the five-minute guide, native graphics, documentation, and shutdown, then a filename box with Create. On the left, Running now, a search box, No documents found in this workspace yet, and the collapsed Starting points and Templates lists with their counts. On the right, the Changelog open on recent commits, and below it the collapsed Projects, Maven, Workspace, Runtime, Vulkan, Python, AI, Preferences and OSC panels with one-line summaries."}
+// The compact /welcome row and empty-workspace prompt point to Start here; /welcome is its own page, so it is loaded into a frame on the capture page at a desktop
 // window's size, against the runner's fresh checkout-local workspace: what a new user sees.
 ui.eval("""
     document.getElementById("docs-welcome-frame")?.remove()

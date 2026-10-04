@@ -182,6 +182,15 @@ function Invoke-FieldSetup {
     if ($LASTEXITCODE -ne 0) { throw "field: setup did not finish; see the message above" }
 }
 
+function Get-FieldSha256 {
+    param([string] $Path)
+    # .NET is available in Windows PowerShell 5.1 and PowerShell 7; no module lookup needed.
+    $stream = [System.IO.File]::OpenRead($Path)
+    $hash = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($hash.ComputeHash($stream)).Replace("-", "").ToLowerInvariant() }
+    finally { $hash.Dispose(); $stream.Dispose() }
+}
+
 function Ensure-FieldToolchains {
     Ensure-FieldBootstrap
     if ($env:AFIELD_SKIP_TOOLCHAIN_PROVISION -eq "1") { return }
@@ -204,7 +213,7 @@ function Ensure-FieldToolchains {
                 $client.DownloadFile($url, $archive)
                 $checksum = ($client.DownloadString("$url.sha256").Trim() -split '\s+')[0]
             } finally { $client.Dispose() }
-            if ($checksum -notmatch '^[0-9a-fA-F]{64}$' -or (Get-FileHash $archive -Algorithm SHA256).Hash -ne $checksum) {
+            if ($checksum -notmatch '^[0-9a-fA-F]{64}$' -or (Get-FieldSha256 $archive) -ne $checksum) {
                 throw "field: GraalVM checksum mismatch; download discarded"
             }
             Add-Type -AssemblyName System.IO.Compression.FileSystem

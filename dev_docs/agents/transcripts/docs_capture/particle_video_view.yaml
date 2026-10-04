@@ -1,0 +1,12 @@
+name: particle_video_view
+description: Scrub actual RAFT/C++ trajectories through the Kotlin reader and Field visualizer.
+operations:
+  - create:
+      box: particle_video_view
+      name: Video particles
+      frame: { x: 40.0, y: 40.0, w: 400.0, h: 70.0 }
+      properties:
+        code: |
+          val video = loadParticleVideo("public/docs/assets/particle_video/example.pvt.gz")
+          particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
+  - execute: { box: particle_video_view }

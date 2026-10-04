@@ -120,9 +120,13 @@
         .hero {
             padding: 16px;
             display: grid;
-            grid-template-columns: 1fr auto;
+            grid-template-columns: auto 1fr;
             gap: 10px;
             align-items: center;
+        }
+
+        .hero .button-row {
+            justify-content: flex-start;
         }
 
         .hero h1 {
@@ -189,6 +193,37 @@
         .button-link:hover {
             border-color: var(--field-border-strong);
             /*transform: translateY(-1px);*/
+        }
+
+        .start-here {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+            border-color: rgba(72, 201, 255, 0.45);
+        }
+
+        .start-here::after {
+            content: "";
+            position: absolute;
+            inset: -50% -100%;
+            pointer-events: none;
+            background: linear-gradient(115deg,
+                transparent 42%,
+                rgba(72, 201, 255, 0.06) 46%,
+                rgba(180, 238, 255, 0.22) 50%,
+                rgba(72, 201, 255, 0.06) 54%,
+                transparent 58%);
+            transform: translateX(-65%);
+            animation: start-here-shimmer 8s ease-in-out infinite;
+        }
+
+        @keyframes start-here-shimmer {
+            0%, 65% { transform: translateX(-65%); }
+            90%, 100% { transform: translateX(65%); }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .start-here::after { animation: none; opacity: 0; }
         }
 
         .button-link {
@@ -1942,10 +1977,12 @@
 
 <main id="welcome-root">
     <section class="panel hero">
-        Field·4
+        <h1>Field·4</h1>
         <div class="button-row">
-            <a class="button-link" href="/index.html?file=welcome">Open `welcome`</a>
-            <a class="button-link" href="/field-docs/">/docs + notes</a>
+            <button id="open-first-steps" class="start-here" type="button">Start here: a moving drawing</button>
+            <a class="button-link" href="/field-docs/first_steps/">Five-minute guide</a>
+            <button id="open-first-graphics" type="button">Next: native graphics</button>
+            <a class="button-link" href="/field-docs/" title="Open documentation; select text to leave a note.">Documentation</a>
             <button id="shutdown-instance" type="button" class="button-danger">shutdown this instance of Field</button>
         </div>
         <div id="vulkan-notice" class="vulkan-notice" hidden>
@@ -2208,13 +2245,14 @@
                         </div>
                         <div class="ai-docs-panel">
                             <div class="ai-docs-header">
-                                <span class="ai-docs-label">Code-use telemetry</span>
+                                <span class="ai-docs-label">Local code-use history</span>
                                 <span id="code-use-state">checking</span>
                             </div>
                             <div class="ai-docs-actions">
                                 <button id="open-code-use-browser" type="button">Open browser</button>
                             </div>
                             <div id="code-use-status" aria-live="polite"></div>
+                            <p class="starting-points-hint">Saved locally, including source and diagnostics. AI tools can read this history when used. <a href="/field-docs/privacy/">What stays local and what leaves</a></p>
                         </div>
                         <div class="semantic-search-panel">
                             <div class="semantic-search-header">
@@ -3837,8 +3875,12 @@
             if (payload && payload.filename) openDocument(payload.filename);
         } catch (error) {
             console.error("Failed to open starting point", name, error);
+            setCreateStatus(`Could not open ${name}: ${error.message}. See the installation guide or report the error.`, true);
         }
     }
+
+    document.getElementById("open-first-steps").addEventListener("click", () => openStartingPoint("first-steps"));
+    document.getElementById("open-first-graphics").addEventListener("click", () => openStartingPoint("first-graphics"));
 
     function revealDocumentLabel() {
         const platform = String(navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
@@ -4648,7 +4690,7 @@
             listNode.innerHTML = `
                 <div class="empty-state">
                     No documents found in this workspace yet.<br><br>
-                    Start with <a href="/index.html?file=welcome"><code>welcome</code></a> or create one above.
+                    Use <strong>Start here</strong> above, or create a document.
                 </div>
             `;
             return;

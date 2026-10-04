@@ -1,0 +1,60 @@
+name: first_graphics_native
+description: Launch the shipped first-graphics renderer and triangle for its native
+  screenshot.
+operations:
+- create:
+    box: first_graphics_renderer
+    name: 1 · Launch the renderer
+    frame:
+      x: 70.0
+      y: 70.0
+      w: 350.0
+      h: 100.0
+    properties:
+      code: "// Launch this box first: Alt+Up (Option+Up on macOS).\nprop<Window>(window)\n\
+        prop<Renderer>(renderer)\nonce.renderer {\n    window = Window(\"Field · first\
+        \ native graphics\")\n    Renderer(window)\n}\nstart(renderer::run)\n"
+- create:
+    box: first_graphics_triangle
+    name: 2 · Launch the triangle
+    frame:
+      x: 70.0
+      y: 270.0
+      w: 350.0
+      h: 100.0
+    properties:
+      code: "// this is almost as simple as drawing a triangle gets here. First a\
+        \ shader:\nvar module = moduleHere {\n    primitiveType = triangle_strip\n\
+        }\n\n    // then a mesh\nvar m  = Mesh()\n\n    // then some connection\n\
+        module += m named \"my mesh\"\nrenderer += module\n\n/*\nThis gets us everything\
+        \ we need to start rendering things. In particular, we get a vertex shader:\n\
+        \n[[property vertex]]\n*/\n\n    // and a fragment shader:\n\n/*\n[[property\
+        \ fragment]]\n*/\n\n// you can edit these by switching to these properties\
+        \ in the editor `f1` or `ctrl-P`.\n\n// and then 3 vertices and one triangle\
+        \ strip consisting of 3 indices\nm.set(3, 3) {\n    pos.add(0,0,0, 0.5,0,0,\
+        \ 0.5,0.5,0)\n\n    // for a flourish, we have some color as well\n    3 {\n\
+        \        col.add(0,it/3.0,1-it/3.0,1)\n    }\n    tri.add(0,1,2)\n}\n"
+      vertex: "#version 450\nlayout (location = 0) in vec3 pos;\n\nlayout (location\
+        \ = 1) in vec4 col;\nlayout (location = 0) out vec4 fcol;\n\n// layout(push_constant)\
+        \ uniform matrices {\n//     mat4 projectionMatrix;\n//     mat4 modelMatrix;\n\
+        // } push_constants;\n\nvoid main()\n{\n    // gl_Position = push_constants.projectionMatrix\
+        \ * push_constants.modelMatrix * vec4(pos, 1);\n\n    fcol = col;\n    gl_Position\
+        \ = vec4(pos, 1);\n}"
+      fragment: "#version 450\nlayout(location = 0) out vec4 uFragColor;\n\nlayout(location\
+        \ = 0) in vec4 fcol;\nvoid main()\n{\n    uFragColor = vec4(1.0, 0.8, 0.4,\
+        \ 1.0)* fcol;\n}"
+- connect:
+    parent: first_graphics_renderer
+    child: first_graphics_triangle
+- launch:
+    box: first_graphics_renderer
+    property: code
+    type: code
+- wait:
+    frames: 3
+- launch:
+    box: first_graphics_triangle
+    property: code
+    type: code
+- wait:
+    frames: 4
