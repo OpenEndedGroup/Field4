@@ -21,21 +21,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * The opt-in refusal of cross-site writes across the whole API.
- *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` establishes the number:
- * 48 of 55 state-changing HTTP routes have no route-specific access control at all, and Field's CORS config
- * says `anyHost()`, so any website you have open can call every one of them. That number is
- * not something a nightly agent gets to fix by changing a default — turning a refusal on
- * across 48 routes is exactly how you find out which of them the human's own tooling was
- * quietly using, at 4am, with nobody awake.
- *
- * So the switch exists, the default is the old behaviour, and there is a loud line at
- * startup either way. What this file is for is making sure the switch is real: that it
- * refuses what it claims to, that it does not touch the one route that legitimately needs
- * to work cross-origin, and — the part worth writing a test for even though it is a
- * *limitation* — that it does nothing whatsoever about the network exposure, which is the
- * thing someone reading "same-site guard" in a release note would assume it fixed.
+ * Browser-origin protection for the API. Enabled by default for public desktop installs.
+ * An explicit opt-out remains for integrations that need cross-origin access. This guard
+ * does not authenticate remote clients; the server separately binds loopback by default.
  *
  * ## Red-first
  *
@@ -60,7 +48,7 @@ import kotlin.test.assertTrue
 class FieldApiWriteGuardTest {
 
     @Test
-    fun theDefaultIsTheOldBehaviourBecauseNobodyIsAwakeToNoticeOtherwise() = guardedApp(on = false) {
+    fun anExplicitOptOutAllowsCrossSiteWrites() = guardedApp(on = false) {
         assertEquals(HttpStatusCode.OK, post("/api/anything") { fromEvilPage() }.status)
     }
 
@@ -132,7 +120,7 @@ class FieldApiWriteGuardTest {
      * fully on, still leaves all 36 unguarded mutating HTTP routes reachable from the network.
      *
      * Closing *that* means an authentication scheme or a narrower bind address, and the bind
-     * address is `0.0.0.0` because the visionOS shell reaches Field over Wi-Fi.
+     * address is explicitly set with `AFIELD_BIND_HOST=0.0.0.0` for visionOS over Wi-Fi.
      */
     @Test
     fun theGuardDoesNothingAboutTheNetworkAndThisTestSaysSoOutLoud() = guardedApp(on = true) {
