@@ -1854,6 +1854,11 @@ const normalizeCommandAction = (action, category, editor) => {
         if (!label || label === "Command Palette") return null
         const metadata = paletteActionMetadata(action, editor)
         const metadataSource = metadata || action
+        // Monaco's registered action may omit custom fields from the original descriptor.
+        const availabilitySource = typeof metadataSource.isAvailable === "function"
+                ? metadataSource
+                : (window.lastActions || []).find((registered) => registered.id === action.id)
+        if (typeof availabilitySource?.isAvailable === "function" && !availabilitySource.isAvailable()) return null
         const propertyPreview = propertyPreviewForAction(action)
         const itemCategory = propertyPreview ? "Properties" : category
         return {
