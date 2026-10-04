@@ -133,8 +133,9 @@
             <button id="revise" type="button" class="primary">Drain the queue</button>
             <button id="stop" type="button">Stop after current pages</button>
             <button id="stop-now" type="button" class="danger">Stop now</button>
+            <button id="import-drafts" type="button" title="completion's generated KDoc for undocumented declarations under src/, as kdoc-draft notes">Import completion KDoc drafts</button>
         </div>
-        <p class="muted">One agent per page, in the pass's worktree. <em>Stop after current pages</em> lets running agents finish and starts no more; <em>Stop now</em> ends them. Either way, whatever they recorded is kept and every other note stays in the queue.</p>
+        <p class="muted">One agent per page, in the pass's worktree. <em>Stop after current pages</em> lets running agents finish and starts no more; <em>Stop now</em> ends them. Either way, whatever they recorded is kept and every other note stays in the queue. <em>Import completion KDoc drafts</em> adds the KDoc completion drafted for undocumented declarations as notes on their Kotlin lines; tag <code>@kdoc-draft</code> drains only those.</p>
         <div id="progress"></div>
     </section>
 
@@ -260,7 +261,7 @@
 
     const renderCounts = (status) => {
         const counts = status.notes || {};
-        const order = [["open", "open"], ["question", "agent asks"], ["blocked", "waiting on a handoff"], ["resolved", "resolved"], ["memory", "memories"], ["handoff-open", "handoffs open"], ["handoff-taken", "handoffs taken"]];
+        const order = [["open", "open"], ["drafts-open", "of them KDoc drafts"], ["question", "agent asks"], ["blocked", "waiting on a handoff"], ["resolved", "resolved"], ["memory", "memories"], ["handoff-open", "handoffs open"], ["handoff-taken", "handoffs taken"]];
         $("counts").innerHTML = order.filter(([key]) => counts[key]).map(([key, label]) => `<span class="chip"><b>${counts[key]}</b> ${label}</span>`).join("") || `<span class="muted">no notes</span>`;
         $("queue-count").textContent = counts.open ? `${counts.open} open` : "";
     };
@@ -448,6 +449,7 @@
     $("abandon").onclick = async () => await confirmed("Throw the whole pass away: remove its worktree and delete its branch, landed or not? Notes the agents resolved stay resolved in the store.") && act("finish", { abandon: true });
     $("revise").onclick = () => act("revise", { agent: $("agent").value, jobs: Number($("jobs").value) || 4, tags: words($("tags").value), pages: words($("pages").value) });
     $("stop").onclick = () => act("stop");
+    $("import-drafts").onclick = () => act("import-drafts");
     $("stop-now").onclick = async () => await confirmed("Terminate the running agents now? What they already recorded is kept; their pages' other notes stay open.") && act("stop-now");
     $("rebuild").onclick = () => act("rebuild", { mode: $("mode").value });
     $("commit").onclick = async () => await confirmed("Commit everything in the worktree? The message lists every note resolved in this pass.") && act("commit");

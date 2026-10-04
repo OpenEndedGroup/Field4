@@ -435,9 +435,12 @@ data class DocsAnnotation(
 data class DocsAnnotationUpsert(val annotation: DocsAnnotation, val reply: String = "")
 @Serializable data class DocsAnnotationResolve(val resolved: Boolean = true, val resolution: String = "")
 
+/** `REQUEST_KINDS` in `tools/docs_notes.py`: a human's note, and a `kdoc-draft` that `import-drafts` made from completion's generated KDoc. */
+internal val queuedDocsAnnotationKinds = setOf("note", "kdoc-draft")
+
 /** Whether a note is waiting for work: a request, unresolved, not blocked by a handoff, with no agent question pending. Mirrors `in_queue`. */
 internal fun DocsAnnotation.isQueued(): Boolean {
-    if (kind != "note" || resolvedAtEpochMs != null) return false
+    if (kind !in queuedDocsAnnotationKinds || resolvedAtEpochMs != null) return false
     if (thread.lastOrNull { it.kind == "blocked" || it.kind == "unblocked" || it.kind == "reopen" }?.kind == "blocked") return false
     val lastTurn = thread.lastOrNull { it.kind == "question" || it.kind == "reply" || it.kind == "reopen" }
     return lastTurn?.kind != "question"

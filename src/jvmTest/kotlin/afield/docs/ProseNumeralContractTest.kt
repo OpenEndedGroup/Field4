@@ -716,16 +716,17 @@ class ProseNumeralContractTest {
             key = "logSinkImplementations",
             page = "public/docs/logging.md",
             what = "`LogSink` implementations in the tree",
-            // 8 on 2026-09-07, and the whole population, so the floor and the count coincide —
-            // the DATAFRAME_PLUGIN precedent. The page names all eight in a sentence and then
-            // says "adding a ninth from a box takes one line", so a ninth in *source* means that
+            // 8 on 2026-09-07; 7 on 2026-10-04, when the completion-doc polish CLI and its sink were
+            // retired. The whole population, so the floor and the count coincide — the
+            // DATAFRAME_PLUGIN precedent. The page names all seven in a sentence and then
+            // says "adding an eighth from a box takes one line", so an eighth in *source* means that
             // sentence needs rereading rather than renumbering.
             //
             // Counted by the one method the interface has rather than by a supertype list,
             // because `NotifyLog`'s `: LogSink` sits on its own line after a multi-line
             // constructor and a line-oriented supertype regex misses it. Every implementation
             // must override this exact signature, so the override is the reliable witness.
-            floor = 8,
+            floor = 7,
             landmarks = setOf(
                 "src/jvmMain/kotlin/afield/ai/core/Logging.kt#0",
                 "src/jvmMain/kotlin/afield/server/logstream.kt#0",
