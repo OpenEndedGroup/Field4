@@ -572,3 +572,23 @@ Values are unchanged: each formula is pinned bit-identical to the closure (`FnFo
 Swept for callers: tests that used `saw` or `pulseTrain` as the *refused* example now use
 `valueNoise` (`AutoDiffFnBridgeTest`, `FnOpCoverageTest`, `FnRefineRoundsTest`), as does the refusal
 figure on `public/docs/autodiff_examples.md`.
+
+## 2026-10-04 — `normalizePreambleText` ignores the supplier tag too (`claude/distracted-mccarthy-deeb34`)
+
+The 2026-09-29 entry above taught `prefixFor` that a `from:<uid>` tag is provenance rather than
+identity. It missed the third merger: `normalizePreambleText`, through `preambleSegmentKey` in
+`stdlib/shaders.kt`, keys a line that has no leading marker by its whole text, tag included. So a box
+that declares the `prop` its parent declares kept both copies: its own untagged line and the tagged
+one it inherited. `path_tracer_instrument`'s `pt_plot` and `pt_tracer` both write
+`prop<PathTracingRenderer>(tracer)`. The REPL path dedupes through `prefixFor` and was unaffected. The
+completion path (`KotlinInterface2` sends `normalizePreambleText(gatherPreambleUpwards(box))` to the AA
+sidecar, which compiles the preamble as one file) reported REDECLARATION for every such pair.
+
+| Symbol | Change | Magnitude | Old behaviour reachable from |
+| --- | --- | --- | --- |
+| `normalizePreambleText`, and `applyInsertToPreamble`'s merge (same key) | two lines that differ only by a supplier tag are one segment. `normalizePreambleText` keeps the first in text order, which for a gathered preamble is the box's own; the insert merge lets the incoming line replace the existing one, as it does for every segment | identical declarations only, so nothing compiled or executed changes; completion stops seeing a REDECLARATION for each pair (30 errors in 4 corpus boxes, `completion.lowering-invariant.probe`) | none |
+
+What was swept: the completion corpus, re-harvested. Only the four `path_tracer_instrument` boxes
+that re-declare `pt_tracer`'s props changed, losing their tagged duplicates. Fenced by
+`ContextResolutionCharacterizationTest.anOwnDeclarationAndTheSameOneInheritedNormalizeToOneLine`,
+which fails without the change.

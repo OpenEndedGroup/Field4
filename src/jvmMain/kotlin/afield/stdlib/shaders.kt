@@ -12,6 +12,7 @@ import afield.four.util.*
 import afield.logger.lprintln
 import afield.macros.Insert
 import afield.macros.MacroRegistry
+import afield.macros.stripPreambleSupplierTag
 import afield.stacksl.StackSLCompileOptions
 import afield.stacksl.StackSLCompileResult
 import afield.stacksl.StackSLCompiler
@@ -2926,7 +2927,10 @@ private fun preambleSegmentKey(segment: PreambleSegment): String {
 
     if (prefixedLine != null) return preambleLineKey(prefixedLine)
 
-    val normalized = segment.lines.joinToString(separator = "\n") { it.trimEnd() }.trim()
+    // A supplier tag is provenance, not identity, as in `prefixFor`: a box's own `prop<T>(x)` and the
+    // same declaration inherited from a parent are one line. Keyed with the tag, both survived, and the
+    // completion sidecar — which compiles the preamble as one file — reported REDECLARATION.
+    val normalized = segment.lines.joinToString(separator = "\n") { stripPreambleSupplierTag(it.trimEnd()) }.trim()
     return normalized
 }
 
