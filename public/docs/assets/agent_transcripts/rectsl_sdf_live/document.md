@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 100 "characters" 4285 "sha256" "1702ef1894debe88f4fd0ffcbd520c9db4470ae3ae0f33507819b6ddec234fc5"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 96 "characters" 4178 "sha256" "3a648fe9b1881cabf9cef4d50f82f7050f40b3ff122577c78df5ed9b5648a412"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -74,18 +74,14 @@ union and a union has no layers.
 // blending *between* rectangles, boolean ops, per-pixel normals and sub-frame
 // motion blur — in exchange for fill, material and z order, because `min` is
 // union and a union has no layers.
-import afield.four.Renderer
 import afield.four.modules.Mesh
 import afield.four.modules.Module
-import afield.four.modules.fromContext
 import afield.four.modules.parameters
 import afield.four.modules.pointer
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.RectSLGlsl
 import afield.rectsl.RectSLSdfLook
 import afield.rectsl.RectSLSdfShader
-
-val renderer: Renderer = fromContext()
 
 // 1. An ordinary RectSL scene. Nothing here is SDF-specific: one animated
 //    template, six copies from `array`. Edit it and re-run.

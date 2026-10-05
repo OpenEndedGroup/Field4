@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="physics_manifold_trace" index="1" -->
 
 ```edn [field-box id="physics_manifold_trace" role="properties"]
-{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 132 "characters" 5734 "sha256" "5a6f5a18c61b32bc4850e95e6fa8b425aea82fee83fde35582bc981d6ef18c10"}]}
+{"id" "physics_manifold_trace" "index" 1 "name" "a draped cloth, welded into one solid, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a draped cloth, welded into one solid, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "physics_manifold_trace_code_.kt" "lines" 130 "characters" 5656 "sha256" "7433f16b888b81bdf991fc4896c9d269981ebe73fb188507491a0d13843b56af"}]}
 ```
 
 ```kotlin [field-property box="physics_manifold_trace" name="code" path="physics_manifold_trace_code_.kt"]
@@ -40,7 +40,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.physics.PlaneCollider
 import afield.four.physics.SimdVerlet
 import afield.four.physics.SphereCollider
@@ -54,7 +53,6 @@ import afield.stdlib.isWatertight
 import afield.stdlib.linalg.Vector3f
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

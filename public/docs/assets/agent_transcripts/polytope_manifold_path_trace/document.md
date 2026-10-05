@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="polytope_manifold_trace" index="1" -->
 
 ```edn [field-box id="polytope_manifold_trace" role="properties"]
-{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 113 "characters" 5447 "sha256" "2942e9ae4dfddb02fb112e745e70d884c62aeed327f2606934b4390d8c6e00e9"}]}
+{"id" "polytope_manifold_trace" "index" 1 "name" "polytope, eroded into a shell, cut open, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "polytope, eroded into a shell, cut open, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "polytope_manifold_trace_code_.kt" "lines" 111 "characters" 5369 "sha256" "be4f9fa52d52626721d50282a99768ee7a9d2792333c10f31a2dfb27efc3c071"}]}
 ```
 
 ```kotlin [field-property box="polytope_manifold_trace" name="code" path="polytope_manifold_trace_code_.kt"]
@@ -40,7 +40,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
@@ -55,7 +54,6 @@ import afield.stdlib.polytope.canonicalConway
 import afield.stdlib.polytope.triangulate
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // The Boolean stage is the middle of this chain rather than an extra, so this refuses

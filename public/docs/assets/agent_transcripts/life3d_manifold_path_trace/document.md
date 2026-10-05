@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="life3d_manifold_trace" index="1" -->
 
 ```edn [field-box id="life3d_manifold_trace" role="properties"]
-{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 179 "characters" 8162 "sha256" "594224ff60a18582a1d95b253866e4f98ecfc331074e91132f71a301dba48cfc"}]}
+{"id" "life3d_manifold_trace" "index" 1 "name" "3D life, decomposed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "3D life, decomposed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "life3d_manifold_trace_code_.kt" "lines" 177 "characters" 8084 "sha256" "c5f6c0ccb655815d8addb13d7cff1403f1b64a780ae3f3843e34d00af3a6ea65"}]}
 ```
 
 ```kotlin [field-property box="life3d_manifold_trace" name="code" path="life3d_manifold_trace_code_.kt"]
@@ -40,7 +40,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
@@ -56,7 +55,6 @@ import afield.stdlib.toMesh
 import java.io.File
 import kotlin.random.Random
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

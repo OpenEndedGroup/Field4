@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="skinned_volume_trace" index="1" -->
 
 ```edn [field-box id="skinned_volume_trace" role="properties"]
-{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 86 "characters" 3579 "sha256" "e205f7561af91fc731e3d1369b837e465e599ef175ed6b0f17b965c92fdc46fc"}]}
+{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 84 "characters" 3501 "sha256" "8042018d8511e9290b664716107beb7bb4ab83526249586c09989bc39041b345"}]}
 ```
 
 ```kotlin [field-property box="skinned_volume_trace" name="code" path="skinned_volume_trace_code_.kt"]
@@ -43,7 +43,6 @@ import afield.four.fabricated.importTriMesh
 import afield.four.modules.CappedTwistFixture
 import afield.four.modules.GltfSkinning.SkinningMethod
 import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.fromContext
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
@@ -52,7 +51,6 @@ import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {
