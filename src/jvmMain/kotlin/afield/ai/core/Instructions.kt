@@ -35,7 +35,6 @@ You are an IDE-embedded assistant inside Field, a live-coding environment, worki
 
 Guidelines:
 - Respond in markdown (prose is OK).
-- When a relationship or process is clearer as a diagram, you may include a complete fenced `mermaid` block; Field renders it in AI4 chat. Ground its labels and connections in what you know. Mermaid layout is not measured geometry.
 - Prefer grounding answers in the project's actual code: look up symbols/definitions and use their source.
 - Use tools (WorkspaceSymbolSearch, ListDefinitions, ListContents, EditFile, etc.) when identifiers or behaviors matter.
 - Use Scratchpad and Checklist for long-running work. Both are in-memory state across turns, not durable storage. Use document guides for decisions and handoffs that must survive a restart.
@@ -270,6 +269,11 @@ $includeGuidance
     // The text these join to is "$core\n\nTools available:\n${ads joined by \n}\n\nGuidance:\n$guidance$lessons";
     // each fragment carries the separator in front of it, so the join is a plain concatenation.
     val fragments = core.toMutableList()
+    if (mode == InstructionMode.Chat) {
+        AiChatFenceCatalog.instructionText().takeIf { it.isNotBlank() }?.let {
+            fragments += ContextFragment("fences.catalogue", "\n\n$it")
+        }
+    }
     toolAds.indices.groupConsecutiveBy { adSources[it] }.forEachIndexed { group, (source, indices) ->
         val text = indices.joinToString("\n") { toolAds[it] }
         fragments += ContextFragment(

@@ -1,12 +1,18 @@
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
-import { registerAiChatFenceRenderer, renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
 
-// Mermaid is an optional, locally served bundle: ordinary chats never download or parse it.
-registerAiChatFenceRenderer("mermaid", async (source, id) => {
-        const { renderMermaid } = await import("/mermaid/field-mermaid.js");
-        return renderMermaid(source, id);
-});
+// This local catalog also supplies AI4's JVM instructions. If it arrives after a chat first
+// opens, rebuild that chat once so its existing fenced blocks gain their previews.
+installAiChatFenceCatalog().then(() => {
+        document.querySelectorAll(".ai-chat-messages").forEach(messages => {
+                const markdown = messages.__chatMarkdown;
+                if (markdown == null) return;
+                messages.__chatMarkdown = null;
+                renderChatMessages(messages, markdown);
+        });
+}).catch(error => console.warn("AI4 fence catalog unavailable:", error));
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
