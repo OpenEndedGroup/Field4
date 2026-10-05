@@ -40,7 +40,9 @@ function getForbiddenRangeAtPosition(editor, pos) {
         );
 
         for (const d of decs) {
-                if (markerDecorationsLayer._decorationIds.includes(d.id)) {
+                // A marker rune, or text a server decoration draws over (flipbox's true/false).
+                const covers = (d.options.inlineClassName || "").split(" ").some(c => c.startsWith("flipbox_") && c.endsWith("_cover"));
+                if (markerDecorationsLayer._decorationIds.includes(d.id) || covers) {
                         const range = model.getDecorationRange(d.id);
 
                         // If cursor is exactly at the start or end boundary, treat as outside

@@ -4403,6 +4403,12 @@ kbd {
     margin-right: 3px;
 }
 
+/* The block caret sits on top of the text it covers, so while it blinks on it took the mousedown
+   meant for a clickable decoration under it (a flipbox): let clicks through to the text. */
+.monaco-editor .cursors-layer .cursor {
+    pointer-events: none;
+}
+
 .coverMarker {
     font-size: 0 !important;
 }
