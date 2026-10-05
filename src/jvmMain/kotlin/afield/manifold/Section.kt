@@ -69,6 +69,7 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
     internal val ptr: MemorySegment
         get() {
             check(!release.released) { "this Section is closed — it was released explicitly or by its enclosing scope" }
+            ManifoldNative.pin(this)
             return release.handle
         }
 
@@ -488,6 +489,8 @@ class Section internal constructor(handle: MemorySegment) : AutoCloseable {
                 return wrap(ManifoldNative.sectionBatchBoolean, vec, op.code)
             } finally {
                 ManifoldNative.unit(ManifoldNative.deleteSectionVec, vec)
+                // The vector holds raw pointers; keep their owners alive until it is gone.
+                java.lang.ref.Reference.reachabilityFence(sections)
             }
         }
 
