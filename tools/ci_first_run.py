@@ -13,13 +13,37 @@ import os
 import platform
 from pathlib import Path
 import signal
+import shutil
 import socket
 import ssl
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.error
 import urllib.request
+
+
+def stream_launcher_log(path: Path, offset: int) -> int:
+    """Keep the retained launcher log visible in Actions even if the runner disappears."""
+    with path.open("rb") as log:
+        log.seek(offset)
+        output = log.read()
+        offset = log.tell()
+    if output:
+        print(output.decode("utf-8", errors="replace"), end="", flush=True)
+    return offset
+
+
+def report_runner_resources(root: Path, elapsed: float) -> None:
+    free_gib = shutil.disk_usage(root).free / 1024**3
+    memory = ""
+    meminfo = Path("/proc/meminfo")
+    if meminfo.is_file():
+        values = dict(line.split(":", 1) for line in meminfo.read_text().splitlines())
+        memory = ", " + ", ".join(f"{key}={values[key].strip()}" for key in
+                                     ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree"))
+    print(f"Waiting for health: {elapsed:.0f}s; disk free={free_gib:.1f} GiB{memory}", flush=True)
 
 
 def main() -> int:
@@ -61,10 +85,16 @@ def main() -> int:
             proc = subprocess.Popen(command, cwd=root, env=env, stdin=subprocess.DEVNULL,
                                     stdout=log, stderr=subprocess.STDOUT,
                                     start_new_session=os.name != "nt")
+            log_offset = 0
             try:
                 started = time.monotonic()
                 deadline = started + args.timeout
+                next_resources = started
                 while time.monotonic() < deadline:
+                    log_offset = stream_launcher_log(log_path, log_offset)
+                    if time.monotonic() >= next_resources:
+                        report_runner_resources(root, time.monotonic() - started)
+                        next_resources = time.monotonic() + 60
                     if proc.poll() is not None:
                         raise RuntimeError(f"Launcher exited before health (exit {proc.returncode}); inspect {log_path}")
                     try:
@@ -112,6 +142,7 @@ def main() -> int:
                         else:
                             os.killpg(proc.pid, signal.SIGTERM)
                         proc.wait(timeout=10)
+                stream_launcher_log(log_path, log_offset)
 
 
 if __name__ == "__main__":
