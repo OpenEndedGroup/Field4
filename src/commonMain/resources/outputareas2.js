@@ -1,4 +1,11 @@
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
+import { registerAiChatFenceRenderer, renderAiChatFences } from "./aiChatFenceRenderers.js";
+
+// Mermaid is an optional, locally served bundle: ordinary chats never download or parse it.
+registerAiChatFenceRenderer("mermaid", async (source, id) => {
+        const { renderMermaid } = await import("/mermaid/field-mermaid.js");
+        return renderMermaid(source, id);
+});
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
@@ -1840,6 +1847,10 @@ function renderChatMessages(messages, markdown, options) {
         });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
+        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+                if (event === "settled") pendingFenceRenders--;
+                finish();
+        });
         const images = Array.from(messages.querySelectorAll("img"));
         images.forEach(img => {
                 const size = dimensions.get(img.getAttribute("src"));
@@ -1856,7 +1867,7 @@ function renderChatMessages(messages, markdown, options) {
         };
         const finish = () => {
                 settle();
-                if (images.every(img => img.complete) && messages.__chatScrollRestore === restore) {
+                if (images.every(img => img.complete) && pendingFenceRenders === 0 && messages.__chatScrollRestore === restore) {
                         messages.__chatScrollRestore = null;
                 }
         };
