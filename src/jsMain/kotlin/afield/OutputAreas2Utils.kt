@@ -310,7 +310,8 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
             "<<you>>",
             "<<ai>>",
             "<<progress>>",
-            "<<progress-open>>"
+            "<<progress-open>>",
+            "<<queued>>"
         )
         val hits = markers.mapNotNull { marker ->
             val at = text.indexOf(marker, idx)
@@ -360,6 +361,10 @@ private fun parseChatHistory(history: String?): List<ChatTurn> {
                 flush()
                 currentRole = "progress-open"
             }
+            "<<queued>>" -> {
+                flush()
+                currentRole = "queued"
+            }
             else -> buffer.append(token)
         }
     }
@@ -407,6 +412,12 @@ fun aiChatHistoryToHtml(history: String?): String {
         }
         if (progress) {
             html.append(renderProgressTurn(turn))
+        } else if (turn.role == "queued") {
+            // Sent while the turn runs (AiTurnInbox on the server): not part of the conversation until the
+            // agent reads it, so it has no ordinal and no rewind/edit.
+            html.append("<div class=\"ai-chat-turn you queued\">" +
+                "<div class=\"ai-chat-queued-label\">queued: the agent reads this after its current step</div>" +
+                aiChatMarkdownToHtml(turn.content) + "</div>")
         } else {
             val badge = if (turn.role == "ai") {
                 val label = turn.model?.label() ?: "Model not recorded"

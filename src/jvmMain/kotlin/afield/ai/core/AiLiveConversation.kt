@@ -7,12 +7,19 @@ internal class AiLiveConversation {
     private sealed interface Entry
     private data class Text(val value: StringBuilder) : Entry
     private data class Activity(val value: LlmProgressUpdate) : Entry
+    private data class User(val value: String) : Entry
     private val entries = mutableListOf<Entry>()
 
     @Synchronized fun text(delta: String) {
         if (delta.isEmpty()) return
         val tail = entries.lastOrNull() as? Text
         if (tail != null) tail.value.append(delta) else entries += Text(StringBuilder(delta))
+    }
+
+    /** A message the person sent while the turn ran, at the point the model received it ([AiTurnInbox]). */
+    @Synchronized
+    fun user(message: String) {
+        if (message.isNotBlank()) entries += User(message.trim())
     }
 
     @Synchronized fun progress(update: LlmProgressUpdate) {
@@ -47,6 +54,7 @@ internal class AiLiveConversation {
                         append("<<ai>>\n"); model?.let { append(it.marker()) }
                         append(entry.value); append("\n")
                     }
+                    is User -> { append("<<you>>\n"); append(entry.value); append("\n") }
                     is Activity -> {
                         append(if (live && index == snapshot.lastIndex) "<<progress-open>>\n" else "<<progress>>\n")
                         append(entry.value.title.trim()); append("\n")

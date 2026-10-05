@@ -255,6 +255,22 @@ class ToolProgramTest {
         } finally { afield.ai.core.DocumentToolRegistry.clearBox(box) }
     }
 
+    // A house agent called tools.routing_read for routing.read and the program died on a TypeError.
+    @Test
+    fun aBoxToolAnswersToAnyUnambiguousSpelling() {
+        val box = afield.Box("program-lenient")
+        val read = box.aiTool("routing.read") { describe("fixture"); action { "read" } }
+        val one = box.aiTool("a.b") { describe("fixture"); action { "one" } }
+        val other = box.aiTool("a_b") { describe("fixture"); action { "other" } }
+        try {
+            val ctx = ToolExecutionContext(dynamicTools = listOf(read, one, other))
+            // Box tools run on the Field runloop, which a unit test does not have, so this checks resolution only.
+            val result = run("""return [typeof tools.routing_read, typeof tools.routingRead, typeof tools.RoutingRead, typeof tools.routing_read.raw,
+                typeof tools.routing_write, typeof tools.aB, Object.keys(tools).includes("routing_read")];""", ctx)
+            assertEquals(listOf("function", "function", "function", "function", "undefined", "undefined", "false"), result.returned!!.map { it.asText() })
+        } finally { afield.ai.core.DocumentToolRegistry.clearBox(box) }
+    }
+
     @Test
     fun theCallCapStopsFurtherCalls() {
         val result = run("""for (let i = 0; i < 10; i++) { try { tools.ProgEcho({text: "" + i}); } catch (e) {} } return "done";""", maxCalls = 3)

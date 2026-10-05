@@ -183,12 +183,13 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
     // HashMap can lose an entry, and on CHM it is atomic, which is what the caller wanted anyway.
     val markers: MutableMap<String, Marker> = ConcurrentHashMap()
 
+    /** What [buildKi] calls: [makeKI], except in tests, which have no Kotlin REPL to build and need to hold a build open. */
+    internal var kiBuilder: (box: Box, reason: String, superseded: () -> Boolean) -> KotlinScriptEngine = newBoxKiBuilder
+
     // Kept as a named delegate (not an anonymous `by lazyVar { }`) so disposeKi()
-    // can check whether the engine was ever created and release it without forcing
-    // a pointless lazy initialization.
-    private val kiDelegate = lazyVar<KotlinScriptEngine> {
-        makeKI(this, reason = "box.ki lazy initialization")
-    }
+    // can release the engine without forcing a pointless lazy initialization, and
+    // without waiting for one that is already running (see LazyVar.discard).
+    private val kiDelegate: LazyVar<KotlinScriptEngine> = lazyVar(onDiscard = ::releaseDiscardedKi) { buildKi() }
     var ki: KotlinScriptEngine by kiDelegate
 
     /**
@@ -196,7 +197,31 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * that has never run is both wasteful and misleading — callers that are *inspecting* engines
      * (see [scanForStaleClasses]) want to skip such boxes, not create work for them.
      */
-    val liveKi: KotlinScriptEngine? get() = if (kiDelegate.isInitialized) ki else null
+    val liveKi: KotlinScriptEngine? get() = kiDelegate.valueOrNull()
+
+    /**
+     * The lazy initializer of [ki]. It notes the delegate's generation before building, so that if
+     * [disposeKi] runs while [makeKI] builds the engine (about a second on a cold JVM), the engine's
+     * stdlib bootstrap can see it has been retired and skip, rather than compiling for a box that is
+     * gone. The delegate itself then disposes the engine; see [releaseDiscardedKi].
+     */
+    private fun buildKi(): KotlinScriptEngine {
+        val generation = kiDelegate.generation
+        val reason = if (generation == 0) "box.ki lazy initialization" else "box.ki re-initialization after disposeKi"
+        return kiBuilder(this, reason) { kiDelegate.generation != generation }
+    }
+
+    /**
+     * Every engine [kiDelegate] drops comes here: the one [disposeKi] forgets, one built while
+     * [disposeKi] ran, and one built while [replaceKi] installed another.
+     */
+    private fun releaseDiscardedKi(engine: KotlinScriptEngine) {
+        try {
+            engine.dispose()
+        } catch (t: Throwable) {
+            lprintln("error,ki", "disposeKi failed for box $id: ${t.message}")
+        }
+    }
 
     var ke: BoxExecution = KotlinExecution()
 
@@ -223,24 +248,26 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * `_introduction` and `_attic` are the same kind of record — "this text has run in this engine" —
      * and are forgotten with it: `checkIntroductionAndExecute` runs the introduction only when it differs
      * from `_introduction`, so a stale copy made the next engine skip the introduction entirely.
+     *
+     * An engine still being built when this runs is disposed too, by the thread building it, as soon
+     * as [makeKI] returns, and its stdlib bootstrap is skipped; this call does not wait for it. That
+     * engine used to survive: the early return for "never initialized" could not tell "not built" from
+     * "being built under the lazy's lock", so the engine was stored once built, outlived its retired box,
+     * and kept a K2 compiler project alive for the life of the JVM. Observed 2026-10-04 on a fresh Field,
+     * from a raw websocket client that opened a scratch document, sent `agent-create-box`, and aborted
+     * TCP 150 ms later: the document was retired from a Ktor IO thread (`SessionInformation.cleanup`)
+     * mid-construction, and the engine's bootstrap logged `complete #1` after the document was gone.
+     * The thread that asked for [ki] still gets that engine, now disposed; its compiles are refused.
      */
     fun disposeKi() {
         // Drop any AI tools this box contributed to its document (see aiTool DSL). Retiring already
         // released them through the run scopes (DocumentToolRegistry); this covers an engine
         // recycled without a retire, whose compiled tool bodies go with it.
         runCatching { afield.ai.core.DocumentToolRegistry.clearBox(this) }
-        if (!kiDelegate.isInitialized) return
-        try {
-            ki.dispose()
-        } catch (t: Throwable) {
-            lprintln("error,ki", "disposeKi failed for box $id: ${t.message}")
-        }
-        // Pass the initializer explicitly: LazyVar nulls its initializer after the
-        // first init, so reset() with the default arg would leave `ki` unrecoverable
-        // ("Initializer cleared"). This keeps a later `ki` access able to rebuild.
-        kiDelegate.reset { makeKI(this, reason = "box.ki re-initialization after disposeKi") }
+        // Disposes the engine through releaseDiscardedKi, and leaves a later `ki` able to rebuild.
+        if (!kiDelegate.discard()) return
         // The engine that ran this preamble no longer exists; see the KDoc above for the race this
-        // closes. Deliberately after the reset, so "engine gone" and "preamble not applied" become
+        // closes. Deliberately after the discard, so "engine gone" and "preamble not applied" become
         // true together and no caller can observe one without the other.
         forgetEngineExecutionCaches()
     }
@@ -253,7 +280,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
      * Only an engine that was actually built is disposed, so a box that never ran costs nothing, and
      * installing the engine already current is a no-op: `makeKIHere` hands back the existing engine for
      * a tombstoned box, which disposing would break. The new engine is installed before the old one is
-     * disposed, so no reader of [ki] can be handed a disposed engine.
+     * disposed, so no reader of [ki] can be handed a disposed engine. Installing does not wait for a
+     * lazy build in flight, and the engine that build returns is disposed rather than stored.
      */
     fun replaceKi(engine: KotlinScriptEngine) {
         val previous = liveKi
@@ -403,6 +431,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
 
 
     companion object {
+        /** [kiBuilder] for boxes made from now on; a test swaps it to reach a box that [box] builds an engine for. */
+        internal var newBoxKiBuilder: (box: Box, reason: String, superseded: () -> Boolean) -> KotlinScriptEngine = ::makeKI
+
         var uiResyncProperties = setOf(
             "frame",
             "name",
@@ -472,6 +503,9 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // Drawing layer: the root box's "drawing" property is the document's Excalidraw scene
             // (src/jsMain/kotlin/afield/drawingLayer.kt). Same generic path as "bookmarks".
             "drawing",
+            // Split canvas: the root box's "panes" property is the split as JSON (dividers and the
+            // world lines they separate; src/jsMain/kotlin/afield/canvasCamera.kt).
+            "panes",
             "autorun",
             "layers",
             "layerFrames",
@@ -542,6 +576,7 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // (see the uiResyncProperties entry above and src/jsMain/kotlin/afield/bookmarks.kt).
             "bookmarks",
             "drawing",
+            "panes",
             "slideShow",
             "autorun",
             "layers",
@@ -1057,10 +1092,11 @@ fun doResync() {
                     is String -> {
                         lprintln("info,boxes", "sending set-string for $name = $value")
                         // The autosave loop only saves when something is pending here. Root
-                        // properties never become sidecars, so the drawing layer's scene marks
-                        // itself, or a document whose only change is a drawing would never save.
+                        // properties never become sidecars, so the drawing layer's scene and the
+                        // canvas split mark themselves, or a document whose only change is one of
+                        // them would never save.
                         val triggersSave = Box.ioSeparateProperties.containsKey(name) ||
-                            (box.id == "root" && name == "drawing")
+                            (box.id == "root" && (name == "drawing" || name == "panes"))
                         if (triggersSave && box.isInsideInitialized() && box.inside.writesToDisk) {
                             box.inside.markSidecarPending(box.id, name)
                         }
@@ -1504,18 +1540,24 @@ fun box(
     if (u == METAROOT_ID) return metaroot
     if (u == "root") return root.root
     if (createIfMissing) {
-        return root.boxes.computeIfAbsent(u) {
-            val b = Box(u)
-            b.inside = root
-            b.parents.add(root.root)
-            root.root.children.add(b)
-
-            if (initIfCreated) {
-                b.ki
+        var created: Box? = null
+        val b = root.boxes.computeIfAbsent(u) {
+            Box(u).also {
+                it.inside = root
+                it.parents.add(root.root)
+                root.root.children.add(it)
+                created = it
             }
-
-            b
         }
+        // The engine is built once the box is in [root]'s map, not inside computeIfAbsent, which
+        // publishes the entry only when its function returns. Building there hid the box for the
+        // whole build (about a second on a cold JVM) from `retireBoxes(boxes.values)`: on
+        // 2026-10-04 a scratch document whose last client aborted mid-`agent-create-box` was
+        // cleaned up with no boxes to retire, and the new box's engine outlived its document and
+        // ran its bootstrap. Visible, the box is retired, and [Box.disposeKi] disposes the engine
+        // the build returns.
+        if (initIfCreated && created === b) b.ki
+        return b
     } else return root.boxes[u]!!
 }
 
@@ -1600,7 +1642,15 @@ private fun KotlinScriptEngine.kotlinStartupEngineLabel(): String {
     return "$backend execNumber=$execNumber"
 }
 
-fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
+/**
+ * Build a Kotlin engine for [box] and queue its stdlib bootstrap on the main runloop.
+ *
+ * [superseded] is asked when the bootstrap is about to run; true skips it. `Box.ki`'s lazy passes
+ * "has `disposeKi` run since this build began", because its discard does not wait for the build and
+ * the engine is disposed only once this function returns, which can be after the runloop picks the
+ * bootstrap up.
+ */
+fun makeKI(box: Box, reason: String = "makeKI call", superseded: () -> Boolean = { false }): KotlinScriptEngine {
 
     // force resync of actions per box
     box.actions
@@ -1622,6 +1672,18 @@ fun makeKI(box: Box, reason: String = "makeKI call"): KotlinScriptEngine {
             try {
                 if (box.properties["_tombstone"].isTrue()) {
                     lprintln("info,ki,startup", "skip #$startupId tombstone box=${box.kotlinStartupLabel()}")
+                    return@inMain
+                }
+                // Retired while this engine was being built (see [Box.disposeKi]); the engine is
+                // disposed, or about to be, by the thread that built it.
+                if (superseded()) {
+                    lprintln("info,ki,startup", "skip #$startupId box retired while its engine was built box=${box.kotlinStartupLabel()}")
+                    return@inMain
+                }
+                // Retired after it was built but before this ran: its document's last client left
+                // (see [Box.disposeKi]). Compiling the intro now would only be refused.
+                if (ki.isDisposed) {
+                    lprintln("info,ki,startup", "skip #$startupId engine disposed before its imports ran box=${box.kotlinStartupLabel()}")
                     return@inMain
                 }
 

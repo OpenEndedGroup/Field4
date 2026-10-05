@@ -6,6 +6,7 @@ import org.w3c.dom.HTMLElement
 import org.w3c.dom.HTMLLinkElement
 import org.w3c.dom.asList
 import org.w3c.dom.events.Event
+import kotlin.js.json
 
 /**
  * The drawing layer: an Excalidraw scene laid over the whole box canvas, for notation.
@@ -20,6 +21,11 @@ import org.w3c.dom.events.Event
  *   is [mainZoom] and its scroll is `mainTranslation / mainZoom`. Panning or zooming either side
  *   moves the other (`applyViewportTranslation` → [drawingLayerViewportChanged]; Excalidraw's
  *   `onScrollChange` → [panViewportForDrawingLayer]).
+ * - **One mount per pane.** On a split canvas (`canvasCamera.kt`) each pane has its own Excalidraw,
+ *   sized to the pane and following that pane's camera. Every mount holds the whole scene; a pane
+ *   only ever shows its own quadrant, so no clipping is needed. A change in one mount goes to the
+ *   server and straight to the others. Only the main (bottom-right) pane shows Excalidraw's
+ *   toolbar; the tool travels with the pointer into whichever pane it enters.
  * - **Modal input.** Inactive, the layer is visible but `pointer-events: none` and Excalidraw is in
  *   view mode, so Field behaves exactly as before. Active (`toggle-drawing-layer`, Alt+D), the
  *   layer takes the pointer and keyboard focus, and key events are kept from bubbling out to
@@ -39,8 +45,21 @@ var drawingLayerActive = false
     private set
 
 private var host: HTMLElement? = null
-private var handle: dynamic = null
 private var loading = false
+
+/** The loaded bundle, kept to mount one Excalidraw per pane. */
+private var bundle: dynamic = null
+
+/** One mount per pane, in [CanvasCamera.panes] order; the last is the main pane's. */
+private class PaneMount(val host: HTMLElement, val handle: dynamic)
+
+private val mounts = mutableListOf<PaneMount>()
+
+/** The main pane's mount: the one with the toolbar, and the one tests read. */
+private val handle: dynamic get() = mounts.lastOrNull()?.handle
+
+/** Index of the mount the pointer is over, while the layer is active. */
+private var hoverMount = -1
 
 /** Latest scene from the server, held until the bundle has loaded. */
 private var pendingRemoteScene: String? = null
@@ -80,21 +99,13 @@ private fun ensureLoaded(then: () -> Unit = {}) {
     // Excalidraw resolves its fonts against this; without it they come from a CDN.
     window.asDynamic().EXCALIDRAW_ASSET_PATH = "/excalidraw/"
 
-    val el = ensureHost()
+    ensureHost()
     val load: dynamic = js("(url) => import(url)")
     load(BUNDLE_URL).then({ module: dynamic ->
-        val opts: dynamic = js("({})")
-        opts.initialScene = pendingRemoteScene ?: currentRootDrawing()
-        opts.initialCamera = arrayOf(mainTranslation[0] / mainZoom, mainTranslation[1] / mainZoom, mainZoom)
-        opts.onCamera = { scrollX: Double, scrollY: Double, zoom: Double ->
-            panViewportForDrawingLayer(scrollX * zoom, scrollY * zoom, zoom)
-        }
-        opts.onScene = { json: String -> sendScene(json) }
-        opts.onSelection = { ids: Array<String> -> sendSelection(ids) }
-        handle = module.mountDrawingLayer(el, opts)
+        bundle = module
+        syncPaneMounts()
         pendingRemoteScene = null
         loading = false
-        handle.setActive(drawingLayerActive)
         then()
     }, { error: dynamic ->
         loading = false
@@ -104,6 +115,97 @@ private fun ensureLoaded(then: () -> Unit = {}) {
 }
 
 private fun currentRootDrawing(): String? = findRootBoxElement()?.asDynamic()?.drawing as? String
+
+/** Excalidraw's camera for [pane]: its container sits at the corner of the pane's inner rect. */
+private fun cameraFor(pane: CanvasPane): Array<Double> {
+    val r = pane.innerRect
+    return arrayOf((pane.tx - r.x) / pane.zoom, (pane.ty - r.y) / pane.zoom, pane.zoom)
+}
+
+/**
+ * Makes the mounts match the panes (one each, the main pane's mount kept across splits so its
+ * history survives), sizes each to its pane and points it at its pane's camera.
+ */
+private fun syncPaneMounts() {
+    val module = bundle ?: return
+    val layer = ensureHost()
+    val panes = CanvasCamera.panes
+    if (mounts.size != panes.size) {
+        val main = mounts.removeLastOrNull()
+        // (`dynamic` has no `let`: on a dynamic receiver it would call a JS method of that name.)
+        val mainApi: dynamic = main?.handle?.api()
+        val scene: String? = if (mainApi != null) {
+            JSON.stringify(json("elements" to mainApi.getSceneElementsIncludingDeleted()))
+        } else {
+            pendingRemoteScene ?: currentRootDrawing()
+        }
+        mounts.forEach { it.handle.unmount(); it.host.remove() }
+        mounts.clear()
+        for (index in panes.indices) {
+            val isMain = index == panes.lastIndex
+            if (isMain && main != null) {
+                mounts += main
+                continue
+            }
+            val el = document.createElement("div") as HTMLElement
+            el.className = "field-drawing-pane"
+            // Hosts in pane order: the kept main mount stays last.
+            layer.insertBefore(el, main?.host)
+            layoutMountHost(el, panes[index], isMain)
+            val opts: dynamic = js("({})")
+            opts.initialScene = scene
+            opts.initialCamera = cameraFor(panes[index])
+            opts.onCamera = { scrollX: Double, scrollY: Double, zoom: Double ->
+                CanvasCamera.panes.getOrNull(index)?.let { pane ->
+                    val r = pane.innerRect
+                    panViewportForDrawingLayer(scrollX * zoom + r.x, scrollY * zoom + r.y, zoom, pane)
+                }
+            }
+            opts.onScene = { json: String -> sendScene(json, from = index) }
+            opts.onSelection = { ids: Array<String> -> sendSelection(ids) }
+            val handle = module.mountDrawingLayer(el, opts)
+            handle.setActive(drawingLayerActive)
+            mounts += PaneMount(el, handle)
+        }
+        hoverMount = -1
+    }
+    mounts.forEachIndexed { index, mount ->
+        val pane = panes.getOrNull(index) ?: return@forEachIndexed
+        layoutMountHost(mount.host, pane, index == panes.lastIndex)
+        val (x, y, zoom) = cameraFor(pane)
+        mount.handle.setCamera(x, y, zoom)
+    }
+}
+
+private fun layoutMountHost(el: HTMLElement, pane: CanvasPane, isMain: Boolean) {
+    val r = pane.innerRect
+    el.style.left = "${r.x}px"
+    el.style.top = "${r.y}px"
+    el.style.width = "${r.w}px"
+    el.style.height = "${r.h}px"
+    // Rounded like the pane's frame, so marks stop at the dividers' curves too.
+    el.style.borderRadius = if (CanvasCamera.isSplit) pane.frameRadius() else ""
+    el.classList.toggle("field-drawing-mirror", !isMain)
+}
+
+/**
+ * While the layer is active, the pointer entering a pane carries the current tool into that
+ * pane's Excalidraw (only the main pane shows a toolbar) and gives it the keyboard.
+ */
+private fun followPointerAcrossPanes(clientX: Double, clientY: Double) {
+    if (!drawingLayerActive || mounts.size < 2) return
+    val index = CanvasCamera.panes.indexOf(CanvasCamera.paneAt(clientX, clientY))
+    if (index < 0 || index == hoverMount || index >= mounts.size) return
+    val from = mounts.getOrNull(if (hoverMount >= 0) hoverMount else mounts.lastIndex)?.handle?.api()
+    val to = mounts[index].handle.api()
+    hoverMount = index
+    if (from == null || to == null || from == to) return
+    val tool = from.getAppState().activeTool
+    if (tool.type != "custom") {
+        to.setActiveTool(json("type" to tool.type, "locked" to (tool.locked == true)))
+    }
+    (mounts[index].host.querySelector(".excalidraw-container") as? HTMLElement)?.focus()
+}
 
 private fun findRootBoxElement(): HTMLElement? =
     document.body?.getElementsByClassName("box")?.asList()?.firstOrNull { it.asDynamic().uid == "root" } as? HTMLElement
@@ -115,7 +217,9 @@ private fun findRootBoxElement(): HTMLElement? =
  * reactions and arrow auto-anchoring (`NotationServer.kt`). The merged scene comes back to every
  * client as an ordinary `set-string` of `root.drawing`.
  */
-private fun sendScene(json: String) {
+private fun sendScene(json: String, from: Int) {
+    // The other panes' mounts show the change at once, without waiting for the server's echo.
+    mounts.forEachIndexed { index, mount -> if (index != from) mount.handle.applyRemoteScene(json) }
     lastSentScene = json
     findRootBoxElement()?.asDynamic()?.drawing = json
     val payload: dynamic = js("({})")
@@ -132,9 +236,8 @@ private fun sendSelection(ids: Array<String>) {
 /** Called from the frontend `set-string` handler for `root.drawing`. */
 fun onRemoteDrawingScene(json: String) {
     if (json == lastSentScene) return
-    val h = handle
     when {
-        h != null -> h.applyRemoteScene(json)
+        mounts.isNotEmpty() -> mounts.forEach { it.handle.applyRemoteScene(json) }
         else -> {
             pendingRemoteScene = json
             // A document that already has notation shows it without waiting for a toggle.
@@ -143,9 +246,12 @@ fun onRemoteDrawingScene(json: String) {
     }
 }
 
-/** Called by every writer of [mainTranslation]: Field panned or zoomed, so the drawing follows. */
-fun drawingLayerViewportChanged(x: Double, y: Double) {
-    handle?.setCamera(x / mainZoom, y / mainZoom, mainZoom)
+/**
+ * Called by `applyViewportTranslation`, the camera's one writer: Field panned, zoomed or changed
+ * its split, so every pane's drawing follows.
+ */
+fun drawingLayerViewportChanged() {
+    syncPaneMounts()
 }
 
 fun setDrawingLayerActive(active: Boolean) {
@@ -153,7 +259,8 @@ fun setDrawingLayerActive(active: Boolean) {
     val el = ensureHost()
     el.classList.toggle("field-drawing-active", active)
     el.classList.toggle("field-drawing-inactive", !active)
-    ensureLoaded { handle?.setActive(active) }
+    ensureLoaded { mounts.forEach { it.handle.setActive(active) } }
+    hoverMount = -1
     notify(if (active) "Drawing layer: on (Alt+D to return)" else "Drawing layer: off", "drawing")
 }
 
@@ -169,6 +276,9 @@ fun drawingLayerState(): dynamic {
     val state: dynamic = if (h != null) h.state() else js("({ ready: false })")
     state.active = drawingLayerActive
     state.loading = loading
+    state.mounts = mounts.size
+    state.hoverMount = hoverMount
+    state.panes = mounts.map { it.handle.state() }.toTypedArray()
     return state
 }
 
@@ -181,6 +291,10 @@ fun initializeDrawingLayer() {
             event.stopImmediatePropagation()
             toggleDrawingLayer()
         }
+    }, true)
+    window.addEventListener("pointermove", { event ->
+        val e = event.asDynamic()
+        if ((e.buttons as Number).toInt() == 0) followPointerAcrossPanes((e.clientX as Number).toDouble(), (e.clientY as Number).toDouble())
     }, true)
 
     val action: dynamic = js("({})")
@@ -203,6 +317,8 @@ fun initializeDrawingLayer() {
 
     window.asDynamic().toggleDrawingLayer = ::toggleDrawingLayer
     window.asDynamic().drawingLayerState = ::drawingLayerState
+    // For tests: choose a tool in the main pane, as its toolbar would.
+    window.asDynamic().drawingLayerSetTool = { type: String -> handle?.api()?.setActiveTool(json("type" to type)) }
     // For tests and the backdoor: the live elements as plain objects.
     window.asDynamic().drawingLayerScene = {
         val api = handle?.api()

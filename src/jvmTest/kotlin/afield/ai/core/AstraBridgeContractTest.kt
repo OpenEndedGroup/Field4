@@ -334,10 +334,15 @@ class AstraBridgeContractTest {
             assertTrue(bridge.send(state, "Inspect", maxToolRounds = 0).hitToolRoundCap)
             assertEquals(0, executions, "An aborted call must never execute")
             val resumed = bridge.threadStateFromJson(bridge.threadStateToJson(state))
+            assertTrue(resumed.lastTurnHitToolRoundCap, "The cap survives a persisted thread")
             val result = bridge.send(resumed, "Continue", maxToolRounds = 2)
             assertFalse(result.hitToolRoundCap)
             assertEquals(1, executions)
             assertEquals(4, requests.size)
+            // The model was told, in the next turn's own input and once, that its tool budget has reset.
+            assertFalse(requests[0]["input"].toString().contains("That limit has reset"))
+            assertTrue(requests[2]["input"].toString().contains("That limit has reset"))
+            assertFalse(resumed.lastTurnHitToolRoundCap)
             for (i in listOf(2, 3)) {
                 assertEquals("auto", requests[i]["tool_choice"].asText())
                 assertFalse(requests[i].has("instructions"), "The turn-scoped stop must not be sent on subsequent ordinary requests")

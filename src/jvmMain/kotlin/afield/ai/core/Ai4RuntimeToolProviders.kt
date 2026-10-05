@@ -483,7 +483,7 @@ internal class Ai4RuntimeToolProviders(
                         runtimeType = runtimeTypeName(value),
                         mutable = info.descriptor is kotlin.reflect.KMutableProperty<*>,
                         valuePreview = clipToolText(safeString(value), req.maxValueChars),
-                        primitiveValue = primitiveToolValue(value),
+                        primitiveValue = primitiveToolValue(value, req.maxValueChars),
                         primitiveKind = primitiveKind(value)
                     )
                 }

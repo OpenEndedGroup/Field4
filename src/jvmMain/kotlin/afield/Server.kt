@@ -957,13 +957,16 @@ private fun displayWorkspacePath(path: String): String {
     return if (workspace.exists()) workspace.canonicalFile.absolutePath else workspace.absolutePath
 }
 
-private fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
+internal fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
     val updated = mutableListOf<String>()
     var replaced = false
     var index = 0
     while (index < args.size) {
         val arg = args[index]
         when {
+            arg.equals("--document", ignoreCase = true) -> index += if (index + 1 < args.size) 2 else 1
+            arg.startsWith("--document=", ignoreCase = true) -> index += 1
+
             arg.equals("--workspace", ignoreCase = true) -> {
                 updated += arg
                 updated += workspace
@@ -1507,7 +1510,20 @@ internal fun broadcastWelcomeEvent(reason: String) {
 }
 
 
-var lastFn by PersistentString { "welcome" }
+private val workspaceLastDocument by lazy {
+    WorkspaceLastDocument(File(displayWorkspacePath(home)), File(fieldUserConfigDir(), "last-documents"))
+}
+
+var lastFn: String?
+    get() = runCatching { workspaceLastDocument.read() }.getOrElse {
+        lprintln("warning,workspace", "could not read last document: ${it.message}")
+        null
+    }
+    set(value) {
+        runCatching { workspaceLastDocument.remember(value) }.onFailure {
+            lprintln("warning,workspace", "could not remember last document: ${it.message}")
+        }
+    }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
@@ -1703,6 +1719,8 @@ private fun initialFramePreviewSessionKey(file: String?, scratch: Boolean, sessi
 
 private fun indexInitialFramePreviewScript(file: String?, scratch: Boolean, sessionKey: String?): String {
     val target = initialFramePreviewSessionKey(file, scratch, sessionKey) ?: return ""
+    // A newly named document has no preview yet; this is ordinary first-use, not a warning.
+    if (!File(target).exists()) return ""
     val frames = runCatching { SavingContext().readInitialBoxFrames(target) }
         .onFailure { lprintln("warning,server", "could not read initial frame preview for index $target: ${it.message}") }
         .getOrDefault(emptyList())
@@ -3618,12 +3636,9 @@ class Server {
             val portFallbackCount =
                 System.getenv("AFIELD_PORT_FALLBACK_COUNT")?.trim()?.toIntOrNull()?.coerceAtLeast(1) ?: 20
             var port = preferredPort
-            // Every interface, deliberately: browsers and the visionOS shell reach Field from
-            // other devices on the local network. The consequence is that *every* route
-            // installed below is reachable from that network, and a route that must not be
-            // has to enforce it itself — on `call.request.local.remoteAddress`, which is the
-            // socket, rather than on a header. `docsAnnotations.kt` is the worked example.
-            val httpsHost = "0.0.0.0"
+            // Desktop use stays local. Remote shells (including visionOS) opt into LAN binding.
+            val httpsHost = fieldServerBindHost()
+            lprintln("info,startup", "HTTPS bind: $httpsHost:$preferredPort")
             val keystorePath =
                 System.getenv("AFIELD_KEYSTORE_PATH") ?: File(app, "config/field4-local.p12").absolutePath
             val keystorePassword = System.getenv("AFIELD_KEYSTORE_PASS") ?: "changeit"
@@ -5442,13 +5457,20 @@ class Server {
                 } catch (t: Throwable) {
                     if (!isPortBindException(t)) throw t
                     bindFailure = t
-                    lprintln("warning,server", "Port ${candidatePort} is already in use; trying next port")
+                    val mirror = loopbackHttpPortFor(candidatePort)?.let { " (or its HTTP mirror on $it)" } ?: ""
+                    lprintln("warning,server", "Port ${candidatePort}${mirror} is already in use; trying next port")
                 }
             }
 
             if (!started) {
-                throw bindFailure
-                    ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+                val last = preferredPort + portFallbackCount - 1
+                val message = "Unable to bind Field server to any port in ${preferredPort}..${last}. " +
+                    "Another Field is probably running (lsof -nP -iTCP:${preferredPort} -sTCP:LISTEN). " +
+                    "To use a different port: PORT=<port> ./field.sh (the HTTP mirror follows at PORT+10000; " +
+                    "set AFIELD_HTTP_PORT=<port> or AFIELD_HTTP_PORT=off to move or disable it; " +
+                    "AFIELD_PORT_FALLBACK_COUNT=<n> widens the range tried)."
+                lprintln("error,server", message)
+                throw IllegalStateException(message, bindFailure)
             }
 
             globalServerPort = port
@@ -5682,17 +5704,21 @@ internal fun Application.installFieldApiCors() {
     installFieldApiSameSiteGuard()
 }
 
-/** Turns [installFieldApiSameSiteGuard] on. Off by default, and the default is the exposure. */
+/** Browser-origin protection is on by default; `0` is an explicit compatibility opt-out. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_ENV = "AFIELD_API_REQUIRE_SAME_SITE"
 
 /** `-D` equivalent of [FIELD_API_REQUIRE_SAME_SITE_ENV], and it wins when both are set. */
 internal const val FIELD_API_REQUIRE_SAME_SITE_PROPERTY = "afield.api.requireSameSite"
 
+/** Bind locally unless a remote client has been explicitly enabled. */
+internal fun fieldServerBindHost(setting: String? = System.getenv("AFIELD_BIND_HOST")): String =
+    setting?.trim()?.takeIf { it.isNotEmpty() } ?: "127.0.0.1"
+
 /** Current posture of the application-wide browser-origin guard. */
-internal fun fieldApiRequiresSameSite(): Boolean = docsFlagEnabled(
-    System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
-    System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
-)
+internal fun fieldApiRequiresSameSite(
+    property: String? = System.getProperty(FIELD_API_REQUIRE_SAME_SITE_PROPERTY),
+    environment: String? = System.getenv(FIELD_API_REQUIRE_SAME_SITE_ENV),
+): Boolean = docsFlagEnabled(property, environment?.takeIf { it.isNotBlank() } ?: "true")
 
 /**
  * Applies the same-site guard's browser-origin policy to a command WebSocket upgrade.
@@ -5811,51 +5837,28 @@ private fun fieldApiReadNeedsSameSite(secFetchMode: String?, path: String): Bool
  * [fieldApiSelfGuardedReadPrefixes] and [fieldApiReadNeedsSameSite] are where that decision now
  * lives.
  *
- * ## Why this is off by default, which is the uncomfortable part
+ * ## Desktop and remote use
  *
- * `FieldApiCorsExposureTest.everyMutatingRouteAndItsGuardIsPinned` counts it: **48 of 55
- * state-changing HTTP routes have no route-specific access control**, `POST
- * /api/shutdown-instance` among them, and there is no `install(Authentication)` anywhere
- * in the tree. The same test separately inventories three WebSocket channels; `/ws` and
- * `/controllers/ws` accept commands without authentication, but apply this same-site policy to
- * browser upgrades when the switch is on. Two separate
- * exposures follow, and it is worth not conflating them:
- *
- *  - **another website**, via the CORS block above. That is what this guard closes.
- *  - **another host on the network**, via `httpsHost = "0.0.0.0"`. This guard closes *none*
- *    of that, and nothing in it should be read as if it did: a `curl` from the LAN sends no
- *    `Origin` and no `Sec-Fetch-Site`, and Ktor's CORS plugin does not even run for a
- *    request with no `Origin`. [isSameSiteRequest] treats that as same-site on purpose,
- *    because refusing it would break every non-browser client Field has, including the
- *    `curl` recipes in its own dev_docs.
- *
- * So: default-permissive, because turning it on is a behaviour change to a running system
- * that nobody is awake to notice, and because a silent default-deny on 48 routes is how you
- * discover which of them the human's own tooling was using. Loud either way, because the
- * failure mode this whole area is about is capability you did not know you had.
+ * The guard is on by default and HTTPS binds loopback. `AFIELD_BIND_HOST=0.0.0.0` enables
+ * remote clients such as visionOS; it does not add authentication. A native client with no
+ * browser-origin headers remains allowed. `AFIELD_API_REQUIRE_SAME_SITE=0` explicitly restores
+ * cross-origin compatibility for tools that need it.
  */
 internal fun Application.installFieldApiSameSiteGuard() {
     val required = fieldApiRequiresSameSite()
     if (!required) {
         lprintln(
             "warning,server",
-            "Field's HTTP API is unauthenticated: 48 of its 55 state-changing routes have no route-specific " +
-                "access control, and the /ws and /controllers/ws WebSocket command channels are also " +
-                "unauthenticated. Its reads are not guarded either, and CORS allows any origin to read the " +
-                "answer: GET /api/instance-info returns the path of your checkout, /api/welcome-changelog " +
-                "your recent commit messages, and /api/source and /api/workspace-search reach source text. " +
-                "The connector binds 0.0.0.0. Any host on this network can call " +
-                "them with curl, and any website you have open can call them from your browser. Set " +
-                "$FIELD_API_REQUIRE_SAME_SITE_ENV=1 to refuse cross-site HTTP writes AND reads, plus browser " +
-                "upgrades to both WebSocket command channels; it does not cover the network half. That needs " +
-                "authentication or a bind address change, which would break the visionOS shell. " +
-                "See dev_docs/DOCS_IMPROVEMENT_AGENT.md and public/docs/server_surface.md.",
+            "Cross-site browser protection is disabled ($FIELD_API_REQUIRE_SAME_SITE_ENV=0). " +
+                "Field's HTTP API and command WebSockets are unauthenticated. HTTPS binds " +
+                "${fieldServerBindHost()}; remote access needs a trusted network or firewall. " +
+                "See public/docs/server_surface.md.",
         )
         return
     }
     lprintln(
         "server",
-        "$FIELD_API_REQUIRE_SAME_SITE_ENV is set: cross-site HTTP writes and reads are refused, except " +
+        "Browser-origin protection is enabled: cross-site HTTP writes and reads are refused, except " +
             "${fieldApiSameSiteExemptPaths.joinToString()}, top-level navigations, and the routes that guard " +
             "themselves (${fieldApiSelfGuardedReadPrefixes.joinToString()}); cross-site browser upgrades to " +
             "/ws and /controllers/ws are refused at the upgrade. This does NOT authenticate the API — a " +
@@ -5897,8 +5900,8 @@ internal fun Application.installFieldApiSameSiteGuard() {
         }
         call.respond(
             HttpStatusCode.Forbidden,
-            "Field is refusing cross-site $kind because $FIELD_API_REQUIRE_SAME_SITE_ENV is set. Unset it to " +
-                "restore the default, which is that any website you have open can call this route.",
+            "Field is refusing cross-site $kind. For tools that require this access, explicitly " +
+                "allow cross-site clients with $FIELD_API_REQUIRE_SAME_SITE_ENV=0.",
         )
         finish()
     }

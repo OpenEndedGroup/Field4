@@ -1,5 +1,12 @@
 # The documentation annotation layer, and the coding agent behind it
 
+> Current installation defaults (2026-10-04): HTTPS binds `127.0.0.1` and the application-wide
+> browser-origin guard is enabled. `AFIELD_BIND_HOST=0.0.0.0` and
+> `AFIELD_API_REQUIRE_SAME_SITE=0` explicitly restore the older network/origin exposure.
+> Exposure measurements below describe that older or explicitly permissive posture; they are
+> historical evidence, not the fresh-install defaults. See `public/docs/server_surface.md`.
+
+
 Two features live in `src/jvmMain/kotlin/afield/server/docsAnnotations.kt`,
 `src/jvmMain/kotlin/afield/server/docsPass.kt` and `src/commonMain/resources/docsAnnotations.js`.
 

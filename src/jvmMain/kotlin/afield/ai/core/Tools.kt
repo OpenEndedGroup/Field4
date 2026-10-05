@@ -140,7 +140,7 @@ data class ListContentEntry(
     val relation: String = "current"
 )
 
-@JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.")
+@JsonClassDescription("List Kotlin REPL context variables currently retained by a Field box's KotlinInterface/KotlinInterface2 without evaluating code. Target may be blank for the current box, a box uid/name, or an afield://... ref. This lists retained script variables, not Field box properties. String values in both valuePreview and primitiveValue are bounded by maxValueChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. In later EvaluateKotlinExpression calls, refer to these variables by their names; refer to the current/target box as thisBox, never as _ or _.foo.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.READ_DOCUMENT])
 data class ListKotlinContextVariablesRequest(
     val target: String = "",
@@ -168,7 +168,7 @@ data class ListKotlinContextVariablesResult(
     val variables: List<KotlinContextVariableInfo> = emptyList()
 )
 
-@JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.")
+@JsonClassDescription("Evaluate a Kotlin expression in a Field box's existing KotlinInterface/KotlinInterface2 context. Target may be blank for the current box, a box uid/name, or an afield://... ref. Prefer read-only expressions; this runs against live runtime objects. String results in both primitiveValue and stringValue, and optional HTML, are bounded by maxChars (64 to 100000 characters) and carry an explicit truncation marker when shortened. Request a substring or summary of large values to inspect more selectively. The current/target Field box is thisBox. Do not use _, _.foo, or bare box as current-box syntax. Use thisBox.getPropertyRaw(\"name\") / thisBox.setPropertyRaw(\"name\", value) for raw box properties, and use box(\"uid\", root = thisBox.inside) when intentionally resolving or creating another box in the same document.")
 @AgentToolMeta("kotlin", effects = [ToolEffect.EXECUTE_CODE])
 data class EvaluateKotlinExpressionRequest(
     val target: String = "",
@@ -937,6 +937,11 @@ data class ToolExecutionContext(
     val promoted: MutableSet<String>? = null,
     /** Structured progress from native tools, scoped to this conversation. */
     val reportProgress: ((LlmProgressUpdate) -> Unit)? = null,
+    /**
+     * Messages the person sends while this turn runs. The bridges drain it after each tool round and
+     * send what it held as a user message alongside the tool results; null where nobody can write in.
+     */
+    val inbox: AiTurnInbox? = null,
 ) {
     /** Whether the document this conversation acts on refuses edits: the session's flag, or Field's global one. */
     fun documentReadOnly(): Boolean = afield.ReadOnlyDocuments.global || fieldGraph?.info?.readOnly == true

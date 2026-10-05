@@ -278,11 +278,18 @@ The card lives in this box's output. It shows progress, elapsed time, cancellati
 error text. Progress reflects the worker's completed work; it is not a time estimate.
 An agent's [geometry findings](geometry_review.md#let-the-agent-point-something-out)
 join this card when their `runId` matches the build's job ID. Each link opens the
-existing review thread in its Field output, with evidence and replies. The card
-distinguishes open and closed discussions and marks findings from an earlier
-attempt after inputs change. Closing a discussion never changes the build verdict.
+existing review thread in its Field output, with evidence and replies. Open errors
+are red, open warnings amber and decisions cyan; closed discussions are grey and say
+**resolved**. Closing a discussion never changes the build verdict.
 Unlaunched review sources retain their historical findings and explain that the
 source must run before its viewer can open.
+
+When an edit changes a stage's inputs, its latest attempt describes an earlier design. Its
+findings collapse to one grey line, such as "2 findings from an attempt with earlier inputs;
+rebuild to recheck", and none of them count as open. A failure from that attempt is set aside
+the same way: the stage says **Needs rebuilding**, and the saved diagnostic says the failure may
+no longer apply. Build again to check the current design. Undo the edit and the attempt matches
+the inputs again, so its findings and failure come back.
 
 AI4 can discover the same runner with `ListStudyBuildsRequest`, inspect it with
 `InspectStudyBuildsRequest`, and start it with `StartStudyBuildRequest`, quoting the stage's current
@@ -294,7 +301,10 @@ return on a progress change. A wait timeout leaves the build running;
 wait again using the same job ID. Optionally supply `afterUpdated` from a previous response to
 return when progress changes. After completion, inspect the stage to check that its result is
 still current. **Queued** does not mean **built**, and an earlier successful build may no longer
-be current. Stopping an observation does not cancel the build.
+be current. Stopping an observation does not cancel the build. AI4 sees what the card shows:
+an attempt against earlier inputs is marked `fromEarlierInputs`, and its findings are left out of
+`openFindings`, so the agent does not report them as current errors. The geometry notes behind
+those findings carry the same mark when the agent reads them with `ReadGeometryReviewsRequest`.
 
 Name upstream stages in `dependencies`. The worker reads their captured files through
 `context.dependencyFile(stage, path)`. Until those stages have current results, the dependent stage
@@ -335,7 +345,26 @@ invalidates downstream results. Use `builds.currentFile(stage, path)` when a vie
 needs a current result; it refuses stale, missing or changed artifacts.
 
 Throw `StudyBuildFailure(StudyBuildProblem(...))` for an actionable failure with a code, message,
-suggestions and structured details. A failed retry preserves the previous result if that result
+suggestions and structured details.
+
+When a failure has a place in the geometry, draw that geometry in red in a box's output and name
+the box in `details["geometryView"]`. Here the box that owns the stage draws the clash itself:
+
+```diffstatic {data-lang=kotlin}
+throw StudyBuildFailure(StudyBuildProblem("stair-clash", "Wall W3 crosses the stair opening",
+    listOf("Move the stair or shorten W3"),
+    details = mapOf("geometryView" to mapOf("box" to thisBox.id, "caption" to "W3 and the stair opening"))))
+```
+
+Under the failure message, the card adds a red **Show where it fails…** link followed by the
+caption. The link opens that box's output and brings it into view, leaving your selection as it
+was. `"box"` is required. `"caption"` is optional, and so is `"viewId"`, which names a geometry view
+in that output for the link to scroll to. AI4's inspection reports the same box, with its name, as
+`geometryView`, so the agent can send you there or inspect the view, and the build's progress card
+in the chat links to the same box. Both links appear only while the attempt matches the current
+inputs.
+
+A failed retry preserves the previous result if that result
 still matches the current inputs. Cancellation is cooperative: call `context.checkCancelled()`
 during long work. The card continues to say **Cancelling** until the worker has actually returned.
 

@@ -83,7 +83,8 @@ function Start-SemanticSidecar {
 
     $workspaceArg = $scriptDir.Replace('"', '\"')
     $offline = (Get-GradleOfflineArgs) -join " "
-    $command = ".\gradlew.bat $offline -p tools/code-use-semantic-sidecar run --args=`"--port $Port --workspace `"$workspaceArg`"`" >> `"$logFile`" 2>&1"
+    $toolchain = ($script:fieldToolchainArgs | ForEach-Object { ConvertTo-FieldProcessArgument $_ }) -join " "
+    $command = ".\gradlew.bat $toolchain $offline -p tools/code-use-semantic-sidecar run --args=`"--port $Port --workspace `"$workspaceArg`"`" >> `"$logFile`" 2>&1"
     Start-Process -FilePath "cmd.exe" -ArgumentList @("/c", $command) -WorkingDirectory $scriptDir -WindowStyle Minimized | Out-Null
 }
 
@@ -131,6 +132,109 @@ function Get-GradleOfflineArgs {
     return $script:gradleOfflineArgs
 }
 
+# Keep the bootstrap identical to field.sh: LFS first, then one wrapper JVM, then pinned GraalVM.
+$script:fieldToolchainArgs = @()
+function Test-FieldInstall {
+    param([bool] $CheckLfs = $true)
+    $arch = $env:PROCESSOR_ARCHITEW6432
+    if (-not $arch) { $arch = $env:PROCESSOR_ARCHITECTURE }
+    if ($arch -ne "AMD64") { throw "field: Windows x64 is required; native Windows ARM64 is not supported" }
+    if ($CheckLfs -and (Test-Path ".gitattributes")) {
+        foreach ($line in Get-Content ".gitattributes") {
+            if ($line -notmatch '^([^#\s]+)\s+.*filter=lfs') { continue }
+            foreach ($file in Get-ChildItem -Path $Matches[1] -File -ErrorAction SilentlyContinue) {
+                $stream = [System.IO.File]::OpenRead($file.FullName)
+                try {
+                    $bytes = New-Object byte[] 100
+                    $count = $stream.Read($bytes, 0, $bytes.Length)
+                    if ([System.Text.Encoding]::ASCII.GetString($bytes, 0, $count) -match 'git-lfs.github.com') {
+                        throw "field: $($file.Name) is a Git LFS pointer. Install Git LFS, then run 'git lfs install' and 'git lfs pull'."
+                    }
+                } finally { $stream.Dispose() }
+            }
+        }
+    }
+    Write-Host "field: installation prerequisites OK (Windows x64)" -ForegroundColor DarkCyan
+}
+
+function Ensure-FieldBootstrap {
+    # Serial provisioning avoids the sidecar and main build deleting one another's fresh JDK.
+    $wrapperRoot = Join-Path $env:LOCALAPPDATA "gradle-jvm"
+    $flags = @(Get-ChildItem $wrapperRoot -Filter .flag -Recurse -File -ErrorAction SilentlyContinue)
+    if ($flags.Count -eq 0) {
+        if ($env:AFIELD_OFFLINE -eq "1") { throw "field: offline but the build JVM is not cached; launch once online first" }
+        & .\gradlew.bat --version
+        if ($LASTEXITCODE -ne 0) { throw "field: could not provision the build JVM; see the errors above" }
+    }
+}
+
+function Invoke-FieldSetup {
+    Test-FieldInstall -CheckLfs $false
+    Ensure-FieldBootstrap
+    Write-Host "field: preparing the small welcome tool (separate from the Field build)..." -ForegroundColor DarkCyan
+    $offline = @(Get-GradleOfflineArgs)
+    & .\gradlew.bat @offline -p tools/first-run prepareFirstRun
+    if ($LASTEXITCODE -ne 0) { throw "field: could not build the welcome tool; see the errors above" }
+    $java = (Get-Content "tools\first-run\build\launch\java" -Raw).Trim()
+    $mode = @()
+    if ($script:serverOnly) { $mode = @("--server-only") }
+    & $java "@tools/first-run/build/launch/args" --root $scriptDir --config $script:firstRunConfig --interactive @mode
+    if ($LASTEXITCODE -ne 0) { throw "field: setup did not finish; see the message above" }
+}
+
+function Get-FieldSha256 {
+    param([string] $Path)
+    # .NET is available in Windows PowerShell 5.1 and PowerShell 7; no module lookup needed.
+    $stream = [System.IO.File]::OpenRead($Path)
+    $hash = [System.Security.Cryptography.SHA256]::Create()
+    try { return [System.BitConverter]::ToString($hash.ComputeHash($stream)).Replace("-", "").ToLowerInvariant() }
+    finally { $hash.Dispose(); $stream.Dispose() }
+}
+
+function Ensure-FieldToolchains {
+    Ensure-FieldBootstrap
+    if ($env:AFIELD_SKIP_TOOLCHAIN_PROVISION -eq "1") { return }
+    $match = [regex]::Match((Get-Content "build.gradle.kts" -Raw), '(?m)^val graalvmVersion = "([^"]+)"')
+    if (-not $match.Success) { throw "field: could not read graalvmVersion from build.gradle.kts" }
+    $version = $match.Groups[1].Value
+    $root = Join-Path $HOME ".field4\toolchains"
+    $java = @(Get-ChildItem "$root\graalvm-community-*$version*\bin\java.exe" -ErrorAction SilentlyContinue)
+    if ($java.Count -eq 0) {
+        if ($env:AFIELD_OFFLINE -eq "1") { throw "field: offline but GraalVM $version is not cached; launch once online first" }
+        $url = "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-$version/graalvm-community-jdk-${version}_windows-x64_bin.zip"
+        $stage = Join-Path $root (".field-graalvm-staging-" + [guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Force $stage | Out-Null
+        try {
+            Write-Host "field: provisioning GraalVM $version (first run only)..." -ForegroundColor DarkCyan
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+            $archive = Join-Path $stage "graalvm.zip"
+            $client = New-Object System.Net.WebClient
+            try {
+                $client.DownloadFile($url, $archive)
+                $checksum = ($client.DownloadString("$url.sha256").Trim() -split '\s+')[0]
+            } finally { $client.Dispose() }
+            if ($checksum -notmatch '^[0-9a-fA-F]{64}$' -or (Get-FieldSha256 $archive) -ne $checksum) {
+                throw "field: GraalVM checksum mismatch; download discarded"
+            }
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::ExtractToDirectory($archive, $stage)
+            $unpacked = @(Get-ChildItem $stage -Directory | Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") })
+            if ($unpacked.Count -ne 1) { throw "field: the GraalVM archive did not contain one complete JDK" }
+            Move-Item $unpacked[0].FullName (Join-Path $root $unpacked[0].Name)
+        } finally { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
+        $java = @(Get-ChildItem "$root\graalvm-community-*$version*\bin\java.exe" -ErrorAction SilentlyContinue)
+    }
+    if ($java.Count -eq 0) { throw "field: no GraalVM java.exe found under $root" }
+    $jdk = Split-Path (Split-Path $java[0].FullName -Parent) -Parent
+    $script:fieldToolchainArgs = @("-Dorg.gradle.java.installations.paths=$jdk")
+}
+
+# Start-Process joins ArgumentList with spaces; preserve argument boundaries explicitly.
+function ConvertTo-FieldProcessArgument {
+    param([string] $Value)
+    return '"' + (($Value -replace '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1') + '"'
+}
+
 function Build-Field {
     # Always build before launching so a fresh clone (and every edit-and-relaunch) runs current code.
     # jvmJar compiles Kotlin/JVM, runs the JS webpack, and bundles afield.mjs into the served static/;
@@ -142,7 +246,9 @@ function Build-Field {
     }
     Write-Host "field: building (JVM + JS; the first run compiles everything, a few minutes)..." -ForegroundColor DarkCyan
     $offline = @(Get-GradleOfflineArgs)
-    & .\gradlew.bat @offline jvmJar dumpFieldLaunch
+    $launchMode = @()
+    if ($script:serverOnly) { $launchMode = @("-PfieldServerOnly=true") }
+    & .\gradlew.bat @offline @script:fieldToolchainArgs @launchMode jvmJar dumpFieldLaunch
     if ($LASTEXITCODE -ne 0) {
         Write-Host "field: BUILD FAILED - fix the errors above, then re-run .\field.ps1" -ForegroundColor Red
         if ($offline.Count -gt 0) {
@@ -161,8 +267,27 @@ function Stop-Tree {
 }
 
 function Run-Field {
-    Ensure-SemanticSidecar
+    if ($script:setupRequested) { Invoke-FieldSetup; return 0 }
+    $completed = (Test-Path $script:firstRunConfig) -and (Select-String -Quiet -Path $script:firstRunConfig -Pattern '^completed=true')
+    if (-not $script:checkInstall -and -not $completed -and $env:AFIELD_FIRST_RUN -ne "skip" -and -not [Console]::IsInputRedirected) {
+        Invoke-FieldSetup
+    }
+    if ((Test-Path $script:firstRunConfig) -and (Select-String -Quiet -Path $script:firstRunConfig -Pattern '^launchMode=server-only')) { $script:serverOnly = $true }
+    Test-FieldInstall
+    if ($script:checkInstall) { return 0 }
+    if (-not $env:PORT) { $env:PORT = "9092" }
+    $portProbe = New-Object System.Net.Sockets.TcpClient
+    try {
+        $connection = $portProbe.ConnectAsync("127.0.0.1", [int] $env:PORT)
+        if ($connection.Wait(500) -and $portProbe.Connected) {
+            throw "field: port $env:PORT is already in use; close the existing server or set PORT to a free port"
+        }
+    } catch [System.AggregateException] {
+        # Connection refused: this port is available.
+    } finally { $portProbe.Dispose() }
+    Ensure-FieldToolchains
     if (-not (Build-Field)) { return 1 }
+    Ensure-SemanticSidecar
 
     if (-not $env:PORT) { $env:PORT = "9092" }
     if (-not $env:AFIELD_PORT_FALLBACK_COUNT) { $env:AFIELD_PORT_FALLBACK_COUNT = "1" }
@@ -174,31 +299,53 @@ function Run-Field {
     # Backend shares THIS console (-NoNewWindow) so its stdout stays a real TTY and the pinned console
     # (startup ribbon, fps/upload rows, render spinner) renders. Electron (a GUI, no tty needed) runs
     # alongside — this is how the two coexist. runDesktop can't, because the Gradle daemon has no console.
-    $backend = Start-Process -FilePath $javaBin -ArgumentList (@("@$argsFileAbs") + $args) -NoNewWindow -PassThru
+    $backendArguments = (@("@$argsFileAbs") + $args | ForEach-Object { ConvertTo-FieldProcessArgument $_ }) -join " "
+    $backend = Start-Process -FilePath $javaBin -ArgumentList $backendArguments -NoNewWindow -PassThru
 
     # Trust the dev server's self-signed cert for the health/app-url probes (works on PS 5.1 and 7).
+    $previousCertificateCallback = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
     try {
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+        # A compiled delegate works on .NET worker threads without a PowerShell runspace (PS 5.1).
+        if (-not ("FieldLocalCertificateTrust" -as [type])) {
+            Add-Type -TypeDefinition @"
+using System.Net;
+using System.Net.Security;
+using System.Security.Cryptography.X509Certificates;
+public static class FieldLocalCertificateTrust {
+    public static readonly RemoteCertificateValidationCallback Callback = Validate;
+    private static bool Validate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors errors) {
+        if (errors == SslPolicyErrors.None) return true;
+        var request = sender as HttpWebRequest;
+        return request != null && request.RequestUri.IsLoopback;
+    }
+}
+"@
+        }
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [FieldLocalCertificateTrust]::Callback
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
     } catch {}
 
+    $probeOptions = @{}
+    if ($PSVersionTable.PSVersion.Major -ge 6) { $probeOptions["SkipCertificateCheck"] = $true }
     $electron = $null
     try {
         # Wait (~120s) for the backend to come up, then open the Electron shell against it.
+        $backendReady = $false
         $deadline = (Get-Date).AddSeconds(120)
         while ((Get-Date) -lt $deadline -and -not $backend.HasExited) {
             try {
-                $h = Invoke-RestMethod -Uri "https://localhost:$port/health" -TimeoutSec 2 -ErrorAction Stop
-                if ("$h" -match "ok") { break }
+                $h = Invoke-RestMethod @probeOptions -Uri "https://localhost:$port/health" -TimeoutSec 2 -ErrorAction Stop
+                if ("$h" -eq "ok") { $backendReady = $true; break }
             } catch {}
             Start-Sleep -Milliseconds 250
         }
 
+        if (-not $backend.HasExited -and -not $backendReady) { throw "field: the server did not become ready within 120 seconds; see its startup errors above" }
         $electronBin = if (Test-Path "build\field-launch\electron") { (Get-Content "build\field-launch\electron" -Raw).Trim() } else { "" }
-        if (-not $backend.HasExited -and $electronBin -and (Test-Path $electronBin)) {
+        if (-not $script:serverOnly -and -not $backend.HasExited -and $electronBin -and (Test-Path $electronBin)) {
             $appUrl = "https://localhost:$port/index.html"
             try {
-                $u = Invoke-RestMethod -Uri "https://localhost:$port/app-url" -TimeoutSec 2 -ErrorAction Stop
+                $u = Invoke-RestMethod @probeOptions -Uri "https://localhost:$port/app-url" -TimeoutSec 2 -ErrorAction Stop
                 if ("$u".Trim()) { $appUrl = "$u".Trim() }
             } catch {}
             $env:APP_URL = $appUrl
@@ -215,7 +362,12 @@ function Run-Field {
         }
     } finally {
         Stop-Tree $electron
-        Stop-Tree $backend
+        if (-not $backend.HasExited) {
+            # The loopback shutdown route saves unsaved edits before exiting; /F cannot do that.
+            try { Invoke-RestMethod @probeOptions -Method Post -Uri "https://localhost:$port/api/shutdown-instance" -TimeoutSec 3 -ErrorAction Stop | Out-Null } catch {}
+            if (-not $backend.WaitForExit(5000)) { Stop-Tree $backend }
+        }
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $previousCertificateCallback
         # Guarantee the terminal is restored (drop scroll region + leave the alternate screen) even if
         # the backend was hard-killed and its JVM shutdown hook never ran. No-op if not in the alt buffer.
         if (-not [Console]::IsOutputRedirected) {
@@ -225,6 +377,7 @@ function Run-Field {
     }
 
     if (-not $backend.HasExited) { $backend.WaitForExit() }
+    if ($null -ne $electron -and $electron.HasExited -and $electron.ExitCode -ne 0) { return $electron.ExitCode }
     return $backend.ExitCode
 }
 
@@ -278,6 +431,9 @@ Builds Field, then launches the backend and the Electron window together.
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
   --read-only              open documents without writing back to them
+  --server-only            build and run the server without Electron or native UI bridges
+  --setup                  reopen the independent Kotlin welcome/setup tool
+  --check-install          check platform, tools and Git LFS without downloading or building
   --offline                build from Gradle's cached dependencies without
                            touching the network (also AFIELD_OFFLINE=1)
   --print-workspace        print the workspace this launch would use, then exit
@@ -364,6 +520,10 @@ $workspaceRequested = ""
 $documentRequested = ""
 $printWorkspace = $false
 $readOnlyRequested = $false
+$script:serverOnly = $false
+$script:checkInstall = $false
+$script:setupRequested = $false
+$script:firstRunConfig = Join-Path $HOME ".field4\first-run.properties"
 $passthroughSeen = $false
 $backendArgs = @()
 
@@ -403,6 +563,12 @@ while ($argIndex -lt $args.Count) {
         # resolves it. field.sh's own arm has a third reason with no counterpart here: it has to
         # survive run_in_terminal's re-exec, and this launcher has no relaunch path.
         $readOnlyRequested = $true
+    } elseif ($arg -eq "--server-only") {
+        $script:serverOnly = $true
+    } elseif ($arg -eq "--setup") {
+        $script:setupRequested = $true
+    } elseif ($arg -eq "--check-install") {
+        $script:checkInstall = $true
     } elseif ($arg -eq "--offline") {
         # A launcher flag, not a backend one: it changes how Gradle is invoked (Get-GradleOfflineArgs).
         $env:AFIELD_OFFLINE = "1"
@@ -534,7 +700,7 @@ if ($exitCode -ne 0) {
     Write-Host "Field4 closed normally." -ForegroundColor Green
 }
 
-if ($Host.Name -notmatch "ConsoleHost" -or $env:AFIELD_FIELD_PS1_NO_PAUSE -ne "1") {
+if ($Host.Name -notmatch "ConsoleHost" -and $env:AFIELD_FIELD_PS1_NO_PAUSE -ne "1") {
     Write-Host "Press any key to close this window..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 }

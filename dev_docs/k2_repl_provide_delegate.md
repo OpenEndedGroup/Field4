@@ -275,6 +275,11 @@ Consequences worth knowing, because they were measured, not predicted:
 
 **Superseded 2026-10-04:** Defect B is fixed in Wither itself, with Wither still on, so the tradeoff
 below no longer arises. The observation that Wither cannot be turned off at runtime still holds.
+The two paragraphs below also assume `kotlin.wither-plugin.smoke` was green. It was not: it was red,
+and registered as an accepted failure, from 2026-08-25 until 2026-10-04. The cause was Wither's IR
+pass never matching its own `with(...)` call. The callee sits under the file facade class `WithKt`,
+not the package, so the `<with holder>` error call reached codegen. Wither face220 fixed that, and
+the smoke is green; the details are in the `WitherSmokeTest` KDoc.
 
 **Defect B is fixable, but the fix is a product decision I did not take unilaterally.** Removing
 `implementation(files("libs/wither-plugin.jar"))` from `build.gradle.kts:943` demonstrably fixes it,

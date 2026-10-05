@@ -8,12 +8,6 @@ val Why.tracer by Whying() /**/
 var Box.log by Inheritance<PathTraceConvergence>() /**/
 val Once.log by Onceing<PathTraceConvergence>() /**/
 val Why.log by Whying() /**/
-var Box.tracer by Inheritance<PathTracingRenderer>() /*from:pt_tracer*/ /**/
-val Once.tracer by Onceing<PathTracingRenderer>() /*from:pt_tracer*/ /**/
-val Why.tracer by Whying() /*from:pt_tracer*/ /**/
-var Box.log by Inheritance<PathTraceConvergence>() /*from:pt_tracer*/ /**/
-val Once.log by Onceing<PathTraceConvergence>() /*from:pt_tracer*/ /**/
-val Why.log by Whying() /*from:pt_tracer*/ /**/
 var Box.window by Inheritance<Window>() /*from:pt_renderer*/ /**/
 val Once.window by Onceing<Window>() /*from:pt_renderer*/ /**/
 val Why.window by Whying() /*from:pt_renderer*/ /**/

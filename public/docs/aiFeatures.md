@@ -31,6 +31,15 @@ whole turns); saved images remain visible but must be attached again for fresh i
 Existing conversations from versions before this feature need to be exported before restarting
 those versions, because their transcripts lived only in memory.
 
+### Writing while it works
+
+You can keep typing while a reply is in progress. A message sent then appears at
+the end of the conversation marked *queued*, and the model reads it after the
+step it is on, between one tool call and the next, so you can correct or redirect
+a long task without waiting for it to finish. Once read, the message moves to the
+point in the reply where the model saw it. If the reply finishes first, the queued
+message is sent as your next message; several queued messages go together.
+
 ### Going back
 
 Hover over one of your messages and two buttons appear. **rewind** takes the

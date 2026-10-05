@@ -480,7 +480,22 @@ function __fn(js, full) {
   f.raw = (a) => __invoke(js, full, a, true);
   return Object.freeze(f);
 }
-const tools = Object.freeze(Object.fromEntries(JSON.parse(__names).map(([js, full]) => [js, __fn(js, full)])));
+const __exact = Object.freeze(Object.fromEntries(JSON.parse(__names).map(([js, full]) => [js, __fn(js, full)])));
+// Lenient spelling: routing_read, routingRead and RoutingRead reach routing.read when exactly one offered tool
+// matches, ignoring case, punctuation, a Request suffix and a box tool's _field_..._<hash> wire wrapping. Only
+// offered names are indexed, so nothing withheld becomes reachable; two candidates resolve to nothing.
+function __norm(n) {
+  return String(n).toLowerCase().replace(/^_field_/, "").replace(/_[0-9a-f]{12,}$/, "").replace(/request$/, "").replace(/[^a-z0-9]/g, "");
+}
+const __lenient = {};
+for (const [js, full] of JSON.parse(__names)) { const k = __norm(js); (__lenient[k] = __lenient[k] || new Map()).set(full, __exact[js]); }
+const tools = new Proxy(__exact, {
+  get(target, name) {
+    if (typeof name !== "string" || name in target) return target[name];
+    const hits = __lenient[__norm(name)];
+    return hits && hits.size === 1 ? hits.values().next().value : undefined;
+  }
+});
 class ToolFailure extends Error {
   constructor(message, tool, call, result) { super(message); this.name = "ToolFailure"; this.tool = tool; this.call = call; this.result = result; }
 }

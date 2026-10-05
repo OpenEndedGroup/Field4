@@ -1436,16 +1436,22 @@ function disclosureInterface(container) {
                         event.stopPropagation();
                         const reviewView = link.getAttribute("data-review-view");
                         const reviewNote = link.getAttribute("data-review-note");
+                        const showError = error => {
+                                let feedback = link.nextElementSibling;
+                                if (!feedback?.classList.contains("review-link-error")) {
+                                        feedback = document.createElement("p"); feedback.className = "review-link-error";
+                                        feedback.style.cssText = "color:#ff7070;user-select:text";
+                                        feedback.setAttribute("aria-live", "polite"); link.after(feedback);
+                                }
+                                feedback.textContent = error.message;
+                        };
                         if (reviewView && reviewNote) {
-                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(error => {
-                                        let feedback = link.nextElementSibling;
-                                        if (!feedback?.classList.contains("review-link-error")) {
-                                                feedback = document.createElement("p"); feedback.className = "review-link-error";
-                                                feedback.style.cssText = "color:#ff7070;user-select:text";
-                                                feedback.setAttribute("aria-live", "polite"); link.after(feedback);
-                                        }
-                                        feedback.textContent = error.message;
-                                });
+                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(showError);
+                                return;
+                        }
+                        // A build's "Show where it fails": open that box's output, not its code, and leave the selection alone.
+                        if (link.getAttribute("data-box-reveal") === "output") {
+                                try { revealOutputOf(navigation.uid, reviewView); } catch (error) { showError(error); }
                                 return;
                         }
                         selectBoxByUidFromOutput(
@@ -1509,14 +1515,27 @@ function findBoxByUid(uid) {
 }
 
 // Open the existing review thread in its output, without opening Monaco or restoring a camera.
+/** The viewer iframe in [box]'s output whose `uid` parameter is [viewId], or null. */
+function reviewViewerIn(box, viewId) {
+        if (!viewId) return null;
+        return [...(box?.querySelectorAll('.outputArea iframe') || [])].find(frame => {
+                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
+                catch (_) { return false; }
+        }) || null;
+}
+
+/** Open every output panel of box [uid] and bring it into view, at the viewer named [viewId] when there is one. */
+function revealOutputOf(uid, viewId) {
+        const box = findBoxByUid(uid);
+        if (!box) throw Error(`Box “${uid}” is not in this document.`);
+        if (!window.revealBoxOutputs?.(uid, reviewViewerIn(box, viewId))) throw Error('That box has no output yet. Run it first.');
+}
+
 async function revealGeometryReview(uid, viewId, noteId) {
         const box = findBoxByUid(uid);
         const frames = [...(box?.querySelectorAll('.outputArea iframe') || [])];
-        const viewer = frames.find(frame => {
-                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
-                catch (_) { return false; }
-        });
-        if (!window.revealBoxOutputs?.(uid, viewer || null)) throw Error('The review output is unavailable. Run its source box first.');
+        const viewer = reviewViewerIn(box, viewId);
+        if (!window.revealBoxOutputs?.(uid, viewer)) throw Error('The review output is unavailable. Run its source box first.');
         const targets = new Set([window, ...frames.map(frame => frame.contentWindow).filter(Boolean)]);
         const requestId = crypto.randomUUID();
         return new Promise((resolve, reject) => {
@@ -2290,6 +2309,8 @@ function ensureAiChat(container, uid, property) {
                 const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
                 const payload = buildAiChatPayload(chatUid(), chatProperty(), text, images);
                 if (options.dictated) payload.dictated = true;
+                // While this box's turn runs, the server gives the message to that turn instead of refusing it.
+                payload.queueIfBusy = true;
                 noteAiChatUsed(container);
                 sendAiChat(payload);
                 attachments.length = 0;
@@ -2310,7 +2331,9 @@ function ensureAiChat(container, uid, property) {
         micButton.className = "ai-chat-mic";
         micButton.type = "button";
         micButton.title = `Hold to talk (or hold ${window.fieldVoice?.hotkeyLabel || "the push-to-talk key"} anywhere)`;
-        micButton.textContent = "\u{1F399}";
+        micButton.setAttribute("aria-label", "Push to talk");
+        // Line-drawn like the layers panel's eye: capsule, cradle, stem, 1.3 stroke in currentColor.
+        micButton.innerHTML = '<svg width="12" height="18" viewBox="0 0 12 18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect class="ai-chat-mic-capsule" x="3.5" y="1" width="5" height="9.5" rx="2.5"/><path d="M1 8.5a5 5 0 0 0 10 0"/><path d="M6 13.5V17M3.5 17h5"/></svg>';
         micButton.addEventListener("pointerdown", (event) => {
                 event.preventDefault();
                 micButton.setPointerCapture?.(event.pointerId);

@@ -228,9 +228,16 @@ class BoxSnappingSystem {
     /**
      * Draw visual snap guides for the active snap targets
      */
-    private fun drawSnapGuides(targets: List<SnapTarget>, draggedBox: Rect) {
+    private fun drawSnapGuides(targets: List<SnapTarget>, draggedBox: Rect, element: HTMLElement) {
         val group = getSnapGuidesGroup()
-        
+        // Guides are in world units, and the overlay draws through the main pane's camera; shift
+        // them into the camera of the pane the box is in (a split canvas pans each pane apart).
+        val pane = CanvasCamera.paneOf(element)
+        val main = CanvasCamera.main
+        val dx = (pane.tx - main.tx) / main.zoom
+        val dy = (pane.ty - main.ty) / main.zoom
+        group.setAttribute("transform", "translate($dx $dy)")
+
         // Clear previous guides
         group.innerHTML = ""
         
@@ -395,7 +402,7 @@ class BoxSnappingSystem {
         if (snapped) {
             snapLog("Caps Lock snapping: ($proposedX, $proposedY) → ($snappedX, $snappedY)")
             // Draw visual guides for active snaps
-            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, proposedW, proposedH))
+            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, proposedW, proposedH), draggedBox)
         } else {
             clearSnapGuides()
         }
@@ -569,7 +576,7 @@ class BoxSnappingSystem {
         
         if (activeTargets.isNotEmpty()) {
             snapLog("Caps Lock resize snapping: ($proposedX, $proposedY, $proposedW, $proposedH) → ($snappedX, $snappedY, $snappedW, $snappedH)")
-            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, snappedW, snappedH))
+            drawSnapGuides(activeTargets, Rect(snappedX, snappedY, snappedW, snappedH), resizedBox)
         } else {
             clearSnapGuides()
         }

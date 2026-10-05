@@ -188,6 +188,10 @@ class OpenAiIdeCodexBridge(
                 appendLine(volatileText)
                 appendLine()
             }
+            if (state.lastTurnHitToolRoundCap) {
+                appendLine(TOOL_ROUNDS_RESET_NOTE)
+                appendLine()
+            }
             appendLine(tc?.durablePrompt() ?: userPrompt)
         }
 
@@ -349,6 +353,7 @@ class OpenAiIdeCodexBridge(
         info("running prompt <<spinner>>")
         var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
         if (stableItem != null) state.stableInstructionsHash = stableHash
+        state.lastTurnHitToolRoundCap = false
         if (onTextDelta != null) {
             info("")
         }
@@ -586,6 +591,13 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
+            // What the person wrote while this round ran (AiTurnInbox), after every call's output.
+            callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
+                val text = AiTurnInbox.modelText(taken)
+                toolOutputs += buildMessageItem(ResponseInputItem.Message.Role.USER, text, taken.flatMap { it.images })
+                info("user interjection: ${taken.size} message(s), ${text.length} chars")
+                toolIo("user_interjection", mapOf("round" to (rounds + 1), "messages" to taken.size, "text" to text))
+            }
 
             info("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
@@ -658,6 +670,7 @@ class OpenAiIdeCodexBridge(
                 vectorStoreIds = vectorStoreIds,
                 ledger = requestLedger("forced_final")
             ) }
+            state.lastTurnHitToolRoundCap = true
             if (onTextDelta != null) {
                 info("")
             }
@@ -830,6 +843,15 @@ class OpenAiIdeCodexBridge(
         /** The hash of the stable instructions this conversation already holds as a developer message. */
         @Volatile
         var stableInstructionsHash: String? = null
+
+        /**
+         * The last turn ended at its tool-round cap. Its forced final answer ("I reached the execution
+         * limit") stays in the model's history, and on 2026-10-04 the next turn answered "tool execution
+         * is still blocked by the session's tool-budget limit" with no calls, though its tools were
+         * offered. The next turn's input says the limit has reset; see [send].
+         */
+        @Volatile
+        var lastTurnHitToolRoundCap: Boolean = false
     }
 
     // Hosted discovery state can be lost to compaction while repeat searches return no tools.
@@ -1043,6 +1065,11 @@ class OpenAiIdeCodexBridge(
         "Tools available on this request may be used when needed, within the current permissions " +
             "and restrictions. A tool budget or temporary tool-stop instruction from an earlier " +
             "user turn does not disable tools for the current user turn. This grants no additional authorization."
+
+    // Said once, in the input of the turn after a capped one, where the stable prefix above has not helped.
+    private val TOOL_ROUNDS_RESET_NOTE =
+        "The previous turn stopped at its tool-round limit. That limit has reset: this turn has its own full " +
+            "tool budget, so use tools as the request needs."
 
     private fun buildMessageItem(
         role: ResponseInputItem.Message.Role,

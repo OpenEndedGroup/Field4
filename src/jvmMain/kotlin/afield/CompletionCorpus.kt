@@ -37,8 +37,17 @@ object CompletionCorpus {
     /** Checked-in harvest output. */
     const val FIXTURE_DIR = "tools/completion-corpus/boxes"
 
-    /** One box, as stored in a `document.md`: its parents and its named text properties. */
-    data class BoxRec(val id: String, val parents: List<String>, val props: MutableMap<String, String> = mutableMapOf())
+    /**
+     * One box, as stored in a `document.md`: its parents and its named text properties. [childLanguage] is
+     * the language this box confers on its children when it is a language root (`mainLanguage`, or the
+     * legacy `isPythonRoot` / `isRemoteJSRoot` flags), lowercased; null for an ordinary box.
+     */
+    data class BoxRec(
+        val id: String,
+        val parents: List<String>,
+        val props: MutableMap<String, String> = mutableMapOf(),
+        val childLanguage: String? = null,
+    )
 
     data class DocRec(val name: String, val dir: File, val boxes: LinkedHashMap<String, BoxRec>)
 
@@ -58,6 +67,11 @@ object CompletionCorpus {
     private val FENCE = Regex("""^```(\w*)\s*\[field-(box|property)\s+([^]]*)]\s*$""")
     private val ATTR = Regex("""(\w+)="([^"]*)"""")
     private val PARENTS = Regex(""""parents"\s*\[([^]]*)]""")
+    private val MAIN_LANGUAGE = Regex(""""mainLanguage"\s+"([^"]*)"""")
+    private val LEGACY_LANGUAGE_ROOT = Regex(""""(isPythonRoot|isRemoteJSRoot)"\s+true\b""")
+
+    /** Languages whose boxes are still Kotlin source. A Kotlin/JS head completes as Kotlin. */
+    private val KOTLIN_LANGUAGES = setOf("kotlin", "kotlinjs")
 
     fun sha256(s: String): String = MessageDigest.getInstance("SHA-256")
         .digest(s.toByteArray()).joinToString("") { "%02x".format(it) }.take(16)
@@ -85,7 +99,11 @@ object CompletionCorpus {
                     val id = attrs["id"] ?: continue
                     val parents = PARENTS.find(body)?.groupValues?.get(1).orEmpty()
                         .split('"').map { it.trim() }.filter { it.isNotEmpty() && it != "#afield/box" }
-                    boxes[id] = BoxRec(id, parents)
+                    val childLanguage = MAIN_LANGUAGE.find(body)?.groupValues?.get(1)?.trim()?.lowercase()
+                        ?.ifEmpty { null }
+                        ?: LEGACY_LANGUAGE_ROOT.find(body)?.groupValues?.get(1)
+                            ?.let { if (it == "isPythonRoot") "python" else "remotejs" }
+                    boxes[id] = BoxRec(id, parents, childLanguage = childLanguage)
                 }
                 "property" -> {
                     val id = attrs["box"] ?: continue
@@ -124,9 +142,18 @@ object CompletionCorpus {
         return boxes
     }
 
-    /** Boxes whose `code` is Kotlin — the only ones this corpus is about. */
+    /**
+     * Boxes whose `code` is Kotlin — the only ones this corpus is about.
+     *
+     * A box's language is conferred by its parents, the way `applyRuntimeToggle` does it: a child of any
+     * language root runs in that root's language. `document.md` records the root's `mainLanguage`, never a
+     * `code_language` property, so a check on `code_language` alone let 24 Lua, Python, Csound and Pd
+     * boxes in as Kotlin. Their `import numpy as np` became 5 injected-region errors, and `cv2.‸cvtColor`
+     * was scored as a Kotlin package path.
+     */
     fun kotlinBoxes(doc: DocRec): List<BoxRec> = doc.boxes.values.filter { rec ->
-        (rec.props["code_language"] ?: "kotlin") == "kotlin" && !rec.props["code"].isNullOrBlank()
+        (rec.props["code_language"] ?: "kotlin") == "kotlin" && !rec.props["code"].isNullOrBlank() &&
+            rec.parents.none { p -> doc.boxes[p]?.childLanguage?.let { it !in KOTLIN_LANGUAGES } == true }
     }
 
     /**
