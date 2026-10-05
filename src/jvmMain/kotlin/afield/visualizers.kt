@@ -133,6 +133,12 @@ private fun <T> ControlGroupBuilder.arrayControl(
     write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) }
 )
 
+/** The square drawing surface a polar control draws into; `arrayControls.js` fills it in. */
+private fun polarSurface(classes: String, size: Int) =
+    """<svg class="array-visual polar-visual $classes" viewBox="0 0 200 200" style="width:${size}px;height:${size}px"></svg>"""
+
+private fun polarAttribute(polar: Boolean) = if (polar) """ data-polar="true"""" else ""
+
 private fun controlShell(kind: String, id: String, label: String, attributes: String, body: String) = """
     <div class="field-control field-array field-$kind" data-kind="$kind" data-control-id="$id" $attributes>
         <div class="field-header"><span class="field-label">${escapeHtml(label)}</span><span class="field-value array-readout"></span></div>
@@ -159,7 +165,10 @@ private fun controlShell(kind: String, id: String, label: String, attributes: St
  * @param max value at the top of a bar
  * @param step snapping increment, or `0.0` for continuous values
  * @param initialValues values used when no cached value exists; padded or trimmed to [count]
- * @param height drawn height of the bank in pixels
+ * @param height drawn height of the bank in pixels; ignored when [polar]
+ * @param polar draw the bars as wedges around a circle — angle picks the bar, distance from the
+ *   centre sets its value — for a step sequence that reads as a loop
+ * @param size width and height of the polar dial in pixels
  * @param onUpdate called with every bar's value, left to right, as the bars change
  */
 fun ControlGroupBuilder.multiSlider(
@@ -170,6 +179,8 @@ fun ControlGroupBuilder.multiSlider(
     step: Double = 0.0,
     initialValues: List<Double> = List(count) { min },
     height: Int = 96,
+    polar: Boolean = false,
+    size: Int = 240,
     onUpdate: (List<Double>) -> Unit
 ): ArrayControlHandle<List<Double>> {
     require(count in 1..512) { "multiSlider count must be between 1 and 512" }
@@ -179,8 +190,9 @@ fun ControlGroupBuilder.multiSlider(
     return withPlayhead(arrayControl("multislider", label, count, initialValues, sanitize, { it }, { it }, { id, values ->
         controlShell(
             "multislider", id, label,
-            """data-min="$min" data-max="$max" data-step="$step" data-count="$count" data-values="${encodeValues(values)}"""",
-            """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>"""
+            """data-min="$min" data-max="$max" data-step="$step" data-count="$count" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
+            if (polar) polarSurface("multislider-visual", size)
+            else """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>"""
         )
     }, onUpdate))
 }
@@ -203,6 +215,8 @@ fun ControlGroupBuilder.multiSlider(
  * @param rows number of rows
  * @param columns number of columns
  * @param initialValue cells used when no cached value exists; missing cells are off
+ * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
+ * @param size width and height of the polar dial in pixels
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -210,11 +224,13 @@ fun ControlGroupBuilder.matrix(
     rows: Int = 4,
     columns: Int = 8,
     initialValue: List<List<Boolean>> = emptyList(),
+    polar: Boolean = false,
+    size: Int = 240,
     onUpdate: (List<List<Boolean>>) -> Unit
 ): ArrayControlHandle<List<List<Boolean>>> = matrixControl(
     label, rows, columns, 2,
     toCell = { it != 0 }, fromCell = { if (it == true) 1 else 0 },
-    initialValue, onUpdate
+    initialValue, polar, size, onUpdate
 )
 
 /**
@@ -236,6 +252,8 @@ fun ControlGroupBuilder.matrix(
  * @param columns number of columns
  * @param states how many values a cell cycles through, including 0
  * @param initialValue cells used when no cached value exists; missing cells are 0, others are clamped
+ * @param polar draw rows as rings (row 0 outermost) and columns as sectors, clockwise from the top
+ * @param size width and height of the polar dial in pixels
  * @param onUpdate called with the whole grid whenever a cell changes
  */
 fun ControlGroupBuilder.matrix(
@@ -244,11 +262,13 @@ fun ControlGroupBuilder.matrix(
     columns: Int = 8,
     states: Int,
     initialValue: List<List<Int>> = emptyList(),
+    polar: Boolean = false,
+    size: Int = 240,
     onUpdate: (List<List<Int>>) -> Unit
 ): ArrayControlHandle<List<List<Int>>> = matrixControl(
     label, rows, columns, states,
     toCell = { it }, fromCell = { it ?: 0 },
-    initialValue, onUpdate
+    initialValue, polar, size, onUpdate
 )
 
 private fun <C> ControlGroupBuilder.matrixControl(
@@ -259,23 +279,26 @@ private fun <C> ControlGroupBuilder.matrixControl(
     toCell: (Int) -> C,
     fromCell: (C?) -> Int,
     initialValue: List<List<C>>,
+    polar: Boolean,
+    size: Int,
     onUpdate: (List<List<C>>) -> Unit
 ): ArrayControlHandle<List<List<C>>> {
     require(rows in 1..64 && columns in 1..64) { "matrix rows and columns must be between 1 and 64" }
     require(states in 2..64) { "matrix states must be between 2 and 64" }
-    val size = rows * columns
+    val cells = rows * columns
     val toGrid = { flat: List<Double> -> List(rows) { r -> List(columns) { c -> toCell(flat[r * columns + c].toInt()) } } }
     val toFlat = { grid: List<List<C>> ->
-        List(size) { i -> fromCell(grid.getOrNull(i / columns)?.getOrNull(i % columns)).toDouble() }
+        List(cells) { i -> fromCell(grid.getOrNull(i / columns)?.getOrNull(i % columns)).toDouble() }
     }
     val sanitize = { values: List<Double> ->
-        List(size) { i -> Math.round(values.getOrElse(i) { 0.0 }).toInt().coerceIn(0, states - 1).toDouble() }
+        List(cells) { i -> Math.round(values.getOrElse(i) { 0.0 }).toInt().coerceIn(0, states - 1).toDouble() }
     }
-    return withPlayhead(arrayControl("matrix", label, size, initialValue, sanitize, toGrid, toFlat, { id, values ->
+    return withPlayhead(arrayControl("matrix", label, cells, initialValue, sanitize, toGrid, toFlat, { id, values ->
         controlShell(
             "matrix", id, label,
-            """data-rows="$rows" data-columns="$columns" data-states="$states" data-values="${encodeValues(values)}"""",
-            """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
+            """data-rows="$rows" data-columns="$columns" data-states="$states" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
+            if (polar) polarSurface("matrix-visual matrix-polar", size)
+            else """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
         )
     }, onUpdate))
 }
@@ -284,6 +307,12 @@ private fun <C> ControlGroupBuilder.matrixControl(
  * Adds a slider with two thumbs selecting an interval — Max's `rslider`.
  *
  * Drag a thumb to move one end; drag between them to slide the whole interval.
+ *
+ * With [polar] the track is a whole circle, `min` and `max` meet at the top, and the interval runs
+ * clockwise from `start` to `endInclusive` — so it can wrap through the top. A wrapped interval has
+ * `start > endInclusive` and covers `start..max` plus `min..endInclusive`; test membership with
+ * [arcContains], since Kotlin's own `in` reads such a range as empty. Use it for things that are
+ * already circular: phase, hue, a window into a loop.
  *
  * ```kotlin
  * var band = 200.0..2000.0
@@ -297,6 +326,8 @@ private fun <C> ControlGroupBuilder.matrixControl(
  * @param max largest selectable value
  * @param step snapping increment, or `0.0` for continuous values
  * @param initialValue interval used when no cached value exists
+ * @param polar draw the track as a full circle on which the interval may wrap through `max` to `min`
+ * @param size width and height of the polar dial in pixels
  * @param onUpdate called with the interval as either end moves
  */
 fun ControlGroupBuilder.rangeSlider(
@@ -305,20 +336,24 @@ fun ControlGroupBuilder.rangeSlider(
     max: Double = 1.0,
     step: Double = 0.0,
     initialValue: ClosedFloatingPointRange<Double> = min..max,
+    polar: Boolean = false,
+    size: Int = 240,
     onUpdate: (ClosedFloatingPointRange<Double>) -> Unit
 ): ArrayControlHandle<ClosedFloatingPointRange<Double>> {
     val sanitize = { values: List<Double> ->
         val a = quantize(values.getOrElse(0) { min }, min, max, step)
         val b = quantize(values.getOrElse(1) { max }, min, max, step)
-        listOf(minOf(a, b), maxOf(a, b))
+        // On the dial the order is the direction of travel, and reversing it means the other arc.
+        if (polar) listOf(a, b) else listOf(minOf(a, b), maxOf(a, b))
     }
     return withPlayhead(arrayControl(
         "range", label, 2, initialValue, sanitize,
         { it[0]..it[1] }, { listOf(it.start, it.endInclusive) }, { id, values ->
             controlShell(
                 "range", id, label,
-                """data-min="$min" data-max="$max" data-step="$step" data-values="${encodeValues(values)}"""",
-                """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>"""
+                """data-min="$min" data-max="$max" data-step="$step" data-values="${encodeValues(values)}"${polarAttribute(polar)}""",
+                if (polar) polarSurface("range-visual range-polar", size)
+                else """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>"""
             )
         }, onUpdate
     ))
@@ -361,3 +396,11 @@ fun ControlGroupBuilder.menu(
         """.trimIndent()
     }) { onUpdate(it, options[it]) }
 }
+
+/**
+ * Whether [value] lies on this interval as a polar [rangeSlider] means it: clockwise from `start`
+ * to `endInclusive`, wrapping through the top when `start > endInclusive`. An ordinary range
+ * answers exactly as `in` does.
+ */
+fun ClosedFloatingPointRange<Double>.arcContains(value: Double): Boolean =
+    if (start <= endInclusive) value in this else value >= start || value <= endInclusive

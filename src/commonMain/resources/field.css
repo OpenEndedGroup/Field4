@@ -5657,3 +5657,97 @@ body.mode-editor-only .field-toast {
     background: rgb(var(--field-warning-rgb));
     pointer-events: none;
 }
+
+/* Polar variants — the same controls drawn on a dial (polar = true). */
+.polar-visual {
+    display: block;
+    margin: 4px auto 0;
+    max-width: 100%;
+    border: none;
+    background: none;
+}
+
+.multislider-visual.polar-visual {
+    border: none;
+    background: none;
+}
+
+.polar-guide {
+    fill: var(--field-surface);
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 1;
+}
+
+.matrix-polar .matrix-cell {
+    fill: var(--field-surface-muted);
+    stroke: var(--field-accent-border-faint);
+    stroke-width: 0.6;
+}
+
+.matrix-polar .matrix-cell.on {
+    fill: var(--cell-color, rgb(var(--field-danger-rgb)));
+    stroke: var(--cell-color, rgb(var(--field-danger-rgb)));
+    opacity: 0.85;
+}
+
+.matrix-polar .matrix-cell.playhead {
+    stroke: rgb(var(--field-warning-rgb));
+    stroke-width: 1.4;
+    box-shadow: none;
+}
+
+.matrix-polar .matrix-cell.playhead:not(.on) {
+    fill: rgba(var(--field-warning-rgb), 0.25);
+}
+
+.range-visual.range-polar {
+    position: static;
+    height: auto;
+    cursor: grab;
+}
+
+.range-arc-track {
+    fill: none;
+    stroke: var(--field-accent-muted);
+    stroke-width: 4;
+    stroke-linecap: round;
+}
+
+.range-arc-fill {
+    fill: none;
+    stroke: var(--field-accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+}
+
+.range-arc-thumb {
+    fill: var(--field-accent);
+    pointer-events: none;
+}
+
+.range-arc-playhead {
+    stroke: rgb(var(--field-warning-rgb));
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+.range-arc-label {
+    fill: var(--field-accent-text-soft);
+    font-family: var(--field-font);
+    font-size: 14px;
+    text-anchor: middle;
+}
+
+.range-arc-seam {
+    stroke: var(--field-accent-text-soft);
+    stroke-width: 1.5;
+    opacity: 0.7;
+}
+
+.range-arc-end {
+    fill: var(--field-accent-text-soft);
+    font-family: var(--field-font);
+    font-size: 10px;
+    text-anchor: middle;
+    opacity: 0.8;
+}
