@@ -371,7 +371,9 @@ away with `close()` (both are `AutoCloseable`, so `use { }` works).
 ## Building the library
 
 The simulation is Rust. Field calls it through a small wrapper library in `native/field-paint`,
-which is not part of the normal build. With `cargo` installed, build it once:
+which is not part of the normal build. Install a current stable Rust toolchain (`cargo` and
+`rustc`); older distribution packages may be too old for this crate. `--setup` checks their
+versions before preparing paint. Build it once:
 
 ```diffstatic {data-lang=bash}
 ./gradlew buildPaintNative
