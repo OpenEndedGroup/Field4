@@ -10,15 +10,16 @@ description: >
   `cloth_simdverlet_start`, which is the cloth these four add a world to.
 
   What to turn, with what it measurably does. Box 1: `friction = 0f` on the sphere and the sheet
-  slides off its shoulder instead of gripping -- over 600 frames a 10 x 10 sheet's centroid ends at
-  0.789 with `friction = 0.9` and at -32.2 with `0f`. Box 2: `threshold` between 0.15 and 0.4 is the
+  slides off its shoulder instead of gripping -- after 600 frames at the shipped `friction = 0.75f`
+  the 22 x 22 sheet still hangs over the sphere, 144 of its 484 particles down on the floor (y = 4.4)
+  and its centroid at y = 3.59; at `0f` all 484 have slid off onto the floor. Box 2: `threshold` between 0.15 and 0.4 is the
   difference between a sheet that shreds and one the sphere merely dents, and `maxBreaksPerStep` is a
   *different* rip rather than a slower one -- a sheet failing a few edges at a time goes on carrying
-  load while it fails, so more of it reaches the threshold (14 edges unthrottled against 22 at one per
-  step). Box 3: comment out `cloth.addWind(wind)` and the same wind, same gusts, same seed leaves the
+  load while it fails, so more of it reaches the threshold (on the measurement sheet in `SIMDVERLET_5_WORLD.md`, 14 edges
+  unthrottled against 22 at one per step). Box 3: comment out `cloth.addWind(wind)` and the same wind, same gusts, same seed leaves the
   flag leaning instead of flying -- per-particle drag cannot tell which way the fabric is facing; and
-  `turbulence`/`seed` are deterministic weather, a 400-frame run bit-identical to itself and differing
-  from the next seed in 262 of 288 coordinates. Box 4 is the one to touch: at the shipped
+  `turbulence`/`seed` are deterministic weather (in `dev_docs/physics/SIMDVERLET_5_WORLD.md`, a
+  400-frame run is bit-identical to itself and differs from the next seed in 262 of 288 coordinates). Box 4 is the one to touch: at the shipped
   `tearThreshold = 0.6f` the sheet holds and touches nothing (0 torn, 0 contacts), and at `0.25f` a rip
   opens where the rope pulls (~50 edges) and the pieces land on the sphere and the floor (~236
   contacts) -- both asserted by
