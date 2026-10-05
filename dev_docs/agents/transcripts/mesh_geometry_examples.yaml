@@ -44,7 +44,8 @@ operations:
           seam, a missing cap or an unwelded weld — all of which still look plausible in a render.
           */
           val cube = boxMesh(1, 1, 1)
-          val ball = icosphereMesh(3, 0.6)
+          val r = 0.6 // the icosphere's radius, checked against the analytic volume and area below
+          val ball = icosphereMesh(3, r)
           val ring = torusMesh(48, 24, 0.6, 0.22)
           val pill = capsuleMesh(32, 8, 0.3, 0.5)
           val horn = coneMesh(32, 0.45, 0.9)
@@ -82,14 +83,14 @@ operations:
               "icosphere(3)   volume %.6f against 4/3 pi r^3 = %.6f"
                   .format(
                       ball.signedVolume(),
-                      4.0 / 3.0 * PI * 0.6 * 0.6 * 0.6,
+                      4.0 / 3.0 * PI * r * r * r,
                   ),
           )
           println(
               "icosphere(3)   area   %.6f against 4 pi r^2   = %.6f"
                   .format(
                       ball.surfaceArea(),
-                      4.0 * PI * 0.6 * 0.6,
+                      4.0 * PI * r * r,
                   ),
           )
 
@@ -430,11 +431,10 @@ operations:
       properties:
         code: |
           /*
-          Field already computed a real 3D Voronoi diagram by half-space clipping (voronoi.kt);
-          it just could not turn it into geometry. Each cell's polygonal faces triangulate into a
-          closed solid, and because a Voronoi tessellation partitions its clip box exactly, the
-          cell volumes must sum to the box's own volume. That is the strongest single check on
-          the bridge, and it is one line.
+          Voronoi3d (voronoi.kt) builds a 3D Voronoi diagram by half-space clipping; toTriMesh
+          triangulates each cell's polygonal faces into a closed solid. A Voronoi tessellation
+          partitions its clip box exactly, so the cell volumes must sum to the box's own volume —
+          a one-line check on the whole conversion.
           */
           val rand = java.util.Random(31)
           val sites = List(48) {
@@ -477,11 +477,9 @@ operations:
 
           /*
           TriMesh -> FLine, so a mesh is drawable in Field with no renderer set up at all. The
-          crease mode keeps only the edges where the two faces genuinely disagree, which is the
-          difference between a readable drawing and a grey mat of 4800 lines.
-          A coarse torus, so there really are creases to keep: at 28x14 the faces meet at well
-          under 30 degrees everywhere and the crease set is empty, which is the correct answer and
-          a dull demonstration.
+          crease mode keeps only edges whose two faces meet at more than the crease angle, which
+          is what keeps a drawing readable. The torus is deliberately coarse: a finer one (28x14)
+          has no edge sharper than 30 degrees, so its crease set would be empty.
           */
           val ring = torusMesh(14, 8, 0.6, 0.22)
           println(

@@ -87,8 +87,8 @@ operations:
           println("blur.radius    = " + blur.bindings["radius"]?.invoke())
           println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-          // capture() reads binding-first-then-value, so both of these land in the key. It used to
-          // read Structure.bindings alone, and `set` snapshotted as a silent null.
+          // capture() reads a binding first and falls back to a plain value, so a property set with
+          // `structure[name] = ...` (no bind) still lands in the key.
           val sneaky = Structure()
           sneaky.bind("bound") { 1.0f }
           sneaky["set"] = 2.0f
@@ -160,9 +160,13 @@ operations:
           import afield.stdlib.KeyframeScope
           import afield.stdlib.linalg.Vector3f
 
+          // The two camera positions; both look at the subject at the origin. Move one and rerun.
+          var fromPos = Vector3f(8f, 2f, 0f)
+          var toPos = Vector3f(0f, 2f, 8f)
+
           val scope = KeyframeScope()
-          val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(8f, 2f, 0f), Vector3f(0f, 0f, 0f))))
-          val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(0f, 2f, 8f), Vector3f(0f, 0f, 0f))))
+          val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f))))
+          val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f))))
           val pa = (a["camera"] as CameraPose).position
           val pb = (b["camera"] as CameraPose).position
 
@@ -206,6 +210,7 @@ operations:
               color = vec(1.0, 0.62, 0.26, 0.22)
               thickness = 1.0
           }
+          // The subject: a small circle at the origin.
           val subject = fline {
               val r = 14.0
               for (i in 0..48) {
@@ -414,9 +419,8 @@ operations:
                   "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
                   "voice" to stackSLString("sin 220 * fold"),
                   /*
-                  A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string
-                  would have let the '$' interpolate at paste time — a real defect, fixed alongside
-                  public/docs/keyframer_examples.md. It must come out escaped.
+                  A source block whose body mentions a '$'. Emitted inside a Kotlin raw string it
+                  would interpolate at paste time, so it must come out escaped.
                   */
                   "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
                   "notes" to listOf("unsupported", "on purpose"),
@@ -430,10 +434,8 @@ operations:
           // and Key.set deliberately does not re-coerce numbers.
           println("Float keeps its suffix: " + code.contains("0.65f"))
           println("Long keeps its suffix:  " + code.contains("99L"))
-          // Scoped to the source-block line on purpose. The emitter also writes an /* unsupported */
-          // comment naming the Java class it dropped, and a nested class name like Arrays$ArrayList
-          // legitimately contains a '$' that cannot interpolate because it sits inside a comment.
-          // Checking the whole string reported a bare '$' for that comment and printed a false alarm.
+          // Check only the source-block line: the /* unsupported */ comment names the dropped Java
+          // class, and a nested name like Arrays$ArrayList has a harmless '$' inside that comment.
           val blockLine = code.lines().first { it.contains("""this["block"]""") }
           println(
               "the source block's $ came out escaped: " + Regex("""(?<!\\)\$""").findAll(blockLine).none(),

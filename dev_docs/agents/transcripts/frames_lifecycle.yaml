@@ -65,7 +65,7 @@ operations:
           /*
           Trail length and resolution are a bandwidth decision, not a taste one: every redraw
           serialises the whole trail to SVG and pushes it down the output socket. 8 s at 0.06
-          is ~130 points; 12 s at 0.02 was ~600 and measurably saturated the connection.
+          is ~130 points; 12 s at 0.02 is ~600, enough to saturate the connection.
           */
           val trailSeconds = 8.0
           val trailStep = 0.06
@@ -272,9 +272,8 @@ operations:
           var nextDraw = 0.0
 
           /*
-          showRow puts the swatch beside the readout. The swatch stays a raw <span>: it is a
-          colour *sample*, so the hex in it is this launch's data rather than styling — which is
-          exactly the case markdown's raw-HTML passthrough is for.
+          showRow puts the swatch beside the readout. The swatch is raw HTML because its colour
+          is this launch's data, not styling.
           */
           val show: (Int, Double) -> Unit = { n, elapsed ->
               val rate = if (elapsed > 0.5) "%,.0f frames a second".format(n / elapsed) else "measuring"
@@ -324,10 +323,7 @@ operations:
                   epoch, but either way the end job registers and runs — and it runs from inside
                   frame()'s catch, before the cancellation unwinds the body's finally.
 
-          So .end { } means "when this animation is cancelled", not "when it finishes". Case 1
-          used to print only the finally line: stopTrackedJobs bumps the launch epoch first, and
-          registerLaunchJob cancelled the end job it was handed because that epoch was stale.
-          Box.registerEndPhaseJob re-captures the epoch, since it is stop that creates that job.
+          So .end { } means "when this animation is cancelled", not "when it finishes".
           */
           val started = AnimationClock.nowSeconds()
           val runFor = 8.0
@@ -340,8 +336,7 @@ operations:
           Cleanup goes to its OWN channel. Re-running the box immediately repaints "main" from
           the new launch, which would clobber the old launch's cleanup line before you could
           read it -- and the re-run case is the whole point of instruction 3.
-          The green was semantic — these are the lines that prove cleanup ran — so it becomes the
-          {ok:} role rather than a hex literal, and survives a theme change.
+          {ok:} styles them as the theme's success colour.
           */
           val note: (String) -> Unit = { line ->
               notes += line
