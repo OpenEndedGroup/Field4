@@ -4,6 +4,7 @@ package afield
 
 import afield.logger.lprintln
 import afield.server.broadcastControllerControlUpdates
+import afield.stdlib.linalg.Vector2f
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -430,3 +431,144 @@ fun ControlGroupBuilder.menu(
  */
 fun ClosedFloatingPointRange<Double>.arcContains(value: Double): Boolean =
     if (start <= endInclusive) value in this else value >= start || value <= endInclusive
+
+/**
+ * What [gesture] returns: the recorded take, and a way to replay it.
+ *
+ * The take is a loop. The box owns time: ask [at] where the take is at some number of seconds,
+ * read off whatever clock the box keeps, and show it with [playhead].
+ */
+class GestureHandle internal constructor(
+    private val control: ArrayControlHandle<List<Double>>,
+    take: List<Double>
+) {
+    /** Stable id of the control, shared with the phone. */
+    val controlId: String get() = control.controlId
+
+    // Flattened (t, x, y) triples, t in seconds from the start of the stroke.
+    @Volatile private var take: DoubleArray = take.toDoubleArray()
+
+    internal fun replace(values: List<Double>) {
+        take = values.toDoubleArray()
+    }
+
+    /** True once a take has been recorded (or given as `initialTake`). */
+    val hasTake: Boolean get() = take.size >= 6
+
+    /** Length of the take in seconds; `0.0` with no take. */
+    val duration: Double get() = take.let { if (it.size >= 3) it[it.size - 3] else 0.0 }
+
+    /**
+     * Where the take is [seconds] into its loop, interpolated between the recorded samples, or
+     * `null` with no take. Seconds past the end wrap round, so `at(clock)` loops forever.
+     */
+    fun at(seconds: Double): Vector2f? {
+        val p = take
+        if (p.size < 6) return null
+        val length = p[p.size - 3]
+        val t = if (length > 0.0) ((seconds % length) + length) % length else 0.0
+        var lo = 0
+        var hi = p.size / 3 - 1
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (p[mid * 3] <= t) lo = mid else hi = mid
+        }
+        val t0 = p[lo * 3]
+        val t1 = p[hi * 3]
+        val f = if (t1 > t0) ((t - t0) / (t1 - t0)).coerceIn(0.0, 1.0) else 0.0
+        return Vector2f(
+            (p[lo * 3 + 1] + (p[hi * 3 + 1] - p[lo * 3 + 1]) * f).toFloat(),
+            (p[lo * 3 + 2] + (p[hi * 3 + 2] - p[lo * 3 + 2]) * f).toFloat()
+        )
+    }
+
+    /** Shows a dot on the pad where the take is [seconds] into its loop. Negative hides it. */
+    fun playhead(seconds: Double): Boolean = control.playhead(seconds)
+}
+
+/**
+ * Adds an XY pad that records what you do with it — a gesture you can loop.
+ *
+ * Drag on the pad and [onUpdate] gets each position, as [vec2Control] would. **Shift-drag** records a
+ * take: the whole stroke, with its timing, kept with the box like any other control value. Replay it
+ * from the box's own clock:
+ *
+ * ```kotlin
+ * var p = Vector2f(0f, 0f)
+ * lateinit var pad: GestureHandle
+ * controlGroup("gesture") {
+ *     pad = gesture("move") { p = it }
+ * }
+ * val start = System.nanoTime()
+ * loop {
+ *     val t = (System.nanoTime() - start) / 1e9
+ *     pad.at(t)?.let { p = it }
+ *     pad.playhead(t)
+ * }
+ * ```
+ *
+ * @param label text shown above the pad
+ * @param xRange value at the left and right edges
+ * @param yRange value at the bottom and top edges
+ * @param initialValue live position used when no cached value exists
+ * @param initialTake a take to start from, as (seconds, position) pairs in time order; a recorded
+ *   take replaces it and is what a rerun restores
+ * @param size width and height of the pad in pixels
+ * @param onUpdate called with the position as you drag
+ */
+fun ControlGroupBuilder.gesture(
+    label: String,
+    xRange: Pair<Double, Double> = -1.0 to 1.0,
+    yRange: Pair<Double, Double> = -1.0 to 1.0,
+    initialValue: Vector2f = Vector2f(0f, 0f),
+    initialTake: List<Pair<Double, Vector2f>> = emptyList(),
+    size: Int = 240,
+    onUpdate: (Vector2f) -> Unit
+): GestureHandle {
+    val (x0, x1) = xRange
+    val (y0, y1) = yRange
+    // A take is (t, x, y) triples: t from 0 and never decreasing, x and y on the pad, at most 4096 samples.
+    val sanitize = { values: List<Double> ->
+        val n = minOf(values.size / 3, 4096)
+        val t0 = values.getOrElse(0) { 0.0 }
+        var last = 0.0
+        List(n * 3) { i ->
+            val v = values[i]
+            when (i % 3) {
+                0 -> maxOf(last, v - t0).also { last = it }
+                1 -> v.coerceIn(minOf(x0, x1), maxOf(x0, x1))
+                else -> v.coerceIn(minOf(y0, y1), maxOf(y0, y1))
+            }
+        }
+    }
+    val flatInitial = initialTake.flatMap { (t, v) -> listOf(t, v.x.toDouble(), v.y.toDouble()) }
+    var restoredTake: List<Double> = sanitize(flatInitial)
+    lateinit var handle: GestureHandle
+    val value = addControl(
+        "gesture",
+        label,
+        build = { id, previous ->
+            previous?.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() }
+                ?.takeIf { it.size >= 6 && it.size % 3 == 0 }
+                ?.let { restoredTake = sanitize(it) }
+            val x = previous?.x ?: initialValue.x.toDouble()
+            val y = previous?.y ?: initialValue.y.toDouble()
+            registerVec2Callback(id, onUpdate)
+            arrayCallbacks.register(id, { take: List<Double> -> handle.replace(sanitize(take)) })
+            if (previous?.x != null) onUpdate(Vector2f(x.toFloat(), y.toFloat()))
+            val html = controlShell(
+                "gesture", id, label,
+                """data-x-min="$x0" data-x-max="$x1" data-y-min="$y0" data-y-max="$y1" data-x="$x" data-y="$y" data-values="${encodeValues(restoredTake)}"""",
+                polarSurface("gesture-visual", size)
+            )
+            html to ControllerControl(
+                id = id, type = "gesture", label = label, text = encodeValues(restoredTake),
+                xMin = x0, xMax = x1, yMin = y0, yMax = y1, x = x, y = y
+            )
+        },
+        read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },
+        write = { old, next -> old.copy(text = encodeValues(sanitize(next))) }
+    )
+    handle = GestureHandle(withPlayhead(value), restoredTake)
+    return handle
+}

@@ -723,7 +723,7 @@
       // Nor may an array control's value or playhead: see updateArrayDisplays.
       controls: controls.map((control) => {
         if (control.type === "meter") return { ...control, value: null };
-        if (ARRAY_TYPES.has(control.type)) return { ...control, value: null, text: null };
+        if (ARRAY_TYPES.has(control.type)) return { ...control, value: null, text: null, x: null, y: null };
         return control;
       }),
     });
@@ -767,7 +767,8 @@
       case "multislider":
       case "matrix":
       case "range":
-      case "menu": return renderArrayControl(control);
+      case "menu":
+      case "gesture": return renderArrayControl(control);
       default: return renderSliderControl(control);
     }
   }
@@ -815,7 +816,7 @@
     return parts.shell;
   }
 
-  const ARRAY_TYPES = new Set(["multislider", "matrix", "range", "menu"]);
+  const ARRAY_TYPES = new Set(["multislider", "matrix", "range", "menu", "gesture"]);
 
   /**
    * A multislider, matrix, range slider or menu (afield/visualizers.kt).
@@ -842,6 +843,12 @@
       rows: String(control.rows || 1),
       columns: String(control.columns || 1),
       states: String(control.states || 2),
+      xMin: String(control.xMin ?? -1),
+      xMax: String(control.xMax ?? 1),
+      yMin: String(control.yMin ?? -1),
+      yMax: String(control.yMax ?? 1),
+      x: String(control.x ?? 0),
+      y: String(control.y ?? 0),
     });
     if (control.polar) box.dataset.polar = "true";
 
@@ -879,6 +886,8 @@
           '<div class="range-playhead"></div>';
         box.appendChild(track);
       }
+    } else if (kind === "gesture") {
+      box.appendChild(svg("polar-visual gesture-visual", "0 0 200 200", dial));
     } else if (kind === "menu") {
       const select = document.createElement("select");
       select.className = "field-menu-select phone-menu";
@@ -906,7 +915,14 @@
       if (!ARRAY_TYPES.has(control.type)) return;
       document.querySelectorAll(`.field-array[data-control-id="${CSS.escape(control.id)}"]`).forEach((box) => {
         if (control.value != null) api.setPlayhead(box, control.value);
-        if (api.isActive(box) || control.text == null || control.text === box.dataset.values) return;
+        if (api.isActive(box)) return;
+        if (control.type === "gesture" && control.x != null && control.y != null &&
+            (String(control.x) !== box.dataset.x || String(control.y) !== box.dataset.y)) {
+          box.dataset.x = String(control.x);
+          box.dataset.y = String(control.y);
+          api.render(box);
+        }
+        if (control.text == null || control.text === box.dataset.values) return;
         box.dataset.values = control.text;
         if (control.type === "menu") {
           const select = box.querySelector("select");
@@ -916,6 +932,11 @@
       });
     });
   }
+
+  document.addEventListener("field-vec2-input", (event) => {
+    const { controlId, x, y } = event.detail || {};
+    if (controlId) send({ type: "vec2", controlId, x, y });
+  });
 
   document.addEventListener("field-array-input", (event) => {
     const { controlId, values } = event.detail || {};
