@@ -301,7 +301,7 @@ fun ControlGroupBuilder.menu(
             """<option value="$i"${if (i == chosen) " selected" else ""}>${escapeHtml(o)}</option>"""
         }.joinToString("")
         """
-            <div class="field-control field-array field-menu" data-kind="menu" data-control-id="$id">
+            <div class="field-control field-array field-menu" data-kind="menu" data-control-id="$id" data-values="$chosen">
                 <label class="field-label" for="$id">${escapeHtml(label)}</label>
                 <select class="field-menu-select" id="$id">$items</select>
             </div>

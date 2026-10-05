@@ -186,7 +186,7 @@
         if (kind !== 'menu') renderPlayhead(container);
         if (kind === 'menu') {
             const select = container.querySelector('select');
-            if (select && document.activeElement !== select) select.value = String(values[0] ?? 0);
+            if (select && values.length && document.activeElement !== select) select.value = String(values[0]);
         }
     }
 
