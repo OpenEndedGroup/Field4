@@ -143,6 +143,23 @@ boxes: return it into a `prop` if children should see it.
 `T` should be a library type. A class declared in the box's own code is a new class each time the
 box compiles, so a `cached` of it never finds the previous value.
 
+### `aside`: code an ordinary run skips
+
+`once` and `cached` run their block on the first full run. Sometimes you want the opposite: code
+that a full run never runs, and that you run by hand when you want it — a one-off experiment, a
+reset, a debug dump. Wrap it in `aside`:
+
+```diffstatic {data-lang=kotlin}
+aside("reset") {
+    savemarker = 0
+    println("reset")
+}
+```
+
+Running the whole box skips the block. Put the cursor inside it and press option/alt-return to run
+just that block. (Running a selection that includes it runs it too.) The name is only a label for
+you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
+
 ### What lasts how long
 
 What the block of a `once` or `cached` makes — a slider, a render module, an audio patch —
@@ -322,6 +339,7 @@ The preamble and setup blocks also re-run between fragments, so a fragment that 
 - **Macros** (`prop`, `moduleHere`, …) rewrite calls *before* compilation and inject glue into the **preamble**; some also mutate box state or compile shaders during expansion.
 - **`@exported`** promotes declarations into the preamble *after* a run.
 - **`once`** and **`cached`** keep a value across runs; `cached` keeps one per type and key, and closes the old one when a key changes (see **What lasts how long**).
+- **`aside { }`** is the reverse: a block a full run skips, run by hand with option/alt-return.
 - The **preamble** is the shared glue layer: a box's effective preamble is gathered from itself plus its ancestors' `import` and ` /**/`-tagged lines — which is how typed accessors from `prop`/`@exported` reach child boxes. `moduleHere`'s generated shader accessors are *not* tagged, so they stay in the box whose shader declared them.
 - **Property inheritance** resolves values by walking *up the box graph*, so **connecting boxes** (topology) decides what a box can see — the reason a graphics box must be a child of its renderer.
 
