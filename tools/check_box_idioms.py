@@ -15,8 +15,9 @@ This is the check that retires the prose. The rules:
   generates ``var Mesh.n`` for every push-constant member it sees, so this is ``mesh.n = { e }``.
 - ``box-context-lookup``: ``Box.context.get()!!``. That is ``thisBox``, and ``thisBox`` itself is
   rarely needed: the box is the implicit receiver, so ``thisBox.foo`` is ``foo``. Rewritten to
-  ``thisBox``. An alias (``val historyOwner = thisBox``) is a note: it is needed only where the box
-  is an argument, and renaming its uses is a judgement call.
+  ``thisBox``. An alias (``val historyOwner = thisBox``) is a finding too but is not rewritten here:
+  removing it means rewriting each use (``historyOwner.foo`` is ``foo``, ``historyOwner`` as an
+  argument is ``thisBox``), which the revision pass or a person does.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
@@ -83,6 +84,7 @@ class Finding:
     rule: str
     message: str
     fixable: bool
+    blocking: bool = True  # False: printed as a note, does not fail the check
 
 
 def _under(path: str, root: str) -> bool:
@@ -158,7 +160,7 @@ def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, 
                         f"write `{m['target']}.{m['name']} = {m['lambda']}`: moduleHere generates the property", True))
         elif m := BOX_ALIAS.match(line):
             out.append((i, "box-context-lookup",
-                        f"`{m['name']}` is the box this code runs in, which is already the implicit receiver: "
+                        f"remove `{m['name']}`: it is the box this code runs in, already the implicit receiver; "
                         f"write `foo` for `{m['name']}.foo`, and `thisBox` where the box is an argument", False))
         elif BOX_CONTEXT.search(line):
             out.append((i, "box-context-lookup",
@@ -217,7 +219,7 @@ def process(path: str, root: Path, fix: bool) -> list[Finding]:
     lines = original.split("\n")
     blocks = kotlin_blocks(path, lines)
     findings = [
-        Finding(path, i + 1, rule, message, fixable)
+        Finding(path, i + 1, rule, message, fixable, blocking=fixable or rule != "redundant-renderer")
         for start, end in blocks
         for i, rule, message, fixable in check_block(lines, start, end)
     ]
@@ -269,8 +271,8 @@ def main(argv: list[str] | None = None) -> int:
 
     findings = [f for path in paths for f in process(path, args.root, args.fix)]
     remaining = [f for f in findings if not (args.fix and f.fixable)]
-    notes = [f for f in remaining if not f.fixable]
-    remaining = [f for f in remaining if f.fixable]
+    notes = [f for f in remaining if not f.blocking]
+    remaining = [f for f in remaining if f.blocking]
     for f in notes:
         print(f"{f.path}:{f.line}: note [{f.rule}] {f.message}")
     if args.fix:
@@ -280,7 +282,8 @@ def main(argv: list[str] | None = None) -> int:
     for f in remaining:
         print(f"{f.path}:{f.line}: [{f.rule}] {f.message}")
     if remaining:
-        print(f"check_box_idioms: {len(remaining)} finding(s) in {len({f.path for f in remaining})} file(s) (re-run with --fix)",
+        hint = " (re-run with --fix)" if any(f.fixable for f in remaining) else ""
+        print(f"check_box_idioms: {len(remaining)} finding(s) in {len({f.path for f in remaining})} file(s){hint}",
               file=sys.stderr)
         return 1
     scope_word = "the corpus" if scope is None else f"{len(paths)} file(s)"

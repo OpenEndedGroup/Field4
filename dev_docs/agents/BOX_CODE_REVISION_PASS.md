@@ -40,6 +40,9 @@ fragment, and see the result soon? In particular:
 - **Fragments.** Never add a `//%-` break and never remove one; the author placed them. Where one
   is already there, a comment above it says why (what has to have run before the next fragment
   compiles, or which expensive setup the part being iterated on can rerun without).
+- **No alias for the box.** `val historyOwner = thisBox` (or `= Box.context.get()!!`) goes, and
+  so does the verbosity it brings: `historyOwner.foo` is `foo`, and where the box is an argument
+  it is `thisBox`.
 - **Commented where a reader would stop.** A short comment on what a longer chunk does (what
   the `loop` advances, why a cleanup is owned by the run), and nothing on a line that already
   says it.

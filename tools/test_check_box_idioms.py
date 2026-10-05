@@ -144,13 +144,13 @@ class BoxContextTests(unittest.TestCase):
         finally:
             f.close()
 
-    def test_an_alias_is_a_note_and_left_alone(self):
+    def test_an_alias_fails_and_is_left_for_a_rewrite(self):
         code = "val historyOwner = Box.context.get()!!\nhistoryOwner.frame\n"
         f = Fixture({self.PATH: code})
         try:
             findings = idioms.process(self.PATH, f.root, fix=False)
             self.assertEqual([(x.rule, x.fixable) for x in findings], [("box-context-lookup", False)])
-            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.run("--fix"), 1)
             self.assertEqual(f.read(self.PATH), code)
         finally:
             f.close()
