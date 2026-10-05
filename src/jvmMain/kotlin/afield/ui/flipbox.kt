@@ -88,11 +88,13 @@ private fun Marker.flipboxDraw() {
         ), clickCallback = { flipboxClicked() }
     ) else {
         val start = at.col + (arg.length - arg.trimStart().length)
+        // "_cover" tells markers.js the cursor should skip this text, as it skips a marker rune.
+        val coverCls = cls + "_cover"
         RawDecoration(
-            at.line, start, at.line, start + arg.trim().length, cls, mapOf(
-                cls to ".$cls { font-size:0 !important; cursor:pointer; } " +
-                    ".$cls:after { content:'$glyph'; color:white; font-size:16px !important; } " +
-                    ".$cls:hover::after { color:#7fd; }"
+            at.line, start, at.line, start + arg.trim().length, coverCls, mapOf(
+                coverCls to ".$coverCls { font-size:0 !important; cursor:pointer; } " +
+                    ".$coverCls:after { content:'$glyph'; color:white; font-size:16px !important; } " +
+                    ".$coverCls:hover::after { color:#7fd; }"
             ), clickCallback = { flipboxClicked() }
         )
     }
