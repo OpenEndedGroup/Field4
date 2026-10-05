@@ -30,6 +30,16 @@
   --pressed-text: #020202;
   --control-radius: 10px;
   --inner-radius: 8px;
+  /* What arrayControls.css draws with, in this page's palette. */
+  --field-font: inherit;
+  --field-accent: rgb(var(--field-cyan-rgb));
+  --field-accent-text-soft: var(--fg);
+  --field-accent-muted: rgba(var(--field-cyan-rgb), 0.4);
+  --field-accent-border-faint: var(--line);
+  --field-surface: #000;
+  --field-surface-muted: #141414;
+  --field-danger-rgb: 255, 80, 80;
+  --field-warning-rgb: 235, 150, 70;
 }
 
 * {

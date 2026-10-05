@@ -63,6 +63,12 @@ private val arrayCallbacks = OwnedCallbackRegistry<(List<Double>) -> Unit>("arra
 
 private fun encodeValues(values: List<Double>): String = values.joinToString(",")
 
+/** The callback box code registered for one of these controls; the phone's path in `server/controllers.kt`. */
+internal fun getArrayCallback(controlId: String): ((List<Double>) -> Unit)? = arrayCallbacks[controlId]
+
+/** How these controls keep their value in [ControllerControl.text]. */
+internal fun encodeArrayControlValues(values: List<Double>): String = encodeValues(values)
+
 private fun decodeValues(text: String?, size: Int): List<Double>? {
     if (text.isNullOrBlank()) return null
     val values = text.split(',').map { it.trim().toDoubleOrNull() ?: return null }
@@ -118,7 +124,8 @@ private fun <T> ControlGroupBuilder.arrayControl(
     toValue: (List<Double>) -> T,
     fromValue: (T) -> List<Double>,
     html: (id: String, values: List<Double>) -> String,
-    onUpdate: (T) -> Unit
+    onUpdate: (T) -> Unit,
+    shape: (ControllerControl) -> ControllerControl = { it }
 ): ControlValueHandle<T> = addControl(
     type,
     label,
@@ -127,7 +134,7 @@ private fun <T> ControlGroupBuilder.arrayControl(
         val values = restored ?: sanitize(fromValue(initial))
         arrayCallbacks.register(id, { values: List<Double> -> onUpdate(toValue(sanitize(values))) })
         if (restored != null) onUpdate(toValue(restored))
-        html(id, values) to ControllerControl(id = id, type = type, label = label, text = encodeValues(values))
+        html(id, values) to shape(ControllerControl(id = id, type = type, label = label, text = encodeValues(values)))
     },
     read = { control -> decodeValues(control.text, size)?.let(toValue) },
     write = { old, next -> old.copy(text = encodeValues(sanitize(fromValue(next)))) }
@@ -194,7 +201,7 @@ fun ControlGroupBuilder.multiSlider(
             if (polar) polarSurface("multislider-visual", size)
             else """<svg class="array-visual multislider-visual" viewBox="0 0 $count 1" preserveAspectRatio="none" style="height:${height}px"></svg>"""
         )
-    }, onUpdate))
+    }, onUpdate) { it.copy(min = min, max = max, step = step, columns = count, polar = polar) })
 }
 
 /**
@@ -300,7 +307,7 @@ private fun <C> ControlGroupBuilder.matrixControl(
             if (polar) polarSurface("matrix-visual matrix-polar", size)
             else """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
         )
-    }, onUpdate))
+    }, onUpdate) { it.copy(rows = rows, columns = columns, states = states, polar = polar) })
 }
 
 /**
@@ -356,7 +363,7 @@ fun ControlGroupBuilder.rangeSlider(
                 else """<div class="array-visual range-visual"><div class="range-track"></div><div class="range-fill"></div><div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div><div class="range-playhead"></div></div>"""
             )
         }, onUpdate
-    ))
+    ) { it.copy(min = min, max = max, step = step, polar = polar) })
 }
 
 /**
@@ -394,7 +401,7 @@ fun ControlGroupBuilder.menu(
                 <select class="field-menu-select" id="$id">$items</select>
             </div>
         """.trimIndent()
-    }) { onUpdate(it, options[it]) }
+    }, { onUpdate(it, options[it]) }) { it.copy(options = options) }
 }
 
 /**

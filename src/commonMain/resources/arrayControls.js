@@ -1,6 +1,8 @@
 // Multislider, matrix, range slider and menu controls (afield/visualizers.kt).
 // Each container carries its whole value in data-values; a change sends it all as `array-update`.
-// Loaded after sliders.js, whose sendViaAfield and cssEscape it uses.
+// On the canvas it is loaded after sliders.js, whose sendViaAfield it uses. The phone page
+// (controllers.html) loads it without sliders.js and marks its controls data-send="false": each
+// throttled change then arrives as a `field-array-input` event for the page to send its own way.
 
 (function () {
     const SEND_INTERVAL_MS = 30;
@@ -29,18 +31,26 @@
         return Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(2);
     }
 
+    const escapeId = (id) => (typeof cssEscape === 'function' ? cssEscape(id) : CSS.escape(id));
+
     // Sending: at most one message per SEND_INTERVAL_MS during a gesture, and always the last one.
     const pending = new Map();
     function send(container, values) {
         container.dataset.values = values.join(',');
-        if (container.dataset.send === 'false') return;
         const id = container.dataset.controlId;
         const entry = pending.get(id);
         if (entry) { entry.values = values; return; }
         const flush = () => {
             const e = pending.get(id);
             pending.delete(id);
-            if (e) sendViaAfield('array-update', { controlId: id, values: e.values });
+            if (!e) return;
+            if (container.dataset.send === 'false') {
+                container.dispatchEvent(new CustomEvent('field-array-input', {
+                    bubbles: true, detail: { controlId: id, values: e.values },
+                }));
+            } else {
+                sendViaAfield('array-update', { controlId: id, values: e.values });
+            }
         };
         pending.set(id, { values });
         setTimeout(flush, SEND_INTERVAL_MS);
@@ -548,7 +558,7 @@
     window.applyFieldControlUpdate = function (control) {
         if (control && kinds.has(String(control.type))) {
             const id = String(control.id);
-            const container = document.querySelector(`.field-array[data-control-id="${cssEscape(id)}"]`);
+            const container = document.querySelector(`.field-array[data-control-id="${escapeId(id)}"]`);
             if (!container) return;
             if (control.value != null) {
                 container.dataset.playhead = String(control.value);
@@ -563,6 +573,17 @@
             return;
         }
         if (typeof previousApply === 'function') previousApply(control);
+    };
+
+    // For a page that builds these controls itself (the phone): redraw one, or move its playhead,
+    // without going through applyFieldControlUpdate.
+    window.FieldArrayControls = {
+        render,
+        setPlayhead(container, position) {
+            container.dataset.playhead = String(position);
+            renderPlayhead(container);
+        },
+        isActive: (container) => active?.container === container,
     };
 
     function start() {

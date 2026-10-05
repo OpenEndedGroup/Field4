@@ -2458,15 +2458,15 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         onUpdate: (String) -> Unit
     ) = text(label, initialValue, onUpdate)
 
+    /** A write-only, uncached driver for the `value` of control [controlId] — see `visualizers.kt` playheads. */
+    internal fun playheadHandle(controlId: String) =
+        MeterHandle(controlId, box.takeIf { it.isInsideInitialized() }?.inside?.filename)
+
     /**
      * The one door for controls defined outside this file (`visualizers.kt`): restores the cached
      * value for the next control of [type] and [label], appends the markup and record that [build]
      * makes from the stable id and that cached value, and caches the record for the next run.
      */
-    /** A write-only, uncached driver for the `value` of control [controlId] — see `visualizers.kt` playheads. */
-    internal fun playheadHandle(controlId: String) =
-        MeterHandle(controlId, box.takeIf { it.isInsideInitialized() }?.inside?.filename)
-
     internal fun <T> addControl(
         type: String,
         label: String,
