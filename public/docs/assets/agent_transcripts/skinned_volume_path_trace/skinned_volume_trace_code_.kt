@@ -6,7 +6,6 @@ import afield.four.fabricated.importTriMesh
 import afield.four.modules.CappedTwistFixture
 import afield.four.modules.GltfSkinning.SkinningMethod
 import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.fromContext
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
@@ -15,7 +14,6 @@ import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

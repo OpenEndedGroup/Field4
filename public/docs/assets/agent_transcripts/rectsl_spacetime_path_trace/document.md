@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="rectsl_spacetime_trace" index="1" -->
 
 ```edn [field-box id="rectsl_spacetime_trace" role="properties"]
-{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 210 "characters" 8823 "sha256" "f21d43ec9172be3db20f341c2c2147517855855d2954850959a0cb7d7ca5a911"}]}
+{"id" "rectsl_spacetime_trace" "index" 1 "name" "a RectSL animation, as a solid" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a RectSL animation, as a solid" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_spacetime_trace_code_.kt" "lines" 208 "characters" 8745 "sha256" "72fa35861be5c79427a3a7be9da6b527198d57ff2ba1d6f6ab2d53720e8d3cc8"}]}
 ```
 
 ```kotlin [field-property box="rectsl_spacetime_trace" name="code" path="rectsl_spacetime_trace_code_.kt"]
@@ -40,7 +40,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
@@ -55,7 +54,6 @@ import afield.stdlib.marchingCubes
 import afield.stdlib.sampledField3D
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

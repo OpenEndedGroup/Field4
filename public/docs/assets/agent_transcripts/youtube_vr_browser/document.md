@@ -44,7 +44,7 @@ start(renderer::run)
 <!-- field-box id="youtube_vr_panel" index="1" -->
 
 ```edn [field-box id="youtube_vr_panel" role="properties"]
-{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 64 "characters" 2375 "sha256" "958178c7b00a994b784f23f4660cffe35f05f857c221c7ebed67f1c5b1987ddb"}]}
+{"id" "youtube_vr_panel" "index" 1 "name" "YouTube — interactive Chromium panel" "parents" ["root" "youtube_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_vr_renderer"} "name" "YouTube — interactive Chromium panel" "_tombstone" false "frame" #afield/rect [320.0 140.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_vr_panel_code_.kt" "lines" 62 "characters" 2297 "sha256" "8d1ac4f7445e7f53269a87d76be798411db34b460ff7d5303e296c4a6a2ea8bf"}]}
 ```
 
 ```kotlin [field-property box="youtube_vr_panel" name="code" path="youtube_vr_panel_code_.kt"]
@@ -52,10 +52,8 @@ import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserVrPanel
 import afield.four.browser.PuppetBrowserWindowInput
-import afield.four.modules.fromContext
 import afield.four.targets.SideBySideStereoTarget
 
-val renderer: Renderer = fromContext()
 // prop declarations are lifted into Field's preamble before ordinary imports are applied.
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 

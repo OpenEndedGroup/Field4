@@ -1485,7 +1485,7 @@ class KotlinExecution : BoxExecution {
 
                     val lines = request.normalizedCode.lines()
                     val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                        if (afield.macros.isFragmentBreak(line)) index else null
                     } + lines.size
 
                     var at = 0
@@ -3118,8 +3118,7 @@ class KotlinExecution : BoxExecution {
         if (line !in 1..lines.size) return null
 
         val breaks = lines.mapIndexedNotNull { index, rawLine ->
-            val trimmed = rawLine.trim()
-            if (trimmed.startsWith("//%-") || trimmed.startsWith("/*%-*/")) index else null
+            if (afield.macros.isFragmentBreak(rawLine)) index else null
         } + lines.size
 
         var at = 0

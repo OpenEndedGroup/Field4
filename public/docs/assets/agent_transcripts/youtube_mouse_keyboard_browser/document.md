@@ -42,16 +42,14 @@ start(renderer::run)
 <!-- field-box id="youtube_desktop_panel" index="1" -->
 
 ```edn [field-box id="youtube_desktop_panel" role="properties"]
-{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 38 "characters" 1363 "sha256" "295d294a6ae7cc73d2a55d3ed6febdf7951b73dbe66630dba547df24b1c6022a"}]}
+{"id" "youtube_desktop_panel" "index" 1 "name" "YouTube — direct mouse + keyboard" "parents" ["root" "youtube_desktop_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "youtube_desktop_renderer"} "name" "YouTube — direct mouse + keyboard" "_tombstone" false "frame" #afield/rect [330.0 140.0 420.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "youtube_desktop_panel_code_.kt" "lines" 36 "characters" 1285 "sha256" "bc5b2c219e184fc6245d1cfa2bbed23d2dadabbe5a97a47380a2d2f6b327cff6"}]}
 ```
 
 ```kotlin [field-property box="youtube_desktop_panel" name="code" path="youtube_desktop_panel_code_.kt"]
 import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserWindowPanel
-import afield.four.modules.fromContext
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(

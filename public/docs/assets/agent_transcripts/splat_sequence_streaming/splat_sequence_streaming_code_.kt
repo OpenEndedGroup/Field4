@@ -1,4 +1,3 @@
-import afield.four.Renderer
 import afield.four.Target
 import afield.four.fabricated.GaussianSplatRenderer
 import afield.four.fabricated.GaussianSplatRenderer.Blend
@@ -29,8 +28,6 @@ val cameraUp = 1.1f
 // legitimate artistic move but not a fix for a dark scene.
 val colorGamma = 2.2f
 // -----------------------------------------------------------------------
-
-val renderer: Renderer = fromContext()
 
 if (!sequenceDir.isDirectory) {
     println("no sequence at $sequenceDir")

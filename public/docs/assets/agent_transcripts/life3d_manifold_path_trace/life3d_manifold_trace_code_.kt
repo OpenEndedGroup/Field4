@@ -3,7 +3,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
@@ -19,7 +18,6 @@ import afield.stdlib.toMesh
 import java.io.File
 import kotlin.random.Random
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

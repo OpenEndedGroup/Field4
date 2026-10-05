@@ -2089,6 +2089,38 @@ tasks.register<JavaExec>("checkAgentTranscripts") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+// Box code as published has to compile, and has to avoid the idioms agents keep copying from it
+// (dev_docs/agents/BOX_CODE_REVISION_PASS.md). Both read AFIELD_GUARD_CHANGED_PATHS_FILE, which
+// tools/check_staged_generated_artifacts.py writes, so a landing checks only what it changed; run
+// by hand with neither, they cover the whole corpus (the compile takes as long as the smoke sweep).
+tasks.register<JavaExec>("checkBoxCodeCompiles") {
+    group = "verification"
+    description = "Compiles, without evaluating, every box of the changed agent transcripts (all of them when no change list is given)."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeCompileGuard")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("formatBoxCode") {
+    group = "formatting"
+    description = "Formats box code in transcripts (or the given files) with the editor's formatter, in place; --check only reports."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<Exec>("checkBoxIdioms") {
+    group = "verification"
+    description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
+}
+
 // The *other* half of the same artifact, and the half nothing checked until 2026-08-06:
 // `public/docs/agent_transcripts.md` is the published, hand-written index of the same corpus, and it
 // had drifted to 28 entries for 52 transcripts while its opening paragraph claimed that "every one of

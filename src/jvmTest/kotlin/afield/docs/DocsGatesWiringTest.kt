@@ -150,6 +150,8 @@ class DocsGatesWiringTest {
         // against the task's own `description` in build.gradle.kts.
         val manual = mapOf(
             "certify" to "the continue-on-failure wrapper around check; running it from check would recurse",
+            "checkBoxIdioms" to "a ratchet over what a landing changed (check_staged_generated_artifacts.py passes the change list); unscoped it reports the whole corpus's debt",
+            "checkBoxCodeCompiles" to "a landing guard over the changed transcripts; unscoped it is the 20-minute transcript sweep the FIELD_TEST catalog already runs",
             "warningGates" to "forces a full recompile for a warning census; check already compiles once",
             "completionSidecarCompileForWarnings" to "an implementation detail of warningGates",
             "recordTestTreeBaseline" to "a baseline recorder the tree-write guard invokes, not an assertion",
