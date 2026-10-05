@@ -96,6 +96,7 @@ object DemoTranscriptExecSmokeTest {
 
     /** Pure-compute demos that are safe to run to completion headless. */
     internal val EXECUTE = setOf(
+        "particle_video_reader",
         // Five CPU boxes on the drawing layer's scene (the root box's `drawing` property): draw from
         // code, read it back, register a stroke reaction, and read two graphic scores by cutting
         // them. No client is needed — the scene is server-side data — so every box executes headless.
@@ -372,6 +373,9 @@ object DemoTranscriptExecSmokeTest {
         // click handlers; neither needs a Window or a Renderer. three_inspector_wall's code is also
         // that page's captured fence, which ThreeInspectorDemoDriftTest holds character for character.
         "three_inspector_wall",
+        // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
+        // drawn through lines() and controlGroup sliders. CPU only.
+        "stipple_sheet",
         "fline_hit_records",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every
@@ -395,6 +399,11 @@ object DemoTranscriptExecSmokeTest {
         // Renderer. All check PaintCanvas.isAvailable first; without `./gradlew buildPaintNative` — the branch CI
         // takes — they print where they looked and stop, rather than failing.
         "paint_canvas",
+        // Two pure-CPU boxes over the same paint canvas: one registers an agentExtension (paint tools,
+        // context, commands, the canvas as branch state) and shows the bare canvas, the other adds a
+        // scribble aiTool that paints on it. No model is called; without the paint library the Studio
+        // says so and stops, like paint_canvas.
+        "ai4_paint_studio",
         // Three CPU boxes: pen strokes with pressure drawn on the drawing layer and read back with
         // notation, then painted (brush swell from the pen) and drawn in pencil through afield.paint.
         // The paint boxes check PaintCanvas.isAvailable first, like paint_canvas.
@@ -457,6 +466,8 @@ object DemoTranscriptExecSmokeTest {
         // Imports a local source and reaches the optional Underfit/Stable Audio worker; compile the
         // complete live path here, while the authenticated GPU request remains an explicit action.
         "audio_ai_underfit_mancini",
+        // Reader is portable; the optional third box reaches prepared Torch/CUDA through a cached subprocess.
+        "particle_video",
         "streaming_diffusion", // Optional Linux/NVIDIA worker and a Vulkan renderer.
         "graphics_renderer_launch",
         "direct_lighting", // Vulkan runtime is covered separately by four.direct-lighting.smoke.

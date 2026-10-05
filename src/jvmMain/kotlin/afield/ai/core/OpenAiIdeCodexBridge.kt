@@ -18,7 +18,6 @@ import com.openai.models.responses.*
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.ceil
-import kotlin.math.min
 
 class OpenAiIdeCodexBridge(
     private val runtimeConfig: AiProviderRuntimeConfig = activeAiProviderRuntimeConfig(),
@@ -52,16 +51,24 @@ class OpenAiIdeCodexBridge(
             .summary(Reasoning.Summary.DETAILED)
             .build()
     private val statelessHistory = ConcurrentHashMap<String, MutableList<ResponseInputItem>>()
-    private val maxRateLimitRetries: Int =
-        (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries") ?: "4")
-            .toIntOrNull()
-            ?.coerceIn(0, 12)
-            ?: 4
-    private val maxRateLimitDelayMs: Long =
-        (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs") ?: "30000")
-            .toLongOrNull()
-            ?.coerceIn(250L, 300_000L)
-            ?: 30_000L
+    private val rateLimitRecovery = AiRateLimitRecovery(
+        maxRetries = (System.getenv("AFIELD_AI_RATE_LIMIT_RETRIES") ?: System.getProperty("afield.ai.rateLimitRetries"))
+            ?.toIntOrNull()?.coerceIn(0, 120) ?: 120,
+        budgetMs = (System.getenv("AFIELD_AI_RATE_LIMIT_BUDGET_MS") ?: System.getProperty("afield.ai.rateLimitBudgetMs"))
+            ?.toLongOrNull()?.coerceIn(0, 3_600_000) ?: 600_000,
+        backoffCapMs = (System.getenv("AFIELD_AI_RATE_LIMIT_MAX_DELAY_MS") ?: System.getProperty("afield.ai.rateLimitMaxDelayMs"))
+            ?.toLongOrNull()?.coerceIn(250, 300_000) ?: 30_000
+    )
+    // Field owns the retry deadline and visible waiting status; do not multiply attempts in the SDK.
+    private val responses = client.responses().withOptions { it.maxRetries(0) }
+    private val asyncResponses = client.async().responses().withOptions { it.maxRetries(0) }
+    private val supportsContextManagement = runtimeConfig.provider == "openai" && modelName.startsWith("gpt-6")
+    // Pi exposes tools through its catalogue/program surface. Keep provider-side search only
+    // for the legacy arm; making an already-promoted tool load a second time is redundant.
+    private val deferTools = supportsContextManagement && !afield.ai.core.program.ToolPrograms.enabled &&
+        (System.getenv("AFIELD_AI_DEFER_TOOLS") ?: System.getProperty("afield.ai.deferTools") ?: "true").toBoolean()
+    private val compactThreshold = (System.getenv("AFIELD_AI_COMPACT_THRESHOLD") ?: System.getProperty("afield.ai.compactThreshold"))
+        ?.toLongOrNull()?.coerceIn(16_000, 400_000) ?: 96_000L
     private fun info(message: String) = log.log("info,ai.bridge", message)
     private fun warn(message: String) = log.log("warning,ai.bridge", message)
     private fun error(message: String) = log.log("error,ai.bridge", message)
@@ -118,7 +125,7 @@ class OpenAiIdeCodexBridge(
 
         val ms = (System.nanoTime() - t0) / 1_000_000
         info("startThread(): conversationId=$conversationId localThreadId=$localThreadId (${ms}ms)")
-        return ThreadState(localThreadId, conversationId, fileKey)
+        return ThreadState(localThreadId, conversationId, fileKey, initialInstructions = instructions, initialFileText = fileText)
     }
 
     /**
@@ -141,19 +148,51 @@ class OpenAiIdeCodexBridge(
         maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((ProgressUpdate) -> Unit)? = null
+        onProgress: ((ProgressUpdate) -> Unit)? = null,
+        turnContext: TurnContext? = null
     ): SendResult {
         val t0 = System.nanoTime()
 
+        // OpenRouter's stateless Responses path keeps its own history and its support for a per-request
+        // `instructions` is unverified, so it stays on the one-string prompt.
+        val tc = turnContext?.takeIf { !runtimeConfig.isOpenRouter }
+        // Stable instructions go into the conversation once, as a developer message, and again only when
+        // they change. Measured 2026-10-02: sent instead as every request's `instructions`, they never
+        // formed a prompt-cache prefix shared between conversations — each task's first request paid ~8k
+        // uncached tokens instead of ~4k, and the cached share of single-turn eval tasks fell from 86% to
+        // 74%. As the conversation's own opening message they are the same prefix in every conversation,
+        // and a long conversation still holds one copy, not one per turn.
+        val stableInstructions = tc?.ephemeralText(Stability.STABLE)?.takeIf { it.isNotBlank() }
+            ?.let { "$it\n\n$currentToolTurnInstructions" }
+        val stableHash = stableInstructions?.let { sha256(it).take(16) }
+        val stableItem = if (stableInstructions != null && stableHash != state.stableInstructionsHash) {
+            val text = if (state.stableInstructionsHash == null) stableInstructions
+                else "Updated tool and context instructions; they replace the earlier ones.\n\n$stableInstructions"
+            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, text)
+        } else null
+        // The volatile rest (guide and tool catalogues, ~2k chars) goes in front of the user message, and so is
+        // stored with it. Not as the request's `instructions`, though that would never be stored: measured on
+        // four tasks in one build, any `instructions` parameter at all left every conversation's first request
+        // cold (~7.5k uncached tokens each), where the same text in the input let conversations share their
+        // cached prefix (~4k).
+        val volatileText = tc?.ephemeralText(Stability.VOLATILE)?.takeIf { it.isNotBlank() }
         val inputText = buildString {
-            if (fileText != null) {
+            if (fileText != null && fileText != state.lastFileText) {
                 appendLine("IDE_FILE_UPDATE:")
                 appendLine("key: ${state.fileKey}")
                 appendLine("content:")
                 appendLine(fileText)
                 appendLine()
             }
-            appendLine(userPrompt)
+            if (volatileText != null) {
+                appendLine(volatileText)
+                appendLine()
+            }
+            if (state.lastTurnHitToolRoundCap) {
+                appendLine(TOOL_ROUNDS_RESET_NOTE)
+                appendLine()
+            }
+            appendLine(tc?.durablePrompt() ?: userPrompt)
         }
 
         trace?.log(
@@ -195,7 +234,14 @@ class OpenAiIdeCodexBridge(
                     "vectorStoreIds" to vectorStoreIds,
                     "maxOutputTokens" to maxOutputTokens,
                     "maxToolRounds" to maxToolRounds,
-                    "prompt" to inputText
+                    "prompt" to inputText,
+                    "contextPlacement" to if (tc != null) "developer-once+input" else "inline",
+                    "volatileChars" to (volatileText?.length ?: 0),
+                    "stableInstructionsSent" to (stableItem != null),
+                    "stableInstructionsChars" to (stableInstructions?.length ?: 0),
+                    "instructionHash" to tc?.instructionHash(),
+                    "fragments" to tc?.fragments?.map { mapOf("source" to it.source, "retention" to it.retention.name,
+                        "stability" to it.stability.name, "chars" to it.chars) }
                 )
             )
         }.onFailure { throwable ->
@@ -215,6 +261,20 @@ class OpenAiIdeCodexBridge(
             }
         }
 
+        // Capture attribution on the caller thread; streaming callbacks run on SDK threads.
+        val requestAttribution = mapOf(
+            "provider" to runtimeConfig.provider, "endpoint" to AiRequestLedger.endpoint(runtimeConfig.baseUrl),
+            "model" to modelName, "reasoningEffort" to reasoningEffort.toString(),
+            "fileKey" to state.fileKey,
+            "documentPath" to (ctx.focus?.document ?: ctx.fieldGraph?.info?.filename),
+            "documentName" to ctx.fieldGraph?.info?.documentName,
+            "conversationId" to state.conversationId, "localThreadId" to state.localThreadId,
+            "turnId" to UUID.randomUUID().toString(), "toolIoSessionId" to toolIoSession?.id
+        )
+        fun requestLedger(phase: String) = AiRequestLedger.request(requestAttribution + mapOf(
+            "phase" to phase, "maxOutputTokens" to maxOutputTokens
+        ))
+
         var modelElapsedMs = 0L
         var toolElapsedMs = 0L
         var terminalRecorded = false
@@ -222,6 +282,7 @@ class OpenAiIdeCodexBridge(
         var activeToolStarted: Long? = null
         var inputTokens: Long? = null
         var outputTokens: Long? = null
+        var cacheReadTokens: Long? = null
         fun <T> modelRequest(phase: String, action: () -> T): T {
             activePhase = "model:$phase"
             toolIo("model_request", mapOf("phase" to phase))
@@ -234,6 +295,18 @@ class OpenAiIdeCodexBridge(
                     (result as? Response)?.usage()?.orElse(null)?.let { usage ->
                         inputTokens = (inputTokens ?: 0L) + usage.inputTokens()
                         outputTokens = (outputTokens ?: 0L) + usage.outputTokens()
+                        runCatching { usage.inputTokensDetails().cachedTokens() }.getOrNull()?.let { cached ->
+                            cacheReadTokens = (cacheReadTokens ?: 0L) + cached
+                        }
+                        toolIo("model_usage", mapOf(
+                            "phase" to phase, "responseId" to result.id(),
+                            "inputTokens" to usage.inputTokens(),
+                            "cachedInputTokens" to usage.inputTokensDetails().cachedTokens(),
+                            "cacheWriteTokens" to usage.inputTokensDetails()._additionalProperties()["cache_write_tokens"]?.convert(Long::class.javaObjectType),
+                            "outputTokens" to usage.outputTokens(),
+                            "reasoningTokens" to usage.outputTokensDetails().reasoningTokens(),
+                            "compactionItems" to result.output().count { it.isCompaction() }
+                        ))
                     }
                 }
             } finally {
@@ -243,16 +316,22 @@ class OpenAiIdeCodexBridge(
             }
         }
 
+        val callCtx = ctx.copy(
+            reportProgress = onProgress ?: ctx.reportProgress,
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
+        )
         try {
-        val promptItems = buildPromptItems(inputText, imageDataUrls)
+        val promptItems = listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
+            .toolChoice(ToolChoiceOptions.AUTO)
 
         if (runtimeConfig.isOpenRouter) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
-        } else if (imageDataUrls.isEmpty()) {
+        } else if (imageDataUrls.isEmpty() && stableItem == null) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
@@ -266,17 +345,20 @@ class OpenAiIdeCodexBridge(
         }
         paramsBuilder.text(textConfig)
         addReasoningIfSupported(paramsBuilder)
-        tools.addAllTo(paramsBuilder, ctx)
+        tools.addAllTo(paramsBuilder, callCtx, deferLoading = deferTools, loadedTools = state.loadedTools)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
             paramsBuilder.addFileSearchTool(vectorStoreIds)
         }
 
         info("running prompt <<spinner>>")
-        var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta) }
+        var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
+        if (stableItem != null) state.stableInstructionsHash = stableHash
+        state.lastTurnHitToolRoundCap = false
         if (onTextDelta != null) {
             info("")
         }
         state.previousResponseId = response.id()
+        if (fileText != null) state.lastFileText = fileText
         appendStatelessHistory(state, promptItems + inputItemsFromOutput(response))
         info("initial response id=${response.id()} outputItems=${response.output().size} <<spinner>>")
         toolIo(
@@ -296,6 +378,7 @@ class OpenAiIdeCodexBridge(
         val toolTranscript = mutableListOf<ToolTranscriptEntry>()
 
         fun logOutputShape(resp: Response) {
+            rememberDiscoveredTools(state, resp) { event, fields -> toolIo(event, fields) }
             val out = resp.output()
             val msgCount = out.count { it.isMessage() }
             val fnCount = out.count { it.isFunctionCall() }
@@ -333,6 +416,7 @@ class OpenAiIdeCodexBridge(
             info("toolCalls=${calls.size} (round ${rounds + 1}/$maxToolRounds)")
             val toolOutputs = mutableListOf<ResponseInputItem>()
             for (call in calls) {
+                log.toolActivity(call.name())
                 val argumentSummary = summarizeToolArguments(call.name(), call.arguments())
                 info("tool: name=${call.name()} callId=${call.callId()} $argumentSummary")
                 toolIo(
@@ -360,7 +444,7 @@ class OpenAiIdeCodexBridge(
                 val toolStarted = System.nanoTime()
                 activeToolStarted = toolStarted
                 val toolResult: Any = try {
-                    tools.execute(ctx, call)
+                    tools.execute(callCtx, call)
                 } catch (e: Exception) {
                     if (isAiTurnCancellation(e)) throw e
                     error("tool: ERROR name=${call.name()} msg=${e.message}")
@@ -390,13 +474,16 @@ class OpenAiIdeCodexBridge(
                 val toolFailed = runCatching { mapper.readTree(toolResultJson).let {
                     it["success"]?.asBoolean() == false || it["error"]?.asBoolean() == true
                 } }.getOrDefault(false)
+                if (toolFailed) log.userNotice("An action could not finish. Details are in the chat and Tool pool.", attention = true)
                 toolTranscript += ToolTranscriptEntry(
                     name = call.name(),
                     callId = call.callId(),
                     argumentsJson = call.arguments(),
                     resultSummary = toolResultSummary,
-                    resultJson = toolResultJson
+                    resultJson = toolResultJson,
+                    elapsedMs = toolMs
                 )
+                toolTranscript += afield.ai.core.program.nestedTranscriptEntries(call.callId(), toolResult)
 
                 trace?.log(
                     "TOOL_OUTPUT",
@@ -423,10 +510,12 @@ class OpenAiIdeCodexBridge(
                             ((toolResult as? CarriesToolImages)?.toolImages?.map { it.caption } ?: emptyList())
                     )
                 )
+                afield.ai.core.program.nestedToolIoEvents(rounds + 1, call.callId(), toolResult)
+                    .forEach { (event, fields) -> toolIo(event, fields) }
                 onProgress?.invoke(
                     ProgressUpdate(
                         title = "${call.name()} ${if (toolFailed) "failed" else "finished"} (${toolMs} ms)",
-                        body = if (toolFailed) toolResultSummary else "",
+                        body = afield.ai.core.program.nestedTraceMarkdown(toolResult) ?: if (toolFailed) toolResultSummary else "",
                         phase = "tool_result"
                     )
                 )
@@ -502,11 +591,19 @@ class OpenAiIdeCodexBridge(
                     toolOutputs += ResponseInputItem.ofMessage(builder.build())
                 }
             }
+            // What the person wrote while this round ran (AiTurnInbox), after every call's output.
+            callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { taken ->
+                val text = AiTurnInbox.modelText(taken)
+                toolOutputs += buildMessageItem(ResponseInputItem.Message.Role.USER, text, taken.flatMap { it.images })
+                info("user interjection: ${taken.size} message(s), ${text.length} chars")
+                toolIo("user_interjection", mapOf("round" to (rounds + 1), "messages" to taken.size, "text" to text))
+            }
 
             info("creating response (follow-up) <<spinner>>")
             val followupBuilder = ResponseCreateParams.builder()
                 .model(chatModel)
                 .maxOutputTokens(maxOutputTokens)
+                .toolChoice(ToolChoiceOptions.AUTO)
             if (runtimeConfig.isOpenRouter) {
                 followupBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + toolOutputs))
             } else {
@@ -515,12 +612,12 @@ class OpenAiIdeCodexBridge(
             }
             followupBuilder.text(textConfig)
             addReasoningIfSupported(followupBuilder)
-            tools.addAllTo(followupBuilder, ctx)
+            tools.addAllTo(followupBuilder, callCtx, deferLoading = deferTools, loadedTools = state.loadedTools)
             if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) {
                 followupBuilder.addFileSearchTool(vectorStoreIds)
             }
 
-            response = modelRequest("followup") { createResponse(followupBuilder.build(), onTextDelta) }
+            response = modelRequest("followup") { createResponse(followupBuilder.build(), onTextDelta, onProgress, requestLedger("followup")) }
             if (onTextDelta != null) {
                 info("")
             }
@@ -567,8 +664,13 @@ class OpenAiIdeCodexBridge(
                 previousResponse = response,
                 pendingCalls = pendingCalls,
                 maxOutputTokens = maxOutputTokens,
-                onTextDelta = onTextDelta
+                onTextDelta = onTextDelta,
+                onProgress = onProgress,
+                ctx = callCtx,
+                vectorStoreIds = vectorStoreIds,
+                ledger = requestLedger("forced_final")
             ) }
+            state.lastTurnHitToolRoundCap = true
             if (onTextDelta != null) {
                 info("")
             }
@@ -647,7 +749,10 @@ class OpenAiIdeCodexBridge(
             rounds = rounds,
             hitToolRoundCap = hitToolRoundCap,
             inputTokens = inputTokens,
-            outputTokens = outputTokens
+            outputTokens = outputTokens,
+            cacheReadTokens = cacheReadTokens,
+            contextReport = (turnContext?.report(if (tc != null) "developer-once+input" else "inline"))
+                ?.copy(inputTokens = inputTokens, cacheReadTokens = cacheReadTokens)?.withTools(tools, callCtx)
         )
         } catch (failure: Throwable) {
             val cancelled = isAiTurnCancellation(failure)
@@ -685,7 +790,16 @@ class OpenAiIdeCodexBridge(
         val hitToolRoundCap: Boolean = false,
         /** Summed over every model request in the turn; null when the provider did not report usage. */
         val inputTokens: Long? = null,
-        val outputTokens: Long? = null
+        val outputTokens: Long? = null,
+        /**
+         * Input tokens served from the provider's prompt cache, summed over the turn (a subset of
+         * [inputTokens] on OpenAI; reported separately by Anthropic). Null when the provider did not say.
+         */
+        val cacheReadTokens: Long? = null,
+        /** Input tokens written to the prompt cache this turn (Anthropic only); null when not reported. */
+        val cacheWriteTokens: Long? = null,
+        /** What the turn sent besides the conversation, and where: see [TurnContext]. Null for a one-string turn. */
+        val contextReport: ContextReport? = null
     )
 
     data class ToolTranscriptEntry(
@@ -693,7 +807,14 @@ class OpenAiIdeCodexBridge(
         val callId: String,
         val argumentsJson: String,
         val resultSummary: String,
-        val resultJson: String
+        val resultJson: String,
+        /** Wall time the handler took; -1 when the bridge did not measure it. */
+        val elapsedMs: Long = -1,
+        /**
+         * The call this one ran inside, or "" for a call the model made itself. A tool program's
+         * nested calls carry the program call's id here, and their own id is `<parent>/<n>`.
+         */
+        val parentCallId: String = ""
     )
 
     data class ProgressUpdate(
@@ -709,8 +830,48 @@ class OpenAiIdeCodexBridge(
         val fileKey: String,
         val initialInstructions: String = "",
         val initialFileText: String = "",
-        var previousResponseId: String? = null
-    )
+        var previousResponseId: String? = null,
+        var lastFileText: String? = initialFileText,
+        val loadedTools: MutableSet<String> = linkedSetOf()
+    ) {
+        /**
+         * Deferred tools this conversation has loaded (DescribeToolsRequest). Thread-local on purpose: a new
+         * provider thread — a fresh conversation, or a rewound branch — starts with only the DIRECT tools.
+         */
+        val promotedTools: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        /** The hash of the stable instructions this conversation already holds as a developer message. */
+        @Volatile
+        var stableInstructionsHash: String? = null
+
+        /**
+         * The last turn ended at its tool-round cap. Its forced final answer ("I reached the execution
+         * limit") stays in the model's history, and on 2026-10-04 the next turn answered "tool execution
+         * is still blocked by the session's tool-budget limit" with no calls, though its tools were
+         * offered. The next turn's input says the limit has reset; see [send].
+         */
+        @Volatile
+        var lastTurnHitToolRoundCap: Boolean = false
+    }
+
+    // Hosted discovery state can be lost to compaction while repeat searches return no tools.
+    // Keep the already-discovered subset callable in later requests. Definitions still come
+    // from the current registry, so removed tools and changed document scope stay authoritative.
+    private fun rememberDiscoveredTools(state: ThreadState, response: Response, record: (String, Map<String, Any?>) -> Unit) {
+        response.output().forEach { item ->
+            val raw = item._json().orElse(null)?.asObject()?.orElse(null) ?: return@forEach
+            when (raw["type"]?.asString()?.orElse(null)) {
+                "tool_search_call" -> record("tool_search_call", mapOf("responseId" to response.id(), "arguments" to raw["arguments"]?.toString()))
+                "tool_search_output" -> {
+                    val names = raw["tools"]?.asArray()?.orElse(null).orEmpty().mapNotNull {
+                        it.asObject().orElse(null)?.get("name")?.asString()?.orElse(null)
+                    }
+                    state.loadedTools.addAll(names)
+                    record("tool_search_output", mapOf("responseId" to response.id(), "loadedTools" to names, "knownTools" to state.loadedTools.sorted()))
+                }
+            }
+        }
+    }
 
     /* ------------------------- Conversations helpers ------------------------ */
 
@@ -734,92 +895,102 @@ class OpenAiIdeCodexBridge(
         client.conversations().items().create(conversationId, params)
     }
 
-    private fun createResponse(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response =
-        withRateLimitRetry("response-create") {
-            createResponseOnce(params, onTextDelta).also { response ->
-                info("response provider=${runtimeConfig.provider} requestedModel=$modelName " +
-                    "responseModel=${response.model()} responseId=${response.id()} status=${response.status().orElse(null)}")
+    private fun createResponse(
+        params: ResponseCreateParams,
+        onTextDelta: ((String) -> Unit)?,
+        onProgress: ((ProgressUpdate) -> Unit)?,
+        ledger: AiRequestLedger.Request
+    ): Response {
+        val prepared = params.toBuilder().apply {
+            if (supportsContextManagement) contextManagement(listOf(
+                ResponseCreateParams.ContextManagement.builder().type("compaction").compactThreshold(compactThreshold).build()
+            ))
+        }.build()
+        var emittedText = false
+        var lastRetry = 0
+        return rateLimitRecovery.run(
+            onWait = { wait ->
+                if (lastRetry != wait.retry) {
+                    lastRetry = wait.retry
+                    ledger.retry(wait.retry, wait.remainingMs)
+                    log.userNotice("The AI service is busy. Retrying automatically in ${(wait.remainingMs + 999) / 1000}s; completed work is kept.", attention = true)
+                    warn("response-create temporarily limited; retry ${wait.retry} in ${wait.remainingMs}ms")
+                }
+                onProgress?.invoke(ProgressUpdate(
+                    "Provider busy · retrying in ${(wait.remainingMs + 999) / 1000}s",
+                    "Waiting automatically. Completed tool work is retained.", phase = "model"
+                ))
+            },
+            onRetry = { onProgress?.invoke(ProgressUpdate("Waiting for model", phase = "model")) }
+        ) {
+            val attempt = ledger.attempt()
+            try {
+                createResponseOnce(prepared, onTextDelta?.let { sink -> { chunk -> emittedText = true; sink(chunk) } }, attempt).also { response ->
+                    attempt.response(response)
+                    validateModelResponse(response)
+                    attempt.finish()
+                    info("response provider=${runtimeConfig.provider} requestedModel=$modelName " +
+                        "responseModel=${response.model()} responseId=${response.id()} status=${response.status().orElse(null)}")
+                }
+            } catch (failure: Exception) {
+                attempt.finish(failure)
+                if (emittedText && !isAiTurnCancellation(failure)) {
+                    // A provider can send a temporary rate limit inside an already-started SSE
+                    // response. Only this unfinished model request is retried: tool dispatch and
+                    // previousResponseId advancement happen after createResponse returns. Discard
+                    // its accumulator, including any unfinished function calls, but retain the
+                    // visible partial answer with an explicit boundary before the next attempt.
+                    if (onProgress != null && temporaryRateLimitDelay(failure) != null) {
+                        onProgress(ProgressUpdate(
+                            "Answer interrupted by a temporary provider limit",
+                            "Partial text is retained. Retrying the unfinished model request; completed tool work will not run again.",
+                            phase = "interrupted"
+                        ))
+                        emittedText = false
+                    } else throw PartialModelResponseException(failure)
+                }
+                throw failure
             }
         }
+    }
 
-    private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?): Response {
-        if (onTextDelta == null) {
-            return try {
-                client.responses().create(params)
-            } catch (t: Throwable) {
-                traceResponseError("create", t)
-                throw t
-            }
-        }
-
-        return try {
-            val acc = ResponseAccumulator.create()
-            client.async().responses().createStreaming(params).subscribe({ event ->
+    private fun createResponseOnce(params: ResponseCreateParams, onTextDelta: ((String) -> Unit)?, attempt: AiRequestLedger.Attempt): Response {
+        if (onTextDelta == null) return responses.create(params)
+        val acc = ResponseAccumulator.create()
+        val stream = asyncResponses.createStreaming(params)
+        try {
+            stream.subscribe({ event ->
+                // The accumulator only yields completed responses. Error/failed/incomplete
+                // events need explicit handling or their cause becomes "Completed response
+                // is not yet received", hiding both rate-limit recovery and useful feedback.
+                event.error().ifPresent { throw ModelResponseFailure(it.code().orElse("error"), it.message()) }
+                event.failed().ifPresent { attempt.response(it.response()); validateModelResponse(it.response()) }
+                event.incomplete().ifPresent { attempt.response(it.response()); validateModelResponse(it.response()) }
                 acc.accumulate(event)
                 event.outputTextDelta().ifPresent { delta ->
                     val chunk = delta.delta()
                     if (chunk.isNotEmpty()) onTextDelta(chunk)
                 }
-            }).onCompleteFuture().join()
+            }).onCompleteFuture().get()
+            return acc.response()
+        } catch (failure: Exception) {
+            traceResponseError("streaming", failure)
+            throw failure
+        } finally {
+            stream.close()
+        }
+    }
 
-            acc.response()
-        } catch (t: Throwable) {
-            if (isAiTurnCancellation(t)) throw t
-            if (rateLimitRetryDelayMs(t) != null) {
-                traceResponseError("streaming", t)
-                throw t
-            }
-            val rendered = renderThrowableChain(t)
-            warn(
-                "streaming response failed; falling back to non-streaming create. " +
-                    "cause=${truncate(rendered, 600)}"
+    private fun validateModelResponse(response: Response) {
+        response.error().ifPresent { throw ModelResponseFailure(it.code().toString(), it.message()) }
+        when (response.status().orElse(null)?.toString()) {
+            "incomplete" -> throw ModelResponseFailure(
+                response.incompleteDetails().orElse(null)?.reason()?.orElse(null)?.toString() ?: "incomplete",
+                "The provider ended before completing the answer. No function calls from this response were executed."
             )
-            try {
-                client.responses().create(params)
-            } catch (fallback: Throwable) {
-                traceResponseError("streaming-fallback", fallback)
-                throw fallback
-            }
+            "failed" -> throw ModelResponseFailure("failed", "The provider returned a failed response without error details.")
         }
     }
-
-    private fun withRateLimitRetry(stage: String, block: () -> Response): Response {
-        var attempt = 0
-        var lastError: Throwable? = null
-        while (attempt <= maxRateLimitRetries) {
-            try {
-                return block()
-            } catch (t: Throwable) {
-                lastError = t
-                val delayMs = rateLimitRetryDelayMs(t)
-                if (delayMs == null || attempt >= maxRateLimitRetries) {
-                    if (delayMs != null) {
-                        warn(
-                            "$stage rate-limit retry budget exhausted after ${attempt + 1} attempt(s); " +
-                                "last suggested delay=${delayMs}ms"
-                        )
-                    }
-                    throw t
-                }
-                val boundedDelay = min(delayMs, maxRateLimitDelayMs)
-                warn(
-                    "$stage rate limited; retrying in ${boundedDelay}ms " +
-                        "(attempt ${attempt + 2}/${maxRateLimitRetries + 1}, suggested*1.5=${delayMs}ms)"
-                )
-                try {
-                    Thread.sleep(boundedDelay)
-                } catch (_: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw t
-                }
-                attempt++
-            }
-        }
-        throw lastError ?: IllegalStateException("$stage failed without an exception")
-    }
-
-    private fun rateLimitRetryDelayMs(t: Throwable): Long? =
-        retryDelayMsForRateLimitMessage(renderThrowableChain(t), multiplier = 1.5)
 
     private fun traceResponseError(stage: String, error: Throwable) {
         val rendered = renderThrowableChain(error)
@@ -839,7 +1010,11 @@ class OpenAiIdeCodexBridge(
         previousResponse: Response,
         pendingCalls: List<ResponseFunctionToolCall>,
         maxOutputTokens: Long,
-        onTextDelta: ((String) -> Unit)?
+        onTextDelta: ((String) -> Unit)?,
+        onProgress: ((ProgressUpdate) -> Unit)?,
+        ctx: ToolExecutionContext,
+        vectorStoreIds: List<String>,
+        ledger: AiRequestLedger.Request
     ): Response {
         val inputItems = mutableListOf<ResponseInputItem>()
         pendingCalls.forEach { call ->
@@ -858,18 +1033,14 @@ class OpenAiIdeCodexBridge(
             inputItems += ResponseInputItem.ofFunctionCallOutput(outputItem)
         }
 
-        val stopUsingTools = ResponseInputItem.Message.builder()
-            .role(ResponseInputItem.Message.Role.DEVELOPER)
-            .addInputTextContent(
-                "Stop using tools for this turn. Answer the user directly in text now using the context " +
-                    "already gathered. If you remain uncertain, say so briefly instead of calling more tools."
-            )
-            .build()
-        inputItems += ResponseInputItem.ofMessage(stopUsingTools)
-
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
+            // Request-scoped instructions are not inherited by previous_response_id.
+            // A developer input message here persisted the stop into subsequent user turns.
+            .instructions("The tool budget for this turn has been reached. For this response only, " +
+                "summarize the verified result and unfinished work without calling tools. " +
+                "The aborted calls did not execute. A later user turn has its own tool budget.")
         if (runtimeConfig.isOpenRouter) {
             builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
         } else {
@@ -879,8 +1050,26 @@ class OpenAiIdeCodexBridge(
         builder.text(textConfig)
         addReasoningIfSupported(builder)
         info("creating response (forced-final) <<spinner>>")
-        return createResponse(builder.build(), onTextDelta)
+        tools.addAllTo(builder, ctx, deferLoading = deferTools, loadedTools = state.loadedTools)
+        if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) builder.addFileSearchTool(vectorStoreIds)
+        builder.toolChoice(ToolChoiceOptions.NONE)
+        val response = createResponse(builder.build(), onTextDelta, onProgress, ledger)
+        // Stateless continuations need the aborted-call outputs as well as the final text.
+        appendStatelessHistory(state, inputItems + inputItemsFromOutput(response))
+        return response
     }
+
+    // Repairs older response chains once in the stable developer prefix.
+    // Ordinary requests keep the measured shared-cache layout; the forced final remains request-scoped.
+    private val currentToolTurnInstructions =
+        "Tools available on this request may be used when needed, within the current permissions " +
+            "and restrictions. A tool budget or temporary tool-stop instruction from an earlier " +
+            "user turn does not disable tools for the current user turn. This grants no additional authorization."
+
+    // Said once, in the input of the turn after a capped one, where the stable prefix above has not helped.
+    private val TOOL_ROUNDS_RESET_NOTE =
+        "The previous turn stopped at its tool-round limit. That limit has reset: this turn has its own full " +
+            "tool budget, so use tools as the request needs."
 
     private fun buildMessageItem(
         role: ResponseInputItem.Message.Role,
@@ -1053,43 +1242,10 @@ class OpenAiIdeCodexBridge(
         }
 
     private fun emitResponseProgress(response: Response, onProgress: ((ProgressUpdate) -> Unit)?) {
-        if (onProgress == null) return
-        onProgress(ProgressUpdate("", modelIdentity = responseIdentity(response)))
-        val summaries = extractReasoningSummaries(response)
-        val calls = response.output()
-            .filter { it.isFunctionCall() }
-            .mapNotNull { it.functionCall().orElse(null) }
-        if (summaries.isEmpty()) return
-
-        val firstSummary = summaries.firstOrNull().orEmpty()
-        val title = progressTitle(firstSummary).ifBlank {
-            if (calls.isNotEmpty()) {
-                "Planning tool use"
-            } else {
-                "Thinking"
-            }
-        }
-        val body = buildString {
-            if (summaries.isNotEmpty()) {
-                append(summaries.joinToString("\n\n"))
-            }
-            if (calls.isNotEmpty()) {
-                if (isNotEmpty()) append("\n\n")
-                append("Next tool")
-                if (calls.size > 1) append("s")
-                append(": ")
-                append(calls.joinToString(", ") { "`${it.name()}`" })
-            }
-        }
-        onProgress(ProgressUpdate(title = title, body = body))
-    }
-
-    private fun progressTitle(summary: String): String {
-        val first = summary.lineSequence().firstOrNull { it.isNotBlank() } ?: return ""
-        return first
-            .replace(Regex("[*_#`]"), "")
-            .trim()
-            .take(80)
+        // Reasoning summaries describe model deliberation, not completed work. The chat
+        // already streams its user-facing commentary; tools and build waits report actual
+        // execution progress. Do not insert generated summaries as execution milestones.
+        onProgress?.invoke(ProgressUpdate("", modelIdentity = responseIdentity(response)))
     }
 
     private fun truncate(text: String, max: Int): String =
@@ -1146,6 +1302,7 @@ class OpenAiIdeCodexBridge(
         }
         is AttachmentResponse ->
             "file=${toolResult.file} language=${toolResult.language} chars=${toolResult.content.length} " +
+                "offset=${toolResult.offset} total=${toolResult.totalChars} excerpt=${toolResult.isExcerpt} next=${toolResult.nextOffset} " +
                 "guides=${toolResult.relatedGuides.size} examples=${toolResult.relatedExamples.size}"
         is ListContentsResult -> {
             val totalChars = toolResult.contents.sumOf { it.content.length }
@@ -1186,7 +1343,7 @@ class OpenAiIdeCodexBridge(
 
     companion object {
         internal fun retryDelayMsForRateLimitMessage(message: String, multiplier: Double = 1.5): Long? {
-            if (!message.contains("429") && !message.contains("rate limit", ignoreCase = true)) return null
+            if (!Regex("(?i)rate[ _-]?limit|\\b429\\b|slow_down|server_is_overloaded").containsMatchIn(message)) return null
             val hintedMs = retryHintMs(message) ?: return null
             return ceil(hintedMs * multiplier).toLong().coerceAtLeast(1L)
         }

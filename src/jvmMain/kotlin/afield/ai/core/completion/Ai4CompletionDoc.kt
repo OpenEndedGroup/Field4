@@ -33,11 +33,16 @@ private const val COMPLETION_DOC_PROMPT_VERSION = "completion-doc-param-notes-v2
 /**
  * The generated-completion-doc cache's file name, spelled once.
  *
- * [Ai4CompletionDoc] writes it, `Ai4CompletionDocPolishCli` polishes it, and
- * `CompletionDocPolishMonitor` reports on it. All three used to spell it themselves, which is how
- * `~/.afield/filestore` came to be spelled four times before [FilestoreDir] existed.
+ * [Ai4CompletionDoc] writes it, `afield.CompletionDocDrafts` counts it for the welcome page, and
+ * `tools/docs_notes.py import-drafts` turns its records into notes for the docs revision pass.
  */
 const val GENERATED_COMPLETION_DOCS_FILE = "generated_completion_docs.json"
+
+/**
+ * Keys of drafts the docs revision pass looked at and chose not to use, written beside the cache by
+ * `tools/docs_notes.py` (`DRAFT_DECLINED_FILE`). Completion neither shows nor regenerates them.
+ */
+const val GENERATED_COMPLETION_DOCS_DECLINED_FILE = "generated_completion_docs.declined.json"
 
 /**
  * How many distinct indexed source files [Ai4CompletionDoc.dropStaleGeneratedDocs] probes before it
@@ -105,12 +110,17 @@ object Ai4CompletionDoc {
 
         synchronized(generationLock) {
             sweepStaleOnce()
+            if (cache.isDeclined(definition.name, definition.filePath, definition.line, definitionSnippet.sourceHash)) return ""
             cache.lookup(
                 sourceName = definition.name,
                 sourcePath = definition.filePath,
                 sourceLine = definition.line,
                 sourceHash = definitionSnippet.sourceHash
             )?.let { return generatedDocumentationMarkdown(it.documentation, cached = true) }
+
+            // Library declarations (jar sources) are not ours to document: polish cannot edit them,
+            // so a generated doc for one only costs tokens and then sits in the cache forever.
+            if (!isInOurTree(definition.filePath)) return ""
 
             val generated = generateDoc(
                 fileKey = fileKey,
@@ -151,7 +161,8 @@ object Ai4CompletionDoc {
      * [COMPLETION_DOC_PROMPT_VERSION] left its predecessor behind for good.
      *
      * Unreachable records are not harmless, because the cache has a second consumer that is not keyed:
-     * `polishCompletionDocs` reads the whole file and integrates the prose into real KDoc. A real run on
+     * the docs pass (`tools/docs_notes.py import-drafts`, formerly `polishCompletionDocs`) reads the whole
+     * file and integrates the prose into real KDoc. A real run on
      * 2026-09-04 was handed two records pointing at `afield/four/synth/GraphQuery.kt` — moved to
      * `afield/graphquery/` long before — and a `generateSmoothIsoContours` record describing
      * `pointWeights`/`edgeWeights` parameters the declaration no longer has. It was being asked to
@@ -303,6 +314,14 @@ object Ai4CompletionDoc {
             .filterNot { it.startsWith("jar:") }
             .mapNotNull(::sourceRootOf)
             .toSet()
+
+    /**
+     * Whether [sourcePath] — as the source index records it — is a declaration in this repository's
+     * tree (any `src/` source set, `src/personal` included) rather than a dependency's sources jar.
+     * The index stores our files repo-relative and library sources as `jar:` URLs.
+     */
+    fun isInOurTree(sourcePath: String): Boolean =
+        sourcePath.startsWith("src/") && !sourcePath.contains("..")
 
     /** The first two path segments of [path] — `src/jvmMain` for `src/jvmMain/kotlin/afield/Boxes.kt`. */
     private fun sourceRootOf(path: String): String? {
@@ -716,6 +735,24 @@ internal class GeneratedCompletionDocCache(
 
     @Volatile
     private var db = loadOrCreate()
+
+    private val declinedPath: Path = dbPath.resolveSibling(GENERATED_COMPLETION_DOCS_DECLINED_FILE)
+
+    /** The declined keys and the modification time they were read at; re-read when the file changes. */
+    @Volatile
+    private var declined: Pair<Long, Set<String>> = -1L to emptySet()
+
+    /** Whether the docs pass declined the draft this declaration would be keyed by. */
+    fun isDeclined(sourceName: String, sourcePath: String, sourceLine: Int, sourceHash: String): Boolean {
+        val stamp = runCatching { Files.getLastModifiedTime(declinedPath).toMillis() }.getOrDefault(0L)
+        if (stamp != declined.first) {
+            val keys = if (stamp == 0L) emptySet() else runCatching {
+                mapper.readTree(declinedPath.toFile()).path("keys").map { it.asText() }.toSet()
+            }.getOrDefault(emptySet())
+            declined = stamp to keys
+        }
+        return declined.second.isNotEmpty() && cacheKey(sourceName, sourcePath, sourceLine, sourceHash) in declined.second
+    }
 
     fun lookup(
         sourceName: String,

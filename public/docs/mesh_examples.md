@@ -1,8 +1,5 @@
 # Meshes and 3D geometry
 
-*Every public declaration used below is listed, with its KDoc, in the codebase reference:
-[`mesh.kt`](reference/index.md). Start from [what's already in the box](reference/index.md).*
-
 Drawing in three dimensions is one thing. An [`FLine`](fline_examples.md) has a `z`, the renderer
 takes triangles, the [ray tracer](ray_tracing_examples.md) intersects analytic solids. **Computing
 with a surface** is another. Ask a mesh whether it is closed, subdivide it, smooth it without
@@ -15,6 +12,7 @@ subdivides it (Loop), smooths it (Laplacian and Taubin), decimates it (QEM), wel
 curvature, raycasts it through a BVH, reads and writes OBJ and STL, and takes a convex hull. All of
 it is pure Kotlin with no external dependency and no GPU, and all of it runs headless in a box. It is
 the 3D counterpart to the raster [imaging family](imaging_examples.md) and is built the same way.
+Every public declaration is listed, with its KDoc, in the [codebase reference](reference/graphics.md#mesh-kt).
 
 Two things about it shape the rest of this page. A `TriMesh` is a **value you can look at**. It
 implements `ToHTML`, so ending a box on one draws it, with the numbers that decide whether it is
@@ -65,8 +63,8 @@ a rim.
 
 ## Modelling with a field
 
-The centrepiece of the family is the SDF path, because it is the one that makes a shape feel like an
-**expression you can edit** rather than a thing you assembled. A `ScalarField3D` is a type alias for
+With a signed distance field (SDF) a shape is an expression you edit rather than a thing you
+assemble. A `ScalarField3D` is a type alias for
 `(Vec3) -> Float` (negative inside, positive outside), and every combinator is one line.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/modelling.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
@@ -118,9 +116,8 @@ showMeshGrid(
 
 ![Six marched solids in a 2x3 grid — a sharp union, the same union filleted, that solid drilled, a twisted box, a closed shell and the shell cut open — each panel headed with the expression that made it, and each drawn as a shaded surface with a depth-tested wireframe over it](assets/mesh_examples/modelling.png)
 
-Read the numbers rather than the shapes and the whole story is there. They are what the box
-`println`s when you run it, quoted here because a `showMeshGrid` panel is labelled rather than
-captioned. The sharp union encloses **2.2135** and the filleted one **2.2690**, because a fillet only
+The box also prints each solid's volume and topology, and those numbers say more than the
+pictures. The sharp union encloses **2.2135** and the filleted one **2.2690**, because a fillet only
 ever *adds* material. A test can assert that ordering; your eye cannot. Drilling through drops it to
 **1.8805** and takes χ from 2 to **0**, genus 0 to **1**: the drill added a handle. The closed shell
 reports **χ = 4**, which is exactly right, if odd at first: a shell is *two* nested closed surfaces,
@@ -148,8 +145,7 @@ The primitives are `sdfSphere`, `sdfBox`, `sdfRoundBox`, `sdfTorus`, `sdfPlane`,
 
 ## Looking at what you got
 
-This is the part a mesh library usually leaves to your eyes, and eyes are bad at it. A duplicated
-seam, a missing cap, an unwelded weld and a leaked marching-cubes surface all still render
+A broken mesh often looks fine. A duplicated edge, a missing cap, an unwelded weld and a leaked marching-cubes surface all still render
 plausibly. One integer catches all four: the **Euler characteristic** `V - E + F`, which is exactly 2
 for any closed genus-0 solid and `2 - 2g` for genus *g*.
 
@@ -158,8 +154,8 @@ for any closed genus-0 solid and `2 - 2g` for genus *g*.
 `surfaceArea()`, `signedVolume()`, and `topology()` gives you the object they all delegate to.
 
 The other half of "looking at what you got" is checking the geometry against an answer you already
-know. A marched sphere is the best test case there is, because the volume it should converge to is
-4/3 π:
+know. This box marches a sphere, whose volume should converge to 4/3 π, at two resolutions, beside
+a drilled solid and a gyroid:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/mesh_examples/convergence.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -217,14 +213,14 @@ runs out of the sampling box rather than closing inside it. `summary()` reports 
 [Field's 3D output](three_output.md#one-scene-two-kinds-of-thing) draws those twenty loops over the
 surface so you can see where they are.
 
-**Why the surface is closed at all** takes a paragraph, because plain marching cubes leaks and the
-leak is invisible until you count. Two cubes sharing a face can each pick a different
-triangulation for the four crossings on that face; the two disagree and the surface tears there.
-`marchingCubes` resolves that face with the **asymptotic decider**, which is a pure function of the
-face's own four corner values, so the two cubes always agree. It also nudges a crossing off a grid
-corner whose sample sits *exactly* on the iso level, a case that is not exotic at all (a unit sphere
-on a 0.2 grid has corners at `(1,0,0)` and `(0.6,0.8,0)` precisely on it) and that otherwise
-collapses every crossing out of that corner onto the corner itself.
+??? aside "Why the marched surface is closed"
+    Plain marching cubes can leave holes. Two cubes sharing a face can each pick a different
+    triangulation for the four crossings on that face; the two disagree and the surface tears there.
+    `marchingCubes` resolves that face with the **asymptotic decider**, which is a pure function of the
+    face's own four corner values, so the two cubes always agree. It also nudges a crossing off a grid
+    corner whose sample sits *exactly* on the iso level, a case that is common (a unit sphere
+    on a 0.2 grid has corners at `(1,0,0)` and `(0.6,0.8,0)` precisely on it) and that otherwise
+    collapses every crossing out of that corner onto the corner itself.
 
 ## Subdivide, and smooth without shrinking
 
@@ -300,7 +296,7 @@ the same λ, with μ = −0.63, leave **2.1840** across 1.631, within about 3% o
 noise was added to, and, at 1280 triangles and χ = 2 throughout, just as smooth. Reach for Taubin
 whenever the volume has to survive the smoothing.
 
-The top row has a second lesson in it. The volume falls 1.2985 → 0.8518 → … → 0.7490
+In the top row, the volume falls 1.2985 → 0.8518 → … → 0.7490
 and does *not* stop at the sphere the icosahedron's vertices sit on, because Loop subdivision
 converges on the **Loop limit surface**, not on whatever you imagined the control mesh approximated.
 The steps shrink geometrically and χ never moves off 2.
@@ -514,11 +510,13 @@ showMeshGrid(
 )
 ```
 
-Face membership in `src/jvmMain/kotlin/afield/stdlib/voronoi.kt` is combinatorial rather than metric: a corner records which three
-planes produced it, and a face's polygon is exactly the corners recording that plane. That matters
-around a near-cospherical site cluster, where the genuine corners sit closer together than any
-usable distance tolerance, and a face decided by proximity claims corners that are not its own and
-fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
+??? aside "How a Voronoi face finds its corners"
+    Face membership in [`voronoi.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/voronoi.kt)
+    is combinatorial rather than metric: a corner records which three planes produced it, and a
+    face's polygon is exactly the corners recording that plane. That matters around a
+    near-cospherical site cluster, where the genuine corners sit closer together than any usable
+    distance tolerance, and a face decided by proximity claims corners that are not its own and
+    fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 ## Recipes
 
@@ -552,34 +550,29 @@ fails to close. `dev_docs/MESH_GEOMETRY.md` has the measurements.
 
 </div>
 
-## Where the pictures come from
+## Trying it yourself
 
-The figures come by two routes, which cost different amounts to produce:
+Every runnable example above is a box: paste it into Field, change a resolution, a smoothing
+parameter or an SDF expression, and run it again. To start from boxes that already run, open
+**mesh_geometry_examples** from Starting points on the welcome screen, or
+[open it here](offline.html?file=assets/agent_transcripts/mesh_geometry_examples/metadata.edn).
 
-| figure | how |
-|---|---|
-| the five `diffstatic_runner` fences above | **executed by the docs build**; the image under each is that box's own output, drawn by the Three.js viewer that `showMeshGrid` uses |
-| `assets/mesh_gallery/*.png` (six figures) | **committed captures** from the `mesh.gallery` FIELD_TEST: `MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`. These are composited from `renderPixels`, so they show the **CPU rasterizer** rather than the viewer. The gallery renders eleven figures; the five not shown here are the ones the `diffstatic_runner` fences above already cover live, and they stay in `dev_docs/assets/mesh_gallery/` |
+??? aside "Where the pictures come from"
+    The images under the runnable examples are each box's own output, drawn by the Three.js viewer
+    `showMeshGrid` uses, and the docs build executes them. The `assets/mesh_gallery/` figures are
+    committed captures from the `mesh.gallery` FIELD_TEST
+    (`MESH_GALLERY_DIR=public/docs/assets/mesh_gallery python3 tools/run_field_tests.py --id mesh.gallery --port 9700`),
+    composited from `renderPixels`, so they show the CPU rasterizer rather than the viewer. The
+    gallery's remaining figures, which the runnable examples already cover, stay in
+    `dev_docs/assets/mesh_gallery/`.
 
-Both routes show the output as of when it was taken, so regenerate them after changing the family.
-The gallery is also what guards the family continuously. It **fails** if the invariants break: if a
-generator stops being watertight, if a marched sphere's volume error stops falling with resolution,
-if a decimation misses its budget, if Gauss–Bonnet stops matching 2πχ, or if the Voronoi cells stop
-tiling their clip box.
+    The gallery test fails if a generator stops being watertight, if a marched sphere's volume error
+    stops falling with resolution, if a decimation misses its budget, if Gauss–Bonnet stops matching
+    2πχ, or if the Voronoi cells stop tiling their clip box.
 
-??? aside "Neither route notices on its own when the code moves underneath it"
-    A `diffstatic_runner` fence is re-executed only when the build decides its capture is out of date, and
-    that decision comes from a fixed digest list (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`)
-    which covers the runner's own machinery and no stdlib source at all. So editing `mesh_*.kt` leaves every
-    digest unchanged, an incremental build is a cache hit, and the fences are not re-run;
-    `FIELD_DOCS_RUNNER_MODE=always` forces them. The six gallery figures are committed PNGs with the same
-    property: they need `mesh.gallery` re-run to reflect a change.
-
-There is a third route for playing with it rather than reading it: replay
-`dev_docs/agents/transcripts/mesh_geometry_examples.yaml` into a fresh Field with the agent backdoor
-(`field_run_transcript`) and you get seven live boxes covering the same ground. Change a resolution, a
-smoothing parameter or an SDF expression, re-run the box, and watch it update. See
-[Agent transcripts](agent_transcripts.md).
+    Neither kind of figure refreshes itself when `mesh_*.kt` changes: the runner's capture digest
+    (`RUNNER_DIGEST_SOURCE_FILES` in `public/docs_hooks.py`) covers no stdlib source, so use
+    `FIELD_DOCS_RUNNER_MODE=always`, and re-run `mesh.gallery` for the committed PNGs.
 
 ## Reference
 

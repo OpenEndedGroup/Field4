@@ -1476,9 +1476,8 @@ private fun downloadTextFile(filename: String, text: String, type: String) {
 fun registerMouseBug() {
     document.addEventListener("mousemove", { event ->
         val mouseEvent = event as MouseEvent
-        val x = (mouseEvent.pageX - (mainCanvas.unsafeCast<dynamic>().data_x as Double)) / mainZoom
-        val y = (mouseEvent.pageY - (mainCanvas.unsafeCast<dynamic>().data_y as Double)) / mainZoom
-        lastMouse = x to y
+        val pane = CanvasCamera.paneAt(mouseEvent.pageX, mouseEvent.pageY)
+        lastMouse = pane.worldX(mouseEvent.pageX) to pane.worldY(mouseEvent.pageY)
     })
 }
 
@@ -2752,6 +2751,22 @@ fun registerBuiltinCommands() {
             detail:"Profile box coroutines, CPU and allocations; inspect sampled classes, methods and lines",
             run: () => {
                 window.showProfilingTimeline();
+            }
+        },{
+            id:'disable-auto-displaying-editor',
+            label:"Disable Auto-displaying Editor",
+            detail:"Hide the editor and stop selection changes from opening it; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor !== false,
+            run: () => {
+                window.setAutoDisplayEditor(false);
+            }
+        },{
+            id:'auto-display-editor',
+            label:"Auto-display Editor",
+            detail:"Automatically show the editor when selecting a box; remember this preference",
+            isAvailable: () => window.fieldAutoDisplayEditor === false,
+            run: () => {
+                window.setAutoDisplayEditor(true);
             }
         },{
             id:'switch-to-monaco-editor',

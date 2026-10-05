@@ -1,4 +1,5 @@
 const fs = require("node:fs");
+const { useAngleVulkan } = require("./gpu-policy.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const {
@@ -8,6 +9,7 @@ const {
   WebContentsView,
   ipcMain,
   screen,
+  systemPreferences,
 } = require("electron");
 
 const APP_NAME = "Field4";
@@ -48,6 +50,20 @@ const diagnosticStartedAt = Date.now();
 let diagnosticLogPath = null;
 let diagnosticLogStream = null;
 
+
+// AI4 push-to-talk (voiceInput.js). macOS only grants the microphone to an app that asks, and a
+// page's getUserMedia alone reports a refusal as a bare "Permission denied". Asking here shows the
+// system prompt the first time and lets the page say where to re-enable it after a "no".
+async function onMicrophoneAccess() {
+  if (process.platform !== "darwin") return "granted";
+  let status = systemPreferences.getMediaAccessStatus("microphone");
+  if (status === "not-determined") {
+    await systemPreferences.askForMediaAccess("microphone");
+    status = systemPreferences.getMediaAccessStatus("microphone");
+  }
+  diagnosticLog("microphone-access", { status });
+  return status;
+}
 function diagnosticError(error) {
   if (!error) return null;
   return {
@@ -171,54 +187,16 @@ function installChromiumGpuSwitches() {
 
   if (process.platform !== "linux") return;
 
-  appendChromiumSwitchIfMissing("ignore-gpu-blocklist");
-  appendChromiumSwitchIfMissing("disable-gpu-process-crash-limit");
-  appendChromiumSwitchIfMissing("enable-gpu-rasterization");
-  appendChromiumSwitchIfMissing("enable-zero-copy");
   appendChromiumSwitchIfMissing("ozone-platform-hint", "auto");
-
-  // ANGLE-over-Vulkan, but only where Ozone can actually present through it.
-  //
-  // Vulkan is what lets Chromium export a paint as a native pixmap, which is what the accelerated
-  // browser-texture producer needs (see dev_docs/external_browser_surfaces.md). But Ozone's
-  // Wayland backend has no Vulkan surface support: it logs "'--ozone-platform=wayland' is not
-  // compatible with Vulkan" and then never composites the window onto the screen. The renderer
-  // still runs perfectly well — the page loads, the websocket talks, `did-finish-load` fires — so
-  // nothing looks wrong from the main process; the window is just empty, showing only the
-  // compositor's blur of whatever is behind it. That is the whole of the failure, and it is
-  // invisible to `capturePage`, which does not go through the on-screen path.
-  //
-  // So: X11 gets it, Wayland does not. The producer is unaffected either way — it is a separate
-  // Electron process with its own switches, and being offscreen it never needs an Ozone surface.
-  if (!shouldUseAngleVulkan()) {
-    console.log(
-      `[electron,gpu] leaving ANGLE on GL: ozone platform is ${ozonePlatform()}, which cannot present Vulkan`,
-    );
-    return;
-  }
+  // The desktop must work on mixed GPUs and ordinary drivers. Let Chromium select its backend.
+  // The offscreen browser-texture producer configures its own accelerated switches separately.
+  if (!shouldUseAngleVulkan()) return;
   appendChromiumSwitchIfMissing("enable-features", "Vulkan");
   appendChromiumSwitchIfMissing("use-angle", "vulkan");
 }
 
-/**
- * Which Ozone backend this process will come up on. `ozone-platform-hint=auto` resolves to Wayland
- * whenever a Wayland display is reachable, so that is what we reproduce here; an explicit
- * `--ozone-platform` on the command line wins over the hint.
- */
-function ozonePlatform() {
-  if (app.commandLine.hasSwitch("ozone-platform")) {
-    return app.commandLine.getSwitchValue("ozone-platform") || "auto";
-  }
-  return process.env.WAYLAND_DISPLAY ? "wayland" : "x11";
-}
-
 function shouldUseAngleVulkan() {
-  // The escape hatch is two-way on purpose: "1" to get the accelerated backend back on a session
-  // we decided against, "0" to rule it out on one we would otherwise have allowed.
-  const override = process.env.FIELD_ELECTRON_ANGLE_VULKAN;
-  if (override === "1") return true;
-  if (override === "0") return false;
-  return ozonePlatform() !== "wayland";
+  return useAngleVulkan(process.platform, process.env.FIELD_ELECTRON_ANGLE_VULKAN);
 }
 
 installChromiumGpuSwitches();
@@ -1282,15 +1260,13 @@ function createMainWindow() {
     });
     tab.view.webContents.on(
       "console-message",
-      (details, level, message, line, sourceId) => {
-        const item = details?.message
-          ? {
-              level: details.level,
-              message: details.message,
-              line: details.lineNumber,
-              sourceId: details.sourceId,
-            }
-          : { level, message, line, sourceId };
+      (details) => {
+        const item = {
+          level: details.level,
+          message: details.message,
+          line: details.lineNumber,
+          sourceId: details.sourceId,
+        };
         if (
           item.level === "warning" ||
           item.level === "error" ||
@@ -1455,6 +1431,8 @@ function createMainWindow() {
   ipcMain.on("field4-tabs-hide", onHideTabs);
   ipcMain.removeHandler("field4-history-capture-window");
   ipcMain.handle("field4-history-capture-window", onHistoryCaptureWindow);
+  ipcMain.removeHandler("field4-microphone-access");
+  ipcMain.handle("field4-microphone-access", onMicrophoneAccess);
 
   const relayout = () => applyLayout();
   const enterFullScreen = () => {

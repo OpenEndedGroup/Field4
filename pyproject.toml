@@ -41,6 +41,14 @@ cv = [
     # helper) when any landmarker is created, CPU delegate or not; inside Field that kills the JVM.
     "mediapipe>=0.10.14,<1.0",
 ]
+voice = [
+    # Optional local speech-to-text for AI4 push-to-talk (`python/fieldvoice`). Not part of any
+    # default gate: install with `uv sync --inexact --group voice` into the venv Field's JEP is
+    # bound to. mlx-whisper runs large-v3-turbo on the Apple-silicon GPU; elsewhere faster-whisper.
+    "numpy>=1.26",
+    "mlx-whisper>=0.4; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "faster-whisper>=1.1; sys_platform != 'darwin' or platform_machine != 'arm64'",
+]
 
 [tool.uv]
 package = false

@@ -208,6 +208,25 @@ fun monacoStartSelectionMonitor() {
     monitorSelection()
 }
 
+/**
+ * True while the keyboard is in a text field inside a box's output area — the AI chat input, a
+ * `stringInput`. Clicking one selects its box, and the editor that opens must not take the
+ * keyboard back out of it.
+ */
+private fun keyboardIsInOutputField(): Boolean {
+    val el: dynamic = kotlinx.browser.document.activeElement ?: return false
+    if (el.closest(".outputArea") == null) return false
+    val tag = ((el.tagName as? String) ?: "").lowercase()
+    return tag == "input" || tag == "textarea" || tag == "select" || el.isContentEditable == true
+}
+
+internal fun shouldAutoDisplayEditor(): Boolean {
+    val w = window.asDynamic()
+    val displayMode = (w.fieldDisplayMode as? String) ?: "normal"
+    return displayMode == "editor-only" ||
+            (displayMode != "no-editor" && w.fieldAutoDisplayEditor != false)
+}
+
 private fun monitorSelection() {
     val w = js("window")
     val next = w.selectedList ?: js("[]")
@@ -299,8 +318,9 @@ private fun monitorSelection() {
         // Display mode from ?editorOnly / ?noeditor (see Main.kt). In no-editor the editor never
         // shows (and must not steal focus); in editor-only it stays visible even with no selection.
         val displayMode = (w.fieldDisplayMode as? String) ?: "normal"
+        val autoDisplayEditor = shouldAutoDisplayEditor()
         if (nextLen == 1) {
-            if (displayMode != "no-editor") w.showMonaco()
+            if (autoDisplayEditor) w.showMonaco()
             var code = currentSelectedCode[0][currentSelectedProperty] as? String
             if (code == null) code = ""
             val state = currentSelectedCode[0]["${currentSelectedProperty}_editorState"] as? String
@@ -318,7 +338,7 @@ private fun monitorSelection() {
             if (state != null && !suppressRestore && displayMode != "no-editor") {
                 window.setTimeout({
                     globalEditor.restoreViewState(js("JSON.parse")(state))
-                    globalEditor.focus()
+                    if (autoDisplayEditor && !keyboardIsInOutputField()) globalEditor.focus()
                 }, 0)
             }
             currentValueAtOrigination = code

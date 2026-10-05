@@ -89,6 +89,23 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### stipple_sheet
+
+**A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
+box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
+it. Three sliders move transport time, movie time and the number of integration steps separately,
+so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
+
+### particle_video_reader
+
+Inspect recorded trajectories as continuous polylines, with time, history length, identity color
+and sampling-density controls. This portable example reads the same complete-trajectory subset
+as the [Video particles](particle_video.md) walkthrough; it runs without a neural environment.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video_reader/metadata.edn)
+
 ### hello_display
 
 Minimal blank-canvas macro that creates one runnable output box.
@@ -1308,6 +1325,22 @@ same shape through Field's own `marchingCubes` and names the difference.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/manifold_solids/metadata.edn)
 
+### ai4_paint_studio
+
+A studio where AI4 paints. The one box puts a canvas from the [paint simulator](paint_canvas.md) on
+an easel and gives the chat agent eleven tools to paint on it: strokes, dabs, whole regions worked
+the way a painter blocks in, glazes, pencil lines, hatching, stippling, drying time, a fresh canvas,
+and *hang*, which keeps a finished painting in the document's gallery. The canvas belongs to the
+conversation, so rewinding the chat to a request brings back the canvas from before it. Open the
+box's AI panel and ask for a painting; [AI4 paints](ai4_painting.md) shows three made this way. A
+second box, Scribbler, adds a `scribble` tool with `aiTool { }`; [Experimenting with
+AI4](ai4_experiments.md) shows a painting made with it. It needs the paint library
+(`./gradlew buildPaintNative`) and an AI provider.
+
+![three paintings of one harbour made in the studio by AI4: at dusk, at night, and in a storm](assets/ai4_painting/three.jpg)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_paint_studio/metadata.edn)
+
 ### paint_canvas
 
 Three boxes that paint and draw [FLines with simulated paint and pencil](paint_canvas.md). *A
@@ -1975,6 +2008,19 @@ it and stop.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/syphon_bridge/metadata.edn)
 
+### particle_video
+
+Follow a movie as recorded moving points. The [Video particles](particle_video.md) walkthrough
+shows a hand-colored serpentine dance at native resolution with 24,000 target particles, with
+source and Kotlin-rendered output side by side. The reader box scrubs a portable subset of complete
+trajectories and exposes identity colors and trails without a Python process. The tracking box
+runs an optional cached RAFT job; prepare its environment and select the device first.
+CI compiles the boxes; new inference requires that separate environment.
+
+![Recorded particles with time, color and trail controls](assets/particle_video/field-view.png)
+
+[Open ↗](offline.html?file=assets/agent_transcripts/particle_video/metadata.edn)
+
 ## visionOS device scenes
 
 <!-- transcript-index: verified-by = kotlinjs, execute -->
@@ -2219,7 +2265,7 @@ is a name with no midpoint, so it is taken whole from one parent and the manifes
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
 records the point that was visited. The morning box needs no renderer at all: an archive describes
-itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+itself. The companion page is [Sweeping saved keyframes overnight](keyframe_autosweep.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 

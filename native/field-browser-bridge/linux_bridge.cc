@@ -313,10 +313,86 @@ napi_value node_send_dma_buf(napi_env env, napi_callback_info info) {
   return sent;
 }
 
+// JVM -> Electron probe transport. UnixFdPass sends one SOCK_STREAM message with SCM_RIGHTS.
+// Polling this listener keeps Electron's main thread responsive while Vulkan prepares the image.
+napi_value node_open_receiver(napi_env env, napi_callback_info info) {
+  size_t argc = 1; napi_value arg;
+  napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
+  char path[sizeof(sockaddr_un::sun_path)]; size_t length = 0;
+  if (argc != 1 || napi_get_value_string_utf8(env, arg, path, sizeof(path), &length) != napi_ok ||
+      length == 0 || length >= sizeof(path) - 1) {
+    napi_throw_type_error(env, nullptr, "openDmaBufReceiver requires a short socket path"); return nullptr;
+  }
+  int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  sockaddr_un address{}; address.sun_family = AF_UNIX;
+  std::memcpy(address.sun_path, path, length + 1);
+  if (fd < 0 || ::bind(fd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) || ::listen(fd, 1)) {
+    int error = errno; if (fd >= 0) ::close(fd);
+    napi_throw_error(env, nullptr, std::strerror(error)); return nullptr;
+  }
+  napi_value result; napi_create_int32(env, fd, &result); return result;
+}
+
+napi_value node_receive_fds(napi_env env, napi_callback_info info) {
+  size_t argc = 1; napi_value arg; int32_t listener = -1;
+  napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
+  if (argc != 1 || napi_get_value_int32(env, arg, &listener) != napi_ok || listener < 0) {
+    napi_throw_type_error(env, nullptr, "receiveDmaBuf requires a listener fd"); return nullptr;
+  }
+  napi_value result; napi_get_null(env, &result);
+  int ready = wait_readable(listener, 0);
+  if (ready == kErrTimeout) return result;
+  if (ready != 0) { napi_throw_error(env, nullptr, "receiver poll failed"); return nullptr; }
+  int connection = ::accept4(listener, nullptr, nullptr, SOCK_CLOEXEC);
+  if (connection < 0) { napi_throw_error(env, nullptr, std::strerror(errno)); return nullptr; }
+  if (wait_readable(connection, 1000) != 0) {
+    ::close(connection); napi_throw_error(env, nullptr, "descriptor payload timeout"); return nullptr;
+  }
+  char payload = 0;
+  iovec data{&payload, 1};
+  alignas(cmsghdr) char control[CMSG_SPACE(sizeof(int) * kMaxFds)]{};
+  msghdr header{}; header.msg_iov = &data; header.msg_iovlen = 1;
+  header.msg_control = control; header.msg_controllen = sizeof(control);
+  ssize_t count;
+  do { count = ::recvmsg(connection, &header, MSG_CMSG_CLOEXEC); } while (count < 0 && errno == EINTR);
+  ::close(connection);
+  std::vector<int> fds;
+  for (cmsghdr* c = CMSG_FIRSTHDR(&header); c; c = CMSG_NXTHDR(&header, c)) {
+    if (c->cmsg_level == SOL_SOCKET && c->cmsg_type == SCM_RIGHTS) {
+      const size_t n = (c->cmsg_len - CMSG_LEN(0)) / sizeof(int);
+      for (size_t i = 0; i < n; ++i) { int fd; std::memcpy(&fd, CMSG_DATA(c) + i * sizeof(int), sizeof(int)); fds.push_back(fd); }
+    }
+  }
+  if (count != 1 || payload != 'F' || (header.msg_flags & MSG_CTRUNC) || fds.empty()) {
+    for (int fd : fds) ::close(fd);
+    napi_throw_error(env, nullptr, "invalid UnixFdPass descriptor payload"); return nullptr;
+  }
+  napi_create_array_with_length(env, fds.size(), &result);
+  for (size_t i = 0; i < fds.size(); ++i) {
+    napi_value value; napi_create_int32(env, fds[i], &value); napi_set_element(env, result, i, value);
+  }
+  return result;
+}
+
+napi_value node_close_fd(napi_env env, napi_callback_info info) {
+  size_t argc = 1; napi_value arg; int32_t fd = -1;
+  napi_get_cb_info(env, info, &argc, &arg, nullptr, nullptr);
+  if (argc != 1 || napi_get_value_int32(env, arg, &fd) != napi_ok || fd < 0) {
+    napi_throw_type_error(env, nullptr, "closeDmaBuf requires an owned fd"); return nullptr;
+  }
+  ::close(fd); napi_value result; napi_get_undefined(env, &result); return result;
+}
+
 napi_value initialize(napi_env env, napi_value exports) {
   napi_value function;
   napi_create_function(env, "sendDmaBuf", NAPI_AUTO_LENGTH, node_send_dma_buf, nullptr, &function);
   napi_set_named_property(env, exports, "sendDmaBuf", function);
+  napi_create_function(env, "openDmaBufReceiver", NAPI_AUTO_LENGTH, node_open_receiver, nullptr, &function);
+  napi_set_named_property(env, exports, "openDmaBufReceiver", function);
+  napi_create_function(env, "receiveDmaBuf", NAPI_AUTO_LENGTH, node_receive_fds, nullptr, &function);
+  napi_set_named_property(env, exports, "receiveDmaBuf", function);
+  napi_create_function(env, "closeDmaBuf", NAPI_AUTO_LENGTH, node_close_fd, nullptr, &function);
+  napi_set_named_property(env, exports, "closeDmaBuf", function);
   return exports;
 }
 

@@ -1,4 +1,12 @@
+import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
+import { registerAiChatFenceRenderer, renderAiChatFences } from "./aiChatFenceRenderers.js";
+
+// Mermaid is an optional, locally served bundle: ordinary chats never download or parse it.
+registerAiChatFenceRenderer("mermaid", async (source, id) => {
+        const { renderMermaid } = await import("/mermaid/field-mermaid.js");
+        return renderMermaid(source, id);
+});
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
@@ -15,6 +23,16 @@ const AI_CHAT_MAX_H_PX = 560;
 const AI_CHAT_MIN_W = 320;
 const AI_CHAT_MIN_H = 180;
 const AUTO_SIZE_PASSES = [0, 1, 2, 4, 8, 14, 22];
+// Content auto-size grows a panel at once but shrinks it only after the content has measured
+// smaller for this long, and then to the largest size it needed meanwhile: a panel re-rendered on
+// every progress tick holds still instead of following each frame down and back up.
+const AUTO_SIZE_SHRINK_SETTLE_MS = 500;
+// Whether a panel could be narrower takes a second layout (see `naturalWidthAtBase`), so it is
+// asked at most this often while content keeps changing, and always on a sequence's last pass.
+const AUTO_SIZE_WIDTH_CHECK_MS = 200;
+// Auto-size never makes a panel taller than this share of the window, so its resize corner can
+// always be brought on screen. Content past it scrolls inside the panel; a drag can still go taller.
+const AUTO_MAX_VIEWPORT_H_RATIO = 0.8;
 
 // --- Disclosure handling (new behavior) ---
 function disclosureInterface(container) {
@@ -45,13 +63,73 @@ function disclosureInterface(container) {
                 return rect.width > 0 || rect.height > 0;
         }
 
+        // Canvas zoom is a CSS `scale()` on the main canvas, so client rects are screen pixels while
+        // a panel's size, padding and scroll extents are layout pixels. Rect-derived measurements are
+        // divided by this before they become a size. Grow-only sizing hid the mismatch when zoomed
+        // out; a panel that can shrink would have crept smaller on every pass.
+        function layoutScale(element) {
+                if (!(element instanceof HTMLElement) || !(element.offsetWidth > 0)) return 1;
+                const rectWidth = element.getBoundingClientRect().width;
+                if (!(rectWidth > 0) || Math.abs(rectWidth - element.offsetWidth) <= 1) return 1;
+                return rectWidth / element.offsetWidth;
+        }
+
         function headerWidth(d) {
                 if (!d || !d.hdr) return CLOSED_W;
                 const rect = d.hdr.getBoundingClientRect();
-                return Math.max(Math.ceil(rect.width), Math.ceil(d.hdr.scrollWidth), CLOSED_W);
+                return Math.max(Math.ceil(rect.width / layoutScale(d.hdr)), Math.ceil(d.hdr.scrollWidth), CLOSED_W);
         }
 
-        function rangeContentSize(root) {
+        const NO_CLIP = Object.freeze({ right: Number.POSITIVE_INFINITY, bottom: Number.POSITIVE_INFINITY });
+
+        function isPixelLength(value) {
+                return /^\d*\.?\d+px$/.test(normalizedCssValue(value));
+        }
+
+        // A scroller that sets its own bound shows the reader that bound, and what lies past it is
+        // reached by scrolling it rather than by a taller panel. The StudyBuild failure details are a
+        // `<pre>` with `max-height:320px; overflow:auto`, but its text still has client rects all the
+        // way down, so measuring it unclipped sized the panel for the whole diagnostic. Only a bound
+        // the scroller sets itself counts. One that takes its height from the panel (`height:100%`, a
+        // `flex:1` transcript like the AI chat's) is left unclipped, since its content is the only
+        // evidence of how tall the panel should be.
+        function clipsAxis(element, style, axis) {
+                const overflow = normalizedCssValue(axis === "width" ? style.overflowX : style.overflowY);
+                if (!overflow || overflow === "visible" || normalizedCssValue(style.display) === "contents") return false;
+                if (isPixelLength(axis === "width" ? style.maxWidth : style.maxHeight)) return true;
+                const inline = axis === "width" ? element.style.width : element.style.height;
+                return hasConcreteCssSize(inline) && !inline.includes("%");
+        }
+
+        // Returns `clipFor(element)`: the right and bottom edges (client coordinates) that content
+        // inside `element` is visible within, from every self-bounded scroller between it and `root`,
+        // `element` included.
+        function contentClipper(root) {
+                const cache = new Map();
+                const clipFor = (element) => {
+                        if (!(element instanceof Element) || element === root) return NO_CLIP;
+                        if (cache.has(element)) return cache.get(element);
+                        const outer = clipFor(element.parentElement);
+                        let clip = outer;
+                        if (element instanceof HTMLElement) {
+                                const style = getComputedStyle(element);
+                                const clipsX = clipsAxis(element, style, "width");
+                                const clipsY = clipsAxis(element, style, "height");
+                                if (clipsX || clipsY) {
+                                        const rect = element.getBoundingClientRect();
+                                        clip = {
+                                                right: clipsX ? Math.min(outer.right, rect.right) : outer.right,
+                                                bottom: clipsY ? Math.min(outer.bottom, rect.bottom) : outer.bottom
+                                        };
+                                }
+                        }
+                        cache.set(element, clip);
+                        return clip;
+                };
+                return clipFor;
+        }
+
+        function rangeContentSize(root, clipFor = () => NO_CLIP, scale = 1) {
                 if (!(root instanceof Element)) return { width: 0, height: 0 };
                 const ownerDocument = root.ownerDocument || document;
                 const range = ownerDocument.createRange();
@@ -75,9 +153,10 @@ function disclosureInterface(container) {
                         while (textNode) {
                                 range.selectNodeContents(textNode);
                                 const rects = Array.from(range.getClientRects ? range.getClientRects() : []);
+                                const clip = clipFor(textNode.parentElement);
                                 rects.forEach((rect) => {
-                                        width = Math.max(width, Math.ceil(rect.right - box.left));
-                                        height = Math.max(height, Math.ceil(rect.bottom - box.top));
+                                        width = Math.max(width, Math.ceil((Math.min(rect.right, clip.right) - box.left) / scale));
+                                        height = Math.max(height, Math.ceil((Math.min(rect.bottom, clip.bottom) - box.top) / scale));
                                 });
                                 textNode = walker.nextNode();
                         }
@@ -132,7 +211,9 @@ function disclosureInterface(container) {
                         hasConcreteCssSize(node.getAttribute(attrName) || "");
         }
 
-        function parentContentExtent(node, axis) {
+        // These compare client rects (screen pixels under canvas zoom) with CSS padding (layout
+        // pixels), so the padding and the 2px tolerance are scaled by `scale` to match.
+        function parentContentExtent(node, axis, scale = 1) {
                 const parent = node?.parentElement;
                 if (!(parent instanceof Element)) return 0;
                 const rect = parent.getBoundingClientRect();
@@ -140,33 +221,33 @@ function disclosureInterface(container) {
                 if (axis === "width") {
                         return Math.max(
                                 0,
-                                rect.width - parsePixels(style.paddingLeft) - parsePixels(style.paddingRight)
+                                rect.width - (parsePixels(style.paddingLeft) + parsePixels(style.paddingRight)) * scale
                         );
                 }
                 return Math.max(
                         0,
-                        rect.height - parsePixels(style.paddingTop) - parsePixels(style.paddingBottom)
+                        rect.height - (parsePixels(style.paddingTop) + parsePixels(style.paddingBottom)) * scale
                 );
         }
 
-        function fillsParentExtent(node, rect, axis) {
-                const parentExtent = parentContentExtent(node, axis);
+        function fillsParentExtent(node, rect, axis, scale = 1) {
+                const parentExtent = parentContentExtent(node, axis, scale);
                 if (parentExtent <= 0) return false;
                 const size = axis === "width" ? rect.width : rect.height;
-                return Math.abs(size - parentExtent) <= 2;
+                return Math.abs(size - parentExtent) <= 2 * scale;
         }
 
-        function alignsWithParentEdge(node, rect, axis) {
+        function alignsWithParentEdge(node, rect, axis, scale = 1) {
                 const parent = node?.parentElement;
                 if (!(parent instanceof Element)) return false;
                 const parentRect = parent.getBoundingClientRect();
                 const style = getComputedStyle(parent);
                 if (axis === "width") {
-                        const parentRight = parentRect.right - parsePixels(style.paddingRight);
-                        return Math.abs(rect.right - parentRight) <= 2;
+                        const parentRight = parentRect.right - parsePixels(style.paddingRight) * scale;
+                        return Math.abs(rect.right - parentRight) <= 2 * scale;
                 }
-                const parentBottom = parentRect.bottom - parsePixels(style.paddingBottom);
-                return Math.abs(rect.bottom - parentBottom) <= 2;
+                const parentBottom = parentRect.bottom - parsePixels(style.paddingBottom) * scale;
+                return Math.abs(rect.bottom - parentBottom) <= 2 * scale;
         }
 
         function axisOverflows(node, axis) {
@@ -186,7 +267,7 @@ function disclosureInterface(container) {
                         display === "list-item";
         }
 
-        function shouldUseRectExtent(node, rect, axis) {
+        function shouldUseRectExtent(node, rect, axis, scale = 1) {
                 if (!(node instanceof Element)) return false;
 
                 const size = axis === "width" ? rect.width : rect.height;
@@ -203,7 +284,7 @@ function disclosureInterface(container) {
                 // padding on every pass creates a slow 480 -> 504 -> ... feedback loop. Canvas
                 // backing-store dimensions are especially misleading here: they are resolution,
                 // not requested CSS layout size.
-                if (!overflow && fillsParentExtent(node, rect, axis)) return false;
+                if (!overflow && fillsParentExtent(node, rect, axis, scale)) return false;
 
                 if (
                         node instanceof SVGElement ||
@@ -228,19 +309,19 @@ function disclosureInterface(container) {
                         return true;
                 }
 
-                if (isStretchDisplay(display) && (fillsParentExtent(node, rect, axis) || alignsWithParentEdge(node, rect, axis))) {
+                if (isStretchDisplay(display) && (fillsParentExtent(node, rect, axis, scale) || alignsWithParentEdge(node, rect, axis, scale))) {
                         return false;
                 }
 
-                const parentExtent = parentContentExtent(node, axis);
-                if (parentExtent > 0 && size < parentExtent - 2) {
+                const parentExtent = parentContentExtent(node, axis, scale);
+                if (parentExtent > 0 && size < parentExtent - 2 * scale) {
                         return true;
                 }
 
                 return node.children.length === 0;
         }
 
-        function svgIntrinsicSize(svg) {
+        function svgIntrinsicSize(svg, scale = 1) {
                 if (!(svg instanceof SVGElement)) return { width: 0, height: 0 };
 
                 let width = 0;
@@ -268,8 +349,8 @@ function disclosureInterface(container) {
                 }
 
                 const rect = svg.getBoundingClientRect();
-                width = Math.max(width, Math.ceil(rect.width));
-                height = Math.max(height, Math.ceil(rect.height));
+                width = Math.max(width, Math.ceil(rect.width / scale));
+                height = Math.max(height, Math.ceil(rect.height / scale));
                 return { width, height };
         }
 
@@ -301,11 +382,11 @@ function disclosureInterface(container) {
                 const box = typeof d.wrap.closest === "function" ? d.wrap.closest(".box") : null;
                 if (!box) return 0;
                 return Math.max(0, Math.floor(
-                        box.getBoundingClientRect().right - d.wrap.getBoundingClientRect().left
+                        (box.getBoundingClientRect().right - d.wrap.getBoundingClientRect().left) / layoutScale(d.cw)
                 ));
         }
 
-        function iframeIntrinsicSize(iframe) {
+        function iframeIntrinsicSize(iframe, scale = 1) {
                 if (!(iframe instanceof HTMLIFrameElement)) return { width: 0, height: 0 };
 
                 let width = Math.max(
@@ -321,11 +402,11 @@ function disclosureInterface(container) {
 
                 if (width <= 0) {
                         const rect = iframe.getBoundingClientRect();
-                        width = Math.ceil(Math.max(iframe.clientWidth || 0, rect.width || 0));
+                        width = Math.ceil(Math.max(iframe.clientWidth || 0, (rect.width || 0) / scale));
                 }
                 if (height <= 0) {
                         const rect = iframe.getBoundingClientRect();
-                        height = Math.ceil(Math.max(iframe.clientHeight || 0, rect.height || 0));
+                        height = Math.ceil(Math.max(iframe.clientHeight || 0, (rect.height || 0) / scale));
                 }
 
                 return { width, height };
@@ -336,7 +417,7 @@ function disclosureInterface(container) {
                 return node.closest(".js-plotly-plot, .plotly-graph-div");
         }
 
-        function plotlyIntrinsicSize(root) {
+        function plotlyIntrinsicSize(root, scale = 1) {
                 if (!(root instanceof Element)) return { width: 0, height: 0 };
 
                 const fullLayout = root._fullLayout || {};
@@ -351,8 +432,8 @@ function disclosureInterface(container) {
 
                 if (width <= 0 || height <= 0) {
                         const rect = root.getBoundingClientRect();
-                        width = Math.max(width, Math.ceil(rect.width || 0));
-                        height = Math.max(height, Math.ceil(rect.height || 0));
+                        width = Math.max(width, Math.ceil((rect.width || 0) / scale));
+                        height = Math.max(height, Math.ceil((rect.height || 0) / scale));
                 }
 
                 return { width, height };
@@ -360,7 +441,7 @@ function disclosureInterface(container) {
 
         function contentSizeForDisclosure(d) {
                 if (!d || d.inline) {
-                        return { width: 0, height: 0 };
+                        return { width: 0, height: 0, reachesBottom: false };
                 }
 
                 const style = getComputedStyle(d.cw);
@@ -371,23 +452,32 @@ function disclosureInterface(container) {
                 const paddingX = paddingLeft + paddingRight;
                 const paddingY = paddingTop + paddingBottom;
                 const box = d.cw.getBoundingClientRect();
+                const scale = layoutScale(d.cw);
+                const clipFor = contentClipper(d.cw);
                 const clientWidth = Math.ceil(d.cw.clientWidth || 0);
                 const clientHeight = Math.ceil(d.cw.clientHeight || 0);
                 const scrollWidth = Math.ceil(d.cw.scrollWidth || 0);
                 const scrollHeight = Math.ceil(d.cw.scrollHeight || 0);
+                const availableHeight = clientHeight - paddingY;
                 const hasIframeContent = !!d.cw.querySelector("iframe");
                 let width = 0;
                 let height = 0;
+                // Whether anything reaches the panel's bottom edge -- a `height:100%` wrapper, a
+                // `flex:1` column, every iframe (`.disclosure-content iframe` is `height:100%`).
+                // Such content takes the panel's height rather than stating one, and none of it is
+                // counted below, so a panel holding it must not shrink to what *was* counted.
+                let reachesBottom = false;
 
                 if (scrollWidth > clientWidth + 1) {
                         width = Math.max(width, scrollWidth);
                 }
                 if (scrollHeight > clientHeight + 1) {
-                        height = Math.max(height, scrollHeight);
+                        // scrollHeight already includes the vertical padding added back below.
+                        height = Math.max(height, scrollHeight - paddingY);
                 }
 
                 if (!hasIframeContent) {
-                        const rangeSize = rangeContentSize(d.cw);
+                        const rangeSize = rangeContentSize(d.cw, clipFor, scale);
                         // rangeContentSize is measured from the disclosure border edge, so it
                         // already includes the leading padding. Remove that here; both sides are
                         // added exactly once below.
@@ -398,62 +488,71 @@ function disclosureInterface(container) {
                 Array.from(d.cw.querySelectorAll("*")).forEach((node) => {
                         if (!(node instanceof Element) || !isElementVisible(node)) return;
 
+                        // Nothing inside a self-bounded scroller can make the panel larger than
+                        // the scroller itself (see `clipsAxis`).
+                        const clip = clipFor(node.parentElement);
+                        const limitWidth = (clip.right - box.left) / scale - paddingLeft;
+                        const limitHeight = (clip.bottom - box.top) / scale - paddingTop;
+                        const rect = node.getBoundingClientRect();
+                        if (rect.height > 0 &&
+                                (Math.min(rect.bottom, clip.bottom) - box.top) / scale - paddingTop >= availableHeight - 2) {
+                                reachesBottom = true;
+                        }
+
                         // Rich visualizers can state their preferred outer layout size while
                         // remaining responsive with max-width:100%. This lets the disclosure jump
                         // directly to the intended size instead of trying to infer it from a child
                         // that is temporarily constrained to the current disclosure width.
                         const intrinsicWidth = parsePixels(node.dataset?.afieldIntrinsicWidth || "");
                         const intrinsicHeight = parsePixels(node.dataset?.afieldIntrinsicHeight || "");
-                        if (intrinsicWidth > 0) width = Math.max(width, intrinsicWidth);
-                        if (intrinsicHeight > 0) height = Math.max(height, intrinsicHeight);
+                        if (intrinsicWidth > 0) width = Math.max(width, Math.min(intrinsicWidth, limitWidth));
+                        if (intrinsicHeight > 0) height = Math.max(height, Math.min(intrinsicHeight, limitHeight));
 
                         const plotlyRoot = plotlyRootFor(node);
                         if (plotlyRoot) {
                                 if (plotlyRoot !== node) return;
-                                const plotlySize = plotlyIntrinsicSize(plotlyRoot);
-                                width = Math.max(width, plotlySize.width);
-                                height = Math.max(height, plotlySize.height);
+                                const plotlySize = plotlyIntrinsicSize(plotlyRoot, scale);
+                                width = Math.max(width, Math.min(plotlySize.width, limitWidth));
+                                height = Math.max(height, Math.min(plotlySize.height, limitHeight));
                                 return;
                         }
 
                         if (node instanceof HTMLIFrameElement) {
-                                const iframeSize = iframeIntrinsicSize(node);
+                                const iframeSize = iframeIntrinsicSize(node, scale);
                                 // An iframe stacked under a sibling -- the `.h2` explorer sits below its
                                 // own summary row of `outliner` / `columns` links, in one flex column --
                                 // starts partway down the content box, so its own height is not the whole
                                 // content height. Every non-iframe node below already measures from the
                                 // content edge; the iframe branch skipping that left the panel short by
                                 // exactly the height of whatever sat above the frame.
-                                const frameRect = node.getBoundingClientRect();
-                                const offsetLeft = Math.max(0, frameRect.left - box.left - paddingLeft);
-                                const offsetTop = Math.max(0, frameRect.top - box.top - paddingTop);
+                                const offsetLeft = Math.max(0, (rect.left - box.left) / scale - paddingLeft);
+                                const offsetTop = Math.max(0, (rect.top - box.top) / scale - paddingTop);
                                 if (iframeSize.width > 0) {
-                                        width = Math.max(width, Math.ceil(offsetLeft + iframeSize.width));
+                                        width = Math.max(width, Math.min(Math.ceil(offsetLeft + iframeSize.width), limitWidth));
                                 }
                                 if (iframeSize.height > 0) {
-                                        height = Math.max(height, Math.ceil(offsetTop + iframeSize.height));
+                                        height = Math.max(height, Math.min(Math.ceil(offsetTop + iframeSize.height), limitHeight));
                                 }
                                 return;
                         }
 
-                        const rect = node.getBoundingClientRect();
-                        if (shouldUseRectExtent(node, rect, "width")) {
-                                width = Math.max(width, Math.ceil(rect.right - box.left - paddingLeft));
+                        if (shouldUseRectExtent(node, rect, "width", scale)) {
+                                width = Math.max(width, Math.ceil((Math.min(rect.right, clip.right) - box.left) / scale - paddingLeft));
                         }
-                        if (shouldUseRectExtent(node, rect, "height")) {
-                                height = Math.max(height, Math.ceil(rect.bottom - box.top - paddingTop));
+                        if (shouldUseRectExtent(node, rect, "height", scale)) {
+                                height = Math.max(height, Math.ceil((Math.min(rect.bottom, clip.bottom) - box.top) / scale - paddingTop));
                         }
 
                         if (node instanceof SVGElement) {
-                                const svgSize = svgIntrinsicSize(node);
-                                width = Math.max(width, svgSize.width);
-                                height = Math.max(height, svgSize.height);
+                                const svgSize = svgIntrinsicSize(node, scale);
+                                width = Math.max(width, Math.min(svgSize.width, limitWidth));
+                                height = Math.max(height, Math.min(svgSize.height, limitHeight));
                         }
                 });
 
                 width = Math.max(width + paddingX, headerWidth(d), fillWidthForDisclosure(d));
                 height = Math.max(height + paddingY, 20);
-                return { width, height };
+                return { width, height, reachesBottom };
         }
 
         function scheduleAutoSize(id, reason = "content") {
@@ -469,29 +568,63 @@ function disclosureInterface(container) {
                 if (!st.open) return;
 
                 const token = st.autoSizeToken;
+                const lastPass = AUTO_SIZE_PASSES.length - 1;
                 const runPass = (index) => {
                         requestAnimationFrame(() => {
                                 const current = disclosures.get(id);
                                 const state = ensureState(id);
-                                if (!current || current.inline || !state.open || state.autoSizeToken !== token) return;
+                                if (!current || current.inline || !state.open || state.userSized || state.autoSizeToken !== token) return;
 
                                 const natural = contentSizeForDisclosure(current);
                                 const currentWidth = Number(state.width) || DEFAULT_W;
                                 const currentHeight = Number(state.height) || DEFAULT_H;
-                                const clamped = clampSizeForId(
-                                        id,
-                                        Math.max(natural.width, headerWidth(current), currentWidth),
-                                        Math.max(natural.height, 20, currentHeight)
-                                );
+                                const now = Date.now();
+                                const grown = clampAutoSizeForId(id, natural.width, Math.max(natural.height, 20));
 
-                                state.width = clamped.width;
-                                state.height = clamped.height;
+                                // Width grows at once when content overflows the panel. Otherwise it is
+                                // the width a fresh panel would give this content, which takes a
+                                // measurement at that panel's width (`naturalWidthAtBase`).
+                                let width = currentWidth;
+                                if (grown.width > currentWidth) {
+                                        width = settleShrink(state, "width", grown.width, currentWidth, false, now);
+                                } else if (Math.abs(currentWidth - baseWidthForId(id)) <= 2 && natural.width >= currentWidth - 2) {
+                                        // Content reaching the edge of a panel already at a fresh panel's
+                                        // width: that measurement is this one.
+                                        width = settleShrink(state, "width", currentWidth, currentWidth, false, now);
+                                } else if (index === lastPass || now - (state.widthCheckedAt || 0) >= AUTO_SIZE_WIDTH_CHECK_MS) {
+                                        state.widthCheckedAt = now;
+                                        const target = clampAutoSizeForId(id, naturalWidthAtBase(id, current, natural), 20).width;
+                                        width = settleShrink(state, "width", target, currentWidth, false, now);
+                                }
+                                // The height was measured at the old width, so when the width moves it
+                                // holds, and the next pass measures again at the new one.
+                                const height = settleShrink(state, "height", grown.height, currentHeight,
+                                        width !== currentWidth || (natural.reachesBottom && natural.height < currentHeight - 2), now);
+
+                                state.width = width;
+                                state.height = height;
                                 state.pendingAutoSize = true;
                                 states.set(id, state);
                                 applyOpen(id, current);
+                                if (width < currentWidth || height < currentHeight) {
+                                        verifyShrink(id, current, state, natural, { width: currentWidth, height: currentHeight });
+                                }
                                 refreshConnectionLayoutForNested(id);
 
-                                if (index >= AUTO_SIZE_PASSES.length - 1) {
+                                if (index >= lastPass) {
+                                        const settling = [state.pendingShrink?.width, state.pendingShrink?.height].filter(Boolean);
+                                        if (settling.length) {
+                                                // A shrink is still settling and no later pass is coming, so
+                                                // come back for it once it has settled.
+                                                const since = Math.min(...settling.map((shrink) => shrink.since));
+                                                const wait = AUTO_SIZE_SHRINK_SETTLE_MS - (Date.now() - since);
+                                                window.setTimeout(() => {
+                                                        const latest = ensureState(id);
+                                                        if (!latest.open || latest.autoSizeToken !== token) return;
+                                                        runPass(lastPass);
+                                                }, Math.max(16, wait));
+                                                return;
+                                        }
                                         state.pendingAutoSize = false;
                                         state.lastAutoSizedContentVersion = state.contentVersion || 0;
                                         states.set(id, state);
@@ -507,6 +640,80 @@ function disclosureInterface(container) {
                 };
 
                 runPass(0);
+        }
+
+        // The size content auto-size gives a panel on one axis this pass. Growth is immediate. A
+        // shrink waits until the content has measured smaller for AUTO_SIZE_SHRINK_SETTLE_MS, then
+        // goes to the largest size it needed in that time. The pending shrink lives on the panel
+        // state, not the pass sequence, so a panel re-rendered faster than the settle time still
+        // shrinks once its content stays small. `holds` is content that says nothing about how
+        // small the panel could be. Auto-size used to be grow-only, and a panel that once held a
+        // long diagnostic stayed that tall, its resize corner thousands of pixels down.
+        function settleShrink(state, axis, target, current, holds, now) {
+                const pending = state.pendingShrink || (state.pendingShrink = { width: null, height: null });
+                if (target >= current - 2 || holds) {
+                        pending[axis] = null;
+                        return holds ? current : Math.max(target, current);
+                }
+                const shrink = pending[axis] || (pending[axis] = { since: now, to: target });
+                shrink.to = Math.max(shrink.to, target);
+                if (now - shrink.since < AUTO_SIZE_SHRINK_SETTLE_MS) return current;
+                pending[axis] = null;
+                return shrink.to;
+        }
+
+        function baseWidthForId(id) {
+                return clampSizeForId(id, DEFAULT_W, DEFAULT_H).width;
+        }
+
+        // The width this content takes in a panel opened fresh, which `primeAutoSizeForOpen` lays
+        // out at DEFAULT_W too. A panel measured at its own width cannot say how wide it should be:
+        // text wraps to whatever width it is given, so its lines reach about as far as the panel
+        // does. Following them in would creep the panel narrower a word at a time, and a panel that
+        // had shrunk to its header for narrow content would squeeze the next paragraph into that
+        // column. Measured at one fixed width, the answer does not depend on how wide the panel is
+        // now. The panel keeps its height meanwhile, and every scroll position is put back.
+        function naturalWidthAtBase(id, d, natural) {
+                const base = baseWidthForId(id);
+                if (Math.abs((Number(ensureState(id).width) || DEFAULT_W) - base) <= 1) return natural.width;
+                const scrolled = [d.cw, ...d.cw.querySelectorAll("*")]
+                        .filter((element) => element.scrollTop || element.scrollLeft)
+                        .map((element) => [element, element.scrollTop, element.scrollLeft]);
+                const previous = { width: d.cw.style.width, wrapWidth: d.wrap.style.width };
+                d.selfResizeUntil = Date.now() + 250;
+                d.cw.style.width = `${base}px`;
+                d.wrap.style.width = `${base}px`;
+                const atBase = contentSizeForDisclosure(d);
+                d.cw.style.width = previous.width;
+                d.wrap.style.width = previous.wrapWidth;
+                scrolled.forEach(([element, top, left]) => {
+                        element.scrollTop = top;
+                        element.scrollLeft = left;
+                });
+                return atBase.width;
+        }
+
+        // Re-measure straight after a shrink, in the same frame, so a wrong guess is never painted.
+        // Content that now overflows (a trailing margin the rect extents missed, text rewrapped
+        // taller in a narrower panel) gets the room it needs. Content that measures shorter than it
+        // did before the panel shrank (a `height:50%` child) was tracking the panel, not stating a
+        // height, and following it down would halve the panel each time, so the panel gets its old
+        // height back.
+        function verifyShrink(id, d, state, before, previous) {
+                const after = contentSizeForDisclosure(d);
+                const width = after.width > state.width + 1 ? after.width : state.width;
+                let height = state.height;
+                if (after.height > state.height + 1) {
+                        height = after.height;
+                } else if (state.height < previous.height && after.height < before.height - 2 && !after.reachesBottom) {
+                        height = previous.height;
+                }
+                if (width === state.width && height === state.height) return;
+                const clamped = clampAutoSizeForId(id, width, height);
+                state.width = clamped.width;
+                state.height = clamped.height;
+                states.set(id, state);
+                applyOpen(id, d);
         }
 
         /**
@@ -663,12 +870,29 @@ function disclosureInterface(container) {
                 };
         }
 
-        function clampSizeForId(id, width, height) {
+        function clampSizeForId(id, width, height, userSized = false) {
                 const bounds = boundsForId(id);
+                // Chat's cap chooses an initial size; it must not undo the reader's resize.
+                if (id === "ai-chat" && userSized) {
+                        bounds.maxW = bounds.maxH = Number.POSITIVE_INFINITY;
+                }
                 return {
                         width: clamp(width, bounds.minW, bounds.maxW),
                         height: clamp(height, bounds.minH, bounds.maxH)
                 };
+        }
+
+        // `clampSizeForId` for a size content auto-size chose, which also may not make a panel taller
+        // than AUTO_MAX_VIEWPORT_H_RATIO of the window. Ids with their own height cap keep it; sizes a
+        // person drags go through `clampSizeForId` alone.
+        function clampAutoSizeForId(id, width, height) {
+                const clamped = clampSizeForId(id, width, height);
+                const bounds = boundsForId(id);
+                if (!Number.isFinite(bounds.maxH)) {
+                        const viewportH = Math.max(window.innerHeight || 0, DEFAULT_H);
+                        clamped.height = clamp(clamped.height, bounds.minH, Math.floor(viewportH * AUTO_MAX_VIEWPORT_H_RATIO));
+                }
+                return clamped;
         }
 
         function applySizeBoundsForId(id, d) {
@@ -760,14 +984,16 @@ function disclosureInterface(container) {
                 if (d.inline) return;
                 if (d.cw.style.display === "none") return;
                 const st = ensureState(id);
-                const rect = d.cw.getBoundingClientRect();
-                const clamped = clampSizeForId(id, Math.max(rect.width, 50), Math.max(d.cw.clientHeight, 20));
+                // Persist layout pixels, not the canvas-zoomed screen rectangle.
+                const clamped = clampSizeForId(id, d.cw.offsetWidth, d.cw.offsetHeight, true);
                 const changed = Math.abs((st.width || DEFAULT_W) - clamped.width) > 2 ||
                         Math.abs((st.height || DEFAULT_H) - clamped.height) > 2;
                 st.width = clamped.width;
                 st.height = clamped.height;
                 if (changed) {
                         st.userSized = true;
+                        st.autoSizeToken++;
+                        st.pendingAutoSize = false;
                 }
                 states.set(id, st);
                 d.wrap.style.width = `${st.width}px`;
@@ -788,7 +1014,7 @@ function disclosureInterface(container) {
                 if (d.inline) return;
                 const st = ensureState(id);
                 applySizeBoundsForId(id, d);
-                const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H);
+                const clamped = clampSizeForId(id, st.width || DEFAULT_W, st.height || DEFAULT_H, st.userSized);
                 const w = clamped.width;
                 const h = clamped.height;
                 st.width = w;
@@ -834,19 +1060,22 @@ function disclosureInterface(container) {
                 d.cw.style.display = "block";
                 d.cw.style.visibility = "hidden";
                 d.cw.style.padding = d.cw.dataset.origPadding || "0px";
-                d.cw.style.width = `${st.width || DEFAULT_W}px`;
+                // The same width the auto-size passes measure at (`naturalWidthAtBase`), so a panel
+                // opens at the width those passes keep.
+                d.cw.style.width = `${baseWidthForId(id)}px`;
                 d.cw.style.height = "auto";
                 d.cw.style.overflow = "visible";
-                d.wrap.style.width = `${st.width || DEFAULT_W}px`;
+                d.wrap.style.width = `${baseWidthForId(id)}px`;
 
                 const natural = contentSizeForDisclosure(d);
-                const clamped = clampSizeForId(
+                const clamped = clampAutoSizeForId(
                         id,
                         Math.max(natural.width, headerWidth(d)),
                         Math.max(natural.height, 20)
                 );
                 st.width = clamped.width;
                 st.height = clamped.height;
+                st.pendingShrink = null;
                 states.set(id, st);
 
                 d.cw.style.display = previous.display;
@@ -953,10 +1182,20 @@ function disclosureInterface(container) {
                         return;
                 }
                 const st = ensureState(id);
+                // Already open: nothing to lay out again. Every streamed AI chat update calls open(), and
+                // re-running the open layout re-measured the panel, which collapsed the chat's own scroller
+                // for an instant and dropped the reader to the top on every update of a turn.
+                if (st.open && d.wrap.classList.contains("open") && d.cw.style.display !== "none") {
+                        bindContentLoadEvents(id, d);
+                        observeContentTargets(id, d);
+                        return;
+                }
                 if (!st.width) st.width = DEFAULT_W;
                 if (!st.height) st.height = DEFAULT_H;
-                primeAutoSizeForOpen(id, d);
-                applyOpen(id, d);
+                if (!st.open) {
+                        primeAutoSizeForOpen(id, d);
+                        applyOpen(id, d);
+                }
                 st.open = true;
                 states.set(id, st);
                 bindContentLoadEvents(id, d);
@@ -1203,6 +1442,26 @@ function disclosureInterface(container) {
 
                         event.preventDefault();
                         event.stopPropagation();
+                        const reviewView = link.getAttribute("data-review-view");
+                        const reviewNote = link.getAttribute("data-review-note");
+                        const showError = error => {
+                                let feedback = link.nextElementSibling;
+                                if (!feedback?.classList.contains("review-link-error")) {
+                                        feedback = document.createElement("p"); feedback.className = "review-link-error";
+                                        feedback.style.cssText = "color:#ff7070;user-select:text";
+                                        feedback.setAttribute("aria-live", "polite"); link.after(feedback);
+                                }
+                                feedback.textContent = error.message;
+                        };
+                        if (reviewView && reviewNote) {
+                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(showError);
+                                return;
+                        }
+                        // A build's "Show where it fails": open that box's output, not its code, and leave the selection alone.
+                        if (link.getAttribute("data-box-reveal") === "output") {
+                                try { revealOutputOf(navigation.uid, reviewView); } catch (error) { showError(error); }
+                                return;
+                        }
                         selectBoxByUidFromOutput(
                                 navigation.uid,
                                 navigation.property,
@@ -1261,6 +1520,48 @@ function findBoxByUid(uid) {
                 if (box.uid === uid) return box;
         }
         return null;
+}
+
+// Open the existing review thread in its output, without opening Monaco or restoring a camera.
+/** The viewer iframe in [box]'s output whose `uid` parameter is [viewId], or null. */
+function reviewViewerIn(box, viewId) {
+        if (!viewId) return null;
+        return [...(box?.querySelectorAll('.outputArea iframe') || [])].find(frame => {
+                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
+                catch (_) { return false; }
+        }) || null;
+}
+
+/** Open every output panel of box [uid] and bring it into view, at the viewer named [viewId] when there is one. */
+function revealOutputOf(uid, viewId) {
+        const box = findBoxByUid(uid);
+        if (!box) throw Error(`Box “${uid}” is not in this document.`);
+        if (!window.revealBoxOutputs?.(uid, reviewViewerIn(box, viewId))) throw Error('That box has no output yet. Run it first.');
+}
+
+async function revealGeometryReview(uid, viewId, noteId) {
+        const box = findBoxByUid(uid);
+        const frames = [...(box?.querySelectorAll('.outputArea iframe') || [])];
+        const viewer = reviewViewerIn(box, viewId);
+        if (!window.revealBoxOutputs?.(uid, viewer)) throw Error('The review output is unavailable. Run its source box first.');
+        const targets = new Set([window, ...frames.map(frame => frame.contentWindow).filter(Boolean)]);
+        const requestId = crypto.randomUUID();
+        return new Promise((resolve, reject) => {
+                const send = () => targets.forEach(target => target.postMessage({type:'field-review-open', requestId, viewId, noteId}, location.origin));
+                const finish = error => {
+                        clearTimeout(timer); window.removeEventListener('message', receive);
+                        frames.forEach(frame => frame.removeEventListener('load', send));
+                        if (error) reject(error); else resolve();
+                };
+                const receive = event => {
+                        if (event.origin !== location.origin || !targets.has(event.source) || event.data?.type !== 'field-review-opened' || event.data.requestId !== requestId) return;
+                        finish(event.data.ok ? null : Error(event.data.error || 'Could not open this review.'));
+                };
+                const timer = setTimeout(() => finish(Error('The review view did not respond. Run its source box, then try again.')), 8000);
+                window.addEventListener('message', receive);
+                frames.forEach(frame => frame.addEventListener('load', send));
+                send();
+        });
 }
 
 function parseAfieldRef(raw) {
@@ -1512,39 +1813,72 @@ function chatPinnedToBottom(messages) {
 function renderChatMessages(messages, markdown, options) {
         if (!messages) return;
         const forceBottom = !!(options && options.forceBottom);
-        // Both measured before the teardown, because the teardown is what loses the position.
-        const stick = forceBottom || chatPinnedToBottom(messages);
-        const previousTop = messages.scrollTop;
+        const text = markdown || "";
+        if (!forceBottom && messages.__chatMarkdown === text) return;
 
-        messages.innerHTML = aiChatHistoryToHtml(markdown || "");
-        decorateAfieldLinks(messages);
-        applyCodeHighlight(messages);
-
-        if (!stick) {
-                const maxTop = Math.max(0, messages.scrollHeight - messages.clientHeight);
-                messages.scrollTop = Math.min(previousTop, maxTop);
-                // Deliberately no image handler on this path: the reader is parked somewhere above,
-                // content grows below them, and browser scroll anchoring already holds them there.
-                // Re-asserting a stored offset later would fight whatever they did in the meantime.
-                return;
+        // A new streamed chunk can arrive before the previous chunk's images have loaded.
+        // Carry the intended position forward instead of recording a temporarily clamped offset.
+        const pending = messages.__chatScrollRestore;
+        const restore = {
+                stick: forceBottom || (pending ? pending.stick : chatPinnedToBottom(messages)),
+                top: pending ? pending.top : messages.scrollTop
+        };
+        messages.__chatScrollRestore = restore;
+        if (!messages.__chatScrollInputBound) {
+                const cancelRestore = () => { messages.__chatScrollRestore = null; };
+                for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+                        messages.addEventListener(event, cancelRestore, {passive: true});
+                }
+                messages.__chatScrollInputBound = true;
         }
 
+        // Keep known image aspect ratios through DOM replacement, avoiding collapsed screenshots.
+        const dimensions = new Map();
+        messages.querySelectorAll("img").forEach(img => {
+                const width = img.naturalWidth || Number(img.getAttribute("width"));
+                const height = img.naturalHeight || Number(img.getAttribute("height"));
+                if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
+        });
+        messages.innerHTML = aiChatHistoryToHtml(text);
+        messages.__chatMarkdown = text;
+        // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
+        // otherwise restart the sweep on every render and it would never get across the text.
+        messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
+                el.getAnimations().forEach(animation => { animation.startTime = 0; });
+        });
+        decorateAfieldLinks(messages);
+        applyCodeHighlight(messages);
+        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+                if (event === "settled") pendingFenceRenders--;
+                finish();
+        });
+        const images = Array.from(messages.querySelectorAll("img"));
+        images.forEach(img => {
+                const size = dimensions.get(img.getAttribute("src"));
+                if (size && !img.hasAttribute("width") && !img.hasAttribute("height")) {
+                        img.width = size.width;
+                        img.height = size.height;
+                }
+        });
+
         const settle = () => {
-                messages.scrollTop = messages.scrollHeight;
+                // Old image callbacks cannot override a newer render or the reader's own gesture.
+                if (messages.__chatScrollRestore !== restore) return;
+                messages.scrollTop = restore.stick ? messages.scrollHeight : restore.top;
+        };
+        const finish = () => {
+                settle();
+                if (images.every(img => img.complete) && pendingFenceRenders === 0 && messages.__chatScrollRestore === restore) {
+                        messages.__chatScrollRestore = null;
+                }
         };
         settle();
-        // An inline screenshot gains its height after this call returns, so settle again per image
-        // rather than guessing a delay that is always wrong on one machine or another.
-        messages.querySelectorAll("img").forEach((img) => {
+        images.forEach(img => {
                 if (img.complete) return;
-                const once = () => {
-                        img.removeEventListener("load", once);
-                        img.removeEventListener("error", once);
-                        settle();
-                };
-                img.addEventListener("load", once);
-                img.addEventListener("error", once);
+                img.addEventListener("load", finish, {once: true});
+                img.addEventListener("error", finish, {once: true});
         });
+        requestAnimationFrame(finish);
 }
 
 // Fetch on panel creation, without replacing a newer streamed/local turn or another box's chat.
@@ -1569,10 +1903,12 @@ function ensureAiChat(container, uid, property) {
                         existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
                         existing.root.dataset.property = existing.property || "code";
                         if (changedBox) {
+                                existing.stateBrowser?.reset();
                                 container.__aiChatHistory = controllerChatHistory.get(uid) || "";
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
                         }
+                        if (!changedBox) existing.stateBrowser?.refreshAvailability();
                         return existing;
                 }
         }
@@ -1587,6 +1923,15 @@ function ensureAiChat(container, uid, property) {
         messages.addEventListener("click", (event) => {
                 const target = event.target;
                 if (!(target instanceof HTMLElement)) return;
+                const turnAction = target.closest(".ai-chat-turn-action");
+                if (turnAction) {
+                        const turn = turnAction.closest("[data-ai-turn]");
+                        if (!turn) return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        rewindConversation(Number(turn.dataset.aiTurn), turn.dataset.aiText || "", turnAction.dataset.aiAction === "edit");
+                        return;
+                }
                 const button = target.closest(".ai-chat-copy");
                 if (!button) return;
                 const block = button.closest(".ai-chat-code-block");
@@ -1756,10 +2101,59 @@ function ensureAiChat(container, uid, property) {
                         "- `/help` show available commands",
                         "- `/clear` delete this box’s saved conversation and start fresh",
                         "- `/screenshot [window]` capture an `afield.four` window and attach it as an image",
+                        "- `/context` show what the last AI turn was told besides the conversation, and its size",
+                        "- `/branches` list this conversation's branches (made by rewinding or editing a message); `/branch <#>` switch to one",
                         "- `/box \"box name\"/property` reference a box property in the conversation",
                         "",
                         "`[window]` can be a 1-based window number or part of a window title. Quotes around box names are optional when the name/property split is unambiguous."
                 ].join("\n");
+        }
+
+        // Rewind (or edit and resend) to before user turn `ordinal`. The server keeps everything after it as a
+        // branch (AiSessionTree), rebuilds the provider thread and agent memory from the new head, and says what
+        // of the document the abandoned turns changed; undoing that is a second, explicit question.
+        function rewindConversation(ordinal, expectedText, edit) {
+                if (!Number.isInteger(ordinal) || ordinal < 0) return;
+                const question = edit
+                        ? "Edit this message and send it again? The conversation from here on is kept as a branch (/branches)."
+                        : "Rewind to before this message? The conversation from here on is kept as a branch (/branches).";
+                if (!window.confirm(question)) return;
+                const targetUid = chatUid();
+                setCommandBusy(true);
+                sendWithReply("ai-chat-history", {uid: targetUid, rewindTo: ordinal, expectedText},
+                        `ai-chat-rewind-${targetUid}-${Date.now()}`, (_message, response) => {
+                                setCommandBusy(false);
+                                if (response?.error) {
+                                        window.notify?.(response.error, "AI4");
+                                        return "remove";
+                                }
+                                if (chatUid() !== targetUid) return "remove";
+                                aiChatUpdate(container, targetUid, response?.history || "");
+                                // A branch state that changed outside the conversation, and what was done about it.
+                                if (response?.message) appendLocalChatTurn("ai", response.message);
+                                if (edit && response?.userText) {
+                                        textarea.value = response.userText;
+                                        textarea.focus();
+                                }
+                                const edits = response?.undoableEdits || 0;
+                                const boxes = response?.undoableBoxes || 0;
+                                const turns = Array.isArray(response?.abandonedTurns) ? response.abandonedTurns : [];
+                                if ((edits > 0 || boxes > 0) && turns.length > 0) {
+                                        const parts = [];
+                                        if (edits > 0) parts.push(`${edits} document edit${edits === 1 ? "" : "s"}`);
+                                        if (boxes > 0) parts.push(`${boxes} new box${boxes === 1 ? "" : "es"}`);
+                                        const undo = window.confirm(`The rewound turns made ${parts.join(" and ")}. Undo those too? ` +
+                                                "Anything changed since is left alone.");
+                                        if (undo) {
+                                                sendWithReply("ai-chat-rewind-world", {uid: targetUid, turns},
+                                                        `ai-chat-rewind-world-${targetUid}-${Date.now()}`, (_m, result) => {
+                                                                appendLocalChatTurn("ai", result?.message || "Undo finished.");
+                                                                return "remove";
+                                                        });
+                                        }
+                                }
+                                return "remove";
+                        });
         }
 
         function captureScreenshotCommand(target) {
@@ -1819,6 +2213,11 @@ function ensureAiChat(container, uid, property) {
                 if (command === "help" || command === "?") {
                         textarea.value = "";
                         appendLocalChatTurn("ai", commandHelpMarkdown());
+                        const helpUid = chatUid();
+                        sendWithReply("ai-chat-command", {uid: helpUid, name: "__help"}, `ai-chat-help-${helpUid}-${Date.now()}`, (_m, response) => {
+                                if (response?.known && response.markdown && chatUid() === helpUid) appendLocalChatTurn("ai", response.markdown);
+                                return "remove";
+                        });
                         return true;
                 }
 
@@ -1848,16 +2247,59 @@ function ensureAiChat(container, uid, property) {
                         return true;
                 }
 
+                if (command === "branches" || command === "branch") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        const index = command === "branch" ? Number.parseInt(rest, 10) : NaN;
+                        if (command === "branch" && !Number.isInteger(index)) {
+                                appendLocalChatTurn("ai", "_Usage: `/branch <#>`, with a number from `/branches`._");
+                                return true;
+                        }
+                        const payload = command === "branches" ? {uid: targetUid, listBranches: true} : {uid: targetUid, switchTo: index};
+                        sendWithReply("ai-chat-history", payload, `ai-chat-branches-${targetUid}-${Date.now()}`, (_message, response) => {
+                                if (chatUid() !== targetUid) return "remove";
+                                if (response?.error) {
+                                        appendLocalChatTurn("ai", `_${response.error}_`);
+                                        return "remove";
+                                }
+                                if (command === "branch") aiChatUpdate(container, targetUid, response?.history || "");
+                                if (response?.message) appendLocalChatTurn("ai", response.message);
+                                return "remove";
+                        });
+                        return true;
+                }
+
+                if (command === "context") {
+                        textarea.value = "";
+                        const targetUid = chatUid();
+                        // Shown locally like /help: never saved, so never fed back to the model.
+                        sendWithReply("ai-chat-context", {uid: targetUid},
+                                `ai-chat-context-${targetUid}-${Date.now()}`, (_message, response) => {
+                                        if (chatUid() === targetUid) appendLocalChatTurn("ai", response?.markdown || "_No context report._");
+                                        return "remove";
+                                });
+                        return true;
+                }
+
                 if (command === "box") {
                         return false;
                 }
 
                 textarea.value = "";
-                appendLocalChatTurn("ai", `_Unknown command: /${command}. Type \`/help\` for available commands._`);
+                // Not built in: this document's agent extensions may define it (agentExtension { command(...) }).
+                const commandUid = chatUid();
+                sendWithReply("ai-chat-command", {uid: commandUid, name: command, args: rest},
+                        `ai-chat-command-${commandUid}-${Date.now()}`, (_m, response) => {
+                                if (chatUid() !== commandUid) return "remove";
+                                appendLocalChatTurn("ai", response?.known
+                                        ? (response.markdown || "_(no output)_")
+                                        : `_Unknown command: /${command}. Type \`/help\` for available commands._`);
+                                return "remove";
+                        });
                 return true;
         }
 
-        function submitPrompt() {
+        function submitPrompt(options = {}) {
                 const text = textarea.value.trim();
                 if (!text && attachments.length === 0) return;
                 if (text.startsWith("/")) {
@@ -1879,7 +2321,12 @@ function ensureAiChat(container, uid, property) {
                         renderMessages({ forceBottom: true });
                 }
                 const images = attachments.map(attachmentSrc).filter((src) => src.length > 0);
-                sendAiChat(buildAiChatPayload(chatUid(), chatProperty(), text, images));
+                const payload = buildAiChatPayload(chatUid(), chatProperty(), text, images);
+                if (options.dictated) payload.dictated = true;
+                // While this box's turn runs, the server gives the message to that turn instead of refusing it.
+                payload.queueIfBusy = true;
+                noteAiChatUsed(container);
+                sendAiChat(payload);
                 attachments.length = 0;
                 renderPreview();
         }
@@ -1890,7 +2337,25 @@ function ensureAiChat(container, uid, property) {
                     submitPrompt();
             }
         });
-        sendButton.addEventListener("click", submitPrompt);
+        sendButton.addEventListener("click", () => submitPrompt());
+        textarea.addEventListener("focus", () => noteAiChatUsed(container));
+
+        // Push-to-talk: hold to record, release to transcribe into this chat (`voiceInput.js`).
+        const micButton = document.createElement("button");
+        micButton.className = "ai-chat-mic";
+        micButton.type = "button";
+        micButton.title = `Hold to talk (or hold ${window.fieldVoice?.hotkeyLabel || "the push-to-talk key"} anywhere)`;
+        micButton.setAttribute("aria-label", "Push to talk");
+        // Line-drawn like the layers panel's eye: capsule, cradle, stem, 1.3 stroke in currentColor.
+        micButton.innerHTML = '<svg width="12" height="18" viewBox="0 0 12 18" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><rect class="ai-chat-mic-capsule" x="3.5" y="1" width="5" height="9.5" rx="2.5"/><path d="M1 8.5a5 5 0 0 0 10 0"/><path d="M6 13.5V17M3.5 17h5"/></svg>';
+        micButton.addEventListener("pointerdown", (event) => {
+                event.preventDefault();
+                micButton.setPointerCapture?.(event.pointerId);
+                window.fieldVoice?.start(container);
+        });
+        const micUp = () => window.fieldVoice?.stop();
+        micButton.addEventListener("pointerup", micUp);
+        micButton.addEventListener("pointercancel", () => window.fieldVoice?.cancel());
 
         textarea.addEventListener("paste", (event) => {
                 const items = event.clipboardData?.items;
@@ -1913,14 +2378,29 @@ function ensureAiChat(container, uid, property) {
 
         inputWrap.appendChild(preview);
         inputWrap.appendChild(textarea);
+        inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
 
+        const stateBrowser = mountStateTreeBrowser(root, {
+                chatUid,
+                request: payload => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("State history request timed out. Refresh to retry.")), 15000);
+                        sendWithReply("ai-state-tree", payload, `ai-state-tree-${Date.now()}-${Math.random()}`, (_m, reply) => {
+                                clearTimeout(timeout); resolve(reply); return "remove";
+                        });
+                }),
+                insertReference: text => {
+                        textarea.value += (textarea.value ? "\n\n" : "") + text;
+                        textarea.dispatchEvent(new Event("input", {bubbles: true}));
+                        textarea.focus();
+                }
+        });
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code"};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2209,12 +2689,83 @@ function openAiChatForBox(uid, property) {
         const inter = disclosureInterface(contain);
         const content = inter.upsertDisclosure("ai-chat", "AI Chat", "__AFIELD_PRESERVE_DISCLOSURE_CONTENT__");
         const chat = ensureAiChat(content, uid, property || "code");
+        noteAiChatUsed(content);
         inter.open("ai-chat");
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
+        return chat;
 }
 
+window.openAiStateBrowser = async (uid, source, node, offset) => {
+        const chat = openAiChatForBox(uid, "code");
+        if (!chat) return false;
+        return !!await chat.stateBrowser.reveal(source, node, offset);
+};
+
+// ---- voice target ----------------------------------------------------------
+//
+// Push-to-talk needs a chat to talk into without a click. The target is sticky: the last box you
+// selected that has a chat open, or the last chat you typed into, whichever happened later. Selecting
+// a box without a chat leaves the target where it was; with no live target at all, the selected box
+// gets a chat opened for it.
+
+let stickyAiChat = null;
+
+function noteAiChatUsed(container) {
+        if (container && container.__aiChat) stickyAiChat = container;
+}
+
+// Output panels are not DOM children of their box, so a box's chat is found by the uid it carries.
+function aiChatContainerForBox(box) {
+        const uid = box?.uid;
+        if (!uid) return null;
+        for (const root of document.querySelectorAll(".ai-chat-window")) {
+                if (root.dataset.uid !== uid) continue;
+                const container = root.parentElement;
+                if (container && container.__aiChat && !container.closest("#controller-chat-root")) return container;
+        }
+        return null;
+}
+
+function liveAiChat(container) {
+        return !!(container && container.isConnected && container.__aiChat && container.contains(container.__aiChat.root));
+}
+
+window.addEventListener("field-selection-changed", () => {
+        const uid = controllerChatSelectedUid();
+        const container = uid ? aiChatContainerForBox(findBoxByUid(uid)) : null;
+        if (container) stickyAiChat = container;
+});
+
+function aiChatVoiceTarget() {
+        if (liveAiChat(stickyAiChat)) return stickyAiChat;
+        const uid = controllerChatSelectedUid();
+        if (!uid) return null;
+        const existing = aiChatContainerForBox(findBoxByUid(uid));
+        if (existing) return (stickyAiChat = existing);
+        openAiChatForBox(uid, window.currentSelectedProperty || "code");
+        return (stickyAiChat = aiChatContainerForBox(findBoxByUid(uid)));
+}
+
+// What the conversation is about, for Whisper's vocabulary prompt: the chat so far, the box's
+// code, and the names of the boxes on the canvas.
+function aiChatVoiceContext(container) {
+        const chat = container?.__aiChat;
+        const uid = chat?.root?.dataset.uid || chat?.uid || "";
+        const box = uid ? findBoxByUid(uid) : null;
+        const names = Array.from(document.querySelectorAll(".box"))
+                .map((element) => element.name || element.getAttribute?.("data-name") || "")
+                .filter((name) => typeof name === "string" && name.trim().length > 0);
+        return {
+                history: container?.__aiChatHistory || "",
+                code: readBoxProperty(box, chat?.root?.dataset.property || chat?.property || "code"),
+                boxNames: names
+        };
+}
+
+window.aiChatVoiceTarget = aiChatVoiceTarget;
+window.aiChatVoiceContext = aiChatVoiceContext;
 window.aiChatUpdate = aiChatUpdate;
 window.openAiChatForBox = openAiChatForBox;
 installControllerChatProjection();

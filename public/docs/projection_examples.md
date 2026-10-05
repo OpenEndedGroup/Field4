@@ -10,14 +10,13 @@ Wasserstein distance. There is nothing to plot, because the things have no coord
 whole problem, and it is what `afield/stdlib/smile_mds.kt` is for. Give it the distances and it
 invents coordinates that reproduce them as closely as two dimensions allow.
 
-Four functions and five result types. Two of them take vectors and compute the distances for you,
-which is what the [speech-embedding](audio_ai_speech_embeddings.md) and
+Two of the functions take vectors and compute the distances for you, which is what the
+[speech-embedding](audio_ai_speech_embeddings.md) and
 [short-time spectral](audio_ai_spectral_embeddings.md) pages use. The other two take a **distance
-matrix you computed yourself**, and `smileMdsDistances`' own one-line summary says what that is for:
-"useful for transport, edit, and graph distances". Both examples below are one of those, and neither
-has anything to do with sound.
+matrix you computed yourself**: transport, edit and graph distances, or anything else you can
+measure between two things. Both examples below build their own matrix.
 
-??? note "On Apple Silicon the eigensolver is LAPACK, not ARPACK"
+??? aside "On Apple Silicon the eigensolver is LAPACK"
 
     `smileMds` probes the ARPACK binding once and falls back to LAPACK's `dsyevd` when it is
     missing (`smile_mds.kt:349#private val arpackAvailable: Boolean by lazy {`). On `macosx-arm64`
@@ -43,7 +42,7 @@ has anything to do with sound.
 matrix-taking calls never see your vectors at all, which is exactly why they accept a distance no
 vector could express.
 
-Three limits, before you reach for any of it. None of these projections is invertible, and none can
+Some limits first. None of these projections is invertible, and none can
 place a new point without refitting everything, so this is not dimensionality reduction for a model.
 Nothing here assigns labels either: a picture with visible clumps is a picture, not a partition. And
 none of it is cheap at scale, because the proximity matrix is `n²` doubles
@@ -194,14 +193,14 @@ that answers that, and you have to compute it yourself.
 
 ## A graph distance: hop count on a KNN spiral
 
-The second case the KDoc advertises. Take 160 points along a two-turn spiral, join each to its four
+Take 160 points along a two-turn spiral, join each to its four
 nearest neighbours with `vec2KnnGraph` (`graph_connectivity.kt:584#fun vec2KnnGraph(`), and count
 hops. That is a distance defined entirely by the graph: two points on adjacent arms of the spiral
 are close in the plane and far apart along the curve, and hop count is the one that knows it.
 
-Feed the hop matrix to `smileMdsDistances` and you have Isomap in about fifteen lines. The check is
-built in: the spiral has a true parameter, the position along it, and a projection that has
-understood the curve must recover a coordinate that is monotone in that parameter.
+Feed the hop matrix to `smileMdsDistances` and you have Isomap, a standard way of unrolling a curved
+shape. The spiral also tells you whether it worked: each point has a true position along the curve,
+and a good projection recovers a coordinate that rises steadily with it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/projection_examples/graph_hops_spiral.png" wait="2.0" capture="box" open-outputs="true" w="1000" h="760" padding="16"}
 :::static
@@ -314,11 +313,10 @@ recovers a coordinate whose rank order along the spiral is *exactly* the true on
 spiral's x-coordinate crosses the same value four times. Against a fitted arc length rather than a
 rank, the graph coordinate is linear at Pearson **0.9852** against **0.3238**.
 
-Nothing here is a property of MDS; it is a property of the distance you chose. Both fits are the
-same call with the same options. Change the matrix and the projection answers a different question —
-which is why the matrix-taking entry point exists.
+Both fits are the same call with the same options; only the distance matrix differs. Change the
+matrix and the projection answers a different question.
 
-What has to be checked is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
+The thing to check is the graph, and the fence checks it: **worst `|i − j|` over an edge = 4**,
 so no edge has jumped between arms. A single shortcut edge would collapse two arms into one and the
 rho above would fall off a cliff. Raise `k` until that happens and you can watch it go.
 
@@ -448,9 +446,8 @@ structure of anything here: of each point's ten nearest neighbours in twelve dim
 
 t-SNE inverts both. It keeps **4.8** of the ten neighbours, 63% more than MDS, and it reports the
 two clusters that are 3.85 times further apart as **1.24** times further apart. The distance you
-would read off that picture is wrong by a factor of **3.1**, and no amount of squinting recovers it.
-That factor is what "do not read distance between t-SNE clusters" is protecting you from, and the
-coordinates in the figure are where it can be measured.
+would read off that picture is wrong by a factor of **3.1**. That is why you should never read
+distances between t-SNE clusters.
 
 Perplexity is the dial between the two behaviours, and the sweep is monotone in both directions at
 once:
@@ -473,7 +470,7 @@ seeds are not remotely the same picture: the worst coordinate moves by **30.59**
 different plot. If a t-SNE figure is going into something anyone else will read, the seed belongs in
 the caption.
 
-??? note "The lock behind that guarantee"
+??? aside "Why same-seed fits are identical"
 
     Smile's t-SNE initialiser draws from `smile.math.MathEx`'s **process-wide** random source, so
     `smileTsne` installs `seed` and runs the fit inside a lock
@@ -584,7 +581,7 @@ tenth is genuinely negative at **−1.03**, at which point the call refuses, bec
 square root of a negative eigenvalue. Corrected, all **18** requestable dimensions are
 comfortably positive, the smallest of them 17.75.
 
-That is what the flag buys: **dimensions, not accuracy.** In two dimensions the *uncorrected* fit is
+So the flag gives you more dimensions. It does not make the fit more accurate: in two dimensions the *uncorrected* fit is
 fractionally the better of the two, at r 0.8533 and stress 0.2626 against 0.8475 and 0.2780 with the
 correction on. The additive constant inflates every distance by the same amount, which flattens the
 relative differences the projection is trying to reproduce. So if you only ever want two or three
@@ -617,7 +614,7 @@ tenth eigenvalue" is a worse first experience than losing 0.015 of a correlation
 - **t-SNE needs at least four rows and a perplexity below the row count**, and its axes carry no
   meaning at all: not units, not order, not orientation. Only the neighbourhoods do.
 
-## Choosing, in one paragraph
+## Choosing between MDS and t-SNE
 
 If the quantity you want to read off the picture is a *distance*, as in this pair being twice as far
 apart as that pair, use MDS, and report a stress figure alongside it so the reader knows what two dimensions

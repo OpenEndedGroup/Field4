@@ -105,6 +105,11 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
+- `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
+  `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
+  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
+  `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
+  needs a person (or `agent-task --chat-box Studio`) and a provider.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
@@ -200,6 +205,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
+  `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
+  under transport-time, movie-time and step sliders. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.

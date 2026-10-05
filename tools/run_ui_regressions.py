@@ -3710,6 +3710,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="three-camera-link",
+            description="Opt-in camera links align model space across origins, axes and units while leaving display and notes independent.",
+            commands=[
+                "new-box --name LinkedCameraRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-camera-link.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="three-mixed-review",
+            description="Moving ordinary geometry beside canonical parts invalidates notes while preserving the view.",
+            commands=[
+                "new-box --name MixedReviewRegression",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.kt")]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/three-mixed-review.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="three-feature-review",
             description="Pick ordinary mesh faces, FLine strokes and points without construction-specific metadata.",
             commands=[
@@ -3844,6 +3864,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="state-tree-browser",
+            description="Browse real AI4 branches and provider states; reference two states without sending, navigating or losing the draft.",
+            commands=[
+                "new-box --name StateHistoryRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-resize",
+            description="Chat retains manual size, draft and reading position through streamed text and images, reopen and canvas zoom.",
+            commands=[
+                "new-box --name ChatResizeRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-resize.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="viewer-panel-sizing",
             description="An embedded viewer panel reaches the size the viewer declares, instead of opening at the DEFAULT_W/DEFAULT_H constants. See dev_docs/OUTPUT_PANEL_SIZING.md.",
             commands=[
@@ -3851,6 +3891,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["run", "@last", "--file", str(files["viewer_panel_sizing_snippet"]), "--timeout", timeout_text]),
                 "sleep 2.0",
                 shell_join(["page-eval", "--body", "--file", str(files["viewer_panel_sizing_js"]), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="output-panel-shrink",
+            description="An auto-sized output panel follows its content down as well as up in height and width, sizes a capped scroller by its cap, measures width at a fresh panel's width so wrapped text does not creep, holds still while content alternates, ignores canvas zoom and stays within the window; a hand-sized panel keeps its size.",
+            commands=[
+                "new-box --name OutputPanelShrinkRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/output-panel-shrink.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="study-build-failure-view",
+            description="A failed StudyBuild card's \"Show where it fails\" opens the closed output panel of the box its failure names, without changing the selection or opening that box's code, and says so beside the link when the box is not in the document.",
+            commands=[
+                "new-box --name StudyBuildFailureViewRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/study-build-failure-view.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
@@ -4106,6 +4166,26 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot="macro run guide_capture",
         ),
         UiRegression(
+            id="ai-chat-fence-renderers",
+            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            document=f"ui-regression-chat-fences-{int(time.time())}",
+            commands=[
+                "new-box --name FenceRenderers --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-fence-renderers.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "FenceRenderers", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="ai-chat-scroll",
+            description="The AI chat keeps a reader's place through re-renders of a transcript full of inline images, parked mid-history or at the bottom.",
+            document=f"ui-regression-chat-scroll-{int(time.time())}",
+            commands=[
+                "new-box --name ChatScroll --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-scroll.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "ChatScroll", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="simulation-clock",
             description="Ordinary editor launch/stop/relaunch owns simulation children; frame budgets share the profiling brush.",
             document=f"ui-regression-simulation-{int(time.time())}",
@@ -4114,6 +4194,74 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 shell_join(["set", "@last", "code", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.kt")]),
                 "editor-open @last --property code",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/simulation-clock.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-camera",
+            description="Wheel pan, middle-drag pan and pinch zoom move the boxes, the connection overlay and the drawing layer through one camera.",
+            document=f"ui-regression-canvas-camera-{int(time.time())}",
+            commands=[
+                "new-box --name CameraAlpha --alias camera_alpha --x 200 --y 160",
+                "new-box --name CameraBeta --alias camera_beta --x 520 --y 320",
+                "connect @camera_alpha @camera_beta",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-camera.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split",
+            description="A 2x2 canvas split keeps boxes in their quadrant's pane, links scroll by row and column, clamps each pane to its quadrant, draws connections between panes where the boxes are seen, persists and bookmarks, moves and removes dividers by their handles, splits from the corner grip, and unsplits cleanly.",
+            document=f"ui-regression-canvas-split-{int(time.time())}",
+            commands=[
+                "new-box --name SplitA --alias split_a --x 100 --y 100",
+                "new-box --name SplitB --x 500 --y 100",
+                "new-box --name SplitC --x 100 --y 400",
+                "new-box --name SplitD --alias split_d --x 500 --y 400",
+                "new-box --name SplitFar --x 4000 --y 3500",
+                "connect @split_a @split_d",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-3up",
+            description="Two dividers per axis and unlinked panes: three columns in their own bands, a third divider refused, a middle band's flat-grey end, a 3x2 split with a dashed, independently scrolling corner, the palette thumbnail, and a clean unsplit.",
+            document=f"ui-regression-canvas-split-3up-{int(time.time())}",
+            commands=[
+                "new-box --name TriQ0 --x 100 --y 60",
+                "new-box --name TriQ1 --x 700 --y 60",
+                "new-box --name TriQ2 --x 1300 --y 60",
+                "new-box --name TriP0 --x 100 --y 300",
+                "new-box --name TriP1 --x 700 --y 300",
+                "new-box --name TriP2 --x 1300 --y 300",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-3up.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-drawing",
+            description="On a split canvas the drawing layer has one Excalidraw per pane following that pane's camera; a mark drawn in a side pane lands under the pointer, reaches every mount and the server, and survives unsplitting.",
+            document=f"ui-regression-canvas-split-drawing-{int(time.time())}",
+            commands=[
+                "new-box --name DrawA --x 100 --y 100",
+                "new-box --name DrawD --x 500 --y 400",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drawing.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-drag",
+            description="On a split canvas, a box dragged across a divider is not clipped mid-drag and lands where it was dropped, in the other pane's camera.",
+            document=f"ui-regression-canvas-split-drag-{int(time.time())}",
+            commands=[
+                "new-box --name DragA --alias drag_a --x 100 --y 200",
+                "new-box --name DragFar --x 600 --y 200",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-setup.js"), "--timeout", pw_timeout]),
+                "drag-box @drag_a --dx 360 --dy 40 --hold",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-mid.js"), "--timeout", pw_timeout]),
+                "mouse-up",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-drag-check.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),

@@ -23,6 +23,22 @@ while read -r old new ref; do
     [ "$new" = "$zero" ] && continue
     current=$(git rev-parse -q --verify refs/heads/main 2>/dev/null) || continue
     if [ "$current" != "$new" ]; then
+        # A refused merge or pull has already written the incoming files into this checkout (git
+        # updates the tree before the ref), leaving someone else's change staged here, where it blocks
+        # the landing queue. Take exactly that back out with a two-tree read-tree, which keeps
+        # unrelated local edits and refuses rather than overwrite one, and clear the merge state so
+        # the next commit is not silently a merge. Only for merge/pull (git sets GIT_REFLOG_ACTION
+        # for those): a refused *commit* is left alone, its staged changes are the committer's own.
+        case "${GIT_REFLOG_ACTION:-}" in
+            merge*|pull*)
+                if [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = "main" ] && git read-tree -m -u "$new" "$current" 2>/dev/null; then
+                    for f in MERGE_HEAD MERGE_MSG MERGE_MODE; do rm -f "$(git rev-parse --git-path "$f")"; done
+                    echo "  (the incoming files were taken back out of this checkout; your own edits are untouched)" >&2
+                else
+                    echo "  WARNING: this checkout may now hold the incoming files. Check git status; undo with: git read-tree -m -u $new $current" >&2
+                fi
+                ;;
+        esac
         cat >&2 <<'EOF'
 
   refusing to update main: only the landing queue writes it.

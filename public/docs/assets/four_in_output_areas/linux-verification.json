@@ -1,0 +1,602 @@
+{
+  "date": "2026-10-03",
+  "gpu": "NVIDIA RTX 4090",
+  "driver": "610.43.02",
+  "electron": "44.5.1",
+  "sessions": [
+    {
+      "session": "Xorg",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11"
+        ],
+        "session": "x11",
+        "display": ":1",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 4096,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "colours": [
+          "0,0,0,255"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 56
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": false
+          }
+        }
+      },
+      "errors": [
+        "[33013:1003/215500.514082:ERROR:gpu/command_buffer/service/shared_image/shared_image_factory.cc:1021] Could not find SharedImageBackingFactory with params: usage: Gles2Read|RasterRead|DisplayRead|Gles2Write, format: BGRA_8888, share_between_threads: 0, gmb_type: platform, size: 64x64, debug_label: SharedTextureVideoFrame_Pid:32981",
+        "[33013:1003/215500.514175:ERROR:gpu/ipc/service/shared_image_stub.cc:355] SharedImageStub: Unable to create shared image",
+        "[33013:1003/215500.514624:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:186] SharedImageManager::AddSecondaryReference: Trying to add reference to non-existent mailbox.",
+        "[33013:1003/215500.514653:ERROR:gpu/ipc/service/shared_image_stub.cc:392] SharedImageStub: Unable to add secondary reference",
+        "[33013:1003/215500.520045:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:395] SharedImageManager::ProduceMemory: Trying to Produce a Memory representation from a non-existent mailbox.",
+        "[33013:1003/215500.520077:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox.",
+        "[33013:1003/215500.520129:ERROR:gpu/command_buffer/service/raster_decoder.cc:1885] [.RendererMainThread-0x3d8400060200]GL ERROR :GL_INVALID_VALUE : CopySharedImage: unknown source image mailbox.",
+        "[33013:1003/215500.550389:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox."
+      ]
+    },
+    {
+      "session": "Xorg",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11",
+          "--ignore-gpu-blocklist",
+          "--enable-logging"
+        ],
+        "session": "x11",
+        "display": ":1",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 4096,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "colours": [
+          "0,0,0,255"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 59
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": false
+          }
+        }
+      },
+      "errors": [
+        "[30347:1003/215216.983900:ERROR:gpu/command_buffer/service/shared_image/shared_image_factory.cc:1021] Could not find SharedImageBackingFactory with params: usage: Gles2Read|RasterRead|DisplayRead|Gles2Write, format: BGRA_8888, share_between_threads: 0, gmb_type: platform, size: 64x64, debug_label: SharedTextureVideoFrame_Pid:30316",
+        "[30347:1003/215216.983986:ERROR:gpu/ipc/service/shared_image_stub.cc:355] SharedImageStub: Unable to create shared image",
+        "[30347:1003/215216.984395:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:186] SharedImageManager::AddSecondaryReference: Trying to add reference to non-existent mailbox.",
+        "[30347:1003/215216.984421:ERROR:gpu/ipc/service/shared_image_stub.cc:392] SharedImageStub: Unable to add secondary reference",
+        "[30347:1003/215216.989524:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:395] SharedImageManager::ProduceMemory: Trying to Produce a Memory representation from a non-existent mailbox.",
+        "[30347:1003/215216.989562:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox.",
+        "[30347:1003/215216.989612:ERROR:gpu/command_buffer/service/raster_decoder.cc:1885] [.RendererMainThread-0x255c00060c00]GL ERROR :GL_INVALID_VALUE : CopySharedImage: unknown source image mailbox.",
+        "[30347:1003/215217.020682:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox."
+      ]
+    },
+    {
+      "session": "Xorg",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11",
+          "--use-angle=vulkan",
+          "--enable-features=Vulkan",
+          "--ignore-gpu-blocklist"
+        ],
+        "session": "x11",
+        "display": ":1",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 0,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "colours": [
+          "0,0,0,0"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 97
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": true
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "session": "Xorg",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11",
+          "--use-angle=vulkan",
+          "--enable-features=Vulkan",
+          "--ignore-gpu-blocklist",
+          "--enable-gpu-rasterization",
+          "--enable-zero-copy",
+          "--enable-logging",
+          "--v=1"
+        ],
+        "session": "x11",
+        "display": ":1",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 0,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "colours": [
+          "0,0,0,0"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 97
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": false
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "session": "Wayland",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=wayland"
+        ],
+        "session": "wayland",
+        "display": ":0",
+        "waylandDisplay": "wayland-0",
+        "ok": true,
+        "nonBlack": 4096,
+        "opaque": 4096,
+        "total": 4096,
+        "firstRgba": [
+          255,
+          137,
+          99,
+          255
+        ],
+        "colours": [
+          "255,137,99,255"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 64
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": false
+          }
+        }
+      },
+      "errors": []
+    },
+    {
+      "session": "XWayland",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11"
+        ],
+        "session": "wayland",
+        "display": ":0",
+        "waylandDisplay": "wayland-0",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 4096,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "colours": [
+          "0,0,0,255"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 58
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": false
+          }
+        }
+      },
+      "errors": [
+        "[39051:1003/220941.527358:ERROR:gpu/command_buffer/service/shared_image/shared_image_factory.cc:1021] Could not find SharedImageBackingFactory with params: usage: Gles2Read|RasterRead|DisplayRead|Gles2Write, format: BGRA_8888, share_between_threads: 0, gmb_type: platform, size: 64x64, debug_label: SharedTextureVideoFrame_Pid:39020",
+        "[39051:1003/220941.527451:ERROR:gpu/ipc/service/shared_image_stub.cc:355] SharedImageStub: Unable to create shared image",
+        "[39051:1003/220941.527690:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:186] SharedImageManager::AddSecondaryReference: Trying to add reference to non-existent mailbox.",
+        "[39051:1003/220941.527718:ERROR:gpu/ipc/service/shared_image_stub.cc:392] SharedImageStub: Unable to add secondary reference",
+        "[39051:1003/220941.533088:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:395] SharedImageManager::ProduceMemory: Trying to Produce a Memory representation from a non-existent mailbox.",
+        "[39051:1003/220941.533124:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox.",
+        "[39051:1003/220941.533184:ERROR:gpu/command_buffer/service/raster_decoder.cc:1885] [.RendererMainThread-0xfe40005d500]GL ERROR :GL_INVALID_VALUE : CopySharedImage: unknown source image mailbox.",
+        "[39051:1003/220941.562994:ERROR:gpu/command_buffer/service/shared_image/shared_image_manager.cc:254] SharedImageManager::ProduceSkia: Trying to Produce a Skia representation from a non-existent mailbox."
+      ]
+    },
+    {
+      "session": "XWayland",
+      "result": {
+        "electron": "44.5.1",
+        "argv": [
+          "/tmp/field4-linux-electron-rtt/electron/node_modules/electron/dist/electron",
+          "/tmp/field4-linux-electron-rtt/tools/electron_dmabuf_probe/main.js",
+          "--ozone-platform=x11",
+          "--use-angle=vulkan",
+          "--enable-features=Vulkan",
+          "--ignore-gpu-blocklist"
+        ],
+        "session": "wayland",
+        "display": ":0",
+        "waylandDisplay": "wayland-0",
+        "ok": false,
+        "nonBlack": 0,
+        "opaque": 0,
+        "total": 4096,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "colours": [
+          "0,0,0,0"
+        ],
+        "frameFormat": "BGRA",
+        "codedWidth": 64,
+        "codedHeight": 64
+      },
+      "vulkan": {
+        "width": 64,
+        "height": 64,
+        "modifier": "216172782120099859",
+        "stride": 256,
+        "offset": 0,
+        "size": 16384,
+        "fenceCompleted": true,
+        "externalOwnership": true
+      },
+      "sourceNonBlack": 4096,
+      "sourceFirstBgra": [
+        99,
+        137,
+        255,
+        255
+      ],
+      "import": {
+        "pixelFormat": "bgra",
+        "codedSize": {
+          "width": 64,
+          "height": 64
+        },
+        "colorSpace": {
+          "primaries": "bt709",
+          "transfer": "srgb",
+          "matrix": "rgb",
+          "range": "full"
+        },
+        "handle": {
+          "nativePixmap": {
+            "planes": [
+              {
+                "stride": 256,
+                "offset": 0,
+                "size": 16384,
+                "fd": 58
+              }
+            ],
+            "modifier": "216172782120099859",
+            "supportsZeroCopyWebGpuImport": true
+          }
+        }
+      },
+      "errors": []
+    }
+  ],
+  "fullView": {
+    "source": "public/docs/four_in_output_areas.md",
+    "pixelReadbacks": [
+      {
+        "sum": 11785446,
+        "nonBlack": 28392,
+        "total": 230400,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "label": "20.3 fps \u00b7 fence\u2192canvas 1.39 ms avg, 2.66 max"
+      },
+      {
+        "sum": 18097968,
+        "nonBlack": 28224,
+        "total": 230400,
+        "firstRgba": [
+          0,
+          0,
+          0,
+          255
+        ],
+        "label": "20.0 fps \u00b7 fence\u2192canvas 1.05 ms avg, 2.27 max"
+      }
+    ],
+    "rerunVerified": true,
+    "deletionCanvasCount": 0
+  }
+}

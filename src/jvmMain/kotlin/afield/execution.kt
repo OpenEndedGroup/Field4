@@ -1119,7 +1119,7 @@ internal fun dispatchExecutionOutput(
         }
     }
     logErrorOutputToTerminal(box, normalized)
-    BoxOutputLog.observeOutput(normalized)
+    BoxOutputLog.observeOutput(normalized, outputDocument(box))
     // The recipient is resolved now, not when the run started. A launch outlives the socket that
     // asked for it — reload the browser and that socket is gone — and until 2026-09-29 everything the
     // launch printed went on down it: `reply` wrote to the dead socket, and the reloaded page, now a
@@ -1206,7 +1206,7 @@ fun configureOutputProxies(box: Box, reply: (Message) -> Unit, originSession: We
     }
 
     box.output.displayProxy = { channel, content ->
-        send(Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
+        sendBoxOutput(box, Message("set-output").payload(Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))))
     }
 }
 
@@ -1476,7 +1476,7 @@ class KotlinExecution : BoxExecution {
                         )
                     }
                     box.output.displayProxy = { channel, content ->
-                        send(
+                        sendBoxOutput(box,
                             Message("set-output").payload(
                                 Set_output(box.id, "outputarea", channel, retainedDisplayContent(box, channel, content))
                             )
@@ -2520,7 +2520,7 @@ class KotlinExecution : BoxExecution {
                     )
                 }
                 box.output.displayProxy = { channel, content ->
-                    send(
+                    sendBoxOutput(box,
                         Message("set-output").payload(
                             Set_output(
                                 box.id,

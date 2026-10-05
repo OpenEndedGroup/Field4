@@ -686,8 +686,11 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
         print(f"No {gradlew}; skipping source pages.", file=sys.stderr)
         return None
     started = time.monotonic()
+    # The task writes build/source-pages with declared inputs, so it is skipped when nothing it reads
+    # changed and restored from the build cache in a fresh worktree; the copy below is what goes into
+    # the docs tree this script wipes on every build.
     result = subprocess.run(
-        [str(gradlew), "--no-daemon", "-q", "generateSourcePages", f"--args={generated_docs}"],
+        [str(gradlew), "--no-daemon", "-q", "generateSourcePages"],
         cwd=repo_root,
         check=False,
     )
@@ -698,6 +701,7 @@ def generate_source_pages(*, repo_root: Path, generated_docs: Path, enabled: boo
             file=sys.stderr,
         )
         return None
+    shutil.copytree(repo_root / "build" / "source-pages", generated_docs, dirs_exist_ok=True)
     anchors = generated_docs / "reference" / "source" / "anchors.json"
     pages = len(list((generated_docs / "reference" / "source").rglob("*.md")))
     print(f"Generated {pages} source page(s) in {time.monotonic() - started:.1f}s")

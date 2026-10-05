@@ -223,17 +223,65 @@ def _pids_listening_on(port: int) -> list[int]:
     return pids
 
 
+class PortTakenError(RuntimeError):
+    """Another checkout's Field answered on this run's port while this run's Field was building."""
+
+    def __init__(self, port: int, listeners: list[str]) -> None:
+        super().__init__(
+            f"port {port} was taken by a Field that is not this checkout's while this run's was "
+            f"building: {'; '.join(listeners)}"
+        )
+        self.port = port
+
+
+def foreign_listeners(port: int) -> list[str]:
+    """Every process listening on ``port`` that is not this checkout's Field JVM, with its evidence.
+
+    The same attribution the reaper uses ([_classify_field_jvms]), because a port says nothing
+    about whose server holds it. Two runs in sibling worktrees each choose "the first free port
+    from 9477" before either JVM has bound it, so both can choose the same one. On 2026-10-04 one
+    run's prewarm took the other's freshly booted Field on 9477 for its own, and on finishing,
+    ``recycle_field`` SIGINTed it in the middle of that run's test, whose websocket then dropped
+    with 1006. Attribution by command line first, so that our own wedged server, which may not
+    answer ``/api/instance-info``, can still be recycled; the server's own identity second, so that
+    a failed process census does not disown it.
+    """
+    pids = _pids_listening_on(port)
+    if not pids:
+        return []
+    ours, foreign = _classify_field_jvms(exclude=set())
+    mine = {pid for pid, _ in ours}
+    unclaimed = [pid for pid in pids if pid not in mine]
+    if not unclaimed:
+        return []
+    identity = field_instance_info(port, make_unverified_ssl_context())
+    if field_instance_problem(identity, REPO_ROOT, allow_stale_source=True) is None:
+        return []
+    evidence = dict(foreign)
+    return [
+        _describe_candidate(pid, evidence[pid]) if pid in evidence else f"{_describe_pid(pid)} [no Field JVM command line]"
+        for pid in unclaimed
+    ]
+
+
 def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
-    """Retire a Field already serving the port so we can boot a fresh one.
+    """Retire this checkout's Field serving the port so we can boot a fresh one.
 
     SIGINT (kill -2) first so it runs its shutdown hooks and disposes GPU/window
     resources (a bare SIGKILL leaks those); wait for the port to free; escalate to
-    SIGKILL only if it won't go. Raise rather than reuse or double-bind the port.
+    SIGKILL only if it won't go. Raise rather than reuse or double-bind the port, and
+    rather than stop a listener that is not this checkout's ([foreign_listeners]).
     """
     if os.name == "nt":
         raise SystemExit(
             f"Field on port {port} must be recycled for a clean boot, but automatic "
             f"recycle is not implemented on Windows; kill it manually and re-run."
+        )
+    foreign = foreign_listeners(port)
+    if foreign:
+        raise SystemExit(
+            f"Refusing to stop the Field on port {port}: it is not this checkout's "
+            f"({'; '.join(foreign)}). Another run is using this port; choose a fresh --port."
         )
     pids = _pids_listening_on(port)
     for pid in pids:
@@ -246,7 +294,8 @@ def recycle_field(port: int, ctx: Any, *, grace: float = 12.0) -> None:
         if not health_check(port, ctx):
             return
         time.sleep(0.5)
-    for pid in _pids_listening_on(port):
+    # Only the listeners verified above: whatever holds the port now may have bound it since.
+    for pid in set(_pids_listening_on(port)) & set(pids):
         try:
             os.kill(pid, signal.SIGKILL)
         except ProcessLookupError:
@@ -902,10 +951,15 @@ def ensure_persistent_field(
         if watch.expired():
             break
         if health_check(port, ctx):
-            return proc
+            # Something answering on the port is not yet evidence that it is the Field just launched.
+            foreign = foreign_listeners(port)
+            if not foreign:
+                return proc
+            terminate_process_tree(proc)
+            raise PortTakenError(port, foreign)
         time.sleep(0.5)
     terminate_process_tree(proc)
-    if health_check(port, ctx):
+    if health_check(port, ctx) and not foreign_listeners(port):
         recycle_field(port, ctx)
     raise SystemExit(f"Prewarm Field did not become healthy on port {port}: {watch.timeout_reason()}; see {log_path}")
 
@@ -917,6 +971,12 @@ def stop_persistent_field(proc: subprocess.Popen[Any] | None, *, port: int) -> N
         terminate_process_tree(proc, grace=10.0)
     ctx = make_unverified_ssl_context()
     if health_check(port, ctx):
+        # Our process tree is gone; whatever still answers may be another run's Field on this port.
+        foreign = foreign_listeners(port)
+        if foreign:
+            print(f"Leaving the Field on port {port} alone: it is not this run's ({'; '.join(foreign)}).",
+                  file=sys.stderr, flush=True)
+            return
         recycle_field(port, ctx)
 
 
@@ -2389,10 +2449,19 @@ def run(args: argparse.Namespace, environment: VerificationEnvironment | None = 
                 if not args.no_prewarm and field_proc is None:
                     if not args.no_reap:
                         reap_stale_field_jvms(args.port)
-                    field_proc = ensure_persistent_field(
-                        args.port, workspace=args.workspace, check_environment=check_environment,
-                        sidecar_url=sidecar.url if sidecar else None,
-                    )
+                    for attempt in range(3):
+                        try:
+                            field_proc = ensure_persistent_field(
+                                args.port, workspace=args.workspace, check_environment=check_environment,
+                                sidecar_url=sidecar.url if sidecar else None,
+                            )
+                            break
+                        except PortTakenError as exc:
+                            # A port this run chose for itself is free to change; one it was given is not.
+                            if port_was_explicit or attempt == 2:
+                                raise SystemExit(f"{exc}. Choose a fresh --port.") from None
+                            args.port = select_automation_port(args.port + 1, explicit=False)
+                            progress(f"{exc}; moving this run to port {args.port}")
                     progress(f"Started persistent Field on port {args.port} for this run")
                 check_environment()
                 missing_sidecar = sidecar_problem() if requires_sidecar(test) else None

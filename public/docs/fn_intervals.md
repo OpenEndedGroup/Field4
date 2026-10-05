@@ -4,19 +4,12 @@ A plot of a function is a set of samples joined up. Anything narrower than the g
 
 `Functions.Fn` can answer those questions with **interval arithmetic**. Instead of evaluating `f(x)` at a number, Field evaluates it over a whole interval `[a, b]` at once and gets back a range `[lo, hi]` that every value of `f` on that interval is guaranteed to lie inside. Nothing is sampled, so nothing can be missed. Splitting the interval in half and asking again tightens the range, and repeating that search finds the true maximum and minimum to any tolerance you like.
 
-This page starts with the three calls you will use most, then shows the picture that explains what they did, and ends with what can and cannot be bounded.
-
 ## A bump the plot misses
 
 Here is a sawtooth with a very narrow gaussian bump added to it: half a millisecond wide, on a six-second window. Sampled at 1,200 points, the samples are 5 ms apart, so they step straight over it.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/three_calls.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-three-calls"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.enclose
-import afield.stdlib.certifiedRange
-import afield.stdlib.certifiedNeverExceeds
-
 val f = with(Functions) {
     saw(0.7, amplitude = 0.4) + gaussian(2.31, 0.0005, 0.6, Functions.Domain.ALL)
 }
@@ -57,8 +50,6 @@ There is also `f.certifiedEnvelope(a, b, bins)`, which gives a proven `[lo, hi]`
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/picture.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-picture"}
 :::static
-import afield.stdlib.Functions
-
 val f = with(Functions) {
     saw(0.7, amplitude = 0.4) + gaussian(2.31, 0.0005, 0.6, Functions.Domain.ALL)
 }
@@ -84,9 +75,6 @@ The triangle needs one more step. Its shape is `if (t < 0.5) 2t else 2 - 2t`. Wh
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/fn_intervals/oscillators.png" wait="1.0" wait-output="true" capture="box" embed="true" open-outputs="true" w="1100" timeout="120" name="fn-intervals-oscillators"}
 :::static
-import afield.stdlib.Functions
-import afield.stdlib.enclose
-
 val cases = with(Functions) {
     listOf(
         "saw(0.5)" to saw(0.5),
@@ -111,7 +99,7 @@ display("oscillators", table)
 
 One enclosure over two hundred periods gives each generator its exact amplitude, or a few ulps more for the jittered pulse train, whose phase arithmetic rounds more often.
 
-`pulseTrain` and the easings (`ease`, `tween`) are bounded too. Their formula depends on settings stored on the node (which edge shape, which body profile, which of the 33 easings), so Field builds a formula for each combination it meets. A jittered pulse train moves each cycle by a seeded hash of the cycle number. Over a piece of x that spans only a few cycles, that hash is bounded by computing it for each of them; over more, it is anywhere in `[0, 1]`.
+`pulseTrain` and the easings (`ease`, `tween`) are bounded too. Their formula depends on settings stored on the node (which edge shape, which body profile, which easing), so Field builds a formula for each combination it meets. A jittered pulse train moves each cycle by a seeded hash of the cycle number. Over a piece of x that spans only a few cycles, that hash is bounded by computing it for each of them; over more, it is anywhere in `[0, 1]`.
 
 The last two rows are refused, and refusal is the only thing Field does with a function it can't bound. A bound it guessed would look exactly like one it proved.
 
@@ -123,7 +111,7 @@ Refused, by name:
 
 - **Lambdas** (`fn { ... }`, `mapX`, `mapY`): there is only compiled code, and nothing to read a formula from.
 - **Noise** (`valueNoise`, `perlinNoise`, `fbm`, ...): the value is a hash of position.
-- **`pulseBurst` and `pulsePattern`**: built on `pulseTrain` with their own bookkeeping for which pulses sound. These are the next to get formulas.
+- **`pulseBurst` and `pulsePattern`**: built on `pulseTrain`, with their own record of which pulses sound.
 - **Ops that carry data** (`piecewise`, splines, `timeline`, `sequence`, ...).
 
 `FnIntervals.unsupportedOps(f)` lists what stops a given function from being bounded.
@@ -132,4 +120,4 @@ Refused, by name:
     The bound covers the `Double` values `f.eval(x)` returns for every double `x` in `[a, b]`: the numbers a plot or a sampler would see, not the real-number function they approximate. Addition, multiplication and division need no extra widening for this, because their rounding is monotone. `sin`, `exp` and the other library functions are widened by four ulps at each end, since the JVM only promises they are accurate to within a couple of ulps. A value that may be NaN is reported as `maybeNaN`, not folded into the range.
 
 ??? aside "Where this lives"
-    The walker is `evalFormulaInterval` in `src/jvmMain/kotlin/afield/stdlib/FnInterval.kt`, the third walker over the `FnExpr` formulas in `autodiff_formula.kt` (the other two are the plain `Double` evaluator and reverse-mode autodiff). The fractional-part rule and the branch narrowing are both recognised structurally in that walker, not per op, so a new formula that uses either shape gets the tight bound without extra code. `FnIntervalTest` checks containment over a generated population of several hundred functions that now includes the three generators, and `FnIntervalPictureTest` checks that every box the picture draws is a real enclosure. The design note is `dev_docs/FN_INTERVAL.md`.
+    The walker is `evalFormulaInterval` in [`FnInterval.kt`](https://github.com/OpenEndedGroup/Field4/blob/main/src/jvmMain/kotlin/afield/stdlib/FnInterval.kt), the third walker over the `FnExpr` formulas in `autodiff_formula.kt` (the other two are the plain `Double` evaluator and reverse-mode autodiff). The fractional-part rule and the branch narrowing are both recognised structurally in that walker, not per op, so a new formula that uses either shape gets the tight bound without extra code. `FnIntervalTest` checks containment over a generated population of several hundred functions, the three generators among them, and `FnIntervalPictureTest` checks that every box the picture draws is a real enclosure. The design note is `dev_docs/FN_INTERVAL.md`.

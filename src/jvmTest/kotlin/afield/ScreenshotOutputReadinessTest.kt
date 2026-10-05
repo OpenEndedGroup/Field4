@@ -102,6 +102,43 @@ class ScreenshotOutputReadinessTest {
         "<div class='disclosure-content' style='width:300px;height:200px'><div aria-busy='true'>loading</div></div>"
     ) { assertBoth(it, false) }
 
+    private fun withViewer(script: String, test: (Page) -> Unit) = withPage(
+        """<div class="disclosure-content"><iframe srcdoc="<p>geometry</p>"></iframe></div>""",
+        """const viewer = document.querySelector('iframe').contentWindow; $script""", test = test
+    )
+
+    @Test fun loadedViewerWithPendingToolsIsNotReady() = withViewer(
+        "viewer.FieldViewer = {captureStatus: () => ({ready:false, error:null})};"
+    ) { assertBoth(it, false) }
+
+    @Test fun loadedViewerWithFailedToolsReportsTheCause() = withViewer(
+        "viewer.FieldViewer = {captureStatus: () => ({ready:false, error:'Target tool could not connect'})};"
+    ) { page ->
+        val box = requestBoxScreenshot(page, BoxScreenshotRequest("subject", openOutputs = true), 700)
+        val window = requestWindowScreenshot(page, WindowScreenshotRequest(uid = "subject", openOutputs = true), 700)
+        assertFalse(box.success)
+        assertFalse(window.success)
+        assertTrue(box.message.contains("Target tool could not connect"), box.message)
+        assertTrue(window.message.contains("Target tool could not connect"), window.message)
+    }
+
+    @Test fun captureWaitsForViewerToolsAfterDocumentLoad() = withViewer(
+        "viewer.FieldViewer = {captureStatus: () => ({ready:viewer.toolReady === true, error:null})};"
+    ) { page ->
+        fun delayedTool() = page.evaluate("""() => {
+            const viewer = document.querySelector('iframe').contentWindow;
+            viewer.toolReady = false;
+            setTimeout(() => { viewer.toolReady = true; }, 1600);
+        }""")
+        fun assertReady() = assertTrue(page.evaluate("() => document.querySelector('iframe').contentWindow.toolReady") == true)
+        delayedTool()
+        assertTrue(requestBoxScreenshot(page, BoxScreenshotRequest("subject", openOutputs = true), 5_000).success)
+        assertReady()
+        delayedTool()
+        assertTrue(requestWindowScreenshot(page, WindowScreenshotRequest(uid = "subject", openOutputs = true), 5_000).success)
+        assertReady()
+    }
+
     // ---- what a fence declares its output to be (#115) -------------------------------------
     //
     // `open_outputs` defaults to true for all 655 runner fences, and once readiness demanded an

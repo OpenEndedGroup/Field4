@@ -37,6 +37,7 @@ import kotlinx.serialization.Serializable
  * That is what lets the editable path, the inspector and the twelve tests that pin the current
  * payload carry on without a second thought — and `ThreeScenePayloadCompatibilityTest` holds it there.
  */
+@OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 @Serializable
 data class ThreeDrawStyle(
     /** `"surface"`, `"lines"` or `"points"` — which three.js object class draws this. */
@@ -67,6 +68,9 @@ data class ThreeDrawStyle(
     val opacity: Float = 1f,
     /** Display data colours without lighting modulation. */
     val unlit: Boolean = false,
+    /** Optional display opacity multiplier in X-ray mode; null follows the viewer slider. */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val xrayOpacity: Float? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",
@@ -310,6 +314,31 @@ data class ThreeCameraSpec(
     val distance: Double = 2.7,
     /** Vertical field of view in degrees. */
     val fieldOfViewDegrees: Double = 40.0,
+)
+
+/**
+ * A view that opens with **Link camera** already on. Written by [ThreeSceneBuilder.linkCamera].
+ *
+ * The link itself is the viewer's: views in one document share orbit, pan and zoom over a browser
+ * channel, and this only says which channel to join on load.
+ */
+@Serializable
+data class ThreeCameraLinkSpec(
+    /** Views link only with views of the same group in the same document. */
+    val group: String = "default",
+)
+
+/**
+ * A slow automatic orbit about the view's up axis. Written by [ThreeSceneBuilder.turntable].
+ *
+ * Not [threeTurntable], which lays fixed angles out side by side; this one moves.
+ */
+@Serializable
+data class ThreeTurntableSpec(
+    /** Positive turns the model counter-clockwise seen from above. */
+    val degreesPerSecond: Double = 6.0,
+    /** How long the turn stays paused after the last interaction. */
+    val resumeAfterSeconds: Double = 2.0,
 )
 
 /**

@@ -25,6 +25,7 @@ import java.time.Instant
 import java.util.ArrayDeque
 import java.util.UUID
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.concurrent.thread
@@ -329,11 +330,22 @@ object CodeUseTelemetryService {
 
     // --- background catch-up progress, surfaced as a single pinned console row (see reportCatchupProgress) ---
     private const val CATCHUP_CHANNEL = "catchup"
+    private const val CATCHUP_BATCH = 1000
     private const val CATCHUP_REPORT_MIN_NANOS = 500_000_000L // coalesce the pinned row to ≤ 2 repaints/sec
     private val catchupTotal = AtomicLong(0)     // snippets enqueued for catch-up this run
     private val catchupDone = AtomicLong(0)      // catch-up snippets the analyzer has finished
     @Volatile private var catchupActive = false  // a catch-up pass is in flight (its row is pinned)
     @Volatile private var lastCatchupReportNanos = 0L
+    // Catch-up passes chain until the backlog is gone. Snippets already tried this run are not
+    // queued again (one the sidecar cannot answer would otherwise head every batch), and a pass in
+    // which the sidecar answered nothing ends the chain until the next start.
+    private val catchupAttempted = ConcurrentHashMap.newKeySet<String>()
+    private val catchupK2Analyzed = AtomicLong(0)
+    // Every Field on the machine shares this database and runs the same catch-up query, so a
+    // catch-up snippet is claimed in `snippets.k2_claimed_at/by` before it is analyzed and the other
+    // processes skip it. A claim older than the lease belongs to a Field that died mid-analysis.
+    private const val CATCHUP_CLAIM_LEASE_MS = 10L * 60L * 1000L
+    private val catchupClaimOwner = "${ProcessHandle.current().pid()}-${UUID.randomUUID()}"
 
     private val analysisRateLock = Any()
     private val analysisCompletionTimestamps = ArrayDeque<Long>()
@@ -2062,10 +2074,21 @@ object CodeUseTelemetryService {
                 drained++
             }
             latestBySnippet.values.forEach { job ->
-                runCatching { analyzeAndStore(job) }
-                    .onFailure { lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}") }
+                val k2Analyzed = runCatching { if (!job.catchup || claimCatchupSnippet(job.snippetId)) analyzeAndStore(job) else false }
+                    .onFailure {
+                        if (job.catchup) {
+                            runCatching { releaseCatchupClaim(job.snippetId) }
+                            // Another Field held the write lock: try this snippet again next pass.
+                            if (isSqliteBusy(it)) catchupAttempted.remove(job.snippetId)
+                        }
+                        lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}")
+                    }
+                    .getOrDefault(false)
                 recordAnalysisJobCompleted()
-                if (job.catchup) catchupDone.incrementAndGet()
+                if (job.catchup) {
+                    if (k2Analyzed) catchupK2Analyzed.incrementAndGet()
+                    catchupDone.incrementAndGet()
+                }
             }
             reportCatchupProgress()
         }
@@ -2107,8 +2130,15 @@ object CodeUseTelemetryService {
         if (!catchupActive) return
         catchupActive = false
         val total = catchupTotal.get()
-        lprintln("info,code-use", "semantic sidecar catch-up complete · $total snippet(s) analyzed")
+        val answered = catchupK2Analyzed.getAndSet(0)
+        lprintln("info,code-use", "semantic sidecar catch-up pass complete · $total snippet(s), $answered answered by K2")
         runCatching { PinnedConsole.unpin(CATCHUP_CHANNEL) }
+        if (answered > 0) {
+            runCatching { withConnection { conn -> enqueueRecentSidecarCatchup(conn) } }
+                .onFailure { lprintln("warning,code-use", "semantic catch-up could not queue its next pass: ${it.message ?: it.javaClass.name}") }
+        } else {
+            lprintln("info,code-use", "semantic catch-up stopped: the K2 sidecar answered nothing in that pass")
+        }
     }
 
     /** Abandon the pinned catch-up row without a completion summary (e.g. quiet mode cleared the queue). */
@@ -2124,9 +2154,46 @@ object CodeUseTelemetryService {
         else -> "${seconds / 3600L}h ${(seconds % 3600L) / 60L}m"
     }
 
-    private fun analyzeAndStore(job: CodeUseAnalysisJob) {
-        val analyzed = analyzeSource(job.source, job.sourceName)
+    /**
+     * Claims an unanalyzed catch-up snippet for this process, or returns false when it is already
+     * analyzed or another live Field holds an unexpired claim on it.
+     */
+    private fun claimCatchupSnippet(snippetId: String): Boolean = withConnection { conn ->
+        val at = now()
+        conn.prepareStatement(
+            """
+            UPDATE snippets SET k2_claimed_at = ?, k2_claimed_by = ?
+            WHERE id = ?
+              AND k2_analyzed_at IS NULL
+              AND (k2_claimed_at IS NULL OR k2_claimed_at < ? OR k2_claimed_by = ?)
+            """.trimIndent()
+        ).use { ps ->
+            ps.setLong(1, at)
+            ps.setString(2, catchupClaimOwner)
+            ps.setString(3, snippetId)
+            ps.setLong(4, at - CATCHUP_CLAIM_LEASE_MS)
+            ps.setString(5, catchupClaimOwner)
+            ps.executeUpdate() == 1
+        }
+    }
+
+    private fun releaseCatchupClaim(snippetId: String) {
         withConnection { conn ->
+            conn.prepareStatement("UPDATE snippets SET k2_claimed_at = NULL, k2_claimed_by = NULL WHERE id = ? AND k2_claimed_by = ?").use { ps ->
+                ps.setString(1, snippetId)
+                ps.setString(2, catchupClaimOwner)
+                ps.executeUpdate()
+            }
+        }
+    }
+
+    private fun isSqliteBusy(error: Throwable): Boolean =
+        generateSequence(error) { it.cause }.any { it.message?.contains("SQLITE_BUSY") == true }
+
+    /** Returns whether the K2 sidecar analyzed the job's source. */
+    private fun analyzeAndStore(job: CodeUseAnalysisJob): Boolean {
+        val analyzed = analyzeSource(job.source, job.sourceName)
+        return withConnection { conn ->
             conn.autoCommit = false
             try {
                 conn.prepareStatement("DELETE FROM symbol_uses WHERE snippet_id = ?").use { ps ->
@@ -2161,6 +2228,14 @@ object CodeUseTelemetryService {
                     }
                 }
 
+                if (analyzed.k2Analyzed) {
+                    conn.prepareStatement("UPDATE snippets SET k2_analyzed_at = ? WHERE id = ?").use { ps ->
+                        ps.setLong(1, now())
+                        ps.setString(2, job.snippetId)
+                        ps.executeUpdate()
+                    }
+                }
+
                 analyzed.unresolved.take(80).forEach { unresolved ->
                     conn.prepareStatement(
                         """
@@ -2178,6 +2253,7 @@ object CodeUseTelemetryService {
                     }
                 }
                 conn.commit()
+                analyzed.k2Analyzed
             } catch (t: Throwable) {
                 runCatching { conn.rollback() }
                 throw t
@@ -2252,7 +2328,12 @@ object CodeUseTelemetryService {
         if (!isSignalBearingSource(source)) {
             return AnalyzedSource(resolved = emptyList(), unresolved = emptyList())
         }
-        analyzeSourceWithSidecar(source, sourceName)?.let { return it }
+        val k2 = analyzeSourceWithSidecar(source, sourceName)
+        if (k2 != null && (k2.resolved.isNotEmpty() || k2.unresolved.isNotEmpty())) return k2
+        return analyzeSourceWithSourceIndex(source).copy(k2Analyzed = k2 != null)
+    }
+
+    private fun analyzeSourceWithSourceIndex(source: String): AnalyzedSource {
         val definitions = sourceDefinitions()
         if (definitions.isEmpty()) {
             return AnalyzedSource(
@@ -2337,8 +2418,7 @@ object CodeUseTelemetryService {
                 reason = it.reason.ifBlank { "k2-unresolved" }
             )
         }
-        if (resolved.isEmpty() && unresolved.isEmpty()) return null
-        return AnalyzedSource(resolved = resolved, unresolved = unresolved)
+        return AnalyzedSource(resolved = resolved, unresolved = unresolved, k2Analyzed = true)
     }
 
     private fun isSignalBearingSource(source: String, mode: String = ""): Boolean {
@@ -2528,6 +2608,9 @@ object CodeUseTelemetryService {
                 """.trimIndent()
             )
             runCatching { st.execute("ALTER TABLE launch_events ADD COLUMN exception_json TEXT") }
+            runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_analyzed_at INTEGER") }
+            runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_claimed_at INTEGER") }
+            runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_claimed_by TEXT") }
             st.execute(
                 """
                 CREATE TABLE IF NOT EXISTS symbols(
@@ -2712,6 +2795,7 @@ object CodeUseTelemetryService {
               mode=excluded.mode,
               strand=excluded.strand,
               source_name=COALESCE(NULLIF(excluded.source_name, ''), snippets.source_name),
+              k2_analyzed_at=CASE WHEN snippets.source_hash = excluded.source_hash THEN snippets.k2_analyzed_at END,
               updated_at=excluded.updated_at
             """.trimIndent()
         ).use { ps ->
@@ -2817,6 +2901,8 @@ object CodeUseTelemetryService {
             FROM snippets s
             JOIN source_blobs b ON b.hash = s.source_hash
             WHERE s.updated_at >= ?
+              AND s.k2_analyzed_at IS NULL
+              AND (s.k2_claimed_at IS NULL OR s.k2_claimed_at < ? OR s.k2_claimed_by = ?)
               AND NOT EXISTS (
                   SELECT 1
                   FROM symbol_uses su
@@ -2824,14 +2910,18 @@ object CodeUseTelemetryService {
                     AND su.confidence = 'k2-resolved'
               )
             ORDER BY s.updated_at DESC
-            LIMIT 1000
+            LIMIT ${CATCHUP_BATCH + catchupAttempted.size}
             """.trimIndent()
         ).use { ps ->
             ps.setLong(1, since)
+            ps.setLong(2, now() - CATCHUP_CLAIM_LEASE_MS)
+            ps.setString(3, catchupClaimOwner)
             ps.executeQuery().use { rs ->
                 while (rs.next()) {
+                    val snippetId = rs.getString("id").orEmpty()
+                    if (!catchupAttempted.add(snippetId)) continue
                     val enqueued = enqueueAnalysis(
-                        snippetId = rs.getString("id").orEmpty(),
+                        snippetId = snippetId,
                         source = rs.getString("text").orEmpty(),
                         sourceName = rs.getString("source_name").orEmpty(),
                         createdAtEpochMs = rs.getLong("created_at"),
@@ -2843,6 +2933,10 @@ object CodeUseTelemetryService {
             }
         }
         if (queued > 0) {
+            if (!catchupActive) {
+                catchupTotal.set(0)
+                catchupDone.set(0)
+            }
             catchupQueuedJobs.addAndGet(queued.toLong())
             // Pin a live progress row at the top of the console so the catch-up pass reports itself
             // instead of going quiet after this one line (see reportCatchupProgress / analysisLoop).
@@ -2863,6 +2957,7 @@ object CodeUseTelemetryService {
             FROM snippets s
             JOIN source_blobs b ON b.hash = s.source_hash
             WHERE s.updated_at >= ?
+              AND s.k2_analyzed_at IS NULL
               AND NOT EXISTS (
                   SELECT 1
                   FROM symbol_uses su
@@ -3169,7 +3264,10 @@ object CodeUseTelemetryService {
 
     private data class AnalyzedSource(
         val resolved: List<CodeUseAnalyzerUse>,
-        val unresolved: List<CodeUseAnalyzerUnresolved>
+        val unresolved: List<CodeUseAnalyzerUnresolved>,
+        // The K2 sidecar answered for this source (even with nothing to report), so catch-up has
+        // nothing more to learn from it. Recorded as snippets.k2_analyzed_at.
+        val k2Analyzed: Boolean = false
     )
 
     private data class SemanticK2AnalyzerStatus(
