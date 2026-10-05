@@ -26,9 +26,9 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     const body = el('div', 'state-tree-body');
     const graph = el('div', 'state-tree-graph'); graph.setAttribute('aria-label', 'Saved states');
     const inspector = el('div', 'state-tree-inspector');
-    const title = el('h3', '', 'Select a state');
+    const title = el('h3');
     const identity = el('p', 'state-tree-identity');
-    const detail = el('pre', 'state-tree-detail', 'Selecting a state leaves the current design and conversation unchanged.');
+    const detail = el('pre', 'state-tree-detail');
     const actions = el('div', 'state-tree-actions');
     const reference = button('Reference in chat', () => putInChat(false));
     const pin = button('Keep for comparison', () => { pinned = selected; updateActions(); });
@@ -38,11 +38,11 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     actions.append(reference, pin, compare, unpin);
     inspector.append(title, identity, actions, pinnedLabel, detail);
     const paging = el('div', 'state-tree-paging');
-    const newer = button('Newer', () => loadTree(Math.max(0, offset - 400)));
-    const older = button('Older', () => loadTree(offset + 400));
+    const newer = button('← Newer', () => loadTree(Math.max(0, offset - 400)));
+    const older = button('Older →', () => loadTree(offset + 400));
     paging.append(newer, older);
-    body.append(graph, inspector);
-    panel.append(controls, status, body, paging);
+    body.append(graph, inspector, paging);
+    panel.append(controls, status, body);
     host.append(bar, panel);
     let generation = 0, selectionGeneration = 0, owner = '', offset = 0;
     let selected = null, pinned = null;
@@ -78,8 +78,8 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     }
     function resetSelection() {
         selected = null; selectionGeneration++;
-        title.textContent = 'Select a state'; identity.textContent = '';
-        detail.textContent = 'Selecting a state leaves the current design and conversation unchanged.';
+        title.textContent = ''; identity.textContent = '';
+        detail.textContent = '';
         updateActions();
     }
     function close() {
@@ -162,17 +162,18 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
                 if (!from) continue;
                 const path = document.createElementNS(ns, 'path');
                 path.setAttribute('d', `M${from.x} ${from.y} C${from.x} ${point.y - 21},${point.x} ${point.y - 21},${point.x} ${point.y}`);
-                svg.append(path);
+                svg.prepend(path);
             }
             const dot = document.createElementNS(ns, 'circle');
             dot.setAttribute('cx', point.x); dot.setAttribute('cy', point.y); dot.setAttribute('r', n.id === current ? 5 : 3);
+            dot.classList.toggle('is-current', n.id === current);
             svg.append(dot);
             const row = button('', () => { pendingSelection = select(n, row); });
             row.className = 'state-tree-node'; row.dataset.stateId = n.id;
             row.title = `${n.title || n.id}${n.created ? ` · ${n.created}` : ''}`;
             row.style.paddingLeft = `${width + 5}px`; row.setAttribute('aria-pressed', 'false');
             const caption = el('span', 'state-tree-node-title', n.title || n.id);
-            const meta = el('small', '', `${n.id === current ? 'CURRENT · ' : ''}${n.kind} · ${n.id.slice(0, 12)}${(n.parents || []).some(p => !positions.has(p)) ? ' · earlier parent' : ''}`);
+            const meta = el('small', '', `${n.id === current ? 'current · ' : ''}${n.kind} · ${n.id.slice(0, 12)}${(n.parents || []).some(p => !positions.has(p)) ? ' · earlier parent' : ''}`);
             row.append(caption, meta); canvas.append(row);
         }
         graph.replaceChildren(canvas);
