@@ -5575,8 +5575,8 @@ body.mode-editor-only .field-toast {
 }
 
 .matrix-cell.on {
-    background: rgb(var(--field-danger-rgb));
-    border-color: rgb(var(--field-danger-rgb));
+    background: var(--cell-color, rgb(var(--field-danger-rgb)));
+    border-color: var(--cell-color, rgb(var(--field-danger-rgb)));
     opacity: 0.85;
 }
 

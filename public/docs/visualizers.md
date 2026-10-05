@@ -922,6 +922,77 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 - quick scene presets
 - reusable demo boxes
 
+### Sequencer controls: multisliders, grids, ranges and menus
+
+Four controls hold more than one number, after the Max objects they borrow from:
+
+- `multiSlider(...)` is a bank of bars you draw by sweeping across them, like Max's `multislider`. A fast sweep fills every bar it passes.
+- `matrix(...)` is a grid of cells, like `matrixctrl`. A press advances a cell to its next state, and dragging paints that state across every cell you cross. Cells are on or off by default; pass `states = 4` and each cell cycles through 0 to 3. State 0 is black and the others are equally spaced colours.
+- `rangeSlider(...)` picks an interval, like `rslider`. Drag a thumb to move one end, or drag between the thumbs to move both.
+- `menu(...)` picks one of a list of strings, like `umenu`.
+
+The first three return a handle with a **playhead**: a position the box writes and you only see. Call `playhead(step)` from whatever clock drives the box. It never calls your callback and is never saved, so a sequencer can call it on every step.
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.sequencer
+runner: backdoor-box
+tags: [docs, visualizers, controls, multislider, matrix, range, menu]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  outputContains:
+    - "sequencer ready"
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-sequencer.mp4" capture="box" open-outputs="true" wait="1.0" duration="4" fps="20" timeout="120" w="900" embed=true name="sequencer" alt="a sequencer surface in one output channel. VELOCITY is a bank of sixteen cyan bars in a sine-shaped curve; PATTERN is a four-by-sixteen grid with cells in red, green and blue on black; BAND is a two-thumb range slider from 200 to 900; WAVE is a drop-down reading saw. An orange playhead steps left to right across the bars and the grid columns together while an orange tick sweeps along the band track"}
+:::static
+var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
+var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
+var band = 200.0..900.0
+var wave = "saw"
+
+prop<Thread?>(stepClock)
+stepClock?.interrupt()
+
+controlGroup("sequencer") {
+    val ms = multiSlider("velocity", count = 16, initialValues = velocity) { velocity = it }
+    val mx = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern) {
+        pattern = it
+        print(it.h)
+    }
+    val rs = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band) {
+        band = it
+        print(it.h)
+    }
+    menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+        wave = name
+    }
+
+    stepClock = Thread {
+        var step = 0
+        try {
+            while (true) {
+                ms.playhead(step % 16)
+                mx.playhead(step % 16)
+                rs.playhead(20.0 + (step % 64) / 63.0 * 1980.0)
+                step++
+                Thread.sleep(125)
+            }
+        } catch (_: InterruptedException) {
+        }
+    }.apply { isDaemon = true; start() }
+}
+
+println("sequencer ready")
+```
+
+A playhead on a multislider or matrix is a bar or column index, and a negative one hides it. On a range slider it is a value on the track.
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -929,6 +1000,10 @@ This pattern is good for surfaces that combine parameter editing with a compact 
 - Use `checkbox(...)` for feature toggles and gates.
 - Use `stringInput(...)` for names, labels, prompts, and small text parameters.
 - Use `colorPicker(...)` for RGBA values stored as normalized `Vector4f` data.
+- Use `multiSlider(...)` for a row of values you want to draw rather than set one at a time: steps, envelopes, partials.
+- Use `matrix(...)` for patterns: on/off steps, or several states per cell with `states = n`.
+- Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range.
+- Use `menu(...)` for choosing one of a few named options.
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
 

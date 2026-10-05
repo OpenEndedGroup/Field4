@@ -189,10 +189,11 @@ fun ControlGroupBuilder.multiSlider(
  * Adds a grid of toggles, painted by dragging — Max's `matrixctrl`.
  *
  * A press flips a cell, and dragging paints every cell it crosses to that same new state, so one
- * stroke either fills or clears. The value is indexed `[row][column]`.
+ * stroke either fills or clears. The value is indexed `[row][column]`. For more than on and off,
+ * pass `states` to the other overload.
  *
  * ```kotlin
- * var pattern = List(4) { List(16) { false } }
+ * var pattern = 4 { 16 { false } }
  * controlGroup("drums") {
  *     matrix("pattern", rows = 4, columns = 16, initialValue = pattern) { pattern = it }
  * }
@@ -210,18 +211,70 @@ fun ControlGroupBuilder.matrix(
     columns: Int = 8,
     initialValue: List<List<Boolean>> = emptyList(),
     onUpdate: (List<List<Boolean>>) -> Unit
-): ArrayControlHandle<List<List<Boolean>>> {
+): ArrayControlHandle<List<List<Boolean>>> = matrixControl(
+    label, rows, columns, 2,
+    toCell = { it != 0 }, fromCell = { if (it == true) 1 else 0 },
+    initialValue, onUpdate
+)
+
+/**
+ * Adds a grid whose cells each hold one of [states] values, `0 until states`.
+ *
+ * A press advances a cell to its next state (wrapping back to 0), and dragging paints that same
+ * state across every cell it crosses. State 0 draws black; the others take equally spaced hues,
+ * so a step sequencer can mark accents, ties or voices in one grid.
+ *
+ * ```kotlin
+ * var steps = 4 { 16 { 0 } }
+ * controlGroup("drums") {
+ *     matrix("steps", rows = 4, columns = 16, states = 4, initialValue = steps) { steps = it }
+ * }
+ * ```
+ *
+ * @param label text shown above the grid
+ * @param rows number of rows
+ * @param columns number of columns
+ * @param states how many values a cell cycles through, including 0
+ * @param initialValue cells used when no cached value exists; missing cells are 0, others are clamped
+ * @param onUpdate called with the whole grid whenever a cell changes
+ */
+fun ControlGroupBuilder.matrix(
+    label: String,
+    rows: Int = 4,
+    columns: Int = 8,
+    states: Int,
+    initialValue: List<List<Int>> = emptyList(),
+    onUpdate: (List<List<Int>>) -> Unit
+): ArrayControlHandle<List<List<Int>>> = matrixControl(
+    label, rows, columns, states,
+    toCell = { it }, fromCell = { it ?: 0 },
+    initialValue, onUpdate
+)
+
+private fun <C> ControlGroupBuilder.matrixControl(
+    label: String,
+    rows: Int,
+    columns: Int,
+    states: Int,
+    toCell: (Int) -> C,
+    fromCell: (C?) -> Int,
+    initialValue: List<List<C>>,
+    onUpdate: (List<List<C>>) -> Unit
+): ArrayControlHandle<List<List<C>>> {
     require(rows in 1..64 && columns in 1..64) { "matrix rows and columns must be between 1 and 64" }
+    require(states in 2..64) { "matrix states must be between 2 and 64" }
     val size = rows * columns
-    val toGrid = { flat: List<Double> -> List(rows) { r -> List(columns) { c -> flat[r * columns + c] >= 0.5 } } }
-    val toFlat = { grid: List<List<Boolean>> ->
-        List(size) { i -> if (grid.getOrNull(i / columns)?.getOrNull(i % columns) == true) 1.0 else 0.0 }
+    val toGrid = { flat: List<Double> -> List(rows) { r -> List(columns) { c -> toCell(flat[r * columns + c].toInt()) } } }
+    val toFlat = { grid: List<List<C>> ->
+        List(size) { i -> fromCell(grid.getOrNull(i / columns)?.getOrNull(i % columns)).toDouble() }
     }
-    val sanitize = { values: List<Double> -> List(size) { i -> if (values.getOrElse(i) { 0.0 } >= 0.5) 1.0 else 0.0 } }
+    val sanitize = { values: List<Double> ->
+        List(size) { i -> Math.round(values.getOrElse(i) { 0.0 }).toInt().coerceIn(0, states - 1).toDouble() }
+    }
     return withPlayhead(arrayControl("matrix", label, size, initialValue, sanitize, toGrid, toFlat, { id, values ->
         controlShell(
             "matrix", id, label,
-            """data-rows="$rows" data-columns="$columns" data-values="${encodeValues(values)}"""",
+            """data-rows="$rows" data-columns="$columns" data-states="$states" data-values="${encodeValues(values)}"""",
             """<div class="array-visual matrix-visual" style="grid-template-columns:repeat($columns,1fr)"></div>"""
         )
     }, onUpdate))

@@ -102,9 +102,21 @@
                 grid.appendChild(cell);
             });
         }
-        Array.from(grid.children).forEach((cell, i) => cell.classList.toggle('on', values[i] >= 0.5));
+        const states = num(container, 'states', 2);
+        Array.from(grid.children).forEach((cell, i) => {
+            const state = Math.round(values[i] || 0);
+            cell.classList.toggle('on', state > 0);
+            cell.style.setProperty('--cell-color', state > 0 && states > 2 ? matrixColor(state, states) : '');
+            cell.dataset.state = String(state);
+        });
         const readout = container.querySelector('.array-readout');
         if (readout) readout.textContent = `${values.filter((v) => v >= 0.5).length} on`;
+    }
+
+    // State 0 is black; states 1..n-1 are equally spaced hues starting at Field's red.
+    function matrixColor(state, states) {
+        const hue = (360 * (state - 1)) / (states - 1);
+        return `hsl(${hue}, 72%, 58%)`;
     }
 
     function matrixCellAt(container, event) {
@@ -202,7 +214,8 @@
         } else if (kind === 'matrix') {
             const i = matrixCellAt(container, event);
             if (i < 0) return false;
-            const paint = values[i] >= 0.5 ? 0 : 1;
+            const states = num(container, 'states', 2);
+            const paint = (Math.round(values[i] || 0) + 1) % states;
             values[i] = paint;
             active = { container, kind, values, paint };
         } else if (kind === 'range') {
