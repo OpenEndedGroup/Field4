@@ -511,6 +511,6 @@ multi-output regression head that `flowMatch` trains, which is usable on its own
 [Particle rules that were trained](neural_particles.md), along with what the loss on this page does
 and does not tell you.
 
-See also [Stipple Transport & Transport-Space Video](stipple_transport.md), which carries a uniform
+See also [Stipple transport](stipple_transport.md), which carries a uniform
 sheet onto a stippled image and animates between images with one network, trained in PyTorch and
 queried from Field without Python.

@@ -89,6 +89,15 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### stipple_sheet
+
+**A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
+box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
+it. Three sliders move transport time, movie time and the number of integration steps separately,
+so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
+
 ### particle_video_reader
 
 Inspect recorded trajectories as continuous polylines, with time, history length, identity color
@@ -2256,7 +2265,7 @@ is a name with no midpoint, so it is taken whole from one parent and the manifes
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
 records the point that was visited. The morning box needs no renderer at all: an archive describes
-itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+itself. The companion page is [Sweeping saved keyframes overnight](keyframe_autosweep.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 
