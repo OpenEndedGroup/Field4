@@ -36,26 +36,28 @@ keep interactive previews clean.
 Start with one shader module and one mesh. `moduleHere { ... }` creates a shader module from the current box's shader properties. `Mesh()` creates draw data. `module += m named "my mesh"` attaches the mesh to the module, and `renderer += module` makes the module part of the window.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/afield_four_graphics/00-traditional-triangle.png" alt="a single right triangle filling most of a native render window against black, its right angle at the bottom right. The fill is interpolated from vertex colours: deep blue at the bottom left corner, teal along the bottom edge, and green at the apex top right" wait="0.25" timeout="10" capture="native-window" native-wait-frames="4" trim-native=true graphics-context=true embed=true name="four-traditional-triangle" macro-file="../../dev_docs/agents/transcripts/afield_four_traditional_triangle.yaml" capture-box="agent_four_traditional_triangle"}
-import afield.four.Renderer
-import afield.four.modules.fromContext
-val renderer: Renderer = fromContext()
-
+// A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
+// the meshes it draws. `renderer` is inherited from the renderer parent box.
 var module = moduleHere {
     primitiveType = triangle_strip
 }
 
+// A Mesh holds vertex buffers whose names come from the vertex shader's `in`
+// attributes (`pos`, `col`), plus the index buffer `tri`.
 var m = Mesh()
-
 module += m named "my mesh"
 renderer += module
 
+// Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
 m.set(3, 3) {
-    pos.add(0,0,0, 0.5,0,0, 0.5,0.5,0)
+    // x, y, z for each of the three corners, in clip space (-1..1)
+    pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
 
+    // one RGBA colour per vertex, `it` running 0, 1, 2
     3 {
-        col.add(0,it/3.0,1-it/3.0,1)
+        col.add(0, it / 3.0, 1 - it / 3.0, 1)
     }
-    tri.add(0,1,2)
+    tri.add(0, 1, 2)
 }
 ```
 
