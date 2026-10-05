@@ -2020,12 +2020,27 @@ tasks.register<JavaExec>("checkSourcePartition") {
 // chips when they are absent. checkSourcePages is the guard that matters: it parses the fences back
 // out of the emitted markdown and asserts each is verbatim source at the line it claims, which is the
 // only property that makes a numbered fence honest.
+//
+// Declared inputs and output make it up-to-date when nothing it reads has changed, and cacheable, so a
+// fresh worktree on an already-built commit takes the pages from the shared build cache instead of
+// rendering all of them. It reads every .kt under src/ (a citation is resolved by basename anywhere
+// there) and the citations in public/docs; build_zensical_docs.py copies build/source-pages into the
+// docs tree rather than pointing this task at the tree it wipes on every build.
 tasks.register<JavaExec>("generateSourcePages") {
     group = "documentation"
     description = "Renders the reference packages and every cited source file as docs pages into build/source-pages."
     javaLauncher.set(javaToolchains.fieldLauncher())
     classpath = sourceSets["jvmMain"].runtimeClasspath
     mainClass.set("afield.docs.SourcePageGenerator")
+    val outDir = layout.buildDirectory.dir("source-pages")
+    inputs.files(fileTree("src") { include("**/*.kt") })
+        .withPropertyName("kotlinSources").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("public/docs") { include("**/*.md") })
+        .withPropertyName("docsProse").withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(outDir).withPropertyName("pages")
+    outputs.cacheIf { true }
+    doFirst { outDir.get().asFile.deleteRecursively() }
+    argumentProviders.add(CommandLineArgumentProvider { listOf(outDir.get().asFile.absolutePath) })
 }
 
 tasks.register<JavaExec>("checkSourcePages") {
