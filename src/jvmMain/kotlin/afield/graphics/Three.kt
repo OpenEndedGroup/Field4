@@ -98,6 +98,11 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * A drawable's group is one number for the whole drawable — unlike an FLine batch, which carries a
      * per-vertex `group` attribute — so the viewer moves it by its object transform rather than by
      * rewriting a buffer. Same offsets, a great deal less work per slider frame.
+     * @param depthWrite whether the surface writes depth. Off by default for a translucent mesh
+     * (`opacity < 1`). three.js sorts translucent geometry per object, never per triangle, so a
+     * translucent shell that wrote depth would hide whatever happened to draw after it — the conduits
+     * inside a see-through wall cut off, the far side of a merged shell blending in wrong. On for an
+     * opaque mesh, which needs it to occlude itself.
      */
     fun mesh(
         mesh: TriMesh,
@@ -113,6 +118,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         pickable: Boolean = false,
         group: Int = -1,
         unlit: Boolean = false,
+        depthWrite: Boolean = opacity >= 1.0,
     ) {
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
@@ -121,7 +127,7 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
                 unlit = unlit,
-            ),
+            ).copy(depthWrite = depthWrite),
             label = label,
             panel = panel,
             group = group,
