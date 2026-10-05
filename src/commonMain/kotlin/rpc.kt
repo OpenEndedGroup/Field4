@@ -1577,6 +1577,10 @@ data class Vec2Update(val controlId: String, val x: Double, val y: Double)
 @Serializable
 data class CheckboxUpdate(val controlId: String, val value: Boolean)
 
+/** The whole value of a multislider, matrix, range slider or menu. See `afield/visualizers.kt`. */
+@Serializable
+data class ArrayControlUpdate(val controlId: String, val values: List<Double>)
+
 @Serializable
 data class StringUpdate(val controlId: String, val value: String)
 
