@@ -68,7 +68,46 @@ where you let go of it.
 - **Drag a divider to the edge of the window**, or double-click it, to remove it.
 - **Remove Canvas Split** in the command palette removes both. Every box stays where it is.
 
-Connections between boxes in different panes are drawn straight across the dividers. The drawing
+Connections between boxes in different panes are drawn straight across the dividers, and follow
+the boxes as the panes scroll. Here `keys 4` is selected, so its connections show: its parents are
+its instrument label and its bar heading, and its children are `mix` in the corner and two pattern
+boxes beside it. Then the body scrolls, and each connection stays attached to the box at its other
+end in whichever pane that box is in:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/split_canvas_connections.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas_connections.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="split-canvas-connections" alt="A sequencer-like document split into four panes by a black cross. The box keys 4 in the body is selected, with connections to keys in the label column, bar 4 in the heading row, mix in the corner and two pattern boxes beside it. The body scrolls right and down and then back: bar headings slide sideways and labels slide up with it, and the curved connections bend and settle as their ends move apart and together across the dividers."}
+// Split at the corner between the labels and the headings, the way a reader does: drag the grip.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+ui.moveMouse(700.0, 420.0, 4)
+ui.pause(500)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+
+// Select keys 4, so its connections show. Selecting opens the editor, which would cover the canvas.
+ui.click("sp_keys4")
+ui.pause(300)
+ui.eval("window.hideMonaco(); return true")
+ui.pause(1500)
+
+// Scroll the body (the bottom-right pane) in small steps, as a trackpad does, then back again,
+// pausing each time for the connections to settle.
+fun scrollBody(dx: Double, dy: Double) {
+    ui.eval("""
+      const pane = document.querySelectorAll(".field-pane")[3];
+      const r = pane.getBoundingClientRect();
+      pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.right - 60, clientY: r.bottom - 60, bubbles: true, cancelable: true }));
+      return true;
+    """)
+}
+repeat(40) { scrollBody(9.0, 5.0); ui.pause(30) }
+ui.pause(2500)
+repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
+ui.pause(2500)
+```
+
+The drawing
 layer (`Alt+D`) works in every pane: its toolbar is in the bottom-right pane, and the tool you pick
 there follows the pointer into the others.
 
