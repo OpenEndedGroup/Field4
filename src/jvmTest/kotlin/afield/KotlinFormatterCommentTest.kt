@@ -1,7 +1,10 @@
 package afield
 
 import kotlin.test.Test
+import afield.macros.isFragmentBreak
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * The contract for collapsing runs of line comments: a run of three or more becomes one block
@@ -135,6 +138,30 @@ class KotlinFormatterCommentTest {
             """.trimIndent(),
             once.trim()
         )
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun aFragmentBreakKeepsItsSpellingThroughTheFormatter() {
+        val once = formatKotlinCode("val a = 1\n\n//%-\nval b = 2\n    //%- indented\nval c = 3\n")
+        assertEquals(listOf("//%-", "//%- indented"), once.lines().filter { "%-" in it }.map(String::trim))
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+        assertTrue(once.lines().filter { "%-" in it }.all(::isFragmentBreak))
+    }
+
+    @Test
+    fun spacedFragmentBreaksAreStillBreaks() {
+        assertTrue(isFragmentBreak("// %-"))
+        assertTrue(isFragmentBreak("  /* %- */"))
+        assertTrue(isFragmentBreak("//%-"))
+        assertFalse(isFragmentBreak("val s = \"//%-\""))
+        assertFalse(isFragmentBreak("// 50%-ish"))
+    }
+
+    @Test
+    fun commentsAfterTheLastStatementStayOnTheirOwnLines() {
+        val once = formatKotlinCode("loop {\n    true\n}\n// one\n// two\n")
+        assertEquals("loop {\n    true\n}\n\n// one\n// two\n", once)
         assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
     }
 

@@ -862,7 +862,7 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- COMPILE-ONLY: build the graph, then compile each box's Kotlin with eval skipped ----
 
-    private fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
         val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
@@ -999,7 +999,7 @@ object DemoTranscriptExecSmokeTest {
         return raw.mapNotNull { it as? Map<String, Any?> }
     }
 
-    private fun startRunloopDaemon() {
+    internal fun startRunloopDaemon() {
         val t = Thread({ afield.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()
@@ -1011,7 +1011,7 @@ object DemoTranscriptExecSmokeTest {
         println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
     }
 
-    private fun locateTranscriptsDir(): File {
+    internal fun locateTranscriptsDir(): File {
         val rel = "dev_docs/agents/transcripts"
         val candidates = buildList {
             System.getProperty("afield.repo")?.let { add(File(it, rel)) }

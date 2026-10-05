@@ -11,9 +11,26 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
 fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     // Box code is a script: top-level statements, not only declarations.
-    val formatted = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), KotlinCode(code, FileType.SCRIPT))
+    // ktfmt attaches comments that follow the last statement of a script to that statement's last
+    // token, so a closing `}` swallows them (`}// note`). A sentinel statement after them gives them
+    // something to precede; it is removed again below.
+    val endsInComment = code.lines().lastOrNull { it.isNotBlank() }?.trim()?.startsWith("//") == true
+    val input = if (endsInComment) code.trimEnd() + "\n" + END_SENTINEL + "\n" else code
+    var formatted = restoreFragmentBreaks(
+        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), KotlinCode(input, FileType.SCRIPT))
+    )
+    if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
 }
+
+private const val END_SENTINEL = "__afieldFormatterEnd__"
+
+// ktfmt puts a space after every `//`, which turns a `//%-` fragment break into `// %-`. The
+// splitter accepts both (isFragmentBreak), but the documented spelling is the one boxes should
+// carry, and older Field read the spaced form as a plain comment.
+private val SPACED_FRAGMENT_BREAK = Regex("""(?m)^(\s*)//\s+%-""")
+
+fun restoreFragmentBreaks(code: String): String = code.replace(SPACED_FRAGMENT_BREAK, "$1//%-")
 
 // Two // lines read as a pair of remarks as often as they read as one paragraph, so the run has
 // to be longer than that to be worth a pair of delimiters.
