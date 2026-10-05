@@ -68,7 +68,10 @@ data class ScrollPosition(
      */
     val panes: String? = null,
     val paneX: List<Double>? = null,
-    val paneY: List<Double>? = null
+    val paneY: List<Double>? = null,
+    /** Unlinked panes' own translations, keyed "col,row"; absent for bookmarks that predate unlinking. */
+    val paneOwnX: Map<String, Double>? = null,
+    val paneOwnY: Map<String, Double>? = null
 )
 
 @Serializable
@@ -105,8 +108,10 @@ fun captureScrollPosition(): ScrollPosition {
         y = mainTranslation[1],
         zoom = mainZoom,
         panes = CanvasCamera.splitJson(),
-        paneX = CanvasCamera.panes.filter { it.row == 0 }.map { it.tx },
-        paneY = CanvasCamera.panes.filter { it.col == 0 }.map { it.ty }
+        paneX = CanvasCamera.columnTranslations(),
+        paneY = CanvasCamera.rowTranslations(),
+        paneOwnX = CanvasCamera.ownTranslationsX().takeIf { it.isNotEmpty() },
+        paneOwnY = CanvasCamera.ownTranslationsY().takeIf { it.isNotEmpty() }
     )
 }
 
@@ -330,7 +335,7 @@ fun restoreScrollPosition(position: ScrollPosition) {
     try {
         // Zoom first, so the panes' translations are clamped at the zoom they were saved at.
         moveCanvasCamera(position.x, position.y, position.zoom ?: mainZoom)
-        position.panes?.let { CanvasCamera.restoreView(it, position.paneX, position.paneY) }
+        position.panes?.let { CanvasCamera.restoreView(it, position.paneX, position.paneY, position.paneOwnX, position.paneOwnY) }
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
         console.warn("Error restoring scroll position:", e)
@@ -910,7 +915,7 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
     val views = bookmark.scrollPosition?.let {
         val z = it.zoom ?: mainZoom
         val split = it.panes?.takeIf { json -> json.isNotEmpty() }?.let { json ->
-            CanvasCamera.viewsOf(json, it.paneX.orEmpty(), it.paneY.orEmpty(), z)
+            CanvasCamera.viewsOf(json, it.paneX.orEmpty(), it.paneY.orEmpty(), z, it.paneOwnX, it.paneOwnY)
         }
         split?.map { v -> R(v.x, v.y, v.w, v.h, null) } ?: run {
             val view = CanvasCamera.main.rect

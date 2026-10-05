@@ -4205,6 +4205,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="canvas-split-3up",
+            description="Two dividers per axis and unlinked panes: three columns in their own bands, a third divider refused, a middle band's flat-grey end, a 3x2 split with a dashed, independently scrolling corner, the palette thumbnail, and a clean unsplit.",
+            document=f"ui-regression-canvas-split-3up-{int(time.time())}",
+            commands=[
+                "new-box --name TriQ0 --x 100 --y 60",
+                "new-box --name TriQ1 --x 700 --y 60",
+                "new-box --name TriQ2 --x 1300 --y 60",
+                "new-box --name TriP0 --x 100 --y 300",
+                "new-box --name TriP1 --x 700 --y 300",
+                "new-box --name TriP2 --x 1300 --y 300",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-3up.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="canvas-split-drawing",
             description="On a split canvas the drawing layer has one Excalidraw per pane following that pane's camera; a mark drawn in a side pane lands under the pointer, reaches every mount and the server, and survives unsplitting.",
             document=f"ui-regression-canvas-split-drawing-{int(time.time())}",

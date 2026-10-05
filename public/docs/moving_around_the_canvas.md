@@ -55,7 +55,9 @@ To split it:
   go. Let go near the top edge for a left and a right pane only, or near the left edge for a top and
   a bottom pane only.
 - Or use **Split Canvas Here**, **Split Canvas Columns Here** or **Split Canvas Rows Here** in the
-  command palette, which put the dividers where the pointer was.
+  command palette, which add a divider (or one of each) where the pointer was. Run them again on a
+  split canvas for more panes: up to three across and three down. The palette's preview for each of
+  them is a small picture of what the canvas will look like, with the new dividers in cyan.
 
 Splitting changes nothing on screen until you scroll. Then panes in the same row scroll up and down
 together, panes in the same column scroll side to side together, and zooming zooms every pane.
@@ -64,9 +66,13 @@ Each pane shows its own part of the document, on its side of the dividers: a box
 that holds its top-left corner. Drag a box across a divider and it moves into the other pane, staying
 where you let go of it.
 
+A pane in the middle of three shows the strip of the document between its two dividers. If you
+widen the pane past the end of that strip, the rest of it is plain grey, with no dots: there is
+nothing more of the document for that pane to show.
+
 - **Drag a divider** to move it. The boxes beside it move with it.
 - **Drag a divider to the edge of the window**, or double-click it, to remove it.
-- **Remove Canvas Split** in the command palette removes both. Every box stays where it is.
+- **Remove Canvas Split** in the command palette removes them all. Every box stays where it is.
 
 Connections between boxes in different panes are drawn straight across the dividers, and follow
 the boxes as the panes scroll. Here `keys 4` is selected, so its connections show: its parents are
@@ -113,6 +119,14 @@ there follows the pointer into the others.
 
 The split is saved with the document. A bookmark saved while the canvas is split restores the split
 and where each pane was scrolled to.
+
+### Unlinking a pane
+
+**Unlink Pane**, **Unlink Pane Horizontally** and **Unlink Pane Vertically** in the command
+palette let the pane under the pointer scroll on its own, in both directions or just one, instead of
+with its row or column: a corner of notes that stays where you left it, say, or a column of labels
+you scroll through separately. The stretches of divider between an unlinked pane and the panes it
+no longer moves with turn dashed. **Relink Pane** puts it back in step with its row and column.
 
 ## Stepping between boxes
 

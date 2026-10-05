@@ -185,6 +185,10 @@ private fun layoutMountHost(el: HTMLElement, pane: CanvasPane, isMain: Boolean) 
     el.style.height = "${r.h}px"
     // Rounded like the pane's frame, so marks stop at the dividers' curves too.
     el.style.borderRadius = if (CanvasCamera.isSplit) pane.frameRadius() else ""
+    // Every mount holds the whole scene; over a narrow band's grey end the next band's marks would
+    // show, so the host is cut short there.
+    val (emptyRight, emptyBottom) = if (CanvasCamera.isSplit) pane.emptyEnds() else listOf(0.0, 0.0)
+    el.style.asDynamic().clipPath = if (emptyRight > 0.0 || emptyBottom > 0.0) "inset(0 ${emptyRight}px ${emptyBottom}px 0)" else ""
     el.classList.toggle("field-drawing-mirror", !isMain)
 }
 
