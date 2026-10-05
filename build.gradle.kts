@@ -2077,6 +2077,17 @@ tasks.register<JavaExec>("checkBoxCodeCompiles") {
     jvmArgs(requiredRunJvmArgs())
 }
 
+tasks.register<JavaExec>("formatBoxCode") {
+    group = "formatting"
+    description = "Formats box code in transcripts (or the given files) with the editor's formatter, in place; --check only reports."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
 tasks.register<Exec>("checkBoxIdioms") {
     group = "verification"
     description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."

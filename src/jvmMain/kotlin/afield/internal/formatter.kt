@@ -17,10 +17,95 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     val endsInComment = code.lines().lastOrNull { it.isNotBlank() }?.trim()?.startsWith("//") == true
     val input = if (endsInComment) code.trimEnd() + "\n" + END_SENTINEL + "\n" else code
     var formatted = restoreFragmentBreaks(
-        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), KotlinCode(input, FileType.SCRIPT))
+        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH), KotlinCode(input, FileType.SCRIPT))
     )
     if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
+    formatted = restoreStatementSpacing(code, formatted)
+    formatted = joinAssignmentBreaks(formatted)
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
+}
+
+/**
+ * Undo ktfmt's break after `=` when the right-hand side is one multi-line call or block:
+ *
+ * ```
+ * val cloth =                 val cloth = sim.addCloth(
+ *     sim.addCloth(               width = 22,
+ *         width = 22,     ->  )
+ *     )
+ * ```
+ *
+ * The kotlinlang style breaks there whenever a dotted call's arguments go vertical, which pushes
+ * the name a reader is scanning for onto a line of its own and every argument one level deeper.
+ * The join only applies when the opening line ends the bracket it opens on its own closing line at
+ * the same indentation, and never across a raw string, whose indentation is its content. ktfmt
+ * re-breaks it on the next format and this re-joins it, so the pair is still a fixed point.
+ */
+fun joinAssignmentBreaks(code: String): String {
+    val lines = code.split("\n").toMutableList()
+    var i = 0
+    while (i + 1 < lines.size) {
+        val head = lines[i]
+        val next = lines[i + 1]
+        val indent = head.length - head.trimStart().length
+        val opener = next.trimEnd().lastOrNull()
+        val closer = when (opener) { '(' -> ")"; '{' -> "}"; '[' -> "]"; else -> null }
+        if (!head.trimEnd().endsWith(" =") || head.trimStart().startsWith("//") || closer == null ||
+            next.length - next.trimStart().length != indent + 4
+        ) { i++; continue }
+        val end = (i + 2 until lines.size).firstOrNull { j ->
+            val l = lines[j]
+            l.isNotBlank() && l.length - l.trimStart().length <= indent + 4
+        }
+        val body = if (end == null) emptyList() else lines.subList(i + 2, end)
+        val closes = end != null && lines[end].length - lines[end].trimStart().length == indent + 4 &&
+            lines[end].trimStart().startsWith(closer)
+        if (!closes || body.any { "\"\"\"" in it } || "\"\"\"" in next) { i++; continue }
+        val joined = head.trimEnd() + " " + next.trim()
+        val dedented = body.map { if (it.isBlank()) it else it.removePrefix("    ") }
+        val closing = lines[end!!].removePrefix("    ")
+        val replacement = listOf(joined) + dedented + closing
+        for (k in i..end) lines.removeAt(i)
+        lines.addAll(i, replacement)
+        i += 1
+    }
+    return lines.joinToString("\n")
+}
+
+// Box code is read in an editor beside a canvas and in a docs column, and it was mostly written
+// to about 100. At 200, ktfmt joined deliberately wrapped string concatenations into one line.
+private const val MAX_WIDTH = 120
+
+private val BLANK_LINE = Regex("""\n[ \t]*\n""")
+
+/**
+ * Take out the blank lines ktfmt adds between top-level statements of a script.
+ *
+ * In script mode ktfmt separates every pair of top-level statements with a blank line, so a box's
+ * consecutive `buf.add(...)` lines come back double-spaced. Blank lines the author wrote are kept:
+ * for each adjacent pair of statements, a gap that had no blank line in [input] has none in
+ * [formatted]. ktfmt never reorders, adds or drops statements, so the two lists pair up by
+ * position; if they do not (a parse problem on either side), [formatted] is returned unchanged.
+ */
+fun restoreStatementSpacing(input: String, formatted: String): String {
+    fun statements(code: String) = try {
+        FieldKtParser.parse(code).script?.blockExpression?.statements
+    } catch (t: Throwable) {
+        null
+    }
+    val before = statements(input) ?: return formatted
+    val after = statements(formatted) ?: return formatted
+    if (before.size != after.size) return formatted
+    val out = StringBuilder(formatted)
+    for (k in after.indices.reversed()) {
+        if (k == 0) continue
+        val gapBefore = input.substring(before[k - 1].textRange.endOffset, before[k].textRange.startOffset)
+        if (BLANK_LINE.containsMatchIn(gapBefore)) continue
+        val start = after[k - 1].textRange.endOffset
+        val end = after[k].textRange.startOffset
+        out.replace(start, end, BLANK_LINE.replace(formatted.substring(start, end), "\n"))
+    }
+    return out.toString()
 }
 
 private const val END_SENTINEL = "__afieldFormatterEnd__"

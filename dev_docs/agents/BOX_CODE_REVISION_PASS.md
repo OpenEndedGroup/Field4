@@ -36,8 +36,9 @@ fragment, and see the result soon? In particular:
   to type and c) bear to change. Ceremony counts against it: explicit types the context already
   supplies, defensive lookups of things that are inherited, null checks with nothing to recover
   from, wrapper lambdas around a single expression.
-- **Fragments.** Long setup is split with `//%-` so that the part a user is iterating on can
-  rerun without the expensive part, and the comment says so.
+- **Fragments.** Never add a `//%-` break and never remove one; the author placed them. Where one
+  is already there, a comment above it says why (what has to have run before the next fragment
+  compiles, or which expensive setup the part being iterated on can rerun without).
 - **Commented where a reader would stop.** A short comment on what a longer chunk does (what
   the `loop` advances, why a cleanup is owned by the run), and nothing on a line that already
   says it.

@@ -24,6 +24,7 @@ operations:
       properties:
         code: |
           import afield.four.util.Options
+
           prop<Window>(window)
           prop<Renderer>(renderer)
           Options.enableHDR = false
@@ -39,7 +40,6 @@ operations:
       frame: { x: 260.0, y: 40.0, w: 240.0, h: 50.0 }
       properties:
         code: |
-          import afield.four.synth.BandSplit
           import afield.four.synth.PatSynthLaunch
           import afield.four.synth.PatWave
           import afield.four.synth.audioEngine
@@ -57,9 +57,11 @@ operations:
 
           bandEnergy = DoubleArray(4)
 
-          // A kick on the beat, a mid-register square stab on the offbeats, and sixteen hats a
-          // cycle: three parts in three parts of the spectrum, so four bands have something to tell
-          // apart. This is `PatSynthDocs`' seam-bands scene.
+          /*
+          A kick on the beat, a mid-register square stab on the offbeats, and sixteen hats a
+          cycle: three parts in three parts of the spectrum, so four bands have something to tell
+          apart. This is `PatSynthDocs`' seam-bands scene.
+          */
           patternSynth = patSynth(
               stack(pat("bd*4"), pat("~ 52 ~ 52"), pat("hh*16")),
               cps = 2.0,
@@ -70,9 +72,11 @@ operations:
           // synth graph, reading a snapshot the audio path published.
           val split = logBands(4, lowHz = 70.0, highHz = 8000.0, sampleRate = patternSynth.bank.sampleRate)
 
-          // This box pulls the bank itself, so the analysis has samples whether or not the machine
-          // has an output device. To hear it, return `patternSynth` from the box instead and let the
-          // engine pull; do not do both, or the voices advance twice and the bar plays double speed.
+          /*
+          This box pulls the bank itself, so the analysis has samples whether or not the machine
+          has an output device. To hear it, return `patternSynth` from the box instead and let the
+          engine pull; do not do both, or the voices advance twice and the bar plays double speed.
+          */
           println("output device present: ${audioEngine().outputActive}; this box is pulling the bank")
           val perFrame = patternSynth.bank.sampleRate / 60
 
@@ -91,33 +95,40 @@ operations:
           #version 450
           #extension GL_EXT_buffer_reference : require
           layout(local_size_x = 64) in;
-
-          layout(std430, buffer_reference) buffer Seeds { vec4 a[]; };
-          layout(std430, buffer_reference) buffer Out   { vec4 a[]; };
-
+          layout(std430, buffer_reference) buffer Seeds {
+              vec4 a[];
+          };
+          layout(std430, buffer_reference) buffer Out {
+              vec4 a[];
+          };
           layout(push_constant) uniform dat {
-              Seeds seeds;      // written once: one random phase and radius per particle
-              Out   outData;    // this frame's positions, read by the draw box
-              float time;       // seconds
-              float band0;      // 70 Hz    — the kick
-              float band1;      // 340 Hz
-              float band2;      // 1.6 kHz  — the square stab's harmonics
-              float band3;      // 8 kHz    — the hats
-              uint  count;
-          } pc;
-
+              Seeds seeds;
+              // written once: one random phase and radius per particle
+              Out outData;
+              // this frame's positions, read by the draw box
+              float time;
+              // seconds
+              float band0;
+              // 70 Hz — the kick
+              float band1;
+              // 340 Hz
+              float band2;
+              // 1.6 kHz — the square stab's harmonics
+              float band3;
+              // 8 kHz — the hats
+              uint count;
+          }
+          pc;
           void main() {
               uint i = gl_GlobalInvocationID.x;
               if (i >= pc.count) return;
-
               vec4 seed = pc.seeds.a[i];
               uint ring = i & 3u;
               // One band per ring, so which ring moves says which band is loud.
               float energy = ring == 0u ? pc.band0
-                           : ring == 1u ? pc.band1
-                           : ring == 2u ? pc.band2
-                                        : pc.band3;
-
+              : ring == 1u ? pc.band1
+              : ring == 2u ? pc.band2
+              : pc.band3;
               // The ring's radius rises a little with its band and its *thickness* rises a lot, so
               // a loud band blooms into an annulus rather than sliding outwards. A ring of 20,000
               // particles all at one radius reads as a drawn circle, which is the wrong picture.
@@ -126,7 +137,6 @@ operations:
               float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
               float spin = 0.22 + 0.15 * float(ring);
               float angle = seed.x * 6.2831853 + pc.time * spin;
-
               pc.outData.a[i].x = radius * cos(angle);
               pc.outData.a[i].y = radius * sin(angle);
               pc.outData.a[i].z = float(ring);
@@ -142,7 +152,11 @@ operations:
 
           val N = 24000
 
-          var seeds = defaultBuffer { size = N.vec4s; writeOnce() }.buffer
+          var seeds = defaultBuffer {
+              size = N.vec4s
+              writeOnce()
+          }
+              .buffer
           var positions = defaultBuffer { size = N.vec4s }.buffer
           prop<FrameBufferGroup>(outputPositions) = positions
 
@@ -150,19 +164,38 @@ operations:
               for (i in 0 until N) put(vec(Math.random(), Math.random(), 0.0, 0.0))
           }
 
-          step.seeds = { seeds }
-          step.outData = { positions }
-          step.count = { N.toUInt() }   // a uint push member needs a UInt-returning lambda
+          step.seeds = {
+              seeds
+          }
+          step.outData = {
+              positions
+          }
+          step.count = {
+              N.toUInt()
+          } // a uint push member needs a UInt-returning lambda
 
-          // The whole point of the chain, in five lines: a push-constant float bound to a lambda that
-          // reads the band energy the audio box published. The renderer evaluates these once per
-          // frame, so the shader sees this frame's analysis and nothing is copied by hand.
+          /*
+          The whole point of the chain, in five lines: a push-constant float bound to a lambda that
+          reads the band energy the audio box published. The renderer evaluates these once per
+          frame, so the shader sees this frame's analysis and nothing is copied by hand.
+          */
           var t = 0.0
-          step.time = { t += 1.0 / 60.0; t.f }
-          step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f }
-          step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f }
-          step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f }
-          step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f }
+          step.time = {
+              t += 1.0 / 60.0
+              t.f
+          }
+          step.band0 = {
+              (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f
+          }
+          step.band1 = {
+              (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f
+          }
+          step.band2 = {
+              (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f
+          }
+          step.band3 = {
+              (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f
+          }
 
           step.x = N / 64
           step.y = 1
@@ -176,17 +209,16 @@ operations:
         vertex: |
           #version 450
           #extension GL_EXT_buffer_reference : require
-
-          layout(std430, buffer_reference) buffer Positions { vec4 pos[]; };
-
+          layout(std430, buffer_reference) buffer Positions {
+              vec4 pos[];
+          };
           layout(location = 0) out vec2 tc;
           layout(location = 1) out float ring;
-
           layout(push_constant) uniform push {
               Positions inData;
               float aspectRatio;
-          } pc;
-
+          }
+          pc;
           const vec3[6] part = {
               vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
               vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
@@ -208,7 +240,6 @@ operations:
           layout(location = 0) out vec4 uFragColor;
           layout(location = 0) in vec2 tc;
           layout(location = 1) in float ring;
-
           // One colour per ring, and these four are `afield.visualization.signalPalette` in its own
           // order, so a ring here and a trace on a showSignals plot of the same band are the same
           // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
@@ -236,15 +267,18 @@ operations:
           renderer += "pattern-particles-draw" to module
 
           val N = 24000
-          quads.inData = { outputPositions }
-          quads.aspectRatio = { window.width / window.height.toFloat() }
+          quads.inData = {
+              outputPositions
+          }
+          quads.aspectRatio = {
+              window.width / window.height.toFloat()
+          }
           quads.set(N * 2 * 3, 0) {}
 
           // Printed from this box rather than from the compute box, because a docs capture waits on
           // the output of the box it is capturing.
           println(
-              "$N particles drawn in four rings; bands now " +
-                  bandEnergy.joinToString(", ") { "%.3f".format(it) },
+              "$N particles drawn in four rings; bands now " + bandEnergy.joinToString(", ") { "%.3f".format(it) },
           )
 
           quads
