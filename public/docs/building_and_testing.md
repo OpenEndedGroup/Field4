@@ -225,3 +225,6 @@ one by default and attaches to a server already listening on `--port` if you
 pass `--no-prewarm`. Either way one server serves many captures, so keep runs on
 a dedicated port. When something misbehaves, the backdoor's logs under
 `.field-backdoor/logs/` are the first place to look.
+
+Once a branch passes locally, it goes onto `main` through the landing queue rather
+than a hand merge: see [Landing on `main`](landing_queue.md).

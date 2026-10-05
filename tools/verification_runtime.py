@@ -110,6 +110,9 @@ def automation_server_environment(
     environment.update({
         "PORT": str(port),
         "AFIELD_SKIP_WORKSPACE_PERSIST": "1",
+        # Test clients register throwaway commands (the chord regression's `cmd+k`), and the server
+        # appends every command it sees to the keybindings file; keep that off ~/.afield.
+        "AFIELD_KEYBINDINGS_FILE": str(Path(__file__).resolve().parent.parent / "build" / "field-automation-keybindings.yaml"),
     })
     if extra is not None:
         environment.update(extra)

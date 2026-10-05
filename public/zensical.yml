@@ -132,7 +132,7 @@ nav:
       - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
-      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
+      - Sweeping Saved Keyframes Overnight: keyframe_autosweep.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       # One page for both halves of signal processing: timeseries_examples.md (filters and
@@ -151,7 +151,7 @@ nav:
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Flow Matching: flow_matching.md
-      - Stipple Transport & Video: stipple_transport.md
+      - Stipple Transport: stipple_transport.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Paint and Pencil from FLines: paint_canvas.md
@@ -408,6 +408,7 @@ nav:
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
+    - Landing on main: landing_queue.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts

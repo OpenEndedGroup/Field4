@@ -4,13 +4,13 @@
 
 A browsable map of Field's standard library: every public declaration in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`), with the KDoc that sits next to it in the source.
 
-**16309 public symbols across 465 source files**, 9674 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
+**16404 public symbols across 469 source files**, 9713 of them (59%) carrying a KDoc summary. Pages are grouped by the `@file:CompletionCategory` label the source itself carries, which is the same grouping the editor's autocomplete uses. [Languages](languages.md) is the exception: no file in the small-language packages carries that annotation, so those files are grouped by source path instead.
 
 The "documented" column counts declarations carrying a KDoc summary. Where a summary column below is blank, the declaration has none yet.
 
 | Category | Files | Symbols | Documented | Covers |
 | --- | --- | --- | --- | --- |
-| [Math](math.md) | 21 | 1610 | 1224 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
+| [Math](math.md) | 21 | 1611 | 1225 (76%) | Numerics: signal processing in both domains, estimation and fitting, interpolation, statistics, randomness and units. |
 | [Data](data.md) | 18 | 708 | 360 (50%) | Structures and processes over data rather than over pixels: clustering and nearest-neighbour search, generative and constraint systems, graph dynamics, and the I/O helpers (files, JSON, subprocesses, OSC-adjacent devices) that get data into a box. |
 | [Graphics](graphics.md) | 34 | 1488 | 1253 (84%) | Everything that ends up as an `FLine`, a colour or a shader: drawing helpers, contouring, geometry, colour spaces, keyframing and the small shading languages' host side. |
 | [Renderers](renderers.md) | 30 | 657 | 314 (47%) | Turning a scene into pixels on a Vulkan device. |
@@ -22,12 +22,12 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [Function](function.md) | 16 | 610 | 404 (66%) | The function algebra — Field's first-class, evolvable, graph-rewritable notion of a function. |
 | [Search](search.md) | 1 | 50 | 25 (50%) | Optimisation over a space you can only sample. |
 | [Visualization](visualization.md) | 19 | 570 | 492 (86%) | Turning a value into something you can look at, without leaving the box. |
-| [Synthesis](synthesis.md) | 36 | 1332 | 640 (48%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
+| [Synthesis](synthesis.md) | 40 | 1424 | 676 (47%) | Field's own signal graph — the part of the audio stack that makes samples rather than arranging them. |
 | [Patterns](patterns.md) | 37 | 1240 | 672 (54%) | Musical time, as a value. |
 | [Audio](audio.md) | 20 | 916 | 313 (34%) | Sound that arrives from, or leaves for, somewhere other than Field's own signal graph: analysis products written by an offline tool, the network protocols that carry control data, the Dirt sample library on disk, an Ableton Live set read off the filesystem, and Sonic Pi driven as an owned child process with no window of its own. |
 | [Audio AI](audio-ai.md) | 20 | 570 | 384 (67%) | The client half of Field Audio: a separate HTTP/WebSocket service that runs generative and analysis models over audio, and the typed vocabulary a box talks to it in. |
 | [Languages](languages.md) | 105 | 2852 | 1267 (44%) | Field's small languages, from the host side. |
-| [Workspace](workspace.md) | 26 | 378 | 263 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
+| [Workspace](workspace.md) | 26 | 380 | 265 (69%) | The box's own surroundings: properties, persistence, and the handful of names every box already has in scope. |
 | [Machine learning](machine-learning.md) | 5 | 180 | 177 (98%) | Models small enough to train inside a box, in plain Kotlin, while you watch. |
 | [Video](video.md) | 3 | 54 | 27 (50%) |  |
 
@@ -201,6 +201,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [growing.kt](data.md#growing-kt) | Data | 14 | 8 | A 3-regular graph that grows by local rewriting. |  |
 | [H2DomainAdapters.kt](visualization.md#h2domainadapters-kt) | Visualization | 1 | 1 | `.h2` adapters for the Field types where the *reflective* default in `H2Reflect.kt` reads badly. |  |
 | [H2Reflect.kt](visualization.md#h2reflect-kt) | Visualization | 0 | 0 | The reflective half of `.h2`: what a domain object's *children* are, computed once and shared by every surface that shows them. |  |
+| [HarmonicPhaseTracker.kt](synthesis.md#harmonicphasetracker-kt) | Synthesis | 27 | 20 |  |  |
 | [HeadTrackedSpatial.kt](patterns.md#headtrackedspatial-kt) | Patterns | 24 | 16 | The seam between a tracked head and `patSpatial`'s listener. | [A pattern in space: `pat` → Dough → Steam Audio](../pat_spatial.md) |
 | [HeadTrackedSpatialSmokeTest.kt](patterns.md#headtrackedspatialsmoketest-kt) | Patterns | 2 | 1 | The listener half of `patSpatial`'s audio check: the pattern holds still and the head moves. |  |
 | [heatmap.kt](visualization.md#heatmap-kt) | Visualization | 6 | 6 | A rectangular array of numbers as a colour-mapped picture in a box output, in one call. |  |
@@ -229,8 +230,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [keyframeBrowser.kt](visualization.md#keyframebrowser-kt) | Visualization | 64 | 48 | Reading a *collection* of saved keys the way `KeyframeScope` reads one: a glob of key files in, a slot-major summary out. |  |
 | [keyframeCodeBlend.kt](graphics.md#keyframecodeblend-kt) | Graphics | 68 | 67 | Blending two *code* keyframes by finding the structure they share and interpolating the numbers they do not. | [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md) |
 | [keyframer.kt](graphics.md#keyframer-kt) | Graphics | 86 | 85 | Snapshot, interpolate and persist the live state of a running sketch. | [Keyframes: capturing, persisting and replaying live state](../keyframer_examples.md), [Values over time: interpolants & keyframes](../interpolants_examples.md) |
-| [keyframeSweep.kt](graphics.md#keyframesweep-kt) | Graphics | 102 | 80 | Overnight exploration of a keyframe space: a directory of saved keys in, an archive of renders out. | [Keyframe autosweeping: exploring a saved space while you sleep](../keyframe_autosweep.md) |
-| [keyframeSweepCapture.kt](graphics.md#keyframesweepcapture-kt) | Graphics | 4 | 4 | The GPU half of a keyframe sweep: turning one blended look into the still and the short clip that a night's archive is actually made of. | [Keyframe autosweeping: exploring a saved space while you sleep](../keyframe_autosweep.md) |
+| [keyframeSweep.kt](graphics.md#keyframesweep-kt) | Graphics | 102 | 80 | Overnight exploration of a keyframe space: a directory of saved keys in, an archive of renders out. | [Sweeping saved keyframes overnight](../keyframe_autosweep.md) |
+| [keyframeSweepCapture.kt](graphics.md#keyframesweepcapture-kt) | Graphics | 4 | 4 | The GPU half of a keyframe sweep: turning one blended look into the still and the short clip that a night's archive is actually made of. | [Sweeping saved keyframes overnight](../keyframe_autosweep.md) |
 | [KnobNames.kt](workspace.md#knobnames-kt) | Workspace | 0 | 0 |  |  |
 | [KotlinJs.kt](languages.md#kotlinjs-kt) | Languages | 12 | 0 | SPIKE — a "Kotlin in the head" main language. |  |
 | [KotlinJsHeadProfiles.kt](languages.md#kotlinjsheadprofiles-kt) | Languages | 29 | 4 | Which remote head a Kotlin/JS box runs on, chosen by a marker on its first line. |  |
@@ -431,7 +432,7 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [sorting_networks.kt](data.md#sorting-networks-kt) | Data | 14 | 10 | Sorting networks as data: a `SortingNetwork` is a wire count plus an ordered list of `SortingComparator` compare-and-swaps. | [Sorting networks to FLine examples](../sorting_networks_examples.md) |
 | [SoundPathMap.kt](audio.md#soundpathmap-kt) | Audio | 35 | 35 | Every route Field has from code to something audible, declared — and re-derived from the code. |  |
 | [SourceFramesStudy.kt](workspace.md#sourceframesstudy-kt) | Workspace | 20 | 8 |  | [Studies](../studies.md) |
-| [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 39 | 30 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. | [Studies](../studies.md) |
+| [SourceStudy.kt](workspace.md#sourcestudy-kt) | Workspace | 41 | 32 | The language-neutral half of a live-code study: the part of "talking a function into existence" that does not care what the language is. | [Studies](../studies.md) |
 | [spatial_field.kt](graphics.md#spatial-field-kt) | Graphics | 10 | 10 | The bridges out of Field's plane-geometry results and into the things Field already draws. | [Points into structure — Voronoi, Apollonius, contours and clusters](../spatial_geometry_examples.md), [Measuring dependence between two signals](../statistics_examples.md) |
 | [Spectral.kt](synthesis.md#spectral-kt) | Synthesis | 56 | 19 | The frequency-domain end of the synth: an `FFT`, two short-time transforms built on it, and a wavetable that keeps its waveforms as spectra. |  |
 | [spectral.kt](math.md#spectral-kt) | Math | 91 | 59 | Frequency-domain / spectral analysis family for the stdlib DSP toolkit. | [Signal examples: time and frequency](../spectral_examples.md) |
@@ -473,8 +474,8 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [StudyReport.kt](workspace.md#studyreport-kt) | Workspace | 3 | 1 |  |  |
 | [StudyReportView.kt](workspace.md#studyreportview-kt) | Workspace | 5 | 5 |  |  |
 | [StudyVariants.kt](workspace.md#studyvariants-kt) | Workspace | 15 | 15 |  | [Studies](../studies.md) |
-| [Subharmonic.kt](synthesis.md#subharmonic-kt) | Synthesis | 41 | 18 |  | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
-| [SubharmonicSoundDocs.kt](synthesis.md#subharmonicsounddocs-kt) | Synthesis | 29 | 25 |  | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
+| [Subharmonic.kt](synthesis.md#subharmonic-kt) | Synthesis | 46 | 19 |  | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
+| [SubharmonicSoundDocs.kt](synthesis.md#subharmonicsounddocs-kt) | Synthesis | 30 | 26 |  | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
 | [Summaries.kt](polytopes.md#summaries-kt) | Polytopes | 58 | 43 | Small, plain data classes that reduce the library's big values to something printable. |  |
 | [Symmetry.kt](polytopes.md#symmetry-kt) | Polytopes | 32 | 17 | Symmetry as a combinatorial fact, and as something a solver can be asked for. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [synth.kt](synthesis.md#synth-kt) | Synthesis | 78 | 20 | The terse surface a box imports: `audio { … }` to close a graph, `.p` to make a number a `Param`, and lowercase names for the things reached for constantly. | [Pure Data](../pure_data.md), [How to make sound in Field](../sound_paths.md) |
@@ -483,10 +484,13 @@ The "documented" column counts declarations carrying a KDoc summary. Where a sum
 | [TetMeshViews.kt](simulation.md#tetmeshviews-kt) | Simulation | 6 | 6 | Ways of looking at a `TetMesh`: its element quality, a slice of it, and the triangles that draw it. | [Filling a solid: tetrahedral meshing with TetGen](../tetgen.md) |
 | [TidalPatterns.kt](patterns.md#tidalpatterns-kt) | Patterns | 171 | 37 | Field's pattern language: a compact text notation for musical structure, an exact algebra over cycles, and a scheduler that turns the result into events in seconds. | [Patterns: writing rhythm as a function of time](../pattern_language.md), [A pattern as a function generator](../marf.md), [Petri nets: rhythm, structure and control, in one graph](../petri_nets.md) |
 | [TileResidency.kt](simulation.md#tileresidency-kt) | Simulation | 15 | 4 |  |  |
-| [timeseries.kt](math.md#timeseries-kt) | Math | 212 | 212 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Signal examples: time and frequency](../spectral_examples.md) |
+| [timeseries.kt](math.md#timeseries-kt) | Math | 213 | 213 | Streaming, time-domain filters over `Float` signals — the sample-at-a-time counterpart to the frequency-domain code in `spectral.kt`. | [Signal examples: time and frequency](../spectral_examples.md) |
 | [TimeViewer.kt](visualization.md#timeviewer-kt) | Visualization | 0 | 0 |  |  |
 | [Token.kt](languages.md#token-kt) | Languages | 5 | 5 | One `TokenKind` for every lexeme FieldML has, and the `Token` that pairs a kind with the text it was read from. |  |
 | [Topology.kt](polytopes.md#topology-kt) | Polytopes | 91 | 63 | The abstract incidence complex — the authoritative value in `afield.stdlib.polytope`, and the one layer that knows nothing about coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
+| [TrackedPhase.kt](synthesis.md#trackedphase-kt) | Synthesis | 33 | 6 |  |  |
+| [TrackedPhaseBank.kt](synthesis.md#trackedphasebank-kt) | Synthesis | 23 | 6 |  | [Subharmonic Synthesis: an Octave Below](../subharmonic_sound.md) |
+| [TrackedPhaseSignal.kt](synthesis.md#trackedphasesignal-kt) | Synthesis | 3 | 2 |  |  |
 | [Transforms.kt](polytopes.md#transforms-kt) | Polytopes | 82 | 63 | The Conway operator algebra: thirteen named operations that rewrite a polyhedron's combinatorics, each paired with a policy for giving the result coordinates. | [Polytopes: topology first, coordinates later](../polytope_examples.md) |
 | [tuio.kt](data.md#tuio-kt) | Data | 10 | 3 | A minimal TUIO receiver. |  |
 | [TypedAst.kt](languages.md#typedast-kt) | Languages | 92 | 3 | FieldML's syntax tree after inference: the same shape as the surface tree in `afield.ml.ast`, with a `Type` on every expression and on every pattern. | [FieldML stage by stage](../fieldml_stages.md) |

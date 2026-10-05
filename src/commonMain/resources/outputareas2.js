@@ -1,3 +1,4 @@
+import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
 
 const DEFAULT_W = 480;
@@ -1436,16 +1437,22 @@ function disclosureInterface(container) {
                         event.stopPropagation();
                         const reviewView = link.getAttribute("data-review-view");
                         const reviewNote = link.getAttribute("data-review-note");
+                        const showError = error => {
+                                let feedback = link.nextElementSibling;
+                                if (!feedback?.classList.contains("review-link-error")) {
+                                        feedback = document.createElement("p"); feedback.className = "review-link-error";
+                                        feedback.style.cssText = "color:#ff7070;user-select:text";
+                                        feedback.setAttribute("aria-live", "polite"); link.after(feedback);
+                                }
+                                feedback.textContent = error.message;
+                        };
                         if (reviewView && reviewNote) {
-                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(error => {
-                                        let feedback = link.nextElementSibling;
-                                        if (!feedback?.classList.contains("review-link-error")) {
-                                                feedback = document.createElement("p"); feedback.className = "review-link-error";
-                                                feedback.style.cssText = "color:#ff7070;user-select:text";
-                                                feedback.setAttribute("aria-live", "polite"); link.after(feedback);
-                                        }
-                                        feedback.textContent = error.message;
-                                });
+                                revealGeometryReview(navigation.uid, reviewView, reviewNote).catch(showError);
+                                return;
+                        }
+                        // A build's "Show where it fails": open that box's output, not its code, and leave the selection alone.
+                        if (link.getAttribute("data-box-reveal") === "output") {
+                                try { revealOutputOf(navigation.uid, reviewView); } catch (error) { showError(error); }
                                 return;
                         }
                         selectBoxByUidFromOutput(
@@ -1509,14 +1516,27 @@ function findBoxByUid(uid) {
 }
 
 // Open the existing review thread in its output, without opening Monaco or restoring a camera.
+/** The viewer iframe in [box]'s output whose `uid` parameter is [viewId], or null. */
+function reviewViewerIn(box, viewId) {
+        if (!viewId) return null;
+        return [...(box?.querySelectorAll('.outputArea iframe') || [])].find(frame => {
+                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
+                catch (_) { return false; }
+        }) || null;
+}
+
+/** Open every output panel of box [uid] and bring it into view, at the viewer named [viewId] when there is one. */
+function revealOutputOf(uid, viewId) {
+        const box = findBoxByUid(uid);
+        if (!box) throw Error(`Box “${uid}” is not in this document.`);
+        if (!window.revealBoxOutputs?.(uid, reviewViewerIn(box, viewId))) throw Error('That box has no output yet. Run it first.');
+}
+
 async function revealGeometryReview(uid, viewId, noteId) {
         const box = findBoxByUid(uid);
         const frames = [...(box?.querySelectorAll('.outputArea iframe') || [])];
-        const viewer = frames.find(frame => {
-                try { return new URL(frame.src, location.href).searchParams.get('uid') === viewId; }
-                catch (_) { return false; }
-        });
-        if (!window.revealBoxOutputs?.(uid, viewer || null)) throw Error('The review output is unavailable. Run its source box first.');
+        const viewer = reviewViewerIn(box, viewId);
+        if (!window.revealBoxOutputs?.(uid, viewer)) throw Error('The review output is unavailable. Run its source box first.');
         const targets = new Set([window, ...frames.map(frame => frame.contentWindow).filter(Boolean)]);
         const requestId = crypto.randomUUID();
         return new Promise((resolve, reject) => {
@@ -1872,10 +1892,12 @@ function ensureAiChat(container, uid, property) {
                         existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
                         existing.root.dataset.property = existing.property || "code";
                         if (changedBox) {
+                                existing.stateBrowser?.reset();
                                 container.__aiChatHistory = controllerChatHistory.get(uid) || "";
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
                         }
+                        if (!changedBox) existing.stateBrowser?.refreshAvailability();
                         return existing;
                 }
         }
@@ -2348,12 +2370,26 @@ function ensureAiChat(container, uid, property) {
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
 
+        const stateBrowser = mountStateTreeBrowser(root, {
+                chatUid,
+                request: payload => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("State history request timed out. Refresh to retry.")), 15000);
+                        sendWithReply("ai-state-tree", payload, `ai-state-tree-${Date.now()}-${Math.random()}`, (_m, reply) => {
+                                clearTimeout(timeout); resolve(reply); return "remove";
+                        });
+                }),
+                insertReference: text => {
+                        textarea.value += (textarea.value ? "\n\n" : "") + text;
+                        textarea.dispatchEvent(new Event("input", {bubbles: true}));
+                        textarea.focus();
+                }
+        });
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2647,7 +2683,14 @@ function openAiChatForBox(uid, property) {
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
+        return chat;
 }
+
+window.openAiStateBrowser = async (uid, source, node, offset) => {
+        const chat = openAiChatForBox(uid, "code");
+        if (!chat) return false;
+        return !!await chat.stateBrowser.reveal(source, node, offset);
+};
 
 // ---- voice target ----------------------------------------------------------
 //

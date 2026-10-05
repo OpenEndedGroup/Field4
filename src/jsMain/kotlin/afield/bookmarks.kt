@@ -61,7 +61,17 @@ data class ScrollPosition(
     val x: Double,
     val y: Double,
     /** Canvas zoom; absent in bookmarks saved before zoom was recorded, which keep the current zoom. */
-    val zoom: Double? = null
+    val zoom: Double? = null,
+    /**
+     * The canvas split (the root `panes` JSON, empty for none) and each pane column's and row's
+     * translation; absent in bookmarks saved before split panes, which keep the current split.
+     */
+    val panes: String? = null,
+    val paneX: List<Double>? = null,
+    val paneY: List<Double>? = null,
+    /** Unlinked panes' own translations, keyed "col,row"; absent for bookmarks that predate unlinking. */
+    val paneOwnX: Map<String, Double>? = null,
+    val paneOwnY: Map<String, Double>? = null
 )
 
 @Serializable
@@ -96,7 +106,12 @@ fun captureScrollPosition(): ScrollPosition {
     return ScrollPosition(
         x = mainTranslation[0],
         y = mainTranslation[1],
-        zoom = mainZoom
+        zoom = mainZoom,
+        panes = CanvasCamera.splitJson(),
+        paneX = CanvasCamera.columnTranslations(),
+        paneY = CanvasCamera.rowTranslations(),
+        paneOwnX = CanvasCamera.ownTranslationsX().takeIf { it.isNotEmpty() },
+        paneOwnY = CanvasCamera.ownTranslationsY().takeIf { it.isNotEmpty() }
     )
 }
 
@@ -318,14 +333,9 @@ fun captureBookmark(bookmarkNumber: Int): Bookmark {
  */
 fun restoreScrollPosition(position: ScrollPosition) {
     try {
-        if (position.zoom != null && position.zoom != mainZoom) {
-            panViewportForDrawingLayer(position.x, position.y, position.zoom)
-            return
-        }
-        mainTranslation = listOf(position.x, position.y)
-        drawingLayerViewportChanged(position.x, position.y)
-        mainCanvas.style.transform = mainCanvasTransform(position.x, position.y)
-        updateBackgroundGrid(position.x, position.y, panning = false)
+        // Zoom first, so the panes' translations are clamped at the zoom they were saved at.
+        moveCanvasCamera(position.x, position.y, position.zoom ?: mainZoom)
+        position.panes?.let { CanvasCamera.restoreView(it, position.paneX, position.paneY, position.paneOwnX, position.paneOwnY) }
         canvasGestures.rebuildConnectionGroup()
     } catch (e: dynamic) {
         console.warn("Error restoring scroll position:", e)
@@ -335,7 +345,7 @@ fun restoreScrollPosition(position: ScrollPosition) {
 /**
  * Selects and focuses a specific box
  */
-fun restoreSelectedBox(boxId: String) {
+fun restoreSelectedBox(boxId: String, bringIntoView: Boolean = true) {
     try {
         val box = findBoxByUid(boxId)
         if (box != null) {
@@ -346,8 +356,10 @@ fun restoreSelectedBox(boxId: String) {
             // Select the target box
             selectBox(box)
 
-            // Scroll into view
-            box.scrollIntoView(js("{ behavior: 'smooth', block: 'center' }"))
+            // Through the camera (of the box's own pane, on a split canvas). Not scrollIntoView,
+            // which scrolled the viewport or pane element behind the camera's back and left every
+            // screen-to-world conversion off by that much.
+            if (bringIntoView) ensureBoxVisibleForNavigation(box)
         }
     } catch (e: dynamic) {
         console.warn("Error restoring selected box:", e)
@@ -357,9 +369,9 @@ fun restoreSelectedBox(boxId: String) {
 /**
  * Opens the Monaco editor for a specific property of a box
  */
-fun restoreEditedProperty(boxId: String, property: String) {
+fun restoreEditedProperty(boxId: String, property: String, bringIntoView: Boolean = true) {
     try {
-        restoreSelectedBox(boxId)
+        restoreSelectedBox(boxId, bringIntoView)
         selectedProperty = property
         // Tell Monaco runtime not to re-apply its remembered view state for the upcoming open
         js("window").suppressNextEditorStateRestore = true
@@ -435,14 +447,16 @@ fun restoreBookmark(bookmark: Bookmark) {
             return
         }
 
-        // Restore selected box and edited property
+        // Restore selected box and edited property. A slot that restored its view keeps it
+        // exactly; one that did not brings the box into view instead.
+        val bringIntoView = !bookmark.restoreView
         bookmark.selectedBox?.let { boxId ->
             if (bookmark.editedProperty != null) {
                 bookmarkDebug("restoring property ${bookmark.editedProperty} in box $boxId")
-                restoreEditedProperty(boxId, bookmark.editedProperty)
+                restoreEditedProperty(boxId, bookmark.editedProperty, bringIntoView)
             } else {
                 bookmarkDebug("restoring selection in box $boxId")
-                restoreSelectedBox(boxId)
+                restoreSelectedBox(boxId, bringIntoView)
             }
         }
 
@@ -870,10 +884,9 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
         if (uid == "root") return@forEach
         val r = box.getBoundingClientRect()
         if (r.width <= 0.0 || r.height <= 0.0) return@forEach
-        rects += R(
-            (r.left - mainTranslation[0]) / mainZoom, (r.top - mainTranslation[1]) / mainZoom,
-            r.width / mainZoom, r.height / mainZoom, uid
-        )
+        // Through the camera of the box's own pane, so a split canvas maps to true world positions.
+        val w = CanvasCamera.paneOf(box).worldRect(r)
+        rects += R(w.x, w.y, w.width, w.height, uid)
     }
     // The panels the bookmark keeps open, each hung under its header where the box lays it out
     // now, at the size the bookmark recorded (or its current size, for bookmarks that predate sizes).
@@ -890,18 +903,26 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
                 if (current == null || current == undefined) return@forEach
                 PanelSize((current.width as Number).toDouble(), (current.height as Number).toDouble())
             }
-            val x = (header.left - mainTranslation[0]) / mainZoom
-            val y = (header.top - mainTranslation[1]) / mainZoom
+            val pane = CanvasCamera.paneOf(box)
+            val x = pane.worldX(header.left)
+            val y = pane.worldY(header.top)
             // An open disclosure's rect already includes its content; a closed one is only the header.
             val headerHeight = if (header.height / mainZoom > size.height) 18.0 else header.height / mainZoom
             panels += R(x, y + headerHeight, size.width, size.height, uid)
         }
     }
-    val view = bookmark.scrollPosition?.let {
+    // The saved view: one dashed rectangle, or one per pane when the slot was saved split.
+    val views = bookmark.scrollPosition?.let {
         val z = it.zoom ?: mainZoom
-        R(-it.x / z, -it.y / z, window.innerWidth / z, window.innerHeight / z, null)
-    }
-    val all = rects + panels + listOfNotNull(view)
+        val split = it.panes?.takeIf { json -> json.isNotEmpty() }?.let { json ->
+            CanvasCamera.viewsOf(json, it.paneX.orEmpty(), it.paneY.orEmpty(), z, it.paneOwnX, it.paneOwnY)
+        }
+        split?.map { v -> R(v.x, v.y, v.w, v.h, null) } ?: run {
+            val view = CanvasCamera.main.rect
+            listOf(R((view.x - it.x) / z, (view.y - it.y) / z, view.w / z, view.h / z, null))
+        }
+    }.orEmpty()
+    val all = rects + panels + views
     if (all.isEmpty()) return svg
     val minX = all.minOf { it.x }
     val minY = all.minOf { it.y }
@@ -929,7 +950,7 @@ private fun bookmarkMinimap(bookmark: Bookmark): org.w3c.dom.Element {
         rect.setAttribute("class", "bm-panel")
         svg.appendChild(rect)
     }
-    view?.let { v ->
+    views.forEach { v ->
         val rect = document.createElementNS(ns, "rect")
         rect.setAttribute("x", "${v.x}"); rect.setAttribute("y", "${v.y}")
         rect.setAttribute("width", "${v.w}"); rect.setAttribute("height", "${v.h}")

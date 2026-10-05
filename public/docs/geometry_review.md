@@ -132,7 +132,8 @@ When the finding's run identifier is a `StudyBuilds` job ID in this document,
 the [build card](studies.md#build-derived-results-without-blocking-edits) links directly to that thread. The
 link opens its existing output and discussion inside Field. It leaves the viewer
 camera and selection alone; **Show feature** explicitly restores the saved view.
-Findings from an earlier attempt remain labelled as such when inputs change.
+When inputs change, the earlier attempt's findings collapse to one grey line on
+the card until a rebuild rechecks them.
 Closed discussions remain reachable from the build that produced them.
 
 ## What the coordinates mean

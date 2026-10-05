@@ -1,4 +1,4 @@
-# Stipple Transport & Transport-Space Video
+# Stipple transport
 
 A stippled image can be represented as a deformation that redistributes a uniform particle sheet.
 The useful result is the learned velocity field and its flow map: particles, coordinate lattices,
@@ -143,9 +143,11 @@ val back = field.transport(formed, transportTime = 0.0, movieTime = .35,
                           fromTransportTime = .65, steps = 32)
 ```
 
-The editable [stipple sheet example](assets/stipple_transport/stipple_sheet.kt) publishes ordinary
-Field sliders for independent transport/movie time and integration steps, and deforms both particles
-and a coordinate lattice. Run its contents in a Field box from the repository checkout.
+The stipple sheet does this live. Open **stipple_sheet** from Starting points on the welcome screen,
+or [open it here](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn), and run its
+box. Sliders control transport time, movie time and integration steps separately, and both the
+particles and a coordinate lattice deform. Its code is also in
+[stipple_sheet.kt](assets/stipple_transport/stipple_sheet.kt).
 
 ![Actual Field output with a loaded conditioned model, separate transport/movie sliders, integration-step control, and a transported particle sheet and grid](assets/stipple_transport/field-sheet.png)
 

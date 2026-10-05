@@ -957,13 +957,16 @@ private fun displayWorkspacePath(path: String): String {
     return if (workspace.exists()) workspace.canonicalFile.absolutePath else workspace.absolutePath
 }
 
-private fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
+internal fun argsWithWorkspace(args: List<String>, workspace: String): List<String> {
     val updated = mutableListOf<String>()
     var replaced = false
     var index = 0
     while (index < args.size) {
         val arg = args[index]
         when {
+            arg.equals("--document", ignoreCase = true) -> index += if (index + 1 < args.size) 2 else 1
+            arg.startsWith("--document=", ignoreCase = true) -> index += 1
+
             arg.equals("--workspace", ignoreCase = true) -> {
                 updated += arg
                 updated += workspace
@@ -1507,7 +1510,20 @@ internal fun broadcastWelcomeEvent(reason: String) {
 }
 
 
-var lastFn by PersistentString { "welcome" }
+private val workspaceLastDocument by lazy {
+    WorkspaceLastDocument(File(displayWorkspacePath(home)), File(fieldUserConfigDir(), "last-documents"))
+}
+
+var lastFn: String?
+    get() = runCatching { workspaceLastDocument.read() }.getOrElse {
+        lprintln("warning,workspace", "could not read last document: ${it.message}")
+        null
+    }
+    set(value) {
+        runCatching { workspaceLastDocument.remember(value) }.onFailure {
+            lprintln("warning,workspace", "could not remember last document: ${it.message}")
+        }
+    }
 var recentFns by PersistentString { "" }
 var fieldPreferencesJson by PersistentString { "" }
 
@@ -5441,13 +5457,20 @@ class Server {
                 } catch (t: Throwable) {
                     if (!isPortBindException(t)) throw t
                     bindFailure = t
-                    lprintln("warning,server", "Port ${candidatePort} is already in use; trying next port")
+                    val mirror = loopbackHttpPortFor(candidatePort)?.let { " (or its HTTP mirror on $it)" } ?: ""
+                    lprintln("warning,server", "Port ${candidatePort}${mirror} is already in use; trying next port")
                 }
             }
 
             if (!started) {
-                throw bindFailure
-                    ?: IllegalStateException("Unable to bind Field server to any port in range ${preferredPort}..${preferredPort + portFallbackCount - 1}")
+                val last = preferredPort + portFallbackCount - 1
+                val message = "Unable to bind Field server to any port in ${preferredPort}..${last}. " +
+                    "Another Field is probably running (lsof -nP -iTCP:${preferredPort} -sTCP:LISTEN). " +
+                    "To use a different port: PORT=<port> ./field.sh (the HTTP mirror follows at PORT+10000; " +
+                    "set AFIELD_HTTP_PORT=<port> or AFIELD_HTTP_PORT=off to move or disable it; " +
+                    "AFIELD_PORT_FALLBACK_COUNT=<n> widens the range tried)."
+                lprintln("error,server", message)
+                throw IllegalStateException(message, bindFailure)
             }
 
             globalServerPort = port

@@ -47,6 +47,8 @@ object SubharmonicSoundDocs {
     // where it can be; the page plots it with subRender, this renders it to the WAV.
 
     val SCENES: List<Scene> = listOf(
+        Scene("phase-harmonics", render = { doughRenderMono(phaseBankGraph().first, seconds = 8f) }),
+        Scene("phase-lattice", render = { doughRenderMono(phaseBankGraph(lattice = true).first, seconds = 8f) }),
         Scene("bass-octave", render = {
             val bass = subBassline()
             val tracker = SubharmonicQuadPLL()
@@ -150,6 +152,19 @@ object SubharmonicSoundDocs {
     )
 
     // ── the graphs, as the page writes them ───────────────────────────────────────
+
+    /** Recorded plucks: four seconds dry, then a tracked harmonic or rational bank. */
+    fun phaseBankGraph(lattice: Boolean = false): Pair<Signal, HarmonicPhaseTracker> {
+        val notes = listOf(0, 2, 4, 3, 0, 1, 4, 2)
+        val hits = (0 until 16).map { k -> k * 0.5 to subDirt("arpy:${notes[k % 8]}", rate = 0.5) }
+        val plucks = SamplesSignal(subSequence(8.0, hits))
+        val tracker = HarmonicPhaseTracker(minHz = 100.0, maxHz = 250.0, initialHz = 150.0)
+        val analysis = TrackedPhaseAnalysis(plucks, tracker)
+        val voices = if (lattice) TrackedPhaseBank.rationalLattice()
+            else TrackedPhaseBank.harmonics(8) { n -> 0.5 / n }
+        val colored = analysis.synthesize(TrackedPhaseBank(voices = voices))
+        return plucks * subBetween(0f, 4f) + colored * subBetween(4f, 8f) to tracker
+    }
 
     /** Four trackers on one bassline, each heard for three seconds. */
     fun trackersGraph(): Pair<Signal, List<SubharmonicTracker>> {

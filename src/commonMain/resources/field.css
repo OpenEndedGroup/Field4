@@ -822,7 +822,8 @@ pre code {
 }
 
 .ai-chat-messages {
-    flex: 1 1 auto;
+    /* The transcript scrolls in its share; its content length must not squeeze sibling panels. */
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     margin-left: 5px;
@@ -1483,7 +1484,9 @@ body {
     --field-vignette-background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cdefs%3E%3Cfilter id='v' x='-25%25' y='-25%25' width='150%25' height='150%25' color-interpolation-filters='sRGB'%3E%3CfeGaussianBlur in='SourceGraphic' stdDeviation='5.2' result='blur'/%3E%3CfeTurbulence type='fractalNoise' baseFrequency='3.15' numOctaves='4' seed='71' result='noise'/%3E%3CfeColorMatrix in='noise' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .36 .36 .36 0 -.14' result='noiseAlpha'/%3E%3CfeComposite in='noiseAlpha' in2='blur' operator='in' result='edgeNoise'/%3E%3CfeComposite in='blur' in2='edgeNoise' operator='arithmetic' k2='.88' k3='.46' k4='0' result='dithered'/%3E%3CfeColorMatrix in='dithered' type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .72 0'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='100%25' height='100%25' color-interpolation-filters='sRGB'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='6.4' numOctaves='3' seed='137' stitchTiles='stitch' result='grain'/%3E%3CfeColorMatrix in='grain' type='saturate' values='0' result='mono'/%3E%3CfeComposite in='SourceGraphic' in2='mono' operator='arithmetic' k2='1' k3='.085' k4='-.0425'/%3E%3C/filter%3E%3C/defs%3E%3Cg filter='url(%23d)'%3E%3Crect width='100' height='100' fill='%23181818'/%3E%3Crect x='-10' y='-10' width='120' height='120' fill='none' stroke='%23000' stroke-width='16' opacity='.66' filter='url(%23v)'/%3E%3C/g%3E%3C/svg%3E");
     position: relative;
     z-index: 0;
-    overflow: hidden;
+    /* clip, not hidden: a hidden box is still a scroll container, and scrollIntoView or a focus() inside an
+       off-screen output would scroll it behind the camera. */
+    overflow: clip;
     isolation: isolate;
 }
 
@@ -1509,8 +1512,152 @@ body {
 .field-main-canvas {
     position: relative;
     z-index: 1;
-    /* mainCanvasTransform() is translate(t) scale(mainZoom): screen = world * zoom + t. */
+    /* CanvasPane.canvasTransform() is translate(t) scale(zoom): screen = world * zoom + t. */
     transform-origin: 0 0;
+}
+
+/* Split canvas (canvasCamera.kt): each pane clips its own transformed canvas. The left column and
+   top row carry the dividers, so no pane's content origin moves. */
+.field-pane {
+    position: absolute;
+    z-index: 1;
+    overflow: clip; /* not a scroll container; see .field-main-viewport */
+    box-sizing: border-box;
+}
+
+.field-pane-canvas {
+    width: 0;
+    height: 0;
+    overflow: visible;
+}
+
+/* Boxes being dragged on a split canvas ride an unclipped canvas above the panes (beginBoxDrag). */
+.field-drag-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 2;
+}
+
+/* Each pane's frame is inset from its divider sides (dividerInsets) with those corners rounded
+   (frameRadius); its black spread, clipped by the pane, paints the pane's share of a 3 px divider,
+   so together the frames draw a black cross with rounded inner corners. It sits above the boxes. */
+.field-pane-frame {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: 0 0 0 24px #000;
+}
+
+/* The drawing layer has one Excalidraw per pane (drawingLayer.kt), each sized to its pane. Only
+   the main pane's shows Excalidraw's toolbar and menus; the tool follows the pointer into the others. */
+.field-drawing-pane {
+    position: absolute;
+    overflow: clip;
+}
+
+/* Everything but the drawing itself (and the text editor, for typing a label there). Narrow panes
+   get Excalidraw's mobile layout (App-top-bar, App-bottom-bar) as well as the desktop one, and
+   Excalidraw's own CSS loads after this file, hence the blanket rule and !important. */
+.field-drawing-mirror .excalidraw-container > :not(canvas):not(.excalidraw__canvas-wrapper):not(.SVGLayer):not(.excalidraw-textEditorContainer) {
+    display: none !important;
+}
+
+/* A stretch of divider between two panes that do not scroll together across it (one is unlinked)
+   is dashed: this overlay lies on the black bar and paints its gaps in the canvas's own grey. */
+.field-pane-dash {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.field-pane-dash-v {
+    background: repeating-linear-gradient(180deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
+}
+
+.field-pane-dash-h {
+    background: repeating-linear-gradient(90deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
+}
+
+/* Divider handles: an invisible strip over the pane border that lights up on hover. */
+.field-pane-divider {
+    position: absolute;
+    z-index: 3;
+    background: transparent;
+    transition: background-color 120ms ease;
+}
+
+.field-pane-divider-v {
+    top: 0;
+    bottom: 0;
+    width: 9px;
+    cursor: col-resize;
+}
+
+.field-pane-divider-h {
+    left: 0;
+    right: 0;
+    height: 9px;
+    cursor: row-resize;
+}
+
+/* The stripe covers the 3 px black bar exactly (the handle starts 4 px before the divider line, and
+   the bar runs from 1 px before it to 2 px after). */
+.field-pane-divider:hover,
+.field-pane-divider.dragging {
+    background: linear-gradient(var(--divider-direction, 90deg), transparent 3px, #00e5ff 3px, #00e5ff 6px, transparent 6px);
+}
+
+.field-pane-divider-h:hover,
+.field-pane-divider-h.dragging {
+    --divider-direction: 0deg;
+}
+
+body.field-pane-resizing-v,
+body.field-pane-resizing-v * {
+    cursor: col-resize !important;
+}
+
+body.field-pane-resizing-h,
+body.field-pane-resizing-h * {
+    cursor: row-resize !important;
+}
+
+/* The corner grip: drag it out to split the canvas. */
+.field-split-grip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 14px;
+    height: 14px;
+    z-index: 3;
+    cursor: crosshair;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0 30%, transparent 30%);
+    opacity: 0.5;
+    transition: opacity 120ms ease;
+}
+
+.field-split-grip:hover {
+    opacity: 1;
+}
+
+.field-split-preview {
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+    background: rgba(255, 255, 255, 0.45);
+}
+
+.field-split-preview-v {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+}
+
+.field-split-preview-h {
+    left: 0;
+    right: 0;
+    height: 1px;
 }
 
 .monaco-editor .margin-view-overlays .codicon-folding-collapsed,
@@ -5312,3 +5459,41 @@ body.mode-editor-only .field-toast {
 .layer-name.is-active { color: rgb(var(--field-accent-rgb)); }
 .field-panel button.layer-eye.is-on { opacity: 1; color: #d8d8d8; }
 .layer-footer { justify-content: flex-end; padding-top: 4px; }
+
+/* Saved history stays separate from the transcript and never selects the live document state. */
+.state-tree-toolbar, .state-tree-browser { font:13px/1.4 Iosevka, monospace; color:#d8d8d8; background:#000; }
+.state-tree-toolbar { display:flex; align-items:center; gap:12px; padding:6px 10px; flex:0 0 auto; }
+.state-tree-caption { color:#8a8a8a; font-size:12px; }
+.state-tree-browser { display:flex; flex-direction:column; flex:0 1 430px; min-height:180px; max-height:55%; overflow:hidden; padding:10px; box-sizing:border-box; }
+.state-tree-controls, .state-tree-status { flex:0 0 auto; }
+.state-tree-toolbar[hidden], .state-tree-browser[hidden] { display:none; }
+.state-tree-controls, .state-tree-actions, .state-tree-paging { display:flex; gap:6px; flex-wrap:wrap; }
+.state-tree-toolbar button, .state-tree-browser button, .state-tree-browser select { font:inherit; color:#d8d8d8; background:#242424; border:0; border-radius:8px; padding:7px 10px; cursor:pointer; text-transform:none; letter-spacing:normal; box-shadow:none; }
+.state-tree-controls select { flex:1; min-width:100px; width:180px; appearance:none; padding:7px 34px 7px 12px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath d='m3 5 4 4 4-4' fill='none' stroke='%238a8a8a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; color-scheme:dark; }
+.state-tree-browser button:disabled { opacity:.4; cursor:default; }
+.state-tree-browser button:focus-visible, .state-tree-toolbar button:focus-visible, .state-tree-browser select:focus { outline:none; box-shadow:none; color:rgb(var(--field-accent-rgb)); background-color:#303030; }
+.state-tree-toolbar button:hover, .state-tree-browser button:not(:disabled):hover { color:rgb(var(--field-accent-rgb)); background-color:#303030; }
+.state-tree-toolbar button[aria-expanded="true"] { color:rgb(var(--field-accent-rgb)); }
+.state-tree-status { color:#8a8a8a; margin:8px 0; font-size:12px; white-space:pre-wrap; }
+.state-tree-body { position:relative; display:flex; flex:1 1 auto; min-height:80px; gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:#242424; border-radius:10px; }
+.state-tree-graph, .state-tree-inspector { min-width:0; overflow:auto; background:transparent; border:0; }
+.state-tree-graph { flex:1 1 0; }
+.state-tree-inspector { flex:0 1 42%; max-width:280px; padding:4px; display:flex; flex-direction:column; align-items:flex-end; overflow:hidden; margin-left:auto; text-align:right; }
+.state-tree-inspector > :not(.state-tree-detail) { flex:0 0 auto; }
+.state-tree-detail:empty { display:none; }
+.state-tree-pinned { color:#8a8a8a; font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
+.state-tree-pinned { margin-top:8px; }
+.state-tree-actions { justify-content:flex-end; gap:4px; }
+.state-tree-actions button { background:#181818; font-size:11px; padding:4px 7px; border-radius:6px; }
+.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.4 Iosevka, monospace; color:#aaa; user-select:text; margin:10px 0 0; width:100%; }
+.state-tree-rows { position:relative; }
+.state-tree-rows svg { z-index:1; position:absolute; top:0; left:0; pointer-events:none; }
+.state-tree-rows path { stroke:#666; stroke-width:1; fill:none; }
+.state-tree-rows circle { stroke:#aaa; fill:#242424; }
+.state-tree-rows circle.is-current { fill:rgb(var(--field-accent-rgb)); stroke:rgb(var(--field-accent-rgb)); stroke-width:2; }
+.state-tree-browser .state-tree-node { display:block; height:43px; width:100%; text-align:left; border:0; border-radius:6px; background:transparent; padding-top:4px; padding-bottom:4px; }
+.state-tree-node-title { display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.state-tree-node small { display:block; color:#8a8a8a; font-size:10px; }
+.state-tree-browser .state-tree-node[aria-pressed="true"] { background:#303030; color:rgb(var(--field-accent-rgb)); }
+.state-tree-paging { position:absolute; right:8px; bottom:8px; gap:4px; }
+.state-tree-paging button { background:#1f1f1f; padding:4px 9px; font-size:12px; }

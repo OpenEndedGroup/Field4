@@ -181,6 +181,12 @@ comes back to it. The Gradle entry points take the same flag:
 
 ## Opening a document
 
+When automatic reopening is enabled in Preferences, Field remembers the last opened
+document separately for each workspace. Switching back restores that workspace's
+document; a workspace with no remembered document, or one whose document has been
+deleted, opens the welcome page. The old shared last-document setting is ignored
+because it does not identify which workspace it belonged to.
+
 `-d` (or `--document`) goes straight into a document, instead of the welcome page
 and instead of whatever was open last:
 

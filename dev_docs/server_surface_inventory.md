@@ -265,7 +265,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-127 command names, in the `handlers` table. This is the real command API, it is roughly twice
+128 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -285,7 +285,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `agent_backdoor.kt` | 23 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
-| `Ai4Installer.kt` | 9 |
+| `Ai4Installer.kt` | 10 |
 | `importing.kt` | 4 |
 | `NotationServer.kt` | 3 |
 | `templating.kt` | 3 |
@@ -308,7 +308,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
-| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
+| `Ai4Installer.kt` | AI chat sessions and tool use; reads or clears the attached document’s per-box saved chat, reports the last turn’s context metadata (`ai-chat-context`, no text), rewinds or switches a chat’s branches, and — when asked — undoes a rewound turn’s recorded edits and created boxes (`ai-chat-rewind-world`), reads the attached document’s saved state trees and bounded state details (`ai-state-tree`, including read/inspect callbacks registered by box code; no restore or fork), runs a document’s agent-extension chat commands (`ai-chat-command`, box code), and reads the saved document chat (`chat_history`, `<document>/ai4_document_chat.md`, which `chat_input` appends to), behind the existing `/ws` boundary |
 | `importing.kt` | notebook and EDN import — parses foreign documents into boxes |
 | `NotationServer.kt` | the attached document's drawing (the root box's `drawing` property): merges a client's scene into it, records the drawing-layer selection (memory only), anchors marks to boxes. No reach beyond what `set-string` on `root.drawing` already had; it runs box code only as the `onNotation` reactions that box code itself registered |
 | `templating.kt` | template read and write, under the templates directory |
@@ -367,6 +367,7 @@ in-route same-site check stops a web page.
 | `ai-chat-history` | `Ai4Installer.kt` |
 | `ai-chat-rewind-world` | `Ai4Installer.kt` |
 | `ai-chat-screenshot` | `Ai4Installer.kt` |
+| `ai-state-tree` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
 | `blame-history-line` | `history.kt` |

@@ -26,11 +26,11 @@ data class StyleGeometryPartsRequest(val viewId: String, val expectedRevision: S
 data class GeometryPartColor(val partId: String, val color: List<Double>)
 
 
-@JsonClassDescription("Read a page of geometry annotation summaries, without opening a browser or acknowledging any note. Open notes are the default. ReadGeometryNoteRequest returns a complete note and its saved pictures. Original annotation revisions can differ from the current geometry revision.")
+@JsonClassDescription("Read a page of geometry annotation summaries, without opening a browser or acknowledging any note. Open notes are the default. ReadGeometryNoteRequest returns a complete note and its saved pictures. Original annotation revisions can differ from the current geometry revision. A finding from a build attempt says fromEarlierInputs; true means that attempt ran against an earlier design, so the finding may no longer apply.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ReadGeometryReviewsRequest(val viewId: String, val includeResolved: Boolean = false, val offset: Int = 0, val limit: Int = 10)
 
-@JsonClassDescription("Read one geometry annotation including its original feature/view reference, replies and resolution history. Attaches the saved context and crop as actual images when available. These are historical pictures of the annotated revision, not freshly rendered current geometry. Reading does not resolve the note or change the user's selection.")
+@JsonClassDescription("Read one geometry annotation including its original feature/view reference, replies and resolution history. Attaches the saved context and crop as actual images when available. These are historical pictures of the annotated revision, not freshly rendered current geometry. Reading does not resolve the note or change the user's selection. A finding from a build attempt says fromEarlierInputs, as in ReadGeometryReviewsRequest.")
 @AgentToolMeta("geometry", ToolExposure.DEFERRED, effects = [ToolEffect.READ_DOCUMENT, ToolEffect.FILESYSTEM_READ])
 data class ReadGeometryNoteRequest(val viewId: String, val noteId: String, val includeImages: Boolean = true)
 
@@ -84,10 +84,15 @@ data class GeometryToolResult(
     override fun toolLogSummary(): String = "success=$success images=$imageCount $message"
 }
 
-/** Document-scoped adapters over the same inbox used by the viewer and external inspection tools. */
+/**
+ * Document-scoped adapters over the same inbox used by the viewer and external inspection tools.
+ * [buildRuns] says, for the build attempts behind findings' run ids, whether each ran against earlier
+ * inputs; it is called off the owner thread, because a build's currency reads its inputs.
+ */
 internal class GeometryReviewTools(
     private val info: SessionInformation,
     private val onOwner: (() -> GeometryToolResult) -> GeometryToolResult,
+    private val buildRuns: (Set<String>) -> Map<String, Boolean> = { emptyMap() },
 ) {
     private data class ReviewView(val uid: String, val reviewInbox: ThreeReviewInbox, val kind: String, val captureBox: String?) {
         fun reviews(includeResolved: Boolean = false) = reviewInbox.snapshot(includeResolved)
@@ -115,7 +120,28 @@ internal class GeometryReviewTools(
         GeometryToolResult(true, "${entries.size} geometry views in ${info.documentName}", mapOf("views" to entries))
     }
 
-    fun read(request: ReadGeometryReviewsRequest): GeometryToolResult = guarded {
+    private fun runId(note: Any?): String? {
+        val finding = (note as? Map<*, *>)?.get("finding") as? Map<*, *>
+        return (finding?.get("runId") as? String)?.takeIf { it.isNotBlank() }
+    }
+
+    private fun earlierRuns(runIds: Set<String>): Map<String, Boolean> =
+        if (runIds.isEmpty()) emptyMap() else try { buildRuns(runIds) } catch (e: Exception) { emptyMap() }
+
+    // A finding from a build attempt against earlier inputs keeps its discussion status but, as on the build
+    // card, no longer describes the current design.
+    fun read(request: ReadGeometryReviewsRequest): GeometryToolResult {
+        val read = readPage(request)
+        val page = read.details["notes"] as? List<*> ?: return read
+        val earlier = earlierRuns(page.mapNotNull(::runId).toSet())
+        if (earlier.isEmpty()) return read
+        val marked = page.map { note -> runId(note)?.let(earlier::get)?.let { (note as Map<*, *>) + ("fromEarlierInputs" to it) } ?: note }
+        val count = marked.count { (it as Map<*, *>)["fromEarlierInputs"] == true }
+        return read.copy(details = read.details + ("notes" to marked), message = read.message +
+            if (count == 0) "" else "; $count from a build attempt with earlier inputs, which may no longer apply (fromEarlierInputs)")
+    }
+
+    private fun readPage(request: ReadGeometryReviewsRequest): GeometryToolResult = guarded {
         require(request.offset >= 0 && request.limit in 1..30) { "Use offset >= 0 and limit between 1 and 30" }
         val snapshot = view(request.viewId).reviews(request.includeResolved)
         val notes = snapshot.getValue("notes").jsonArray
@@ -134,7 +160,14 @@ internal class GeometryReviewTools(
                     "nextOffset" to (request.offset + page.size).takeIf { it < notes.size }))
     }
 
-    fun note(request: ReadGeometryNoteRequest): GeometryToolResult = guarded {
+    fun note(request: ReadGeometryNoteRequest): GeometryToolResult {
+        val read = readNote(request)
+        val run = runId(read.details["note"]) ?: return read
+        val earlier = earlierRuns(setOf(run))[run] ?: return read
+        return read.copy(details = read.details + ("fromEarlierInputs" to earlier))
+    }
+
+    private fun readNote(request: ReadGeometryNoteRequest): GeometryToolResult = guarded {
         val view = view(request.viewId)
         val snapshot = view.reviews(true)
         val note = findNote(snapshot, request.noteId)

@@ -373,6 +373,9 @@ object DemoTranscriptExecSmokeTest {
         // click handlers; neither needs a Window or a Renderer. three_inspector_wall's code is also
         // that page's captured fence, which ThreeInspectorDemoDriftTest holds character for character.
         "three_inspector_wall",
+        // stipple_transport.md's live sheet: a committed JSON model evaluated in plain Kotlin,
+        // drawn through lines() and controlGroup sliders. CPU only.
+        "stipple_sheet",
         "fline_hit_records",
         // The companion to sound.md's real-drums section. showDirtAudio / showPatAudio mix offline
         // into inline players, so no audio device; with no Dirt-Samples on the build machine every

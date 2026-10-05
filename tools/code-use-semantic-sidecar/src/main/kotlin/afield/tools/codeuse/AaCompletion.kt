@@ -43,6 +43,7 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtImportDirective
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 import org.jetbrains.kotlin.psi.KtQualifiedExpression
@@ -213,13 +214,16 @@ data class AaLoweredFile(
     val providedImports: List<String>,
     val isDot: Boolean,
     val prefix: String,
+    /** The `import` line the caret is typing in, moved into the file header (see `importPathAt`). It is
+     *  the box's own code, so an error in it is reported as the snippet's. */
+    val caretImportRange: IntRange = IntRange.EMPTY,
 ) {
     /** Which injected region [offset] falls in — the label an error is reported under. */
     fun regionAt(offset: Int): String = when (offset) {
         in preambleRange -> "preamble"
         in declarationsRange -> "declarations"
         in stubsRange -> "stubs"
-        in snippetRange -> "snippet"
+        in snippetRange, in caretImportRange -> "snippet"
         else -> "wrapper"
     }
 }
@@ -656,6 +660,14 @@ internal fun prefixAt(snippet: String, cursor: Int): String =
 /** A line that is nothing but an `import` — `import a.b.C`, `import a.b.*`, `import a.b.C as D`. */
 private val IMPORT_LINE = Regex("""\s*import\s+\w+(?:\.\w+)*(?:\.\*)?(?:\s+as\s+\w+)?\s*""")
 
+/** A line up to the caret when the caret is in an `import`'s path: `import ‸`, `import kotlin.ma‸`,
+ *  `import afield.pd.‸`. Not past the path — `import a.b.*‸` and `import a.b.C as D‸` do not match. */
+private val IMPORT_PATH_HEAD = Regex("""\s*import\s+(?:\w+\.)*\w*""")
+
+/** The caret's `import` line ([line], in snippet offsets) and its text from `import` up to the caret
+ *  ([typed]: `import kotlin.ma`). See `AaCompleter.importPathAt`. */
+internal data class CaretImport(val line: IntRange, val typed: String)
+
 /**
  * The dummy name spliced in at an otherwise-empty expression slot, so there is a `KtExpression` at the
  * caret whose *expected* type the Analysis API can report. (IntelliJ does the same with
@@ -948,12 +960,20 @@ class AaCompleter(
         // synthetic `fun __c() { … }` below, where an import is a syntax error. So `import sentences.*`
         // on line 1 left `SentenceDiagram` unresolved and every member of the box's own type missing.
         // Hoist them to the file header instead (blanked in place, same length, so [cursor] still
-        // means what the caller said). The line the caret sits on is left alone: completing an import
-        // path is a name position like any other.
-        val (body, snippetImports) = hoistImports(snippet, cursor)
+        // means what the caller said).
+        //
+        // That includes the line the caret is typing an import PATH on. It used to stay where it was, on
+        // the theory that completing an import path is a name position like any other — but inside
+        // `fun __c` it is no position at all. `import kotlin.math.‸` there is a syntax error, so there was
+        // no qualified expression at the caret, and every package answered 0 with "no qualified expr";
+        // an empty answer hands the request to K1, so none of [completeAt]'s package-path work (sub-packages,
+        // the on-demand scan, the JDK's classes) ever reached an import line. So the header gets what is
+        // typed of that line, up to the caret, and the caret goes with it. See [importPathAt].
+        val caretImport = importPathAt(snippet, cursor)
+        val (body, snippetImports) = hoistImports(snippet, cursor, caretImport?.line)
         val before = body.substring(0, cursor)
         val after = body.substring(cursor)
-        val prefix = prefixAt(before, before.length)
+        val prefix = (caretImport?.typed ?: before).let { prefixAt(it, it.length) }
         // What KIND of position the caret is in is decided on CODE, not on prose. Read off the raw text,
         // the last non-space character before the caret is whatever the previous line happened to end
         // with — and a comment that ends in a full stop is how people write comments:
@@ -965,8 +985,9 @@ class AaCompleter(
         // qualified expr" with zero candidates — 19 of the caret sweep's misses, every one of them an
         // ordinary call at the start of a statement. Worse than empty when the caret happens to sit
         // inside an outer qualified expression: then it answers with the members of THAT receiver.
-        // Blanked in place, so every offset still means what the caller said.
-        val beforeCode = blankCommentsAndStrings(before)
+        // Blanked in place, so every offset still means what the caller said. On an import line the code
+        // before the caret is the path typed so far, since that line has left the body.
+        val beforeCode = caretImport?.typed ?: blankCommentsAndStrings(before)
         // Covers both `recv.` and safe `recv?.` — both end in '.' after dropping the prefix.
         val isDot = beforeCode.dropLast(prefix.length).trimEnd().endsWith(".")
         // At an untyped expression slot (`d.scheme = ‸`, `f(‸`) there is no expression at the caret to
@@ -1016,6 +1037,18 @@ class AaCompleter(
         val sb = StringBuilder()
         allImports.map { it.removePrefix("import ").trim() }
             .filter { it.isNotEmpty() }.distinct().forEach { sb.append("import ").append(it).append('\n') }
+        var cursorOffset = -1
+        var caretImportRange = IntRange.EMPTY
+        if (caretImport != null) {
+            val start = sb.length
+            sb.append(caretImport.typed)
+            // An empty name, after `import ` or after a dot, has to be SOME name, or there is no reference
+            // at the caret to read a qualifier off: the same reason the body splices one at `recv.‸`.
+            if (prefix.isEmpty()) sb.append(CARET_MARKER)
+            cursorOffset = sb.length
+            caretImportRange = start until sb.length
+            sb.append('\n')
+        }
         sb.append('\n')
         val preambleStart = sb.length
         if (fileScopePreamble.isNotBlank()) sb.append(fileScopePreamble).append("\n\n")
@@ -1042,10 +1075,12 @@ class AaCompleter(
         // wrapper out of inference entirely.
         recvs.forEachIndexed { i, t -> sb.append("with<").append(t).append(", Unit>(__r").append(i).append(") { ") }
         val snippetStart = sb.length
-        sb.append(before)
-        if (spliceCaret || spliceDotCaret) sb.append(CARET_MARKER)
-        val cursorOffset = sb.length
-        sb.append(after)
+        if (caretImport == null) {
+            sb.append(before)
+            if (spliceCaret || spliceDotCaret) sb.append(CARET_MARKER)
+            cursorOffset = sb.length
+            sb.append(after)
+        } else sb.append(body)
         val snippetRange = snippetStart until sb.length
         recvs.forEach { _ -> sb.append(" }") }
         sb.append("\n}\n")
@@ -1063,6 +1098,7 @@ class AaCompleter(
             providedImports = providedImports,
             isDot = isDot,
             prefix = prefix,
+            caretImportRange = caretImportRange,
         )
     }
 
@@ -1174,13 +1210,18 @@ class AaCompleter(
     }
 
     /**
-     * Blank every whole-line `import` in [snippet] (leaving the one holding the caret) and return the
+     * Blank every whole-line `import` in [snippet] (except the one holding the caret) and return the
      * blanked text — character-for-character the same length, so caret offsets survive — plus the
      * import statements found. Only a line that is nothing but an import is touched, so an `import`
      * inside a string literal or a comment is left where it is.
+     *
+     * [caretImport] is the caret's line when the caret is in its path ([importPathAt]). It is blanked
+     * too but not returned: [lower] puts what is typed of it in the header itself, because half a path
+     * (`import kotlin.math.`) is not an import. A caret past the path (`import a.b.*‸`) leaves its line
+     * where it is.
      */
-    internal fun hoistImports(snippet: String, cursor: Int): Pair<String, List<String>> {
-        if (!snippet.contains("import ")) return snippet to emptyList()
+    internal fun hoistImports(snippet: String, cursor: Int, caretImport: IntRange? = null): Pair<String, List<String>> {
+        if (caretImport == null && !snippet.contains("import ")) return snippet to emptyList()
         val out = StringBuilder(snippet)
         val imports = mutableListOf<String>()
         var lineStart = 0
@@ -1193,7 +1234,29 @@ class AaCompleter(
             }
             lineStart += line.length + 1
         }
+        caretImport?.forEach { out.setCharAt(it, ' ') }
         return out.toString() to imports
+    }
+
+    /**
+     * The caret's line, when the caret is in the PATH of the `import` on it: `import ‸`,
+     * `import kotlin.ma‸`, `import afield.pd.‸`, and the path of a star or aliased import
+     * (`import a.b.‸*`, `import a.b.Fo‸ as D`). Null anywhere else, including past the path
+     * (`import a.b.*‸`, `… as D‸`), where there is no package to complete. Decided on code, so an
+     * `import` inside a string or a comment is not one.
+     *
+     * Only the text up to the caret is kept ([CaretImport.typed]): what follows it (the rest of a name,
+     * `.*`, ` as D`) does not change which names complete there, and dropping it means the header line
+     * always parses.
+     */
+    internal fun importPathAt(snippet: String, cursor: Int): CaretImport? {
+        val c = cursor.coerceIn(0, snippet.length)
+        val lineStart = snippet.lastIndexOf('\n', c - 1) + 1
+        val head = snippet.substring(lineStart, c)
+        if (!IMPORT_PATH_HEAD.matches(head)) return null
+        if (!IMPORT_PATH_HEAD.matches(blankCommentsAndStrings(snippet.substring(0, c)).substring(lineStart))) return null
+        val lineEnd = snippet.indexOf('\n', c).let { if (it < 0) snippet.length else it }
+        return CaretImport(lineStart until lineEnd, head.trimStart())
     }
 
     /**
@@ -1713,6 +1776,78 @@ class AaCompleter(
                 }.getOrDefault(emptyList())
 
                 return emptyList()
+            }
+
+            /**
+             * What an `import` can name under the class [cls]: its nested classifiers, an enum's entries, a
+             * Java class's statics (`import java.lang.Math.toRadians`) and an object's members. Not a
+             * companion's members: Kotlin imports those only through the companion itself
+             * (`import a.C.Companion.f`), whose name is a nested classifier and so is still offered. Nor an
+             * enum's `values`/`valueOf`/`entries`, which sit in the same static scope as its entries.
+             */
+            fun importableFrom(cls: KaClassSymbol, path: String): List<AaCandidate> {
+                val label = runCatching { cls.classId?.asFqNameString() }.getOrNull() ?: path
+                val isObject = cls.classKind == KaClassKind.OBJECT || cls.classKind == KaClassKind.COMPANION_OBJECT
+                val isEnum = cls.classKind == KaClassKind.ENUM_CLASS
+                val out = ArrayList<AaCandidate>()
+                val statics = listOf(cls.staticDeclaredMemberScope, cls.staticMemberScope)
+                for (scope in statics) runCatching {
+                    scope.callables(match).filter { !isEnum || it is KaEnumEntrySymbol }
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                // An enum's entries are declared members, not statics, in some AA versions (see
+                // [staticScopeCandidates]); an object's members are importable, inherited ones included,
+                // bar `Any`'s, which nobody imports.
+                runCatching {
+                    cls.declaredMemberScope.callables(match).filterIsInstance<KaEnumEntrySymbol>()
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                if (isObject) runCatching {
+                    cls.memberScope.callables(match)
+                        .filter { declaredIn(it) != "kotlin.Any" && declaredIn(it) != "java.lang.Object" }
+                        .forEach { asCandidate(it, AaCandidate.Kind.MEMBER, label)?.let(out::add) }
+                }
+                // A callable's visibility is checked in [asCandidate], a classifier's only here: without it
+                // `import java.lang.Math.‸` offered the private `RandomNumberGeneratorHolder`.
+                for (scope in statics + cls.declaredMemberScope) runCatching {
+                    scope.classifiers(match).filter { accessible(it) }
+                        .mapNotNull { (it as? KaNamedSymbol)?.name?.asString() }
+                        .forEach { out.add(AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, label, "class")) }
+                }
+                return out
+            }
+
+            // The caret's own IMPORT line, which [lower] moved into the header: `import kotlin.math.‸`,
+            // `import afield.pd.‸`, `import kot‸`. Under a package an import can name everything
+            // [packageCandidates] lists, top-level functions and properties included (`import
+            // kotlin.math.sin`); under a class, what [importableFrom] lists; at the root, a root package.
+            // Never the value path below: an import's qualifier is not a value, and that path answers an
+            // untyped receiver with `also`/`let`. A function is inserted as its bare name, since `sin(` does
+            // not parse in an import, and each name once, since one import brings in every overload.
+            if (PsiTreeUtil.getParentOfType(leaf, KtImportDirective::class.java, false) != null) {
+                val name = PsiTreeUtil.getParentOfType(leaf, KtSimpleNameExpression::class.java, false)
+                val qualifier = (name?.parent as? KtQualifiedExpression)
+                    ?.takeIf { it.selectorExpression == name }?.receiverExpression
+                val path = qualifier?.text.orEmpty().filterNot { it.isWhitespace() }
+                val cls = qualifier?.let { resolveQualifier(it) }
+                val out = when {
+                    qualifier == null -> index.allPackages.asSequence().map { it.substringBefore('.') }
+                        .filter { it.isNotEmpty() && it.first().isJavaIdentifierStart() && it.all(Char::isJavaIdentifierPart) }
+                        .distinct().filter { match(Name.identifier(it)) }
+                        .map { AaCandidate(it, AaCandidate.Kind.CLASSIFIER, null, null, "package") }.toList()
+                    cls != null -> importableFrom(cls, path)
+                    isPackageName(path, index) -> packageCandidates(path, index)
+                    else -> emptyList()
+                }.filterNot { it.isSynthetic }.filter(jsFilter).distinctBy { it.name }.sortedBy { it.name }
+                    .map { if (it.icon == "method") it.copy(insertText = it.name) else it }
+                return@analyze AaCompletionResult(
+                    out,
+                    when {
+                        out.isEmpty() -> "0 matched on an import line; path=${path.ifEmpty { "<root>" }}" +
+                            if (cls != null) " class" else ""
+                        else -> packageTruncated?.let { "truncated $it" }.orEmpty()
+                    },
+                )
             }
 
             // A dot inside a TYPE REFERENCE: `prop<afield.‸stdlib.Vec4>(x)`, `fromContextWithNameOrNull<

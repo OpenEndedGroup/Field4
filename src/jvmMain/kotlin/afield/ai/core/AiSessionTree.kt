@@ -419,6 +419,19 @@ object AiSessionTree {
         save(box, session)
     }
 
+    /** Add a named, empty child of an exact saved state. Does not move the active head or restore anything. */
+    fun fork(box: Box, id: String, name: String): String = synchronized(lock) {
+        require(name.isNotBlank() && name.length <= 120 && name.none { it.isISOControl() }) { "Use a branch name of 1–120 printable characters" }
+        val session = load(box)
+        require(id in session.nodes()) { "Saved conversation state is unavailable" }
+        require(session.nodes().values.none { (it["branchName"] as? JsonPrimitive)?.contentOrNull == name }) { "Branch name already exists: $name" }
+        // An empty append is understood by older readers and inherits transcript, memory and registered state.
+        val added = node("append", id, "", mapOf("branchName" to JsonPrimitive(name)))
+        session.lines += added
+        save(box, session)
+        (added["id"] as JsonPrimitive).content
+    }
+
     /** Make branch tip [index] (as [branches] numbers them) the head. */
     fun switchTo(box: Box, index: Int): Rewind = synchronized(lock) {
         val session = load(box)
@@ -449,7 +462,8 @@ object AiSessionTree {
                     val md = (n["markdown"] as? JsonPrimitive)?.contentOrNull.orEmpty()
                     Regex("(?m)^<<you>>\\n").findAll(md).map { userText(md.substring(it.range.first)) }.toList()
                 }
-                val last = requests.lastOrNull().orEmpty().replace('\n', ' ').replace("|", "\\|").take(80)
+                val branchName = path.lastOrNull { it["branchName"] != null }?.get("branchName")?.jsonPrimitive?.contentOrNull
+                val last = (branchName ?: requests.lastOrNull().orEmpty()).replace('\n', ' ').replace("|", "\\|").take(80)
                 appendLine("| $i | ${requests.size} | $last | ${if ((tip["id"] as? JsonPrimitive)?.contentOrNull == head) "**current**" else ""} |")
             }
             append("\nSwitch with `/branch <#>`.")

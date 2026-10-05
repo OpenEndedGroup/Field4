@@ -1,9 +1,10 @@
 # Moving around the canvas
 
 A Field document is usually bigger than the window. You can pan and
-zoom with the mouse or trackpad; step from box to box with the keyboard, by tapping `Cmd` twice and
-holding it; bring the selection into view with `Alt+F`; or jump to one of nine views you have saved.
-All of them change what you are looking at and never the document itself.
+zoom with the mouse or trackpad; split the canvas so headings or labels stay in view while the rest
+scrolls; step from box to box with the keyboard, by tapping `Cmd` twice and holding it; bring the
+selection into view with `Alt+F`; or jump to one of nine views you have saved. All of them change
+what you are looking at and never the document itself.
 
 ## Panning and zooming
 
@@ -17,6 +18,167 @@ All of them change what you are looking at and never the document itself.
 - **`Alt+H`** (**Reset View** in the command palette, and a button at the top of the bookmarks
   panel) also returns to 100%, and closes every output panel. Use it when a panel has grown to fill
   the window: the wheel and pinch then go to the panel, so you cannot zoom or scroll away from it.
+
+## Splitting the canvas
+
+Like a spreadsheet's split, the canvas can be divided into two or four panes that keep part of a
+document in view while you move around the rest: a row of headings along the top, a column of labels
+down the side, or both. Here the body of a sequencer-like document has been scrolled right and down.
+The bar headings moved sideways with it, the instrument labels moved up with it, and the corner stayed
+put:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" screenshot="assets/moving_around_the_canvas/split_canvas.png" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas.yaml" padding="0" wait="0" timeout="240" hide-toasts=true embed=true hidden=true name="split-canvas" alt="Field's canvas split into four panes by a black cross with rounded inner corners. The top-left pane is empty corner space. Along the top, a row of boxes named bar 3 to bar 7. Down the left, boxes named bass, keys, pad and fx. The large bottom-right pane holds the pattern boxes for those bars and instruments, each under its bar heading and level with its instrument label, because the body was scrolled right and down and the headings and labels scrolled with it."}
+// The split is made the way a reader makes it: drag the grip in the canvas's top-left corner out
+// to the corner between the labels and the headings, and let go.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+// Off the divider it was released on, so its hover stripe is not lit in the shot.
+ui.moveMouse(700.0, 420.0, 4)
+ui.pause(500)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+// Scroll the body (the bottom-right pane) right and down, as a trackpad would.
+ui.eval("""
+  const pane = document.querySelectorAll(".field-pane")[3];
+  const r = pane.getBoundingClientRect();
+  pane.dispatchEvent(new WheelEvent("wheel", { deltaX: 380, deltaY: 200, clientX: r.right - 40, clientY: r.bottom - 40, bubbles: true, cancelable: true }));
+  return true;
+""")
+ui.pause(900)
+```
+
+To split it:
+
+- **Drag the grip** in the top-left corner of the canvas out to where you want the dividers, and let
+  go. Let go near the top edge for a left and a right pane only, or near the left edge for a top and
+  a bottom pane only.
+- Or use **Split Canvas Here**, **Split Canvas Columns Here** or **Split Canvas Rows Here** in the
+  command palette, which add a divider (or one of each) where the pointer was. Run them again on a
+  split canvas for more panes: up to three across and three down. The palette's preview for each of
+  them is a small picture of what the canvas will look like, with the new dividers in cyan.
+
+Splitting changes nothing on screen until you scroll. Then panes in the same row scroll up and down
+together, panes in the same column scroll side to side together, and zooming zooms every pane.
+
+Each pane shows its own part of the document, on its side of the dividers: a box belongs to the pane
+that holds its top-left corner. Drag a box across a divider and it moves into the other pane, staying
+where you let go of it.
+
+A pane in the middle of three shows the strip of the document between its two dividers. If you
+widen the pane past the end of that strip, the rest of it is plain grey, with no dots: there is
+nothing more of the document for that pane to show.
+
+- **Drag a divider** to move it. The boxes beside it move with it.
+- **Drag a divider to the edge of the window**, or double-click it, to remove it.
+- **Remove Canvas Split** in the command palette removes them all. Every box stays where it is.
+
+Connections between boxes in different panes are drawn straight across the dividers, and follow
+the boxes as the panes scroll. Here `keys 4` is selected, so its connections show: its parents are
+its instrument label and its bar heading, and its children are `mix` in the corner and two pattern
+boxes beside it. Then the body scrolls, and each connection stays attached to the box at its other
+end in whichever pane that box is in:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/split_canvas_connections.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas_connections.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="split-canvas-connections" alt="A sequencer-like document split into four panes by a black cross. The box keys 4 in the body is selected, with connections to keys in the label column, bar 4 in the heading row, mix in the corner and two pattern boxes beside it. The body scrolls right and down and then back: bar headings slide sideways and labels slide up with it, and the curved connections bend and settle as their ends move apart and together across the dividers."}
+// Split at the corner between the labels and the headings, the way a reader does: drag the grip.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+ui.moveMouse(700.0, 420.0, 4)
+ui.pause(500)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+
+// Select keys 4, so its connections show. Selecting opens the editor, which would cover the canvas.
+ui.click("sp_keys4")
+ui.pause(300)
+ui.eval("window.hideMonaco(); return true")
+ui.pause(1500)
+
+// Scroll the body (the bottom-right pane) in small steps, as a trackpad does, then back again,
+// pausing each time for the connections to settle.
+fun scrollBody(dx: Double, dy: Double) {
+    ui.eval("""
+      const pane = document.querySelectorAll(".field-pane")[3];
+      const r = pane.getBoundingClientRect();
+      pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.right - 60, clientY: r.bottom - 60, bubbles: true, cancelable: true }));
+      return true;
+    """)
+}
+repeat(40) { scrollBody(9.0, 5.0); ui.pause(30) }
+ui.pause(2500)
+repeat(40) { scrollBody(-6.0, -4.0); ui.pause(30) }
+ui.pause(2500)
+```
+
+The drawing
+layer (`Alt+D`) works in every pane: its toolbar is in the bottom-right pane, and the tool you pick
+there follows the pointer into the others.
+
+The split is saved with the document. A bookmark saved while the canvas is split restores the split
+and where each pane was scrolled to.
+
+### Unlinking a pane
+
+**Unlink Pane**, **Unlink Pane Horizontally** and **Unlink Pane Vertically** in the command
+palette let the pane under the pointer scroll on its own, in both directions or just one, instead of
+with its row or column: a corner of notes that stays where you left it, say, or a column of labels
+you scroll through separately. The stretches of divider between an unlinked pane and the panes it
+no longer moves with turn dashed. **Relink Pane** puts it back in step with its row and column.
+
+Here the instrument labels are unlinked vertically from the palette (its preview shows the divider
+beside them turning dashed), so the body scrolls down without them, and then they scroll on their
+own. **Relink Pane** brings them back into line with the body:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/unlink_pane.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="unlink-pane" alt="A sequencer-like document split into four panes by a black cross, bar headings along the top and instrument labels down the left. With the pointer over the labels, the command palette opens and Unlink Pane Vertically is typed; its preview is a thumbnail of the split with the divider beside the labels drawn as cyan dashes. After Enter that divider turns dashed. The body scrolls down while the labels stay put, then the labels scroll on their own. The palette opens again for Relink Pane, and the labels jump back into line with their rows, the divider solid again."}
+// Split at the corner between the labels and the headings, the way a reader does: drag the grip.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+ui.pause(400)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+
+fun scrollPane(index: Int, dx: Double, dy: Double) {
+    ui.eval("""
+      const pane = document.querySelectorAll(".field-pane")[$index];
+      const r = pane.getBoundingClientRect();
+      pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
+      return true;
+    """)
+}
+fun palette(command: String) {
+    // The pane under the pointer is the one a pane command acts on: the labels, bottom left.
+    ui.moveMouse(90.0, 400.0, 8)
+    ui.pause(300)
+    ui.press("F1")
+    ui.waitForSelector(".afield-palette-shell", 8000.0)
+    ui.pause(400)
+    ui.typeSlowly(command, 70)
+    ui.pause(1600)
+    ui.press("Enter")
+    ui.pause(900)
+}
+
+palette("unlink pane vertically")
+val free = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("true" in free) { "the labels pane was not unlinked: " + free }
+// The body scrolls down; the labels stay where they are.
+ui.moveMouse(700.0, 420.0, 6)
+repeat(30) { scrollPane(3, 0.0, 6.0); ui.pause(30) }
+ui.pause(900)
+// The labels scroll on their own.
+repeat(24) { scrollPane(2, 0.0, 5.0); ui.pause(30) }
+ui.pause(900)
+
+palette("relink pane")
+val linked = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("false" in linked) { "the labels pane was not relinked: " + linked }
+ui.pause(1500)
+```
 
 ## Stepping between boxes
 
@@ -187,7 +349,7 @@ Arrows reach neighbours. For everywhere else there are nine numbered slots.
 
 A slot stores a view rather than a box reference. Restoring one reapplies, in this order:
 
-- the canvas pan position and zoom
+- the canvas pan position and zoom, and the split with each pane's position if the canvas was split
 - the open or closed state of the nested disclosures, before anything is selected
 - the size of each output panel that was open, and the open or closed state of every output
   panel. A panel that did not exist when the slot was saved, or no longer exists, is left as it is
@@ -227,8 +389,8 @@ ui.pause(600)
 
 Each saved slot shows:
 
-- a small map of the document, with the saved view as a dashed rectangle and the selected box
-  in the accent colour. The boxes are drawn where they are now, not where they were when the slot
+- a small map of the document, with the saved view as a dashed rectangle (one for each pane of a
+  split canvas) and the selected box in the accent colour. The boxes are drawn where they are now, not where they were when the slot
   was saved
 - the view position (and the zoom, when it is not 100%), and the box that was selected or being
   edited, with the cursor line
@@ -239,7 +401,8 @@ Click the name to rename a slot. **Restore** and **Save** do what `Shift+F`*n* a
 
 - **restore view**: pan and zoom back to the saved view. Turn it off for a slot that should rearrange
   output panels without moving the canvas.
-- **restore selection**: reselect the box and reopen its editor and cursor.
+- **restore selection**: reselect the box and reopen its editor and cursor. With **restore view**
+  off, the box is also brought into view.
 - **close unrecorded panels**: also close every output panel the slot has no record of, instead of
   leaving it as it is. Use it for a slot that should leave the canvas tidy.
 
@@ -270,6 +433,8 @@ are hidden, deleted, or drawn at zero size are not candidates.
 - a slot with no saved zoom restores the pan position at whatever zoom you are at now
 - there are nine slots and the numbering is fixed
 - restoring a slot you have not set yet shows a notification and leaves the view alone
+- box code that reads `viewport`, or reacts to it with `onViewportChange`, sees the bottom-right
+  pane of a split canvas only
 
 ## Related features
 

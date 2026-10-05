@@ -205,6 +205,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
+  `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
+  under transport-time, movie-time and step sliders. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.
