@@ -64,7 +64,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
         panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus();
     }
     function valid(ticket) { return ticket === generation && owner === chatUid() && !panel.hidden; }
-    async function open() {
+    async function open(target = null) {
         const previous = sources.value;
         if (owner !== chatUid()) pinned = null;
         owner = chatUid(); panel.hidden = false; toggle.setAttribute('aria-expanded', 'true');
@@ -84,10 +84,20 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
                 status.textContent = 'No recorded states yet. AI4 turns appear here when saved; document providers can expose their histories too.';
                 newer.disabled = older.disabled = true; return;
             }
-            sources.value = [...sources.options].some(o => o.value === previous) ? previous
+            if (target && ![...sources.options].some(o => o.value === target.source)) throw new Error("History provider is unavailable. Refresh the tree.");
+            sources.value = target ? target.source : [...sources.options].some(o => o.value === previous) ? previous
                 : [...sources.options].find(o => o.value === `${owner}/conversation`)?.value || sources.options[0].value;
-            await loadTree(0);
-        } catch (e) { if (valid(ticket)) status.textContent = e.message; }
+            if (!await loadTree(target?.offset || 0)) return false;
+            if (target?.node) {
+                const row = [...graph.querySelectorAll('.state-tree-node')].find(r => r.dataset.stateId === target.node);
+                if (!row) { status.textContent = 'Saved state is no longer on this page. Refresh the tree.'; return false; }
+                row.click();
+                // The caller awaits the same read used by a human selection.
+                if (!await pendingSelection) return false;
+                row.scrollIntoView({block:'nearest', inline:'nearest'});
+            }
+            return true;
+        } catch (e) { if (valid(ticket)) status.textContent = e.message; return false; }
     }
     async function loadTree(nextOffset) {
         const ticket = ++generation; resetSelection(); graph.replaceChildren();
@@ -103,8 +113,10 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
             newer.disabled = offset === 0; older.disabled = offset + nodes.length >= total;
             draw(nodes, data.tree?.current);
             if (!nodes.length) graph.append(el('p', '', 'No saved states in this history.'));
-        } catch (e) { if (valid(ticket)) status.textContent = e.message; }
+            return true;
+        } catch (e) { if (valid(ticket)) status.textContent = e.message; return false; }
     }
+    let pendingSelection = Promise.resolve(false);
     function draw(nodes, current) {
         // One lane per fork, reusing the parent's lane for its first child. IDs, never row numbers, select states.
         const lane = new Map(), used = new Set(); let nextLane = 0;
@@ -132,7 +144,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
             const dot = document.createElementNS(ns, 'circle');
             dot.setAttribute('cx', point.x); dot.setAttribute('cy', point.y); dot.setAttribute('r', n.id === current ? 5 : 3);
             svg.append(dot);
-            const row = button('', () => select(n, row));
+            const row = button('', () => { pendingSelection = select(n, row); });
             row.className = 'state-tree-node'; row.dataset.stateId = n.id;
             row.title = `${n.title || n.id}${n.created ? ` · ${n.created}` : ''}`;
             row.style.paddingLeft = `${width + 5}px`; row.setAttribute('aria-pressed', 'false');
@@ -157,7 +169,8 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
             detail.textContent = data.detail;
             selected = {key: `${source}/${n.id}`, source, id: n.id, title: n.title, reference: data.reference};
             updateActions();
-        } catch (e) { if (valid(ticket) && pick === selectionGeneration) detail.textContent = e.message; }
+            return true;
+        } catch (e) { if (valid(ticket) && pick === selectionGeneration) detail.textContent = e.message; return false; }
     }
     async function putInChat(comparison) {
         const choices = comparison ? [pinned, selected] : [selected];
@@ -178,5 +191,5 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     sources.addEventListener('change', () => loadTree(0));
     panel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
     updateActions();
-    return {open, reset() { close(); pinned = null; resetSelection(); }};
+    return {open, reveal(source, node, offset = 0) { return open({source, node, offset}); }, reset() { close(); pinned = null; resetSelection(); }};
 }

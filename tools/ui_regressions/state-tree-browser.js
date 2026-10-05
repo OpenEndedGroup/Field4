@@ -33,7 +33,9 @@ const inspectorRect = root.querySelector('.state-tree-inspector').getBoundingCli
 const actionRect = [...root.querySelectorAll('button')].find(b => b.textContent === 'Reference in chat').getBoundingClientRect();
 check(actionRect.top >= inspectorRect.top && actionRect.bottom <= inspectorRect.bottom, 'Reference controls scrolled out of view');
 click('Reference in chat');
-await until(() => draft.value.includes('7200'));
+await until(() => draft.value.includes('design-b'));
+check(!draft.value.includes('7200'), 'State contents leaked into chat reference');
+check(draft.value.includes('StateReadRequest'), 'Reference lacks retrieval tool');
 check(content.__aiChatHistory === history, 'Referencing sent a message');
 click('Clear comparison');
 click('Close'); check(root.querySelector('.state-tree-browser').hidden, 'Close failed');
@@ -45,4 +47,44 @@ select.dispatchEvent(new Event('change'));
 await until(() => nodes().length === 3);
 nodes().find(n => n.textContent.includes('compact')).click();
 await until(() => root.querySelector('.state-tree-detail').textContent.includes('compact'));
-return {ok:true, branches:3, designStates:2, draftPreserved:true, noNavigation:true};
+const shown = await window.openAiStateBrowser(root.dataset.uid, select.value, nodes()[0].dataset.stateId, 0);
+check(shown, 'Programmatic state reveal failed');
+check(nodes()[0].getAttribute('aria-pressed') === 'true', 'Programmatic reveal selected wrong state');
+const toolCheck = await (async () => {
+const {sendWithReply} = await import('./afield.mjs');
+const root = document.querySelector('.ai-chat-window');
+const check = (c, message) => { if (!c) throw new Error(message); };
+const call = (name, args) => new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`${name} timed out`)), 25000);
+    sendWithReply('agent-ai-tool-call', {name, arguments:args, focusBox:root.dataset.uid}, `state-tool-check-${Math.random()}`, (_m, response) => {
+        clearTimeout(timeout);
+        if (!response.ok || !response.result?.success) reject(new Error(JSON.stringify(response)));
+        else resolve(response.result);
+        return 'remove';
+    });
+});
+const histories = await call('StateListRequest', {});
+const conversation = histories.histories.find(h => h.id.endsWith('/conversation'));
+check(conversation?.canFork, 'Conversation does not advertise named forks');
+const listing = await call('StateListRequest', {history:conversation.id});
+const head = listing.current;
+const result = await call('StateForkRequest', {history:conversation.id, state:head, name:'Courtyard alternative'});
+check(result.state && result.state !== head, 'Fork lacks independent node identity');
+const read = await call('StateReadRequest', {history:conversation.id, state:'Courtyard alternative', maxChars:12000});
+check(read.state === result.state && read.contents.includes('compact layout'), 'Read by branch name returned wrong transcript');
+const after = await call('StateListRequest', {history:conversation.id});
+check(after.current === head, 'Fork moved the active head');
+check(after.nodes.find(n => n.id === result.state).parents.includes(head), 'Fork lost its parent');
+const shown = await call('StateShowRequest', {history:conversation.id, state:'Courtyard alternative'});
+check(shown.success, 'Frontend did not acknowledge reveal');
+check(root.querySelector('.state-tree-node[aria-pressed="true"]')?.dataset.stateId === result.state, 'Wrong state is shown');
+const draft = root.querySelector('textarea'); const previous=draft.value;
+[...root.querySelectorAll('button')].find(b=>b.textContent==='Reference in chat').click();
+for(let i=0;i<100 && draft.value===previous;i++) await new Promise(r=>setTimeout(r,30));
+const reference=draft.value.slice(previous.length);
+check(reference.includes(result.state) && reference.includes('StateReadRequest'), 'Compact reference is not resolvable');
+check(!reference.includes('Saved conversation transcript') && reference.length<1000, 'Full state leaked into chat');
+return {ok:true, tools:['list','read','fork','show'], branch:result.state, activeHeadUnchanged:true, referenceChars:reference.length};
+
+})();
+return {ok:true, branches:4, designStates:2, draftPreserved:true, noNavigation:true, toolCheck};

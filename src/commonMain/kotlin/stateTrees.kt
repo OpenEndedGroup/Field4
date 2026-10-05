@@ -21,3 +21,9 @@ data class StateTreeRequest(val uid: String, val source: String = "", val node: 
 data class StateTreeReply(val sources: List<StateTreeSource> = emptyList(), val source: String = "",
     val tree: StateTreeSnapshot? = null, val total: Int = 0, val offset: Int = 0,
     val detail: String = "", val reference: String = "", val error: String = "")
+
+@Serializable
+data class StateTreeReveal(val uid: String, val source: String, val node: String = "", val offset: Int = 0)
+
+@Serializable
+data class StateTreeRevealResult(val success: Boolean, val uid: String, val message: String)

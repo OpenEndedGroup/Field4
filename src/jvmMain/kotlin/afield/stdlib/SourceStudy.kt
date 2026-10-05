@@ -198,6 +198,26 @@ class SourceStudy<T>(
         return source
     }
 
+    /** Create a named saved child without admission, activation, live source changes or moving HEAD. */
+    @Synchronized
+    fun forkSaved(id: String, name: String): String {
+        require(name.isNotBlank() && name.length <= 120 && name.none { it.isISOControl() }) { "Use a branch name of 1–120 printable characters" }
+        val source = savedSource(id)
+        val parentMeta = mapper.readTree(File(directory, "$id.json"))
+        require(allRevisions().none { it.description == name }) { "State name already exists: $name" }
+        val number = allRevisions().maxOfOrNull { it.id.substringBefore('-').removePrefix("r").toLong() }?.plus(1) ?: 1
+        val child = "r$number-${hash(source).take(12)}"
+        val metadata = mapper.createObjectNode().apply {
+            put("id", child); put("parent", id); put("description", name); put("branchName", name)
+            put("created", Instant.now().toString()); put("sourceHash", hash(source))
+            parentMeta.get("facts")?.let { set<com.fasterxml.jackson.databind.JsonNode>("facts", it) }
+        }
+        // Metadata publishes the node only after its source exists. Never alter HEAD or live source.
+        java.nio.file.Files.writeString(revisionSourceFile(child).toPath(), source, java.nio.file.StandardOpenOption.CREATE_NEW)
+        java.nio.file.Files.writeString(File(directory, "$child.json").toPath(), mapper.writeValueAsString(metadata), java.nio.file.StandardOpenOption.CREATE_NEW)
+        return child
+    }
+
     private fun readMeta(id: String): Meta {
         val node = mapper.readTree(File(directory, "$id.json"))
         return Meta(

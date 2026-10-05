@@ -2682,7 +2682,14 @@ function openAiChatForBox(uid, property) {
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
+        return chat;
 }
+
+window.openAiStateBrowser = async (uid, source, node, offset) => {
+        const chat = openAiChatForBox(uid, "code");
+        if (!chat) return false;
+        return !!await chat.stateBrowser.reveal(source, node, offset);
+};
 
 // ---- voice target ----------------------------------------------------------
 //

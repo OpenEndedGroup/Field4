@@ -46,8 +46,8 @@ Choose **States** at the top of AI4 chat to see saved conversation branches and
 histories exposed by document providers. Select a node to inspect it. The current
 position is marked **CURRENT**; selecting another node only browses it.
 
-**Reference in chat** adds the selected state's exact identity and a bounded excerpt
-to your draft. To discuss two states, choose **Keep for comparison**, select another,
+**Reference in chat** adds a compact title and exact identity to your draft. AI4
+retrieves the saved contents with `StateReadRequest` only when needed. To discuss two states, choose **Keep for comparison**, select another,
 and choose **Discuss differences**. Your existing draft is preserved and nothing is
 sent automatically. Refresh reads the saved histories again. Long histories have
 Older/Newer pages; an edge whose parent is outside the page is labelled.
@@ -56,6 +56,27 @@ Conversation nodes show their recorded extension snapshot identities. They do no
 claim to be complete document backups. Providers explain their own coverage, such
 as a retained undo chain or checked source revisions. This browser does not restore
 states or merge them.
+
+AI4 and external agents share four tools:
+
+| Tool | Behaviour |
+| --- | --- |
+| `StateListRequest` | List histories, search names/IDs, page through node metadata, and discover `canFork`. No state bodies are included. |
+| `StateReadRequest` | Read by exact ID or unique exact name within a history. Large states have bounded character pages; pass the returned `revision` on subsequent pages. |
+| `StateShowRequest` | Reveal the history and selected state in the human browser. Success requires frontend acknowledgement. This shows ancestry and saved text, not reconstructed geometry. |
+| `StateForkRequest` | Create a named saved child within this document, leaving the active state unchanged. Only available for providers reporting `canFork`. |
+
+For example, ask AI4 to “list saved states”, “read Courtyard alternative”, or
+“show that state in the browser”. History labels and state names must be unique;
+ambiguous names require the exact IDs returned by the list tool. References from
+the browser already carry those IDs. No operation silently chooses among duplicates.
+
+Conversation forks are saved empty children that inherit the transcript, memory
+and registered snapshots. Continue one through the existing `/branches` and
+`/branch <number>` commands, which retain the existing restoration/conflict rules.
+A `SourceStudy` fork copies the saved source into a named child revision without
+compilation or changes to live source or `HEAD`. Creating a branch does not activate
+it. These are provider-specific histories, not complete document forks.
 
 A document can expose an existing history without adopting a new persistence format:
 
@@ -79,7 +100,11 @@ The callbacks must only read saved data: no compilation, restoration or builds.
 Node IDs must remain stable and unique; `parents` contains explicit ancestry.
 For an existing `SourceStudy`, use `stateTree("recipe", "Recipe", myStudy)`.
 This reads saved revision metadata and verifies source hashes without re-running
-admission. Registration belongs to the box's run and is replaced when re-run.
+admission. It also supports named saved forks. A custom provider remains read-only
+unless it supplies a `fork = { parentId, name -> ... }` callback that returns a new
+saved child ID without activation or restoration. Histories that prune old states
+must establish durable branch storage before offering that callback. Registration
+belongs to the box's run and is replaced when re-run.
 
 ### Going back
 

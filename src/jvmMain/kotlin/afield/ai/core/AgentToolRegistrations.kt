@@ -19,6 +19,7 @@ internal fun registerBuiltInAgentTools(tools: ToolRegistry) {
         AgentToolExtensions.applyTo(tools)
         registerDocumentGuideTools(tools)
         registerDocumentSourceTools(tools)
+        registerStateTools(tools)
         afield.ai.agent.registerFieldGraphTools(tools)
         // One tool whose argument is a program over all the others; see ToolProgramTools.kt.
         afield.ai.core.program.registerToolProgramTools(tools)
