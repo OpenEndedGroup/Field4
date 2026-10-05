@@ -201,7 +201,7 @@ frame()'s catch, before the cancellation unwinds the body's finally.
 So .end { } means "when this animation is cancelled", not "when it finishes".
 
 ```edn [field-box id="frames_lifecycle_cleanup" role="properties"]
-{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 56 "characters" 2355 "sha256" "b29b3067176a6262330b43025e69da29c73caf316cc8532befd51e2c81f4dfe3"}]}
+{"id" "frames_lifecycle_cleanup" "index" 2 "name" "4 · cleanup — stop it, wait it out, then re-run it" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "4 · cleanup — stop it, wait it out, then re-run it" "_tombstone" false "frame" #afield/rect [700.0 620.0 620.0 150.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "frames_lifecycle_cleanup_code_.kt" "lines" 56 "characters" 2366 "sha256" "d0f212d635a7408d864c0a70a19402f36514ab247d05cf7b30666320b296f321"}]}
 ```
 
 ```kotlin [field-property box="frames_lifecycle_cleanup" name="code" path="frames_lifecycle_cleanup_code_.kt"]
@@ -259,7 +259,7 @@ frames {
     }
 }
     .end {
-        note(".end { } - only on a re-run or a self-end, and it runs first")
+        note(".end { } - on a cancellation (stop, re-run or end()), and it runs first")
     }
 ```
 

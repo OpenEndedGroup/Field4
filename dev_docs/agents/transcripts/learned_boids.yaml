@@ -25,14 +25,15 @@ description: |
 
   Things worth trying, all live:
 
-    - `separation`, `alignment`, `cohesion` on the left box. Note the values: `0.0015 / 3 / 200`,
-      nothing like the textbook `0.02 / 1.2 / 0.8`. The weights are not scale-free — separation
-      *sums* over neighbours while the other two take *means*, so their relative strength depends
-      on the density and on the interaction radius. Measured here, the textbook numbers put
-      separation 27x above alignment and 4600x above cohesion, and the flock spreads out evenly
-      instead of gathering. The right box
-      does not follow — it learned the rule as it was when you trained it, so the two flocks
-      diverge the moment you edit one. Re-run the training box to catch it up.
+    - `separation`, `alignment`, `cohesion` on the left box. Note the values: `0.02 / 3 / 200`.
+      Separation matches the textbook `0.02 / 1.2 / 0.8`; alignment and cohesion are far above it.
+      The weights are not scale-free — separation *sums* over neighbours while the other two take
+      *means*, so their relative strength depends on the density and on the interaction radius.
+      Measured here, the textbook numbers put separation 27x above alignment and 4600x above
+      cohesion, and the flock spreads out evenly instead of gathering. The right box does not
+      follow — it learned the rule as it was when you trained it, so the two flocks diverge the
+      moment you edit one. To catch it up, put the same three numbers in the training box (it
+      hard-codes them), run it, then run the right box: it builds a new flock on the new rule.
     - `driverStrength` from `-0.9f` (flee) through `0f` (nothing) to `+0.9f` (chase). At zero both
       flocks settle within a few seconds into something that reads as static, and that is not a
       bug — the motion you would otherwise be admiring in the learned flock used to come from its
@@ -279,11 +280,12 @@ operations:
           import afield.four.util.GpuNeighbourGrid
           import afield.stdlib.linalg.Vector2f
 
-          prop<afield.four.physics.ShaderBoids>(learned)
-
           // `learnedRule` is the trained network from the parent box. The only difference from
           // the written flock is this argument.
-          once.learned {
+          //
+          // A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
+          // parent and the next run builds a new flock, releasing the old one.
+          val learned = cached<ShaderBoids>(learnedRule, renderer) {
               val grid = GpuNeighbourGrid(
                   capacity = 12000,
                   cellsPerSide = 64,
@@ -334,7 +336,7 @@ operations:
           learned.settings.intensity = 1.5f
           learned.settings.slowColor = vec(0.95, 0.25, 0.45, 1.0)
           learned.settings.fastColor = vec(1.0, 0.85, 0.45, 1.0)
-          println("learned rule: ${learned.count} boids on ${learned.learned}")
+          println("learned rule: ${learned.count} boids")
   - connect: { parent: lb_renderer, child: lb_train }
   - connect: { parent: lb_train, child: lb_written }
   - connect: { parent: lb_train, child: lb_learned }

@@ -32,7 +32,7 @@ description: |
     - `iterations` from `20` down to `4`. The fluid does not become unstable — this method does not
       blow up — the dye starts *piling up and thinning out*, because a velocity field with residual
       divergence creates and destroys mass.
-    - `dissipation` on `fluid-dye` down to `0.9f` for trails that fade fast, or up to `1.0f` for dye
+    - `dyeDissipation` at the top of the `sim_fluid` box, from `0.99f` down to `0.9f` for trails that fade fast, or up to `1.0f` for dye
       that never leaves.
     - `println(chain.plan.report())`. The two `x2 (ping-pong)` slots at the bottom are the state; the
       twenty pressure iterates alternate between two slots, which is a ping-pong the planner

@@ -52,5 +52,5 @@ frames {
     }
 }
     .end {
-        note(".end { } - only on a re-run or a self-end, and it runs first")
+        note(".end { } - on a cancellation (stop, re-run or end()), and it runs first")
     }
