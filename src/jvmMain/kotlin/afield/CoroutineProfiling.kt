@@ -48,9 +48,8 @@ object CoroutineProfiles {
     fun resume(context: CoroutineContext, task: Runnable) {
         val capture = active
         val origin = context[ProfileOrigin]
-        if (capture == null || origin == null || origin.document != capture.document || context[ProfileExemptKey] != null) {
-            task.run(); return
-        }
+        if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }
+        if (context[ProfileExemptKey] != null) { task.run(); return }
         val now = System.nanoTime()
         if (now >= capture.deadlineNs) { finish(capture, now); task.run(); return }
         val lane = capture.beginResume(context[Job], origin, now, context[CoroutineName]?.name.orEmpty())
