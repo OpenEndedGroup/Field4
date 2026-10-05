@@ -1,7 +1,10 @@
 package afield
 
 import kotlin.test.Test
+import afield.macros.isFragmentBreak
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * The contract for collapsing runs of line comments: a run of three or more becomes one block
@@ -136,6 +139,68 @@ class KotlinFormatterCommentTest {
             once.trim()
         )
         assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun aFragmentBreakKeepsItsSpellingThroughTheFormatter() {
+        val once = formatKotlinCode("val a = 1\n\n//%-\nval b = 2\n    //%- indented\nval c = 3\n")
+        assertEquals(listOf("//%-", "//%- indented"), once.lines().filter { "%-" in it }.map(String::trim))
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+        assertTrue(once.lines().filter { "%-" in it }.all(::isFragmentBreak))
+    }
+
+    @Test
+    fun spacedFragmentBreaksAreStillBreaks() {
+        assertTrue(isFragmentBreak("// %-"))
+        assertTrue(isFragmentBreak("  /* %- */"))
+        assertTrue(isFragmentBreak("//%-"))
+        assertFalse(isFragmentBreak("val s = \"//%-\""))
+        assertFalse(isFragmentBreak("// 50%-ish"))
+    }
+
+    @Test
+    fun commentsAfterTheLastStatementStayOnTheirOwnLines() {
+        val once = formatKotlinCode("loop {\n    true\n}\n// one\n// two\n")
+        assertEquals("loop {\n    true\n}\n\n// one\n// two\n", once)
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun aMultiLineCallStaysOnItsAssignmentLine() {
+        val code = "val a = sim.addCloth(\n    width = 22,\n    // note\n    height = 22,\n)\nval c = sim.addCloth(width = 22)\n"
+        val once = formatKotlinCode(code)
+        assertEquals("val a = sim.addCloth(\n    width = 22,\n    // note\n    height = 22,\n)\nval c = sim.addCloth(width = 22)\n", once)
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun aRawStringIsNeverReindented() {
+        val code = "val s =\n    listOf(\n        \"\"\"\n        x\n        \"\"\"\n    )\n"
+        assertEquals(code, joinAssignmentBreaks(code))
+    }
+
+    @Test
+    fun consecutiveStatementsStayConsecutiveAndAuthoredBlankLinesStay() {
+        val code = "buf.add(1.0)\nbuf.add(2.0) // c\n\nval x = 1\nfun f() {\n    g()\n    h()\n}\n"
+        val once = formatKotlinCode(code)
+        assertEquals(code, once)
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun aOneLineLambdaAssignmentStaysOnOneLine() {
+        val code = "m.spins = { sgSpins }\nm.mvp = { Matrix4f(camera.p).mul(camera.modelView()) }\n"
+        val once = formatKotlinCode(code)
+        assertEquals(code, once)
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun glslTemplatesAndBlockInstancesSurvive() {
+        val code = "layout(push_constant) uniform P {\n    float a;\n} pc;\n\n{% include \"fieldProbe\" %}\n\nvoid main() {\n    {{ mega.vertex }}\n}\n"
+        val once = formatGlslCode(code)
+        assertEquals(code, once)
+        assertEquals(once, formatGlslCode(once))
     }
 
     @Test

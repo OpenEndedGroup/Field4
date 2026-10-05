@@ -865,10 +865,15 @@ object DemoTranscriptExecSmokeTest {
 
     // ---- COMPILE-ONLY: build the graph, then compile each box's Kotlin with eval skipped ----
 
-    private fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
+    internal fun runCompileOnlyDemo(yaml: File, name: String, failures: MutableList<String>) {
         val document = freshSession(name)
         val ops = loadOps(yaml)
-        val graphOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        val ownOps = ops.filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+        // A transcript that connects under a stable parent another transcript creates (the
+        // graphics context) gets that transcript's graph first, so its boxes resolve `renderer`
+        // the way they do in Field, through the parent's prop<Renderer>, rather than needing a
+        // local lookup that exists only to make this harness compile them.
+        val graphOps = stableParentOps(ownOps) + ownOps
 
         // Build the box graph with the real apply path — create/connect/edit/move only, no launch.
         val macrosDir = File(document, "macros").also { it.mkdirs() }
@@ -969,6 +974,26 @@ object DemoTranscriptExecSmokeTest {
         errors
     }
 
+    /** Stable parents a transcript may connect under without creating, and the transcript that creates each. */
+    private val STABLE_PARENTS = mapOf("agent_graphics_context" to "graphics_renderer_launch")
+
+    private fun createdId(op: Map<String, Any?>): String? {
+        if ((op.keys.firstOrNull()?.lowercase() ?: "") !in setOf("create", "new-box", "box")) return null
+        val p = op.values.firstOrNull() as? Map<*, *>
+        return (p?.get("box") ?: p?.get("uid") ?: p?.get("id") ?: p?.get("target"))?.toString()
+    }
+
+    private fun stableParentOps(ops: List<Map<String, Any?>>): List<Map<String, Any?>> {
+        val created = ops.mapNotNull(::createdId).toSet()
+        val text = ops.toString()
+        return STABLE_PARENTS
+            .filter { (parent, _) -> parent !in created && parent in text }
+            .flatMap { (_, source) ->
+                loadOps(File(locateTranscriptsDir(), "$source.yaml"))
+                    .filter { (it.keys.firstOrNull()?.lowercase() ?: "") in GRAPH_VERBS }
+            }
+    }
+
     // ---- shared setup ----
 
     private fun freshSession(name: String): File {
@@ -1002,7 +1027,7 @@ object DemoTranscriptExecSmokeTest {
         return raw.mapNotNull { it as? Map<String, Any?> }
     }
 
-    private fun startRunloopDaemon() {
+    internal fun startRunloopDaemon() {
         val t = Thread({ afield.Runloop.runLoop.start() }, "demo-transcript-harness-runloop")
         t.isDaemon = true
         t.start()
@@ -1014,7 +1039,7 @@ object DemoTranscriptExecSmokeTest {
         println("DemoTranscriptExecSmokeTest: runloop up (frame=${afield.Runloop.runLoop.frame})")
     }
 
-    private fun locateTranscriptsDir(): File {
+    internal fun locateTranscriptsDir(): File {
         val rel = "dev_docs/agents/transcripts"
         val candidates = buildList {
             System.getProperty("afield.repo")?.let { add(File(it, rel)) }

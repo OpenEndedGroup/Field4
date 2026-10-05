@@ -51,7 +51,7 @@ Move the mouse to aim the ray; left-click to press. To bind the panel to a hand 
 of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
 
 ```edn [field-box id="imgui_vr_panel" role="properties"]
-{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 24 "characters" 1147 "sha256" "816154c0fb6fec6aeed652154673cc5813035ee8ec23127668c794a448ce9b3d"}]}
+{"id" "imgui_vr_panel" "index" 1 "name" "imgui vr panel" "parents" ["root" "imgui_vr_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "imgui_vr_renderer"} "name" "imgui vr panel" "_tombstone" false "frame" #afield/rect [300.0 140.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "imgui_vr_panel_code_.kt" "lines" 21 "characters" 1041 "sha256" "119444758149f9fe39b98faaeca292cfdf504f7adc447bfcc97ccaa1ccd74611"}]}
 ```
 
 ```kotlin [field-property box="imgui_vr_panel" name="code" path="imgui_vr_panel_code_.kt"]
@@ -65,12 +65,9 @@ of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see I
 //
 // Move the mouse to aim the ray; left-click to press. To bind the panel to a hand instead
 // of a fixed point, call panel.place(handPos, handRight, handUp) each frame (see ImGuiPanel).
-import afield.four.Renderer
-import afield.four.modules.fromContext
 import afield.four.targets.SideBySideStereoTarget
 import afield.examples.four.ImGuiVrPanelDemo
 
-val renderer: Renderer = fromContext()
 val sbs = SideBySideStereoTarget(renderer)
 val demo = ImGuiVrPanelDemo(renderer.window, renderer, sbs)
 demo.build()

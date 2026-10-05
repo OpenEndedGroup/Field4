@@ -439,8 +439,11 @@ call sequence. The prose walkthrough with captured images is
 Renderer access is graph topology. For automation: run
 `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with
 `wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect
-`agent_graphics_context -> example_box`, then run it. Code that starts coroutine work with
-`start(...)` resolves `val renderer: Renderer = fromContext()` first and passes it in.
+`agent_graphics_context -> example_box`, then run it. A box beneath the renderer already has
+`renderer` (the renderer box publishes `prop<Renderer>(renderer)`), so do not look it up; only code
+that starts coroutine work with `start(...)` captures it first (`val r = renderer`) and passes it in.
+`./gradlew checkBoxIdioms` (`tools/check_box_idioms.py`) flags the redundant lookup in published box
+code, and a landing runs it on what it changed.
 
 ---
 

@@ -11,11 +11,10 @@ This is a machine-readable narrative mirror of `metadata.edn`. The canonical sto
 <!-- field-box id="splat_sequence_streaming" index="0" -->
 
 ```edn [field-box id="splat_sequence_streaming" role="properties"]
-{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 134 "characters" 5897 "sha256" "4d3e6bcc0feff56aecab08750bc90478f8db8e5fce1b22d724559468a81d00b0"}]}
+{"id" "splat_sequence_streaming" "index" 0 "name" "Splat Sequence Streaming" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Splat Sequence Streaming" "_tombstone" false "frame" #afield/rect [60.0 60.0 420.0 110.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "splat_sequence_streaming_code_.kt" "lines" 131 "characters" 5829 "sha256" "6ce86efc9be0af01edd7739af4a63cab435b991a9b9eae2571103d7868a89ba6"}]}
 ```
 
 ```kotlin [field-property box="splat_sequence_streaming" name="code" path="splat_sequence_streaming_code_.kt"]
-import afield.four.Renderer
 import afield.four.Target
 import afield.four.fabricated.GaussianSplatRenderer
 import afield.four.fabricated.GaussianSplatRenderer.Blend
@@ -46,8 +45,6 @@ val cameraUp = 1.1f
 // legitimate artistic move but not a fix for a dark scene.
 val colorGamma = 2.2f
 // -----------------------------------------------------------------------
-
-val renderer: Renderer = fromContext()
 
 if (!sequenceDir.isDirectory) {
     println("no sequence at $sequenceDir")

@@ -8,6 +8,8 @@ m.jRight = { sgJRight }
 m.jDown = { sgJDown }
 m.L = { sgL.toUInt() }
 m.aspect = { window.width / window.height.toFloat() }
-m.showFrustration = { 0u }     // set to { 1u } and re-run to overlay frustrated plaquettes
+// set to { 1u } and re-run to overlay frustrated plaquettes
+m.showFrustration = { 0u }
+// three vertices, no index buffer: the vertex shader makes the fullscreen triangle
 m.set(3, 0) {}
 println("draw launched")

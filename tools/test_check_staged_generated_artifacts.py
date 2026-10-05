@@ -80,7 +80,13 @@ class GeneratedArtifactSelectionTests(unittest.TestCase):
     def test_transcript_change_selects_bundle_and_index(self) -> None:
         self.assertEqual(
             task_names(["dev_docs/agents/transcripts/hello.yaml"]),
-            ["checkAgentTranscripts", "checkAgentTranscriptIndex"],
+            ["checkAgentTranscripts", "checkAgentTranscriptIndex", "checkBoxIdioms", "checkBoxCodeCompiles"],
+        )
+
+    def test_a_lesson_sidecar_selects_the_idiom_check_only(self) -> None:
+        self.assertEqual(
+            task_names(["public/docs/assets/canonical_graphics/abc_code_.kt"]),
+            ["checkBoxIdioms"],
         )
 
     def test_materialized_transcript_also_selects_completion_corpus(self) -> None:

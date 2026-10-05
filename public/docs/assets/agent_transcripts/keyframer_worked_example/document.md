@@ -19,13 +19,15 @@ write to. The simplest is a uniform Structure — and none of this needs a GPU, 
 Structure is constructible bare and bind/bindings are plain maps.
 
 ```edn [field-box id="keyframe_targets" role="properties"]
-{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 87 "characters" 3373 "sha256" "50999af5a385488c99575d9240c453b7a84cdd36ad210b627d1f435238216b7c"}]}
+{"id" "keyframe_targets" "index" 0 "name" "What a scope watches — capture, edit, apply" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "What a scope watches — capture, edit, apply" "_tombstone" false "frame" #afield/rect [80.0 80.0 400.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_targets_code_.kt" "lines" 95 "characters" 3367 "sha256" "427c84a553d55b10e4382bfbad59093aaa11c40244591448eae4b56d13063e05"}]}
 ```
 
 ```kotlin [field-property box="keyframe_targets" name="code" path="keyframe_targets_code_.kt"]
-// A KeyframeScope holds no values of its own. It holds *targets*: places to read from and
-// write to. The simplest is a uniform Structure — and none of this needs a GPU, because
-// Structure is constructible bare and bind/bindings are plain maps.
+/*
+A KeyframeScope holds no values of its own. It holds *targets*: places to read from and
+write to. The simplest is a uniform Structure — and none of this needs a GPU, because
+Structure is constructible bare and bind/bindings are plain maps.
+*/
 import afield.four.buffers.Structure
 import afield.stdlib.KeyframeScope
 
@@ -60,8 +62,8 @@ println("glow.intensity = " + glow.bindings["intensity"]?.invoke())
 println("blur.radius    = " + blur.bindings["radius"]?.invoke())
 println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-// capture() reads binding-first-then-value, so both of these land in the key. It used to
-// read Structure.bindings alone, and `set` snapshotted as a silent null.
+// capture() reads a binding first and falls back to a plain value, so a property set with
+// `structure[name] = ...` (no bind) still lands in the key.
 val sneaky = Structure()
 sneaky.bind("bound") { 1.0f }
 sneaky["set"] = 2.0f
@@ -75,13 +77,17 @@ println("bound -> " + trap["bound"] + " ; set -> " + trap["set"] + " (present: "
 captured()
 val restored = scope.capture()
 
-// markdown() rather than a hand-built card: headings for the captions, GFM tables for the
-// key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
-// other Field APIs and are *meant* to pass through, so they interpolate directly; every
-// computed value carries `.md`, which a table cell effectively requires.
+/*
+markdown() rather than a hand-built card: headings for the captions, GFM tables for the
+key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
+other Field APIs and are *meant* to pass through, so they interpolate directly; every
+computed value carries `.md`, which a table cell effectively requires.
+*/
 fun bound(s: Structure, k: String) = s.bindings[k]?.invoke().md
 
-markdown("keys", """
+markdown(
+    "keys",
+    """
     #### 1 — capture()
     ${captured.h}
 
@@ -109,7 +115,9 @@ markdown("keys", """
     ~~~
 ${captured.diffText(restored, "captured", "restored")}
     ~~~
-""", width = 800)
+""",
+    width = 800,
+)
 ```
 
 ## 2. Saving is always additive history
@@ -125,41 +133,57 @@ saveKey writes pretty JSON — and, every single time, ALSO appends a numbered c
 hundred files. What survives the trip is a closed set; everything else is dropped silently.
 
 ```edn [field-box id="keyframe_persist" role="properties"]
-{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 84 "characters" 3267 "sha256" "f400efad27318a1e4e7cc134240d2aee1e965fb8f8bbb4b24482d923faf03891"}]}
+{"id" "keyframe_persist" "index" 1 "name" "Saving is always additive history" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "Saving is always additive history" "_tombstone" false "frame" #afield/rect [1100.0 80.0 340.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_persist_code_.kt" "lines" 110 "characters" 3441 "sha256" "776d2599bf5c6a60932ed18e4d9909aaf5dbf353469e6ad1d1e3ef4ed8602519"}]}
 ```
 
 ```kotlin [field-property box="keyframe_persist" name="code" path="keyframe_persist_code_.kt"]
-// saveKey writes pretty JSON — and, every single time, ALSO appends a numbered copy to a
-// <file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
-// hundred files. What survives the trip is a closed set; everything else is dropped silently.
+/*
+saveKey writes pretty JSON — and, every single time, ALSO appends a numbered copy to a
+<file>.versions directory with a manifest. Nothing prunes it, so a hundred saves leave a
+hundred files. What survives the trip is a closed set; everything else is dropped silently.
+*/
 import afield.stdlib.KeyframeScope
-import afield.stdlib.stackSLString
 import afield.stdlib.linalg.Vector3f
+import afield.stdlib.stackSLString
 import java.nio.file.Files
 
 val dir = Files.createTempDirectory("keyframer-demo")
 val path = dir.resolve("look.json")
 
 val scope = KeyframeScope(schemaVersion = 1)
-scope.saveKey(path, scope.Key(mutableMapOf(
-    "gain" to 0.20f,
-    "pos" to Vector3f(1f, 2f, 3f),
-    "voice" to stackSLString("saw 110 *")
-)), note = "first pass")
+scope.saveKey(
+    path,
+    scope.Key(
+        mutableMapOf(
+            "gain" to 0.20f,
+            "pos" to Vector3f(1f, 2f, 3f),
+            "voice" to stackSLString("saw 110 *"),
+        ),
+    ),
+    note = "first pass",
+)
 
-scope.saveKey(path, scope.Key(mutableMapOf(
-    "gain" to 0.65f,
-    "pos" to Vector3f(4f, 5f, 6f),
-    "voice" to stackSLString("sin 220 * fold")
-)), note = "brighter")
+scope.saveKey(
+    path,
+    scope.Key(
+        mutableMapOf(
+            "gain" to 0.65f,
+            "pos" to Vector3f(4f, 5f, 6f),
+            "voice" to stackSLString("sin 220 * fold"),
+        ),
+    ),
+    note = "brighter",
+)
 
 // A third save that also carries values the KValue union cannot represent.
-val lossy = scope.Key(mutableMapOf(
-    "gain" to 0.90f,
-    "enabled" to true,          // a Boolean is outside the union
-    "taps" to listOf(1, 2, 3),  // so is a list
-    "absent" to null            // and a null is dropped too
-))
+val lossy = scope.Key(
+    mutableMapOf(
+        "gain" to 0.90f,
+        "enabled" to true, // a Boolean is outside the union
+        "taps" to listOf(1, 2, 3), // so is a list
+        "absent" to null, // and a null is dropped too
+    ),
+)
 scope.saveKey(path, lossy, note = "with unsupported values")
 
 val versions = scope.keyVersions(path)
@@ -172,23 +196,31 @@ println("dropped in silence: " + dropped + "  <- no exception, no log line")
 
 // An older snapshot loaded into a scope that has since grown a parameter.
 val newer = KeyframeScope(schemaVersion = 1)
-newer.missingKey("wet", 0.5f)              // applies to every file this scope loads
-newer.missingKey(1, "mode", "legacy-v1")   // only to files stamped schemaVersion = 1
+newer.missingKey("wet", 0.5f) // applies to every file this scope loads
+newer.missingKey(1, "mode", "legacy-v1") // only to files stamped schemaVersion = 1
 val migrated = newer.loadKey(path, version = 0)
 println("version 0 migrated: " + migrated.values.toSortedMap())
 
-// Rows built with joinToString and spliced into an indented block: markdown()'s dedent
-// anchors on the first line, so the rows arriving at column 0 do not flatten the figure the
-// way trimIndent would. The values table stays flat text rather than `migrated.h` — the
-// Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
-val versionRows = versions.joinToString("\n") { v ->
-    "| ${v.index} | ${v.file.md} | ${(v.note ?: "—").md} |"
-}
-val migratedRows = migrated.values.entries.sortedBy { it.key }.joinToString("\n") { (k, v) ->
-    "| ${k.md} | ${v.md} |"
-}
+/*
+Rows built with joinToString and spliced into an indented block: markdown()'s dedent
+anchors on the first line, so the rows arriving at column 0 do not flatten the figure the
+way trimIndent would. The values table stays flat text rather than `migrated.h` — the
+Key's own HTML gives a Vector3f an interactive 3D axis widget, which reflows the card.
+*/
+val versionRows =
+    versions.joinToString("\n") { v ->
+        "| ${v.index} | ${v.file.md} | ${(v.note ?: "—").md} |"
+    }
+val migratedRows =
+    migrated.values.entries
+        .sortedBy { it.key }
+        .joinToString("\n") { (k, v) ->
+            "| ${k.md} | ${v.md} |"
+        }
 
-markdown("persist", """
+markdown(
+    "persist",
+    """
     #### version history after three saves
 
     | # | file | note |
@@ -212,7 +244,9 @@ markdown("persist", """
     ~~~json
 ${Files.readString(dir.resolve("look.json.versions").resolve("000000.json"))}
     ~~~
-""", width = 820)
+""",
+    width = 820,
+)
 ```
 
 ## 3. A captured look becomes source
@@ -228,33 +262,38 @@ Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Eve
 literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
 
 ```edn [field-box id="keyframe_updatecode" role="properties"]
-{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 40 "characters" 2077 "sha256" "a016cfab9fe4d49055a19e6cabd402f8b01f1ebb8b208244e143f6ed8519beb8"}]}
+{"id" "keyframe_updatecode" "index" 2 "name" "A captured look becomes source" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A captured look becomes source" "_tombstone" false "frame" #afield/rect [1100.0 640.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_updatecode_code_.kt" "lines" 44 "characters" 1861 "sha256" "5ac77c236dc630682f7c6e6388f68eaf6131f21e2a5a7349eeb72c8efc61c3da"}]}
 ```
 
 ```kotlin [field-property box="keyframe_updatecode" name="code" path="keyframe_updatecode_code_.kt"]
-// The last step of the loop closes it: Key.updateCode() emits the snapshot as pasteable
-// Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
-// literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
+/*
+The last step of the loop closes it: Key.updateCode() emits the snapshot as pasteable
+Kotlin, so a state you arrived at by fiddling becomes a diff you can commit. Every
+literal is chosen so the paste round-trips as the same TYPE, not merely the same number.
+*/
 import afield.stdlib.KeyframeScope
 import afield.stdlib.SourceBackedBlock
-import afield.stdlib.stackSLString
 import afield.stdlib.linalg.Quaternionf
 import afield.stdlib.linalg.Vector3f
+import afield.stdlib.stackSLString
 
 val scope = KeyframeScope()
-val key = scope.Key(mutableMapOf(
-    "gain" to 0.65f,           // a Float — and the 'f' suffix is load-bearing
-    "steps" to 12,
-    "seed" to 99L,
-    "pos" to Vector3f(1.5f, 0f, -2.25f),
-    "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
-    "voice" to stackSLString("sin 220 * fold"),
-    // A source block whose body mentions a '$'. Emitting this as a Kotlin *raw* string
-    // would have let the '$' interpolate at paste time — a real defect, fixed alongside
-    // public/docs/keyframer_examples.md. It must come out escaped.
-    "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
-    "notes" to listOf("unsupported", "on purpose")
-))
+val key = scope.Key(
+    mutableMapOf(
+        "gain" to 0.65f, // a Float — and the 'f' suffix is load-bearing
+        "steps" to 12,
+        "seed" to 99L,
+        "pos" to Vector3f(1.5f, 0f, -2.25f),
+        "spin" to Quaternionf().setAngleAxis(0.7f, 0f, 1f, 0f),
+        "voice" to stackSLString("sin 220 * fold"),
+        /*
+        A source block whose body mentions a '$'. Emitted inside a Kotlin raw string it
+        would interpolate at paste time, so it must come out escaped.
+        */
+        "block" to SourceBackedBlock<Any?>("box-1", "val total = 2\nprintln(\"sum: \$total\")"),
+        "notes" to listOf("unsupported", "on purpose"),
+    ),
+)
 
 val code = key.updateCode("look")
 println(code)
@@ -263,13 +302,12 @@ println(code)
 // and Key.set deliberately does not re-coerce numbers.
 println("Float keeps its suffix: " + code.contains("0.65f"))
 println("Long keeps its suffix:  " + code.contains("99L"))
-// Scoped to the source-block line on purpose. The emitter also writes an /* unsupported */
-// comment naming the Java class it dropped, and a nested class name like Arrays$ArrayList
-// legitimately contains a '$' that cannot interpolate because it sits inside a comment.
-// Checking the whole string reported a bare '$' for that comment and printed a false alarm.
+// Check only the source-block line: the /* unsupported */ comment names the dropped Java
+// class, and a nested name like Arrays$ArrayList has a harmless '$' inside that comment.
 val blockLine = code.lines().first { it.contains("""this["block"]""") }
-println("the source block's $ came out escaped: " +
-    Regex("""(?<!\\)\$""").findAll(blockLine).none())
+println(
+    "the source block's $ came out escaped: " + Regex("""(?<!\\)\$""").findAll(blockLine).none(),
+)
 
 display("code", "<pre>" + code + "</pre>")
 ```
@@ -288,21 +326,27 @@ SCREW MOTION, and between two cameras looking at the same subject it is a very d
 move from lerping the two positions. Draw both and the argument makes itself.
 
 ```edn [field-box id="keyframe_camera" role="properties"]
-{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 101 "characters" 4266 "sha256" "799e057adc38f85c6490cdc1103af5cf891ca514f1cd08348a982bf7c84fe045"}]}
+{"id" "keyframe_camera" "index" 3 "name" "A camera move is a screw motion" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "A camera move is a screw motion" "_tombstone" false "frame" #afield/rect [80.0 540.0 320.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "keyframe_camera_code_.kt" "lines" 124 "characters" 4555 "sha256" "1aa399f21bbb5f2003380ceb8fc028f42fbed02fd2a52a210284fdebe031bb4b"}]}
 ```
 
 ```kotlin [field-property box="keyframe_camera" name="code" path="keyframe_camera_code_.kt"]
-// KeyframeScope.camera stores a CameraPose — a rigid transform as a dual quaternion, plus
-// the focus distance — rather than a position and a target point. Interpolating that is a
-// SCREW MOTION, and between two cameras looking at the same subject it is a very different
-// move from lerping the two positions. Draw both and the argument makes itself.
+/*
+KeyframeScope.camera stores a CameraPose — a rigid transform as a dual quaternion, plus
+the focus distance — rather than a position and a target point. Interpolating that is a
+SCREW MOTION, and between two cameras looking at the same subject it is a very different
+move from lerping the two positions. Draw both and the argument makes itself.
+*/
 import afield.four.util.CameraPose
 import afield.stdlib.KeyframeScope
 import afield.stdlib.linalg.Vector3f
 
+// The two camera positions; both look at the subject at the origin. Move one and rerun.
+var fromPos = Vector3f(8f, 2f, 0f)
+var toPos = Vector3f(0f, 2f, 8f)
+
 val scope = KeyframeScope()
-val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(8f, 2f, 0f), Vector3f(0f, 0f, 0f))))
-val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(Vector3f(0f, 2f, 8f), Vector3f(0f, 0f, 0f))))
+val a = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(fromPos, Vector3f(0f, 0f, 0f))))
+val b = scope.Key(mutableMapOf("camera" to CameraPose.lookAt(toPos, Vector3f(0f, 0f, 0f))))
 val pa = (a["camera"] as CameraPose).position
 val pb = (b["camera"] as CameraPose).position
 
@@ -317,28 +361,36 @@ val screw = fline {
         val p = sclerpAt(i.toDouble() / n).position
         if (i == 0) moveTo(p.x * S, p.z * S) else lineTo(p.x * S, p.z * S)
     }
-    color = vec(0.36, 0.84, 1.0, 1.0); thickness = 3.0
+    color = vec(0.36, 0.84, 1.0, 1.0)
+    thickness = 3.0
 }
 val chord = fline {
-    moveTo(pa.x * S, pa.z * S); lineTo(pb.x * S, pb.z * S)
-    color = vec(1.0, 0.62, 0.26, 1.0); thickness = 3.0
+    moveTo(pa.x * S, pa.z * S)
+    lineTo(pb.x * S, pb.z * S)
+    color = vec(1.0, 0.62, 0.26, 1.0)
+    thickness = 3.0
 }
 // Sight lines from the sclerp path to the subject: every one is exactly the same length.
 val sight = fline {
     for (i in 0..10) {
         val p = sclerpAt(i / 10.0).position
-        moveTo(p.x * S, p.z * S); lineTo(0.0, 0.0)
+        moveTo(p.x * S, p.z * S)
+        lineTo(0.0, 0.0)
     }
-    color = vec(0.36, 0.84, 1.0, 0.22); thickness = 1.0
+    color = vec(0.36, 0.84, 1.0, 0.22)
+    thickness = 1.0
 }
 // …and from the lerped positions, which are visibly shorter through the middle.
 val sightLerp = fline {
     for (i in 0..10) {
         val p = lerpAt(i / 10.0)
-        moveTo(p.x * S, p.z * S); lineTo(0.0, 0.0)
+        moveTo(p.x * S, p.z * S)
+        lineTo(0.0, 0.0)
     }
-    color = vec(1.0, 0.62, 0.26, 0.22); thickness = 1.0
+    color = vec(1.0, 0.62, 0.26, 0.22)
+    thickness = 1.0
 }
+// The subject: a small circle at the origin.
 val subject = fline {
     val r = 14.0
     for (i in 0..48) {
@@ -346,7 +398,8 @@ val subject = fline {
         if (i == 0) moveTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
         else lineTo(r * kotlin.math.cos(ang), r * kotlin.math.sin(ang))
     }
-    color = vec(0.95, 0.95, 0.95, 0.9); thickness = 2.0
+    color = vec(0.95, 0.95, 0.95, 0.9)
+    thickness = 2.0
 }
 
 // ---- panel 2: distance from the camera to the subject, against t.
@@ -357,7 +410,8 @@ val dScrew = fline {
         if (i == 0) moveTo(0.0, plotY(sclerpAt(t).position.length().toDouble()))
         else lineTo(t * 400.0, plotY(sclerpAt(t).position.length().toDouble()))
     }
-    color = vec(0.36, 0.84, 1.0, 1.0); thickness = 3.0
+    color = vec(0.36, 0.84, 1.0, 1.0)
+    thickness = 3.0
 }
 val dChord = fline {
     for (i in 0..n) {
@@ -365,7 +419,8 @@ val dChord = fline {
         if (i == 0) moveTo(0.0, plotY(lerpAt(t).length().toDouble()))
         else lineTo(t * 400.0, plotY(lerpAt(t).length().toDouble()))
     }
-    color = vec(1.0, 0.62, 0.26, 1.0); thickness = 3.0
+    color = vec(1.0, 0.62, 0.26, 1.0)
+    thickness = 3.0
 }
 
 // Every number in the captions is measured here, never asserted from memory.
@@ -383,15 +438,21 @@ showPlaneGrid(
         "blue: sclerp, a quarter circle. orange: the straight line between the same two positions") to
         listOf(sight, sightLerp, subject, chord, screw),
     ("distance to the subject, over the move\n" +
-        "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer".format(
-            rMin, rMax, lerpMid, closer)) to
-        listOf(dScrew, dChord),
-    columns = 2, cellWidth = 440, cellHeight = 380
+        "sclerp holds %.4f..%.4f; the straight line dips to %.4f — %.1f%% nearer"
+            .format(
+                rMin,
+                rMax,
+                lerpMid,
+                closer,
+            )) to listOf(dScrew, dChord),
+    columns = 2,
+    cellWidth = 440,
+    cellHeight = 380,
 )
 markdown(
     "aim",
     "worst-case aiming error along the sclerp path: **%.6f** world units — ".format(worstAim) +
-        "the subject never leaves the centre of frame."
+        "the subject never leaves the centre of frame.",
 )
 ```
 

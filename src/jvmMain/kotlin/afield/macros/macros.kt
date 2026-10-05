@@ -33,13 +33,7 @@ suspend fun standardExecutionPractice(
 ): List<ResultValue?> {
 
     var lines = s.lines()
-    var breaks = lines.mapIndexedNotNull { index, line ->
-        if (line.trim().startsWith("//%-")) {
-            index
-        } else if (line.trim().startsWith("/*%-*/")) {
-            index
-        } else null
-    } + lines.size
+    var breaks = lines.mapIndexedNotNull { index, line -> if (isFragmentBreak(line)) index else null } + lines.size
 
     var at = 0
     var ll = 0
@@ -601,3 +595,12 @@ data class Insert(
     val preambleAfterImports: String = "",
     val target: Box? = null
 )
+
+/**
+ * Whether [line] is a `//%-` (or `/*%-*/`) fragment break. Spaced forms (`// %-`, `/* %- */`) count
+ * too: a formatter or a tidy-minded author adds the space, and an unseen break makes the box run
+ * as one fragment with no error to say so.
+ */
+fun isFragmentBreak(line: String): Boolean = FRAGMENT_BREAK.containsMatchIn(line)
+
+private val FRAGMENT_BREAK = Regex("""^\s*(?://\s*%-|/\*\s*%-\s*\*/)""")
