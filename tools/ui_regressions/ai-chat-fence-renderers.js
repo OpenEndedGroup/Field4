@@ -20,12 +20,17 @@ try {
         inter.open('ai-chat');
     };
 
-    const { registerAiChatFenceRenderer } = await import('./aiChatFenceRenderers.js');
-    const unregister = registerAiChatFenceRenderer('fixture', async source => {
+    const catalog = await (await fetch('./ai4-fence-renderers.json')).json();
+    check(catalog.fences.some(f => f.language === 'mermaid' && f.purpose && f.syntaxGuidance && f.example), 'Mermaid missing from shared catalog');
+    const { registerAiChatFenceCatalog } = await import('./aiChatFenceCatalog.js');
+    const unregister = registerAiChatFenceCatalog({version: 1, fences: [{
+        language: 'fixture', name: 'Fixture', purpose: 'A browser registration check',
+        syntaxGuidance: 'Write a word', example: 'hello', modulePath: '/fixture.js', exportName: 'renderFixture'
+    }]}, async () => ({ renderFixture: async source => {
         const node = document.createElement('span');
         node.textContent = `registered: ${source.trim()}`;
         return node;
-    });
+    } }));
     push('```fixture\nhello\n```');
     await wait(() => messages.querySelector('.ai-chat-fence-preview')?.textContent?.includes('registered: hello'), 'registered renderer');
     check(messages.querySelector('.ai-chat-code-block pre').hidden, 'registered fence source hidden after render');
