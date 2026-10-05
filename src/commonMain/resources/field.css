@@ -1562,6 +1562,22 @@ body {
     display: none !important;
 }
 
+/* A stretch of divider between two panes that do not scroll together across it (one is unlinked)
+   is dashed: this overlay lies on the black bar and paints its gaps in the canvas's own grey. */
+.field-pane-dash {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.field-pane-dash-v {
+    background: repeating-linear-gradient(180deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
+}
+
+.field-pane-dash-h {
+    background: repeating-linear-gradient(90deg, transparent 0 7px, rgb(24, 24, 24) 7px 12px);
+}
+
 /* Divider handles: an invisible strip over the pane border that lights up on hover. */
 .field-pane-divider {
     position: absolute;

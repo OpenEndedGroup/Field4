@@ -64,6 +64,9 @@
             // The pane being drawn, in device pixels from the top-left: x, y, width, height. The
             // vignette darkens towards its edges, so each pane of a split canvas reads as a sheet.
             uniform vec4 u_pane;
+            // The world band the pane shows (minX, minY, maxX, maxY); past it, a middle band narrower
+            // than its pane is painted flat grey, so the pane reads as deliberately empty there.
+            uniform vec4 u_band;
 
             float hash(vec2 p) {
                 p = fract(p * vec2(0.1031, 0.11369));
@@ -95,6 +98,12 @@
                 color += vec3(dither);
 
                 vec2 world = (frag - u_translation) / u_zoom;
+                // world is in world units * dpr (frag and u_translation are device pixels).
+                vec2 bandWorld = world / u_dpr;
+                if (bandWorld.x < u_band.x || bandWorld.y < u_band.y || bandWorld.x >= u_band.z || bandWorld.y >= u_band.w) {
+                    gl_FragColor = vec4(vec3(52.0 / 255.0), 1.0);
+                    return;
+                }
                 // Zoomed far out the 25-unit dots would crowd into a haze (under ~9 screen px apart);
                 // fade them, then the 100-unit dots, rather than draw noise.
                 float smallFade = smoothstep(0.35, 0.7, u_zoom);
@@ -151,7 +160,8 @@
                 axisAlpha: gl.getUniformLocation(program, "u_axisAlpha"),
                 dpr: gl.getUniformLocation(program, "u_dpr"),
                 zoom: gl.getUniformLocation(program, "u_zoom"),
-                pane: gl.getUniformLocation(program, "u_pane")
+                pane: gl.getUniformLocation(program, "u_pane"),
+                band: gl.getUniformLocation(program, "u_band")
             };
 
             const state = {
@@ -170,8 +180,9 @@
                 panes: null,
                 renderCount: 0,
                 skippedCount: 0,
-                // panes (optional): [[x, y, w, h, tx, ty], ...] in CSS pixels, one per pane of a
-                // split canvas, each drawn through its own translation. Absent, the whole canvas
+                // panes (optional): [[x, y, w, h, tx, ty, minX, minY, maxX, maxY], ...]: one per pane
+                // of a split canvas in CSS pixels, each drawn through its own translation, and the
+                // world band it shows. Absent, the whole canvas
                 // is one pane at (tx, ty).
                 render(tx, ty, dotSmall, dotLarge, axis, zoom, panes) {
                     const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -238,6 +249,7 @@
                     if (!state.panes) {
                         gl.disable(gl.SCISSOR_TEST);
                         gl.uniform4f(locations.pane, 0, 0, width, height);
+                        gl.uniform4f(locations.band, -1e9, -1e9, 1e9, 1e9);
                         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                     } else {
                         gl.enable(gl.SCISSOR_TEST);
@@ -248,6 +260,7 @@
                             gl.scissor(px, height - py - ph, pw, ph);
                             gl.uniform4f(locations.pane, px, py, pw, ph);
                             gl.uniform2f(locations.translation, numberOr(p[4], 0) * dpr, numberOr(p[5], 0) * dpr);
+                            gl.uniform4f(locations.band, numberOr(p[6], -1e9), numberOr(p[7], -1e9), numberOr(p[8], 1e9), numberOr(p[9], 1e9));
                             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
                         }
                         gl.disable(gl.SCISSOR_TEST);
