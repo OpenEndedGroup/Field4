@@ -2256,7 +2256,7 @@ is a name with no midpoint, so it is taken whole from one parent and the manifes
 `grid.visible` is an `Int` driving CPU-authored geometry, which an extrapolated blend can push
 outside its own range — where the target clamps it and the key keeps the number, so the archive still
 records the point that was visited. The morning box needs no renderer at all: an archive describes
-itself. The companion page is [Keyframe autosweeping](keyframe_autosweep.md).
+itself. The companion page is [Sweeping saved keyframes overnight](keyframe_autosweep.md).
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn)
 

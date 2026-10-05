@@ -1,4 +1,4 @@
-# Keyframe autosweeping: exploring a saved space while you sleep
+# Sweeping saved keyframes overnight
 
 *The declarations used below are listed, with their KDoc, in the codebase reference:
 [`keyframeSweep.kt`](reference/graphics.md#keyframesweep-kt) and
@@ -414,10 +414,11 @@ much of the pool got used, and any lane that was dropped or back-filled.
 
 ## A loadable version
 
-The loadable version of this page is the `keyframe_autosweep` transcript — four boxes, a renderer, the
-rig, the sweep and the morning box — listed with the rest in
-[Agent transcripts](agent_transcripts.md#keyframe_autosweep). That is the fastest way to get a real
-sweep running against your own scene.
+Open **keyframe_autosweep** from Starting points on the welcome screen, or
+[open it here](offline.html?file=assets/agent_transcripts/keyframe_autosweep/metadata.edn). It has
+four boxes: a renderer, the rig, the sweep and the morning box. Replace the rig with your own scene
+to start a real sweep against it. Its entry in
+[Agent transcripts](agent_transcripts.md#keyframe_autosweep) lists what each box does.
 
 ??? aside "Tests"
     Two suites stand behind this page. `afield.stdlib.KeyframeSweepTest` is CPU-only and pins the provenance

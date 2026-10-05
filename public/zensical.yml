@@ -132,7 +132,7 @@ nav:
       - Keyframes: keyframer_examples.md
       # Directly after the keyframes page, because it is that page's collection noun: one saved key
       # is a look, a directory of them is a space, and this is what explores the space overnight.
-      - Sweeping a Keyframe Space Overnight: keyframe_autosweep.md
+      - Sweeping Saved Keyframes Overnight: keyframe_autosweep.md
       - State Estimation Examples: state_estimation_examples.md
       - Statistics & Dependence: statistics_examples.md
       # One page for both halves of signal processing: timeseries_examples.md (filters and
