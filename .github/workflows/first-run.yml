@@ -2,17 +2,23 @@
 name: first-run
 on:
   workflow_dispatch:
+    inputs:
+      os:
+        description: Platform to qualify
+        type: choice
+        default: all
+        options: [all, ubuntu-24.04, windows-latest, macos-14]
 permissions:
   contents: read
 concurrency:
-  group: first-run-${{ github.ref }}
+  group: first-run-${{ github.ref }}-${{ inputs.os }}
   cancel-in-progress: true
 jobs:
   source-launch:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-latest, macos-14]
+        os: ${{ fromJSON(inputs.os == 'all' && '["ubuntu-24.04","windows-latest","macos-14"]' || format('["{0}"]', inputs.os)) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
@@ -27,7 +33,14 @@ jobs:
           else
             ./gradlew -p tools/first-run test
           fi
+      - name: Windows launcher build-result regression
+        if: runner.os == 'Windows'
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_field_ps1_launcher.ps1
       - name: Real launcher and default API protection
+        env:
+          # Private-repository Ubuntu runners have 8 GB RAM. Keep the compiler and JS build
+          # from competing for a 10 GB compiler heap; the launcher and API defaults stay intact.
+          GRADLE_OPTS: ${{ matrix.os == 'ubuntu-24.04' && '-Dorg.gradle.project.kotlin.daemon.jvmargs=-Xmx4g -Dorg.gradle.workers.max=1 -Dorg.gradle.parallel=false' || '' }}
         run: python tools/ci_first_run.py --timeout 1800
       - name: Desktop GPU selection policy
         run: node --test electron/tests/gpu-policy.test.cjs

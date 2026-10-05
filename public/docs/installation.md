@@ -13,8 +13,11 @@ in LFS: without it, Git leaves a small text pointer where the compiler JAR shoul
 Allow several gigabytes for the checkout, downloaded runtimes, dependency caches and build output.
 The tracked checkout alone is about 1.3 GB. Start with at least **10 GB of free space**; this is a
 planning allowance, not a measured minimum. For this beta, **16 GB RAM is recommended** for the
-source build. The Kotlin compiler is allowed a 10 GB heap; an 8 GB machine has not been qualified.
-The first launch needs internet access and may spend several minutes downloading and compiling.
+source build. The Kotlin compiler is allowed a 10 GB heap. CI checks cover server-only startup;
+desktop and graphics workloads on 8 GB machines have not been qualified.
+The first launch needs internet access to download dependencies and compile the project.
+Fresh Windows and Apple-silicon macOS CI launches took about 20–25 minutes; your machine
+and connection will affect that time. Later launches reuse the download and compiler caches.
 A long-running Gradle task is normal; `BUILD FAILED` is not.
 
 <div class="field-data-table" markdown>
