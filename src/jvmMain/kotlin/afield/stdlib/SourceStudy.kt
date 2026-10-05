@@ -189,6 +189,15 @@ class SourceStudy<T>(
     private fun revisionSourceFile(id: String): File =
         File(directory, if (extension == "json") "$id.source.json" else "$id.$extension")
 
+    /** Read an exact saved source for history inspection without compiling or re-admitting it. */
+    @Synchronized
+    fun savedSource(id: String): String {
+        require(id.matches(REVISION_ID)) { "Unknown revision '$id'" }
+        val source = revisionSourceFile(id).readText()
+        check(id.substringAfter('-') == hash(source).take(12)) { "Revision source changed on disk: $id" }
+        return source
+    }
+
     private fun readMeta(id: String): Meta {
         val node = mapper.readTree(File(directory, "$id.json"))
         return Meta(

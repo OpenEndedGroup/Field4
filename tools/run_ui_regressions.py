@@ -3864,6 +3864,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="state-tree-browser",
+            description="Browse real AI4 branches and provider states; reference two states without sending, navigating or losing the draft.",
+            commands=[
+                "new-box --name StateHistoryRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-resize",
             description="Chat retains manual size, draft and reading position through streamed text and images, reopen and canvas zoom.",
             commands=[

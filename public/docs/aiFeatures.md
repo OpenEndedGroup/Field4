@@ -40,6 +40,47 @@ a long task without waiting for it to finish. Once read, the message moves to th
 point in the reply where the model saw it. If the reply finishes first, the queued
 message is sent as your next message; several queued messages go together.
 
+### Browsing saved states
+
+Choose **States** at the top of AI4 chat to see saved conversation branches and
+histories exposed by document providers. Select a node to inspect it. The current
+position is marked **CURRENT**; selecting another node only browses it.
+
+**Reference in chat** adds the selected state's exact identity and a bounded excerpt
+to your draft. To discuss two states, choose **Keep for comparison**, select another,
+and choose **Discuss differences**. Your existing draft is preserved and nothing is
+sent automatically. Refresh reads the saved histories again. Long histories have
+Older/Newer pages; an edge whose parent is outside the page is labelled.
+
+Conversation nodes show their recorded extension snapshot identities. They do not
+claim to be complete document backups. Providers explain their own coverage, such
+as a retained undo chain or checked source revisions. This browser does not restore
+states or merge them.
+
+A document can expose an existing history without adopting a new persistence format:
+
+```kotlin
+import afield.*
+import afield.ai.core.*
+
+// Connect these callbacks to your existing saved-state store.
+stateTree("design", "Design", read = {
+    StateTreeSnapshot(
+        nodes = listOf(StateTreeNode("saved-1", title = "Initial design")),
+        current = "saved-1",
+        note = "Saved authored states")
+}, inspect = { id ->
+    require(id == "saved-1")
+    "Width: 6000 mm"
+})
+```
+
+The callbacks must only read saved data: no compilation, restoration or builds.
+Node IDs must remain stable and unique; `parents` contains explicit ancestry.
+For an existing `SourceStudy`, use `stateTree("recipe", "Recipe", myStudy)`.
+This reads saved revision metadata and verifies source hashes without re-running
+admission. Registration belongs to the box's run and is replaced when re-run.
+
 ### Going back
 
 Hover over one of your messages and two buttons appear. **rewind** takes the
