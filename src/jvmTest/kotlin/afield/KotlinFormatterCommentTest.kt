@@ -188,6 +188,22 @@ class KotlinFormatterCommentTest {
     }
 
     @Test
+    fun aOneLineLambdaAssignmentStaysOnOneLine() {
+        val code = "m.spins = { sgSpins }\nm.mvp = { Matrix4f(camera.p).mul(camera.modelView()) }\n"
+        val once = formatKotlinCode(code)
+        assertEquals(code, once)
+        assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")
+    }
+
+    @Test
+    fun glslTemplatesAndBlockInstancesSurvive() {
+        val code = "layout(push_constant) uniform P {\n    float a;\n} pc;\n\n{% include \"fieldProbe\" %}\n\nvoid main() {\n    {{ mega.vertex }}\n}\n"
+        val once = formatGlslCode(code)
+        assertEquals(code, once)
+        assertEquals(once, formatGlslCode(once))
+    }
+
+    @Test
     fun theCollapseCanBeTurnedOff() {
         val code = "fun f() {\n    // first\n    // second\n    // third\n    val a = 1\n}"
         assertEquals(code, formatKotlinCode(code, blockifyComments = false).trim())

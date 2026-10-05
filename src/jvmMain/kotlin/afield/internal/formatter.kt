@@ -22,6 +22,7 @@ fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
     formatted = restoreStatementSpacing(code, formatted)
     formatted = joinAssignmentBreaks(formatted)
+    formatted = collapseOneLineLambdaAssignments(formatted)
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
 }
 
@@ -106,6 +107,39 @@ fun restoreStatementSpacing(input: String, formatted: String): String {
         out.replace(start, end, BLANK_LINE.replace(formatted.substring(start, end), "\n"))
     }
     return out.toString()
+}
+
+/**
+ * Put `x = {\n    e\n}` back on one line as `x = { e }`.
+ *
+ * At the top level of a script (and only there) ktfmt spreads every lambda on the right of an
+ * assignment over three lines, so `mesh.tint = { tint }` takes three and a block of them reads as
+ * a column of braces. Collapsed only when the body is one line, carries no comment, and the result
+ * fits [MAX_WIDTH].
+ */
+fun collapseOneLineLambdaAssignments(code: String): String {
+    val lines = code.split("\n")
+    val out = ArrayList<String>(lines.size)
+    var i = 0
+    while (i < lines.size) {
+        val head = lines[i]
+        if (i + 2 < lines.size && head.endsWith(" = {") && !head.trimStart().startsWith("//")) {
+            val indent = head.length - head.trimStart().length
+            val body = lines[i + 1]
+            val close = lines[i + 2]
+            val joined = "$head ${body.trim()} }"
+            if (body.length - body.trimStart().length == indent + 4 && close == " ".repeat(indent) + "}" &&
+                "//" !in body && "/*" !in body && "\"\"\"" !in body && joined.length <= MAX_WIDTH
+            ) {
+                out += joined
+                i += 3
+                continue
+            }
+        }
+        out += head
+        i++
+    }
+    return out.joinToString("\n")
 }
 
 private const val END_SENTINEL = "__afieldFormatterEnd__"
@@ -257,9 +291,17 @@ private fun splitGlslStatements(code: String): String {
     var inString: Char? = null
     var escaped = false
 
+    // Whether the newline `out` ends with was put there by us, after a `;` or a brace, rather than
+    // copied from the source. The source's own newline after it is then the same line break; a
+    // further one is a blank line the author wrote, and is kept.
+    var inserted = false
+
     fun appendNewlineIfNeeded() {
         while (out.endsWith(' ') || out.endsWith('\t')) out.setLength(out.length - 1)
-        if (!out.endsWith('\n')) out.append('\n')
+        if (!out.endsWith('\n')) {
+            out.append('\n')
+            inserted = true
+        }
         atLineStart = true
     }
 
@@ -311,6 +353,17 @@ private fun splitGlslStatements(code: String): String {
             continue
         }
 
+        // A template span ({% include %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
+        // it stands rather than reading its braces as a block.
+        if (c == '{' && (next == '%' || next == '{' || next == '#')) {
+            val closer = when (next) { '%' -> "%}"; '#' -> "#}"; else -> "}}" }
+            val end = code.indexOf(closer, i + 2).let { if (it < 0) code.length else it + 2 }
+            out.append(code, i, end)
+            atLineStart = false
+            i = end
+            continue
+        }
+
         when {
             c == '/' && next == '/' -> {
                 out.append(c).append(next)
@@ -347,9 +400,14 @@ private fun splitGlslStatements(code: String): String {
             }
             c == '}' -> {
                 appendNewlineIfNeeded()
+                // `} pc;` closes a block that declares an instance; the name stays on the brace's line.
+                val instance = BLOCK_INSTANCE.find(code, i + 1)?.takeIf { it.range.first == i + 1 }
                 if (next == ';') {
                     out.append("};")
                     i += 2
+                } else if (instance != null) {
+                    out.append("} ").append(instance.groupValues[1].replace(Regex("""\s+"""), "")).append(';')
+                    i = instance.range.last + 1
                 } else {
                     out.append(c)
                     i++
@@ -362,7 +420,14 @@ private fun splitGlslStatements(code: String): String {
                 i++
             }
             c == '\n' -> {
-                appendNewlineIfNeeded()
+                while (out.endsWith(' ') || out.endsWith('\t')) out.setLength(out.length - 1)
+                when {
+                    !out.endsWith('\n') -> out.append('\n')
+                    inserted -> inserted = false
+                    // A blank line; formatGlslCode collapses a run of them to one.
+                    else -> out.append('\n')
+                }
+                atLineStart = true
                 i++
             }
             c.isWhitespace() -> {
@@ -372,6 +437,7 @@ private fun splitGlslStatements(code: String): String {
             else -> {
                 out.append(c)
                 atLineStart = false
+                inserted = false
                 i++
             }
         }
@@ -379,6 +445,8 @@ private fun splitGlslStatements(code: String): String {
 
     return out.toString()
 }
+
+private val BLOCK_INSTANCE = Regex("""[ \t]*([A-Za-z_]\w*(?:\s*\[[^\]\n]*\])?)[ \t]*;""")
 
 private fun cleanGlslSpacing(line: String): String {
     return line

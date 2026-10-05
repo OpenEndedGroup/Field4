@@ -47,12 +47,14 @@ operations:
           #version 450
           #extension GL_EXT_buffer_reference : require
           layout(local_size_x = 64) in;
+
           layout(std430, buffer_reference) buffer Spins {
               float s[];
           };
           layout(std430, buffer_reference) buffer Bonds {
               float j[];
           };
+
           layout(push_constant) uniform PushC {
               Spins spins;
               Bonds jRight;
@@ -63,8 +65,8 @@ operations:
               uint mode;
               float temperature;
               float field;
-          }
-          pc;
+          } pc;
+
           uint hash(uint x) {
               x ^= x >> 16;
               x *= 0x7feb352du;
@@ -76,6 +78,7 @@ operations:
           float rnd(uint v) {
               return float(hash(v)) * (1.0 / 4294967296.0);
           }
+
           void main() {
               uint L = pc.L;
               uint N = L * L;
@@ -86,24 +89,29 @@ operations:
               // red-black: this dispatch only touches one colour of the checkerboard,
               // so no two updated spins are ever nearest neighbours in a single pass.
               if (((x + y) & 1u) != pc.color) return;
+
               uint xl = (x + L - 1u) % L;
               uint xr = (x + 1u) % L;
               uint yu = (y + L - 1u) % L;
               uint yd = (y + 1u) % L;
+
               float s = pc.spins.s[idx];
               float sl = pc.spins.s[y * L + xl];
               float sr = pc.spins.s[y * L + xr];
               float su = pc.spins.s[yu * L + x];
               float sd = pc.spins.s[yd * L + x];
+
               // jRight[i] is the bond i--(+x); the left bond is the left neighbour's jRight.
               // jDown[i] is the bond i--(+y); the up bond is the up neighbour's jDown.
               float jl = pc.jRight.j[y * L + xl];
               float jr = pc.jRight.j[idx];
               float ju = pc.jDown.j[yu * L + x];
               float jd = pc.jDown.j[idx];
+
               float localField = jl * sl + jr * sr + ju * su + jd * sd + pc.field;
               float T = max(pc.temperature, 1e-4);
               float u = rnd(idx * 2654435761u + pc.seed * 40503u + pc.color * 19349663u);
+
               float ns = s;
               if (pc.mode == 0u) {
                   // Metropolis
@@ -201,18 +209,10 @@ operations:
               m.field = { sgField.toFloat() }
               m.temperature = { T.toFloat() }
           }
-          even.color = {
-              0u
-          }
-          odd.color = {
-              1u
-          }
-          even.seed = {
-              seed.toUInt()
-          }
-          odd.seed = {
-              (seed + 100003).toUInt()
-          }
+          even.color = { 0u }
+          odd.color = { 1u }
+          even.seed = { seed.toUInt() }
+          odd.seed = { (seed + 100003).toUInt() }
 
           println("update launched L=" + L + " N=" + N + " groups=" + groups)
   # 3. measure box: probe (spin, energy) for every site -> field-probe stats card.
@@ -225,23 +225,24 @@ operations:
           #version 450
           #extension GL_EXT_buffer_reference : require
           layout(local_size_x = 64) in;
+
           layout(std430, buffer_reference) buffer Spins {
               float s[];
           };
           layout(std430, buffer_reference) buffer Bonds {
               float j[];
           };
+
           layout(push_constant) uniform PushC {
               Spins spins;
               Bonds jRight;
               Bonds jDown;
               uint L;
               float field;
-          }
-          pc;
-          {
-              % include "fieldProbe" %
-          }
+          } pc;
+
+          {% include "fieldProbe" %}
+
           void main() {
               uint L = pc.L;
               uint N = L * L;
@@ -281,21 +282,11 @@ operations:
           m.x = groups
           m.y = 1
           m.z = 1
-          m.spins = {
-              sgSpins
-          }
-          m.jRight = {
-              sgJRight
-          }
-          m.jDown = {
-              sgJDown
-          }
-          m.L = {
-              sgL.toUInt()
-          }
-          m.field = {
-              sgField.toFloat()
-          }
+          m.spins = { sgSpins }
+          m.jRight = { sgJRight }
+          m.jDown = { sgJDown }
+          m.L = { sgL.toUInt() }
+          m.field = { sgField.toFloat() }
           println("measure launched N=" + N)
   # 4. lattice view box: fullscreen triangle, fragment reads the shared spins buffer.
   - create:
@@ -317,12 +308,14 @@ operations:
           #extension GL_EXT_buffer_reference : require
           layout(location = 0) in vec2 uv;
           layout(location = 0) out vec4 outColor;
+
           layout(std430, buffer_reference) buffer Spins {
               float s[];
           };
           layout(std430, buffer_reference) buffer Bonds {
               float j[];
           };
+
           layout(push_constant) uniform DrawPC {
               Spins spins;
               Bonds jRight;
@@ -330,8 +323,8 @@ operations:
               uint L;
               float aspect;
               uint showFrustration;
-          }
-          pc;
+          } pc;
+
           void main() {
               uint L = pc.L;
               vec2 p = uv;
@@ -367,21 +360,11 @@ operations:
           module += "grid" to m
           renderer += "spinGlassDraw" to module
 
-          m.spins = {
-              sgSpins
-          }
-          m.jRight = {
-              sgJRight
-          }
-          m.jDown = {
-              sgJDown
-          }
-          m.L = {
-              sgL.toUInt()
-          }
-          m.aspect = {
-              window.width / window.height.toFloat()
-          }
+          m.spins = { sgSpins }
+          m.jRight = { sgJRight }
+          m.jDown = { sgJDown }
+          m.L = { sgL.toUInt() }
+          m.aspect = { window.width / window.height.toFloat() }
           m.showFrustration = {
               0u
           } // set to { 1u } and re-run to overlay frustrated plaquettes

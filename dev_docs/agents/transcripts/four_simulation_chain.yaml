@@ -198,15 +198,9 @@ operations:
           var paintPush = vec(0, 0)
           var paintMass = 0f
 
-          fluid["splatCenter"] = {
-              paintAt
-          }
-          fluid["splatVelocity"] = {
-              paintPush
-          }
-          fluid["splatMass"] = {
-              paintMass
-          }
+          fluid["splatCenter"] = { paintAt }
+          fluid["splatVelocity"] = { paintPush }
+          fluid["splatMass"] = { paintMass }
           fluid["splatColor"] = vec(0.35, 0.8, 1.0)
           fluid["splatRadius"] = 0.04f
 

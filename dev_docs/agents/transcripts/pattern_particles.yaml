@@ -95,12 +95,14 @@ operations:
           #version 450
           #extension GL_EXT_buffer_reference : require
           layout(local_size_x = 64) in;
+
           layout(std430, buffer_reference) buffer Seeds {
               vec4 a[];
           };
           layout(std430, buffer_reference) buffer Out {
               vec4 a[];
           };
+
           layout(push_constant) uniform dat {
               Seeds seeds;
               // written once: one random phase and radius per particle
@@ -117,11 +119,12 @@ operations:
               float band3;
               // 8 kHz — the hats
               uint count;
-          }
-          pc;
+          } pc;
+
           void main() {
               uint i = gl_GlobalInvocationID.x;
               if (i >= pc.count) return;
+
               vec4 seed = pc.seeds.a[i];
               uint ring = i & 3u;
               // One band per ring, so which ring moves says which band is loud.
@@ -129,6 +132,7 @@ operations:
               : ring == 1u ? pc.band1
               : ring == 2u ? pc.band2
               : pc.band3;
+
               // The ring's radius rises a little with its band and its *thickness* rises a lot, so
               // a loud band blooms into an annulus rather than sliding outwards. A ring of 20,000
               // particles all at one radius reads as a drawn circle, which is the wrong picture.
@@ -137,6 +141,7 @@ operations:
               float radius = base * (1.0 + 0.55 * energy) + thickness * (seed.y - 0.5) * 2.0;
               float spin = 0.22 + 0.15 * float(ring);
               float angle = seed.x * 6.2831853 + pc.time * spin;
+
               pc.outData.a[i].x = radius * cos(angle);
               pc.outData.a[i].y = radius * sin(angle);
               pc.outData.a[i].z = float(ring);
@@ -164,12 +169,8 @@ operations:
               for (i in 0 until N) put(vec(Math.random(), Math.random(), 0.0, 0.0))
           }
 
-          step.seeds = {
-              seeds
-          }
-          step.outData = {
-              positions
-          }
+          step.seeds = { seeds }
+          step.outData = { positions }
           step.count = {
               N.toUInt()
           } // a uint push member needs a UInt-returning lambda
@@ -184,18 +185,10 @@ operations:
               t += 1.0 / 60.0
               t.f
           }
-          step.band0 = {
-              (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f
-          }
-          step.band1 = {
-              (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f
-          }
-          step.band2 = {
-              (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f
-          }
-          step.band3 = {
-              (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f
-          }
+          step.band0 = { (bandEnergy.getOrElse(0) { 0.0 } * 2.4).f }
+          step.band1 = { (bandEnergy.getOrElse(1) { 0.0 } * 2.4).f }
+          step.band2 = { (bandEnergy.getOrElse(2) { 0.0 } * 2.4).f }
+          step.band3 = { (bandEnergy.getOrElse(3) { 0.0 } * 2.4).f }
 
           step.x = N / 64
           step.y = 1
@@ -212,17 +205,20 @@ operations:
           layout(std430, buffer_reference) buffer Positions {
               vec4 pos[];
           };
+
           layout(location = 0) out vec2 tc;
           layout(location = 1) out float ring;
+
           layout(push_constant) uniform push {
               Positions inData;
               float aspectRatio;
-          }
-          pc;
+          } pc;
+
           const vec3[6] part = {
               vec3(0,0,0), vec3(1,0,0), vec3(1,1,0),
               vec3(0,0,0), vec3(1,1,0), vec3(0,1,0)
           };
+
 
           void main() {
               vec4 particle = pc.inData.pos[gl_VertexIndex / 6];
@@ -240,6 +236,7 @@ operations:
           layout(location = 0) out vec4 uFragColor;
           layout(location = 0) in vec2 tc;
           layout(location = 1) in float ring;
+
           // One colour per ring, and these four are `afield.visualization.signalPalette` in its own
           // order, so a ring here and a trace on a showSignals plot of the same band are the same
           // colour. #7ad9ff #ff9e4a #8fff9a #ffe066.
@@ -249,6 +246,7 @@ operations:
               vec3(0.561, 1.000, 0.604),
               vec3(1.000, 0.878, 0.400)
           };
+
 
           void main() {
               float d = max(0.0, 0.5 - length(tc - vec2(0.5)));
@@ -267,12 +265,8 @@ operations:
           renderer += "pattern-particles-draw" to module
 
           val N = 24000
-          quads.inData = {
-              outputPositions
-          }
-          quads.aspectRatio = {
-              window.width / window.height.toFloat()
-          }
+          quads.inData = { outputPositions }
+          quads.aspectRatio = { window.width / window.height.toFloat() }
           quads.set(N * 2 * 3, 0) {}
 
           // Printed from this box rather than from the compute box, because a docs capture waits on

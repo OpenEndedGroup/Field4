@@ -133,6 +133,29 @@ class RuleTests(unittest.TestCase):
         self.assertEqual([x.line for x in findings], [2, 9])
 
 
+class BoxContextTests(unittest.TestCase):
+    PATH = "dev_docs/agents/demos/d/x_code_.kt"
+
+    def test_a_lookup_becomes_thisBox(self):
+        f = Fixture({self.PATH: "record(Box.context.get()!!, 3)\n"})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), "record(thisBox, 3)\n")
+        finally:
+            f.close()
+
+    def test_an_alias_is_a_note_and_left_alone(self):
+        code = "val historyOwner = Box.context.get()!!\nhistoryOwner.frame\n"
+        f = Fixture({self.PATH: code})
+        try:
+            findings = idioms.process(self.PATH, f.root, fix=False)
+            self.assertEqual([(x.rule, x.fixable) for x in findings], [("box-context-lookup", False)])
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read(self.PATH), code)
+        finally:
+            f.close()
+
+
 class ScopeTests(unittest.TestCase):
     def test_generated_bundles_and_files_outside_the_corpus_are_ignored(self):
         self.assertFalse(idioms.in_corpus("public/docs/assets/agent_transcripts/x/a_code_.kt"))

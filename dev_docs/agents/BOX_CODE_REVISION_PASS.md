@@ -8,7 +8,8 @@ checked and improved, and what an agent revising it is asked.
 - `tools/check_box_idioms.py` flags, and with `--fix` rewrites, the idioms agents keep writing:
   a redundant `val renderer: Renderer = fromContext()` (the renderer box publishes
   `prop<Renderer>(renderer)`), `mesh.push.bindPushConstant("n", { e }) { throw ... }` instead of
-  `mesh.n = { e }`, and the spaced `// %-` marker the fragment splitter does not see.
+  `mesh.n = { e }`, `Box.context.get()!!` (that is `thisBox`, and the box is the implicit
+  receiver, so `thisBox.foo` is `foo`), and the spaced `// %-` marker.
 - `./gradlew checkBoxCodeCompiles` compiles, without evaluating, the Kotlin of every transcript
   it is pointed at, through `DemoTranscriptExecSmokeTest`'s compile-only path.
 - Landing runs both over the files the landing changes only (`AFIELD_GUARD_CHANGED_PATHS_FILE`),

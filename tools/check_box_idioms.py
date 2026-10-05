@@ -13,6 +13,10 @@ This is the check that retires the prose. The rules:
   printed, never rewritten, and not a failure.
 - ``bind-push-constant``: ``mesh.push.bindPushConstant("n", { e }) { throw ... }``. ``moduleHere``
   generates ``var Mesh.n`` for every push-constant member it sees, so this is ``mesh.n = { e }``.
+- ``box-context-lookup``: ``Box.context.get()!!``. That is ``thisBox``, and ``thisBox`` itself is
+  rarely needed: the box is the implicit receiver, so ``thisBox.foo`` is ``foo``. Rewritten to
+  ``thisBox``. An alias (``val historyOwner = thisBox``) is a note: it is needed only where the box
+  is an argument, and renaming its uses is a judgement call.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
   2026-10-05 it matched ``//%-`` exactly, so older Field ran a spaced marker as one fragment;
   published code uses the one documented spelling.
@@ -63,6 +67,8 @@ BIND_PUSH = re.compile(
     r"^(?P<indent>\s*)(?P<target>[A-Za-z_][\w.]*)\.push\.bindPushConstant\(\s*\"(?P<name>\w+)\"\s*,\s*"
     r"(?P<lambda>\{.*\})\s*\)\s*\{\s*throw\b[^{}]*\}\s*$"
 )
+BOX_CONTEXT = re.compile(r"\bBox\.context\.get\(\)(?:!!)?")
+BOX_ALIAS = re.compile(r"^\s*va[lr]\s+(?P<name>\w+)\s*(?::\s*Box\??\s*)?=\s*(?:thisBox|Box\.context\.get\(\)(?:!!)?)\s*(?://.*)?$")
 SPACED_MARKER = re.compile(r"^(?P<indent>\s*)//\s+%-(?P<rest>.*)$")
 UNUSED_IMPORTS = {
     "import afield.four.Renderer": re.compile(r"\bRenderer\b"),
@@ -150,6 +156,13 @@ def check_block(lines: list[str], start: int, end: int) -> list[tuple[int, str, 
         elif m := BIND_PUSH.match(line):
             out.append((i, "bind-push-constant",
                         f"write `{m['target']}.{m['name']} = {m['lambda']}`: moduleHere generates the property", True))
+        elif m := BOX_ALIAS.match(line):
+            out.append((i, "box-context-lookup",
+                        f"`{m['name']}` is the box this code runs in, which is already the implicit receiver: "
+                        f"write `foo` for `{m['name']}.foo`, and `thisBox` where the box is an argument", False))
+        elif BOX_CONTEXT.search(line):
+            out.append((i, "box-context-lookup",
+                        "write `thisBox` (and usually not even that: the box is the implicit receiver)", True))
         elif SPACED_MARKER.match(line):
             out.append((i, "spaced-fragment-marker",
                         "write `//%-`, the documented spelling of a fragment break", True))
@@ -172,6 +185,9 @@ def fix_block(lines: list[str], start: int, end: int) -> list[str]:
             continue
         if m := SPACED_MARKER.match(line):
             out.append(f"{m['indent']}//%-{m['rest']}")
+            continue
+        if BOX_CONTEXT.search(line) and not BOX_ALIAS.match(line):
+            out.append(BOX_CONTEXT.sub("thisBox", line))
             continue
         out.append(line)
     if removed_renderer:
