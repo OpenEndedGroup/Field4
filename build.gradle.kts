@@ -1378,11 +1378,21 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     }
 }
 
+// java.library.path goes through an argument provider rather than systemProperty(): a system
+// property is a task input by value, so the absolute path of this checkout's native directory put
+// every JavaExec and Test task's cache key out of reach of every other worktree. The provider
+// declares the directory by content instead.
+class SmileNativeLibraryPath(
+    @get:InputFiles @get:PathSensitive(PathSensitivity.NONE) val directory: Provider<Directory>,
+) : CommandLineArgumentProvider {
+    override fun asArguments() = listOf("-Djava.library.path=${directory.get().asFile.absolutePath}")
+}
+
 fun org.gradle.process.JavaForkOptions.useSmileNative() {
     val nativePath = smileNativeDirectory.get().asFile.absolutePath
     systemProperty("smile.lib.lapack", "openblas")
     systemProperty("smile.lib.arpack", "arpack")
-    systemProperty("java.library.path", nativePath)
+    jvmArgumentProviders.add(SmileNativeLibraryPath(smileNativeDirectory))
     val pathVariable = when {
         osName.startsWith("Win") -> "PATH"
         osName.startsWith("Mac") || osName.startsWith("Darwin") -> "DYLD_LIBRARY_PATH"
@@ -2040,7 +2050,8 @@ tasks.register<JavaExec>("generateSourcePages") {
     outputs.dir(outDir).withPropertyName("pages")
     outputs.cacheIf { true }
     doFirst { outDir.get().asFile.deleteRecursively() }
-    argumentProviders.add(CommandLineArgumentProvider { listOf(outDir.get().asFile.absolutePath) })
+    // No output argument: the generator defaults to <repo>/build/source-pages, and an absolute path
+    // here would be an input that differs per worktree, so no worktree could hit another's cache entry.
 }
 
 tasks.register<JavaExec>("checkSourcePages") {
