@@ -76,10 +76,10 @@ property that makes a page like this checkable by a person at all.
 
 | family | count | how | what it selects |
 | --- | --- | --- | --- |
-| `tools/check_*.py` | 11 | `ls -1 tools/check_*.py` | standalone checker scripts |
-| `tools/test_*.py` | 68 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
-| `*Guard*.kt` + `*ContractTest.kt` | 29 | `find src -name '*Guard*.kt' -o -name '*ContractTest.kt'` | a **half-corpus by construction** — see the paragraph under this table |
-| Gradle `check…` JavaExec guards | 10 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
+| `tools/check_*.py` | 12 | `ls -1 tools/check_*.py` | standalone checker scripts |
+| `tools/test_*.py` | 69 | `ls -1 tools/test_*.py` | unittest suites, all of them in `check` via `checkPythonTools` |
+| `*Guard*.kt` + `*ContractTest.kt` | 30 | `find src -name '*Guard*.kt' -o -name '*ContractTest.kt'` | a **half-corpus by construction** — see the paragraph under this table |
+| Gradle `check…` JavaExec guards | 11 | `grep -o 'tasks.register<JavaExec>("check[A-Za-z]*' build.gradle.kts` | the guards `check` reaches by spawning a JVM main |
 
 ### The corpora those guards are stated over
 

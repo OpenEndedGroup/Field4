@@ -1,6 +1,8 @@
-// A single coefficient over a whole recording answers the wrong question when the
-// relationship comes and goes. RollingDistanceCorrelation maintains its sums
-// incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
+/*
+A single coefficient over a whole recording answers the wrong question when the
+relationship comes and goes. RollingDistanceCorrelation maintains its sums
+incrementally, O(w) per push; RollingXiCorrelation just recomputes, O(w log w).
+*/
 val w = 80
 val total = 600
 val change = 300
@@ -20,7 +22,7 @@ for (i in 0 until total) {
     val yv = if (i < change) rng.nextGaussian() else xv * xv - 1.0 + 0.15 * rng.nextGaussian()
     xs += xv
     ys += yv
-    dSeries += dcor.push(xv, yv) ?: 0.0     // the first push always returns null
+    dSeries += dcor.push(xv, yv) ?: 0.0 // the first push always returns null
     xiSeries += xiRoll.push(xv, yv) ?: 0.0
     // There is no RollingPearson, so take the batch one over the same window.
     val lo = maxOf(0, xs.size - w)
@@ -33,30 +35,43 @@ for (i in 0 until total) {
 // drawn at THIS window size because the null shifts with the window.
 val r2 = java.util.Random(1234)
 val k = 300
-val threshold = DoubleArray(k) {
-    StatsDependence.distanceCorrelation(DoubleArray(w) { r2.nextGaussian() }, DoubleArray(w) { r2.nextGaussian() })
-}.sortedArray()[(k * 0.95).toInt()]
+val threshold =
+    DoubleArray(k) {
+            StatsDependence.distanceCorrelation(
+                DoubleArray(w) { r2.nextGaussian() },
+                DoubleArray(w) { r2.nextGaussian() },
+            )
+        }
+        .sortedArray()[(k * 0.95).toInt()]
 
 fun mean(l: List<Double>, a: Int, b: Int) = l.subList(a, b).average()
 println("window=$w, regime change at i=$change, dCor null 95th pct at this w=${"%.3f".format(threshold)}")
-println("  before (i=$w..${change - 1}):        dCor ${"%.3f".format(mean(dSeries, w, change))}" +
-    "   xi ${"%.3f".format(mean(xiSeries, w, change))}   |r| ${"%.3f".format(mean(absR, w, change))}")
-println("  settled after (i=${change + w}..${total - 1}): dCor ${"%.3f".format(mean(dSeries, change + w, total))}" +
-    "   xi ${"%.3f".format(mean(xiSeries, change + w, total))}   |r| ${"%.3f".format(mean(absR, change + w, total))}")
+println(
+    "  before (i=$w..${change - 1}):        dCor ${"%.3f".format(mean(dSeries, w, change))}" +
+        "   xi ${"%.3f".format(mean(xiSeries, w, change))}   |r| ${"%.3f".format(mean(absR, w, change))}",
+)
+println(
+    "  settled after (i=${change + w}..${total - 1}): dCor ${"%.3f".format(mean(dSeries, change + w, total))}" +
+        "   xi ${"%.3f".format(mean(xiSeries, change + w, total))}   |r| ${"%.3f".format(mean(absR, change + w, total))}",
+)
 val firstD = (change until total).firstOrNull { dSeries[it] > threshold }
 val firstXi = (change until total).firstOrNull { xiSeries[it] > threshold }
 println("  threshold first crossed by dCor at +${firstD?.minus(change)} samples, by xi at +${firstXi?.minus(change)}")
 
-// Not an approximation, and this is a real cross-check rather than a restatement:
-// RollingDistanceCorrelation never rebuilds a distance matrix, while the batch call
-// materialises two full w x w matrices and double-centres them.
+/*
+Not an approximation, and this is a real cross-check rather than a restatement:
+RollingDistanceCorrelation never rebuilds a distance matrix, while the batch call
+materialises two full w x w matrices and double-centres them.
+*/
 val batchLast = StatsDependence.distanceCorrelation(
-    xs.takeLast(w).toDoubleArray(), ys.takeLast(w).toDoubleArray()
+    xs.takeLast(w).toDoubleArray(),
+    ys.takeLast(w).toDoubleArray(),
 )
 println("  incremental vs batch on the final window: |difference| = ${abs(dSeries.last() - batchLast)}")
 // And rolling xi is bit-exact, because it literally calls chatterjeeXi over the window.
 val batchXi = StatsDependence.chatterjeeXi(
-    xs.takeLast(w).toDoubleArray(), ys.takeLast(w).toDoubleArray()
+    xs.takeLast(w).toDoubleArray(),
+    ys.takeLast(w).toDoubleArray(),
 )
 println("  rolling xi vs batch xi: |difference| = ${abs(xiSeries.last() - batchXi)} (exactly zero by construction)")
 
