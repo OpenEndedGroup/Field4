@@ -341,6 +341,11 @@ object CodeUseTelemetryService {
     // which the sidecar answered nothing ends the chain until the next start.
     private val catchupAttempted = ConcurrentHashMap.newKeySet<String>()
     private val catchupK2Analyzed = AtomicLong(0)
+    // Every Field on the machine shares this database and runs the same catch-up query, so a
+    // catch-up snippet is claimed in `snippets.k2_claimed_at/by` before it is analyzed and the other
+    // processes skip it. A claim older than the lease belongs to a Field that died mid-analysis.
+    private const val CATCHUP_CLAIM_LEASE_MS = 10L * 60L * 1000L
+    private val catchupClaimOwner = "${ProcessHandle.current().pid()}-${UUID.randomUUID()}"
 
     private val analysisRateLock = Any()
     private val analysisCompletionTimestamps = ArrayDeque<Long>()
@@ -2069,8 +2074,15 @@ object CodeUseTelemetryService {
                 drained++
             }
             latestBySnippet.values.forEach { job ->
-                val k2Analyzed = runCatching { analyzeAndStore(job) }
-                    .onFailure { lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}") }
+                val k2Analyzed = runCatching { if (!job.catchup || claimCatchupSnippet(job.snippetId)) analyzeAndStore(job) else false }
+                    .onFailure {
+                        if (job.catchup) {
+                            runCatching { releaseCatchupClaim(job.snippetId) }
+                            // Another Field held the write lock: try this snippet again next pass.
+                            if (isSqliteBusy(it)) catchupAttempted.remove(job.snippetId)
+                        }
+                        lprintln("warning,code-use", "code-use analyzer skipped ${job.snippetId}: ${it.message ?: it.javaClass.name}")
+                    }
                     .getOrDefault(false)
                 recordAnalysisJobCompleted()
                 if (job.catchup) {
@@ -2141,6 +2153,42 @@ object CodeUseTelemetryService {
         seconds < 3600L -> "${seconds / 60L}m ${seconds % 60L}s"
         else -> "${seconds / 3600L}h ${(seconds % 3600L) / 60L}m"
     }
+
+    /**
+     * Claims an unanalyzed catch-up snippet for this process, or returns false when it is already
+     * analyzed or another live Field holds an unexpired claim on it.
+     */
+    private fun claimCatchupSnippet(snippetId: String): Boolean = withConnection { conn ->
+        val at = now()
+        conn.prepareStatement(
+            """
+            UPDATE snippets SET k2_claimed_at = ?, k2_claimed_by = ?
+            WHERE id = ?
+              AND k2_analyzed_at IS NULL
+              AND (k2_claimed_at IS NULL OR k2_claimed_at < ? OR k2_claimed_by = ?)
+            """.trimIndent()
+        ).use { ps ->
+            ps.setLong(1, at)
+            ps.setString(2, catchupClaimOwner)
+            ps.setString(3, snippetId)
+            ps.setLong(4, at - CATCHUP_CLAIM_LEASE_MS)
+            ps.setString(5, catchupClaimOwner)
+            ps.executeUpdate() == 1
+        }
+    }
+
+    private fun releaseCatchupClaim(snippetId: String) {
+        withConnection { conn ->
+            conn.prepareStatement("UPDATE snippets SET k2_claimed_at = NULL, k2_claimed_by = NULL WHERE id = ? AND k2_claimed_by = ?").use { ps ->
+                ps.setString(1, snippetId)
+                ps.setString(2, catchupClaimOwner)
+                ps.executeUpdate()
+            }
+        }
+    }
+
+    private fun isSqliteBusy(error: Throwable): Boolean =
+        generateSequence(error) { it.cause }.any { it.message?.contains("SQLITE_BUSY") == true }
 
     /** Returns whether the K2 sidecar analyzed the job's source. */
     private fun analyzeAndStore(job: CodeUseAnalysisJob): Boolean {
@@ -2561,6 +2609,8 @@ object CodeUseTelemetryService {
             )
             runCatching { st.execute("ALTER TABLE launch_events ADD COLUMN exception_json TEXT") }
             runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_analyzed_at INTEGER") }
+            runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_claimed_at INTEGER") }
+            runCatching { st.execute("ALTER TABLE snippets ADD COLUMN k2_claimed_by TEXT") }
             st.execute(
                 """
                 CREATE TABLE IF NOT EXISTS symbols(
@@ -2852,6 +2902,7 @@ object CodeUseTelemetryService {
             JOIN source_blobs b ON b.hash = s.source_hash
             WHERE s.updated_at >= ?
               AND s.k2_analyzed_at IS NULL
+              AND (s.k2_claimed_at IS NULL OR s.k2_claimed_at < ? OR s.k2_claimed_by = ?)
               AND NOT EXISTS (
                   SELECT 1
                   FROM symbol_uses su
@@ -2863,6 +2914,8 @@ object CodeUseTelemetryService {
             """.trimIndent()
         ).use { ps ->
             ps.setLong(1, since)
+            ps.setLong(2, now() - CATCHUP_CLAIM_LEASE_MS)
+            ps.setString(3, catchupClaimOwner)
             ps.executeQuery().use { rs ->
                 while (rs.next()) {
                     val snippetId = rs.getString("id").orEmpty()
