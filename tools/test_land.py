@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -22,6 +23,8 @@ import sys, pathlib
 assert sys.argv[1] == "--regen-since", sys.argv
 calls = pathlib.Path(__file__).resolve().parents[2] / "REGEN_CALLS"
 calls.write_text(calls.read_text() + "x" if calls.exists() else "x")
+if pathlib.Path("HANGS").exists():
+    import time; time.sleep(600)
 if pathlib.Path("BREAKS").exists() or (pathlib.Path("PAIR_A").exists() and pathlib.Path("PAIR_B").exists()):
     print("merge_regen: a guard failed on the batch", file=sys.stderr)
     sys.exit(1)
@@ -39,6 +42,8 @@ class LandQueueTest(unittest.TestCase):
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
             "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
             "FIELD_LAND_BY": "test-agent",
+            # Never seed a private Gradle home from the real ~/.gradle in a test.
+            "FIELD_LAND_GRADLE_HOME": "shared",
         }
         self.primary.mkdir()
         self.git(self.primary, "init", "-q", "-b", "main")
@@ -288,6 +293,17 @@ class LandQueueTest(unittest.TestCase):
         self.run_lander()
         self.assertTrue((self.primary / "theirs.txt").exists())
         self.assertEqual(self.git(origin, "rev-parse", "main"), self.git(self.primary, "rev-parse", "main"))
+
+    def test_a_wedged_build_is_stopped_retried_once_then_bounced(self) -> None:
+        self.env["FIELD_LAND_WATCHDOG_MIN"] = "0.05"  # 3 s of silence
+        self.land(self.branch_with("wedge", "HANGS"), "enqueue")
+        started = time.time()
+        self.run_lander()
+        self.assertLess(time.time() - started, 120, "the watchdog did not stop the silent build")
+        self.assertEqual(self.states(), {"wedge": "bounced"})
+        mine = self.land(Path(self._tmp.name) / "wedge", "mine").stdout
+        self.assertIn("watchdog", mine)
+        self.assertEqual(self.guard_calls(), 2, "one retry, then the bounce")
 
 
 if __name__ == "__main__":

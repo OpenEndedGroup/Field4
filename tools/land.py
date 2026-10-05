@@ -872,6 +872,71 @@ def _blocking_edits(primary: Path, item: dict) -> list[str]:
     return sorted(dirty & changed)
 
 
+# The lander's own Gradle user home. Sharing ~/.gradle with every other session's daemons made the
+# lander's build wait on their cross-process cache locks: at load 90 one round spent an hour in
+# configuration, handing the file-hash cache lock back and forth with another daemon. Its own home
+# means its own daemons and caches; seeded as an APFS copy-on-write clone (cp -c) of ~/.gradle, so
+# it starts warm and costs almost no disk. FIELD_LAND_GRADLE_HOME=shared opts out.
+WATCHDOG_MINUTES = float(os.environ.get("FIELD_LAND_WATCHDOG_MIN", "30"))
+
+
+def _lander_gradle_home() -> Path | None:
+    setting = os.environ.get("FIELD_LAND_GRADLE_HOME", "")
+    if setting == "shared":
+        return None
+    home = Path(setting) if setting else Path.home() / ".field4" / "lander-gradle-home"
+    if (home / ".seeded").exists():
+        return home
+    source = Path(os.environ.get("GRADLE_USER_HOME", Path.home() / ".gradle"))
+    home.mkdir(parents=True, exist_ok=True)
+    print(f"land: seeding the lander's Gradle home {home} from {source} (copy-on-write)", flush=True)
+    for entry in sorted(source.iterdir()) if source.is_dir() else []:
+        # Daemon state and profiling output are per-process; the rest is what makes a build warm.
+        if entry.name in ("daemon", "kotlin-profile", "build-scan-data") or (home / entry.name).exists():
+            continue
+        for cmd in (["cp", "-cR", str(entry), str(home / entry.name)],              # macOS APFS clone
+                    ["cp", "-a", "--reflink=auto", str(entry), str(home / entry.name)]):  # Linux
+            if subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+                break
+    # Locks and the file-hash databases are the shared-state part: start them fresh.
+    for stale in list(home.glob("**/*.lock")) + list(home.glob("caches/*/fileHashes")):
+        if stale.is_dir():
+            shutil.rmtree(stale, ignore_errors=True)
+        else:
+            stale.unlink(missing_ok=True)
+    (home / ".seeded").write_text(f"seeded {_now()} from {source}\n")
+    return home
+
+
+def _run_watched(cmd: list[str], cwd: Path, env: dict, log: Path, out) -> int | None:
+    """Run [cmd] with its output in [log]. None if it went silent for WATCHDOG_MINUTES: a build that
+    writes nothing for that long is wedged (the hour in configuration), and waiting longer only holds
+    up everyone behind it. Its whole process group and the lander's Gradle daemons are stopped."""
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=out, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+    while True:
+        try:
+            return proc.wait(timeout=min(30.0, max(WATCHDOG_MINUTES * 60 / 4, 0.5)))
+        except subprocess.TimeoutExpired:
+            pass
+        silent = time.time() - log.stat().st_mtime
+        if silent < WATCHDOG_MINUTES * 60:
+            continue
+        out.write(f"\nland: watchdog: no output for {silent / 60:.0f} min; stopping the build\n")
+        out.flush()
+        try:
+            os.killpg(proc.pid, 15)
+            proc.wait(timeout=30)
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(proc.pid, 9)
+            except OSError:
+                pass
+        # The daemon outlives its client; stop the ones in the lander's own Gradle home.
+        if env.get("GRADLE_USER_HOME"):
+            subprocess.run([str(cwd / "gradlew"), "--stop"], cwd=cwd, env=env, stdout=out, stderr=subprocess.STDOUT)
+        return None
+
+
 def _push_main(primary: Path, sha: str, out) -> str | None:
     """Push main to origin. None on success, else why not. Never forces, never touches local main."""
     out.write(f"merge_regen: pushing main {sha[:9]} to origin\n")
@@ -933,6 +998,9 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             item.update(reason="its commit no longer exists", finished=_now())
             _move(queue, item, BOUNCED)
     env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    gradle_home = _lander_gradle_home()
+    if gradle_home:
+        env["GRADLE_USER_HOME"] = str(gradle_home)
 
     for _attempt in range(MAX_MAIN_RACES):
         main_sha = _git(primary, "rev-parse", "refs/heads/main")
@@ -979,11 +1047,24 @@ def _land_batch(items: list[dict], primary: Path, wt: Path, queue: Path, bisecti
             names = "\n".join(f"- {m['branch']} ({m['id']})" for m in members)
             out.write(f"merge_regen: one regeneration and one guard for {len(members)} branch(es)\n")
             out.flush()
-            code = subprocess.run(
+            code = _run_watched(
                 [sys.executable, str(wt / "tools/merge_regen.py"), "--regen-since", main_sha,
                  "-m", f"Regenerate generated artifacts after landing {len(members)} branch(es)\n\n{names}"],
-                cwd=wt, stdout=out, stderr=subprocess.STDOUT, env=env,
-            ).returncode
+                wt, env, log, out,
+            )
+        if code is None:
+            # Wedged, which says nothing about the branches. Retry the round once; a second
+            # wedge bounces them, so a build that always hangs cannot hold the queue forever.
+            _reset(wt, main_sha)
+            for item in members:
+                item["watchdog"] = item.get("watchdog", 0) + 1
+                if item["watchdog"] >= 2:
+                    item.update(reason=f"the landing build went silent for {WATCHDOG_MINUTES:.0f} min twice "
+                                       f"(watchdog); see the log", finished=_now())
+                    _move(queue, item, BOUNCED)
+                else:
+                    _requeue(queue, item, f"{batch_id}: watchdog stopped a build silent for {WATCHDOG_MINUTES:.0f} min; retrying")
+            return "blocked"
         if code != 0:
             failures = _collect_failures(wt, round_started, log)
             _reset(wt, main_sha)
