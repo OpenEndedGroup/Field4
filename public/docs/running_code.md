@@ -171,7 +171,7 @@ __m("Zk3q-a1").flipbox(true) {
 }
 ```
 
-The editor draws a checkbox after `flipbox(`. The block runs when the box runs with the box ticked,
+The editor draws the `true` as a checkbox. The block runs when the box runs with the box ticked,
 and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
 later runs skip it. Click the checkbox to run the block again, without running the box, like
 option/alt-return on an `aside`. With `false` it runs only when you click. The tick is not saved
