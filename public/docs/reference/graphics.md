@@ -901,7 +901,7 @@ says the night is broken. And `SweepConfig.minFreeBytes` stops the sweep before 
 
 `src/jvmMain/kotlin/afield/stdlib/keyframeSweep.kt` — [read the source](source/jvmMain/afield/stdlib/keyframeSweep/)
 
-**Used in:** [Keyframe autosweeping: exploring a saved space while you sleep](../keyframe_autosweep.md)
+**Used in:** [Sweeping saved keyframes overnight](../keyframe_autosweep.md)
 
 ### Top-level functions { #keyframesweep-kt-functions }
 
@@ -1115,7 +1115,7 @@ with a plausible-looking wrong file in it cannot.
 
 `src/jvmMain/kotlin/afield/stdlib/keyframeSweepCapture.kt` — [read the source](source/jvmMain/afield/stdlib/keyframeSweepCapture/)
 
-**Used in:** [Keyframe autosweeping: exploring a saved space while you sleep](../keyframe_autosweep.md)
+**Used in:** [Sweeping saved keyframes overnight](../keyframe_autosweep.md)
 
 ### Top-level functions { #keyframesweepcapture-kt-functions }
 
