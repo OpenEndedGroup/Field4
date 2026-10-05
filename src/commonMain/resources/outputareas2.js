@@ -1,3 +1,4 @@
+import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
 import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
 
 const DEFAULT_W = 480;
@@ -1891,10 +1892,12 @@ function ensureAiChat(container, uid, property) {
                         existing.root.dataset.uid = uid || existing.root.dataset.uid || "";
                         existing.root.dataset.property = existing.property || "code";
                         if (changedBox) {
+                                existing.stateBrowser?.reset();
                                 container.__aiChatHistory = controllerChatHistory.get(uid) || "";
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
                         }
+                        if (!changedBox) existing.stateBrowser?.refreshAvailability();
                         return existing;
                 }
         }
@@ -2367,12 +2370,26 @@ function ensureAiChat(container, uid, property) {
         inputWrap.appendChild(micButton);
         inputWrap.appendChild(sendButton);
 
+        const stateBrowser = mountStateTreeBrowser(root, {
+                chatUid,
+                request: payload => new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject(new Error("State history request timed out. Refresh to retry.")), 15000);
+                        sendWithReply("ai-state-tree", payload, `ai-state-tree-${Date.now()}-${Math.random()}`, (_m, reply) => {
+                                clearTimeout(timeout); resolve(reply); return "remove";
+                        });
+                }),
+                insertReference: text => {
+                        textarea.value += (textarea.value ? "\n\n" : "") + text;
+                        textarea.dispatchEvent(new Event("input", {bubbles: true}));
+                        textarea.focus();
+                }
+        });
         root.appendChild(messages);
         root.appendChild(inputWrap);
         container.innerHTML = "";
         container.appendChild(root);
 
-        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, submit: submitPrompt};
+        container.__aiChat = {root, messages, textarea, preview, attachments, uid, property: property || "code", micButton, stateBrowser, submit: submitPrompt};
         restoreAiChat(container, uid);
         return container.__aiChat;
 }
@@ -2666,7 +2683,14 @@ function openAiChatForBox(uid, property) {
         setTimeout(() => {
                 chat.textarea.focus();
         }, 0);
+        return chat;
 }
+
+window.openAiStateBrowser = async (uid, source, node, offset) => {
+        const chat = openAiChatForBox(uid, "code");
+        if (!chat) return false;
+        return !!await chat.stateBrowser.reveal(source, node, offset);
+};
 
 // ---- voice target ----------------------------------------------------------
 //

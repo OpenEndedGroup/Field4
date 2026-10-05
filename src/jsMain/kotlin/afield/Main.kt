@@ -6540,6 +6540,25 @@ suspend fun main() {
         Handled.yes
     }
 
+    handlers.put("state-tree-reveal") { message, reply ->
+        val req = Json.decodeFromJsonElement<StateTreeReveal>(message.payload!!)
+        fun done(success: Boolean, text: String) {
+            message.replyTo?.let { reply(Message(it).payload(StateTreeRevealResult(success, req.uid, text))) }
+        }
+        val open = window.asDynamic().openAiStateBrowser
+        if (open == null) done(false, "State browser frontend is unavailable")
+        else {
+            val promise = open(req.uid, req.source, req.node, req.offset) as kotlin.js.Promise<Boolean>
+            promise.then({ shown ->
+                if (!shown) done(false, "State browser could not resolve the requested history/state")
+                else navigateDocumentBox(DocumentBoxNavigation(req.uid, surface = "output", channel = "ai-chat")) {
+                    done(it.success, if (it.success) "Saved state revealed in the state browser. Active state unchanged." else it.message)
+                }
+            }, { error -> done(false, error.message ?: "State browser failed") })
+        }
+        Handled.yes
+    }
+
     handlers.put("navigate-document-box") { message, reply ->
         val req = Json.decodeFromJsonElement<DocumentBoxNavigation>(message.payload!!)
         navigateDocumentBox(req) { result ->
