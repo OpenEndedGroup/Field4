@@ -9,8 +9,8 @@ This is the check that retires the prose. The rules:
   The renderer box publishes ``prop<Renderer>(renderer)``, so ``renderer`` already resolves in every
   box beneath it through the box's implicit receiver. The one place a local copy earns its line is
   coroutine work: code inside ``start { }`` / ``launch { }`` runs after an async boundary and must
-  capture the renderer first. A box that starts coroutines is therefore reported but never
-  rewritten.
+  capture the renderer first. In a box that starts coroutines the line is therefore only a note:
+  printed, never rewritten, and not a failure.
 - ``bind-push-constant``: ``mesh.push.bindPushConstant("n", { e }) { throw ... }``. ``moduleHere``
   generates ``var Mesh.n`` for every push-constant member it sees, so this is ``mesh.n = { e }``.
 - ``spaced-fragment-marker``: ``// %-``. The splitter accepts it (``isFragmentBreak``), but until
@@ -57,7 +57,8 @@ GENERATED_ROOTS = ("public/docs/assets/agent_transcripts",)
 RENDERER_LINE = re.compile(
     r"^\s*va[lr]\s+renderer\s*(?::\s*Renderer\s*)?=\s*fromContext(?:<Renderer>)?\(\)\s*(?://.*)?$"
 )
-COROUTINE_START = re.compile(r"\b(?:start|launch)\s*(?:\(|\{)")
+# A call of the box's own start/launch, not a method of the same name (`streamer.start()`).
+COROUTINE_START = re.compile(r"(?<![.\w])(?:start|launch)\s*(?:\(|\{)")
 BIND_PUSH = re.compile(
     r"^(?P<indent>\s*)(?P<target>[A-Za-z_][\w.]*)\.push\.bindPushConstant\(\s*\"(?P<name>\w+)\"\s*,\s*"
     r"(?P<lambda>\{.*\})\s*\)\s*\{\s*throw\b[^{}]*\}\s*$"
@@ -251,6 +252,10 @@ def main(argv: list[str] | None = None) -> int:
 
     findings = [f for path in paths for f in process(path, args.root, args.fix)]
     remaining = [f for f in findings if not (args.fix and f.fixable)]
+    notes = [f for f in remaining if not f.fixable]
+    remaining = [f for f in remaining if f.fixable]
+    for f in notes:
+        print(f"{f.path}:{f.line}: note [{f.rule}] {f.message}")
     if args.fix:
         fixed = len(findings) - len(remaining)
         if fixed:
@@ -258,11 +263,10 @@ def main(argv: list[str] | None = None) -> int:
     for f in remaining:
         print(f"{f.path}:{f.line}: [{f.rule}] {f.message}")
     if remaining:
-        hint = " (re-run with --fix)" if any(f.fixable for f in remaining) else ""
-        print(f"check_box_idioms: {len(remaining)} finding(s) in {len({f.path for f in remaining})} file(s){hint}",
+        print(f"check_box_idioms: {len(remaining)} finding(s) in {len({f.path for f in remaining})} file(s) (re-run with --fix)",
               file=sys.stderr)
         return 1
-    scope_word = "the corpus" if scope is None else f"{len(paths)} changed file(s)"
+    scope_word = "the corpus" if scope is None else f"{len(paths)} file(s)"
     print(f"check_box_idioms: clean ({scope_word})")
     return 0
 

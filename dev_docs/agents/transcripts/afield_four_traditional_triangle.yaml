@@ -32,10 +32,6 @@ operations:
               uFragColor = vec4(1.0, 0.8, 0.4, 1.0) * fcol;
           }
         code: |
-          import afield.four.Renderer
-          import afield.four.modules.fromContext
-          val renderer: Renderer = fromContext()
-
           var module = moduleHere {
               primitiveType = triangle_strip
           }
@@ -60,10 +56,6 @@ operations:
       property: code
       type: fragment
       code: |
-        import afield.four.Renderer
-        import afield.four.modules.fromContext
-        val renderer: Renderer = fromContext()
-
         var module = moduleHere {
             primitiveType = triangle_strip
         }

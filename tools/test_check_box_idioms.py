@@ -96,12 +96,21 @@ class RuleTests(unittest.TestCase):
         finally:
             f.close()
 
-    def test_a_box_that_starts_coroutines_is_reported_but_not_rewritten(self):
+    def test_a_box_that_starts_coroutines_gets_a_note_not_a_rewrite(self):
         code = "val renderer: Renderer = fromContext()\nstart {\n    renderer.frame()\n}\n"
         f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": code})
         try:
-            self.assertEqual(f.run("--fix"), 1)
+            self.assertEqual(f.run("--fix"), 0)
             self.assertEqual(f.read("dev_docs/agents/demos/d/x_code_.kt"), code)
+        finally:
+            f.close()
+
+    def test_a_method_called_start_is_not_a_coroutine(self):
+        code = "val renderer: Renderer = fromContext()\nval ring = streamer.start()\n"
+        f = Fixture({"dev_docs/agents/demos/d/x_code_.kt": code})
+        try:
+            self.assertEqual(f.run("--fix"), 0)
+            self.assertEqual(f.read("dev_docs/agents/demos/d/x_code_.kt"), "val ring = streamer.start()\n")
         finally:
             f.close()
 
