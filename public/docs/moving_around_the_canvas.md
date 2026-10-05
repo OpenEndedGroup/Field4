@@ -128,6 +128,58 @@ with its row or column: a corner of notes that stays where you left it, say, or 
 you scroll through separately. The stretches of divider between an unlinked pane and the panes it
 no longer moves with turn dashed. **Relink Pane** puts it back in step with its row and column.
 
+Here the instrument labels are unlinked vertically from the palette (its preview shows the divider
+beside them turning dashed), so the body scrolls down without them, and then they scroll on their
+own. **Relink Pane** brings them back into line with the body:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="1100x640" clip="0,0,1100,640" video="assets/moving_around_the_canvas/unlink_pane.mp4" fps="20" transcript="../../dev_docs/agents/transcripts/docs_capture/split_canvas.yaml" padding="0" wait="0" timeout="300" hide-toasts=true embed=true hidden=true name="unlink-pane" alt="A sequencer-like document split into four panes by a black cross, bar headings along the top and instrument labels down the left. With the pointer over the labels, the command palette opens and Unlink Pane Vertically is typed; its preview is a thumbnail of the split with the divider beside the labels drawn as cyan dashes. After Enter that divider turns dashed. The body scrolls down while the labels stay put, then the labels scroll on their own. The palette opens again for Relink Pane, and the labels jump back into line with their rows, the divider solid again."}
+// Split at the corner between the labels and the headings, the way a reader does: drag the grip.
+ui.moveMouse(6.0, 6.0)
+ui.mouseDown()
+ui.moveMouse(196.0, 114.0, 14)
+ui.mouseUp()
+ui.pause(400)
+val split = ui.eval("const s = window.canvasPanesState(); return s.rows + 'x' + s.columns").toString()
+check("2x2" in split) { "the grip did not split the canvas into four panes: " + split }
+
+fun scrollPane(index: Int, dx: Double, dy: Double) {
+    ui.eval("""
+      const pane = document.querySelectorAll(".field-pane")[$index];
+      const r = pane.getBoundingClientRect();
+      pane.dispatchEvent(new WheelEvent("wheel", { deltaX: $dx, deltaY: $dy, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, bubbles: true, cancelable: true }));
+      return true;
+    """)
+}
+fun palette(command: String) {
+    // The pane under the pointer is the one a pane command acts on: the labels, bottom left.
+    ui.moveMouse(90.0, 400.0, 8)
+    ui.pause(300)
+    ui.press("F1")
+    ui.waitForSelector(".afield-palette-shell", 8000.0)
+    ui.pause(400)
+    ui.typeSlowly(command, 70)
+    ui.pause(1600)
+    ui.press("Enter")
+    ui.pause(900)
+}
+
+palette("unlink pane vertically")
+val free = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("true" in free) { "the labels pane was not unlinked: " + free }
+// The body scrolls down; the labels stay where they are.
+ui.moveMouse(700.0, 420.0, 6)
+repeat(30) { scrollPane(3, 0.0, 6.0); ui.pause(30) }
+ui.pause(900)
+// The labels scroll on their own.
+repeat(24) { scrollPane(2, 0.0, 5.0); ui.pause(30) }
+ui.pause(900)
+
+palette("relink pane")
+val linked = ui.eval("return String(window.canvasPanesState().panes[2].freeY)").toString()
+check("false" in linked) { "the labels pane was not relinked: " + linked }
+ui.pause(1500)
+```
+
 ## Stepping between boxes
 
 With a box selected, tap `Cmd` twice and hold it down on the second tap: Field outlines the box you
