@@ -805,6 +805,45 @@ pre code {
     opacity: 1;
 }
 
+.ai-chat-window .ai-chat-fence-source-toggle {
+    position: absolute;
+    top: 4px;
+    right: 38px;
+    z-index: 10;
+    padding: 4px 7px;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 3px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+    cursor: pointer;
+}
+
+.ai-chat-fence-preview {
+    min-height: 50px;
+    padding: 30px 10px 10px;
+    overflow-x: auto;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 5px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+}
+
+.ai-chat-fence-preview svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: auto;
+}
+
+.ai-chat-fence-error {
+    min-height: 0;
+    padding: 8px 10px;
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */

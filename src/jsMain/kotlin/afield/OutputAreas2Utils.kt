@@ -283,6 +283,7 @@ private fun renderMarkdown(markdown: String?): String {
             val langAttr = if (safeLang.isNotEmpty()) " data-lang=\"$safeLang\"" else ""
             html.append("<div class=\"ai-chat-code-block\"")
             html.append(langAttr)
+            if (index < blocks.lastIndex) html.append(" data-fence-closed=\"true\"")
             html.append(">")
             html.append("<div class=\"ai-chat-copy-wrap\"><button class=\"ai-chat-copy\" type=\"button\" aria-label=\"Copy\" title=\"Copy\"></button></div>")
             html.append("<pre><code")
