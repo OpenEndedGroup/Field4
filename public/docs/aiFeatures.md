@@ -83,7 +83,7 @@ it. These are provider-specific histories, not complete document forks.
 
 A document can expose an existing history without adopting a new persistence format:
 
-```kotlin
+```diffstatic {data-lang=kotlin}
 import afield.*
 import afield.ai.core.*
 
