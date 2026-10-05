@@ -3254,6 +3254,7 @@ class Server {
             })
 
             registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
+            registerArrayControlUpdateHandler() // afield/visualizers.kt
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")

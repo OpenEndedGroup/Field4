@@ -1577,6 +1577,10 @@ data class Vec2Update(val controlId: String, val x: Double, val y: Double)
 @Serializable
 data class CheckboxUpdate(val controlId: String, val value: Boolean)
 
+/** The whole value of a multislider, matrix, range slider or menu. See `afield/visualizers.kt`. */
+@Serializable
+data class ArrayControlUpdate(val controlId: String, val values: List<Double>)
+
 @Serializable
 data class StringUpdate(val controlId: String, val value: String)
 
@@ -1650,7 +1654,18 @@ data class ControllerControl(
      * laws set this and linear ones leave it at `0` — which is what keeps every existing slider's
      * formatting identical to the digit.
      */
-    val significantDigits: Int = 0
+    val significantDigits: Int = 0,
+    /**
+     * The shape of a multislider, matrix, range slider or menu (`afield/visualizers.kt`), so a
+     * surface that only sees this record — the phone — can draw it: [columns] is a multislider's bar
+     * count or a matrix's column count, [rows] and [states] are a matrix's, [options] a menu's.
+     * Their value travels in [text] as comma-separated numbers, and a playhead in [value].
+     */
+    val rows: Int = 0,
+    val columns: Int = 0,
+    val states: Int = 0,
+    val polar: Boolean = false,
+    val options: List<String> = emptyList()
 )
 
 /** A momentary button going down or coming back up. See `ControlGroupBuilder.button`. */
