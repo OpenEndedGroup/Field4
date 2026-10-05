@@ -248,7 +248,8 @@ function Build-Field {
     $offline = @(Get-GradleOfflineArgs)
     $launchMode = @()
     if ($script:serverOnly) { $launchMode = @("-PfieldServerOnly=true") }
-    & .\gradlew.bat @offline @script:fieldToolchainArgs @launchMode jvmJar dumpFieldLaunch
+    # Keep native build output out of this function's Boolean result.
+    & .\gradlew.bat @offline @script:fieldToolchainArgs @launchMode jvmJar dumpFieldLaunch | Out-Host
     if ($LASTEXITCODE -ne 0) {
         Write-Host "field: BUILD FAILED - fix the errors above, then re-run .\field.ps1" -ForegroundColor Red
         if ($offline.Count -gt 0) {

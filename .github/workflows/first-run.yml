@@ -27,6 +27,9 @@ jobs:
           else
             ./gradlew -p tools/first-run test
           fi
+      - name: Windows launcher build-result regression
+        if: runner.os == 'Windows'
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/test_field_ps1_launcher.ps1
       - name: Real launcher and default API protection
         run: python tools/ci_first_run.py --timeout 1800
       - name: Desktop GPU selection policy
