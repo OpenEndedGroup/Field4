@@ -4,7 +4,7 @@ import afield.logger.lprintln
 import afield.stdlib.Marker
 
 /**
- * A block with a checkbox drawn in the editor next to it: it runs when the box evaluates with the box
+ * A block with a checkbox drawn in the editor over its argument: it runs when the box evaluates with the box
  * ticked, and you tick it to run the block again. Each evaluation unticks it.
  *
  * ```
@@ -75,10 +75,26 @@ private fun Marker.flipboxDraw() {
     // Marker uids are base64 and may hold '+' and '/', which a CSS class name cannot.
     val cls = "flipbox_" + name.replace(Regex("[^A-Za-z0-9_-]"), "_") + if (on) "_on" else "_off"
     val glyph = if (on) "☑" else "☐"
-    box.decorationState[name + "_flipbox"] = RawDecoration(
+    // The argument only says how the box starts, which the checkbox already shows, so the
+    // checkbox is drawn over it, as the marker rune is drawn over the `__m(...)` text.
+    val line = box.code?.split("\n")?.getOrNull(at.line - 1) ?: return
+    val close = line.indexOf(')', at.col - 1)
+    val arg = if (close < 0) "" else line.substring(at.col - 1, close)
+    // Only a bare literal: Monaco splits a longer argument into tokens, and each would draw a box.
+    val decoration = if (arg.trim() != "true" && arg.trim() != "false") RawDecoration(
         at, cls, mapOf(
             cls to ".$cls:before { content:'$glyph '; color:white; cursor:pointer; font-size:110%; } " +
                 ".$cls:hover::before { color:#7fd; }"
         ), clickCallback = { flipboxClicked() }
-    )
+    ) else {
+        val start = at.col + (arg.length - arg.trimStart().length)
+        RawDecoration(
+            at.line, start, at.line, start + arg.trim().length, cls, mapOf(
+                cls to ".$cls { font-size:0 !important; cursor:pointer; } " +
+                    ".$cls:after { content:'$glyph'; color:white; font-size:16px !important; } " +
+                    ".$cls:hover::after { color:#7fd; }"
+            ), clickCallback = { flipboxClicked() }
+        )
+    }
+    box.decorationState[name + "_flipbox"] = decoration
 }
