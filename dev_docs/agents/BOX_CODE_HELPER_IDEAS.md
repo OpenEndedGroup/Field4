@@ -70,6 +70,8 @@ implemented. Grouped by theme; the transcript that showed the pattern is in brac
 
 ## Found along the way (not helpers)
 
+Each of these is filed as a handoff in `dev_docs/handoffs/` (2026-10-05).
+
 - `simdverlet_world`'s `description:` cites `friction = 0.9` for the sphere; the box sets 0.75
   (0.9 is the floor), and its quoted numbers may be from an earlier 10 x 10 sheet.
 - `frames_lifecycle`'s `description:` still carries history; the pass only edits code blocks.

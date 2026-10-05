@@ -51,3 +51,11 @@ The pass should also bring back ideas, as notes rather than edits, for **helpers
 conventions that remove typing**: a pattern that appears in many boxes and could be one call,
 a preamble declaration that would make a lookup disappear, a default that would delete a line
 from every box that uses it. These go to a human; they are API changes.
+
+The pass edits code blocks only. When an agent finds that a transcript's `description:` (or a
+docs page that embeds its code) disagrees with the code, or narrates history, it reports it, and
+the run files it as a handoff, which joins the docs revision queue:
+
+```bash
+uv run python tools/docs_notes.py handoff "Fix <transcript>'s description: <what>" --scope project --from-page agent_transcripts.md --body-file -
+```
