@@ -89,6 +89,15 @@ holds the two-way registration; `dev_docs/GUARD_CORPORA.md` has the method.
 These build and run headless: no window, no GPU. Open one to get the code in front of you, then run
 its box to see the output (a plot, an inline value thumbnail, a printed line).
 
+### stipple_sheet
+
+**A trained warp you can drag.** The live version of [Stipple transport](stipple_transport.md): one
+box loads the small model the page trained and deforms 400 particles and a coordinate lattice with
+it. Three sliders move transport time, movie time and the number of integration steps separately,
+so you can push the sheet past the times it was trained on and watch where it stops holding.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/stipple_sheet/metadata.edn)
+
 ### particle_video_reader
 
 Inspect recorded trajectories as continuous polylines, with time, history length, identity color

@@ -151,7 +151,7 @@ nav:
     - Point Sets & Shape:
       - Placing Things by Distance (MDS, t-SNE): projection_examples.md
       - Flow Matching: flow_matching.md
-      - Stipple Transport & Video: stipple_transport.md
+      - Stipple Transport: stipple_transport.md
     - Colour & Images:
       - Colors Examples: colors_examples.md
       - Paint and Pencil from FLines: paint_canvas.md
