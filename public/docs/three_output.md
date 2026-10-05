@@ -154,8 +154,69 @@ so a detailed error view can sit beside its surrounding assembly. Linking accoun
 scene's render origin and up axis, and converts millimetres, centimetres, metres, inches and feet.
 Other unit labels link only to the same label. Geometry must use a shared model coordinate frame.
 
-Linking is off when a viewer opens and does not opt other views in automatically. It is available
-for ordinary single-view scenes; contact sheets with several viewports keep their own cameras.
+Linking is off when a viewer opens unless its box asks for it, and linking one view does not opt
+other views in. It is available for ordinary single-view scenes; contact sheets with several
+viewports keep their own cameras.
+
+### Turning views for a display
+
+`turntable()` turns a view slowly about its up axis, for a page that people look at rather than
+use. On a contact sheet every panel turns together, each about its own centre, as they do when you
+drag. This sheet shows six shapes in a three-by-two grid and turns them at 15° a second:
+
+```diffstatic {data-lang=kotlin}
+val shapes = listOf(
+    "block" to boxMesh(1.2, 0.8, 0.6),
+    "tower" to boxMesh(0.5, 1.6, 0.5),
+    "slab" to boxMesh(1.6, 0.3, 0.9),
+    "cone" to coneMesh(segments = 7, radius = 0.6, height = 1.2),
+    "can" to cylinderMesh(segments = 6, radius = 0.5, height = 1.0),
+    "ring" to torusMesh(majorSegments = 12, minorSegments = 6),
+)
+three(name = "sheet", width = 900, height = 560) {
+    columns(3)
+    shapes.forEachIndexed { i, (label, shape) ->
+        mesh(shape, label = label, panel = i)
+        panel(title = label, camera = ThreeCameraSpec(yawDegrees = 30.0, pitchDegrees = 20.0),
+            bounds = shape.toThreeBounds())
+    }
+    turntable(degreesPerSecond = 15.0)
+}
+```
+
+A positive rate turns the models counter-clockwise seen from above; the default is 6° a second.
+Pressing, scrolling or typing in the view pauses the turn, and it resumes `resumeAfterSeconds`
+(2 by default) after the last interaction, from wherever you left it. A view turns only while it is
+on screen and the page is visible, and draws no frames while it is still. Each panel is framed for
+every angle of the turn, so nothing swings out of its cell, and a turning sheet sits a little
+further back than a still one. The framing is worked out once rather than on every frame, so a
+large sheet stays cheap to turn.
+
+Views in separate outputs or boxes can turn together too. `linkCamera()` opens a view with
+**Link camera** already on, so this box's two outputs share one camera and one turn:
+
+```diffstatic {data-lang=kotlin}
+val buildings = mapOf(
+    "tower" to boxMesh(60, 140, 60),
+    "barn" to boxMesh(140, 70, 90),
+)
+buildings.forEach { (name, building) ->
+    three(channel = name, name = name, width = 360, height = 300) {
+        mesh(building, wireframe = false)
+        camera(yaw = 30.0, pitch = 20.0)
+        linkCamera()
+        turntable(degreesPerSecond = 12.0)
+    }
+}
+```
+
+`linkCamera()` joins the same link as the button, so a view linked from code moves with one linked
+by hand, and the button still unlinks it. Running the box again does not relink a view somebody
+unlinked. `linkCamera(group = "north")` links only with views that name the same group, so one
+document can hold several separate linked sets. Moving any linked view pauses the turn in all of
+them. When several linked views ask to turn, one of them drives and the link carries its camera to
+the others; if that view scrolls away or closes, another takes over. A contact sheet cannot join a
+link, because its panels already share one camera.
 
 ### See through surfaces
 

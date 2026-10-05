@@ -317,6 +317,31 @@ data class ThreeCameraSpec(
 )
 
 /**
+ * A view that opens with **Link camera** already on. Written by [ThreeSceneBuilder.linkCamera].
+ *
+ * The link itself is the viewer's: views in one document share orbit, pan and zoom over a browser
+ * channel, and this only says which channel to join on load.
+ */
+@Serializable
+data class ThreeCameraLinkSpec(
+    /** Views link only with views of the same group in the same document. */
+    val group: String = "default",
+)
+
+/**
+ * A slow automatic orbit about the view's up axis. Written by [ThreeSceneBuilder.turntable].
+ *
+ * Not [threeTurntable], which lays fixed angles out side by side; this one moves.
+ */
+@Serializable
+data class ThreeTurntableSpec(
+    /** Positive turns the model counter-clockwise seen from above. */
+    val degreesPerSecond: Double = 6.0,
+    /** How long the turn stays paused after the last interaction. */
+    val resumeAfterSeconds: Double = 2.0,
+)
+
+/**
  * One viewport in a multi-panel scene, with its own camera and its own caption.
  *
  * # Why panels rather than iframes
