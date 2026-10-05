@@ -10,6 +10,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
         const b = el('button', '', text); b.type = 'button'; b.addEventListener('click', action); return b;
     };
     const bar = el('div', 'state-tree-toolbar');
+    bar.hidden = true;
     const toggle = button('States', () => panel.hidden ? open() : close());
     toggle.setAttribute('aria-expanded', 'false');
     bar.append(toggle, el('span', 'state-tree-caption', 'Browse history · reference in chat'));
@@ -45,6 +46,28 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     host.append(bar, panel);
     let generation = 0, selectionGeneration = 0, owner = '', offset = 0;
     let selected = null, pinned = null;
+    let availabilityGeneration = 0, availabilityRequest = null, checkedAt = 0, hadProvider = false;
+    async function refreshAvailability(force = false) {
+        if (!force && (availabilityRequest || Date.now() - checkedAt < 2000)) return availabilityRequest;
+        const uid = chatUid(), ticket = ++availabilityGeneration;
+        checkedAt = Date.now();
+        const pending = (async () => {
+            try {
+                const data = await request({uid});
+                if (ticket !== availabilityGeneration || uid !== chatUid()) return;
+                // Ordinary AI4 conversations have history even when the document does not use state.
+                const available = !data.error && (data.sources || []).some(s => !s.id.endsWith('/conversation'));
+                const lostProvider = hadProvider && !available;
+                hadProvider = available;
+                bar.hidden = !available;
+                if (lostProvider && !panel.hidden) { close(); pinned = null; resetSelection(); }
+            } catch (_) {
+                if (ticket === availabilityGeneration && uid === chatUid()) bar.hidden = true;
+            }
+        })();
+        availabilityRequest = pending;
+        try { await pending; } finally { if (ticket === availabilityGeneration) availabilityRequest = null; }
+    }
     function updateActions() {
         reference.disabled = !selected;
         pin.disabled = !selected;
@@ -190,6 +213,9 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     }
     sources.addEventListener('change', () => loadTree(0));
     panel.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); close(); } });
+    host.addEventListener('pointerenter', () => refreshAvailability());
+    host.addEventListener('focusin', () => refreshAvailability());
     updateActions();
-    return {open, reveal(source, node, offset = 0) { return open({source, node, offset}); }, reset() { close(); pinned = null; resetSelection(); }};
+    refreshAvailability(true);
+    return {open, refreshAvailability, reveal(source, node, offset = 0) { return open({source, node, offset}); }, reset() { bar.hidden = true; hadProvider = false; close(); pinned = null; resetSelection(); refreshAvailability(true); }};
 }

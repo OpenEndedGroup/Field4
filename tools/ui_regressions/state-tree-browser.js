@@ -9,6 +9,7 @@ const history = content.__aiChatHistory;
 const draft = content.querySelector('textarea'); draft.value = 'My question';
 const root = content.querySelector('.ai-chat-window');
 const click = text => { const b = [...root.querySelectorAll('button')].find(b => b.textContent === text); check(b && !b.disabled, 'Missing enabled button ' + text); b.click(); };
+await until(() => !root.querySelector('.state-tree-toolbar').hidden);
 click('States');
 await until(() => root.querySelectorAll('.state-tree-node').length === 3);
 check(root.querySelectorAll('.state-tree-rows path').length === 2, 'Fork edges missing');

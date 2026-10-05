@@ -42,8 +42,9 @@ message is sent as your next message; several queued messages go together.
 
 ### Browsing saved states
 
-Choose **States** at the top of AI4 chat to see saved conversation branches and
-histories exposed by document providers. Select a node to inspect it. The current
+When a document registers a `stateTree` provider, **States** appears at the top of
+AI4 chat to browse its histories and saved conversation branches. Ordinary chat
+history alone does not show this control. Select a node to inspect it. The current
 position is marked **CURRENT**; selecting another node only browses it.
 
 **Reference in chat** adds a compact title and exact identity to your draft. AI4

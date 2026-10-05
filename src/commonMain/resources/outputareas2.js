@@ -1897,6 +1897,7 @@ function ensureAiChat(container, uid, property) {
                                 renderChatMessages(existing.messages, container.__aiChatHistory);
                                 restoreAiChat(container, uid);
                         }
+                        if (!changedBox) existing.stateBrowser?.refreshAvailability();
                         return existing;
                 }
         }
