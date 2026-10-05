@@ -2023,6 +2023,7 @@ class ControlValueHandle<T> internal constructor(
 }
 
 class ControlGroupBuilder(private val box: Box, private val channel: String) {
+    private val afterShown = mutableListOf<() -> Unit>()
     private val htmlParts = mutableListOf<String>()
     private val controls = mutableListOf<ControllerControl>()
     private val ordinals = mutableMapOf<String, Int>()
@@ -2458,6 +2459,16 @@ class ControlGroupBuilder(private val box: Box, private val channel: String) {
         onUpdate: (String) -> Unit
     ) = text(label, initialValue, onUpdate)
 
+    /**
+     * Runs [action] once the group is registered and its markup sent — for anything a control's
+     * block asked of a control that did not exist yet, such as a playhead set inside `controlGroup`.
+     */
+    internal fun afterShown(action: () -> Unit) {
+        afterShown += action
+    }
+
+    internal fun runAfterShown() = afterShown.forEach { it() }
+
     /** A write-only, uncached driver for the `value` of control [controlId] — see `visualizers.kt` playheads. */
     internal fun playheadHandle(controlId: String) =
         MeterHandle(controlId, box.takeIf { it.isInsideInitialized() }?.inside?.filename)
@@ -2534,6 +2545,7 @@ fun Box.controlGroup(channel: String = "controls", columns: Int, block: ControlG
             """ style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));width:min(${520 * columns}px,calc(100vw - 64px));max-width:${520 * columns}px;gap:6px" """
         display(channel, """<div class="control-group"$layout>$grouped</div>""")
     }
+    builder.runAfterShown()
 }
 
 // Convenience method for syncing controls to box properties

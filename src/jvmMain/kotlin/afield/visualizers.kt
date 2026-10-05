@@ -39,6 +39,19 @@ class ArrayControlHandle<T> internal constructor(
     /** Stable id of the control, shared with the tablet surface. */
     val controlId: String get() = valueHandle.controlId
 
+    // A playhead set inside the controlGroup block arrives before the control is registered, where
+    // it would find nothing to move; it waits here until the group is shown.
+    @Volatile private var shown = false
+    @Volatile private var pending: Double? = null
+
+    internal fun markShown() {
+        shown = true
+        val position = pending ?: return
+        pending = null
+        val updated = updateControllerControlValueInMemory(controlId) { it.copy(value = position) }
+        playheadHandle.targetDocument?.let { broadcastControllerControlUpdates(updated, it) }
+    }
+
     /** Shows [value] on the control without calling its callback. See [ControlValueHandle.set]. */
     fun set(value: T): Boolean = valueHandle.set(value)
 
@@ -47,7 +60,13 @@ class ArrayControlHandle<T> internal constructor(
      * fractional part is ignored), a value on the track for a range slider. A negative position on
      * a multislider or matrix hides it. Returns false when the update was rate-limited away.
      */
-    fun playhead(position: Double): Boolean = playheadHandle.set(position)
+    fun playhead(position: Double): Boolean {
+        if (!shown) {
+            pending = position
+            return true
+        }
+        return playheadHandle.set(position)
+    }
 
     /** [playhead] for an integer index. */
     fun playhead(index: Int): Boolean = playhead(index.toDouble())
@@ -57,7 +76,7 @@ class ArrayControlHandle<T> internal constructor(
 }
 
 private fun <T> ControlGroupBuilder.withPlayhead(handle: ControlValueHandle<T>) =
-    ArrayControlHandle(handle, playheadHandle(handle.controlId))
+    ArrayControlHandle(handle, playheadHandle(handle.controlId)).also { afterShown(it::markShown) }
 
 private val arrayCallbacks = OwnedCallbackRegistry<(List<Double>) -> Unit>("array")
 
