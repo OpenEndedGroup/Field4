@@ -189,6 +189,12 @@ function initMarkerSupport(globalEditor) {
                 rebuildMarkerDecorations(editor);
         });
 
+        // Selecting another box swaps the editor's model (setModel), which fires no content
+        // change, and the collection drops its decorations with the old model: rescan the new one.
+        editor.onDidChangeModel(() => {
+                rebuildMarkerDecorations(editor);
+        });
+
         // Docs capture can clear and relaunch a box without changing its Monaco model. Expose an
         // explicit rescan so that presentation does not depend on whether setValue happened to
         // emit a content-change event during this particular run.
