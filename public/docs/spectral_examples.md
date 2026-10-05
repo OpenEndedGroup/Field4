@@ -44,7 +44,7 @@ showSignals(
 
 One `showSignals` call puts all three streams on one axis. Watch the chain order: `band` is applied to `s`, the output of `ema` and `oneEuro`, not to `signal`, so the band-pass sees a stream the two smoothers have already been through.
 
-![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, a smooth orange trace at about half that height and a few samples behind it, and a green band-pass trace swinging gently around zero at the same slow rate](assets/timeseries_examples/filter_chains.png)
+![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, a smooth orange trace at about half that height and some fifteen samples behind it, and a green band-pass trace swinging gently around zero at the same slow rate](assets/timeseries_examples/filter_chains.png)
 
 That order is why the band-pass trace is small and slow: the 4.7 Hz content it is tuned for was mostly taken out upstream, so what passes is the leakage of the 1.2 Hz swing through its skirt. The two filters with cutoffs in Hz are told the rate: `BandPassFilter` and `OneEuroFilter` take `sampleRate = 120f`, so those cutoffs mean what they say for stored data pushed through in a loop.
 
