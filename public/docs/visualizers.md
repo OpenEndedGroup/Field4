@@ -1037,6 +1037,51 @@ loop {
 }
 ```
 
+### Recording a gesture
+
+`gesture(...)` is an XY pad that remembers what you did with it. A plain drag works like `vec2Control(...)`, and the callback gets each position. **Shift-drag** records a take: the whole stroke and its timing, kept with the box like any other control value. On a phone, tap **rec**, then draw. The trail of the take stays on the pad.
+
+The box replays the take, and the box keeps the time. `at(seconds)` returns where the take is that far into its loop, interpolated between the recorded samples, and `playhead(seconds)` puts a ring on the pad there. Read both off the clock in a `loop`, as the sequencer does, and the replay never drifts and keeps going with the browser closed. `initialTake` gives the pad something to play before you have recorded anything; here it is a figure eight:
+
+<!--
+FIELD_TEST
+id: docs.visualizers.controls.gesture
+runner: backdoor-box
+tags: [docs, visualizers, controls, gesture, vec2]
+timeoutSec: 45
+waitSec: 0.5
+expect:
+  eventKinds:
+    - set-output
+  screenshot:
+    kind: box
+    padding: 16
+-->
+```diffstatic_runner {data-lang=kotlin video="assets/visualizers-gesture.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="4" fps="20" timeout="180" w="600" embed=true name="gesture" alt="an XY pad headed MOVE with the readout 2.0 s take and a rec button. A faint figure-eight trail fills the pad, and an orange ring travels round it, tracing the eight once every two seconds"}
+:::static
+var p = Vector2f(0f, 0f)
+lateinit var pad: GestureHandle
+
+// A figure eight to start from; shift-drag on the pad to record your own.
+val eight = 64 { i ->
+    val a = i / 63.0 * 2 * Math.PI
+    i / 63.0 * 2.0 to Vector2f((0.8 * Math.sin(a)).toFloat(), (0.6 * Math.sin(2 * a)).toFloat())
+}
+
+controlGroup("gesture") {
+    pad = gesture("move", initialTake = eight) { p = it }
+}
+
+val start = System.nanoTime()
+loop {
+    val t = (System.nanoTime() - start) / 1e9
+    pad.at(t)?.let { p = it }
+    pad.playhead(t)
+}
+```
+
+`p` follows your finger while you drag and the take otherwise. Use it for anything with two axes: a camera, a pan and a filter, a point in a preset space.
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
@@ -1048,6 +1093,8 @@ loop {
 - Use `matrix(...)` for patterns: on/off steps, or several states per cell with `states = n`.
 - Use `rangeSlider(...)` for an interval, such as a band, a window or a velocity range. Use `polar = true` when the value wraps around, like a phase or a hue.
 - Use `menu(...)` for choosing one of a few named options.
+- Use `gesture(...)` for a two-axis movement you want to perform once and loop.
+- For a curve over time you shape by hand, an envelope, use the keyframe editor, `keyframes(...)`: see [Keyframes and timelines](funFeatures.md#keyframes-and-timelines).
 
 The `vec2Control(...)` includes an XY pad, a vector line, and magnitude readout, so it works well for motion and layout values where two sliders would hide the relationship between axes.
 

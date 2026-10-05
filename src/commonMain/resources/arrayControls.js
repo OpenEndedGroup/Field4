@@ -130,6 +130,124 @@
         return turn(b - a);
     }
 
+    // Gesture pad ----------------------------------------------------------
+    // A square pad with x and y on the 10..190 viewBox square, +y up. data-x / data-y hold the live
+    // position, data-values the recorded take as flattened (t, x, y) triples, data-playhead the
+    // seconds into the take that the box last showed.
+
+    const GP_LO = 10;
+    const GP_HI = 190;
+
+    function gestureRange(container) {
+        return {
+            x0: num(container, 'xMin', -1), x1: num(container, 'xMax', 1),
+            y0: num(container, 'yMin', -1), y1: num(container, 'yMax', 1),
+        };
+    }
+
+    function gestureToSvg(container, x, y) {
+        const r = gestureRange(container);
+        return [
+            GP_LO + ((x - r.x0) / ((r.x1 - r.x0) || 1)) * (GP_HI - GP_LO),
+            GP_HI - ((y - r.y0) / ((r.y1 - r.y0) || 1)) * (GP_HI - GP_LO),
+        ];
+    }
+
+    function gesturePoint(container, event) {
+        const svg = container.querySelector('.gesture-visual');
+        const rect = svg.getBoundingClientRect();
+        const r = gestureRange(container);
+        const fx = Math.min(Math.max((((event.clientX - rect.left) / Math.max(rect.width, 1)) * 200 - GP_LO) / (GP_HI - GP_LO), 0), 1);
+        const fy = Math.min(Math.max((((event.clientY - rect.top) / Math.max(rect.height, 1)) * 200 - GP_LO) / (GP_HI - GP_LO), 0), 1);
+        return { x: r.x0 + fx * (r.x1 - r.x0), y: r.y0 + (1 - fy) * (r.y1 - r.y0) };
+    }
+
+    // The take's position `seconds` into its loop: the same interpolation as GestureHandle.at.
+    function gestureAt(take, seconds) {
+        if (take.length < 6) return null;
+        const length = take[take.length - 3];
+        const t = length > 0 ? ((seconds % length) + length) % length : 0;
+        let lo = 0;
+        let hi = take.length / 3 - 1;
+        while (hi - lo > 1) {
+            const mid = (lo + hi) >> 1;
+            if (take[mid * 3] <= t) lo = mid; else hi = mid;
+        }
+        const t0 = take[lo * 3];
+        const t1 = take[hi * 3];
+        const f = t1 > t0 ? Math.min(Math.max((t - t0) / (t1 - t0), 0), 1) : 0;
+        return [
+            take[lo * 3 + 1] + (take[hi * 3 + 1] - take[lo * 3 + 1]) * f,
+            take[lo * 3 + 2] + (take[hi * 3 + 2] - take[lo * 3 + 2]) * f,
+        ];
+    }
+
+    function polylinePoints(container, flat) {
+        const pts = [];
+        for (let i = 0; i + 2 < flat.length; i += 3) pts.push(gestureToSvg(container, flat[i + 1], flat[i + 2]).join(','));
+        return pts.join(' ');
+    }
+
+    function renderGesture(container, take = valuesOf(container), recording = null) {
+        const svg = container.querySelector('.gesture-visual');
+        if (!svg) return;
+        const pane = svgChild(svg, 'rect', 'gesture-pane');
+        pane.setAttribute('x', GP_LO); pane.setAttribute('y', GP_LO);
+        pane.setAttribute('width', GP_HI - GP_LO); pane.setAttribute('height', GP_HI - GP_LO);
+        const h = svgChild(svg, 'line', 'gesture-axis gesture-axis-h');
+        h.setAttribute('x1', GP_LO); h.setAttribute('x2', GP_HI); h.setAttribute('y1', C); h.setAttribute('y2', C);
+        const v = svgChild(svg, 'line', 'gesture-axis gesture-axis-v');
+        v.setAttribute('y1', GP_LO); v.setAttribute('y2', GP_HI); v.setAttribute('x1', C); v.setAttribute('x2', C);
+        svgChild(svg, 'polyline', 'gesture-trail').setAttribute('points', polylinePoints(container, take));
+        svgChild(svg, 'polyline', 'gesture-recording').setAttribute('points', recording ? polylinePoints(container, recording) : '');
+        const [lx, ly] = gestureToSvg(container, num(container, 'x', 0), num(container, 'y', 0));
+        const live = svgChild(svg, 'circle', 'gesture-live');
+        live.setAttribute('cx', lx); live.setAttribute('cy', ly); live.setAttribute('r', 5);
+        // The rec button arms recording for the next stroke: Shift does the same on a keyboard.
+        let rec = container.querySelector('.gesture-rec');
+        if (!rec) {
+            rec = document.createElement('button');
+            rec.type = 'button';
+            rec.className = 'gesture-rec';
+            rec.textContent = 'rec';
+            rec.addEventListener('click', () => {
+                container.dataset.armed = container.dataset.armed === 'true' ? 'false' : 'true';
+                renderGesture(container);
+            });
+            container.querySelector('.field-header')?.appendChild(rec) ?? container.appendChild(rec);
+        }
+        rec.classList.toggle('armed', container.dataset.armed === 'true' || !!recording);
+        const readout = container.querySelector('.array-readout');
+        if (readout) {
+            readout.textContent = recording ? 'recording'
+                : take.length >= 6 ? `${take[take.length - 3].toFixed(1)} s take`
+                : 'shift-drag to record';
+        }
+    }
+
+    // A live drag goes out as vec2-update, throttled like everything else here.
+    const pendingVec2 = new Map();
+    function sendVec2(container, x, y) {
+        container.dataset.x = String(x);
+        container.dataset.y = String(y);
+        const id = container.dataset.controlId;
+        const entry = pendingVec2.get(id);
+        if (entry) { entry.x = x; entry.y = y; return; }
+        pendingVec2.set(id, { x, y });
+        setTimeout(() => {
+            const e = pendingVec2.get(id);
+            pendingVec2.delete(id);
+            if (!e) return;
+            if (container.dataset.send === 'false') {
+                container.dispatchEvent(new CustomEvent('field-vec2-input', {
+                    bubbles: true, detail: { controlId: id, x: e.x, y: e.y },
+                }));
+            } else {
+                sendViaAfield('vec2-update', { controlId: id, x: e.x, y: e.y });
+            }
+        }, SEND_INTERVAL_MS);
+    }
+
     // Multislider ----------------------------------------------------------
 
     function renderMultislider(container, values, focus = -1) {
@@ -331,6 +449,18 @@
     function renderPlayhead(container) {
         const p = parseFloat(container.dataset.playhead);
         const kind = container.dataset.kind;
+        if (kind === 'gesture') {
+            const svg = container.querySelector('.gesture-visual');
+            if (!svg) return;
+            const dot = svgChild(svg, 'circle', 'gesture-play');
+            const at = Number.isFinite(p) && p >= 0 ? gestureAt(valuesOf(container), p) : null;
+            dot.style.display = at ? '' : 'none';
+            if (at) {
+                const [x, y] = gestureToSvg(container, at[0], at[1]);
+                dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 6);
+            }
+            return;
+        }
         if (kind === 'multislider') {
             const svg = container.querySelector('.multislider-visual');
             if (!svg) return;
@@ -394,6 +524,7 @@
         if (kind === 'multislider') renderMultislider(container, values);
         else if (kind === 'matrix') renderMatrix(container, values);
         else if (kind === 'range') renderRange(container, values);
+        else if (kind === 'gesture') renderGesture(container, values);
         if (kind !== 'menu') renderPlayhead(container);
         if (kind === 'menu') {
             const select = container.querySelector('select');
@@ -406,6 +537,13 @@
     function begin(container, event) {
         const kind = container.dataset.kind;
         const values = valuesOf(container);
+        if (kind === 'gesture') {
+            const p = gesturePoint(container, event);
+            const recording = event.shiftKey || container.dataset.armed === 'true';
+            active = { container, kind, values, recording, samples: [], t0: performance.now() };
+            gestureMove(p);
+            return true;
+        }
         if (kind === 'multislider') {
             const p = multisliderPoint(container, event);
             values[p.index] = p.value;
@@ -454,10 +592,22 @@
         send(active.container, values.slice());
     }
 
+    function gestureMove(p) {
+        const { container } = active;
+        if (active.recording) active.samples.push((performance.now() - active.t0) / 1000, p.x, p.y);
+        sendVec2(container, p.x, p.y);
+        renderGesture(container, active.values, active.recording ? active.samples : null);
+        renderPlayhead(container);
+    }
+
     function move(event) {
         if (!active) return;
         event.preventDefault();
         const { container, kind, values } = active;
+        if (kind === 'gesture') {
+            gestureMove(gesturePoint(container, event));
+            return;
+        }
         if (kind === 'multislider') {
             // Fill every bar between the last point and this one, so a fast sweep leaves no gaps.
             const p = multisliderPoint(container, event);
@@ -522,6 +672,16 @@
     function end() {
         if (!active) return;
         const { container, kind } = active;
+        if (kind === 'gesture' && active.recording) {
+            container.dataset.armed = 'false';
+            // A take needs at least two samples, or there is nothing to loop.
+            if (active.samples.length >= 6) send(container, active.samples.slice());
+            active = null;
+            window.removeEventListener('pointermove', move);
+            renderGesture(container);
+            renderPlayhead(container);
+            return;
+        }
         if (kind === 'multislider') renderMultislider(container, active.values);
         active = null;
         window.removeEventListener('pointermove', move);
@@ -553,7 +713,7 @@
     }
 
     // Changes made on another surface, or by a ControlValueHandle.
-    const kinds = new Set(['multislider', 'matrix', 'range', 'menu']);
+    const kinds = new Set(['multislider', 'matrix', 'range', 'menu', 'gesture']);
     const previousApply = window.applyFieldControlUpdate;
     window.applyFieldControlUpdate = function (control) {
         if (control && kinds.has(String(control.type))) {
@@ -566,6 +726,11 @@
             }
             // A value from elsewhere must not fight the gesture this browser is making.
             if (active?.container === container) return;
+            if (control.type === 'gesture' && control.x != null && control.y != null) {
+                container.dataset.x = String(control.x);
+                container.dataset.y = String(control.y);
+                renderGesture(container);
+            }
             if (control.text != null && control.text !== container.dataset.values) {
                 container.dataset.values = String(control.text);
                 render(container);
