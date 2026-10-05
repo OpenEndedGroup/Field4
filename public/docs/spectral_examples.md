@@ -15,7 +15,7 @@ val smooth = mutableListOf<Float>()
 val filtered = mutableListOf<Float>()
 
 val ema = EMAFilter(alpha = 0.08f)
-val oneEuro = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f)
+val oneEuro = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f, sampleRate = 120f)
 val band = BandPassFilter(frequency = 5f, sampleRate = 120f, q = 0.8f)
 
 for (i in 0 until 420) {
@@ -44,12 +44,9 @@ showSignals(
 
 One `showSignals` call puts all three streams on one axis. Watch the chain order: `band` is applied to `s`, the output of `ema` and `oneEuro`, not to `signal`, so the band-pass sees a stream the two smoothers have already been through.
 
-![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, an orange smoothed trace attenuated to roughly a fifth of it and lagging behind, and a green band-pass trace that stays almost flat at zero](assets/timeseries_examples/filter_chains.png)
+![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, a smooth orange trace at about half that height and a few samples behind it, and a green band-pass trace swinging gently around zero at the same slow rate](assets/timeseries_examples/filter_chains.png)
 
-That order is why the band-pass trace sits nearly flat: most of the 4.7 Hz content it is tuned for was taken out upstream.
-
-!!! warning "`OneEuroFilter` measures time with the wall clock"
-    It works out the time between samples from when it is called. Its cutoffs are in Hz and mean what they say when samples arrive live, at their real rate. In a `for` loop over stored data, as here, every sample seems to arrive a millisecond after the last, so it smooths far harder than `minCutoff = 1.0f` suggests. That is where the attenuation and lag in the orange trace come from.
+That order is why the band-pass trace is small and slow: the 4.7 Hz content it is tuned for was mostly taken out upstream, so what passes is the leakage of the 1.2 Hz swing through its skirt. The two filters with cutoffs in Hz are told the rate: `BandPassFilter` and `OneEuroFilter` take `sampleRate = 120f`, so those cutoffs mean what they say for stored data pushed through in a loop.
 
 ## Distribution-aware event flags
 
