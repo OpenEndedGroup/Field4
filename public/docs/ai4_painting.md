@@ -49,6 +49,27 @@ is identical to the hung dusk painting:
 
 ![six frames on black showing the storm painting: the dusk canvas as the rewind restored it; heavy dark clouds and teal water blocked in over it; cloud banks and rows of wave strokes; the boats repainted heeling, with white caps; foam and spray stippled over the crests; and the hung storm painting](assets/ai4_painting/storm.jpg)
 
+## Browsing the saved paintings
+
+The Studio's `branchState("canvas", ...)` registration also enables **States** in the
+AI chat. A completed request adds a node and its saved canvas snapshot. While the first
+painting is still being made, the tree is empty: the agent's intermediate looks are
+progress images, not saved conversation branches. The open tree updates when a turn finishes.
+
+Select an earlier node to inspect its conversation and snapshot identity. The cyan
+**current** circle stays at the active conversation position; browsing another node
+leaves the easel alone. **Reference in chat** inserts a compact reference so AI4 can
+retrieve that state's recorded contents when asked. **Keep for comparison**, followed
+by **Discuss differences** on another node, prepares references to both in your draft.
+The inspector shows saved text and ancestry; it does not reconstruct a canvas preview.
+
+For a named alternative, ask AI4 to fork a saved state under a name such as
+*Harbour at dusk*. `StateForkRequest` creates the saved child without activating it.
+`StateReadRequest` can then retrieve it by that exact name. Continue the alternative
+with the existing `/branches` and `/branch <number>` commands, which restore the
+Studio's canvas as well as its conversation. [Browsing saved states](aiFeatures.md#browsing-saved-states)
+describes the tools and how other documents expose their own histories.
+
 ## The same request, another model
 
 The Studio works with whichever model the AI chat is set to use. The painting on the left is the dusk

@@ -33,6 +33,29 @@ class StateTreeBrowserTest {
         assertEquals(history, AiBoxConversation.read(box))
     }
 
+    @Test fun branchStateIsDiscoverableBeforeFirstTurnAndSavedSnapshotsRemainDiscoverable() {
+        val box = Box("studio-state-browser")
+        val hook = AgentExtensionRegistry.BranchStateHook(box, "studio", "canvas",
+            { error("Browsing must not save") }, { error("Browsing must not restore") })
+        AgentExtensionRegistry.register(box, hook)
+        try {
+            val fresh = StateTreeBrowser.read(listOf(box, Box("unrelated-helper"), Box("root")), StateTreeRequest(box.id))
+            assertTrue(fresh.sources.single().hasState, "A fresh Studio must show States before its first turn")
+        } finally {
+            LifecycleLedger.entries().filter { it.ownerId == box.id }.forEach { it.close() }
+        }
+        val plain = Box("plain-state-browser")
+        say(plain, "Hello")
+        assertFalse(StateTreeBrowser.read(listOf(plain), StateTreeRequest(plain.id)).sources.single().hasState)
+        val before = AiBoxConversation.read(box)
+        val after = "$before\n<<you>>\nPaint dusk\n<<ai>>\nPainted."
+        AiBoxConversation.write(box, after)
+        AiSessionTree.recordTurn(box, before, after, AiSessionTree.TurnMeta(kind = "general", property = "code",
+            branchAfter = mapOf("branch:${box.id}:studio:canvas" to "saved-canvas")))
+        assertTrue(StateTreeBrowser.read(listOf(box), StateTreeRequest(box.id)).sources.single().hasState,
+            "Saved canvas history stays discoverable when its extension is not running")
+    }
+
     @Test fun providerFailureAndMissingIdsFailExplicitlyAndTextIsBounded() {
         val box = Box("provider")
         box.stateTree("test", "Test", { StateTreeSnapshot(listOf(StateTreeNode("a", title = "Saved"))) }, { "x".repeat(300000) })

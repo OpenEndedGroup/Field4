@@ -26,8 +26,6 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     const body = el('div', 'state-tree-body');
     const graph = el('div', 'state-tree-graph'); graph.setAttribute('aria-label', 'Saved states');
     const inspector = el('div', 'state-tree-inspector');
-    const title = el('h3');
-    const identity = el('p', 'state-tree-identity');
     const detail = el('pre', 'state-tree-detail');
     const actions = el('div', 'state-tree-actions');
     const reference = button('Reference in chat', () => putInChat(false));
@@ -36,7 +34,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     const unpin = button('Clear comparison', () => { pinned = null; updateActions(); });
     const pinnedLabel = el('p', 'state-tree-pinned');
     actions.append(reference, pin, compare, unpin);
-    inspector.append(title, identity, actions, pinnedLabel, detail);
+    inspector.append(actions, pinnedLabel, detail);
     const paging = el('div', 'state-tree-paging');
     const newer = button('← Newer', () => loadTree(Math.max(0, offset - 400)));
     const older = button('Older →', () => loadTree(offset + 400));
@@ -46,6 +44,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     host.append(bar, panel);
     let generation = 0, selectionGeneration = 0, owner = '', offset = 0;
     let selected = null, pinned = null;
+    let refreshTimer = null, treeSignature = '';
     let availabilityGeneration = 0, availabilityRequest = null, checkedAt = 0, hadProvider = false;
     async function refreshAvailability(force = false) {
         if (!force && (availabilityRequest || Date.now() - checkedAt < 2000)) return availabilityRequest;
@@ -56,7 +55,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
                 const data = await request({uid});
                 if (ticket !== availabilityGeneration || uid !== chatUid()) return;
                 // Ordinary AI4 conversations have history even when the document does not use state.
-                const available = !data.error && (data.sources || []).some(s => !s.id.endsWith('/conversation'));
+                const available = !data.error && (data.sources || []).some(s => s.hasState || !s.id.endsWith('/conversation'));
                 const lostProvider = hadProvider && !available;
                 hadProvider = available;
                 bar.hidden = !available;
@@ -78,12 +77,12 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
     }
     function resetSelection() {
         selected = null; selectionGeneration++;
-        title.textContent = ''; identity.textContent = '';
         detail.textContent = '';
         updateActions();
     }
     function close() {
         generation++; selectionGeneration++;
+        clearTimeout(refreshTimer);
         panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus();
     }
     function valid(ticket) { return ticket === generation && owner === chatUid() && !panel.hidden; }
@@ -91,6 +90,7 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
         const previous = sources.value;
         if (owner !== chatUid()) pinned = null;
         owner = chatUid(); panel.hidden = false; toggle.setAttribute('aria-expanded', 'true');
+        scheduleRefresh();
         resetSelection(); graph.replaceChildren(); sources.replaceChildren();
         status.textContent = 'Reading saved histories…';
         sources.disabled = true; newer.disabled = older.disabled = true;
@@ -129,15 +129,44 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
             const data = await request({uid: owner, source: sources.value, offset});
             if (!valid(ticket)) return;
             if (data.error) throw new Error(data.error);
-            const nodes = data.tree?.nodes || [];
-            const total = data.total ?? nodes.length;
-            status.textContent = `${total} saved state${total === 1 ? '' : 's'}. ${data.tree?.note || ''}`;
-            if (total > nodes.length) status.textContent += ` Showing ${total - offset - nodes.length + 1}–${total - offset}. Parents outside this page are marked.`;
-            newer.disabled = offset === 0; older.disabled = offset + nodes.length >= total;
-            draw(nodes, data.tree?.current);
-            if (!nodes.length) graph.append(el('p', '', 'No saved states in this history.'));
+            renderTree(data);
             return true;
         } catch (e) { if (valid(ticket)) status.textContent = e.message; return false; }
+    }
+    function renderTree(data, preserveSelection = false) {
+        const nodes = data.tree?.nodes || [], total = data.total ?? nodes.length;
+        treeSignature = JSON.stringify([data.tree, total, offset]);
+        status.textContent = `${total} saved state${total === 1 ? '' : 's'}. ${data.tree?.note || ''}`;
+        if (total > nodes.length) status.textContent += ` Showing ${total - offset - nodes.length + 1}–${total - offset}. Parents outside this page are marked.`;
+        newer.disabled = offset === 0; older.disabled = offset + nodes.length >= total;
+        const scrollTop = graph.scrollTop;
+        const selectedId = selected?.id || graph.querySelector('[aria-pressed="true"]')?.dataset.stateId;
+        draw(nodes, data.tree?.current);
+        if (!nodes.length) graph.append(el('p', '', sources.value.endsWith('/conversation')
+            ? 'No saved states yet. A state appears when an AI4 turn finishes.'
+            : 'No saved states in this history.'));
+        if (preserveSelection && selectedId) {
+            const row = [...graph.querySelectorAll('.state-tree-node')].find(r => r.dataset.stateId === selectedId);
+            if (row) { row.setAttribute('aria-pressed', 'true'); graph.scrollTop = scrollTop; }
+            else resetSelection();
+        }
+    }
+    function scheduleRefresh() {
+        clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(async () => {
+            if (panel.hidden || !host.isConnected) return;
+            const ticket = generation, source = sources.value;
+            try {
+                if (source) {
+                    const data = await request({uid: owner, source, offset});
+                    if (valid(ticket) && source === sources.value && !data.error &&
+                        JSON.stringify([data.tree, data.total ?? data.tree?.nodes?.length ?? 0, offset]) !== treeSignature) {
+                        renderTree(data, true);
+                    }
+                }
+            } catch (_) { /* Keep the last readable tree during a transient disconnect. */ }
+            if (!panel.hidden && host.isConnected) scheduleRefresh();
+        }, 2000);
     }
     let pendingSelection = Promise.resolve(false);
     function draw(nodes, current) {
@@ -184,7 +213,6 @@ export function mountStateTreeBrowser(host, {request, chatUid, insertReference})
         const ticket = generation, pick = ++selectionGeneration, source = sources.value;
         selected = null; updateActions();
         graph.querySelectorAll('.state-tree-node').forEach(b => b.setAttribute('aria-pressed', String(b === row)));
-        title.textContent = n.title || n.id; identity.textContent = n.id;
         detail.textContent = 'Reading this saved state…';
         try {
             const data = await request({uid: owner, source, node: n.id});

@@ -12,7 +12,7 @@ data class StateTreeNode(val id: String, val parents: List<String> = emptyList()
 data class StateTreeSnapshot(val nodes: List<StateTreeNode>, val current: String? = null, val note: String = "")
 
 @Serializable
-data class StateTreeSource(val id: String, val label: String)
+data class StateTreeSource(val id: String, val label: String, val hasState: Boolean = false)
 
 @Serializable
 data class StateTreeRequest(val uid: String, val source: String = "", val node: String = "", val offset: Int = 0)

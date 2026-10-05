@@ -822,7 +822,8 @@ pre code {
 }
 
 .ai-chat-messages {
-    flex: 1 1 auto;
+    /* The transcript scrolls in its share; its content length must not squeeze sibling panels. */
+    flex: 1 1 0;
     min-height: 0;
     overflow-y: auto;
     margin-left: 5px;
@@ -5447,7 +5448,8 @@ body.mode-editor-only .field-toast {
 .state-tree-toolbar, .state-tree-browser { font:13px/1.4 Iosevka, monospace; color:#d8d8d8; background:#000; }
 .state-tree-toolbar { display:flex; align-items:center; gap:12px; padding:6px 10px; flex:0 0 auto; }
 .state-tree-caption { color:#8a8a8a; font-size:12px; }
-.state-tree-browser { flex:0 1 430px; min-height:180px; overflow:auto; padding:10px; }
+.state-tree-browser { display:flex; flex-direction:column; flex:0 1 430px; min-height:180px; max-height:55%; overflow:hidden; padding:10px; box-sizing:border-box; }
+.state-tree-controls, .state-tree-status { flex:0 0 auto; }
 .state-tree-toolbar[hidden], .state-tree-browser[hidden] { display:none; }
 .state-tree-controls, .state-tree-actions, .state-tree-paging { display:flex; gap:6px; flex-wrap:wrap; }
 .state-tree-toolbar button, .state-tree-browser button, .state-tree-browser select { font:inherit; color:#d8d8d8; background:#242424; border:0; border-radius:8px; padding:7px 10px; cursor:pointer; text-transform:none; letter-spacing:normal; box-shadow:none; }
@@ -5457,16 +5459,17 @@ body.mode-editor-only .field-toast {
 .state-tree-toolbar button:hover, .state-tree-browser button:not(:disabled):hover { color:rgb(var(--field-accent-rgb)); background-color:#303030; }
 .state-tree-toolbar button[aria-expanded="true"] { color:rgb(var(--field-accent-rgb)); }
 .state-tree-status { color:#8a8a8a; margin:8px 0; font-size:12px; white-space:pre-wrap; }
-.state-tree-body { position:relative; display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:#242424; border-radius:10px; }
+.state-tree-body { position:relative; display:flex; flex:1 1 auto; min-height:80px; gap:12px; height:275px; padding:8px 8px 44px; box-sizing:border-box; background:#242424; border-radius:10px; }
 .state-tree-graph, .state-tree-inspector { min-width:0; overflow:auto; background:transparent; border:0; }
-.state-tree-inspector { padding:8px; display:flex; flex-direction:column; overflow:hidden; }
+.state-tree-graph { flex:1 1 0; }
+.state-tree-inspector { flex:0 1 42%; max-width:280px; padding:4px; display:flex; flex-direction:column; align-items:flex-end; overflow:hidden; margin-left:auto; text-align:right; }
 .state-tree-inspector > :not(.state-tree-detail) { flex:0 0 auto; }
-.state-tree-inspector h3 { font:inherit; font-weight:bold; margin:0 0 5px; overflow-wrap:anywhere; }
-.state-tree-inspector h3:empty, .state-tree-identity:empty, .state-tree-detail:empty { display:none; }
-.state-tree-identity, .state-tree-pinned { color:#8a8a8a; font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
+.state-tree-detail:empty { display:none; }
+.state-tree-pinned { color:#8a8a8a; font-size:11px; overflow-wrap:anywhere; margin:0 0 8px; }
 .state-tree-pinned { margin-top:8px; }
-.state-tree-actions button { background:#181818; }
-.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:inherit; color:#ccc; user-select:text; margin:10px 0 0; }
+.state-tree-actions { justify-content:flex-end; gap:4px; }
+.state-tree-actions button { background:#181818; font-size:11px; padding:4px 7px; border-radius:6px; }
+.state-tree-detail { flex:1 1 auto; min-height:0; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font:11px/1.4 Iosevka, monospace; color:#aaa; user-select:text; margin:10px 0 0; width:100%; }
 .state-tree-rows { position:relative; }
 .state-tree-rows svg { z-index:1; position:absolute; top:0; left:0; pointer-events:none; }
 .state-tree-rows path { stroke:#666; stroke-width:1; fill:none; }

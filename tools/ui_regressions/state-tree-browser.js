@@ -69,7 +69,14 @@ const conversation = histories.histories.find(h => h.id.endsWith('/conversation'
 check(conversation?.canFork, 'Conversation does not advertise named forks');
 const listing = await call('StateListRequest', {history:conversation.id});
 const head = listing.current;
+const selectedBeforeFork = root.querySelector('.state-tree-node[aria-pressed="true"]')?.dataset.stateId;
+const draftBeforeFork = root.querySelector('textarea').value;
 const result = await call('StateForkRequest', {history:conversation.id, state:head, name:'Courtyard alternative'});
+for (let i=0; i<100 && ![...root.querySelectorAll('.state-tree-node')].some(n=>n.dataset.stateId===result.state); i++)
+    await new Promise(r=>setTimeout(r,50));
+check([...root.querySelectorAll('.state-tree-node')].some(n=>n.dataset.stateId===result.state), 'New state did not appear automatically');
+check(root.querySelector('.state-tree-node[aria-pressed="true"]')?.dataset.stateId===selectedBeforeFork, 'Auto-refresh changed the selection');
+check(root.querySelector('textarea').value===draftBeforeFork, 'Auto-refresh changed the draft');
 check(result.state && result.state !== head, 'Fork lacks independent node identity');
 const read = await call('StateReadRequest', {history:conversation.id, state:'Courtyard alternative', maxChars:12000});
 check(read.state === result.state && read.contents.includes('compact layout'), 'Read by branch name returned wrong transcript');
@@ -88,4 +95,24 @@ check(!reference.includes('Saved conversation transcript') && reference.length<1
 return {ok:true, tools:['list','read','fork','show'], branch:result.state, activeHeadUnchanged:true, referenceChars:reference.length};
 
 })();
-return {ok:true, branches:4, designStates:2, draftPreserved:true, noNavigation:true, toolCheck};
+const originalTranscript = content.__aiChatHistory;
+const dimensions = [[540, 500], [760, 650], [1080, 900]];
+for (const [width, height] of dimensions) {
+    content.style.width = `${width}px`; content.style.height = `${height}px`;
+    window.aiChatUpdate(content, root.dataset.uid, '<<you>>\nA short request\n<<ai>>\nA short reply.');
+    await delay(80);
+    const browser = root.querySelector('.state-tree-browser');
+    const before = browser.getBoundingClientRect().height;
+    window.aiChatUpdate(content, root.dataset.uid, '<<you>>\nA long conversation\n<<ai>>\n' + ('A much longer reply.\n\n'.repeat(1000)));
+    await delay(80);
+    const rect = browser.getBoundingClientRect(), body = root.querySelector('.state-tree-body').getBoundingClientRect();
+    const pager = root.querySelector('.state-tree-paging').getBoundingClientRect();
+    const messages = root.querySelector('.ai-chat-messages').getBoundingClientRect();
+    const input = root.querySelector('.ai-chat-input').getBoundingClientRect();
+    check(Math.abs(rect.height-before)<2, `Long transcript squeezed the browser at ${width}x${height}`);
+    check(body.bottom<=rect.bottom+1 && pager.bottom<=rect.bottom+1, 'State area or paging clipped');
+    check(messages.height>60 && messages.top>=rect.bottom-1, 'Conversation overlaps the state browser');
+    check(input.bottom<=root.getBoundingClientRect().bottom+1, 'Composer clipped');
+}
+window.aiChatUpdate(content, root.dataset.uid, originalTranscript);
+return {ok:true, branches:4, designStates:2, draftPreserved:true, noNavigation:true, autoRefresh:true, longChatSizes:dimensions, toolCheck};

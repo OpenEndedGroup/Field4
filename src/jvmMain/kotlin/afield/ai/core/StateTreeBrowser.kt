@@ -70,9 +70,17 @@ object StateTreeBrowser {
         }
     }, { id, name -> AiSessionTree.fork(box, id, name) })
 
+    private fun hasBranchState(box: Box): Boolean =
+        AgentExtensionRegistry.hooksFor(documentKeyFor(box)).any { it is AgentExtensionRegistry.BranchStateHook } ||
+            AiSessionTree.load(box).nodes().values.any { node ->
+                (node["branch"] as? JsonObject)?.values?.any { (it as? JsonObject)?.isNotEmpty() == true } == true
+            }
+
     internal fun bindings(boxes: Collection<Box>): Map<String, StateTreeBinding> = boxes.distinct().flatMap { box ->
         val providers = box.properties.values.filterIsInstance<StateTreeBinding>().filter { it.owner === box }
-        if ((box.getPropertyRaw(AiSessionTree.PROPERTY) as? String).isNullOrBlank()) providers else listOf(conversation(box)) + providers
+        if ((box.getPropertyRaw(AiSessionTree.PROPERTY) as? String).isNullOrBlank() &&
+            AgentExtensionRegistry.hooksFor(documentKeyFor(box)).none { it is AgentExtensionRegistry.BranchStateHook && it.box === box }) providers
+        else listOf(conversation(box)) + providers
     }.associateBy { "${it.owner.id}/${it.name}" }
 
     internal fun label(b: StateTreeBinding) = "${b.owner.getPropertyRaw("name") ?: b.owner.id} · ${b.label}".take(200)
@@ -80,7 +88,7 @@ object StateTreeBrowser {
     fun read(boxes: Collection<Box>, request: StateTreeRequest): StateTreeReply = runCatching {
         require(boxes.any { it.id == request.uid }) { "Chat box no longer exists." }
         val indexed = bindings(boxes)
-        val sources = indexed.map { (id, b) -> StateTreeSource(id, label(b)) }
+        val sources = indexed.map { (id, b) -> StateTreeSource(id, label(b), b.name != "conversation" || hasBranchState(b.owner)) }
         if (request.source.isEmpty()) return@runCatching StateTreeReply(sources = sources)
         val binding = requireNotNull(indexed[request.source]) { "History provider is unavailable. Run its box, then refresh." }
         val snapshot = binding.read()

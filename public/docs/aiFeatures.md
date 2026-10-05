@@ -42,15 +42,17 @@ message is sent as your next message; several queued messages go together.
 
 ### Browsing saved states
 
-When a document registers a `stateTree` provider, **States** appears at the top of
-AI4 chat to browse its histories and saved conversation branches. Ordinary chat
-history alone does not show this control. Select a node to inspect it. The current
-position is marked **CURRENT**; selecting another node only browses it.
+When a document registers a `stateTree` provider or an extension uses `branchState`,
+**States** appears at the top of AI4 chat to browse its histories and saved conversation
+branches. Saved extension snapshots also keep the browser available after reopening.
+Ordinary chat history alone does not show this control. Select a node to inspect it.
+The current position has a cyan circle and a **current** label; selecting another node only browses it.
 
 **Reference in chat** adds a compact title and exact identity to your draft. AI4
 retrieves the saved contents with `StateReadRequest` only when needed. To discuss two states, choose **Keep for comparison**, select another,
 and choose **Discuss differences**. Your existing draft is preserved and nothing is
-sent automatically. Refresh reads the saved histories again. Long histories have
+sent automatically. The open tree updates as saved states appear, preserving your selection
+and draft. Refresh also reads the saved histories again. Long histories have
 Older/Newer pages; an edge whose parent is outside the page is labelled.
 
 Conversation nodes show their recorded extension snapshot identities. They do not
