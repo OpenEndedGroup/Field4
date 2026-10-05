@@ -18,8 +18,7 @@ description: >
        work rather than seconds: it runs into the tens of thousands within a few seconds, and it is
        a different number on every machine and every run.
     4. "cleanup, and what actually triggers it" — not launched, because the point is that you drive
-       it. It is the box that corrected the page twice. What a cancellation reaches `.end { }`
-       and a completion does not:
+       it. It has both an `.end { }` and a `finally`, and prints a line from each:
 
          * press stop inside the eight-second window  -> BOTH lines, `.end { }` first, on the
            frame after the button;
@@ -27,23 +26,19 @@ description: >
          * **re-run** it while it is still running    -> BOTH lines again.
 
        The middle one is the contrast worth seeing: a cancellation is the only route into
-       `atEnd`, so `.end { }` means "cancelled", not "finished". The first one printed only the
-       `finally` line until 2026-08-28 — `stopTrackedJobs` bumps the box's launch epoch before the
-       end phase registers, and `registerLaunchJob` cancelled the end job on a stale epoch.
-       `Box.registerEndPhaseJob` re-captures the epoch, because it is stop's own cancellation that
-       creates that job. (`afield.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
+       `atEnd`, so `.end { }` means "cancelled", not "finished". `finally` runs either way.
+       (`afield.FramesSemanticsTest.boxStopStillRunsTheEndBlock`,
        `theRealLaunchPathRunsAMultiFrameEndBlockOnStop` and `reRunningTheBoxStillRunsTheEndBlock`
-       pin all three rows; `dev_docs/frames_stop_end_phase.md` has the history.)
+       pin all three rows.)
 
   Two things every box here does that are worth copying:
 
-    * **It redraws on a clock, not on every frame.** Measured on the machine this was written on,
-      the Runloop reaches several thousand frames a second with these boxes running. Drawing once
-      per frame floods the output socket and buys nothing a person can see, so each body gates its
-      redraw to 30/s (10/s for the text ones) and lets `frameNumber` count freely underneath.
-      Box 1 also caps how much geometry each redraw carries, for the same reason: an over-long
-      trail is bandwidth, and an ungated one saturated the output socket at ~33 MB/s while this
-      was being written.
+    * **It redraws on a clock, not on every frame.** The Runloop can reach several thousand frames
+      a second with these boxes running. Drawing once per frame floods the output socket and buys
+      nothing a person can see, so each body gates its redraw to 30/s (10/s for the text ones) and
+      lets `frameNumber` count freely underneath. Box 1 also caps how much geometry each redraw
+      carries, for the same reason: an over-long trail is bandwidth, and an ungated one can
+      saturate the output socket.
     * **It draws through a lambda, not a named `fun`.** `lines(...)` and `display(...)` are `Box`
       extensions, and K2 cannot currently codegen a named function that captures a script's
       implicit `Box` receiver. Named helpers that only build an `FLine` are fine.
@@ -361,7 +356,7 @@ operations:
               }
           }
               .end {
-                  note(".end { } - only on a re-run or a self-end, and it runs first")
+                  note(".end { } - on a cancellation (stop, re-run or end()), and it runs first")
               }
   - launch:
       box: frames_lifecycle_forever
