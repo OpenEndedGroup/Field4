@@ -106,7 +106,8 @@ def kotlin_blocks(path: str, lines: list[str]) -> list[tuple[int, int]]:
         start = None
         for i, line in enumerate(lines):
             stripped = line.strip()
-            if start is None and re.match(r"^`{3,}\s*\{?\s*\.?kotlin\b", stripped):
+            # ```kotlin, ```{.kotlin}, and the docs runner's ```diffstatic {data-lang=kotlin ...}.
+            if start is None and re.match(r"^`{3,}\s*(?:\{?\s*\.?kotlin\b|\S*\s*\{[^}]*\bdata-lang=kotlin\b)", stripped):
                 start = i + 1
             elif start is not None and re.match(r"^`{3,}\s*$", stripped):
                 blocks.append((start, i))

@@ -122,13 +122,15 @@ class RuleTests(unittest.TestCase):
             f.close()
 
     def test_markdown_only_kotlin_fences_count(self):
-        page = "```kotlin\nval renderer = fromContext<Renderer>()\n```\n\n```text\nval renderer: Renderer = fromContext()\n```\n"
+        page = ("```kotlin\nval renderer = fromContext<Renderer>()\n```\n\n```text\nval renderer: Renderer = fromContext()\n```\n"
+                "```diffstatic_runner {data-lang=kotlin name=\"x\"}\nval renderer: Renderer = fromContext()\n```\n"
+                "```diffstatic {data-lang=glsl}\nval renderer: Renderer = fromContext()\n```\n")
         f = Fixture({"public/docs/page.md": page})
         try:
             findings = idioms.process("public/docs/page.md", f.root, fix=False)
         finally:
             f.close()
-        self.assertEqual([x.line for x in findings], [2])
+        self.assertEqual([x.line for x in findings], [2, 9])
 
 
 class ScopeTests(unittest.TestCase):
