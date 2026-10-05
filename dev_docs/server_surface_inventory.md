@@ -299,6 +299,7 @@ the file, and the reach is described per file below in prose that a human checke
 | `DocsSearchInstaller.kt` | 1 |
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
+| `visualizers.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
@@ -322,6 +323,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `DocsSearchInstaller.kt` | documentation search |
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
+| `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
 
 `executing.kt` is the row that decides how seriously to read the rest. A command that reaches
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
@@ -370,6 +372,7 @@ in-route same-site check stops a web page.
 | `ai-state-tree` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
+| `array-update` | `visualizers.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
 | `chat_history` | `Ai4Installer.kt` |
