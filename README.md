@@ -72,9 +72,10 @@ backend and the Electron window together.
 
 The **first run compiles the whole project and downloads large native
 dependencies** (LWJGL graphics/audio, Lucene, ONNX Runtime, and others), so
-expect it to take several minutes and a good chunk of bandwidth. Subsequent
-launches reuse the dependency cache and incremental compiler output. If the build fails, the
-script stops and prints the Gradle errors instead of launching a stale build —
+allow time and bandwidth for the initial build. Fresh Windows and Apple-silicon
+macOS CI launches took about 20–25 minutes; your machine and connection will affect
+that time. Subsequent launches reuse the dependency cache and incremental compiler output.
+If the build fails, the script stops and prints the Gradle errors instead of launching a stale build —
 fix them and re-run.
 
 The backend runs in the terminal you launched from, with a live status console

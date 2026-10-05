@@ -1346,7 +1346,7 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
         include(
             "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
-            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack*.dll",
         )
         eachFile { path = name }
         includeEmptyDirs = false
@@ -1356,7 +1356,9 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
         val directory = smileNativeDirectory.get().asFile.toPath()
         fun alias(prefix: String, target: String) {
             val source = Files.list(directory).use { files ->
-                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow {
+                    GradleException("Missing $prefix native library in $directory for $bytedecoPlatformClassifier")
+                }
             }
             val destination = directory.resolve(target)
             if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
