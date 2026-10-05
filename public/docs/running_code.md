@@ -160,6 +160,23 @@ Running the whole box skips the block. Put the cursor inside it and press option
 just that block. (Running a selection that includes it runs it too.) The name is only a label for
 you; it changes nothing. It saves keeping that code commented out and uncommenting it each time.
 
+### `flipbox`: a block with a checkbox
+
+Between the two, a stack marker can carry a checkbox. Press Cmd+Shift+. to insert a marker (drawn
+as a single rune), then write `.flipbox(true) { … }` after it:
+
+```diffstatic {data-lang=kotlin}
+__m("Zk3q-a1").flipbox(true) {
+    buildTheExpensiveThing()
+}
+```
+
+The editor draws a checkbox after `flipbox(`. The block runs when the box runs with the box ticked,
+and each run unticks it. With `true` it starts ticked, so it runs on the first run like `once`, and
+later runs skip it. Click the checkbox to run the block again, without running the box, like
+option/alt-return on an `aside`. With `false` it runs only when you click. The tick is not saved
+with the document, so `true` applies again after Field restarts.
+
 ### What lasts how long
 
 What the block of a `once` or `cached` makes — a slider, a render module, an audio patch —
