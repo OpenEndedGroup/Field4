@@ -72,6 +72,7 @@ operations:
           prop<Renderer>(renderer)
           Options.enableHDR = false
           Options.profiling = false
+          // One window and renderer, published to every child as `renderer`.
           once.renderer {
               window = Window("Learned boids")
               Renderer(window)
@@ -106,11 +107,9 @@ operations:
                   (random.nextDouble() * 2 - 1).toFloat() * velocityScale,
               )
               /*
-              Up to 70, not 14. The flock actually runs at about 57 neighbours per boid once
-              cohesion has gathered it, and a model trained only on sparse neighbourhoods is
-              extrapolating in deployment -- which matters enormously here because cohesion is
-              weighted 200x the *mean* offset, so a small error in the meaned branch becomes a
-              large force. Train on the density you will run at.
+              Up to 70 neighbours: the gathered flock runs at about 57 per boid, so train on the
+              density you will run at. Cohesion weights the *mean* offset by 200, so a small error
+              in the meaned branch becomes a large force.
               */
               val neighbours = (0..random.nextInt(70)).map {
                   val r = radius * Math.sqrt(random.nextDouble()).toFloat()
@@ -142,6 +141,7 @@ operations:
                   dx += n[0]
                   dy += n[1]
               }
+              // Same weights as the written box: separation summed, alignment and cohesion meaned.
               val c = neighbours.size.toFloat()
               return InteractionExample(
                   v,
@@ -153,6 +153,7 @@ operations:
               )
           }
 
+          // Published to the children as `learnedRule`; rerun this box to retrain.
           learnedRule = trainEquivariant(
               radius = radius,
               velocityScale = velocityScale,
@@ -162,19 +163,14 @@ operations:
               /*
               The *equivariant* form: psi emits scalars that multiply the neighbour's own
               direction and velocity difference, so rotating the flock rotates the force
-              exactly and a symmetric neighbourhood gives identically zero. The plain form has
-              neither property — it scores 0.50 on a forty-eight-neighbour ring where the true
-              force is zero, a fixed-direction residual that grows with crowding — and that is
-              what used to drift this flock out of its containment while the written one, under
-              the same containment, stayed put. It also fits better: 0.262 against 0.302.
+              exactly and a symmetric neighbourhood gives identically zero. Without that, a
+              fixed-direction residual grows with crowding and drifts the flock out of its
+              containment.
 
-              8x8 with a 4-wide message rather than the library default of 16x16 and 6. Swept
-              against this exact rule: 160 multiply-adds a neighbour instead of 480, for a
-              relative error of 0.302 against 0.287 — three times cheaper for five percent
-              worse. The cost of this scene is *entirely* psi (the written flock runs at 116 fps
-              on the identical grid, the learned one at 17.6), so this is the only dial that
-              matters. Depth is what to keep: one hidden layer of 16 costs more than two of 8
-              and scores 0.350.
+              psi runs once per neighbour per boid, so it is nearly all of this scene's GPU cost.
+              8x8 with a 4-wide message (library default 16x16 and 6) is about three times
+              cheaper for a slightly worse fit. Keep two layers: one layer of 16 costs more and
+              fits worse.
               */
               options = DeepSetsOptions(
                   steps = 4000,
@@ -200,6 +196,7 @@ operations:
 
           prop<afield.four.physics.ShaderBoids>(written)
 
+          // Built once: GPU buffers, neighbour grid and draw pass. Everything below is live.
           once.written {
               val grid = GpuNeighbourGrid(
                   capacity = 12000,
@@ -221,13 +218,11 @@ operations:
           }
 
           /*
-          Live: the push buffer re-reads these every frame.
-          Balanced against the measured magnitudes at this density and radius, not against
-          the numbers a textbook quotes. With 57 neighbours inside a radius of 0.031,
-          separation *sums* 57 terms of about 137 while cohesion *means* an offset of about
-          0.003 -- so the textbook 0.02/1.2/0.8 puts separation 27x above alignment and 4600x
-          above cohesion, and the flock spaces itself evenly instead of gathering. These three
-          bring the terms to the same order.
+          The rule's weights. Live: the push buffer re-reads these every frame, so edit and
+          rerun. They are far from the textbook 0.02/1.2/0.8 because separation *sums* over
+          ~57 neighbours while alignment and cohesion take *means*; these bring the three
+          terms to the same order at this density and radius. The training box hard-codes the
+          same three numbers -- rerun it after changing them.
           */
           written.settings.separation = 0.02f
           written.settings.separationRadiusFraction = 0.25f
@@ -247,17 +242,12 @@ operations:
           written.settings.intensity = 1.5f
 
           /*
-          A wandering point the flock flees. Left alone at a settled density this scene reads as
-          static — near-cancelling forces, an evenly spaced disc that barely changes — so the
-          visible energy has to come from outside the rule. Whether "settled" is genuinely
-          *still* is not established and a still frame cannot tell: measured on a smaller CPU
-          flock at these weights the residual oscillates without trending, which is churn rather
-          than rest. The learned box drives its flock with the identical walk about its own
-          centre, so the A/B stays fair.
+          A wandering point the flock flees (negative driverStrength). Left alone the flock
+          settles into a near-static disc, so the motion comes from outside the rule. The
+          learned box runs the identical walk about its own centre, so the A/B stays fair.
 
-          The lambda is re-read every frame when the push buffer is written, which is the whole
-          animation. It holds no state and is derived from the frame counter, so calling it
-          twice in a frame cannot make it drift.
+          Called every frame. It is stateless: a seeded random target every 70 frames,
+          smoothstepped between, so calling it twice in a frame gives the same point.
           */
           written.driver = {
               val t = renderer.frameCounter / 70.0
@@ -333,6 +323,7 @@ operations:
           learned.settings.driverStrength = -0.9f
           learned.settings.driverRadius = 0.22f
 
+          // Everything except the force rule matches the written box; only the colours differ.
           learned.settings.separationRadiusFraction = 0.25f
           learned.settings.maxSpeed = 0.25f
           learned.settings.containment = 1.5f

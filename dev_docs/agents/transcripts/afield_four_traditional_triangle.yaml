@@ -32,17 +32,24 @@ operations:
               uFragColor = vec4(1.0, 0.8, 0.4, 1.0) * fcol;
           }
         code: |
+          // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
+          // the meshes it draws. `renderer` is inherited from the renderer parent box.
           var module = moduleHere {
               primitiveType = triangle_strip
           }
 
+          // A Mesh holds vertex buffers whose names come from the vertex shader's `in`
+          // attributes (`pos`, `col`), plus the index buffer `tri`.
           var m = Mesh()
           module += m named "my mesh"
           renderer += module
 
+          // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
           m.set(3, 3) {
+              // x, y, z for each of the three corners, in clip space (-1..1)
               pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
 
+              // one RGBA colour per vertex, `it` running 0, 1, 2
               3 {
                   col.add(0, it / 3.0, 1 - it / 3.0, 1)
               }
@@ -56,17 +63,24 @@ operations:
       property: code
       type: fragment
       code: |
+        // A module is one draw pipeline: this box's `vertex` and `fragment` shaders plus
+        // the meshes it draws. `renderer` is inherited from the renderer parent box.
         var module = moduleHere {
             primitiveType = triangle_strip
         }
 
+        // A Mesh holds vertex buffers whose names come from the vertex shader's `in`
+        // attributes (`pos`, `col`), plus the index buffer `tri`.
         var m = Mesh()
         module += m named "my mesh"
         renderer += module
 
+        // Room for 3 vertices and 3 indices; inside, `pos`, `col` and `tri` append data.
         m.set(3, 3) {
+            // x, y, z for each of the three corners, in clip space (-1..1)
             pos.add(0, 0, 0, 0.5, 0, 0, 0.5, 0.5, 0)
 
+            // one RGBA colour per vertex, `it` running 0, 1, 2
             3 {
                 col.add(0, it / 3.0, 1 - it / 3.0, 1)
             }

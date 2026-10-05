@@ -30,11 +30,13 @@ operations:
           prop<Renderer>(renderer)
           Options.enableHDR = false
           Options.profiling = false
+          // once: re-running this box keeps the existing window and renderer
           once.renderer {
               window = Window("Spin Glass - 2D Edwards-Anderson")
               Renderer(window)
           }
           println("renderer ready")
+          // the frame loop runs as this box's coroutine; stopping the box stops rendering
           start(renderer::run)
   # 2. metropolis update box: the Monte Carlo engine.
   #    NOTE the push-constant BLOCK name (PushC) must differ from the instance name (pc).
@@ -142,6 +144,7 @@ operations:
           prop<Int>(sgSweeps) = 0
           prop<Boolean>(sgAnneal) = true
 
+          // annealing schedule: temperature swings between Thi and Tlo every `period` sweeps
           val Thi = 3.0
           val Tlo = 0.04
           val period = 6000
@@ -153,8 +156,11 @@ operations:
           var jDown = defaultBuffer { size = N.floats }.buffer
 
           val rng = java.util.Random(20260720L)
-          // NOTE: a named local `fun` that reads a prop captures the script's implicit Box
-          // receiver and fails K2 codegen; inline the coupling draw instead.
+          /*
+          random initial spins, then bonds: Gaussian when sgModel == 1, else +/-1.
+          The bond draw is written out twice because a local `fun` that reads a prop
+          fails K2 codegen in a box script.
+          */
           spins.write { for (i in 0 until N) put(if (rng.nextBoolean()) 1f else -1f) }
           jRight.write {
               for (i in 0 until N) put(if (model == 1) rng.nextGaussian().toFloat() else if (rng.nextBoolean()) 1f else -1f)
@@ -172,7 +178,7 @@ operations:
           var T = Thi
 
           var module = computeModuleHere {}
-          // ComputeMesh.inside is lateinit — add the mesh to the module BEFORE setting x/y/z or push lambdas.
+          // a ComputeMesh must be added to its module before x/y/z or push constants are set
           val even = ComputeMesh()
           val odd = ComputeMesh()
 
@@ -197,6 +203,7 @@ operations:
           module += "barrierO" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
           renderer += "spinGlassUpdate" to module
 
+          // both half-sweeps share bindings; they differ only in checkerboard colour and seed
           for (m in listOf(even, odd)) {
               m.x = groups
               m.y = 1
@@ -212,7 +219,9 @@ operations:
           even.color = { 0u }
           odd.color = { 1u }
           even.seed = { seed.toUInt() }
-          odd.seed = { (seed + 100003).toUInt() }
+          odd.seed = {
+              (seed + 100003).toUInt()
+          } // offset so the two passes draw different randoms
 
           println("update launched L=" + L + " N=" + N + " groups=" + groups)
   # 3. measure box: probe (spin, energy) for every site -> field-probe stats card.
@@ -365,9 +374,9 @@ operations:
           m.jDown = { sgJDown }
           m.L = { sgL.toUInt() }
           m.aspect = { window.width / window.height.toFloat() }
-          m.showFrustration = {
-              0u
-          } // set to { 1u } and re-run to overlay frustrated plaquettes
+          // set to { 1u } and re-run to overlay frustrated plaquettes
+          m.showFrustration = { 0u }
+          // three vertices, no index buffer: the vertex shader makes the fullscreen triangle
           m.set(3, 0) {}
           println("draw launched")
   # topology: each box is chained beneath the previous one so the shared lattice

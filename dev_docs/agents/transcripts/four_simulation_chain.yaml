@@ -146,6 +146,13 @@ operations:
 
           prop<afield.four.fabricated.FabricateBuiltChain>(fluid)
 
+          // The knobs. A new `resolution` starts an empty fluid; the rest keep the one you painted.
+          val resolution = 256
+          val iterations = 20 // Jacobi pressure sweeps: fewer leaves divergence, and dye piles up
+          val dyeDissipation = 0.99f
+          val vorticity = 24f // 0f smears; higher puts back the curl advection loses
+          val dragGain = 30 // how hard a drag pushes, per pixel moved
+
           /*
           Twenty-seven passes, declared every run. `addPassChain` replaces passes of the same
           name, and reuses a target whose shape has not changed — so editing a shader or a number
@@ -159,10 +166,10 @@ operations:
           fluid = bundle.addPassChain(
               FabricatePassLibrary.stableFluid(
                   prefix = "fluid",
-                  resolution = 256,
-                  iterations = 20,
-                  dyeDissipation = 0.99f,
-                  vorticity = 24f,
+                  resolution = resolution,
+                  iterations = iterations,
+                  dyeDissipation = dyeDissipation,
+                  vorticity = vorticity,
               ) +
                   FabricatePassLibrary.composite(
                       /*
@@ -189,7 +196,7 @@ operations:
           ── painting ──
 
           A lambda *binds*: the supplier is re-read every time the push buffer is written, so
-          these four lines are the whole animation and the drag handler below only moves a `var`.
+          these three lambdas are the whole animation and the drag handler below only moves a `var`.
           `fluid[name]` sets every pass that declares `name`, which is why one assignment reaches
           both the force pass and the dye pass — `stableFluid` gives them the same names on
           purpose.
@@ -219,7 +226,7 @@ operations:
           mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
           mouse.onDrag("fluid-paint") { ev ->
               paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
-              paintPush = vec(ev.delta.x * 30, ev.delta.y * 30)
+              paintPush = vec(ev.delta.x * dragGain, ev.delta.y * dragGain)
               paintMass = 0.05f
               true // returning false *removes* the handler
           }
