@@ -121,10 +121,10 @@ class HarmonicPhaseTracker(
     /** Baseband partial amplitude needed to cast a vote, relative to [gateLevel]. */
     val partialGateScale: Double = 0.35,
 
-    /** Broadband power follower for harmonicity / gate measurement. */
+    // Broadband power follower for harmonicity / gate measurement.
     broadbandPowerTimeSeconds: Double = 0.020,
 
-    /** Confidence smoothing, mostly to prevent lock chatter. */
+    // Confidence smoothing, mostly to prevent lock chatter.
     confidenceTimeSeconds: Double = 0.025,
 
     /** Confidence above which [TrackedPhaseState.locked] is true. */
