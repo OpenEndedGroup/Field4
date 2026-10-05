@@ -17,7 +17,6 @@ import shutil
 import socket
 import ssl
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.error

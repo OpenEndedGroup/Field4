@@ -37,9 +37,9 @@ bytes. Screenshots/recordings are welcome after reviewing them for private infor
 
 | Platform | Unaided human trial | Automated source launch |
 | --- | --- | --- |
-| Ubuntu 24.04 x86-64 | Pending participant | Passed server-only source launch in [run 37200109317](https://github.com/OpenEndedGroup/Field4/actions/runs/37200109317) |
-| Windows x64 | Pending participant | Initial run failed at `Get-FileHash`; SHA-256 repair is on this branch. Recheck [37201214051](https://github.com/OpenEndedGroup/Field4/actions/runs/37201214051) pending. |
-| Apple-silicon macOS | Pending participant | Passed server-only source launch in [run 37200109317](https://github.com/OpenEndedGroup/Field4/actions/runs/37200109317) |
+| Ubuntu 24.04 x86-64 | Pending participant | Passed server-only source launch in [run 37284801723](https://github.com/OpenEndedGroup/Field4/actions/runs/37284801723): 14.7 minutes with the Linux CI build profile below. |
+| Windows x64 | Pending participant | Passed server-only source launch in [run 37281461833](https://github.com/OpenEndedGroup/Field4/actions/runs/37281461833): 24.2 minutes on Windows Server 2025 x64. |
+| Apple-silicon macOS | Pending participant | Passed server-only source launch in [run 37281461833](https://github.com/OpenEndedGroup/Field4/actions/runs/37281461833): 19.2 minutes on macOS 14.8.9 arm64. |
 
 Do not change "Pending participant" to pass on the strength of CI. A developer-led session after
 help is useful diagnostic evidence, but does not retroactively become an unaided success.
@@ -48,3 +48,19 @@ The second Windows attempt (37200741034) failed earlier, with an HTTP 500 downlo
 distribution. The wrapper now allows two retries. Its Linux/macOS jobs were superseded by the
 third attempt, not counted as failures or passes. The first run's Linux and Mac successes are
 server-only automated evidence; they do not establish desktop behavior or a human's elapsed time.
+
+The Windows launcher now passes after repairs to SHA-256 hashing, illegal compiler-output
+filenames, PowerShell build-result handling and versioned ARPACK DLL extraction. Both successful
+Windows and macOS jobs checked the real launcher, health/API protection, browser assets,
+and starter-document copies. They did not exercise the Electron desktop or native rendering.
+
+The recorded launch times include application dependency downloads, compilation and startup;
+they exclude repository checkout and the workflow’s prerequisite/helper steps. Download bytes
+remain unmeasured. These timings describe hosted CI, not an unaided participant’s experience.
+
+Two later Linux attempts lost their hosted runner before a result or artifact was written
+(`Runner received shutdown signal`); they provide no application verdict. The successful Linux
+rerun capped the Kotlin compiler heap at 4 GB, used one Gradle worker and disabled parallel
+build execution. This is the workflow’s Linux CI profile, not the launcher’s default configuration.
+Its live log records disk space and available memory each minute. Resource pressure motivated
+the adjustment, but the earlier shutdown logs do not establish its cause.

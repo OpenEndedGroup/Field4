@@ -239,12 +239,12 @@ function Build-Field {
     # Always build before launching so a fresh clone (and every edit-and-relaunch) runs current code.
     # jvmJar compiles Kotlin/JVM, runs the JS webpack, and bundles afield.mjs into the served static/;
     # dumpFieldLaunch writes the launch spec. Incremental, so quick once built. Set AFIELD_SKIP_BUILD=1
-    # to skip. Gradle output is shown: the first build compiles the whole project (a few minutes).
+    # to skip. Gradle output is shown: the first build downloads dependencies and compiles the whole project.
     if ($env:AFIELD_SKIP_BUILD -eq "1" -and (Test-Path "build\field-launch\args")) {
         Write-Host "field: AFIELD_SKIP_BUILD=1 - skipping build" -ForegroundColor DarkCyan
         return $true
     }
-    Write-Host "field: building (JVM + JS; the first run compiles everything, a few minutes)..." -ForegroundColor DarkCyan
+    Write-Host "field: building (JVM + JS; the first run downloads dependencies and compiles everything)..." -ForegroundColor DarkCyan
     $offline = @(Get-GradleOfflineArgs)
     $launchMode = @()
     if ($script:serverOnly) { $launchMode = @("-PfieldServerOnly=true") }
