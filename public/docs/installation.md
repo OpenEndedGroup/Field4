@@ -96,14 +96,30 @@ runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache
 a machine that has never completed an online build.
 
 On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
-Choose the desktop app or browser/server mode, and optionally request Vulkan diagnostics or
-Python prerequisites. It shows the exact package-manager commands and requires typing `INSTALL`
+Choose the desktop app or browser/server mode, then select any optional features by number
+or name. The first screen offers Vulkan/Python; type **more** to see the complete inventory.
+Enter skips all extras. It shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
 Python prerequisites do not include a configured JEP runtime: complete that in the welcome page's
 **Python** panel. Vulkan diagnostics do not install your GPU driver. AI features, model services
-and agent tooling remain optional separate setups.
+and agent tooling have their own guides and prerequisites.
+
+The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
+Ceres, TetGen, Manifold and paint; Pure Data, Csound, LuaJIT and macOS Syphon; and optional
+physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
+Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
+
+For the native libraries and learned shaders that Field has a preparation task for, setup shows
+that task and checks its build tools. Type **BUILD** to run it, or leave it for later. **INSTALL**
+approves the displayed system packages only. Windows native-library builds need Visual Studio
+C++ Build Tools and a Developer PowerShell; the default Windows app launch does not.
+
+Large model environments and downloads, GPU SDKs, containers, Python interpreter selection and
+permissions remain explicit steps in each feature’s guide. Setup shows those steps and platform
+limits. A completed build or saved selection does not establish that a model, GPU or device works;
+use the feature’s runtime probe or example after preparation.
 
 Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches

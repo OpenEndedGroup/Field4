@@ -3477,6 +3477,9 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// Native preparation scripts use the platform Python command, like the source launcher.
+val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
@@ -3502,7 +3505,7 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3589,7 +3592,7 @@ val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
     outputs.upToDateWhen { false }
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath) +
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath) +
             if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
         val result = providers.exec {
             commandLine(command)
@@ -3626,7 +3629,7 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3662,7 +3665,7 @@ val buildCsoundNative = tasks.register("buildCsoundNative") {
     outputs.dir(layout.buildDirectory.dir("field-csound/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
