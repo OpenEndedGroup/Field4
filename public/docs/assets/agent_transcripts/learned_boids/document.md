@@ -235,7 +235,7 @@ println("written rule: ${written.count} boids")
 <!-- field-box id="lb_learned" index="3" -->
 
 ```edn [field-box id="lb_learned" role="properties"]
-{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 60 "characters" 2081 "sha256" "0395c087722bd695c00f56db36117ebc247ddd61b644cf7b8f90bef735b2a513"}]}
+{"id" "lb_learned" "index" 3 "name" "learned rule" "parents" ["root" "lb_train"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "lb_train"} "name" "learned rule" "_tombstone" false "frame" #afield/rect [1080.0 40.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "lb_learned_code_.kt" "lines" 61 "characters" 2216 "sha256" "4d1aa9007367c7fba494f5fc7fc6e3d0c085b24d2d7379d034fb1cb4720aef97"}]}
 ```
 
 ```kotlin [field-property box="lb_learned" name="code" path="lb_learned_code_.kt"]
@@ -243,11 +243,12 @@ import afield.four.physics.ShaderBoids
 import afield.four.util.GpuNeighbourGrid
 import afield.stdlib.linalg.Vector2f
 
-prop<afield.four.physics.ShaderBoids>(learned)
-
 // `learnedRule` is the trained network from the parent box. The only difference from
 // the written flock is this argument.
-once.learned {
+//
+// A flock compiles its rule into its shaders, so it is cached on the rule: retrain the
+// parent and the next run builds a new flock, releasing the old one.
+val learned = cached<ShaderBoids>(learnedRule, renderer) {
     val grid = GpuNeighbourGrid(
         capacity = 12000,
         cellsPerSide = 64,
@@ -298,6 +299,6 @@ learned.settings.pointSize = 3f
 learned.settings.intensity = 1.5f
 learned.settings.slowColor = vec(0.95, 0.25, 0.45, 1.0)
 learned.settings.fastColor = vec(1.0, 0.85, 0.45, 1.0)
-println("learned rule: ${learned.count} boids on ${learned.learned}")
+println("learned rule: ${learned.count} boids")
 ```
 

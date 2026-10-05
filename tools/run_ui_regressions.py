@@ -3864,6 +3864,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--no-pan", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="state-tree-browser",
+            description="Browse real AI4 branches and provider states; reference two states without sending, navigating or losing the draft.",
+            commands=[
+                "new-box --name StateHistoryRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/state-tree-browser.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-resize",
             description="Chat retains manual size, draft and reading position through streamed text and images, reopen and canvas zoom.",
             commands=[
@@ -4156,6 +4166,16 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot="macro run guide_capture",
         ),
         UiRegression(
+            id="ai-chat-fence-renderers",
+            description="AI4 chat renders registered fences, loads Mermaid, and keeps source visible when a diagram fails.",
+            document=f"ui-regression-chat-fences-{int(time.time())}",
+            commands=[
+                "new-box --name FenceRenderers --x 40 --y 40",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/ai-chat-fence-renderers.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-box", "FenceRenderers", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="ai-chat-scroll",
             description="The AI chat keeps a reader's place through re-renders of a transcript full of inline images, parked mid-history or at the bottom.",
             document=f"ui-regression-chat-scroll-{int(time.time())}",
@@ -4201,6 +4221,21 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
                 "new-box --name SplitFar --x 4000 --y 3500",
                 "connect @split_a @split_d",
                 shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split.js"), "--timeout", pw_timeout]),
+            ],
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
+            id="canvas-split-3up",
+            description="Two dividers per axis and unlinked panes: three columns in their own bands, a third divider refused, a middle band's flat-grey end, a 3x2 split with a dashed, independently scrolling corner, the palette thumbnail, and a clean unsplit.",
+            document=f"ui-regression-canvas-split-3up-{int(time.time())}",
+            commands=[
+                "new-box --name TriQ0 --x 100 --y 60",
+                "new-box --name TriQ1 --x 700 --y 60",
+                "new-box --name TriQ2 --x 1300 --y 60",
+                "new-box --name TriP0 --x 100 --y 300",
+                "new-box --name TriP1 --x 700 --y 300",
+                "new-box --name TriP2 --x 1300 --y 300",
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/canvas-split-3up.js"), "--timeout", pw_timeout]),
             ],
             screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
         ),

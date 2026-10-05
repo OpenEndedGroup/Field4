@@ -879,6 +879,13 @@ fun installAi4() {
         Handled.yes
     })
 
+    handlers["ai-state-tree"] = mutableSetOf({ message, reply ->
+        val request = Json.decodeFromJsonElement<StateTreeRequest>(message.payload!!)
+        val info = thisSessionInfo.get()
+        reply(Message("ai-state-tree").payload(StateTreeBrowser.read(info.boxes.values + info.root, request)))
+        Handled.yes
+    })
+
     handlers["ai-chat-history"] = mutableSetOf({ message, reply ->
         val request = Json.decodeFromJsonElement<AiBoxChatRequest>(message.payload!!)
         val info = thisSessionInfo.get()

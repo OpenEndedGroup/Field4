@@ -189,7 +189,7 @@ class KotlinFormatterCommentTest {
 
     @Test
     fun aOneLineLambdaAssignmentStaysOnOneLine() {
-        val code = "m.spins = { sgSpins }\nm.mvp = { Matrix4f(camera.p).mul(camera.modelView()) }\n"
+        val code = "m.spins = { sgSpins }\nm.mvp = { Matrix4f(camera.p).mul(camera.view()) }\n"
         val once = formatKotlinCode(code)
         assertEquals(code, once)
         assertEquals(once, formatKotlinCode(once), "formatting twice must not change the text")

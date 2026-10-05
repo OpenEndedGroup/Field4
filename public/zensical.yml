@@ -408,6 +408,7 @@ nav:
     # you look up after something has already surprised you rather than while composing.
     - What a Capture Can and Cannot Show: capture_limits.md
     - Building & Testing: building_and_testing.md
+    - Landing on main: landing_queue.md
 
 markdown_extensions:
   - admonition                    # `!!! note` / `!!! warning` callouts
