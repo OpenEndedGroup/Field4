@@ -18,6 +18,20 @@ and changes neither packages nor preferences.
 
 Run its focused tests with `./gradlew -p tools/first-run test`.
 
+## Demo the welcome
+
+Run `./field.sh --setup` (Windows: `.\field.bat --setup`). It exits after setup without
+launching Field. Choose a launch mode, then type `more` to browse all the extras. Select
+`python shaders` to see a package and build plan; Enter at the `INSTALL` and `BUILD` prompts
+leaves those actions for later. Setup still saves your choices.
+
+Widen the terminal to at least 120 columns for the original wordmark used by `Server.kt`.
+Smaller windows get compact lettering. The shared artwork is compiled directly into the
+standalone tool, with no extra runtime dependency. True-color terminals get a diagonal
+teal, blue, violet and amber wash; other ANSI terminals use four colors. Windows Terminal
+supports the color treatment. Pipes, legacy Windows consoles, `TERM=dumb`, `CLICOLOR=0`
+and `NO_COLOR` get plain output.
+
 ## Optional feature inventory
 
 `OptionalExtras.kt` is the shared menu and preparation inventory. It covers Vulkan, Python/JEP,
