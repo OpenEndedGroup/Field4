@@ -6,6 +6,7 @@
     uv run python tools/land.py wait <id>                         # block until it lands or bounces
     uv run python tools/land.py mine [branch]                     # the mailbox: this branch's attempts
     uv run python tools/land.py sync [--push]                     # bring origin/main in via the queue
+    uv run python tools/land.py huh [--context]                   # ask claude -p what the queue is doing
     uv run python tools/land.py run [--once]                      # the lander (one per clone)
 
 Why: every agent used to land itself. Each merged `main`, ran ~45 minutes of guards, found `main` had
@@ -141,14 +142,19 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
     if _ok(here, "merge-base", "--is-ancestor", sha, "refs/heads/main"):
         print(f"land: {branch} ({sha[:9]}) is already on main; nothing to land")
         return 0
+    replaced: dict | None = None
     for item in _items(queue, PENDING):
         # An item the lander has started stays: removing its file mid-landing hid it from status
         # while it landed anyway. The new commit queues behind it instead.
         if item["branch"] == branch and not item.get("started"):
-            # A re-enqueue replaces the older request: the newest commit is the one meant.
+            # A re-enqueue replaces the older request: the newest commit is the one meant. It keeps
+            # the older one's place in line, and says whose it was, since two agents can enqueue
+            # the same branch and one would otherwise silently undo the other.
             (queue / PENDING / f"{item['id']}.json").unlink(missing_ok=True)
-            print(f"land: replacing queued {item['id']} ({item['sha'][:9]})")
+            replaced = item
+            print(f"land: replacing queued {item['id']} ({item['sha'][:9]}, enqueued by {item['by']}), keeping its place")
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    replaced_seq = replaced.get("seq") if replaced else None
     item = {
         "id": f"{stamp}-{re.sub(r'[^A-Za-z0-9._-]+', '-', branch)}",
         "branch": branch,
@@ -160,7 +166,7 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         "enqueued": _now(),
         # Queue order. Ids only resolve to the second, so sorting by them put two branches enqueued in
         # the same second in alphabetical order instead of the order they arrived.
-        "seq": time.time_ns(),
+        "seq": replaced_seq or time.time_ns(),
     }
     # Ids are per second; a second enqueue of the same branch within it must not overwrite the first.
     base, n = item["id"], 1
@@ -350,6 +356,125 @@ def _lander_line(queue: Path) -> str:
     return f"lander: running, pid {info.get('pid')}, up {_span(_since(info.get('started')))} ({mode}), worktree {info.get('worktree')}"
 
 
+# ---------------------------------------------------------------------------- huh?
+
+
+def _huh_context(queue: Path) -> str:
+    """Everything a person would look at when the queue seems stuck, as one plain-text bundle."""
+    here = Path.cwd()
+    primary = _primary(here)
+    out: list[str] = []
+
+    def section(title: str, body: str) -> None:
+        out.append(f"===== {title} =====\n{body.rstrip()}\n")
+
+    def run(*cmd: str, cwd: Path = primary) -> str:
+        try:
+            r = subprocess.run(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=20)
+            return r.stdout
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return f"({' '.join(cmd)} failed: {e})"
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        cmd_status(argparse.Namespace(id=None, recent=8, plain=True, watch=False))
+    section("land.py status --plain", buf.getvalue())
+    try:
+        section("lander.json", (queue / "lander.json").read_text())
+    except OSError:
+        section("lander.json", "(missing)")
+    active = [i for i in _items(queue, PENDING) if i.get("started")]
+    if active and active[0].get("log"):
+        try:
+            lines = Path(active[0]["log"]).read_text(errors="replace").splitlines()
+            section(f"tail of the current round's log ({len(lines)} lines total)", "\n".join(lines[-150:]))
+            log_age = time.time() - Path(active[0]["log"]).stat().st_mtime
+            section("current log last written", f"{int(log_age)} s ago")
+        except OSError:
+            pass
+    for item in _items(queue, BOUNCED)[-3:]:
+        if item.get("log"):
+            failures = Path(item["log"]).with_suffix(".failures.txt")
+            if failures.exists():
+                section(f"failures of bounced {item['id']}", failures.read_text()[:3000])
+    section("load", run("uptime"))
+    section("lander, gradle and kotlin processes",
+            "\n".join(l for l in run("ps", "-eo", "pid,ppid,etime,pcpu,rss,command").splitlines()
+                      if any(k in l for k in ("land.py", "merge_regen", "GradleDaemon", "GradleWrapperMain", "KotlinCompileDaemon", "gradlew")))[:6000])
+    holder = _main_holder(primary)
+    if holder:
+        section(f"uncommitted files in main's checkout ({holder})", run("git", "status", "--porcelain", cwd=holder)[:3000])
+    section("main", run("git", "log", "-5", "--format=%h %cr %s", "refs/heads/main"))
+    section("verification locks", run("sh", "-c", "ls -la .field-backdoor/verification.lock* 2>/dev/null; "
+                                       f"ls -la {_lander_worktree_path(primary)}/.field-backdoor/verification.lock* 2>/dev/null"))
+    return "\n".join(out)
+
+
+def _lander_worktree_path(primary: Path) -> Path:
+    try:
+        return Path(json.loads((_queue_dir(primary) / "lander.json").read_text())["worktree"])
+    except (OSError, KeyError, json.JSONDecodeError):
+        return primary.parent / f"{primary.name}-worktrees" / "lander"
+
+
+HUH_PROMPT = """You are looking at Field4's landing queue (tools/land.py): agents enqueue branches, and one lander
+merges them in batches, regenerates generated files, runs one guard (Gradle), and fast-forwards main.
+The person asking pressed "huh?" because something looks wrong or slow. From the context below:
+1. Say in one or two sentences what the queue is doing right now.
+2. Say whether it is stuck or merely slow, and the evidence (log age, CPU of the Gradle processes,
+   load, a lock, a blocked item, a dead lander).
+3. Give the one or two concrete things to do next, as commands where possible. Do not suggest
+   merging into main by hand: only the lander may move main.
+Be brief and specific. Plain text, no markdown headers.
+
+"""
+
+
+def _ask_huh(queue: Path) -> str:
+    claude = shutil.which("claude")
+    if not claude:
+        return "`claude` is not on PATH, so there is nothing to ask. The context it would have read:\n\n" + _huh_context(queue)
+    context = _huh_context(queue)
+    try:
+        result = subprocess.run([claude, "-p", "--output-format", "text"], input=HUH_PROMPT + context,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=240)
+        return result.stdout.strip() or "(claude returned nothing)"
+    except subprocess.TimeoutExpired:
+        return "claude -p took more than 4 minutes; giving up."
+
+
+def cmd_huh(args: argparse.Namespace) -> int:
+    queue = _queue_dir(Path.cwd())
+    if args.context:
+        print(_huh_context(queue))
+        return 0
+    print(_ask_huh(queue))
+    return 0
+
+
+def _pager(text: str, stdin: int) -> None:
+    """A small pager on the alternate screen: j/k or arrows to scroll, space for a page, q back."""
+    import textwrap
+    cols, rows = shutil.get_terminal_size((100, 24))
+    lines = [w for para in text.splitlines() for w in (textwrap.wrap(para, cols - 2) or [""])]
+    top = 0
+    while True:
+        view = lines[top: top + rows - 2]
+        sys.stdout.write("\033[H" + "\033[K\n".join(view) + "\033[K\n\033[J")
+        sys.stdout.write(_Style().dim(f"huh? \u00b7 {top + 1}-{min(top + rows - 2, len(lines))} of {len(lines)} "
+                                      "\u00b7 j/k scroll \u00b7 space page \u00b7 q back"))
+        sys.stdout.flush()
+        key = os.read(stdin, 3)
+        if key in (b"q", b"Q", b"\x1b", b"h"):
+            return
+        if key in (b"j", b"\x1b[B"):
+            top = min(top + 1, max(len(lines) - (rows - 2), 0))
+        elif key in (b"k", b"\x1b[A"):
+            top = max(top - 1, 0)
+        elif key == b" ":
+            top = min(top + rows - 3, max(len(lines) - (rows - 2), 0))
+
+
 # ---------------------------------------------------------------------------- terminal rendering
 #
 # Only when stdout is a terminal: agents and pipes get the plain text above, which stays stable.
@@ -521,13 +646,20 @@ def cmd_status(args: argparse.Namespace) -> int:
                 lines = frame.getvalue().split("\n")
                 if len(lines) > rows - 2:
                     lines = lines[: rows - 3] + [_Style().dim(f"  \u2026 {len(lines) - rows + 3} more lines (make the window taller)")]
-                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 q to quit")
+                footer = _Style().dim(f"{_now()} \u00b7 every 2s \u00b7 h huh? \u00b7 q to quit")
                 sys.stdout.write("\033[H" + "\033[K\n".join(lines) + "\033[K\n" + footer + "\033[K\033[J")
                 sys.stdout.flush()
                 if stdin is None:
                     time.sleep(2)
-                elif select.select([stdin], [], [], 2)[0] and os.read(stdin, 1) in (b"q", b"Q", b"\x1b", b"\x03"):
-                    break
+                elif select.select([stdin], [], [], 2)[0]:
+                    key = os.read(stdin, 1)
+                    if key in (b"q", b"Q", b"\x1b", b"\x03"):
+                        break
+                    if key in (b"h", b"H"):
+                        sys.stdout.write("\033[2J\033[H" + _Style().yellow("huh? asking claude about the queue (gathering context, then claude -p; ~30-60 s)") + "\n")
+                        sys.stdout.flush()
+                        _pager(_ask_huh(queue), stdin)
+                        sys.stdout.write("\033[2J")
         except KeyboardInterrupt:
             pass
         finally:
@@ -984,6 +1116,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--plain", action="store_true", help="the plain text agents see, even on a terminal")
     p.add_argument("--watch", action="store_true", help="on a terminal, redraw every 2 seconds; q, Esc or ctrl-c quits")
     p.set_defaults(func=cmd_status)
+    p = sub.add_parser("huh", help="ask claude -p what is going on with the queue (what --watch's h key does)")
+    p.add_argument("--context", action="store_true", help="print the context it would send, and do not ask")
+    p.set_defaults(func=cmd_huh)
     p = sub.add_parser("sync", help="fetch origin/main and land it through the queue (--push: push main after)")
     p.add_argument("--push", action="store_true", help="push main to origin once it has landed")
     p.add_argument("--by", help="who is asking (default: $FIELD_LAND_BY, else user @ worktree)")
