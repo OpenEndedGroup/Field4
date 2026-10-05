@@ -362,7 +362,13 @@ data class ThreeGeometryPayload(
      * the rasterizer had to bring [MeshView]'s four numbers with it.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val camera: ThreeCameraSpec? = null
+    val camera: ThreeCameraSpec? = null,
+    /** Join the document's camera link on load, in this group. See [ThreeSceneBuilder.linkCamera]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraLink: ThreeCameraLinkSpec? = null,
+    /** Turn slowly about the up axis until somebody interacts. See [ThreeSceneBuilder.turntable]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val turntable: ThreeTurntableSpec? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -379,7 +385,9 @@ data class ThreeGeometryPayload(
         "inspector" to (inspector != null),
         "drawables" to drawables.size,
         "panels" to panels.size,
-        "camera" to camera
+        "camera" to camera,
+        "cameraLink" to cameraLink,
+        "turntable" to turntable
     )
 }
 

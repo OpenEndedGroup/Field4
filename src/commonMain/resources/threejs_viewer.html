@@ -462,7 +462,7 @@ import { mountReviewInbox } from '/geometry_review_inbox.js';
 import { mountReviewControls } from '/geometry_review_controls.js';
 const reviewControls = mountReviewControls(document.getElementById('feature-tools'), document.getElementById('feature-review'));
 import { createViewerTools } from '/threejs_tools.js';
-import { createCameraLink } from '/threejs_camera_link.js';
+import { createCameraLink, createTurntable } from '/threejs_camera_link.js';
 
 const container = document.getElementById('canvas-wrap');
 const marqueeEl = document.getElementById('marquee');
@@ -530,6 +530,7 @@ const viewerTools = createViewerTools({
 });
 let captureState = {ready:false, error:null, revision:null};
 window.FieldViewer = Object.freeze({renderStats: () => renderScheduler.stats(), exportGLB, tools:viewerTools,
+    turntable: () => turntable.status(), cameraLink: () => cameraLink.status(),
     captureStatus: () => {
         const tools = viewerTools.status(), render = renderScheduler.stats();
         return {...captureState, ready:captureState.ready && !tools.pending.length && !tools.error &&
@@ -608,8 +609,29 @@ function cameraUp(up) {
     controls._quat.setFromUnitVectors(camera.up, new THREE.Vector3(0, 1, 0));
     controls._quatInverse.copy(controls._quat).invert();
 }
+// A box can ask for a slow turn (`turntable(…)`). A press, wheel or key here holds it, and so does
+// a person moving a linked view; it resumes once the payload's pause has passed. It turns only while
+// this frame is on screen and the page is visible, and asks for frames only while it turns.
+let onScreen = true;
+if (typeof IntersectionObserver === 'function') new IntersectionObserver(entries => {
+    const next = entries[entries.length - 1].isIntersecting;
+    if (next !== onScreen) { onScreen = next; requestRender(); }
+}).observe(container);
+const turntable = createTurntable({key: `${urlParams.get('uid') || ''} ${Math.random().toString(36).slice(2)}`,
+    visible: () => onScreen, wake: ms => setTimeout(requestRender, ms)});
+// About the target and the view's up axis. Positive turns the model anticlockwise seen from above.
+// `cameraTurned` lets a resize refit an untouched view without undoing the turn.
+let cameraTurned = false;
+function turnCamera(angle) {
+    if (!angle) return;
+    camera.position.sub(controls.target).applyAxisAngle(camera.up, -angle).add(controls.target);
+    cameraTurned = true;
+}
 const cameraLinkButton = document.getElementById('camera-link');
+let cameraLinkOn = false;
 const cameraLink = createCameraLink({
+    tag: () => turntable.driving() ? {drive: turntable.key()} : null,
+    heard: message => turntable.heard(message),
     read: () => ({eye:camera.position.toArray(),target:controls.target.toArray(),up:camera.up.toArray(),
         fov:camera.fov,zoom:camera.zoom,near:camera.near,far:camera.far}),
     write: pose => {
@@ -631,12 +653,26 @@ const cameraLink = createCameraLink({
         cameraLinkButton.textContent=state.enabled?'Camera linked':'Link camera';
         cameraLinkButton.title=state.enabled?'Orbit, pan and zoom are shared with linked views in this document. Click to unlink.':
             'Link cameras with other opted-in views in this document; display and notes stay independent';
+        if (state.enabled !== cameraLinkOn) { cameraLinkOn = state.enabled; turntable.linked(state.enabled); }
     }
 });
-cameraLinkButton.addEventListener('click',()=>cameraLink.setEnabled(!cameraLink.status().enabled));
+// `linkCamera()` starts the view linked. A request applies when it changes, so re-running the box
+// does not undo the human's unlink, and withdrawing it releases only a link the request made.
+let requestedCameraLink = null, linkFromRequest = false;
+function applyCameraLinkRequest(request) {
+    const next = request ? JSON.stringify(request) : null;
+    if (next === requestedCameraLink || !cameraLink.status().available) return;
+    requestedCameraLink = next;
+    const on = cameraLink.status().enabled;
+    if (request && !on) { cameraLink.setEnabled(true); linkFromRequest = cameraLink.status().enabled; }
+    else if (!request && on && linkFromRequest) { cameraLink.setEnabled(false); linkFromRequest = false; }
+}
+cameraLinkButton.addEventListener('click',()=>{linkFromRequest=false;cameraLink.setEnabled(!cameraLink.status().enabled);});
 controls.addEventListener('change',()=>cameraLink.localChanged());
-controls.addEventListener('start',()=>cameraLink.dragging(true));
-controls.addEventListener('end',()=>{cameraLink.dragging(false);cameraLink.localChanged();});
+controls.addEventListener('start',()=>{cameraLink.dragging(true);turntable.hold(true);});
+controls.addEventListener('end',()=>{cameraLink.dragging(false);turntable.hold(false);cameraLink.localChanged();});
+for (const type of ['pointerdown', 'wheel', 'keydown'])
+    document.addEventListener(type, () => { turntable.nudge(); cameraLink.busy(); }, { capture: true, passive: true });
 window.addEventListener('pagehide',()=>cameraLink.dispose());
 let appliedCameraSpec = null, cameraViewport = null;
 renderer.domElement.addEventListener('webglcontextlost', () => { contextAvailable = false; renderScheduler.visibilityChanged(); });
@@ -5488,6 +5524,50 @@ function fitSampleOf(geometryData) {
     return out.subarray(0, w);
 }
 
+/**
+ * A turning view's fit sample: [points] (or the bounds' corners) swept round the vertical axis
+ * through the bounds' centre, so a corner that swings towards the camera stays in the frame.
+ * [limit] caps the points returned by striding the source, for fits that run once per panel.
+ */
+function sweptFitPoints(points, bounds, turning, limit = Infinity) {
+    if (!turning || !bounds || !bounds.min || !bounds.max) return points;
+    const source = points && points.length >= 3 ? points : Float32Array.from({length: 24}, (_, k) =>
+        ((k / 3 | 0) & (1 << (k % 3))) ? bounds.max[k % 3] : bounds.min[k % 3]);
+    const cx = (bounds.min[0] + bounds.max[0]) / 2, cz = (bounds.min[2] + bounds.max[2]) / 2;
+    const steps = 16, stride = 3 * Math.max(1, Math.ceil(source.length / 3 * steps / limit));
+    const out = new Float32Array(Math.ceil(source.length / stride) * steps * 3);
+    let w = 0;
+    for (let s = 0; s < steps; s += 1) {
+        const c = Math.cos(s * 2 * Math.PI / steps), n = Math.sin(s * 2 * Math.PI / steps);
+        for (let i = 0; i + 2 < source.length; i += stride) {
+            const x = source[i] - cx, z = source[i + 2] - cz;
+            out[w++] = cx + x * c + z * n; out[w++] = source[i + 1]; out[w++] = cz - x * n + z * c;
+        }
+    }
+    return out.subarray(0, w);
+}
+
+/**
+ * Place one panel of a turning contact sheet. The panel is fitted once, to its geometry swept
+ * through the whole turn, and afterwards that framing is only rotated to the panel's yaw: no fit
+ * per frame however many panels there are, and no shape that breathes as it turns. A changed pitch
+ * or panel aspect refits.
+ */
+function placeTurningPanel(entry, view) {
+    const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
+    const key = view.pitchDegrees.toFixed(3) + '|' + entry.camera.aspect.toFixed(4);
+    if (!entry.turnFit || entry.turnFit.key !== key) {
+        if (!entry.swept) entry.swept = sweptFitPoints(entry.fitPoints, entry.bounds, true, 1024);
+        applyCameraSpec(entry.camera, view, entry.bounds, true, entry.swept);
+        entry.turnFit = {key, yaw: view.yawDegrees, offset: entry.camera.position.clone().sub(focus)};
+        return;
+    }
+    entry.camera.position.copy(entry.turnFit.offset)
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), (view.yawDegrees - entry.turnFit.yaw) * Math.PI / 180).add(focus);
+    entry.camera.up.set(0, 1, 0);
+    entry.camera.lookAt(focus);
+}
+
 /** Every fit sample belonging to [panelIndex], concatenated. `-1` drawables belong to every panel. */
 function fitPointsForPanel(panelIndex) {
     const parts = payloadGeometrySlots.drawables
@@ -5638,13 +5718,14 @@ function applyGeometry(payload) {
     const cameraKey = payload.camera ? JSON.stringify(payload.camera) : null;
     if (payload.camera && cameraKey !== appliedCameraSpec && payload.bounds && panelState.cameras.length <= 1) {
         camera.aspect = container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1;
-        applyCameraSpec(camera, payload.camera, payload.bounds, true, fitPointsForPanel(-1));
+        applyCameraSpec(camera, payload.camera, payload.bounds, true,
+            sweptFitPoints(fitPointsForPanel(-1), payload.bounds, !!payload.turntable));
         const derived = cameraPresetEye(payload.camera, payload.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
         controls.update();
         hasFramedInitialGeometry = true;
         appliedCameraSpec = cameraKey;
-        cameraWasMoved = false;
+        cameraWasMoved = false; cameraTurned = false;
         cameraViewport = [container.clientWidth, container.clientHeight];
     }
     // Last, because it reads the geometry the steps above created and because framing the camera first
@@ -5655,8 +5736,11 @@ function applyGeometry(payload) {
         if (payloadState !== payload) return;
         const review = payload.inspector?.review;
         if (review) inspectorRestore({...review, xray:review.xray ?? xrayState.enabled, xrayOpacity:review.xrayOpacity ?? xrayState.opacity});
-        cameraLink.configure(panelState.cameras.length>1?null:{scope:payload.cameraLinkScope,
+        cameraLink.configure(panelState.cameras.length>1?null:{scope:payload.cameraLinkScope,group:payload.cameraLink?.group,
             origin:payload.inspector?.renderOrigin,upAxis:payload.inspector?.renderUpAxis,units:payload.inspector?.units});
+        // The turn first, so a view that is about to join the link waits for its alignment pose.
+        turntable.configure(payload.turntable);
+        applyCameraLinkRequest(payload.cameraLink);
         inspectorRefresh();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -6296,12 +6380,13 @@ function updatePanelCameras() {
     const dPolar = (controls.getPolarAngle() - panelState.base.polar) * 180 / Math.PI;
     const zoom = panelState.base.distance > 1e-9 ? controls.getDistance() / panelState.base.distance : 1;
     const count = panelState.cameras.length;
+    const turning = !!payloadState?.turntable;
     panelState.cameras.forEach((entry, index) => {
         if (!entry.bounds) return;
         const spec = entry.spec || {};
         const vp = panelViewport(index, count);
         entry.camera.aspect = vp.h > 0 ? vp.w / vp.h : 1;
-        applyCameraSpec(entry.camera, {
+        const view = {
             // Dragging right raises the azimuth, which should turn the model the same way it turns
             // the single-panel camera — hence the plain addition rather than a subtraction.
             yawDegrees: (spec.yawDegrees || 0) + dAzimuth,
@@ -6309,7 +6394,9 @@ function updatePanelCameras() {
             pitchDegrees: (spec.pitchDegrees || 0) - dPolar,
             distance: spec.distance === undefined ? 2.7 : spec.distance,
             fieldOfViewDegrees: spec.fieldOfViewDegrees
-        }, entry.bounds, true, entry.fitPoints);
+        };
+        if (turning) placeTurningPanel(entry, view);
+        else applyCameraSpec(entry.camera, view, entry.bounds, true, entry.fitPoints);
         // Fit establishes the reference framing. Dolly afterwards so fitting cannot undo zoom.
         const focus = new THREE.Vector3(...entry.bounds.min).add(new THREE.Vector3(...entry.bounds.max)).multiplyScalar(0.5);
         entry.camera.position.sub(focus).multiplyScalar(zoom).add(focus);
@@ -6345,9 +6432,18 @@ function onResize() {
     const viewportChanged = !cameraViewport || cameraViewport[0] !== width || cameraViewport[1] !== height;
     cameraViewport = [width, height];
     if (viewportChanged && !cameraWasMoved && !inspectorState.selection && payloadState && payloadState.camera && payloadState.bounds && panelState.cameras.length <= 1) {
-        applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true, fitPointsForPanel(-1));
+        const turned = cameraTurned ? camera.position.clone().sub(controls.target) : null;
+        applyCameraSpec(camera, payloadState.camera, payloadState.bounds, true,
+            sweptFitPoints(fitPointsForPanel(-1), payloadState.bounds, !!payloadState.turntable));
         const derived = cameraPresetEye(payloadState.camera, payloadState.bounds);
         controls.target.set(derived.target[0], derived.target[1], derived.target[2]);
+        // A turning view keeps its angle: the refit changes the framing, not how far it has turned.
+        if (turned) {
+            const up = camera.up, flat = v => v.addScaledVector(up, -v.dot(up));
+            const from = flat(camera.position.clone().sub(controls.target)), to = flat(turned);
+            camera.position.sub(controls.target)
+                .applyAxisAngle(up, Math.atan2(up.dot(from.clone().cross(to)), from.dot(to))).add(controls.target);
+        }
         controls.update();
     }
     if (pointMaterial && pointMaterial.uniforms) pointMaterial.uniforms.uPixelRatio.value = getDpr();
@@ -6392,6 +6488,8 @@ function renderGeometry(viewCamera) {
 }
 
 function render() {
+    const turn = turntable.step();
+    if (turn !== null) { turnCamera(turn); requestRender(); }
     controls.update();
     const interactivePointer = editorState.mode === 'camera' ? updateInteractiveHover() : false;
     if (editorState.mode === 'camera') renderer.domElement.style.cursor = interactivePointer ? 'pointer' : '';
