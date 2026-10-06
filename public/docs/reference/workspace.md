@@ -4,7 +4,7 @@
 
 The box's own surroundings: properties, persistence, and the handful of names every box already has in scope.
 
-26 source file(s), 380 public symbol(s), 265 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+27 source file(s), 381 public symbol(s), 266 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -876,6 +876,16 @@ on the calling box.
 | [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">rootProp</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/props/#L52) | `prop`, but the accessors land on the **document root** rather than on this box — so every box in the document shares the one slot, wherever it is read from. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L67) | Macro expansion for `prop<T>(name)`: rewrites the call to the bare name and pushes the delegate declarations into the box's preamble. |
 | [<code class="highlight"><span class="k">fun</span> <span class="nc">Box</span><span class="p">.</span><span class="nf">macro&#95;root&#95;prop</span><span class="p">(</span><span class="n">contents</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">Insert</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/props/#L88) | Macro expansion for `rootProp<T>(name)` — the same declarations as `macro_prop`, but the `Insert` targets `this.root` and the call site becomes `root.<name>`. |
+
+## sourceBlock.kt { #sourceblock-kt }
+
+`src/jvmMain/kotlin/afield/stdlib/sourceBlock.kt` — [read the source](source/jvmMain/afield/stdlib/sourceBlock/)
+
+### Top-level functions { #sourceblock-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span> <span class="nf">sourceBlock</span><span class="p">(</span><span class="n">block</span><span class="p">:</span> <span class="p">(</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">T</span><span class="p">)</span><span class="p">:</span> <span class="nc">SourceBackedBlock</span><span class="p">&lt;</span><span class="nc">T</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/sourceBlock/#L31) | A block of code that is also its own source: call it like a function, and it carries the Kotlin text it was written as. |
 
 ## stdlib.kt { #stdlib-kt }
 

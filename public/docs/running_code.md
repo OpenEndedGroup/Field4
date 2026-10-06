@@ -75,9 +75,9 @@ Both write into the same place, the box's **preamble**: the shared, auto-regener
 
 ## Macros: calls rewritten before they compile
 
-A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and `sourceBlock`.
+A handful of things that look like ordinary function calls are actually **source macros**, expanded at compile time. The most important are `prop` / `rootProp`, `moduleHere` / `computeModuleHere` / `meshModuleHere` / `shadertoyHere`, `fieldStatsHere`, `print` / `println`, and the two that keep their own source, `sourceBlock` and `interpolant`.
 
-They are intercepted before the compiler sees them. If a macro ever reaches the compiler un-expanded it throws. The bare declarations exist only to fail loudly:
+They are intercepted before the compiler sees them. Most have a bare declaration that exists only to fail loudly if a call ever reaches the compiler un-expanded:
 
 ```diffstatic {data-lang=kotlin}
 fun <T> Box.prop(name: String) {
@@ -96,6 +96,40 @@ The expander walks your code's syntax tree, asks the macro registry to rewrite e
 
 - **Macro expansion is not pure.** Besides rewriting text, it mutates box state. `moduleHere { }`, for instance, seeds the box's `vertex`/`fragment` shader properties and *compiles those shaders* during expansion (it needs the shader interface to generate typed accessors — see **Generated GLSL accessors** below). This is why the ordering of `//%-` fragments matters (see **The `//%-` fragment break** below).
 - **A macro's output lands in the preamble**, so it becomes available not just to the rest of your code but — if tagged for inheritance — to child boxes too.
+
+### `sourceBlock` and `interpolant`: code that keeps its own source
+
+Two macros wrap a lambda so that it carries the text it was written as. That text can be saved, and
+compiled again later, so the code still works when the box that wrote it has not run.
+
+`sourceBlock { … }` gives you a block you call like a function, with its body's text in `.source`:
+
+```diffstatic {data-lang=kotlin}
+val answer = sourceBlock { 6 * 7 }
+println(answer())          // 42
+println(answer.source)     // 6 * 7
+```
+
+The keyframer and code blends save blocks this way. A block loaded back from a saved file has no
+lambda yet; the first call compiles its source in the box it came from.
+
+`interpolant("name") { … }` defines a key type for the keyframe editor: a segment shape, written as
+the curve's value across the segment.
+
+```diffstatic {data-lang=kotlin}
+interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+```
+
+The type appears in the key menu, and its source is saved with the box. A curve that uses it keeps
+its shape when the definition has not run yet (it comes later in the box, or you deleted it),
+because Field compiles the saved source instead. See [Your own key types](keyframe_editor.md#your-own-key-types)
+for what the lambda can use.
+
+!!! warning "Don't call a saved block from its own box's code"
+    Compiling a saved block in its box runs that box's code again — which calls the block again.
+    Call a block that came from a file from another box, a frame loop or a control callback. A block
+    made by `sourceBlock` in this run already has its lambda and is safe to call at once. (Field
+    stops the loop after one repeat, with an error saying so.)
 
 ---
 
