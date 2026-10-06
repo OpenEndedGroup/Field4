@@ -18,6 +18,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from verification_runtime import automation_log_environment
+
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LOG_ROOT = REPO_ROOT / ".field-backdoor" / "logs"
@@ -129,6 +131,7 @@ def main() -> int:
         "PORT": str(args.port),
         "AFIELD_HTTP_PORT": str(args.http_port),
         "AFIELD_PLAYWRIGHT_VISIBLE": os.environ.get("AFIELD_PLAYWRIGHT_VISIBLE", "false"),
+        **automation_log_environment(REPO_ROOT),
     }
     popen_kwargs: dict[str, Any] = {
         "cwd": str(REPO_ROOT),

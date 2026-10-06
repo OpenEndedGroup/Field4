@@ -58,6 +58,15 @@ given. Automated servers also decline to update the interactive
 preference can name a deleted sibling worktree, while scratch state belongs to
 the checkout that launched it.
 
+For the same reason, an automated server writes its completion-interaction log, AI4
+tool I/O, tool evidence and box captures under `build/field-automation-logs/`, not
+`~/.afield/logs/`, where ranking work and `tools/ai_tool_usage.py` would read them as
+the user's own sessions (`automation_log_environment` in
+`tools/verification_runtime.py`, shared by the backdoor, the smoke, docs and UI
+runners, `field_session.py` and `run_desktop_playwright.py`). The AI request ledger
+(`~/.afield/logs/ai_usage/`) stays machine-wide, because agent turns spend real
+tokens on the same key.
+
 A Field the backdoor starts is `./gradlew runJvm`, so the first launch from a fresh
 worktree compiles everything (Kotlin JVM + JS, webpack) before the JVM exists. The
 startup wait follows the managed-server log (`ManagedStartupWatch` in
