@@ -1,7 +1,7 @@
 # First-run welcome tool
 
 A standalone Kotlin/JVM 17 application, built independently of Field with its wrapper JVM.
-It uses the standard Kotlin plugin and JDK classes: no compiler fork, LFS JAR, native bridge,
+It uses the standard Kotlin plugin, JDK classes and bundled JLine/Jansi terminal libraries: no compiler fork, LFS JAR, native bridge,
 GPU, Python, JSON library, or GUI toolkit is required to build it.
 
 `./field.sh --setup` / `field.bat --setup` prepares and launches it in the user's terminal.
@@ -21,8 +21,8 @@ Run its focused tests with `./gradlew -p tools/first-run test`.
 ## Demo the welcome
 
 Run `./field.sh --setup` (Windows: `.\field.bat --setup`). It exits after setup without
-launching Field. Choose a launch mode, then type `more` to browse all the extras. Select
-`python shaders` to see a package and build plan; Enter at the `INSTALL` and `BUILD` prompts
+launching Field. Choose a launch mode, then use Up/Down and Space to select features.
+Enter reviews the package and build plan; Enter at the `INSTALL` and `BUILD` prompts
 leaves those actions for later. Setup still saves your choices.
 
 Widen the terminal to at least 120 columns for the original wordmark used by `Server.kt`.
@@ -38,9 +38,18 @@ and `NO_COLOR` get plain output.
 computer vision, voice, Ceres, TetGen, paint, libpd, Csound, Manifold, LuaJIT, Syphon,
 Slang/learned shaders, NGX, OpenDLSS-NR, Kratos, particle tracking, transport training,
 StreamDiffusion, audio AI, agent tools, docs, AI providers, OpenXR, ONNX models, guide/template services and the pinned Dirt audio samples.
-The initial screen offers Vulkan/Python; `more` reveals the complete inventory.
-Numbers 1 and 2 retain their original Vulkan/Python meanings; names such as `ceres tetgen` also
-work. Enter selects no extras. Every entry points to its checked-in guide.
+The complete checkbox list opens immediately. Up/Down moves, Space toggles, Enter reviews;
+Page Up/Down scrolls, `a` selects available features, `n` clears and `q` cancels without saving.
+Prerequisites appear on the right of each row. Missing tools disable and strike through a
+feature; paint checks Cargo/rustc >=1.85 and an active rustup toolchain. Unsupported platform
+entries are omitted, as are NVIDIA-only features when `nvidia-smi -L` fails. Syphon is omitted
+from this installer menu. Install missing prerequisites and rerun setup to enable features.
+
+In plain/limited terminals, numbered checkboxes accept numbers or names to toggle, then Enter
+to review. Numbers retain their catalog meanings even when entries are omitted. Previously
+requested, still-available features start checked. Each selected feature points to its guide.
+The terminal selector uses [JLine](https://jline.org/docs/terminal/); Unix uses its `stty` provider,
+and Windows uses bundled Jansi. No system terminal library needs to be installed.
 
 Setup can run the existing Ceres, TetGen, paint, libpd, Csound, Syphon and learned-shader
 preparation tasks, plus the pinned sample download. It checks their required tools again after any package installation.

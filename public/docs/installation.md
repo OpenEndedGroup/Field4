@@ -96,9 +96,13 @@ runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache
 a machine that has never completed an online build.
 
 On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
-Choose the desktop app or browser/server mode, then select any optional features by number
-or name. The first screen offers Vulkan/Python; type **more** to see the complete inventory.
-Enter skips all extras. It shows the exact package-manager commands and requires typing `INSTALL`
+Choose the recommended desktop app or browser/server mode, then select optional features from
+the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
+Prerequisites appear at the right. Features with missing tools are disabled; install those
+prerequisites and rerun setup to enable them. Unsupported platform features and NVIDIA-only
+features without a working `nvidia-smi` are omitted. Limited terminals use numbered checkboxes:
+type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
+It shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
@@ -107,7 +111,7 @@ Python prerequisites do not include a configured JEP runtime: complete that in t
 and agent tooling have their own guides and prerequisites.
 
 The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
-Ceres, TetGen, Manifold and paint; Pure Data, Csound, LuaJIT and macOS Syphon; and optional
+Ceres, TetGen, Manifold and paint; Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
 
