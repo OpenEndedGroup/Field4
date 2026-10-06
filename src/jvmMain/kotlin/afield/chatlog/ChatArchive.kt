@@ -230,7 +230,8 @@ data class ChatBlockEntry(
     val images: List<ChatImageEntry> = emptyList(),
     val chars: Int,
     /** The block's markdown, images as references; left out of the index file. */
-    @kotlinx.serialization.Transient val text: String = "",
+    @kotlinx.serialization.Transient
+    val text: String = "",
 ) {
     /** The call itself and a program's calls: every tool call this block records. */
     val allCalls: List<ChatCall> get() = listOfNotNull(call) + calls
