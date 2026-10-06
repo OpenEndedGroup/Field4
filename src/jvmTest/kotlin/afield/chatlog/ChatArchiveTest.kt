@@ -214,4 +214,34 @@ class ChatArchiveTest {
             lenses.deleteRecursively()
         }
     }
+
+    @Test fun aLensIsAChatSoALensCanBeWrittenOverALens() {
+        val dir = document()
+        val lenses = Files.createTempDirectory("lenses").toFile()
+        try {
+            val store = ChatlogStore(listOf(dir), lenses)
+            val chat = dir.name
+            store.writeLens(chat, "steps", "<<you>>\n<<source:t-1.b0>>\nPlan it.\n<<ai>>\n<<source:t-1.b1..t-1.b2>>\nPlanned and looked.\n<<ai>>\n<<source:t-2.b1>>\nGable.", "", emptyMap())
+            val lens = store.tree("$chat#steps")
+            assertEquals(listOf("lens:steps.b0", "lens:steps.b1", "lens:steps.b2"), lens.headBlocks.map { it.address })
+            assertEquals(listOf("t-1.b1..t-1.b2"), lens.block("lens:steps.b1")!!.sources, "a lens block keeps what it cites")
+            assertTrue("## Turn 1 · lens:steps.b0" in ChatLogViews.outline(lens), "a lens outlines like a chat")
+
+            val over = "<<summary>>\n<<source:lens:steps.b0..lens:steps.b2>>\nPlanned, looked, then a gable."
+            assertEquals(emptyList(), ChatLogViews.lensProblems(lens, over), "a lens over a lens cites the lens's addresses")
+            assertEquals("summary", ChatArchive.lensTree(ChatArchive.chats(dir).single(), "lens:x", "x", over).headBlocks.single().kind)
+            store.writeLens("$chat#steps", "overview", over, "", emptyMap())
+            assertEquals(listOf("$chat#steps#overview", "$chat#steps", chat), store.chain("$chat#steps#overview"))
+            assertEquals("lens:overview.b0", store.tree("$chat#steps#overview").headBlocks.single().address)
+
+            val transcript = ChatLogViews.addressedTranscript(lens.headBlocks)
+            assertTrue("<<at:lens:steps.b1>>\n<<source:t-1.b1..t-1.b2>>" in transcript, "the viewer gets both the address and the citation")
+            val back = parseAiChatBlocks(transcript)
+            assertEquals(listOf("lens:steps.b0", "lens:steps.b1", "lens:steps.b2"), back.map { it.address })
+            assertFailsWith<IllegalArgumentException> { store.tree("$chat#missing") }
+        } finally {
+            dir.deleteRecursively()
+            lenses.deleteRecursively()
+        }
+    }
 }

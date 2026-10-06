@@ -151,11 +151,25 @@ object ChatArchive {
         return ChatTree(chat.document, chat.boxId, chat.boxName, head, nodes)
     }
 
+    /**
+     * A lens read as a chat: one node, [nodeId], holding the lens's blocks, so a lens can be outlined, read, cited
+     * and written over like any chat. Its pictures are the chat's, so [chat] is the chat at the bottom of the chain.
+     */
+    fun lensTree(chat: StoredChat, nodeId: String, title: String, markdown: String, families: AiChatToolFamilies = ChatToolFamilies.default): ChatTree {
+        var ordinal = 0
+        val blocks = parseAiChatBlocks(markdown).mapIndexed { i, b ->
+            entry(chat, "$nodeId.b$i", nodeId, b, families, if (b.role == "you") ++ordinal else null)
+        }
+        val node = ChatNode(id = nodeId, parent = null, type = "lens", onHead = true, blocks = blocks)
+        return ChatTree(chat.document, chat.boxId, title, nodeId, listOf(node))
+    }
+
     private fun entry(chat: StoredChat, address: String, nodeId: String, b: AiChatBlock, families: AiChatToolFamilies, turn: Int?): ChatBlockEntry {
         val call = b.toolCall()
         val kind = when {
             b.role == "you" -> "user"
             b.role == "ai" -> "reply"
+            b.role == "summary" -> "summary"
             b.role == "queued" -> "queued"
             call != null -> "tool"
             b.title.startsWith("Failed") || b.title.startsWith("Error") -> "failure"
@@ -170,6 +184,7 @@ object ChatArchive {
             images = b.images().map { img -> ChatImageEntry(img, resolved(chat, img)) },
             chars = b.content.length,
             model = b.model,
+            sources = b.sources,
             text = b.content,
         )
     }
@@ -232,6 +247,8 @@ data class ChatBlockEntry(
     val chars: Int,
     /** The model a reply records (`<<model:…>>`), so a re-rendered block keeps its badge. */
     val model: afield.AiChatModelIdentity? = null,
+    /** For a block of a lens, the stretches it stands for (`<<source:…>>`). */
+    val sources: List<String> = emptyList(),
     /** The block's markdown, images as references; left out of the index file. */
     @kotlinx.serialization.Transient
     val text: String = "",

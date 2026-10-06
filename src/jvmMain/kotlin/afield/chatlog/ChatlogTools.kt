@@ -26,7 +26,9 @@ import java.util.Base64
  * stands for. Lenses are saved in [lensDir], by default this document's `lenses/` folder, as
  * `<chat>/<name>.md` beside a `<name>.json` record of the brief that made it.
  *
- * Chats are named `<document>` when the document has one chat, otherwise `<document>/<box name or id>`.
+ * Chats are named `<document>` when the document has one chat, otherwise `<document>/<box name or id>`. A lens is
+ * itself a chat, named `<chat>#<lens>`: the tools outline, read and cite it like any other, so a lens can be written
+ * over a lens (`house-machine-10#episodes`), and the viewer shows the whole chain.
  */
 fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
     val store = ChatlogStore(roots.toList(), lensDir ?: File(inside.filename, "lenses"))
@@ -39,7 +41,8 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
                 val s = ChatStats.of(tree)
                 val words = tree.nodes.flatMap { it.blocks }.filter { it.role == "you" || it.role == "ai" }.sumOf { it.text.length }
                 "$id · ${s.userTurns} turns (${s.abandonedUserTurns} rewound) · ${s.replies} replies · ${s.toolCalls + s.programCalls} tool calls · " +
-                    "${s.toolImages} images · ~${words / 4} tokens of conversation"
+                    "${s.toolImages} images · ~${words / 4} tokens of conversation" +
+                    store.lenses(id).takeIf { it.isNotEmpty() }?.let { names -> " · lenses: " + names.joinToString { "$id#$it" } }.orEmpty()
             }.ifBlank { "No chats under ${store.roots.joinToString()}." }
         }
     }
@@ -50,7 +53,7 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
                 "replies as their first line, tool activity as round lines (calls, time, failures, notes, edits, looks), images as captions; " +
                 "then abandoned (rewound) branches. Start here."
         )
-        val chat by param<String>("chat name from chatlog.list")
+        val chat by param<String>("chat name from chatlog.list, or <chat>#<lens> for a lens")
         action { ChatLogViews.outline(store.tree(chat())) }
     }
 
@@ -105,7 +108,8 @@ fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
 
     aiTool("lens.write") {
         describe(
-            "Save a lens: a shorter chat over this one, in chat markup (<<you>> / <<ai>> blocks). Begin each block with a line " +
+            "Save a lens: a shorter chat over this one, in chat markup: <<you>> for the user's words, <<ai>> for the agent's, and " +
+                "<<summary>> for a block that condenses several turns of both at once. Begin each block with a line " +
                 "<<source:first..last>> (comma-separate several stretches) naming the stretch of the chat it stands for, using addresses " +
                 "from chatlog.outline or chatlog.read. Images can be reused as ![caption](ai4img:…). Refused, with the reasons, when a " +
                 "citation does not resolve. Writing the same name again replaces it."
@@ -171,11 +175,22 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
             ?: throw IllegalArgumentException("No chat '$id'. Chats: ${chats.joinToString { it.first }}")
     }
 
-    fun tree(id: String): ChatTree = treeOf(id, stored(id))
+    /** The chat [id], or, for `<chat>#<lens>` (any depth), that lens read as a chat. */
+    fun tree(id: String): ChatTree {
+        if ('#' !in id) return treeOf(id, stored(id))
+        val below = id.substringBeforeLast('#')
+        val name = id.substringAfterLast('#')
+        val markdown = lensMarkdown(below, name)
+            ?: throw IllegalArgumentException("No lens '$name' over $below; lens.list shows what exists.")
+        return ChatArchive.lensTree(stored(id.substringBefore('#')), "lens:$name", "$name lens over $below", markdown)
+    }
+
+    /** The chats of a chain from the top: `a#b#c` gives `a#b#c`, `a#b`, `a`. */
+    fun chain(id: String): List<String> = generateSequence(id) { it.takeIf { '#' in it }?.substringBeforeLast('#') }.toList()
 
     /** An `ai4img:` reference as a data URL, from the chat's document blobs. */
     fun dataUrl(id: String, ref: String): String? {
-        val file = File(stored(id).blobDir, ref.removePrefix("ai4img:")).takeIf { it.isFile } ?: return null
+        val file = File(blobDir(id), ref.removePrefix("ai4img:")).takeIf { it.isFile } ?: return null
         val type = file.extension.let { if (it == "jpg") "jpeg" else it }
         return "data:image/$type;base64," + Base64.getEncoder().encodeToString(file.readBytes())
     }
@@ -183,7 +198,7 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
     private fun dirFor(id: String) = File(lensDir, id.replace('/', '_'))
 
     private fun safe(name: String): String {
-        require(Regex("[A-Za-z0-9][A-Za-z0-9_.-]{0,63}").matches(name)) { "lens name '$name': use letters, digits, '-', '_' or '.'" }
+        require(Regex("[A-Za-z0-9][A-Za-z0-9_-]{0,63}").matches(name)) { "lens name '$name': use letters, digits, '-' or '_'" }
         return name
     }
 
@@ -218,7 +233,7 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
             ?.let { runCatching { Json.parseToJsonElement(it.readText()) as? kotlinx.serialization.json.JsonObject }.getOrNull() }
 
     /** Where a chat's `ai4img:` pictures are. */
-    fun blobDir(id: String): File = stored(id).blobDir
+    fun blobDir(id: String): File = stored(id.substringBefore('#')).blobDir
 
     fun lenses(id: String): List<String> =
         (dirFor(id).listFiles() ?: emptyArray()).filter { it.extension == "md" }.map { it.nameWithoutExtension }.sorted()

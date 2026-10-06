@@ -34,24 +34,40 @@ object ChatLensViewer {
 
     private fun enc(s: String) = URLEncoder.encode(s, Charsets.UTF_8)
 
-    /** What the viewer page fetches: the chat's current branch with addresses, and the lens with its record. */
-    fun payload(document: String, chat: String, lens: String?): JsonObject {
+    /**
+     * What the viewer page fetches: one column per level of the chain, top first. [lens] over [chat] gives the
+     * lens and the chat; over `<chat>#<lens>` it gives three columns, and so on down to the chat itself. Every
+     * block carries its address, and lens blocks their citations, so the page can draw a band between each
+     * pair of neighbouring columns.
+     */
+    fun payload(document: String, chat: String, lens: String): JsonObject {
         val store = store(document) ?: throw IllegalArgumentException("no chat archive registered for $document")
-        val tree = store.tree(chat)
+        val top = "$chat#$lens"
         val url = { blob: String -> "/api/chatlog/blob?document=${enc(document)}&chat=${enc(chat)}&ref=${enc(blob)}" }
-        val lensMarkdown = lens?.let { store.lensMarkdown(chat, it) ?: throw IllegalArgumentException("no lens '$it' for $chat") }
+        val base = store.tree(top.substringBefore('#'))
         return buildJsonObject {
-            put("chat", chat)
-            put("title", "${tree.document} · ${tree.boxName ?: tree.box}")
-            put("source", ChatLogViews.withImageUrls(ChatLogViews.addressedTranscript(tree.headBlocks), url))
-            lens?.let { put("lens", it) }
-            lensMarkdown?.let { put("lensMarkdown", ChatLogViews.withImageUrls(it, url)) }
-            lens?.let { name -> store.lensRecord(chat, name)?.let { put("record", it) } }
+            put("title", "${base.document} · ${base.boxName ?: base.box}")
+            put("columns", kotlinx.serialization.json.buildJsonArray {
+                for (id in store.chain(top)) {
+                    val tree = store.tree(id)
+                    val name = id.substringAfterLast('#', "")
+                    add(buildJsonObject {
+                        put("id", id)
+                        put("kind", if ('#' in id) "lens" else "chat")
+                        put("name", name.ifEmpty { "${base.document} · ${base.boxName ?: base.box}" })
+                        put("markdown", ChatLogViews.withImageUrls(ChatLogViews.addressedTranscript(tree.headBlocks), url))
+                        if ('#' in id) store.lensRecord(id.substringBeforeLast('#'), name)?.let { put("record", it) }
+                    })
+                }
+            })
         }
     }
 }
 
-/** Show [lens] beside [chat] in this box's `lens` output channel. */
+/**
+ * Show [lens] beside [chat] in this box's `lens` output channel. [chat] may itself be a lens (`<chat>#<lens>`):
+ * the viewer then shows every level of the chain, each beside the one it summarizes.
+ */
 fun Box.showChatLens(chat: String, lens: String, height: Int = 900) {
     val id = "chat-lens-" + UUID.randomUUID().toString().take(8)
     val q = { s: String -> URLEncoder.encode(s, Charsets.UTF_8) }

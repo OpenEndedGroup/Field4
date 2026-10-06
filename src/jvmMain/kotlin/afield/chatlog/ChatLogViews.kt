@@ -73,10 +73,10 @@ object ChatLogViews {
                         appendLine("## ${first.turn?.let { "Turn $it" } ?: "Request"} · ${first.address} · finished ${at(node.ts)}")
                         first.text.lines().forEach { appendLine("> $it") }
                     }
-                    first.role == "ai" -> {
+                    first.role == "ai" || first.role == "summary" -> {
                         val images = first.images.map { it.image.caption ?: it.image.alt }
                         val text = oneLine(first.text.replace(Regex("""(?m)^_[^\n]*_$"""), ""), 180)
-                        append("- ${first.address} reply: $text")
+                        append("- ${first.address} ${if (first.role == "ai") "reply" else "summary"}: $text")
                         if (images.isNotEmpty()) append(" [${images.size} image${if (images.size > 1) "s" else ""}: ${images.joinToString("; ") { oneLine(it, 120) }}]")
                         appendLine()
                     }
@@ -216,6 +216,7 @@ object ChatLogViews {
             append("<<").append(b.role).append(">>\n")
             b.model?.let { append(it.marker()) }
             append("<<at:").append(b.address).append(">>\n")
+            if (b.sources.isNotEmpty()) append("<<source:").append(b.sources.joinToString(", ")).append(">>\n")
             append(b.text.trim()).append("\n")
         }
     }

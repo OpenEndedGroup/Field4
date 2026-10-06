@@ -28,7 +28,7 @@ fun Route.installChatlogRoutes() {
         val p = call.request.queryParameters
         val document = p["document"].orEmpty()
         val chat = p["chat"].orEmpty()
-        val result = runCatching { ChatLensViewer.payload(document, chat, p["lens"]?.ifBlank { null }) }
+        val result = runCatching { ChatLensViewer.payload(document, chat, requireNotNull(p["lens"]?.ifBlank { null }) { "which lens?" }) }
         result.onSuccess { call.respondText(Json.encodeToString(JsonObject.serializer(), it), ContentType.Application.Json) }
             .onFailure { call.respondText(it.message ?: "not found", status = HttpStatusCode.NotFound) }
     }
