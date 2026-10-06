@@ -1360,7 +1360,7 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
         include(
             "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
-            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack*.dll",
         )
         eachFile { path = name }
         includeEmptyDirs = false
@@ -1370,7 +1370,9 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
         val directory = smileNativeDirectory.get().asFile.toPath()
         fun alias(prefix: String, target: String) {
             val source = Files.list(directory).use { files ->
-                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow {
+                    GradleException("Missing $prefix native library in $directory for $bytedecoPlatformClassifier")
+                }
             }
             val destination = directory.resolve(target)
             if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
@@ -3521,6 +3523,9 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// Native preparation scripts use the platform Python command, like the source launcher.
+val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
@@ -3546,7 +3551,7 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3633,7 +3638,7 @@ val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
     outputs.upToDateWhen { false }
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath) +
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath) +
             if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
         val result = providers.exec {
             commandLine(command)
@@ -3670,7 +3675,7 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3706,7 +3711,7 @@ val buildCsoundNative = tasks.register("buildCsoundNative") {
     outputs.dir(layout.buildDirectory.dir("field-csound/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true

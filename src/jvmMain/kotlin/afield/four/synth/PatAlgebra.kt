@@ -63,7 +63,7 @@
  * cycles, so this only matters if you call `events(...)` with a partial arc by hand.
  */
 
-@file:Suppress("DANGEROUS_CHARACTERS") // `|+|` and friends are JVM method names, never file names.
+@file:Suppress("DANGEROUS_CHARACTERS") // Symbolic operators stay JVM method names; adapters use portable property names below.
 
 package afield.four.synth
 
@@ -179,13 +179,13 @@ infix fun PatPattern<Double>.`*|`(other: PatPattern<Double>): PatPattern<Double>
  * operators read `|over|` / `|over` / `over|`. Everything else in the family keeps its Tidal
  * spelling exactly.
  */
-infix fun PatPattern<Double>.`|over|`(other: PatPattern<Double>): PatPattern<Double> = appBoth(other, ::patSafeDiv)
+infix fun PatPattern<Double>.`|over|`(other: PatPattern<Double>): PatPattern<Double> = appBoth(other, patDivideValues)
 
 /** Structure from the left, values divided. Tidal's `|/`. */
-infix fun PatPattern<Double>.`|over`(other: PatPattern<Double>): PatPattern<Double> = appLeft(other, ::patSafeDiv)
+infix fun PatPattern<Double>.`|over`(other: PatPattern<Double>): PatPattern<Double> = appLeft(other, patDivideValues)
 
 /** Structure from the right, values divided. Tidal's `/|`. */
-infix fun PatPattern<Double>.`over|`(other: PatPattern<Double>): PatPattern<Double> = appRight(other, ::patSafeDiv)
+infix fun PatPattern<Double>.`over|`(other: PatPattern<Double>): PatPattern<Double> = appRight(other, patDivideValues)
 
 /** Prose alias for the `|over|` operator. */
 infix fun PatPattern<Double>.divBoth(other: PatPattern<Double>): PatPattern<Double> = this.`|over|`(other)
@@ -197,13 +197,17 @@ infix fun PatPattern<Double>.divLeft(other: PatPattern<Double>): PatPattern<Doub
 infix fun PatPattern<Double>.divRight(other: PatPattern<Double>): PatPattern<Double> = this.`over|`(other)
 
 /** Structure from both, values by modulo. */
-infix fun PatPattern<Double>.`|%|`(other: PatPattern<Double>): PatPattern<Double> = appBoth(other, ::patSafeMod)
+infix fun PatPattern<Double>.`|%|`(other: PatPattern<Double>): PatPattern<Double> = appBoth(other, patModuloValues)
 
 /** Structure from the left, values by modulo. */
-infix fun PatPattern<Double>.`|%`(other: PatPattern<Double>): PatPattern<Double> = appLeft(other, ::patSafeMod)
+infix fun PatPattern<Double>.`|%`(other: PatPattern<Double>): PatPattern<Double> = appLeft(other, patModuloValues)
 
 /** Structure from the right, values by modulo. */
-infix fun PatPattern<Double>.`%|`(other: PatPattern<Double>): PatPattern<Double> = appRight(other, ::patSafeMod)
+infix fun PatPattern<Double>.`%|`(other: PatPattern<Double>): PatPattern<Double> = appRight(other, patModuloValues)
+
+// Callable-reference adapters become class files, so keep them outside symbolic operators.
+private val patDivideValues: (Double, Double) -> Double = ::patSafeDiv
+private val patModuloValues: (Double, Double) -> Double = ::patSafeMod
 
 private fun patSafeDiv(a: Double, b: Double): Double = if (b == 0.0) 0.0 else a / b
 
