@@ -10,6 +10,8 @@ without the exact `INSTALL` response, uses argument vectors rather than a shell,
 requests credentials or AI keys. A package manager may request its normal administrator
 credentials. Git LFS recovery has its own explicit `PULL` response. Optional source builds require a
 separate `BUILD` response after their task arguments and prerequisites are shown.
+On Arch/CachyOS, setup queries pacman's local database and omits already-installed packages.
+If everything required is present, it proposes no package transaction.
 
 It stores choices, not a claim that optional features are configured. Python prerequisites
 still require selecting an interpreter and installing JEP in Field's welcome page; Vulkan
