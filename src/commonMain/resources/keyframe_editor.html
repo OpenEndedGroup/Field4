@@ -83,6 +83,19 @@
                 onHover(time) {
                         postLink({ kind: 'hover', time });
                 },
+                // A moment selected across the lanes, and moved or deleted together.
+                onBandSelect(t0, t1, additive) {
+                        postLink({ kind: 'band', t0, t1, additive });
+                },
+                onLinkedClear() {
+                        postLink({ kind: 'linked-clear' });
+                },
+                onShift(dt, phase) {
+                        postLink({ kind: 'shift', dt, phase });
+                },
+                onLinkedDelete() {
+                        postLink({ kind: 'linked-delete' });
+                },
         });
 
         // ── Linked lanes ───────────────────────────────────────────────────────────────
@@ -145,6 +158,18 @@
                                         break;
                                 case 'hover':
                                         editor.setLinkedCursor(data.time);
+                                        break;
+                                case 'band':
+                                        editor.applyLinkedBand(data.t0, data.t1, !!data.additive);
+                                        break;
+                                case 'linked-clear':
+                                        editor.clearLinkedSelection();
+                                        break;
+                                case 'shift':
+                                        editor.applyLinkedShift(data.dt, data.phase);
+                                        break;
+                                case 'linked-delete':
+                                        editor.deleteLinkedSelection();
                                         break;
                                 case 'bye':
                                         linkState.extents.delete(data.from);

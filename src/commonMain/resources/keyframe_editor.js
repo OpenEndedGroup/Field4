@@ -1177,7 +1177,7 @@ export class KeyframeEditor {
                 const consume = () => { event.preventDefault(); event.stopPropagation(); };
                 if (key === "Escape") {
                         if (this.menuEl) this.hideContextMenu();
-                        else if (this.state.selectedIds.length) this.setSelection([], null);
+                        else if (this.state.selectedIds.length) { this.dropLinkedSelection(); this.setSelection([], null); }
                         return;
                 }
                 if (mod && lower === "z") { consume(); event.shiftKey ? this.redo() : this.undo(); return; }
@@ -1189,6 +1189,7 @@ export class KeyframeEditor {
                 if (mod && lower === "a") { consume(); this.setSelection(this.keyframes.map((kf) => kf.id), null); return; }
                 if ((key === "Delete" || key === "Backspace") && this.state.selectedIds.length) {
                         consume();
+                        if (this.linkedSelection && typeof this.options.onLinkedDelete === "function") this.options.onLinkedDelete();
                         this.removeKeyframes([...this.state.selectedIds]);
                         this.hideContextMenu();
                         return;
@@ -1215,6 +1216,7 @@ export class KeyframeEditor {
         nudgeSelection(dt, dv) {
                 const moving = this.keyframes.filter((kf) => this.isSelected(kf.id) && !kf.locked);
                 if (!moving.length) return;
+                if (this.linkedSelection && dt !== 0 && typeof this.options.onShift === "function") this.options.onShift(dt, "nudge");
                 moving.forEach((kf) => this.updateKeyframe(kf.id, { time: kf.time + dt, value: kf.value + dv }));
                 // A run of nudges is one undo step.
                 this.refresh({ coalesce: "nudge" });
@@ -1773,6 +1775,8 @@ export class KeyframeEditor {
                                                 this.setSelection(merged, this.state.anchorId);
                                         }
                                 } else if (!this.isSelected(kf.id)) {
+                                        // A key outside the selection: just this one, in this lane only.
+                                        this.dropLinkedSelection();
                                         this.setSelection([kf.id], kf.id);
                                 }
                                 if (!kf.locked) {
@@ -2091,6 +2095,7 @@ export class KeyframeEditor {
         }
 
         handleSelectionClick(id, event) {
+                if (this.linkedSelection && !this.isSelected(id)) this.dropLinkedSelection();
                 if (event.shiftKey) {
                         this.selectRange(id);
                 } else {
@@ -2521,6 +2526,9 @@ export class KeyframeEditor {
                 const movingIds = offsets.map((offset) => offset.id);
                 const anchorOffset = offsets.find((item) => item.id === id) ?? offsets[0];
                 const anchorId = anchorOffset?.id ?? movingIds[0];
+                // With a selection across lanes, the other lanes' selected keys move by the same time.
+                const anchorStart = this.keyframes.find((kf) => kf.id === anchorId)?.time;
+                let lastShift = 0;
                 const move = (ev) => {
                         if (ev.pointerId !== pointerId) return;
                         this._didDrag = true;
@@ -2559,6 +2567,10 @@ export class KeyframeEditor {
                         });
                         this.refresh({ notify: false });
                         this.previewKeys();
+                        if (this.linkedSelection && finalAnchor && Number.isFinite(anchorStart) && typeof this.options.onShift === "function") {
+                                lastShift = finalAnchor.time - anchorStart;
+                                this.options.onShift(lastShift, "move");
+                        }
                         if (finalAnchor) {
                                 this.showDragLabel(finalAnchor);
                         } else {
@@ -2576,6 +2588,7 @@ export class KeyframeEditor {
                         this.hideSnapIndicators();
                         this.hideDragLabel();
                         this.refresh();
+                        if (this.linkedSelection && typeof this.options.onShift === "function") this.options.onShift(lastShift, "end");
                 };
 
                 window.addEventListener("pointermove", move);
@@ -3045,6 +3058,9 @@ export class KeyframeEditor {
                 let didMarquee = false;
                 const isShift = event.shiftKey;
                 const prevSelection = isShift ? [...this.state.selectedIds] : [];
+                // Cmd/Ctrl: the band is a moment across every linked lane, not just this one.
+                const acrossLanes = event.metaKey || event.ctrlKey;
+                if (!acrossLanes) this.dropLinkedSelection();
 
                 const move = (ev) => {
                         if (ev.pointerId !== pointerId) return;
@@ -3093,6 +3109,10 @@ export class KeyframeEditor {
                         } else {
                                 this.setSelection(marqueeIds);
                         }
+                        if (acrossLanes && !useY) {
+                                this.linkedSelection = true;
+                                if (typeof this.options.onBandSelect === "function") this.options.onBandSelect(tMin, tMax, isShift);
+                        }
                 };
 
                 const stop = (ev) => {
@@ -3136,6 +3156,60 @@ export class KeyframeEditor {
                 this.render();
                 // Linked lanes go back to framing all of their keys together.
                 if (typeof this.options.onFit === "function") this.options.onFit();
+        }
+
+        // ── Selection across lanes ───────────────────────────────────────
+
+        /** Ends a selection made across lanes, here and (through onLinkedClear) in the others. */
+        dropLinkedSelection() {
+                if (!this.linkedSelection) return;
+                this.linkedSelection = false;
+                if (typeof this.options.onLinkedClear === "function") this.options.onLinkedClear();
+        }
+
+        /** Another lane swept a band across the lanes: select this lane's keys in it. */
+        applyLinkedBand(t0, t1, additive) {
+                const ids = this.keyframes.filter((kf) => kf.time >= t0 && kf.time <= t1).map((kf) => kf.id);
+                const selection = additive ? Array.from(new Set([...this.state.selectedIds, ...ids])) : ids;
+                this.linkedSelection = true;
+                this.setSelection(selection, selection[selection.length - 1] ?? null);
+        }
+
+        clearLinkedSelection() {
+                if (!this.linkedSelection) return;
+                this.linkedSelection = false;
+                this.setSelection([], null);
+        }
+
+        /**
+         * Another lane moved its part of the selection by [dt] in time: move ours with it. "move" is a
+         * drag in progress, "end" commits it, "nudge" is one arrow-key step.
+         */
+        applyLinkedShift(dt, phase) {
+                if (!this.linkedSelection) return;
+                if (phase === "nudge") {
+                        this.selectedKeyframes().filter((kf) => !kf.locked)
+                            .forEach((kf) => this.updateKeyframe(kf.id, { time: kf.time + dt }));
+                        this.refresh({ coalesce: "nudge" });
+                        return;
+                }
+                if (!this._shiftOrigin) {
+                        this._shiftOrigin = new Map(this.selectedKeyframes().filter((kf) => !kf.locked).map((kf) => [kf.id, kf.time]));
+                }
+                this._shiftOrigin.forEach((time, id) => this.updateKeyframe(id, { time: time + dt }));
+                if (phase === "end") {
+                        this._shiftOrigin = null;
+                        this.refresh();
+                } else {
+                        this.refresh({ notify: false });
+                        this.previewKeys();
+                }
+        }
+
+        deleteLinkedSelection() {
+                if (!this.linkedSelection) return;
+                this.removeKeyframes(this.selectedKeyframes().map((kf) => kf.id));
+                this.linkedSelection = false;
         }
 
         /** A pan or zoom made here, for the lanes linked to this one. */
