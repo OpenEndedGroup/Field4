@@ -279,3 +279,14 @@ overflows, so captures use `screenshot-window`.
 Left for phase 5: lens of a lens (the viewer would show three columns); abandoned branches in the
 source column when a lens cites them; the offline single-file export; a series lens across houses;
 and keeping a lens's brief in its box rather than in the chat message.
+
+## 12. Public page
+
+`public/docs/ai4_chat_archive.md` ("Reading Saved AI4 Chats") covers phases 1–4 for users, over an invented
+`garden-shed` fixture in `public/docs/assets/ai4_chat_archive/` (chat, hand-written `storyline` lens, and a
+`demo/` document of the page's four boxes). Capture notes: `println` output is inline, not a panel, so the
+fences `display(...)` a `<pre>`; the viewer fence uses `capture="window"`, and its `clip` is in CSS px at the
+runner's 0.56 window scale, so `clip="0,0,2210,2600"` is the lens channel; `trim` cannot crop the grained
+canvas background. When the lens markup or viewer changes, recapture with
+`FIELD_DOCS_RUNNER_MODE=always ... --page ai4_chat_archive.md` and update the lens record's stats from the
+`stats.png` capture.
