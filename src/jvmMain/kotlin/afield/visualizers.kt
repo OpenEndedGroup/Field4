@@ -440,7 +440,8 @@ fun ClosedFloatingPointRange<Double>.arcContains(value: Double): Boolean =
  */
 class GestureHandle internal constructor(
     private val control: ArrayControlHandle<List<Double>>,
-    take: List<Double>
+    take: List<Double>,
+    private val sanitize: (List<Double>) -> List<Double> = { it }
 ) {
     /** Stable id of the control, shared with the phone. */
     val controlId: String get() = control.controlId
@@ -484,6 +485,40 @@ class GestureHandle internal constructor(
 
     /** Shows a dot on the pad where the take is [seconds] into its loop. Negative hides it. */
     fun playhead(seconds: Double): Boolean = control.playhead(seconds)
+
+    /** The take as (seconds, position) pairs in time order — the form `initialTake` accepts. */
+    val samples: List<Pair<Double, Vector2f>>
+        get() = take.let { p -> List(p.size / 3) { i -> p[i * 3] to Vector2f(p[i * 3 + 1].toFloat(), p[i * 3 + 2].toFloat()) } }
+
+    /** The take as flattened (t, x, y) triples. */
+    internal fun rawTake(): DoubleArray = take
+
+    /**
+     * The take reduced to two `linear` lanes, x and y, sharing their key times: the fewest recorded
+     * samples that keep both axes within [tolerance] (pad units) of the take at every moment. The
+     * lanes start at 0 and end at [duration], so they loop as the take does. See [Box.bakeGesture].
+     */
+    fun toKeyframes(tolerance: Double = 0.02): GestureLanes = takeToLanes(take, tolerance)
+
+    /** How closely [x] and [y] follow this take; see [GestureFit]. */
+    fun fit(x: KeyframeEvaluator, y: KeyframeEvaluator): GestureFit = measureGestureFit(take, x, y)
+
+    /**
+     * Replaces the take with [samples], as if it had been recorded: the pad shows the new trail and
+     * the take is saved with the box. Positions are clamped to the pad and time starts at 0.
+     */
+    fun setTake(samples: List<Pair<Double, Vector2f>>) {
+        val flat = sanitize(samples.flatMap { (t, v) -> listOf(t, v.x.toDouble(), v.y.toDouble()) })
+        take = flat.toDoubleArray()
+        control.set(flat)
+    }
+
+    /**
+     * Replaces the take with the curves [x] and [y] — lanes edited in the keyframe editor — so the
+     * edited movement replays through the pad. See [lanesToTake].
+     */
+    fun setTake(x: KeyframeEvaluator, y: KeyframeEvaluator, samplesPerSecond: Double = 60.0) =
+        setTake(lanesToTake(x, y, samplesPerSecond))
 }
 
 /**
@@ -569,6 +604,6 @@ fun ControlGroupBuilder.gesture(
         read = { c -> c.text?.split(',')?.mapNotNull { it.trim().toDoubleOrNull() } },
         write = { old, next -> old.copy(text = encodeValues(sanitize(next))) }
     )
-    handle = GestureHandle(withPlayhead(value), restoredTake)
+    handle = GestureHandle(withPlayhead(value), restoredTake, sanitize)
     return handle
 }
