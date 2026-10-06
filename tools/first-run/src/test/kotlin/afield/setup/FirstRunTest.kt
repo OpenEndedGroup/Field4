@@ -31,6 +31,20 @@ class FirstRunTest {
         assertEquals(listOf("sudo", "pacman", "-S", "--needed", "--"), argv.take(5))
         assertFalse(argv.any { it in setOf("--noconfirm", "-Sy") })
     }
+    @Test fun archDesktopAndVulkanAlreadyInstalledProposeNoTransaction() {
+        val proposed = packagePlan("pacman", true, emptySet(), setOf("vulkan"), false)
+        val installed = setOf("gtk3", "nss", "alsa-lib", "mesa", "libxkbcommon", "vulkan-icd-loader", "vulkan-tools")
+        val filtered = omitInstalledPacmanPackages(proposed, installed)
+        assertTrue(filtered.commands.isEmpty())
+        assertFalse(filtered.notes.any { it.startsWith("Use a fully updated Arch system.") })
+    }
+    @Test fun archMixedPlanKeepsOnlyMissingPackagesAndPreservesConfirmation() {
+        val proposed = packagePlan("pacman", true, emptySet(), setOf("vulkan"), false)
+        val filtered = omitInstalledPacmanPackages(proposed, setOf("gtk3", "nss", "alsa-lib", "mesa", "libxkbcommon", "vulkan-icd-loader"))
+        assertEquals(listOf("sudo", "pacman", "-S", "--needed", "--", "vulkan-tools"), filtered.commands.single())
+        val apt = packagePlan("apt-get", true, emptySet(), emptySet(), false)
+        assertEquals(apt, omitInstalledPacmanPackages(apt, emptySet()))
+    }
     @Test fun unsupportedPackageManagerProducesGuidanceAndNoShellCommand() {
         val plan = packagePlan(null, true, setOf("git-lfs"), setOf("python", "vulkan"), false)
         assertTrue(plan.commands.isEmpty())

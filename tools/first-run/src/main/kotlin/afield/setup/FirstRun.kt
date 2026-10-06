@@ -7,6 +7,34 @@ import kotlin.system.exitProcess
 
 internal data class InstallPlan(val commands: List<List<String>>, val notes: List<String>)
 
+internal fun omitInstalledPacmanPackages(plan: InstallPlan, installed: Set<String>): InstallPlan {
+    val commands = plan.commands.mapNotNull { command ->
+        if (command.take(2) != listOf("sudo", "pacman")) return@mapNotNull command
+        val separator = command.indexOf("--")
+        check(separator >= 0)
+        val missing = command.drop(separator + 1).filterNot { it in installed }
+        if (missing.isEmpty()) null else command.take(separator + 1) + missing
+    }
+    return plan.copy(commands = commands, notes = if (commands.isEmpty())
+        plan.notes.filterNot { it.startsWith("Use a fully updated Arch system.") } else plan.notes)
+}
+
+internal fun installedPacmanPackages(plan: InstallPlan): Set<String> {
+    val packages = plan.commands.filter { it.take(2) == listOf("sudo", "pacman") }
+        .flatMap { it.drop(it.indexOf("--") + 1) }.toSet()
+    if (packages.isEmpty()) return emptySet()
+    // --needed still upgrades installed packages whose repository version is newer. Query the
+    // local database first; Field setup should not upgrade the user's desktop/driver libraries.
+    val process = ProcessBuilder(listOf("pacman", "-Qq", "--") + packages)
+        .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+    if (!process.waitFor(5, TimeUnit.SECONDS)) {
+        process.destroyForcibly()
+        error("Could not check installed pacman packages; rerun setup after checking pacman.")
+    }
+    check(process.exitValue() in setOf(0, 1)) { "Could not query pacman's local package database." }
+    return process.inputStream.bufferedReader().use { it.readLines() }.filter { it in packages }.toSet()
+}
+
 internal fun usesT64Packages(release: String): Boolean {
     val values = release.lineSequence().mapNotNull { line ->
         val parts = line.split('=', limit = 2)
@@ -188,7 +216,8 @@ fun main(args: Array<String>) {
     val selectedTools = required.toSet() + extraTools(extras, platform)
     val selectedMissing = selectedTools.filter { !toolAvailable(it) }.toSet()
     val release = File("/etc/os-release").takeIf { it.isFile }?.readText().orEmpty()
-    val plan = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release))
+    val proposed = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release))
+    val plan = if (manager == "pacman") omitInstalledPacmanPackages(proposed, installedPacmanPackages(proposed)) else proposed
     val prepare = preparationCommands(extras, platform)
     ui.section(3, "Your setup plan")
     ui.status("Launch mode", if (mode == "1") "Desktop app" else "Browser / server")
