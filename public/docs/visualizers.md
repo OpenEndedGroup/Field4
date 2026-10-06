@@ -1082,6 +1082,8 @@ loop {
 
 `p` follows your finger while you drag and the take otherwise. Use it for anything with two axes: a camera, a pan and a filter, a point in a preset space.
 
+To edit a take key by key, bake it into keyframe lanes with `bakeGesture(pad)`, and send the edited lanes back with `pad.setTake(x, y)`: see [From a performed gesture](keyframe_editor.md#from-a-performed-gesture).
+
 ### Choosing the right control
 
 - Use `slider(...)` for one bounded numeric value.
