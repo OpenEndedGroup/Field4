@@ -5,9 +5,11 @@ import java.io.File
 import kotlin.system.exitProcess
 
 /**
- * The landing guard that box code still compiles: builds each named transcript's box graph and
- * compiles every box's Kotlin with evaluation skipped, through [DemoTranscriptExecSmokeTest]'s
- * compile-only path. Nothing is evaluated, so no window opens and it runs headless.
+ * The landing guard that box code still compiles: each named transcript goes down the path
+ * [DemoTranscriptExecSmokeTest] classifies it for. COMPILE_ONLY transcripts (the ones that would
+ * open a window) build their graph and compile with evaluation skipped; EXECUTE transcripts are
+ * headless-safe and run, because a later box may need what an earlier one defines when evaluated;
+ * KOTLINJS transcripts compile through the Kotlin/JS path.
  *
  * It is scoped to what a landing changed. The paths come from the file named by
  * `AFIELD_GUARD_CHANGED_PATHS_FILE` (one repo-relative path per line, written by
@@ -44,8 +46,18 @@ object BoxCodeCompileGuard {
         DemoTranscriptExecSmokeTest.startRunloopDaemon()
         val failures = mutableListOf<String>()
         for (yaml in yamls) {
+            val name = yaml.nameWithoutExtension
             try {
-                DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, yaml.nameWithoutExtension, failures)
+                // Same routing as the smoke test. Compile-only is wrong for the other classes: a
+                // KOTLINJS transcript's code is Kotlin/JS against the browser API (onStart, THREE,
+                // Tone), and an EXECUTE transcript may read types or values an earlier box defines
+                // only when evaluated (shared_types_demo, the DataFrame plugin's generated schema).
+                when (name) {
+                    in DemoTranscriptExecSmokeTest.COMPILE_ONLY -> DemoTranscriptExecSmokeTest.runCompileOnlyDemo(yaml, name, failures)
+                    in DemoTranscriptExecSmokeTest.EXECUTE -> DemoTranscriptExecSmokeTest.runExecuteDemo(yaml, name, failures)
+                    in DemoTranscriptExecSmokeTest.KOTLINJS -> DemoTranscriptExecSmokeTest.runKotlinJsDemo(yaml, name, failures)
+                    else -> failures.add("$name: UNCLASSIFIED — add to EXECUTE or COMPILE_ONLY in DemoTranscriptExecSmokeTest")
+                }
             } catch (t: Throwable) {
                 failures.add("${yaml.nameWithoutExtension}: harness threw ${t.javaClass.simpleName}: ${t.message}")
             } finally {
