@@ -76,6 +76,7 @@ data class ChatStats(
  * --match <glob>              ...whose name matches, e.g. 'house-machine-*'
  * --out <dir>                 also write <document>__<box>.chat-index.json per chat (block index, no text)
  * --json                      print the stats as JSON instead of a table
+ * --view outline|read         print what an agent reads of each chat (ChatLogViews) instead of stats
  * ```
  */
 object ChatArchiveCli {
@@ -88,6 +89,7 @@ object ChatArchiveCli {
         var match: String? = null
         var out: File? = null
         var asJson = false
+        var view: String? = null
         var i = 0
         while (i < args.size) {
             when (val a = args[i++]) {
@@ -96,6 +98,7 @@ object ChatArchiveCli {
                 "--match" -> match = args[i++]
                 "--out" -> out = File(args[i++])
                 "--json" -> asJson = true
+                "--view" -> view = args[i++]
                 else -> error("unknown argument $a (see ChatArchiveCli's KDoc)")
             }
         }
@@ -107,6 +110,17 @@ object ChatArchiveCli {
         }
         require(documents.isNotEmpty()) { "no documents: pass --document <dir> or --workspace <dir>" }
 
+        if (view != null) {
+            for (doc in documents.sortedWith(compareBy(::naturalKey))) for (chat in ChatArchive.chats(doc)) {
+                val tree = ChatArchive.tree(chat)
+                println(when (view) {
+                    "outline" -> ChatLogViews.outline(tree)
+                    "read" -> ChatLogViews.read(tree, null, null, maxChars = Int.MAX_VALUE).text
+                    else -> error("--view outline or read")
+                })
+            }
+            return
+        }
         val stats = documents.sortedWith(compareBy(::naturalKey)).flatMap { doc ->
             ChatArchive.chats(doc).map { chat ->
                 val tree = ChatArchive.tree(chat)

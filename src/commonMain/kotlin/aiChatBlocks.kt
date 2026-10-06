@@ -13,13 +13,38 @@ import kotlinx.serialization.Serializable
  * running turn) and `<<queued>>` (display only). Text before the first marker, or a transcript with none, is
  * one `ai` block.
  */
-data class AiChatBlock(val role: String, val content: String, val model: AiChatModelIdentity? = null) {
+data class AiChatBlock(
+    val role: String,
+    val content: String,
+    val model: AiChatModelIdentity? = null,
+    /**
+     * What this block stands for, when it is a block of a lens: addresses or ranges (`a..b`) in the chat the
+     * lens summarizes, from `<<source:…>>` marker lines at the top of the block. Empty for an ordinary chat.
+     */
+    val sources: List<String> = emptyList(),
+) {
     val isProgress: Boolean get() = role.startsWith("progress")
     val title: String get() = content.lines().firstOrNull()?.trim().orEmpty()
     val body: String get() = content.lines().drop(1).joinToString("\n").trim()
 
     /** A progress block with nothing under its title: the panel shows these as one inline status row. */
     val isStatusOnly: Boolean get() = isProgress && (body.isBlank() || body == title)
+}
+
+/**
+ * Leading `<<source:a..b, c>>` lines: a lens block's citations of the chat it summarizes. A range runs
+ * `from..to` because block addresses (`<nodeId>.b<index>`) contain `-`.
+ */
+fun splitSourceMarkers(content: String): Pair<List<String>, String> {
+    val sources = mutableListOf<String>()
+    var rest = content
+    while (rest.startsWith("<<source:")) {
+        val line = rest.substringBefore('\n')
+        if (!line.endsWith(">>")) break
+        sources += line.removePrefix("<<source:").removeSuffix(">>").split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        rest = rest.substringAfter('\n', "").trimStart()
+    }
+    return sources to rest
 }
 
 private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<progress>>", "<<progress-open>>", "<<queued>>")
@@ -51,8 +76,10 @@ fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
         val role = currentRole ?: return
         val content = buffer.toString().trim()
         if (content.isNotEmpty()) {
-            val (model, body) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
-            blocks.add(AiChatBlock(role, body, model))
+            val (model, rest) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
+            val (sources, body) = splitSourceMarkers(rest)
+            // A block that was only marker lines still renders (a model badge with no text yet), as it always has.
+            blocks.add(AiChatBlock(role, body, model, sources))
         }
         buffer.clear()
     }

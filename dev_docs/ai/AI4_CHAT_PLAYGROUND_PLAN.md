@@ -5,7 +5,7 @@ let AI4 agents write **lenses**: shorter, filtered versions of the chat, drawn i
 the chat panel, with lines running across from each summary block to the stretch of the original
 it stands for. Lenses can be stacked, so the hierarchy is a lens of a lens.
 
-Status (2026-10-06): phases 1 and 2 built (sections 8 and 9); phases 3–5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
+Status (2026-10-06): phases 1–3 built (sections 8–10); phases 4–5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
 there is no fidelity checking. Tool records count only for which tool ran, whether it failed and
 how long it took. What matters is the shape of the chat and the moments the machine itself
 changed: notes, the house playbook, recipes, searches and stabilization.
@@ -67,13 +67,13 @@ plus one new marker line that ties a block to its source:
 
 ```
 <<ai>>
-<<source:t-f65450f4-0ff.b12-t-f65450f4-0ff.b47>>
+<<source:t-f65450f4-0ff.b12..t-f65450f4-0ff.b47>>
 Laid out the first plan: three bedrooms north, open living south. The first check found the
 bathroom 300 mm short for a bath; the hall wall moved and the second check passed.
 ![plan after the fix](ai4img:2e830bad36f29af5.jpeg)
 ```
 
-- `<<source:a-b[,c-d]>>` works the way `<<model:…>>` does. Spans may be discontiguous: a lens that
+- `<<source:a..b[, c..d]>>` works the way `<<model:…>>` does (`..`, because addresses contain `-`). Spans may be discontiguous: a lens that
   pulls together every roof decision cites several stretches.
 - A lens of a lens cites addresses in the lens below (`L1:b008-b011`). Lines then chain down to
   the raw chat, which gives the hierarchy: series overview → house storyline → turn digest → chat.
@@ -209,3 +209,38 @@ numbered by `data-ai-round`). A run of status lines alone stays a status row.
 The panel loads the family table by fetch (`aiChatSetToolFamilies`) and re-renders open chats when
 it arrives. On house-machine-10 the panel shows 56 round lines where it showed 125 tool blocks.
 UI regression: `ai-chat-rounds`.
+
+## 10. Phase 3: tools, and the first lens
+
+Code:
+- `afield.chatlog.ChatLogViews`: what an agent reads. `outline` (every turn with its time and full
+  request, replies as first lines, rounds as round lines, images as captions, then abandoned
+  branches), `read` (a stretch as text, each block headed by its address, paged), `search`,
+  `images` (address, reference, what the tool looked for, what the agent concluded), and the lens
+  checks `lensProblems` / `lensStats`.
+- `afield.chatlog.registerChatlogTools(roots…)` (`ChatlogTools.kt`): `chatlog.list/outline/read/
+  search/images` and `lens.write/read/list`. Lenses are saved in the registering document's
+  `lenses/<chat>/<name>.md`, beside `<name>.json` with the brief, the model and the stats.
+- `AiChatRound` (commonMain): the round line, shared by the panel and the views.
+  `AiChatBlock.sources` reads `<<source:…>>` lines; the panel strips them and keeps them as
+  `data-ai-sources` on the turn, for phase 4.
+- `ChatArchiveCli --view outline|read` prints what the agent reads.
+
+The first lens: *storyline* over house-machine-10, written on `gpt-6.1-sol` by the chat of a lens
+box in a playground document (its own Field, port 9530, `AFIELD_AI_MODEL` set on that process).
+- Brief: a five-minute read for someone who wasn't there; requests kept as `<<you>>`, the agent's
+  work condensed in its own voice, every block cited, 3–6 pictures, about a tenth of the length.
+- Cost: 7 rounds, 2 minutes, 327 k input tokens (264 k cached), 3.9 k output.
+- Result: 26 blocks citing 516 of the chat's 635 blocks, 8.9× shorter than what it cites, four
+  pictures. It keeps every request and the turning points: the roof-seam search, the drains held
+  because a 2 mm floor/subfloor overlap vanished once the planner allowed for pipe radius (the
+  kit's fault, then fixed), the audit gap, the holdouts, the bath's own roof exit. In the panel it
+  scrolls 5,372 px against the original's 23,771.
+- What it shows for phase 4: the agent made one reply per user turn, so its spans are whole turns.
+  A finer lens (episodes inside a turn) needs a brief that asks for it. Lens blocks render with
+  "Model not recorded" and need their own label. `ai4img:` references need resolving in the
+  browser (here they were inlined by hand for viewing).
+
+Lessons from driving it: build the `agent-task --goal` text with `shlex.quote` in a script; a
+`$(cat …)` escaped into a `--command` string arrives literally (the agent asked for the brief
+instead of guessing). Clear a lens box's chat with `raw-send ai-chat-history {uid, clear:true}`.
