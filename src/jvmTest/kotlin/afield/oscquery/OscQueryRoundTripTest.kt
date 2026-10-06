@@ -171,6 +171,10 @@ class OscQueryRoundTripTest {
             assertEquals(0.2, c.number, 1e-6)
             assertEquals(listOf(0.0 to 1.0), c.range)
             assertEquals("cutoff", c.description)
+            server.add("/scene", "s", listOf("dusk"), values = listOf("dawn", "dusk"))
+            remote.refresh()
+            assertEquals(emptyList(), remote["/scene"].range)
+            assertEquals(listOf<Any?>("dawn", "dusk"), remote["/scene"].choices)
 
             c.set(0.6) // a Double, sent as the node's float
             assertTrue(waitFor { heard.isNotEmpty() })

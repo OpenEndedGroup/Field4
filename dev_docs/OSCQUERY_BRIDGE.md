@@ -32,6 +32,17 @@ JDK WebSocket LISTEN client receiving Field-side and OSC-side changes plus `PATH
 `OscQueryRemote` mirroring a server, codec and mDNS wire round-trips, and live DNS-SD discovery
 (which returns early, with a printed note, when no multicast route exists).
 
-## Interop record
+## Interop record (2026-10-07, macOS, Field on backdoor port 9561)
 
-See the "Interop" section appended by the nightly run below, if present.
+Against the demo document's service (`oscQuery("Field demo")`, HTTP 9020 / OSC 9021):
+
+- `curl /?HOST_INFO` and `/demo/cutoff?VALUE` returned the expected JSON.
+- python `websockets` sent `LISTEN`; python-osc `SimpleUDPClient` sent `/demo/cutoff 4321.0`;
+  the pushed binary frame decoded with python-osc's `OscMessage` as `/demo/cutoff [4321.0]`, and
+  `?VALUE` then read `[4321.0]`.
+- Apple's `dns-sd -B _oscjson._tcp` (mDNSResponder) listed `Field demo` on interface 14.
+- Not checked: TouchDesigner, Max, Chataigne, VDMX themselves (none installed on the machine).
+
+Trap: the interop script ran from a Field box via `ProcessBuilder` on the main Runloop, which
+blocked the launched `/demo/lfo` loop, so no lfo frames arrived during it. Run interop clients
+from outside the box (or in a `launch`ed coroutine) when you want Runloop-driven values.

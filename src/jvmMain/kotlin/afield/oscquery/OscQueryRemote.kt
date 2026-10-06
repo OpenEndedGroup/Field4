@@ -67,10 +67,12 @@ class OscQueryRemote(
         val number: Double get() = (value.firstOrNull() as? Number)?.toDouble() ?: ((value.firstOrNull() as? Boolean)?.let { if (it) 1.0 else 0.0 } ?: 0.0)
 
         /** `(min, max)` per value from `RANGE`, nulls where unbounded. */
-        val range: List<Pair<Double?, Double?>> get() = (json?.get("RANGE") as? JsonArray)?.map { r ->
-            val o = r as? JsonObject
-            (o?.get("MIN") as? JsonPrimitive)?.doubleOrNull to (o?.get("MAX") as? JsonPrimitive)?.doubleOrNull
-        } ?: emptyList()
+        val range: List<Pair<Double?, Double?>> get() = (json?.get("RANGE") as? JsonArray)
+            ?.filter { r -> (r as? JsonObject)?.let { "MIN" in it || "MAX" in it } == true } // a VALS-only RANGE is a menu, not a range
+            ?.map { r ->
+                val o = r as JsonObject
+                (o["MIN"] as? JsonPrimitive)?.doubleOrNull to (o["MAX"] as? JsonPrimitive)?.doubleOrNull
+            } ?: emptyList()
 
         /** `VALS` from `RANGE`, for menus. */
         val choices: List<Any?> get() = ((json?.get("RANGE") as? JsonArray)?.firstOrNull() as? JsonObject)
