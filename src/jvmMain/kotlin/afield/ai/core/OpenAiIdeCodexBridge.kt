@@ -2,6 +2,7 @@ package afield.ai.core
 
 import afield.AiChatModelIdentity
 import afield.ai.RelatedContextDiscovery
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.readValue
@@ -227,6 +228,7 @@ class OpenAiIdeCodexBridge(
                     "conversationId" to state.conversationId,
                     "localThreadId" to state.localThreadId,
                     "previousResponseId" to (state.previousResponseId ?: ""),
+                    "continuesCappedTurn" to (state.cappedTurnContinuation != null),
                     "fileKey" to state.fileKey,
                     "inputChars" to inputText.length,
                     "attachmentCount" to ctx.attachments.size,
@@ -322,7 +324,9 @@ class OpenAiIdeCodexBridge(
             progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(ProgressUpdate(title = line, phase = "tool")) } },
         )
         try {
-        val promptItems = listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
+        // After a capped turn, the calls it left unrun and its forced final answer, ahead of this prompt.
+        val continuationItems = state.cappedTurnContinuation?.let(::continuationItems).orEmpty()
+        val promptItems = continuationItems + listOfNotNull(stableItem) + buildPromptItems(inputText, imageDataUrls)
 
         val paramsBuilder = ResponseCreateParams.builder()
             .model(chatModel)
@@ -331,7 +335,7 @@ class OpenAiIdeCodexBridge(
 
         if (runtimeConfig.isOpenRouter) {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + promptItems))
-        } else if (imageDataUrls.isEmpty() && stableItem == null) {
+        } else if (imageDataUrls.isEmpty() && stableItem == null && continuationItems.isEmpty()) {
             paramsBuilder.input(inputText)
         } else {
             paramsBuilder.input(ResponseCreateParams.Input.ofResponse(promptItems))
@@ -353,7 +357,7 @@ class OpenAiIdeCodexBridge(
         info("running prompt <<spinner>>")
         var response: Response = modelRequest("initial") { createResponse(paramsBuilder.build(), onTextDelta, onProgress, requestLedger("initial")) }
         if (stableItem != null) state.stableInstructionsHash = stableHash
-        state.lastTurnHitToolRoundCap = false
+        state.cappedTurnContinuation = null
         if (onTextDelta != null) {
             info("")
         }
@@ -670,12 +674,17 @@ class OpenAiIdeCodexBridge(
                 vectorStoreIds = vectorStoreIds,
                 ledger = requestLedger("forced_final")
             ) }
-            state.lastTurnHitToolRoundCap = true
             if (onTextDelta != null) {
                 info("")
             }
-            state.previousResponseId = response.id()
-            info("forced-final response id=${response.id()} outputItems=${response.output().size}")
+            // The next turn branches from the response that made the pending calls, which
+            // previousResponseId still names, never from this one: see CappedTurnContinuation.
+            state.cappedTurnContinuation = CappedTurnContinuation(
+                pendingCalls = pendingCalls.map { PendingToolCall(it.callId(), it.name()) },
+                finalText = extractOutputTextWithNewlines(response)
+            )
+            info("forced-final response id=${response.id()} outputItems=${response.output().size}; " +
+                "the next turn continues from ${state.previousResponseId}")
             toolIo(
                 "response",
                 mapOf(
@@ -683,7 +692,8 @@ class OpenAiIdeCodexBridge(
                     "responseId" to response.id(),
                     "outputItems" to response.output().size,
                     "messageCount" to response.output().count { it.isMessage() },
-                    "functionCallCount" to response.output().count { it.isFunctionCall() }
+                    "functionCallCount" to response.output().count { it.isFunctionCall() },
+                    "nextTurnContinuesFrom" to state.previousResponseId
                 )
             )
             logOutputShape(response)
@@ -845,14 +855,35 @@ class OpenAiIdeCodexBridge(
         var stableInstructionsHash: String? = null
 
         /**
-         * The last turn ended at its tool-round cap. Its forced final answer ("I reached the execution
-         * limit") stays in the model's history, and on 2026-10-04 the next turn answered "tool execution
-         * is still blocked by the session's tool-budget limit" with no calls, though its tools were
-         * offered. The next turn's input says the limit has reset; see [send].
+         * Set when the last turn ended at its tool-round cap: what the next turn sends ahead of its own
+         * prompt. [previousResponseId] then still names the response that made the pending calls, not the
+         * forced final one, because nothing may chain onto the forced final request. Cleared once the next
+         * turn's first request succeeds, so a turn that fails before then sends it again.
          */
         @Volatile
-        var lastTurnHitToolRoundCap: Boolean = false
+        var cappedTurnContinuation: CappedTurnContinuation? = null
+
+        /** The last turn ended at its tool-round cap; the next turn's input says the limit has reset. */
+        @get:JsonIgnore
+        val lastTurnHitToolRoundCap: Boolean get() = cappedTurnContinuation != null
     }
+
+    /**
+     * How a capped turn's answer reaches the conversation: as plain assistant text after "not run"
+     * outputs for its pending calls, sent with the next turn, rather than as the forced final response
+     * itself. That response was made under "summarize ... without calling tools", and what the server
+     * keeps of it does not stay request-scoped, even with the stop sent as `instructions`. On
+     * house-machine-11 (2026-10-05) the forced final request also compacted the conversation (the next
+     * turn's input was 55k tokens, down from 100k); the next two turns, chained onto it, were offered
+     * every tool with tool_choice auto and answered "tool execution is still disabled here" without a
+     * call, though the first of them carried the reset note. 2026-10-04 had been the same, without the note.
+     */
+    data class CappedTurnContinuation(
+        val pendingCalls: List<PendingToolCall> = emptyList(),
+        val finalText: String = ""
+    )
+
+    data class PendingToolCall(val callId: String, val name: String)
 
     // Hosted discovery state can be lost to compaction while repeat searches return no tools.
     // Keep the already-discovered subset callable in later requests. Definitions still come
@@ -1016,31 +1047,15 @@ class OpenAiIdeCodexBridge(
         vectorStoreIds: List<String>,
         ledger: AiRequestLedger.Request
     ): Response {
-        val inputItems = mutableListOf<ResponseInputItem>()
-        pendingCalls.forEach { call ->
-            val outputItem = ResponseInputItem.FunctionCallOutput.builder()
-                .callId(call.callId())
-                .outputAsJson(
-                    mapOf(
-                        "error" to true,
-                        "aborted" to true,
-                        "tool" to call.name(),
-                        "reason" to "max_tool_rounds_reached",
-                        "message" to "Tool call aborted so the assistant can answer directly."
-                    )
-                )
-                .build()
-            inputItems += ResponseInputItem.ofFunctionCallOutput(outputItem)
-        }
+        // No later request chains onto this one (see CappedTurnContinuation), so the stop can be input,
+        // where it keeps the cached prefix. As `instructions` it made this request read nothing from cache:
+        // 100,750 of 100,823 input tokens were uncached on house-machine-11.
+        val inputItems = pendingCalls.map { notRunOutput(it.callId(), it.name()) } +
+            buildMessageItem(ResponseInputItem.Message.Role.DEVELOPER, FORCED_FINAL_INSTRUCTION)
 
         val builder = ResponseCreateParams.builder()
             .model(chatModel)
             .maxOutputTokens(maxOutputTokens)
-            // Request-scoped instructions are not inherited by previous_response_id.
-            // A developer input message here persisted the stop into subsequent user turns.
-            .instructions("The tool budget for this turn has been reached. For this response only, " +
-                "summarize the verified result and unfinished work without calling tools. " +
-                "The aborted calls did not execute. A later user turn has its own tool budget.")
         if (runtimeConfig.isOpenRouter) {
             builder.input(ResponseCreateParams.Input.ofResponse(historyForRequest(state) + inputItems))
         } else {
@@ -1053,20 +1068,49 @@ class OpenAiIdeCodexBridge(
         tools.addAllTo(builder, ctx, deferLoading = deferTools, loadedTools = state.loadedTools)
         if (vectorStoreIds.isNotEmpty() && supportsFileSearch()) builder.addFileSearchTool(vectorStoreIds)
         builder.toolChoice(ToolChoiceOptions.NONE)
-        val response = createResponse(builder.build(), onTextDelta, onProgress, ledger)
-        // Stateless continuations need the aborted-call outputs as well as the final text.
-        appendStatelessHistory(state, inputItems + inputItemsFromOutput(response))
-        return response
+        // Stateless history gets nothing from this request either: its stop instruction and its reasoning
+        // under that stop stay out, and the next turn adds the continuation as it does on the direct path.
+        return createResponse(builder.build(), onTextDelta, onProgress, ledger)
     }
 
+    private fun notRunOutput(callId: String, name: String): ResponseInputItem =
+        ResponseInputItem.ofFunctionCallOutput(
+            ResponseInputItem.FunctionCallOutput.builder()
+                .callId(callId)
+                .outputAsJson(
+                    mapOf(
+                        "error" to true,
+                        "aborted" to true,
+                        "tool" to name,
+                        "reason" to "max_tool_rounds_reached",
+                        "message" to "Not run: the turn's tool budget ran out first. A later turn may call it again."
+                    )
+                )
+                .build()
+        )
+
+    /** The next turn's opening input items after a capped turn; see [CappedTurnContinuation]. */
+    private fun continuationItems(continuation: CappedTurnContinuation): List<ResponseInputItem> =
+        continuation.pendingCalls.map { notRunOutput(it.callId, it.name) } +
+            listOfNotNull(continuation.finalText.takeIf { it.isNotBlank() }?.let { text ->
+                ResponseInputItem.ofEasyInputMessage(
+                    EasyInputMessage.builder().role(EasyInputMessage.Role.ASSISTANT).content(text).build()
+                )
+            })
+
+    private val FORCED_FINAL_INSTRUCTION =
+        "The tool budget for this turn has been reached. For this response only, summarize the verified " +
+            "result and unfinished work without calling tools. The aborted calls did not execute. A later " +
+            "user turn has its own tool budget."
+
     // Repairs older response chains once in the stable developer prefix.
-    // Ordinary requests keep the measured shared-cache layout; the forced final remains request-scoped.
+    // Ordinary requests keep the measured shared-cache layout.
     private val currentToolTurnInstructions =
         "Tools available on this request may be used when needed, within the current permissions " +
             "and restrictions. A tool budget or temporary tool-stop instruction from an earlier " +
             "user turn does not disable tools for the current user turn. This grants no additional authorization."
 
-    // Said once, in the input of the turn after a capped one, where the stable prefix above has not helped.
+    // Said once, in the input of the turn after a capped one, after that turn's continuation items.
     private val TOOL_ROUNDS_RESET_NOTE =
         "The previous turn stopped at its tool-round limit. That limit has reset: this turn has its own full " +
             "tool budget, so use tools as the request needs."
