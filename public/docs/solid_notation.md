@@ -1,12 +1,9 @@
 # A solid, written down: `afield.solidsl`
 
-*Every public declaration used below carries its own KDoc: start from `SolidExpr`, `Profile`,
-`SolidLowering` and `SolidTemplate` in `afield.solidsl`. There is an openable
-[starting point](#open-this) at the bottom of the page.*
-
 In `afield.solidsl` a shape is a **value**. Subtracting a cylinder from a cuboid builds an expression
-tree, and marching that tree, putting it through exact CSG, emitting GLSL from it and simplifying it
-are four separate questions you can ask of the one source afterwards.
+tree, and from that one tree you can march a mesh, build an exact CSG solid, emit GLSL, or simplify
+it. A document you can open and run is [at the bottom of the page](#open-this); the KDoc for
+`SolidExpr`, `Profile`, `SolidLowering` and `SolidTemplate` covers every declaration used here.
 
 The signed-distance vocabulary in `mesh_sdf.kt` works the other way round. It declares
 
@@ -14,11 +11,11 @@ The signed-distance vocabulary in `mesh_sdf.kt` works the other way round. It de
 typealias ScalarField3D = (Vec3) -> Float
 ```
 
-and builds twenty-five primitives and combinators on top of it: `sdfSphere`, `sdfBox`, `sdfTorus`,
+and builds its primitives and combinators on top of it: `sdfSphere`, `sdfBox`, `sdfTorus`,
 `sdfUnion`, `sdfSmoothUnion`, `twisted`, `repeated`. Every one of them returns a Kotlin lambda, and a
 lambda cannot be printed, compared, serialized, rewritten, or emitted as GLSL.
-[RectSL](rectsl_examples.md)'s 2D tracks went symbolic for that reason; this is the same move for
-three dimensions:
+[RectSL](rectsl_examples.md)'s 2D tracks are expression trees for that reason, and SolidSL does the
+same in three dimensions. Here is one part, and the four things you can ask of it:
 
 ```diffstatic {data-lang=kotlin}
 val part = (cuboid(4, 2.6, 0.7) + cylinder(1.4, 0.8)) -
@@ -162,8 +159,8 @@ The difference between the flavours is whether an exact-looking answer exists. A
 has none. A would-not-converge refusal has one available and it is wrong by up to the sagitta of a
 polyhedral ball, in a direction refining the march cannot close.
 
-Five nodes refuse in all. All five draw perfectly well — the field lowering takes every one of them —
-so a refusal costs you the exact backend, not the shape. `allRefusals()` lists every refusal in a
+Every node in that table still draws: the field lowering takes all of them, so a refusal costs you
+the exact backend, not the shape. `allRefusals()` lists every refusal in a
 tree, and `exactRefusal()` answers the yes-or-no.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/refusals.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
@@ -219,18 +216,16 @@ same edge length, a factor of 2.79. The plate's six faces stay six faces, and th
 one guaranteed-closed Manifold solid, because the exact operand and the marched one meet in a real
 batch boolean.
 
-The ratio is a property of the part, not of the method, and on some parts it is nearly 1. The plate
-below is smaller relative to its boss, so the marched subtree's bounds cover most of the shape and
-the hybrid saves almost nothing in triangle count: **29,632 against 31,240**, a factor of 1.05.
-
-That makes it the more useful picture, because the count is not where the difference lives. Look at
-the *tessellation* in the two panels below. On the left the plate is a handful of large triangles
+How much the hybrid saves depends on the part. The plate below is smaller relative to its boss, so
+the marched subtree's bounds cover most of the shape and the triangle counts come out close:
+**29,632 against 31,240**. The difference is in where the triangles go, which the
+*tessellation* in the two panels shows. On the left the plate is a handful of large triangles
 with long diagonals across each face, and each bore is a clean swept strip: those are exact planes
 and exact cylinders, and they are coarse because a plane needs two triangles and no more. Only the
 blended boss carries a fine mesh, because only the boss was sampled. On the right the same part is
 uniformly dense: the flat faces are diced into thousands of triangles that buy nothing, because
-marching cubes has no way to know a plane is a plane. Nearly the same triangle budget, spent
-completely differently.
+marching cubes has no way to know a plane is a plane. The code builds the part both ways and draws
+them side by side:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/solid_notation/hybrid.png" wait="8.0" capture="box" open-outputs="true" padding="20"}
 :::static
@@ -265,31 +260,32 @@ build.close()
 
 ![Two panels of the same part: a rectangular plate with four corner holes and a domed boss blended into its centre. The left panel, the hybrid build, draws the plate as a handful of large flat triangles with long diagonals and the bores as clean swept strips, while only the central boss carries a fine mesh. The right panel, fully marched, is uniformly finely triangulated everywhere including the flat faces](assets/solid_notation/hybrid.png)
 
-This needs the expression to know its own extent, which is the first thing a notation buys that a
-closure cannot: `SolidExpr.bounds()` is computed **symbolically**, with nothing sampled and nothing
+The hybrid build needs the expression to know its own extent, which a closure cannot tell you:
+`SolidExpr.bounds()` is computed **symbolically**, with nothing sampled and nothing
 built. It is also what lets `gyroid() and cuboid(2, 2, 2)` work at all: the gyroid child has no
 window of its own and borrows its parent's.
 
 ## The same source as a shader
+
+Two calls turn an expression into GLSL:
 
 ```diffstatic {data-lang=kotlin}
 val emitted = scene.toGlsl()          // GlslSolid(sdSolid, 174 statements, stepScale 0.4, 2 notes)
 println(scene.toRaymarchFragment())   // sphere tracing, a normal, two lights, ready to paste
 ```
 
-`toRaymarchFragment()` hands back a whole fragment shader, ready to paste: sphere tracing, a normal
-from the field's gradient, two lights. `toGlsl()` is the function alone, if you have a pipeline of
+`toRaymarchFragment()` hands back a whole fragment shader, with the normal taken from the field's
+gradient. `toGlsl()` is the function alone, if you have a pipeline of
 your own to put it in.
 
 The emitted code is straight-line, single-assignment and entirely scalar — no `vec3` locals, no
-swizzles, no loops. Every driver re-vectorises it in the first pass anyway, and a grammar that small
-is one you can write a reader for, which is how the emitter is checked.
+swizzles, no loops. GPU drivers re-vectorise it anyway, and code that plain is easy to parse back,
+which is how the emitter is tested.
 
 Read `GlslSolid.stepScale` before you trace with it. Sphere tracing is only safe where the field is a
 lower bound on the true distance, and several nodes break that: `Intersect` and `Difference` are
 pointwise maxima, and a twisted `Extrude` shears space. The emitter reports `1.0`, `0.7` or `0.4` with
-the offending node named, so the number travels with the shader instead of becoming folklore around
-it.
+the offending node named; multiply your march step by it.
 
 ## The simplifier
 
@@ -394,13 +390,13 @@ The two nodes the exact kernel refuses outright are the two the gradient handles
 is going to be fitted, write it with `smoothUnion` and `smoothDifference`. `gradientNotes()` says
 which of these apply to your own expression, beside `fieldNotes()` and `allRefusals()`.
 
-### Kinks at a seam
+### Where the gradient has a kink
 
-A distance field is nothing but kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
+A distance field is full of kinks: `min` and `max` *are* CSG, `abs` is `Shell` and `Gyroid`,
 `sqrt` at zero is every radial primitive's own centre. `abs`, `min` and `max` split the derivative
-**0.5/0.5 at an exact tie**, so a sample that lands exactly on a CSG seam gets half the gradient from
-each side rather than an arbitrary one of them. A descent that lands on a seam still takes a step
-that decreases the loss.
+**0.5/0.5 at an exact tie**, so a sample that lands exactly where two CSG children meet gets half the
+gradient from each side rather than an arbitrary one of them, and the step it takes still decreases
+the loss.
 
 `gradientNotes()` also flags the two places a smaller step cannot help. At a radial primitive's own
 centre `√·` has an infinite derivative, so a sample there gives `Infinity` in the *position* gradient
@@ -410,6 +406,9 @@ derivative exactly zero for every value, so a descent on it reports convergence 
 second one arrives looking like success.
 
 ### Inverse design
+
+This fit samples a target shape made from the template itself, starts from wrong values for all
+three parameters, and recovers them:
 
 ```diffstatic {data-lang=kotlin}
 val target = template.withValues(doubleArrayOf(0.45, 1.90, 0.16)).sampleField(count = 2400, seed = 91)
@@ -426,8 +425,8 @@ fit.report()
 fit.fitted        // an ordinary SolidExpr again: marchable, GLSL-able, printable
 ```
 
-Three parameters, seeded 42%, 45% and 112% wrong, recovered to about `1e-10` in fourteen iterations —
-and whatever you could do with the model you can do with `fit.fitted`.
+The parameters come back to about `1e-10`, and `fit.fitted` is an ordinary expression you can use
+like any other.
 
 Target, seed and fitted, all three marched in the same run, each panel labelled with the loss
 measured for it:
@@ -467,18 +466,17 @@ threeGrid(
 
 ![Three panels in a row, flat grey with the triangle wireframe drawn on a dark background. Left, labelled "seed, loss 2.141e-02", a short fat rounded capsule lying at an angle. Middle, labelled "fitted, loss 4.609e-22 (4.6e+19x)", a ball with a rod emerging from it, the rod meeting the ball in a smooth fillet. Right, labelled "target, the shape the samples came from", the same ball-and-rod shape at the same size and orientation as the middle panel and indistinguishable from it](assets/solid_notation/inverse.png)
 
-The middle and right panels are the same shape, to about `1e-10`. The left one is there so that "the
-same shape" means something: all three panels share one camera, since `MeshView.distance` is in
-bounding-sphere radii and auto-framing would draw a shape and a 1.5× copy of it at the same apparent
-size.
+The middle and right panels are the same shape, to about `1e-10`. All three panels share one camera,
+because `MeshView.distance` is in bounding-sphere radii and auto-framing would draw a shape and a
+1.5× copy of it at the same apparent size.
 
 ### When only half the model can fit
 
-The fit above is the easy case, and read on its own it teaches the wrong lesson. The target was
-generated from the model, so a correct answer existed and the gradient found it — which is why the
-loss reaches `4.6e-22`. A loss that small is not what success normally looks like.
+The fit above is the easy case: the target was generated from the model, so a correct answer
+existed, and the loss reaches `4.6e-22`. A real target is rarely something your model can reproduce
+exactly.
 
-Here is the same machinery on a problem with no right answer. The target is a **sphere and a
+Here is the same fit on a problem with no exact answer. The target is a **sphere and a
 cylinder**. The model is a **cube and a cylinder**. The cylinder is the same primitive on both sides,
 so its numbers are recoverable. The cube is being asked to be a sphere, and no side length achieves
 that.
@@ -600,41 +598,35 @@ threeGrid(
 
 ![Six small wireframe panels in a row, a cube with a rod through it, each labelled with its iteration, tilt and loss. In the first the cube is large and the rod is buried inside it, showing only as an outline on the front face. In the second the cube has shrunk to roughly its final size and a short fat rod juts out of it at a steep angle. Across the next three the cube barely changes while the rod thins and lengthens and swings progressively upright. In the last two the rod is square to the cube and the two panels are indistinguishable](assets/solid_notation/converging.png)
 
-**The cube stops moving almost immediately and the angle takes the whole descent.** `cubeSize` goes
+The cube settles almost immediately, and the angle takes the whole descent. `cubeSize` goes
 `1.350 → 0.847` inside the first 150 iterations and then spends the remaining four thousand between
 `0.879` and `0.855`; `barTilt` goes `25.0° → 22.5°` in that same span and needs until iteration 2400
 to reach `0.18°`. Both are visible in the strip: the body settles in frame two, the rod is still
 turning in frame five.
 
-One detail the strip shows that the final table cannot: `barRadius` gets **worse before it gets
-better**. It goes `0.420 → 0.464` over the first 150 iterations before coming back down through
+`barRadius` gets worse before it gets better. It goes `0.420 → 0.464` over the first 150 iterations before coming back down through
 `0.356` and `0.290` to `0.281`, which is the fat stub in frame two. While the cube is still far too
 big the rod is the only thing that can carry the target's volume, and it is rewarded for thickening
-until the cube gets out of the way. A per-parameter trace is the only place
-that shows up; the loss falls at every frame regardless.
+until the cube gets out of the way. The loss falls at every frame, so only a per-parameter trace
+shows this.
 
-The two kinds of parameter differ in time, not only in the final table. The cube reaches its
-compromise early because a compromise is a shallow, wide minimum: it is already as close to a sphere
-as a cube gets, and pushing further buys nothing. The angle is a genuine recovery with a real minimum
-at the bottom of a narrow valley, so it walks all the way down. Stop this fit at iteration 500 — a
-perfectly reasonable-looking `loss 1.38e-02`, down 5× from the seed — and you would read
-`barTilt = 16.3°` off the report and believe it.
+The cube reaches its compromise early because a compromise is a shallow, wide minimum: it is already
+as close to a sphere as a cube gets. The angle has a real minimum at the bottom of a narrow valley,
+so it walks all the way down. Stopped at iteration 500, this fit reports a reasonable-looking
+`loss 1.38e-02`, five times lower than the seed, and a `barTilt` of `16.3°` that is still far off.
 
-The cylinder recovered: `2.197225` against a true `2.20`, `0.281335` against a true `0.28`, and
-`barTilt`, seeded a full 25° off, back to `-0.009525°`. The cube settled at `0.855279`, and there is
-nothing to compare that against, because no side length makes a cube a sphere. What there is instead
-is an interval: a cube that fits a sphere of radius `R` at all has a side between the inscribed
+At the end the cylinder is recovered: `2.197225` against a true `2.20`, `0.281335` against a true
+`0.28`, and `barTilt`, seeded 25° off, back to `-0.009525°`. The cube settled at `0.855279`. No side
+length makes a cube a sphere, but there is a sensible range: a cube that fits a sphere of radius `R` at all has a side between the inscribed
 `2R/√3 = 0.7159` and the circumscribed `2R = 1.2400`. `0.855279` sits inside it, nearer the inscribed
 end, which is where a least-squares fit on a *field* belongs.
 
-Recovering the tilt costs nothing at the optimum: the four-parameter residual and the
-three-parameter one agree to six figures. A parameter that *can* be recovered is free once it has
-been, and the residual is paid entirely by the one that cannot.
+Adding the tilt does not change the final loss: the four-parameter residual and the three-parameter
+one agree to six figures. All of the residual comes from the cube.
 
-So read the report knowing that it cannot tell you which of its four numbers to believe. `cubeSize`,
-`barHeight`, `barRadius` and `barTilt` print identically, three are measurements and the fourth is a
-negotiation, and nothing in the loss separates them. What separates them is knowing that half your
-model can represent half your target. Without that, a plausible number is what you get.
+The report prints all four numbers the same way, and nothing in the loss says which are recovered
+values and which is a compromise. Only you know which parts of your model can represent which parts
+of the target, so read the report with that in mind.
 
 ??? aside "Why this fit needs 6000 iterations when the recovery fit needed 14"
 
@@ -642,25 +634,22 @@ model can represent half your target. Without that, a plausible number is what y
     and `SolidFitOptions` carries one `learningRate` for all of them. ADAM's step is bounded by that
     rate, so a parameter whose natural scale is ~25 moves at the same ~0.015 per iteration as one
     whose natural scale is ~1. At `iterations = 1200` this fit stopped on `max iterations` with
-    `barTilt 25.000000 -> 5.752590`: not stalled, not stuck in a local minimum, simply still
-    walking, and 19.25° in 1200 steps is exactly the step cap times the iteration count. At 6000 it
-    converges on the gradient tolerance in 4176.
+    `barTilt 25.000000 -> 5.752590`. It was still moving: 19.25° in 1200 steps is the step cap times
+    the iteration count. At 6000 it converges on the gradient tolerance in 4176.
 
-    So the cost of the angle is about **10x the iterations** of the same fit without it (4176 against
-    387). None of that is the rotation being non-convex, which it also is, but that is not what is
-    happening here. If you add an angle to a fit and it seems to stall, check the arithmetic
-    before you change optimizer: `iterations x learningRate` against the distance the parameter has
+    So the angle costs about ten times the iterations of the same fit without it (4176 against
+    387). If you add an angle to a fit and it seems to stall, check the arithmetic before you change
+    optimizer: `iterations x learningRate` against the distance the parameter has
     to travel.
 
-!!! note "A cube that never enters the union has no gradient at all"
+!!! note "A cube hidden inside the bar gets zero gradient"
 
     Seed `cubeSize` at `0.40` against a bar of radius `0.55` and the fit reports
-    `cubeSize 0.400000 -> 0.400000` after 372 iterations. Not slow, not stuck: `Union` is `min`, so
+    `cubeSize 0.400000 -> 0.400000` after 372 iterations. `Union` is `min`, so
     a child that is never the nearest surface at any sample point receives **exactly** zero
     gradient, and a cube small enough to sit wholly inside the bar is never the nearest surface
-    anywhere. `fit.deadParameters` reports `none` here, because the parameter is not dead at the
-    start in the sense that guard measures: the cube is invisible to the loss rather than
-    stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
+    anywhere. `fit.deadParameters` reports `none` here, because it only looks at the gradient at
+    the seed, and there the cube is invisible to the loss rather than stationary in it. [What makes a parameter refuse to move](#what-makes-a-parameter-refuse-to-move)
     is the same failure mode arriving by a different route.
 
 ### What makes a parameter refuse to move
@@ -706,17 +695,16 @@ a shell can satisfy a cloud with the wrong one. `SolidCloudFit.unconstrainedPara
 point-cloud analogue of `deadParameters` and exists for the same reason — the failure arrives looking
 like convergence.
 
-## Conventions, all of them upstream's
+## Axis conventions
 
-Primitives are centred on the origin. Beyond that, nothing is tidied up:
+Primitives are centred on the origin. Everything else follows Manifold's conventions unchanged:
 
 - `cylinder` runs along **Z**.
 - `Profile.extruded(h)` runs from `z = 0` to `z = h` — *not* centred, because `Section.extruded` is not.
 - `Profile.revolved()` turns about **Z**, profile at `x ≥ 0`, counter-clockwise from `+X`.
 - `turned(x, y, z)` is in **degrees**, applied X then Y then Z.
 
-Inventing a tidier convention and translating at the boundary would buy one new class of bug — a
-silently mirrored or transposed solid — for no gain. And there is no `Torus` node at all:
+There is no `Torus` node:
 `torus(R, r)` is a function that builds `Profile.circle(r).translated(R, 0).revolved()`, which is
 what a torus is.
 
@@ -731,11 +719,7 @@ what a torus is.
     | `afield.manifold.Section.revolved`, and therefore `Profile.revolved` | **Z** | `(radius, z)` |
 
     Porting a profile one way or the other means swapping its `y` and `z`, or rotating the result.
-    The bounds each one returns for the same asymmetric profile are in
-    `dev_docs/SOLIDSL_AGREEMENT.md`.
-
-    `manifold_revolve` takes no axis argument at all. There is nothing to set here: the axis is
-    Manifold's, and this package follows it.
+    `Profile.revolved` takes no axis argument, because Manifold's revolve has none.
 
 ## Open this {#open-this}
 
@@ -756,9 +740,8 @@ what a torus is.
 All three need nothing but Field; the second needs no Manifold at all. The first and third print a
 clear "install Manifold" message and fall back to the field lowering when it is absent.
 
-For the differentiable reading there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
-and it needs **no Manifold at all**: marching cubes and the mesh rasteriser are both pure Kotlin.
-Open it in Field (**File ▸ Open**) and run its three boxes:
+For fitting there is a second document, `dev_docs/agents/demos/solidsl_inverse/metadata.edn`,
+which needs no Manifold at all. Open it in Field and run its three boxes:
 
 - **a solid, and its exact gradient** — the slot census, a template, and `checkGradient` against
   central differences computed in the box. The last probe is the ball's own centre, where the
