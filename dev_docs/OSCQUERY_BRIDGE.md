@@ -41,7 +41,7 @@ Against the demo document's service (`oscQuery("Field demo")`, HTTP 9020 / OSC 9
   the pushed binary frame decoded with python-osc's `OscMessage` as `/demo/cutoff [4321.0]`, and
   `?VALUE` then read `[4321.0]`.
 - Apple's `dns-sd -B _oscjson._tcp` (mDNSResponder) listed `Field demo` on interface 14.
-- Not checked: TouchDesigner, Max, Chataigne, VDMX themselves (none installed on the machine).
+- Not checked: TouchDesigner, Chataigne, VDMX (not installed) or Max (installed, but not driven headless by an overnight agent).
 
 Trap: the interop script ran from a Field box via `ProcessBuilder` on the main Runloop, which
 blocked the launched `/demo/lfo` loop, so no lfo frames arrived during it. Run interop clients
