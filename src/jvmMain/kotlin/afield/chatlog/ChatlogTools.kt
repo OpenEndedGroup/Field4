@@ -30,6 +30,7 @@ import java.util.Base64
  */
 fun Box.registerChatlogTools(vararg roots: File, lensDir: File? = null) {
     val store = ChatlogStore(roots.toList(), lensDir ?: File(inside.filename, "lenses"))
+    ChatLensViewer.register(inside.filename, store)
 
     aiTool("chatlog.list") {
         describe("List the saved AI4 chats in the archive, with their size: turns, replies, tool calls, images, and a text-token estimate.")
@@ -207,6 +208,17 @@ class ChatlogStore(val roots: List<File>, val lensDir: File) {
         val record = File(dir, "$name.json").takeIf { it.isFile }?.readText().orEmpty()
         return "Record: $record\n\n${md.readText()}"
     }
+
+    /** The lens itself, or null. */
+    fun lensMarkdown(id: String, name: String): String? = File(dirFor(id), "${safe(name)}.md").takeIf { it.isFile }?.readText()
+
+    /** The record [writeLens] saved beside a lens (brief, model, stats), or null. */
+    fun lensRecord(id: String, name: String): kotlinx.serialization.json.JsonObject? =
+        File(dirFor(id), "${safe(name)}.json").takeIf { it.isFile }
+            ?.let { runCatching { Json.parseToJsonElement(it.readText()) as? kotlinx.serialization.json.JsonObject }.getOrNull() }
+
+    /** Where a chat's `ai4img:` pictures are. */
+    fun blobDir(id: String): File = stored(id).blobDir
 
     fun lenses(id: String): List<String> =
         (dirFor(id).listFiles() ?: emptyArray()).filter { it.extension == "md" }.map { it.nameWithoutExtension }.sorted()
