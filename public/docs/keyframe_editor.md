@@ -160,6 +160,7 @@ ui.pause(450)
 | move keys | drag a key; every selected key moves with it |
 | select | click a key; shift-click to select a range; drag across empty graph to select every key in that time band |
 | select a box of keys | Alt-drag across empty graph |
+| select a moment in every linked lane | Cmd-drag (Ctrl-drag) across empty graph; then drag, nudge or delete them together |
 | type a key's time or value | double-click the key, or right-click it; Enter applies |
 | change a key's type, lock or delete it | right-click the key; with several selected, the menu acts on all of them |
 | delete keys | Delete or Backspace removes the selection |
@@ -439,9 +440,11 @@ loop {
 }
 ```
 
-The editors in one box share a time axis, like the lanes of a dope sheet. Pan or zoom time in one and the others follow, the pointer's time is marked in all of them, and Fit the curve frames every lane's keys together. Each keeps its own value axis:
+The editors in one box share a time axis, like the lanes of a dope sheet. Pan or zoom time in one and the others follow, the pointer's time is marked in all of them, and Fit the curve frames every lane's keys together. Each keeps its own value axis.
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x900" clip="0,0,700,900" hide-toasts=true video="assets/keyframe_editor/two_curves.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-two-curves" alt="Two editors, x and y, stacked above an XY pad named spot whose handle traces a loop while both playheads sweep. The pointer moves across the x lane and a dashed time line follows it in the y lane. A zoom in the x lane narrows the time axis of both lanes at once; a scroll in the y lane slides both along in time; Fit the curve, chosen from the y lane's menu, returns both to showing all their keys"}
+To work on a moment across all of them, hold Cmd (Ctrl elsewhere) and sweep a band: it selects the keys in that stretch of time in every lane. Drag one of them and the selected keys in the other lanes move by the same time, keeping their values; the arrow keys and Delete act on every lane's selection too. A click on another key, or Escape, goes back to working in one lane:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x900" clip="0,0,700,900" hide-toasts=true video="assets/keyframe_editor/two_curves.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-two-curves" alt="Two editors, x and y, stacked above an XY pad named spot whose handle traces a loop while both playheads sweep. The pointer moves across the x lane and a dashed time line follows it in the y lane. A zoom in the x lane narrows the time axis of both lanes at once; a scroll in the y lane slides both along in time; Fit the curve, chosen from the y lane's menu, returns both to showing all their keys. Then a band swept across x's second key selects a key in each lane, and dragging x's key later in time carries y's selected key along by the same amount"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // The two lanes' plotting areas, in page coordinates, once both are showing their keys.
 val lanes = """
@@ -501,6 +504,35 @@ if (fit.isNotEmpty()) {
     ui.pause(300)
     ui.clickAt(bx, by)
 }
+ui.pause(800)
+
+// A moment across both lanes: Cmd-sweep a band in x, around its second key.
+fun keyIn(lane: Int, i: Int): Pair<Double, Double> {
+    val p = ui.eval("""
+      const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
+      const f = frames[$lane], fr = f.getBoundingClientRect();
+      const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
+      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+    """.trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+    return p[0] to p[1]
+}
+val (k1x, k1y) = keyIn(0, 1)
+val bandY = lx[1] + lx[3] * 0.92
+ui.moveMouse(k1x - 30, bandY, 10)
+ui.down("Meta")
+ui.mouseDown()
+ui.moveMouse(k1x + 90, bandY, 24)
+ui.mouseUp()
+ui.up("Meta")
+ui.pause(700)
+// Drag x's key later in time: y's selected key goes with it.
+ui.moveMouse(k1x, k1y, 10)
+ui.pause(250)
+ui.down("Alt")
+ui.mouseDown()
+ui.moveMouse(k1x + 70, k1y, 40)
+ui.mouseUp()
+ui.up("Alt")
 ui.pause(1500)
 ```
 
