@@ -130,12 +130,32 @@ class KotlinJsExecution : BoxExecution {
     override fun complete(inside: Box, completionRequest: CompletionRequest, reply: (Message) -> Unit) {
         val pos = completionRequest.position
         fun empty() = Completion(boundsStart = pos, boundsEnd = pos, metadata = emptyList())
+
+        // This is called on the Netty event loop serving the browser's websocket (Server.kt launches
+        // every handler in the /ws session's scope), so nothing here runs before the hand-off to the
+        // pool. Every path replies, a throw included, so the popup never waits out its timeout. The
+        // pool, not Dispatchers.IO, because it bounds how many completions sit in the sidecar at once
+        // while the user types, and its threads show up by name in a thread dump.
+        kotlinJsCompletionPool.execute {
+            val completion = try {
+                completeOffLoop(inside, completionRequest) ?: empty()
+            } catch (t: Throwable) {
+                lprintln("warning,kotlinjs", "completion failed: ${t.javaClass.simpleName}: ${t.message.orEmpty()}")
+                empty()
+            }
+            reply(Message("complete").payload(completion))
+        }
+    }
+
+    /** The completion for [completionRequest], or null when there is nothing to offer. Blocks for up
+     *  to four sidecar round trips, so it runs on [kotlinJsCompletionPool]. */
+    private fun completeOffLoop(inside: Box, completionRequest: CompletionRequest): Completion? {
+        val pos = completionRequest.position
         val selection = try {
             KotlinJsHeadProfiles.resolveForBox(inside, completionRequest.allCode)
         } catch (e: IllegalArgumentException) {
             notify(e.message ?: "Invalid Kotlin/JS head marker", "kotlinjs_error")
-            reply(Message("complete").payload(empty()))
-            return
+            return null
         }
 
         // Stage 1: reuse the rich K2 Analysis-API completion, but scope the analysis classpath to the
@@ -143,60 +163,48 @@ class KotlinJsExecution : BoxExecution {
         // symbol universe is stdlib + its own declarations (present in `allCode`) + the selected head
         // profile's JVM-analysis-safe declaration model + keywords. Profile declarations stay at file
         // scope so nested types and member/callback inference work; their public callables are also
-        // represented as local stubs for discoverability. The call can take up to its timeout, so run it
-        // off the runloop and reply on completion.
+        // represented as local stubs for discoverability.
         val stdlibRoots = AaCompletionClient.kotlinStdlibRoots()
-        if (stdlibRoots.isEmpty()) {
-            reply(Message("complete").payload(empty()))
-            return
+        if (stdlibRoots.isEmpty()) return null
+
+        // The sidecar builds a fresh Analysis-API session per distinct classpath and answers
+        // "warming up" (empty) on the first call(s) for a cold stdlib session. Retry a few
+        // times so a user's first completion in a session isn't silently empty.
+        var success: afield.CompletionResult.Success? = null
+        var lastDetail = ""
+        repeat(4) { attempt ->
+            if (success != null) return@repeat
+            val outcome = AaCompletionClient.complete(
+                snippet = completionRequest.allCode,
+                cursor = pos,
+                preamble = "",
+                declarations = selection.profile.completionDeclarations,
+                implicitReceivers = emptyList(),
+                classpathRootsOverride = stdlibRoots,
+                jsTarget = true,
+            )
+            lastDetail = outcome.detail
+            success = outcome.result as? afield.CompletionResult.Success
+            if (success == null && attempt < 3) Thread.sleep(300)
         }
-        kotlinJsCompletionPool.submit {
-            val completion = try {
-                // The sidecar builds a fresh Analysis-API session per distinct classpath and answers
-                // "warming up" (empty) on the first call(s) for a cold stdlib session. Retry a few
-                // times so a user's first completion in a session isn't silently empty.
-                var success: afield.CompletionResult.Success? = null
-                var lastDetail = ""
-                repeat(4) { attempt ->
-                    if (success != null) return@repeat
-                    val outcome = AaCompletionClient.complete(
-                        snippet = completionRequest.allCode,
-                        cursor = pos,
-                        preamble = "",
-                        declarations = selection.profile.completionDeclarations,
-                        implicitReceivers = emptyList(),
-                        classpathRootsOverride = stdlibRoots,
-                        jsTarget = true,
-                    )
-                    lastDetail = outcome.detail
-                    success = outcome.result as? afield.CompletionResult.Success
-                    if (success == null && attempt < 3) Thread.sleep(300)
-                }
-                val built = success
-                if (built == null) {
-                    lprintln("info,kotlinjs", "completion backend=AA(stdlib) → empty ($lastDetail)")
-                    empty()
-                } else {
-                    Completion(
-                        boundsStart = built.bounds.start,
-                        boundsEnd = built.bounds.end,
-                        metadata = built.metadata.map {
-                            Metadata(
-                                icon = it.icon,
-                                tail = it.tail,
-                                text = it.text,
-                                displayText = it.displayText,
-                                documentation = "",
-                            )
-                        },
-                    )
-                }
-            } catch (e: Exception) {
-                lprintln("warning,kotlinjs", "completion failed: ${e.message}")
-                empty()
-            }
-            reply(Message("complete").payload(completion))
+        val built = success
+        if (built == null) {
+            lprintln("info,kotlinjs", "completion backend=AA(stdlib) → empty ($lastDetail)")
+            return null
         }
+        return Completion(
+            boundsStart = built.bounds.start,
+            boundsEnd = built.bounds.end,
+            metadata = built.metadata.map {
+                Metadata(
+                    icon = it.icon,
+                    tail = it.tail,
+                    text = it.text,
+                    displayText = it.displayText,
+                    documentation = "",
+                )
+            },
+        )
     }
 
     private fun runKotlin(
