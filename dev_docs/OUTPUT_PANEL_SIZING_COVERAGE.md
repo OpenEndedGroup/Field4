@@ -26,6 +26,35 @@ displays 40 rows as a `.h2` value explorer, and asserts both axes of the resulti
 than geometry: `display` creating and replacing channel content, embedded scripts executing, output
 actually being visible.
 
+## Size in both directions
+
+`tools/run_ui_regressions.py#id="output-panel-shrink"` covers both axes over time rather than at one
+moment. One panel is driven through a sequence of contents. Each step waits for the size to hold
+for 1.6s, which covers the auto-size passes and the 0.5s shrink settle, then asserts:
+
+- a StudyBuild-shaped card whose open failure `<details>` holds a `max-height:320px` `<pre>` with
+  400 lines: the panel fits the card as laid out, not every line the `<pre>` scrolls through. This
+  is the case that grew the "builds" panel to thousands of pixels;
+- tall plain content grows the panel to fit, and short content afterwards brings it back down;
+- `height:100%` fill content holds the tall height instead of collapsing to its one line;
+- an unwrapped 1264px line widens the panel to show it, and short content afterwards gets exactly
+  the width short content had before;
+- a wrapped paragraph after wide content settles under a fresh panel's 480px and keeps the same
+  width across three re-renders, so the width measurement does not creep;
+- content alternating tall-and-wide/short every 60ms moves each axis down exactly once, after the
+  alternation stops;
+- 400 lines stop at `0.8 * innerHeight` and scroll inside the panel;
+- under `scale(2)` and then `scale(0.5)` transforms (canvas zoom) the same short content keeps the
+  unzoomed size;
+- a panel sized by hand to 420x260 keeps exactly that through tall, wide and short content.
+
+Each half has a negative control that fails it (2026-10-04): `main`'s `outputareas2.js` gives the
+card a 16,196px panel; height grow-only keeps 1851px for 77px of content; width grow-only keeps
+1272px for short content; measuring width at the panel's own width rather than at 480px gives the
+same short content 200px or 302px depending on what came before; and without `layoutScale` a 2x
+zoom takes the panel to 38,148px wide, then 4,882,436px. `main` does the same at 2x: one content
+change took a 302px panel to 38,148px, because full-width blocks were counted at their zoomed size.
+
 ## What neither pins
 
 - **the fill-frame population.** `h2-panel-sizing` exercises one fill frame; `output-area-basics`

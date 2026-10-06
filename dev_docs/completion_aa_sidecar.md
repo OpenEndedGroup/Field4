@@ -218,6 +218,18 @@ compilable, **in-memory dangling `KtFile`** and asks the Analysis API what's in 
   `recv.__fieldCaret__`; as a bonus this gives the IDE's extension-applicability checker the selector it
   needs, which could never be built at a bare dot before. Only when the slot really is empty: if the next
   character could continue an identifier there *is* a selector, and appending would rename it.
+- **The box's own `import` lines → the header, the caret's included.** The snippet is pasted inside
+  `fun __c() { … }`, where an import is a syntax error, so `hoistImports` blanks each whole-line import in
+  place (same length, so offsets survive) and the header carries it. The line the caret was typing a path
+  on used to stay in the body, so every import-line completion (`import kotlin.math.‸`, `import afield.pd.‸`)
+  answered 0 with "no qualified expr", and the empty answer handed it to K1 without any sign in the panel.
+  `importPathAt` now moves that line too: the header gets its text up to the caret, plus the caret marker
+  when no name is typed yet, and the caret goes with it. `completeAt` answers it in its own branch: root
+  packages after `import `; under a package, its sub-packages, classes and top-level callables (on-demand
+  scan and JDK classes included, a function inserted without `(`, one row per name); under a class, its
+  nested classifiers, enum entries, Java statics or object members. Past the path (`import a.b.*‸`,
+  `import a.b.C as D‸`) the line is left where it was. `completion.lowering-invariant.probe` skips import
+  lines; `kotlin.completion-aa-e2e.probe` covers them.
 - **Analysis** (`completeAt`, `:381`) runs inside `analyze(file) { … }`:
   - **Dot completion** (`recv.` / safe `recv?.`, `:401`): resolves the receiver's expression type, then
     lists substituted member callables via `type.scope.getCallableSignatures(...)`, nested classifiers
@@ -303,7 +315,7 @@ all of them the box wanting runtime context, none of them the lowering. Caret re
 > So read every earlier number in this file against its sample: the 2026-08-06 baselines are the same code
 > measured on a narrower and differently-shaped one.
 
-Six rounds of findings from this sweep, each of which is a defect class rather than a single bug:
+Seven rounds of findings from this sweep, each of which is a defect class rather than a single bug:
 
 1. **Companion members off a class qualifier.** `Img.generate` was unreachable and `Img.` answered with the
    one useless row `Companion`, because the companion was hunted for in `declaredMemberScope`, which is
@@ -357,6 +369,13 @@ Six rounds of findings from this sweep, each of which is a defect class rather t
    `afield.stdlib`'s 3877 names alphabetically is the same truncate-the-alphabet mistake and measured 233ms
    of one keystroke; over the cap the note says "type a character"), and the package index is seeded with
    the boot module layer's package names. `pkg/0` 86% → 97%.
+7. **A package nobody imported has contents too** (2026-10-04, 595-box corpus). `afield.pd.‸PdInstance`,
+   `prop<afield.four.fabricated.‸FabricateBuiltChain>(x)` and `java.util.concurrent.atomic.‸AtomicLong`
+   answered `0 matched in package`: 56 misses, because the index holds only imported packages' contents
+   and a package path is written out precisely when nothing imported it. `packageCandidates` now scans
+   such a package on demand (`AaCompleter.contentsOf`, the star-import scan, memoised per session, about
+   50–90ms once per package) and lists a JDK package's classes from AA's own package scope, which can
+   enumerate a Java package though not a binary Kotlin one. The `pkg` buckets 95–96% → 97%.
 
 Still open, in miss-count order, and the diagnosis for each:
 
@@ -369,9 +388,6 @@ Still open, in miss-count order, and the diagnosis for each:
   and `uniform`/`onFrame`/`onStart` in the visionOS ones). These are `@exported` republications and
   JS-bridge values that only exist after a parent box has actually run — the limitation
   `CompletionCorpus.harvest` documents, and the snippet-region error histogram's main content.
-- **JDK classifiers** (`java.util.‸Random`): the boot layer gives package names, not class names, so a JDK
-  package still lists only its sub-packages. Enumerating module contents with `ModuleReader.list()` would
-  fix it; nothing in the corpus needed it yet.
 - 5 `0 candidates at name position`, which now carry their own breakdown (`prefix=… index-names=…
   resolved=… scope=… receivers=…`) so the next reader can tell "the index never held that name" from "it
   held it and resolution came back empty" — opposite bugs with opposite fixes.
@@ -695,6 +711,12 @@ lists cannot:
   that has no real type. A value and a class both shadow a package, so the package branch is tried last
   and only when the receiver does not resolve to a callable — a lambda's `it.` otherwise matched the
   package `it.unimi.dsi` (fastutil).
+- **On-demand package scans.** The by-package lists cover only the REPL's default imports. A package the
+  box star-imports (`indexFor`) or writes out as a path (`contentsOf`) is scanned the first time a request
+  needs it and memoised for the session; a path's package widens only that one lookup, so name
+  completion does not start offering it. The scan reads a directory root under the package's own
+  directory and opens every jar (~50ms over Field's 440). It skips JDK packages, which are in modules and
+  never on the roots, and names no class file is in.
 - The scan does **not** filter on `ACC_PUBLIC`. A `@kotlin.internal.InlineOnly` function is `public inline`
   in Kotlin and *private in bytecode* — it has no callable entry point, only an inlined body — so
   filtering on public silently excluded `let`, `run`, `also`, `apply`, `takeIf` and `String.format`: the

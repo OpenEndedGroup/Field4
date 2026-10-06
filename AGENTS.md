@@ -106,6 +106,7 @@ The crib:
 | Docs native prerequisites | `./gradlew buildDocsNativePrerequisites` (Ceres, TetGen, the pinned Dirt-Samples subset; checks Manifold and JEP; checksummed downloads shared across worktrees) |
 | Docs HTML only | `FIELD_DOCS_RUNNER_MODE=never uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Docs author loop | `FIELD_DOCS_RUNNER_MODE=incremental uv run --project . --group docs python tools/build_zensical_docs.py` |
+| Recapture one page | `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --page <page.md>` (repeatable; other pages build with captures off) |
 | Runner/API change | `FIELD_DOCS_RUNNER_MODE=strict uv run --project . --group docs python tools/build_zensical_docs.py` |
 | Full recapture | `FIELD_DOCS_RUNNER_MODE=always uv run --project . --group docs python tools/build_zensical_docs.py --clean` |
 | Offline asset ownership | `uv run python tools/check_offline_assets.py` |
@@ -370,7 +371,7 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 ### Drawing layer (Excalidraw)
 
 - An Excalidraw scene laid over the whole canvas for notation: `src/jsMain/kotlin/afield/drawingLayer.kt`, toggled by `toggle-drawing-layer` (Alt+D). Off, it is visible but inert; on, it owns mouse and keyboard until toggled back.
-- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation` (`mainCanvasTransform()`), so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. Every writer of `mainTranslation` must call `drawingLayerViewportChanged` (there are four: `applyViewportTranslation`, the wheel and middle-drag pans in `Main.kt`, and bookmark restore).
+- Scene coordinates are Field world coordinates. The canvas camera is `screen = world * mainZoom + mainTranslation`, so Excalidraw's zoom is `mainZoom` and its scroll is `mainTranslation / mainZoom`. The camera state lives in `CanvasCamera` (`canvasCamera.kt`, held per pane for the planned split canvas, `dev_docs/workspace/SPLIT_PANES_PLAN.md`); `mainTranslation` and `mainZoom` are read-only views of it, and `applyViewportTranslation` in `Main.kt` is its only writer, which brings the drawing layer, grid, connections and `set-viewport` along. Outside `Main.kt`, move it with `moveCanvasCamera`.
 
 ### Notation: box code ↔ the drawing
 
@@ -381,8 +382,9 @@ Field has more than one main loop, and conflating them makes bugs hard fast.
 ### Canvas zoom
 
 - Ctrl/pinch-wheel zooms the box canvas about the cursor (`setCanvasZoom`, 0.1×–4×); **Reset Canvas Zoom** in the palette returns to 100%. Translation stays in screen pixels, so pan deltas and centring are zoom-independent.
-- Anything that turns a screen measurement into a world one must divide by `mainZoom`: box drag/resize deltas, `boxWorldRect`, the connection-layer snapshot in `gestures.kt`, `lastMouse` in `commands.kt`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
+- Anything that turns a screen measurement into a world one goes through a pane: `CanvasCamera.paneAt(x, y)` for a pointer, `CanvasCamera.paneOf(element)` for a box, then `worldX`/`worldY`/`worldRect` (box drag/resize deltas still divide by `mainZoom`). Rectangles that mean "the visible canvas" are `pane.rect`, not `window.innerWidth/innerHeight`. Window-sized SVG layers take `worldViewBox(w, h)`. The background dots are the visual unit for `frame` and scale with zoom; the live grid shader is `src/commonMain/resources/fieldWebglBackground.js` (the inline copy in `Main.kt` is a fallback that does not run when that script has installed), and both take `u_zoom`.
 - Not yet zoom-aware: slideshow annotations (`slideshowSupport.kt`) and the server's `viewport` rect (still translation + window size). Bookmarks record zoom; ones saved before that keep the current zoom.
+- **Split panes** (palette: **Split Canvas Here**, **... Columns Here**, **... Rows Here** add dividers, up to two per axis; **Unlink Pane** (and **... Horizontally/Vertically**), **Relink Pane**; **Remove Canvas Split**; `canvasCamera.kt`, thumbnails in `canvasSplitPreview.kt`): each pane shows its own world band and holds the DOM of the boxes whose frame origin is in it; panes in a row share Y scroll, panes in a column share X, zoom is shared. The split is the root `panes` property, written through the marked `send("set-string", payload)` so stale echoes are dropped. Dividers move by their handles (release at the edge or double-click to remove one); the top-left grip splits. Connection, hint and arc layers draw through the bottom-right pane's camera from each box's on-screen rect, so they reach every pane. The drawing layer has one Excalidraw per pane (`syncPaneMounts` in `drawingLayer.kt`); only the main pane's shows a toolbar. A box dragged across a divider rides an unclipped drag canvas and is re-expressed in the destination pane's camera on drop (`beginBoxDrag`/`endBoxDrag`). Status and gaps are in `dev_docs/workspace/SPLIT_PANES_PLAN.md`.
 - **Frame Selected** (`alt+f`, `frameSelected` in `Main.kt`) fits the selection and its open output panels into the largest window region not covered by the editor, docs or Field panels (`FRAME_OCCLUDERS`), zooming out only as needed.
 - One scene per document, as `.excalidraw` JSON in the root box's `drawing` property (inline in `metadata.edn`, since root never writes sidecars). Remote updates merge with Excalidraw's `reconcileElements`.
 - The React/Excalidraw bundle is vendored in `src/jsMain/resources/excalidraw/` and lazy-loaded; rebuild it with `cd tools/excalidraw-bundle && npm ci && npm run build`. Probe it with `window.drawingLayerState()`.
@@ -438,8 +440,11 @@ call sequence. The prose walkthrough with captured images is
 Renderer access is graph topology. For automation: run
 `dev_docs/agents/transcripts/graphics_renderer_launch.yaml`, wait with
 `wait-native-renderer agent_graphics_context --frames 3`, create the example box, connect
-`agent_graphics_context -> example_box`, then run it. Code that starts coroutine work with
-`start(...)` resolves `val renderer: Renderer = fromContext()` first and passes it in.
+`agent_graphics_context -> example_box`, then run it. A box beneath the renderer already has
+`renderer` (the renderer box publishes `prop<Renderer>(renderer)`), so do not look it up; only code
+that starts coroutine work with `start(...)` captures it first (`val r = renderer`) and passes it in.
+`./gradlew checkBoxIdioms` (`tools/check_box_idioms.py`) flags the redundant lookup in published box
+code, and a landing runs it on what it changed.
 
 ---
 

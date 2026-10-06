@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. path tracing renderer
@@ -31,7 +31,7 @@ start(renderer::run)
 <!-- field-box id="skinned_volume_trace" index="1" -->
 
 ```edn [field-box id="skinned_volume_trace" role="properties"]
-{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 86 "characters" 3579 "sha256" "e205f7561af91fc731e3d1369b837e465e599ef175ed6b0f17b965c92fdc46fc"}]}
+{"id" "skinned_volume_trace" "index" 1 "name" "a twisted limb, skinned two ways, weighed, traced" "parents" ["root" "chain_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "chain_renderer"} "name" "a twisted limb, skinned two ways, weighed, traced" "_tombstone" false "frame" #afield/rect [320.0 140.0 300.0 70.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "skinned_volume_trace_code_.kt" "lines" 84 "characters" 3501 "sha256" "8042018d8511e9290b664716107beb7bb4ab83526249586c09989bc39041b345"}]}
 ```
 
 ```kotlin [field-property box="skinned_volume_trace" name="code" path="skinned_volume_trace_code_.kt"]
@@ -43,7 +43,6 @@ import afield.four.fabricated.importTriMesh
 import afield.four.modules.CappedTwistFixture
 import afield.four.modules.GltfSkinning.SkinningMethod
 import afield.four.modules.GltfSkinning.SkinningOptions
-import afield.four.modules.fromContext
 import afield.four.modules.skinnedGltfToTriMesh
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
@@ -52,7 +51,6 @@ import afield.stdlib.linalg.Matrix4f
 import afield.stdlib.linalg.Vector3f
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

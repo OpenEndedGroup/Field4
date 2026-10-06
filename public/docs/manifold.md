@@ -1,19 +1,16 @@
 # Solids that cannot fail: Manifold in Field
 
-*Every public declaration used below carries its own KDoc — start from `Solid`, `Section` and
-`ManifoldLibrary` in `afield.manifold`. The transcript that ships as an openable starting point is
-[manifold_solids](agent_transcripts.md).*
-
 Field's mesh family makes triangles. [`TriMesh`](mesh_examples.md) generates them, marches them out
 of an SDF, subdivides, smooths, decimates, measures and writes them to disk; the
 [ray tracer](ray_tracing_examples.md) intersects analytic solids; [`FLine`](fline_examples.md) draws
-outlines. None of it does the one thing that turns a surface into a *part*:
-
-> **subtract one mesh from another and be certain the answer is still a closed solid.**
+outlines. What none of them can do is subtract one mesh from another and be certain the answer is
+still a closed solid, which is what you need to make a part.
 
 Coincident faces, near-degenerate triangles and features below the floating-point noise floor are
-what make that hard, and [Manifold](https://github.com/elalish/manifold) is the library that solved
-it. `afield.manifold` binds it through Panama/FFM, in about 2400 lines of Kotlin and no C++ at all.
+what make that hard. [Manifold](https://github.com/elalish/manifold) is a library that handles them,
+and `afield.manifold` makes it available in a box as `Solid` (3D) and `Section` (2D). Both carry
+KDoc, and the [manifold_solids](agent_transcripts.md) starting point has the examples below ready to
+run. This plate with four bores drilled through it is typical:
 
 ```diffstatic {data-lang=kotlin}
 val plate = Solid.cube(60.0, 40.0, 8.0, center = true)
@@ -49,9 +46,7 @@ and assert on, instead of a render you eyeball.
 
 Two of those will read oddly the first time. `triangleCount` on a cube is `12`, the minimal closed
 mesh rather than the 24 a per-face mesh would have; and `genus` counts holes through the solid, so
-the four-bore plate above is genus 4 before you count anything by hand. The whole census of Field's
-answers against their closed forms — including what each `JoinType` does to the area of an offset
-square — is in `dev_docs/MANIFOLD_AGREEMENT.md`.
+the four-bore plate above is genus 4.
 
 ## Booleans
 
@@ -124,7 +119,8 @@ an operator measures nothing.
 
 Manifold never throws and never returns null. A failed operation gives you a `Solid` whose `status` is
 not `NO_ERROR` and whose volume is `0.0`. Upstream chose that so a twenty-step chain does not need
-twenty checks; the cost is that **an unchecked pipeline can end in silence**. Two ways out:
+twenty checks; the cost is that **an unchecked pipeline can end in silence**. Either make the
+pipeline throw, or check the status yourself:
 
 ```diffstatic {data-lang=kotlin}
 // 1. `checked()` throws, naming the status and the repair, instead of yielding 0 mm³.
@@ -168,12 +164,10 @@ rather than a mesh, because what you need next is `unfixed`: the blocking defect
 each with the reason it was left alone. `ToyCar.glb` in this repo goes through it and comes out a
 solid you can boolean.
 
-`repaired()` is the right call for a mesh whose only problem is an unwelded seam. It does not fill
-holes, which is why it makes 6 of the 21 rejected meshes in the repair test table valid where
-`repairToSolid()` makes 19 valid, of which **15 are also the shape you started with**, judged against
-the undamaged original. See [geometry from disk](geometry_from_disk.md) for why those two numbers
-have to be reported separately, and for the pair of cases proving that no local check can tell them
-apart.
+`repaired()` is the right call for a mesh whose only problem is unwelded vertices. It does not fill
+holes, so it rescues far fewer broken meshes than `repairToSolid()`. A repaired mesh is a valid
+solid, but not always the shape you started with; [geometry from disk](geometry_from_disk.md) shows
+the difference.
 
 **Manifold accepts an inside-out mesh.** A closed, consistently-but-inwardly wound surface is a
 legal manifold that reports a *negative* volume — so `status` is `NO_ERROR`, and the next boolean
@@ -272,11 +266,10 @@ rather than Clipper's `EVEN_ODD`, because it is the rule under which winding *me
 overlapping same-wound outlines are one shape, where `EVEN_ODD` would punch their overlap out as a
 hole.
 
-## A Kotlin lambda, called from a C++ thread pool
+## Solids from a field
 
-Upcalls are where FFM earns its keep. Manifold's `level_set` takes a
-`double (*)(double, double, double, void*)` and marches it into a solid; `Solid.levelSet` turns a
-Kotlin lambda into exactly that function pointer, for the duration of one call.
+`Solid.levelSet` takes a Kotlin lambda of `x, y, z` and marches it into a solid. Manifold calls the
+lambda itself, from its own thread pool.
 
 The difference from Field's own [`marchingCubes`](mesh_examples.md) is not resolution or speed, it is
 the guarantee: whatever the field did (a sheet thinner than the grid, a surface that touches itself, a
@@ -341,15 +334,8 @@ sequential.close()
 solid.close()
 ```
 
-Measured on this machine, a unit sphere at `edgeLength = 0.04` (465k samples, 40536 triangles out):
-
-| Configuration | wall clock | threads that entered the JVM |
-|---|---|---|
-| `parallel = true` | 82 ms | 10 |
-| `parallel = false` | 151 ms | 1 |
-
-1.84×, from a Kotlin closure invoked concurrently by nine threads the JVM never created. Those
-threads, and the C++ frames between them and your code, have two consequences:
+With `parallel = true` (the default for a plain lambda) the lambda runs on several native threads at
+once, which roughly halves the time for a finely sampled sphere. That has two consequences:
 
 - **An exception cannot escape.** There are C++ frames between the lambda and the caller; unwinding
   through them is undefined, and FFM's response to an escaping exception is to abort the VM. So the
@@ -431,8 +417,7 @@ part.close()
 
 ## The bridges, both ways
 
-Nothing here replaces Field's mesh family; the two compose. Manifold does the one thing it is
-world-class at and hands the surface back.
+Manifold does not replace Field's mesh family; a `Solid` converts to and from a `TriMesh`:
 
 ```diffstatic {data-lang=kotlin}
 // In: a TriMesh from anywhere — a generator, a file, a march, a scan.
@@ -492,52 +477,6 @@ val part = Solid.scope {
     body - bore                      // kept; body and bore are released here
 }
 ```
-
-## How the binding is built
-
-Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from `manifoldc.h`), and
-Homebrew's bottle contains it. That is what makes this binding small, and it is the whole argument for
-FFM over JNI, because the alternative needs a compiled shim per platform and this needs nothing:
-
-<div class="field-data-table" markdown>
-
-| Property | Ceres, the other native solver here | Manifold |
-|---|---|---|
-| upstream API | C++ templates only | C++ **and** a C ABI |
-| so Field needs | a hand-written C++ wrapper (`native/ken-ceres`) | nothing |
-| build step | `./gradlew buildCeresRedistributable`, minutes | `brew install manifold`, seconds |
-| ABI drift guarded by | a version string we invented | upstream's own SO version |
-
-</div>
-
-Three shapes of call, and what each one asks for:
-
-1. **Plain downcalls.** `size_t` is `JAVA_LONG`, `int` is `JAVA_INT`, every pointer is `ADDRESS`.
-   Handles are looked up eagerly, so a library that is present but too old fails on first touch,
-   naming the missing symbol, rather than mid-pipeline.
-2. **Structs returned by value.** `manifold_box_min` returns three doubles, which AArch64 returns in
-   `v0..v2`. FFM unpacks that from a `StructLayout` with no help; what it wants in exchange is a
-   `SegmentAllocator` as an extra leading argument.
-3. **Upcalls**, described above — a thread-safe Kotlin lambda, and a sentinel to carry an exception
-   back across the C++ frames.
-
-Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_delete_*` pair, rather
-than an FFM `Arena`. A confined `Arena` is thread-confined and a `Solid` built in a box is routinely
-read from the runloop thread; a shared one costs a thread handshake to close. `malloc` has neither
-problem, and the `Cleaner` sits behind it.
-
-??? aside "If you are writing FFM descriptors yourself"
-    Nothing checks them. A `size_t` declared as an `int`, a struct return declared as a pointer, an
-    argument in the wrong position — all of them compile, link, and return *something*. The failure
-    mode is a plausible wrong number, not an error.
-
-    Two places in this API where `manifoldc.h` is the only warning. `manifold_slice` and
-    `manifold_project` return `ManifoldPolygons*`, **not** `ManifoldCrossSection*`; since every
-    constructor here builds into memory the caller allocated, handing `slice` a cross-section-sized
-    buffer constructs the wrong object in it, and the first read aborts the process inside libc++
-    with `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit
-    distance as a **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of
-    length `1e4` arrives as `4.0e-4`.
 
 ## Installing it
 
@@ -621,3 +560,51 @@ or throws if it cannot establish the requested minimum within its subdivision bu
 Failure does not prove that the curve violates the threshold. Cusps, degenerate chords
 and arithmetic overflow are rejected. This uses floating-point arithmetic, not formal
 interval certification; the polyline error bound does not prove containment in another solid.
+
+## Internals: how the binding is built
+
+`afield.manifold` binds Manifold through Java's foreign-function interface (FFM, "Panama"), with no
+C++ of its own. Manifold ships a **C** binding library beside its C++ one (`libmanifoldc`, from
+`manifoldc.h`), and Homebrew's bottle contains it. That is what makes this binding small, and it is
+the whole argument for FFM over JNI, because the alternative needs a compiled shim per platform and
+this needs nothing:
+
+<div class="field-data-table" markdown>
+
+| Property | Ceres, the other native solver here | Manifold |
+|---|---|---|
+| upstream API | C++ templates only | C++ **and** a C ABI |
+| so Field needs | a hand-written C++ wrapper (`native/ken-ceres`) | nothing |
+| build step | `./gradlew buildCeresRedistributable`, minutes | `brew install manifold`, seconds |
+| ABI drift guarded by | a version string we invented | upstream's own SO version |
+
+</div>
+
+The binding makes three shapes of call:
+
+1. **Plain downcalls.** `size_t` is `JAVA_LONG`, `int` is `JAVA_INT`, every pointer is `ADDRESS`.
+   Handles are looked up eagerly, so a library that is present but too old fails on first touch,
+   naming the missing symbol, rather than mid-pipeline.
+2. **Structs returned by value.** `manifold_box_min` returns three doubles, which AArch64 returns in
+   `v0..v2`. FFM unpacks that from a `StructLayout` with no help; what it wants in exchange is a
+   `SegmentAllocator` as an extra leading argument.
+3. **Upcalls**, as in [Solids from a field](#solids-from-a-field): a thread-safe Kotlin lambda,
+   and a sentinel to carry an exception back across the C++ frames.
+
+Memory is the library's own `malloc`, via its `manifold_alloc_*` / `manifold_delete_*` pair, rather
+than an FFM `Arena`. A confined `Arena` can only be used from the thread that made it, and a `Solid`
+built in a box is routinely read from the runloop thread; a shared one costs a thread handshake to
+close. `malloc` has neither problem, and the `Cleaner` sits behind it.
+
+??? aside "If you are writing FFM descriptors yourself"
+    Nothing checks them. A `size_t` declared as an `int`, a struct return declared as a pointer, an
+    argument in the wrong position — all of them compile, link, and return *something*. The failure
+    mode is a plausible wrong number, not an error.
+
+    Two places in this API where `manifoldc.h` is the only warning. `manifold_slice` and
+    `manifold_project` return `ManifoldPolygons*`, **not** `ManifoldCrossSection*`; since every
+    constructor here builds into memory the caller allocated, handing `slice` a cross-section-sized
+    buffer constructs the wrong object in it, and the first read aborts the process inside libc++
+    with `mutex lock failed` and no Java stack at all. And `manifold_ray_cast` reports its hit
+    distance as a **fraction of the origin-to-end segment**, so a hit 4 units away on a ray of
+    length `1e4` arrives as `4.0e-4`.

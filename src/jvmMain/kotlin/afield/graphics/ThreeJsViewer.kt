@@ -274,6 +274,9 @@ data class ThreeGeometryPayload(
     val uid: String,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val revision: String? = null,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val sourceBox: String? = null,
+    /** Server-owned document identity for optional camera linking; not geometry identity. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraLinkScope: String? = null,
     val lines: ThreeGeometryData? = null,
     val fills: ThreeGeometryData? = null,
     val points: ThreeGeometryData? = null,
@@ -359,7 +362,16 @@ data class ThreeGeometryPayload(
      * the rasterizer had to bring [MeshView]'s four numbers with it.
      */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
-    val camera: ThreeCameraSpec? = null
+    val camera: ThreeCameraSpec? = null,
+    /** Join the document's camera link on load, in this group. See [ThreeSceneBuilder.linkCamera]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val cameraLink: ThreeCameraLinkSpec? = null,
+    /** Turn slowly about the up axis until somebody interacts. See [ThreeSceneBuilder.turntable]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val turntable: ThreeTurntableSpec? = null,
+    /** A looping dolly, explode and x-ray move. See [ThreeSceneBuilder.shot]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val shot: ThreeShotSpec? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -376,7 +388,10 @@ data class ThreeGeometryPayload(
         "inspector" to (inspector != null),
         "drawables" to drawables.size,
         "panels" to panels.size,
-        "camera" to camera
+        "camera" to camera,
+        "cameraLink" to cameraLink,
+        "turntable" to turntable,
+        "shot" to shot
     )
 }
 
@@ -393,13 +408,22 @@ private val threeJson = Json {
  */
 class ThreeGeometryViewState(val uid: String) {
     internal val reviewInbox = ThreeReviewInbox(uid)
-    internal fun bindSource(box: Box) { reviewInbox.owner = box }
+    internal fun bindSource(box: Box, localViewId: String? = null) {
+        val old = reviewInbox.owner
+        require(old == null || (old.id == box.id && threeDocumentScope(old) == threeDocumentScope(box))) {
+            "A Three.js view cannot be rebound to another document or source box"
+        }
+        reviewInbox.owner = box
+        reviewInbox.localViewId = localViewId
+    }
     /** Most recent human selection and unresolved notes. Set [includeResolved] for completed notes and their history. */
     fun reviews(includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject = reviewInbox.snapshot(includeResolved)
 
     private val sessions = CopyOnWriteArraySet<WebSocketSession>()
     @Volatile private var lastPayload: String? = null
     private var editSessionId: String? = null
+    internal var sourcePayload: ThreeGeometryPayload? = null
+        private set
 
     /**
      * Attach a websocket session to this viewer and replay the latest payload.
@@ -418,7 +442,10 @@ class ThreeGeometryViewState(val uid: String) {
     fun update(payload: ThreeGeometryPayload) {
         val revision = threeReviewRevision(payload)
         reviewInbox.update(revision)
-        val encoded = threeJson.encodeToString(payload.copy(revision = revision, sourceBox = reviewInbox.owner?.id))
+        sourcePayload = payload
+        val styled = applyPartAppearance(payload, storedAppearance()[appearanceKey()].orEmpty())
+        val encoded = threeJson.encodeToString(styled.copy(revision = revision, sourceBox = reviewInbox.owner?.id,
+            cameraLinkScope = cameraLinkScope()))
         val nextSession = payload.scene?.sessionId?.takeIf { it.isNotEmpty() }
         if (editSessionId != nextSession) editSessionId?.let(::removeFLineEditSession)
         editSessionId = nextSession
@@ -428,6 +455,29 @@ class ThreeGeometryViewState(val uid: String) {
         // Global listeners (native "subscribe-all" viewers) see every view's updates, including
         // newly-created views: threeLines() calls update() right after creating the view.
         threeGlobalListeners.forEach { sendTo(it, encoded) }
+    }
+
+    private fun appearanceKey(): String = reviewInbox.localViewId ?: uid
+    private fun storedAppearance(): Map<String, Map<String, ThreePartAppearance>> =
+        (reviewInbox.owner?.getPropertyRaw("geometryAppearance") as? String)?.let {
+            threeJson.decodeFromString<Map<String, Map<String, ThreePartAppearance>>>(it)
+        }.orEmpty()
+
+    /** Persist display styles on this view's source box and refresh connected viewers. */
+    @Synchronized
+    fun styleParts(expectedRevision: String, styles: Map<String, ThreePartAppearance>, replace: Boolean = false) {
+        val owner = checkNotNull(reviewInbox.owner) { "View has no document owner" }
+        check(!ReadOnlyDocuments.blocksWritesFrom(owner)) { "Document is read-only" }
+        val payload = checkNotNull(sourcePayload) { "View has no geometry" }
+        check(threeReviewRevision(payload) == expectedRevision) { "Geometry changed; inspect the current revision" }
+        require(styles.size <= 10000) { "Too many part styles" }
+        val ids = payload.drawables.map { it.id }.toSet()
+        require(styles.keys.all { it.isNotBlank() && it in ids }) { "A styled part is absent from the current view" }
+        styles.values.forEach { it.validate() }
+        val all = storedAppearance().toMutableMap()
+        all[appearanceKey()] = (if (replace) emptyMap() else all[appearanceKey()].orEmpty()) + styles
+        owner.properties["geometryAppearance"] = threeJson.encodeToString(all)
+        update(payload)
     }
 
     private fun sendTo(session: WebSocketSession, payload: String) {
@@ -441,6 +491,8 @@ class ThreeGeometryViewState(val uid: String) {
         lastPayload?.let { sendTo(session, it) }
     }
 
+    internal fun cameraLinkScope(): String? = reviewInbox.owner?.let(::threeDocumentScope)
+
     override fun toString(): String = prettySummary(
         "ThreeGeometryViewState",
         "uid" to uid,
@@ -451,13 +503,27 @@ class ThreeGeometryViewState(val uid: String) {
 
 private val knownThreeViews = ConcurrentHashMap<String, ThreeGeometryViewState>()
 
+// Document duplication preserves box IDs. They are local identities, not global viewer keys.
+// Canonical document paths match the existing custom-canvas review surface contract.
+private fun threeDocumentScope(box: Box): String = if (box.isInsideInitialized()) {
+    UUID.nameUUIDFromBytes(java.io.File(box.inside.filename).canonicalPath.toByteArray(Charsets.UTF_8)).toString()
+} else synchronized(box) {
+    box.properties.getOrPut("_threeDocumentScope") { UUID.randomUUID().toString() }.toString()
+}
+
+internal fun threeViewerUid(box: Box, name: String): String = "${threeDocumentScope(box)}_${box.id}_$name"
+
+/** Only views owned by these live box instances; a guessed uid must not cross documents. */
+internal fun threeViewsOwnedBy(boxes: Collection<Box>): List<ThreeGeometryViewState> =
+    knownThreeViews.values.filter { view -> boxes.any { it === view.reviewInbox.owner } }.sortedBy { it.uid }
+
 /** Read the live review inbox without opening a second browser or replacing the human selection. */
-fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject? = knownThreeViews[uid]?.reviews(includeResolved)
+fun threeGeometryReviews(uid: String, includeResolved: Boolean = false): kotlinx.serialization.json.JsonObject? = knownThreeViews[uid]?.reviews(includeResolved) ?: customGeometryReviewInbox(uid)?.snapshot(includeResolved)
 
 internal fun updateThreeGeometryReview(uid: String, request: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject? =
-    knownThreeViews[uid]?.reviewInbox?.updateNote(request)
+    (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.updateNote(request)
 
-internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = knownThreeViews[uid]?.reviewInbox?.image(hash)
+internal fun threeGeometryReviewImage(uid: String, hash: String): ByteArray? = (knownThreeViews[uid]?.reviewInbox ?: customGeometryReviewInbox(uid))?.image(hash)
 
 /**
  * The view for a uid, created on first use.
@@ -633,7 +699,7 @@ fun Box.threeLines(
     width: Int? = null
 ): ThreeGeometryViewState {
     require(width == null || width > 0) { "Viewer width must be positive" }
-    val uid = "${this.id}_$name"
+    val uid = threeViewerUid(this, name)
     val ln = threeViewerIframeSource(uid)
     display(
         channel, """
@@ -641,7 +707,7 @@ fun Box.threeLines(
 """
     )
     val view = threeViewFor(uid)
-    view.bindSource(this)
+    view.bindSource(this, "${this.id}_$name")
     val payload = buildThreeGeometryPayload(uid, lines, samplesPerCubic, autoFrame, editable, onEditCommitted = onEditCommitted)
         .copy(frameWidth = width, frameHeight = height)
 
@@ -652,7 +718,7 @@ fun Box.threeLines(
 /**
  * The `src` of a viewer iframe, for a view uid.
  *
- * The uid is `"${box.id}_$name"`, and `name` is a caller's prose that lands in a **single-quoted**
+ * The uid contains a document scope, box id and name; `name` is a caller's prose that lands in a **single-quoted**
  * `src` attribute as well as in a query string. An apostrophe — `name = "the client's triangulation"`
  * — closed the attribute early, so the iframe loaded with no `uid` at all and the viewer sat on
  * "waiting for data…" forever, with no error in the browser console, the server log or the box output.

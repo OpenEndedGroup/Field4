@@ -1,6 +1,8 @@
-// A KeyframeScope holds no values of its own. It holds *targets*: places to read from and
-// write to. The simplest is a uniform Structure — and none of this needs a GPU, because
-// Structure is constructible bare and bind/bindings are plain maps.
+/*
+A KeyframeScope holds no values of its own. It holds *targets*: places to read from and
+write to. The simplest is a uniform Structure — and none of this needs a GPU, because
+Structure is constructible bare and bind/bindings are plain maps.
+*/
 import afield.four.buffers.Structure
 import afield.stdlib.KeyframeScope
 
@@ -35,8 +37,8 @@ println("glow.intensity = " + glow.bindings["intensity"]?.invoke())
 println("blur.radius    = " + blur.bindings["radius"]?.invoke())
 println("glow.'glow@radius' = " + glow.bindings["glow@radius"]?.invoke() + "  <- never bound")
 
-// capture() reads binding-first-then-value, so both of these land in the key. It used to
-// read Structure.bindings alone, and `set` snapshotted as a silent null.
+// capture() reads a binding first and falls back to a plain value, so a property set with
+// `structure[name] = ...` (no bind) still lands in the key.
 val sneaky = Structure()
 sneaky.bind("bound") { 1.0f }
 sneaky["set"] = 2.0f
@@ -50,13 +52,17 @@ println("bound -> " + trap["bound"] + " ; set -> " + trap["set"] + " (present: "
 captured()
 val restored = scope.capture()
 
-// markdown() rather than a hand-built card: headings for the captions, GFM tables for the
-// key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
-// other Field APIs and are *meant* to pass through, so they interpolate directly; every
-// computed value carries `.md`, which a table cell effectively requires.
+/*
+markdown() rather than a hand-built card: headings for the captions, GFM tables for the
+key/value pairs, a fence for the multi-line diff. `key.h` and diffHtml() are HTML from
+other Field APIs and are *meant* to pass through, so they interpolate directly; every
+computed value carries `.md`, which a table cell effectively requires.
+*/
 fun bound(s: Structure, k: String) = s.bindings[k]?.invoke().md
 
-markdown("keys", """
+markdown(
+    "keys",
+    """
     #### 1 — capture()
     ${captured.h}
 
@@ -84,4 +90,6 @@ markdown("keys", """
     ~~~
 ${captured.diffText(restored, "captured", "restored")}
     ~~~
-""", width = 800)
+""",
+    width = 800,
+)

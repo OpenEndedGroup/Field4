@@ -131,6 +131,7 @@ internal fun docsPassArguments(request: DocsPassAction): List<String>? {
                 tags.flatMap { listOf("--tag", it) } + request.pages.flatMap { listOf("--page", it) }
         }
         "stop" -> listOf("pass", "stop")
+        "import-drafts" -> listOf("import-drafts")
         "stop-now" -> listOf("pass", "stop", "--now")
         "rebuild" -> if (request.mode in setOf("never", "incremental", "strict")) listOf("pass", "rebuild", "--mode", request.mode) else null
         "commit" -> listOf("pass", "commit")

@@ -2360,7 +2360,7 @@ lines(listOf(path, path + vec(0.0, 110.0), path + vec(0.0, 220.0), once, eight, 
 
 In 3D the wave's y follows the path's normal and its z the binormal. With `subtractChord = false` those offsets are measured from y = z = 0, so a circle drawn around the origin winds a coil centred on the path. The frames come from the path's own shape (they turn as little as the path forces them to, starting from the side the path bends toward), so rotating the path turns the coil with it and the coil never flips. Only a straight path, which bends toward no side, takes its starting normal from `up`. `path.sweptFrames()` gives you the frames themselves, and its `strength` (0 to 1) says how clearly the path's shape chose the starting side.
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/wiggled_by_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/fline_examples/wiggled_by_3d.png" wait="1.0" capture="box" open-outputs="true" w="1200" embed=true}
 :::static
 // One turn of a circle around y = z = 0, with x running along: a coil when laid on a path.
 val turn = fline {

@@ -68,5 +68,33 @@ class MergeRegenTest(unittest.TestCase):
         self.assertEqual(self.generated.read_text(), "ours\n")
 
 
+class RegeneratorWritesAreAuthorizedTest(unittest.TestCase):
+    """Every merge_regen regenerator may write its own outputs under the test tree-write guard.
+
+    The guard finalises every Gradle Test task and sees every write since its baseline, so a
+    regenerator whose outputs no escape covers fails any build it shares with a test. On 2026-10-04
+    that was the completion-corpus harvest: 182 identical-byte rewrites bounced two landings.
+    """
+
+    def test_every_regenerator_output_root_is_covered_by_an_escape(self) -> None:
+        sys.path.insert(0, str(SCRIPT.parent))
+        import check_test_tree_writes as trees
+        import merge_regen
+        from check_staged_generated_artifacts import GUARDS
+
+        environ = {}
+        for _args, extra_env in merge_regen.REGENERATORS.values():
+            environ.update(extra_env)
+        repo = SCRIPT.resolve().parents[1]
+        allowed = tuple(p for prefixes in trees._escape_prefixes(environ, repo).values() for p in prefixes)
+        for guard in GUARDS:
+            if guard.task not in merge_regen.REGENERATORS:
+                continue
+            roots = guard.output_roots or merge_regen.REGENERATED_ROOTS.get(guard.task, ())
+            for root in roots:
+                self.assertTrue(trees._covered(root, allowed),
+                                f"{guard.task} writes {root}, and no tree-write escape authorizes it")
+
+
 if __name__ == "__main__":
     unittest.main()

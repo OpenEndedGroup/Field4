@@ -18,7 +18,6 @@ val poseTime = 1.0f
 // `prop<Renderer>(renderer)` macro a hand-built renderer box uses -- so the bare name does not
 // resolve and fromContext() finds it by type instead. In a document with your own renderer box as
 // the parent, `renderer` resolves directly and this line is redundant but harmless.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 

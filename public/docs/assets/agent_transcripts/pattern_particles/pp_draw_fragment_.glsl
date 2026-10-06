@@ -13,6 +13,7 @@ const vec3[4] tint = {
     vec3(1.000, 0.878, 0.400)
 };
 
+
 void main() {
     float d = max(0.0, 0.5 - length(tc - vec2(0.5)));
     float w = fwidth(d);

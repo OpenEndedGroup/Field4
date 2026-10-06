@@ -47,7 +47,8 @@ class VoiceTranscriberTest {
     private fun VoiceTranscriber.transcribeWith(command: List<String>) =
         runCatching { workerCommand = { command }; forceRestart(); transcribe(request) }
 
-    @Test fun aHungWorkerTimesOutAndIsRestarted() {
+    @Test
+    fun aHungWorkerTimesOutAndIsRestarted() {
         assumePython()
         val marker = File(dir, "started-once")
         VoiceTranscriber.replyTimeoutMillis = 1500
@@ -70,7 +71,8 @@ class VoiceTranscriberTest {
         assertEquals("second worker", next.text)
     }
 
-    @Test fun aCrashingWorkersStderrIsInTheError() {
+    @Test
+    fun aCrashingWorkersStderrIsInTheError() {
         assumePython()
         val crash = VoiceTranscriber.transcribeWith(fakeWorker("""
             sys.stderr.write("Traceback: ImportError: libfake.so missing\n")
@@ -92,7 +94,8 @@ class VoiceTranscriberTest {
         assertTrue("metal device lost" in midError, midError)
     }
 
-    @Test fun aReplyForAnotherRequestIsNotThisTranscript() {
+    @Test
+    fun aReplyForAnotherRequestIsNotThisTranscript() {
         assumePython()
         val result = VoiceTranscriber.transcribeWith(fakeWorker("""
             print(json.dumps({"ready": True, "backend": "fake", "model": "m"}))
@@ -111,7 +114,8 @@ class VoiceTranscriberTest {
      * The real worker and model, opt-in: `FIELD_VOICE_LIVE_CLIP=<16 kHz float32 .f32 file>` and
      * `FIELD_VOICE_PYTHON=<venv python with the voice group>`. Prints the transcript and timings.
      */
-    @Test fun liveClipThroughTheRealWorker() {
+    @Test
+    fun liveClipThroughTheRealWorker() {
         val clip = System.getenv("FIELD_VOICE_LIVE_CLIP")?.let(::File)?.takeIf { it.isFile } ?: return
         VoiceTranscriber.workerCommand = savedCommand
         VoiceTranscriber.forceRestart()

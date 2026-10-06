@@ -37,7 +37,7 @@ export async function exportViewerGLB(root, { xray = false, opacity = .12, units
                 const constant = geometry.userData.constantColor;
                 if (constant) color.multiply(new THREE.Color(constant[0], constant[1], constant[2]));
                 const surface = source.isMesh;
-                const alpha = (surface ? material.opacity * (xray ? opacity : 1)
+                const alpha = (surface ? material.opacity * (xray ? (material.userData?.fieldXrayOpacity ?? opacity) : 1)
                     : Math.min(1, material.opacity * (xray && source.isLine ? 1.6 : 1))) * (constant?.[3] ?? 1);
                 const options = {color, opacity:alpha, vertexColors:!constant, transparent:alpha < 1 || geometry.userData.hasAlpha,
                     side:material.side ?? THREE.DoubleSide};

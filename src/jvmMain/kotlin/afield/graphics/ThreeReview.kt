@@ -10,13 +10,24 @@ import java.util.UUID
 
 /** Geometry identity for ordinary meshes, lines and points. Presentation and random callback IDs
  * are excluded, so orbiting, lighting and relaunching identical geometry do not invalidate a note.
- * Canonical solid views use their stronger double-boundary identity instead.
+ * Canonical solids retain their double-boundary identity; geometry displayed alongside them also
+ * contributes. A moving ordinary point must invalidate a note even if every solid stays unchanged.
  */
 internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
-    payload.inspector?.artifactDigest?.let { return it }
+    val canonicalDigest = payload.inspector?.artifactDigest
+    val geometryPayload = if (canonicalDigest == null) payload else {
+        val canonicalParts = payload.inspector.parts.keys
+        payload.copy(drawables = payload.drawables.filterNot { it.id in canonicalParts })
+    }
+    // Do not re-hash the canonical parts' display floats: their exact geometry is already covered,
+    // and re-framing or duplicating vertices for shading must not retire existing solid-only notes.
+    if (canonicalDigest != null && geometryPayload.lines == null && geometryPayload.fills == null &&
+        geometryPayload.points == null && geometryPayload.drawables.isEmpty() &&
+        geometryPayload.interactive.isEmpty() && geometryPayload.scene == null) return canonicalDigest
     val json = Json { encodeDefaults = true }
     val geometry = buildJsonObject {
-        for ((key, value) in json.encodeToJsonElement(payload).jsonObject) {
+        if (canonicalDigest != null) put("canonicalDigest", canonicalDigest)
+        for ((key, value) in json.encodeToJsonElement(geometryPayload).jsonObject) {
             if (key in setOf("lines", "fills", "points", "drawables", "interactive", "scene")) put(key, value)
         }
     }
@@ -33,14 +44,35 @@ internal fun threeReviewRevision(payload: ThreeGeometryPayload): String {
  */
 internal class ThreeReviewInbox(private val uid: String) {
     var owner: Box? = null
+    // Local identity lives with the source box, so duplicate/moved documents retain notes
+    // without sharing a live viewer. Old unscoped note IDs remain readable without rewriting.
+    var localViewId: String? = null
+    private fun belongs(note: JsonObject): Boolean = note["viewId"]?.jsonPrimitive?.contentOrNull == uid ||
+        localViewId?.let { local ->
+            note["localViewId"]?.jsonPrimitive?.contentOrNull == local ||
+                note["viewId"]?.jsonPrimitive?.contentOrNull == local
+        } == true
+
+    private fun forCurrentView(note: JsonObject): JsonObject =
+        if (note["viewId"]?.jsonPrimitive?.contentOrNull == uid) note else JsonObject(note + mapOf(
+            "recordedViewId" to (note["recordedViewId"] ?: note.getValue("viewId")), "viewId" to JsonPrimitive(uid)))
     private var revision: String? = null
     private var selection: JsonObject? = null
     private var notes = listOf<JsonObject>()
-    private val transientImages by lazy { java.nio.file.Files.createTempDirectory("field-three-review-") }
+    private val transientImages by lazy {
+        // Rebinding a canvas in an ephemeral document must retain the images its notes reference.
+        val box = owner
+        if (box == null) java.nio.file.Files.createTempDirectory("field-three-review-")
+        else synchronized(box) {
+            box.properties.getOrPut("_geometryReviewImages") {
+                java.nio.file.Files.createTempDirectory("field-three-review-")
+            } as java.nio.file.Path
+        }
+    }
     private fun imageDirectory(): java.nio.file.Path = owner?.takeIf { it.isInsideInitialized() && !it.inside.ephemeral }
         ?.let { java.nio.file.Path.of(it.inside.filename).resolve(".geometry-review") } ?: transientImages
 
-    @Synchronized fun image(hash: String): ByteArray? = ThreeReviewEvidence.read(hash, storedNotes().filter { it["viewId"]?.jsonPrimitive?.contentOrNull == uid }, imageDirectory())
+    @Synchronized fun image(hash: String): ByteArray? = ThreeReviewEvidence.read(hash, storedNotes().filter(::belongs), imageDirectory())
 
     @Synchronized fun update(revision: String) {
         if (this.revision != revision) selection = null
@@ -48,8 +80,9 @@ internal class ThreeReviewInbox(private val uid: String) {
     }
 
     @Synchronized fun snapshot(includeResolved: Boolean = false): JsonObject {
-        val all = storedNotes().filter { it["viewId"]?.jsonPrimitive?.contentOrNull == uid }.map { note ->
-            JsonObject(mapOf("status" to JsonPrimitive("open"), "version" to JsonPrimitive(0)) + note)
+        val all = storedNotes().filter(::belongs).map { note ->
+            JsonObject(mapOf("status" to JsonPrimitive("open"), "version" to JsonPrimitive(0)) + forCurrentView(note) +
+                ("stale" to JsonPrimitive(note["artifactDigest"]?.jsonPrimitive?.contentOrNull != revision)))
         }
         return buildJsonObject {
             put("viewId", uid); put("revision", revision); put("sourceBox", owner?.id)
@@ -77,7 +110,7 @@ internal class ThreeReviewInbox(private val uid: String) {
         require(actor.isNotEmpty() && actor.length <= 200) { "Identify the person or agent making this update" }
         check(revision != null && request["checkedRevision"]?.jsonPrimitive?.contentOrNull == revision) { "Geometry changed; inspect the current revision before updating the note" }
         val previous = storedNotes()
-        val index = previous.indexOfFirst { it["id"]?.jsonPrimitive?.contentOrNull == id && it["viewId"]?.jsonPrimitive?.contentOrNull == uid }
+        val index = previous.indexOfFirst { it["id"]?.jsonPrimitive?.contentOrNull == id && belongs(it) }
         require(index >= 0) { "Unknown note in this view" }
         val old = previous[index]
         val version = old["version"]?.jsonPrimitive?.intOrNull ?: 0
@@ -103,7 +136,7 @@ internal class ThreeReviewInbox(private val uid: String) {
         val updated = previous.toMutableList().also { it[index] = changed }
         require(JsonArray(updated).toString().length <= 2_000_000) { "Review inbox is full" }
         persist(updated)
-        return buildJsonObject { put("ok", true); put("note", changed) }
+        return buildJsonObject { put("ok", true); put("note", forCurrentView(changed)) }
     }
 
     private fun persist(updated: List<JsonObject>) {
@@ -125,7 +158,7 @@ internal class ThreeReviewInbox(private val uid: String) {
     fun receive(incoming: JsonObject, note: Boolean): JsonObject {
         require(incoming.toString().length <= 5_500_000) { "Review with images is too large" }
         val evidence = incoming["evidence"] as? JsonObject
-        val record = JsonObject(incoming.filterKeys { it !in setOf("evidence", "status", "version", "resolution", "history", "replies") })
+        val record = JsonObject(incoming.filterKeys { it !in setOf("evidence", "status", "version", "resolution", "history", "replies", "localViewId", "recordedViewId") })
         require(record.toString().length <= 128_000) { "Review is too large" }
         require(record["viewId"]?.jsonPrimitive?.contentOrNull == uid) { "Review view differs" }
         require(revision != null && record["artifactDigest"]?.jsonPrimitive?.contentOrNull == revision) { "Geometry changed; select the feature again" }
@@ -146,9 +179,27 @@ internal class ThreeReviewInbox(private val uid: String) {
         require(owner?.takeIf { it.isInsideInitialized() }?.inside?.readOnly != true) { "Document is read-only" }
         // Validate all note constraints before writing attachments.
         val previous = storedNotes()
+        val finding = record["finding"]?.let {
+            require(it is JsonObject) { "Finding metadata must be an object" }
+            validateGeometryFinding(it)
+            it
+        }
+        if (finding != null) {
+            val prior = previous.firstOrNull { old ->
+                belongs(old) && old["artifactDigest"] == record["artifactDigest"] &&
+                    (old["finding"] as? JsonObject)?.let { sameFindingOccurrence(it, finding) } == true
+            }
+            if (prior != null) {
+                require(prior["finding"] == finding && prior["text"] == record["text"] && prior["selection"] == feature) {
+                    "This finding was already recorded with different evidence. Reply to its thread or use the new run identity."
+                }
+                return buildJsonObject { put("ok", true); put("id", prior.getValue("id")); put("existing", true); put("message", "Finding already recorded; its discussion and evidence are unchanged.") }
+            }
+        }
         require(previous.sumOf { it.toString().length } + record.toString().length + 2000 <= 2_000_000) { "Review inbox is full; export notes before adding more" }
         val attachments = evidence?.let { ThreeReviewEvidence.store(it, record, imageDirectory()) }
-        val saved = JsonObject(record + (attachments?.let { mapOf("evidence" to it) } ?: emptyMap()) + mapOf("id" to JsonPrimitive(UUID.randomUUID().toString()),
+        val saved = JsonObject(record + (localViewId?.let { mapOf("localViewId" to JsonPrimitive(it)) } ?: emptyMap()) +
+            (attachments?.let { mapOf("evidence" to it) } ?: emptyMap()) + mapOf("id" to JsonPrimitive(UUID.randomUUID().toString()),
             "sourceBox" to (owner?.id?.let(::JsonPrimitive) ?: JsonNull), "createdAt" to JsonPrimitive(Instant.now().toString()),
             "status" to JsonPrimitive("open"), "version" to JsonPrimitive(0)))
         persist(previous + saved)

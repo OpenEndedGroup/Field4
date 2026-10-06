@@ -2678,6 +2678,28 @@ class RunnerState:
             LOG.info("Field docs runner cache hit (ui drive): %s", primary)
             self.cache_hits += 1
             return
+        # The same two reuse rules ensure_screenshot and the video/audio paths apply. Without them a
+        # fresh worktree (no .field-docs-runner-cache.json) re-drove every capture="ui" fence on the
+        # site in incremental mode, even with the committed outputs on disk.
+        cached_metadata = self.cache_metadata.get(cache_key)
+        if all(out.exists() for out in outputs) and (
+            reuse_existing_asset_for_incremental(
+                runner_mode=self.runner_mode,
+                output_path=primary,
+                options=options,
+                cached_metadata=cached_metadata,
+                current_metadata=cache_metadata,
+            )
+            or (cache_allowed and not options.force and self.runner_mode == "incremental"
+                and cached_digest is None)
+        ):
+            LOG.info("Field docs runner using existing checked-in ui drive asset: %s", primary)
+            self.assets_reused += 1
+            self.cache[cache_key] = digest
+            self.cache_metadata[cache_key] = cache_metadata
+            self.dirty = True
+            self.save()
+            return
         LOG.info(
             "Field docs runner cache %s (ui drive): %s",
             cache_status_label(cache_allowed=cache_allowed, force=options.force),
@@ -5481,6 +5503,13 @@ def build_backdoor_command(
             ]))
         elif capture_mode == "box":
             target_uid = default_target_uid
+            # Tall output crops can extend beyond the viewport, where Chromium paints
+            # white unless the document root has Field's background. The WebGL
+            # backdrop can also composite white in clipped headless screenshots.
+            backdoor_commands.append(shlex.join([
+                "page-eval", "--file", str(repo_root / "tools/lighting/capture_background.js"),
+                "--timeout", str(options.timeout),
+            ]))
             parts = [
                 "screenshot-box",
                 target_uid,

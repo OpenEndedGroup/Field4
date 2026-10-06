@@ -45,11 +45,15 @@ class ScriptedLlmBridge(
         val fileText: String?,
         val maxToolRounds: Int,
         val availableTools: List<String>,
+        /** The turn in parts, when the caller built one; [prompt] is then its legacy one-string form. */
+        val turnContext: TurnContext? = null,
     )
 
     private val tools = ToolRegistry().also(::registerBuiltInAgentTools)
     private var cursor = 0
     val received = mutableListOf<Received>()
+    /** The user messages handed over between rounds (AiTurnInbox), as the model would have read them. */
+    val interjections = mutableListOf<String>()
 
     override val modelIdentity: AiChatModelIdentity get() = AiChatModelIdentity("scripted", label)
 
@@ -72,14 +76,20 @@ class ScriptedLlmBridge(
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult {
         val available = tools.describe(ctx).mapNotNull {
             ((it as? kotlinx.serialization.json.JsonObject)?.get("name") as? kotlinx.serialization.json.JsonPrimitive)?.content
         }
-        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available)
+        received += Received(state.initialInstructions, userPrompt, fileText, maxToolRounds, available, turnContext)
 
         val transcript = mutableListOf<LlmToolTranscriptEntry>()
+        val callCtx = ctx.copy(
+            reportProgress = onProgress ?: ctx.reportProgress,
+            promoted = ctx.promoted ?: state.promotedTools,
+            progress = ctx.progress ?: onProgress?.let { p -> { line: String -> p(LlmProgressUpdate(line, phase = "tool")) } },
+        )
         val latestByTool = mutableMapOf<String, String>()
         var rounds = 0
         var hitCap = false
@@ -93,15 +103,24 @@ class ScriptedLlmBridge(
                     rounds++
                     val args = substitute(step.argumentsJson, latestByTool)
                     onProgress?.invoke(LlmProgressUpdate("Using ${step.tool}", args.take(700), phase = "tool"))
+                    val started = System.nanoTime()
                     val result: Any = try {
-                        tools.executeByName(ctx, step.tool, args)
+                        tools.executeByName(callCtx, step.tool, args)
                     } catch (e: Exception) {
+                        if (isAiTurnCancellation(e)) throw e
                         mapOf("error" to true, "tool" to step.tool, "message" to (e.message ?: e::class.java.name))
                     }
+                    val elapsedMs = (System.nanoTime() - started) / 1_000_000
                     val json = runCatching { aiToolMapper.writeValueAsString(result) }.getOrElse { result.toString() }
                     latestByTool[step.tool] = json
-                    transcript += LlmToolTranscriptEntry(step.tool, "scripted-$rounds", args, json.take(300), json)
-                    onProgress?.invoke(LlmProgressUpdate("${step.tool} finished", json.take(300), phase = "tool_result"))
+                    transcript += LlmToolTranscriptEntry(
+                        step.tool, "scripted-$rounds", args, json.take(300), json, elapsedMs = elapsedMs
+                    )
+                    transcript += afield.ai.core.program.nestedTranscriptEntries("scripted-$rounds", result)
+                    onProgress?.invoke(LlmProgressUpdate("${step.tool} finished",
+                        afield.ai.core.program.nestedTraceMarkdown(result) ?: json.take(300), phase = "tool_result"))
+                    // As the provider bridges do after a round; the script does not change, it is only recorded.
+                    callCtx.inbox?.drainForModel()?.takeIf { it.isNotEmpty() }?.let { interjections += AiTurnInbox.modelText(it) }
                 }
             }
         }

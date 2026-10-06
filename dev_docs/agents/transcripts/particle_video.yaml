@@ -1,0 +1,48 @@
+name: particle_video
+description: >
+  Scrub a portable subset of recorded video particles, then optionally track a local movie
+  through the cached PyTorch RAFT launcher at native resolution.
+operations:
+  - create:
+      box: particle_video_guide
+      name: 1 · video particles
+      frame: { x: 40.0, y: 40.0, w: 400.0, h: 70.0 }
+      properties:
+        code: |
+          markdown("guide", """
+          # Video particles
+          Box 2 scrubs recorded tracks without Python. Its portable example retains complete
+          trajectories from a representative subset of the 24,000-particle dance run.
+
+          Prepare the optional environment before launching box 3, or set
+          `FIELD_PARTICLE_TRACKER_PYTHON` to an existing Torch/Torchvision interpreter.
+          Replace the movie filename to track your own footage. Width 0 retains native resolution.
+
+          [Video tracking and setup](https://openendedgroup.com/Field4/particle_video/)
+          """.trimIndent())
+  - create:
+      box: particle_video_reader
+      name: 2 · scrub recorded particles
+      frame: { x: 480.0, y: 40.0, w: 400.0, h: 70.0 }
+      properties:
+        code: |
+          val video = loadParticleVideo("public/docs/assets/particle_video/example.pvt.gz")
+          particleVideoView(video, initialSeconds = 7.2, scale = 1, pointRadius = 1.5)
+  - create:
+      box: particle_video_track
+      name: 3 · track a movie
+      frame: { x: 920.0, y: 40.0, w: 400.0, h: 70.0 }
+      properties:
+        code: |
+          val tracker = particleTracker()
+          suspend fun process() {
+              val run = tracker.track(
+                  "public/docs/assets/particle_video/source.mkv",
+                  ParticleTrackingOptions(particles = 24000, colorLimit = 1.0),
+              )
+              println("cached=${run.cacheHit}; tracks=${run.tracksFile}")
+              particleVideoView(run.load(), stride = 16)
+          }
+          start(::process)
+  - execute: { box: particle_video_guide }
+  - execute: { box: particle_video_reader }

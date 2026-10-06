@@ -120,6 +120,19 @@ def _transcript_input(path: str) -> bool:
     )
 
 
+def _box_code_input(path: str) -> bool:
+    # The checker's own definition of its corpus, so the two cannot disagree about a path.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from check_box_idioms import in_corpus
+
+    return in_corpus(path)
+
+
+def _compiled_transcript(path: str) -> bool:
+    # Top-level transcripts only: that is what BoxCodeCompileGuard compiles.
+    return path.startswith("dev_docs/agents/transcripts/") and path.count("/") == 3 and path.endswith(".yaml")
+
+
 def _completion_input(path: str) -> bool:
     return (
         _under(path, "public/docs/assets/agent_transcripts")
@@ -285,6 +298,8 @@ GUARDS = (
         _completion_input,
         ("tools/completion-corpus/boxes",),
     ),
+    Guard("checkBoxIdioms", "box-code idioms", _box_code_input),
+    Guard("checkBoxCodeCompiles", "box code compiles", _compiled_transcript),
     Guard(
         "citationGates",
         "citation and documentation contracts",
@@ -339,6 +354,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--skip",
+        metavar="TASK,...",
+        default="",
+        help=(
+            "guard tasks not to run because the caller just regenerated their artifacts, which makes "
+            "their drift check true by construction (tools/merge_regen.py passes these)"
+        ),
+    )
+    parser.add_argument(
         "--report",
         action="store_true",
         help=(
@@ -364,7 +388,7 @@ def _report(selected: list[Guard], scope: str) -> int:
     return 0
 
 
-def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
+def _run_merge_check(repo: Path, since: str, report: bool = False, skip: frozenset[str] = frozenset()) -> int:
     """Guard whatever a merge just brought in.
 
     Deliberately advisory. Git ignores a ``post-merge`` hook's exit status, so this cannot and
@@ -377,7 +401,7 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
         return 0
 
     changed = _git_paths(repo, "diff", "--name-only", "--diff-filter=ACMRD", f"{since}..HEAD")
-    selected = guards_for_paths(changed)
+    selected = [guard for guard in guards_for_paths(changed) if guard.task not in skip]
     if not selected:
         return 0
     if report:
@@ -389,7 +413,7 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
         + f" (changed by {since}..HEAD)"
     )
     command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
-    code = subprocess.run(command, cwd=repo).returncode
+    code = _run_with_change_list(command, repo, changed)
     if code != 0:
         tasks = " ".join(guard.task for guard in selected)
         print(
@@ -406,6 +430,23 @@ def _run_merge_check(repo: Path, since: str, report: bool = False) -> int:
             file=sys.stderr,
         )
     return code
+
+
+def _run_with_change_list(command: list[str], repo: Path, changed: Iterable[str]) -> int:
+    """Run *command* with AFIELD_GUARD_CHANGED_PATHS_FILE naming the changed paths.
+
+    The box-code guards read it to check only what changed; the other guards ignore it.
+    """
+    import os
+    import tempfile
+
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", prefix="guard-changed-", delete=False) as listing:
+        listing.write("\n".join(changed) + "\n")
+    try:
+        env = {**os.environ, "AFIELD_GUARD_CHANGED_PATHS_FILE": listing.name}
+        return subprocess.run(command, cwd=repo, env=env).returncode
+    finally:
+        os.unlink(listing.name)
 
 
 def _rev_exists(repo: Path, rev: str) -> bool:
@@ -425,7 +466,7 @@ def main(argv: list[str] | None = None) -> int:
     repo = _repo_root()
 
     if args.since:
-        return _run_merge_check(repo, args.since, args.report)
+        return _run_merge_check(repo, args.since, args.report, frozenset(filter(None, args.skip.split(","))))
 
     staged = _git_paths(repo, "diff", "--cached", "--name-only", "--diff-filter=ACMRD")
     selected = list(GUARDS) if args.all else guards_for_paths(staged)
@@ -452,7 +493,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("generated-artifact guard: " + ", ".join(guard.description for guard in selected))
     command = [str(repo / "gradlew"), "--continue", *(guard.task for guard in selected)]
-    return subprocess.run(command, cwd=repo).returncode
+    if args.all:
+        return subprocess.run(command, cwd=repo).returncode
+    return _run_with_change_list(command, repo, staged)
 
 
 if __name__ == "__main__":

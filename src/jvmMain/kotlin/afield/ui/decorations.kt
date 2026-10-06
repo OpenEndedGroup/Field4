@@ -116,6 +116,30 @@ fun setDecorations(box: Box, decor: List<RawDecoration>) {
 data class Location(val inside: Box, val property: String, val line: Int, val col: Int)
 
 /**
+ * Where this marker's `__m("uid")` text is in its box's code, or, with [then], where [then] first
+ * follows it (`.flipbox(`), positioned the way [locationForTextStringOnStack] positions its
+ * `end = true, offset = 1` results. Null when the text is not in the code.
+ *
+ * The editor's "Insert Stack Mark" command (Cmd+Shift+.) inserts `__m("<fresh uid>")` at the
+ * cursor and draws it as a single rune. The uid makes that text unique in the box, so it is a
+ * firmer handle on the source than a stack trace: it survives edits above it, and it can be found
+ * again with no box frame on the stack — from a click callback, say. Decorations that must redraw
+ * on such an event (`flipbox`) anchor here.
+ */
+fun Marker.locationInSource(then: String? = null): Location? {
+    val lines = box.code?.split("\n") ?: return null
+    val mark = "__m(\"$name\")"
+    lines.forEachIndexed { i, line ->
+        val m = line.indexOf(mark)
+        if (m < 0) return@forEachIndexed
+        if (then == null) return Location(box, "code", i + 1, m)
+        val t = line.indexOf(then, m + mark.length)
+        return if (t < 0) null else Location(box, "code", i + 1, t + then.length + 1)
+    }
+    return null
+}
+
+/**
  * Update a map entry by computing or inserting a default, then applying [u].
  *
  * @return The updated value.

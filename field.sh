@@ -7,7 +7,7 @@
 # standing in, which the cd below is about to leave.
 DIR="$(cd "$(dirname "$0")" && pwd)"
 INVOKED_FROM="$PWD"
-cd "$DIR"
+cd "$DIR" || exit 1
 
 # --- launcher arguments ----------------------------------------------------------
 #
@@ -38,6 +38,9 @@ Builds Field, then launches the backend and the Electron window together.
                            welcome page, and instead of whatever was open last
   --document=<name>        the same again
   --read-only              open documents without writing back to them
+  --server-only            build and run the server without Electron or native UI bridges
+  --setup                  reopen the independent Kotlin welcome/setup tool
+  --check-install          check platform, tools and Git LFS without downloading or building
   --offline                build from Gradle's cached dependencies without
                            touching the network (also AFIELD_OFFLINE=1)
   --print-workspace        print the workspace this launch would use, then exit
@@ -125,6 +128,10 @@ WORKSPACE_REQUESTED=""
 DOCUMENT_REQUESTED=""
 PRINT_WORKSPACE=0
 READ_ONLY_REQUESTED=0
+SERVER_ONLY=0
+CHECK_INSTALL=0
+SETUP_REQUESTED=0
+FIRST_RUN_CONFIG="$HOME/.field4/first-run.properties"
 
 # POSIX sh has no arrays, so "$@" is rebuilt in place: each of the original $argc
 # arguments is shifted off the front, and the ones the backend should see are pushed
@@ -174,6 +181,15 @@ while [ "$consumed" -lt "$argc" ]; do
             # WORKSPACE_RELAUNCH_ARGS and would otherwise drop it; and the launch banner should
             # say so, because a Field that silently refuses to save is alarming if unannounced.
             READ_ONLY_REQUESTED=1
+            ;;
+        --server-only)
+            SERVER_ONLY=1
+            ;;
+        --setup)
+            SETUP_REQUESTED=1
+            ;;
+        --check-install)
+            CHECK_INSTALL=1
             ;;
         --offline)
             # A launcher flag, not a backend one: it changes how Gradle is invoked, below.
@@ -227,6 +243,16 @@ case "$DOCUMENT_REQUESTED" in
         DOCUMENT_PATH_GIVEN=1
         ;;
 esac
+
+shell_quote() {
+    printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+
+PASSTHROUGH_RELAUNCH_ARGS=""
+for backend_arg do
+    PASSTHROUGH_RELAUNCH_ARGS="$PASSTHROUGH_RELAUNCH_ARGS $(shell_quote "$backend_arg")"
+done
 
 FIELD_DOCUMENT=""
 WORKSPACE_WAS_A_DOCUMENT=0
@@ -286,6 +312,7 @@ if [ "$READ_ONLY_REQUESTED" = 1 ]; then
     set -- "$@" --read-only
 fi
 
+
 # run_in_terminal re-runs this script in a fresh terminal, where the arguments
 # parsed above are gone; put an explicitly requested workspace back on that inner
 # command line. Left empty otherwise, so the re-run consults the same preference
@@ -293,13 +320,22 @@ fi
 # resolved into the workspace beside it.
 WORKSPACE_RELAUNCH_ARGS=""
 if [ -n "$WORKSPACE_REQUESTED" ]; then
-    WORKSPACE_RELAUNCH_ARGS="--workspace '$FIELD_WORKSPACE'"
+    WORKSPACE_RELAUNCH_ARGS="--workspace $(shell_quote "$FIELD_WORKSPACE")"
 fi
 if [ -n "$FIELD_DOCUMENT" ]; then
-    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --document '$FIELD_DOCUMENT'"
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --document $(shell_quote "$FIELD_DOCUMENT")"
 fi
 if [ "$READ_ONLY_REQUESTED" = 1 ]; then
     WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --read-only"
+fi
+if [ "$SERVER_ONLY" = 1 ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --server-only"
+fi
+if [ "$SETUP_REQUESTED" = 1 ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --setup"
+fi
+if [ "$CHECK_INSTALL" = 1 ]; then
+    WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --check-install"
 fi
 if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
     WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS --offline"
@@ -391,6 +427,53 @@ ensure_lfs_content() {
     return 1
 }
 
+check_platform() {
+    FIELD_PLATFORM="$(uname -s)/$(uname -m)"
+    case "$FIELD_PLATFORM" in
+        Darwin/arm64|Linux/x86_64|Linux/aarch64) ;;
+        Darwin/x86_64)
+            echo "field: Intel macOS is not supported by the pinned GraalVM 25.0.2 toolchain; use an Apple silicon Mac, Linux or Windows x64" >&2
+            return 1 ;;
+        *) echo "field: unsupported platform $FIELD_PLATFORM (see public/docs/installation.md)" >&2
+           return 1 ;;
+    esac
+}
+
+check_install() {
+    # Fail before any large downloads, with the prerequisite and the recovery in one place.
+    check_platform || return 1
+    set -- curl tar gzip
+    if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then
+        echo "field: install sha256sum (Linux coreutils) or shasum (macOS) to verify toolchain downloads" >&2
+        return 1
+    fi
+    if [ "$SERVER_ONLY" != 1 ]; then
+        case "$FIELD_PLATFORM" in
+            Linux/*) set -- "$@" g++ cmake make ;;
+            Darwin/*) set -- "$@" xcrun
+                if ! xcrun --find clang++ >/dev/null 2>&1; then
+                    echo "field: install Apple's Command Line Tools: xcode-select --install" >&2
+                    return 1
+                fi ;;
+        esac
+    fi
+    MISSING_TOOLS=""
+    for tool do
+        command -v "$tool" >/dev/null 2>&1 || MISSING_TOOLS="$MISSING_TOOLS $tool"
+    done
+    if [ -n "$MISSING_TOOLS" ]; then
+        echo "field: missing required tools:$MISSING_TOOLS" >&2
+        echo "field: Linux: install curl, build-essential (or gcc-c++ and make), and cmake; macOS: xcode-select --install" >&2
+        echo "field: --server-only skips the desktop bridge compilers; see public/docs/installation.md" >&2
+        return 1
+    fi
+    if [ "$SERVER_ONLY" != 1 ] && [ "$(uname -s)" = Linux ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+        echo "field: no desktop session detected (DISPLAY / WAYLAND_DISPLAY); use --server-only over SSH or run from a desktop terminal" >&2
+        return 1
+    fi
+    echo "field: installation prerequisites OK ($FIELD_PLATFORM)" >&2
+}
+
 ensure_gradle_jvm() {
     # gradlew's JVM-wrapper preamble provisions Corretto into ~/.field4/gradle-jvm on first contact,
     # and it is not safe to run two copies of it at once: it `rm -rf`s the target directory and
@@ -403,6 +486,10 @@ ensure_gradle_jvm() {
     for flag in "$HOME"/.field4/gradle-jvm/*/.flag; do
         [ -e "$flag" ] && return 0
     done
+    if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
+        echo "field: offline but the build JVM is not cached; run ./field.sh once online first" >&2
+        return 1
+    fi
     echo "field: provisioning the build JVM (first run downloads a JDK; this happens once)…" >&2
     if ! ./gradlew --version; then
         echo "field: could not provision the build JVM — see the errors above" >&2
@@ -445,6 +532,7 @@ field_gradlew() {
     fi
     decide_offline
     if [ -n "$FIELD_TOOLCHAIN_ARG" ]; then set -- "$FIELD_TOOLCHAIN_ARG" "$@"; fi
+    if [ "$SERVER_ONLY" = 1 ]; then set -- "-PfieldServerOnly=true" "$@"; fi
     if [ -n "$FIELD_OFFLINE_ARG" ]; then set -- "$FIELD_OFFLINE_ARG" "$@"; fi
     $FIELD_GRADLEW_NOHUP ./gradlew "$@"
 }
@@ -498,6 +586,10 @@ ensure_graalvm_toolchain() {
         *)             echo "field: no GraalVM build known for $( uname -m ); install JDK $GRAAL_VERSION manually" >&2
                        return 1 ;;
     esac
+    if [ "${AFIELD_OFFLINE:-}" = 1 ]; then
+        echo "field: offline but GraalVM $GRAAL_VERSION is not cached; run ./field.sh once online first" >&2
+        return 1
+    fi
     GRAAL_URL="https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAAL_VERSION}/graalvm-community-jdk-${GRAAL_VERSION}_${GRAAL_OS}-${GRAAL_ARCH}_bin.tar.gz"
 
     echo "field: provisioning the GraalVM $GRAAL_VERSION toolchain (~320MB; this happens once)…" >&2
@@ -507,9 +599,25 @@ ensure_graalvm_toolchain() {
     GRAAL_TMP="$JDKS_DIR/.field-graalvm-staging-$$"
     rm -rf "$GRAAL_TMP"
     mkdir -p "$GRAAL_TMP"
-    if ! curl -fL --progress-bar --output "$GRAAL_TMP/graalvm.tar.gz" "$GRAAL_URL"; then
+    if ! curl -fL --retry 3 --connect-timeout 20 --progress-bar --output "$GRAAL_TMP/graalvm.tar.gz" "$GRAAL_URL"; then
         rm -rf "$GRAAL_TMP"
         echo "field: could not download $GRAAL_URL" >&2
+        return 1
+    fi
+    if ! curl -fLsS --retry 3 --connect-timeout 20 --output "$GRAAL_TMP/checksum" "$GRAAL_URL.sha256"; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: could not download the GraalVM checksum" >&2
+        return 1
+    fi
+    EXPECTED_SHA="$(awk '{print $1}' "$GRAAL_TMP/checksum")"
+    if command -v sha256sum >/dev/null 2>&1; then
+        ACTUAL_SHA="$(sha256sum "$GRAAL_TMP/graalvm.tar.gz" | awk '{print $1}')"
+    else
+        ACTUAL_SHA="$(shasum -a 256 "$GRAAL_TMP/graalvm.tar.gz" | awk '{print $1}')"
+    fi
+    if [ "${#EXPECTED_SHA}" != 64 ] || [ "$ACTUAL_SHA" != "$EXPECTED_SHA" ]; then
+        rm -rf "$GRAAL_TMP"
+        echo "field: GraalVM checksum mismatch; download discarded, re-run when the connection is reliable" >&2
         return 1
     fi
     # The failure that motivates this whole function is an HTML page saved under a .tar.gz name, so
@@ -524,7 +632,7 @@ ensure_graalvm_toolchain() {
         echo "field: could not unpack the GraalVM toolchain" >&2
         return 1
     fi
-    rm -f "$GRAAL_TMP/graalvm.tar.gz"
+    rm -f "$GRAAL_TMP/graalvm.tar.gz" "$GRAAL_TMP/checksum"
     GRAAL_UNPACKED=""
     for entry in "$GRAAL_TMP"/*/; do
         [ -d "$entry" ] && GRAAL_UNPACKED="${entry%/}"
@@ -577,7 +685,7 @@ ensure_semantic_sidecar() {
     echo "Starting code-use semantic sidecar at $URL for $DIR"
     echo "Sidecar log: $LOG_FILE"
     decide_offline
-    field_gradlew --nohup -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace $DIR" >> "$LOG_FILE" 2>&1 < /dev/null &
+    field_gradlew --nohup -p tools/code-use-semantic-sidecar run --args="--port $SIDECAR_PORT --workspace \"$DIR\"" >> "$LOG_FILE" 2>&1 < /dev/null &
 }
 
 build_field() {
@@ -591,7 +699,7 @@ build_field() {
         echo "field: AFIELD_SKIP_BUILD=1 — skipping build" >&2
         return 0
     fi
-    echo "field: building (JVM + JS; the first run compiles everything and can take a few minutes)…" >&2
+    echo "field: building (JVM + JS; the first run downloads dependencies and compiles everything)…" >&2
     BUILD_OK=0
     field_gradlew jvmJar dumpFieldLaunch || BUILD_OK=1
     if [ "$BUILD_OK" != "0" ]; then
@@ -608,15 +716,21 @@ launch_electron_when_ready() {
     ELECTRON_BIN="$(cat build/field-launch/electron 2>/dev/null || true)"
     { [ -n "$ELECTRON_BIN" ] && [ -x "$ELECTRON_BIN" ]; } || return 0
     i=0
+    READY=0
     while [ "$i" -lt 480 ]; do   # ~120s
         if command -v curl >/dev/null 2>&1; then
-            case "$(curl -sk --max-time 2 "https://localhost:$PORT/health" 2>/dev/null)" in *ok*) break ;; esac
+            case "$(curl -sk --max-time 2 "https://localhost:$PORT/health" 2>/dev/null)" in ok) READY=1; break ;; esac
         else
-            [ "$i" -ge 20 ] && break
+            [ "$i" -ge 20 ] && { READY=1; break; }
         fi
+        kill -0 "$BACKEND_PID" 2>/dev/null || return 1
         sleep 0.25
         i=$((i + 1))
     done
+    if [ "$READY" != 1 ]; then
+        echo "field: the server did not become ready; see its startup errors above" >&2
+        return 1
+    fi
     APP_URL=""
     command -v curl >/dev/null 2>&1 && APP_URL="$(curl -sk --max-time 2 "https://localhost:$PORT/app-url" 2>/dev/null || true)"
     [ -n "$APP_URL" ] || APP_URL="https://localhost:$PORT/index.html"
@@ -633,12 +747,46 @@ electron_launcher_available() {
     [ -n "$ELECTRON_PROBE" ] && [ -x "$ELECTRON_PROBE" ]
 }
 
+run_first_run_setup() {
+    # A separate Kotlin/JVM 17 application: it builds without the Field compiler fork or GPU code.
+    check_platform || return 1
+    ensure_gradle_jvm || return 1
+    echo "field: preparing the small welcome tool (separate from the Field build)…" >&2
+    field_gradlew -p tools/first-run prepareFirstRun || return 1
+    SETUP_JAVA="$(cat tools/first-run/build/launch/java)"
+    set -- --root "$DIR" --config "$FIRST_RUN_CONFIG" --interactive
+    [ "$SERVER_ONLY" = 1 ] && set -- "$@" --server-only
+    "$SETUP_JAVA" "@tools/first-run/build/launch/args" "$@"
+}
+
 run_field() {
+    if [ "$SETUP_REQUESTED" = 1 ]; then
+        run_first_run_setup
+        return $?
+    fi
+    if [ "$CHECK_INSTALL" != 1 ] && [ "${AFIELD_FIRST_RUN:-}" != skip ] && [ -t 0 ] &&
+        ! grep -q '^completed=true' "$FIRST_RUN_CONFIG" 2>/dev/null; then
+        run_first_run_setup || return 1
+    fi
+    if [ "$SERVER_ONLY" != 1 ] && grep -q '^launchMode=server-only' "$FIRST_RUN_CONFIG" 2>/dev/null; then
+        SERVER_ONLY=1
+        echo "field: using browser/server mode selected in --setup" >&2
+    fi
     ensure_lfs_content || exit 1
+    # Tests and an explicitly skipped build can use a pre-existing launch spec without compilers.
+    if [ "$CHECK_INSTALL" = 1 ] || [ "${AFIELD_SKIP_BUILD:-0}" != 1 ]; then
+        check_install || exit 1
+    fi
+    [ "$CHECK_INSTALL" = 1 ] && return 0
+    PORT="${PORT:-9092}"; export PORT
+    case "$(curl -sk --max-time 1 "https://localhost:$PORT/health" 2>/dev/null)" in
+        ok) echo "field: another Field is already listening on port $PORT; close it or set PORT to a free port" >&2
+            return 1 ;;
+    esac
     ensure_gradle_jvm || exit 1
     ensure_graalvm_toolchain || exit 1
-    ensure_semantic_sidecar
     build_field || exit 1
+    ensure_semantic_sidecar
 
     PORT="${PORT:-9092}"; export PORT
     export AFIELD_PORT_FALLBACK_COUNT="${AFIELD_PORT_FALLBACK_COUNT:-1}"
@@ -685,21 +833,45 @@ run_field() {
     # asks for). The old unconditional helper returned immediately when Electron was absent; the
     # monitor below then killed the backend before it had necessarily executed at all. Wait for the
     # backend directly in this mode instead of treating "no GUI process" as a GUI crash.
-    if ! electron_launcher_available; then
+    if [ "$SERVER_ONLY" = 1 ] || ! electron_launcher_available; then
         trap 'kill "$BACKEND_PID" 2>/dev/null' INT TERM
         wait "$BACKEND_PID"
         return $?
     fi
 
+    if [ "$(uname -s)" = Linux ] && command -v ldd >/dev/null 2>&1; then
+        ELECTRON_MISSING="$(ldd "$(cat build/field-launch/electron)" 2>&1 | grep 'not found' || true)"
+        if [ -n "$ELECTRON_MISSING" ]; then
+            echo "field: Electron is missing desktop libraries:" >&2
+            printf '%s\n' "$ELECTRON_MISSING" >&2
+            echo "field: see Linux prerequisites in public/docs/installation.md, or use --server-only" >&2
+            kill "$BACKEND_PID" 2>/dev/null
+            wait "$BACKEND_PID" 2>/dev/null
+            return 1
+        fi
+    fi
     launch_electron_when_ready &
     ELECTRON_PID=$!
     trap 'kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null' INT TERM
     while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$ELECTRON_PID" 2>/dev/null; do
         sleep 0.5
     done
-    kill "$BACKEND_PID" "$ELECTRON_PID" 2>/dev/null
-    wait "$BACKEND_PID" 2>/dev/null
+    if kill -0 "$BACKEND_PID" 2>/dev/null; then
+        # Electron closed or failed. Preserve its verdict; SIGTERM gives the JVM time to save.
+        wait "$ELECTRON_PID"
+        FIELD_STATUS=$?
+        kill "$BACKEND_PID" 2>/dev/null
+        wait "$BACKEND_PID" 2>/dev/null
+    else
+        wait "$BACKEND_PID"
+        FIELD_STATUS=$?
+        kill "$ELECTRON_PID" 2>/dev/null
+        wait "$ELECTRON_PID" 2>/dev/null
+    fi
+    return "$FIELD_STATUS"
 }
+
+WORKSPACE_RELAUNCH_ARGS="$WORKSPACE_RELAUNCH_ARGS$PASSTHROUGH_RELAUNCH_ARGS"
 
 # Function to run Field4 in a new terminal
 run_in_terminal() {
@@ -708,13 +880,13 @@ run_in_terminal() {
 
     # Try different terminal emulators in order of preference
     if command -v gnome-terminal >/dev/null 2>&1; then
-        gnome-terminal -- bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; echo ''; echo 'Press Enter to close...'; read"
+        gnome-terminal -- bash -c "cd $(shell_quote "$DIR") && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; echo ''; echo 'Press Enter to close...'; read"
     elif command -v konsole >/dev/null 2>&1; then
-        konsole --hold -e bash -c "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
+        konsole --hold -e bash -c "cd $(shell_quote "$DIR") && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
     elif command -v xterm >/dev/null 2>&1; then
-        xterm -hold -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
+        xterm -hold -e bash -c "cd $(shell_quote "$DIR") && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS"
     elif command -v x-terminal-emulator >/dev/null 2>&1; then
-        x-terminal-emulator -e "cd '$DIR' && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; read -p 'Press Enter to close...'"
+        x-terminal-emulator -e bash -c "cd $(shell_quote "$DIR") && AFIELD_FIELD_SH_NO_TERMINAL=1 ./field.sh $WORKSPACE_RELAUNCH_ARGS; read -p 'Press Enter to close...'"
     else
         # No terminal found, try to run directly (may not show output). "$@" matters here and used
         # not to be passed: none of the four emulators above exists on macOS, so this *is* the
@@ -742,7 +914,7 @@ running_under_coding_agent() {
 }
 
 # Check if we're running in a terminal
-if [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ] || running_under_coding_agent; then
+if [ "$SETUP_REQUESTED" = 1 ] || [ "$CHECK_INSTALL" = 1 ] || [ "$SERVER_ONLY" = 1 ] || [ -t 0 ] || [ "$AFIELD_FIELD_SH_NO_TERMINAL" = "1" ] || running_under_coding_agent; then
     # Running in a terminal (or a coding agent's shell tool), just execute
     run_field "$@"
 else

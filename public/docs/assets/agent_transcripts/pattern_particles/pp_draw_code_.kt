@@ -1,3 +1,4 @@
+// Draws two triangles per particle at the positions the compute box wrote.
 var module = moduleHere {
     primitiveType = triangles
 }
@@ -14,8 +15,7 @@ quads.set(N * 2 * 3, 0) {}
 // Printed from this box rather than from the compute box, because a docs capture waits on
 // the output of the box it is capturing.
 println(
-    "$N particles drawn in four rings; bands now " +
-        bandEnergy.joinToString(", ") { "%.3f".format(it) },
+    "$N particles drawn in four rings; bands now " + bandEnergy.joinToString(", ") { "%.3f".format(it) },
 )
 
 quads

@@ -3,6 +3,18 @@
 Field 4 is a Kotlin-based live-coding environment for graphics, exploratory
 data visualization, and new media art.
 
+Edit a number, launch the code, and watch a drawing change. Inspect values beside the code,
+stop the animation, and keep the edited document. The first example runs without a GPU driver,
+Python or an AI key.
+
+[![A moving drawing in Field, with its editable Kotlin and inline petal count](public/docs/assets/first_steps/preview.gif)](https://openendedgroup.com/field4/first_steps/)
+
+[Watch the short recording](https://openendedgroup.com/field4/assets/first_steps/first-look.mp4) ·
+[Your first five minutes](public/docs/first_steps.md)
+
+**AGPL-3.0-or-later.** See [LICENSE](LICENSE). Field runs locally; optional AI uses your own
+provider/account. [What stays local and what leaves](public/docs/privacy.md).
+
 Project site and user documentation: https://openendedgroup.com/field4
 
 ## Status
@@ -13,7 +25,9 @@ graphics/audio dependencies and developer tooling.
 
 ## Requirements
 
-- macOS, Linux, or Windows
+- Apple silicon macOS, glibc Linux (x86-64; ARM64 experimental), or Windows x64
+- Linux desktop launch: `curl`, C/C++ compiler, Make, CMake, and Electron desktop libraries
+- macOS desktop launch: Apple Command Line Tools (`xcode-select --install`)
 - A shell that can run the Gradle wrapper
 - **Git LFS, installed before you clone.** `libs/kotlin-compiler-embeddable-*.jar`
   (~180MB) is stored with LFS. Clone without it and Git silently leaves a 134-byte
@@ -25,20 +39,31 @@ graphics/audio dependencies and developer tooling.
   install Git LFS and run `git lfs pull`.
 - Internet access on the first build so Gradle can download toolchains and
   dependencies
-- A browser that can accept the local development HTTPS certificate
+- Several GB of downloads/build storage; allow 10 GB free and 16 GB RAM for the source build
+- For browser use, a browser that can accept the local development HTTPS certificate
+
+See the [installation guide](public/docs/installation.md) for package commands and platform limits.
+Java, Gradle and Node are provisioned by the launchers. Python, AI keys and optional submodules
+are not required for the default launch.
 
 ## Quickstart
 
 On macOS and Linux:
 
 ```bash
+git lfs install
+git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
+cd Field4
 ./field.sh
 ```
 
 On Windows:
 
 ```powershell
-.\field.ps1
+git lfs install
+git clone --depth 1 https://github.com/OpenEndedGroup/Field4.git
+cd Field4
+.\field.bat
 ```
 
 This is the one command you need: it builds Field (compiling the Kotlin/JVM
@@ -47,9 +72,10 @@ backend and the Electron window together.
 
 The **first run compiles the whole project and downloads large native
 dependencies** (LWJGL graphics/audio, Lucene, ONNX Runtime, and others), so
-expect it to take several minutes and a good chunk of bandwidth. Subsequent
-launches are incremental and start in a few seconds. If the build fails, the
-script stops and prints the Gradle errors instead of launching a stale build —
+allow time and bandwidth for the initial build. Fresh Windows and Apple-silicon
+macOS CI launches took about 20–25 minutes; your machine and connection will affect
+that time. Subsequent launches reuse the dependency cache and incremental compiler output.
+If the build fails, the script stops and prints the Gradle errors instead of launching a stale build —
 fix them and re-run.
 
 The backend runs in the terminal you launched from, with a live status console
@@ -68,6 +94,24 @@ AFIELD_SKIP_BUILD=1 ./field.sh
 ```powershell
 $env:AFIELD_SKIP_BUILD = "1"; .\field.ps1
 ```
+
+The first interactive launch runs a small Kotlin welcome tool: choose desktop/browser mode and
+optional Python prerequisites or Vulkan diagnostics. It prints a package installation plan and
+requires explicit confirmation before running commands. Reopen it with `./field.sh --setup`
+(Windows: `field.bat --setup`). Noninteractive launches skip the questions; automation may set
+`AFIELD_FIRST_RUN=skip`.
+
+When Welcome opens, click **Start here: a moving drawing**. It gives you an editable copy with
+launch, edit, inspect, stop and reopen instructions. **Next: native graphics** opens a small
+Vulkan example when you are ready for a native window.
+
+Check prerequisites without downloading or building with `./field.sh --check-install`.
+For browser/SSH use without Electron or native UI bridge compilers, use `./field.sh --server-only`.
+Windows accepts the same options through `field.bat`.
+
+The server binds localhost and enables browser-origin protection by default. Remote devices
+such as Vision Pro require an explicit `AFIELD_BIND_HOST=0.0.0.0` setting and a trusted network
+or firewall: the LAN API has no authentication. See [server access](public/docs/server_surface.md).
 
 ## OpenAI Features
 
@@ -136,6 +180,12 @@ comes back to it. The Gradle entry points take the same flag:
 ```
 
 ## Opening a document
+
+When automatic reopening is enabled in Preferences, Field remembers the last opened
+document separately for each workspace. Switching back restores that workspace's
+document; a workspace with no remembered document, or one whose document has been
+deleted, opens the welcome page. The old shared last-document setting is ignored
+because it does not identify which workspace it belonged to.
 
 `-d` (or `--document`) goes straight into a document, instead of the welcome page
 and instead of whatever was open last:

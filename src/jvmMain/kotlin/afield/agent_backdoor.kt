@@ -848,7 +848,7 @@ private fun agentPropertyString(box: Box, property: String): String =
  * are intentionally not recorded here — the UI does not record those either; the transcript
  * tracks property edits, moves, and execution, and this closes the property-edit gap.
  */
-internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement) {
+internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonElement, origin: String = "") {
     if (property == "frame") {
         applyAgentProperty(box, property, value)
         return
@@ -856,7 +856,7 @@ internal fun applyAgentPropertyRecorded(box: Box, property: String, value: JsonE
     val from = agentPropertyString(box, property)
     applyAgentProperty(box, property, value)
     val to = agentPropertyString(box, property)
-    OperationTranscript.recordEdit(box, property, from, to)
+    OperationTranscript.recordEdit(box, property, from, to, origin)
 }
 
 private fun ensureAgentGraphicsContext(info: SessionInformation): Pair<Box, Boolean> {
@@ -1433,7 +1433,7 @@ fun installAgentBackdoorHandlers() {
         val focusBox = (message.payload as? kotlinx.serialization.json.JsonObject)?.get("focusBox")
             ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.contentOrNull }
         val ctx = Ai4BackdoorTools.buildContext(info, focusBox)
-        val tools = Ai4BackdoorTools.registry.describe(ctx)
+        val tools = Ai4BackdoorTools.registry.describe(ctx, afield.ai.core.ToolFace.MCP)
         reply(Message("agent-ai-tools-list").payload(AgentAiToolsListResponse(tools = tools)))
         Handled.yes
     })
@@ -1450,7 +1450,7 @@ fun installAgentBackdoorHandlers() {
             try {
                 val ctx = Ai4BackdoorTools.buildContext(info, request.focusBox)
                 val argsJson = request.arguments?.toString() ?: "{}"
-                val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson)
+                val result = Ai4BackdoorTools.registry.executeByName(ctx, request.name, argsJson, afield.ai.core.CallOrigin.BACKDOOR)
                 val resultJson = Json.parseToJsonElement(aiToolMapper.writeValueAsString(result))
                 reply(
                     Message("agent-ai-tool-call").payload(

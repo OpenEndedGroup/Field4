@@ -25,6 +25,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.backend.common.pop
+import org.jetbrains.kotlin.cli.common.CompilerSystemProperties
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.com.intellij.lang.Language
 import org.jetbrains.kotlin.com.intellij.openapi.Disposable
@@ -53,6 +54,8 @@ import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.WeakHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.reflect.*
 import kotlin.reflect.full.companionObject
 import kotlin.reflect.full.declaredFunctions
@@ -347,65 +350,70 @@ class KotlinInterface2(
 
     suspend fun compile(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
         return compileMutex.withLock {
-            val code = SourceCodeImpl(id++, s)
-            val snippetId = CodeUseTelemetryService.newSnippetKey()
-            val snippetKind = compileSnippetKind(s)
-            val telemetryContext = CodeUseTelemetryService.captureBoxContext(
-                associatedBox as? Box,
-                property = sourceProperty,
-                mode = "compile:$snippetKind"
-            )
-            val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
-
-            lprintln(
-                "info,kotlin,perf",
-                "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${
-                    snippetKind
-                } length=${s.length} preview=${compileSnippetPreview(s)}"
-            )
-            lprintln("info,kotlin,perf", "\t\t compile code $s")
-
-            // Clear diagnostics from previous snippet. The collector is shared by this K2 REPL state.
-            messageCollector.clear()
-
-            var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
-            val ns = measureNanoTime {
-                try {
-                    if (KotlinEngineConfig.offloadCompilation) {
-                        // Offload the expensive compiler work, but keep this REPL state single-entered.
-                        r = withContext(compilationDispatcher) {
-                            compiler.compile(code, compilerConfig)
-                        }
-                    } else {
-                        r = compiler.compile(code, compilerConfig)
-                    }
-                } catch (t: Throwable) {
-                    context.debugScripts.discard(snapshot)
-                    lprintln("error,kotlin", "compiler exception while compiling snippet")
-                    lprintln("error,kotlin", t.stackTraceToString())
-                    r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
-                }
-            }
-            lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
-            if (r is ResultWithDiagnostics.Failure) {
-                context.debugScripts.discard(snapshot)
-            }
-            val result = r!!
-            if (result is ResultWithDiagnostics.Success) {
-                codeUseSnippetIds[result.value] = snippetId
-            }
-            CodeUseTelemetryService.recordCompileResult(
-                snippetId = snippetId,
-                source = s,
-                sourceName = code.name ?: "",
-                context = telemetryContext,
-                success = result is ResultWithDiagnostics.Success,
-                diagnostics = result.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
-                elapsedMs = ns / 1_000_000.0
-            )
-
-            result
+            usingCompilationState(onDisposed = { compileAfterDisposal(s) }) { compileLocked(s) }
         }
+    }
+
+    // Caller holds [compileMutex] and a [usingCompilationState] lease.
+    private suspend fun compileLocked(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        val code = SourceCodeImpl(id++, s)
+        val snippetId = CodeUseTelemetryService.newSnippetKey()
+        val snippetKind = compileSnippetKind(s)
+        val telemetryContext = CodeUseTelemetryService.captureBoxContext(
+            associatedBox as? Box,
+            property = sourceProperty,
+            mode = "compile:$snippetKind"
+        )
+        val snapshot = context.debugScripts.recordCompile(code.name ?: "snippet_${id - 1}", s)
+
+        lprintln(
+            "info,kotlin,perf",
+            "\t\t compile request engine=KotlinInterface2 filePrefix=$filePrefix source=${code.name} kind=${
+                snippetKind
+            } length=${s.length} preview=${compileSnippetPreview(s)}"
+        )
+        lprintln("info,kotlin,perf", "\t\t compile code $s")
+
+        // Clear diagnostics from previous snippet. The collector is shared by this K2 REPL state.
+        messageCollector.clear()
+
+        var r: ResultWithDiagnostics<LinkedSnippet<CompiledScript>>? = null
+        val ns = measureNanoTime {
+            try {
+                if (KotlinEngineConfig.offloadCompilation) {
+                    // Offload the expensive compiler work, but keep this REPL state single-entered.
+                    r = withContext(compilationDispatcher) {
+                        compiler.compile(code, compilerConfig)
+                    }
+                } else {
+                    r = compiler.compile(code, compilerConfig)
+                }
+            } catch (t: Throwable) {
+                context.debugScripts.discard(snapshot)
+                lprintln("error,kotlin", "compiler exception while compiling snippet")
+                lprintln("error,kotlin", t.stackTraceToString())
+                r = ResultWithDiagnostics.Failure(compilerExceptionDiagnostic(t))
+            }
+        }
+        lprintln("info,kotlin,compile", "compile=${formatMillis(ns)}")
+        if (r is ResultWithDiagnostics.Failure) {
+            context.debugScripts.discard(snapshot)
+        }
+        val result = r!!
+        if (result is ResultWithDiagnostics.Success) {
+            codeUseSnippetIds[result.value] = snippetId
+        }
+        CodeUseTelemetryService.recordCompileResult(
+            snippetId = snippetId,
+            source = s,
+            sourceName = code.name ?: "",
+            context = telemetryContext,
+            success = result is ResultWithDiagnostics.Success,
+            diagnostics = result.reports.map { "${it.severity}: ${it.message} ${it.location ?: ""}".trim() },
+            elapsedMs = ns / 1_000_000.0
+        )
+
+        return result
     }
 
 
@@ -2958,10 +2966,24 @@ class KotlinInterface2(
     /**
      * Dispose the underlying K2 REPL compilation state.
      * Call this when the KotlinInterface is no longer needed.
+     *
+     * It is called from any thread, whatever the engine is doing: a document's last websocket
+     * leaving retires its boxes from a Ktor IO thread while a box's stdlib imports may still be
+     * queued on the runloop or compiling on [compilationDispatcher]. So the state is released only
+     * once nothing is using it ([usingCompilationState]), and a compile that starts after this is
+     * refused ([compileAfterDisposal]) instead of run.
+     *
+     * Releasing the state under a compile used to break more than that compile. `rootDisposable` is
+     * this engine's compiler project, and when it is the last one in the JVM the compiler disposes
+     * the shared IntelliJ application with it, so `ApplicationManager.getApplication()` returns
+     * null. The compile then died with an NPE in `LanguageUtil.matchingMetaLanguages`; when it was
+     * the JVM's first compile, the NPE was thrown inside `FileSizeLimit`'s static initializer, and
+     * every later compile in that JVM failed with `Could not initialize class …FileSizeLimit`.
+     * Measured 2026-10-04 by aborting a backdoor socket just after `agent-create-box` replied.
      */
     override fun dispose() {
         disposed = true
-        Disposer.dispose(rootDisposable)
+        if (compilationStateUsers.get() == 0) releaseCompilationState()
     }
 
     @Volatile
@@ -2969,8 +2991,61 @@ class KotlinInterface2(
 
     override val isDisposed: Boolean get() = disposed
 
+    private val compilationStateUsers = AtomicInteger(0)
+    private val compilationStateReleased = AtomicBoolean(false)
+
+    /**
+     * Run [body] with the compilation state held live, or [onDisposed] once [dispose] has run.
+     *
+     * [dispose] writes `disposed` and then reads the count; the last lease out decrements the count
+     * and then reads `disposed`. Whichever of the two comes second sees the other's write and
+     * releases the state, and [releaseCompilationState] makes sure that happens once.
+     */
+    private inline fun <T> usingCompilationState(onDisposed: () -> T, body: () -> T): T {
+        compilationStateUsers.incrementAndGet()
+        try {
+            return if (disposed) onDisposed() else body()
+        } finally {
+            if (compilationStateUsers.decrementAndGet() == 0 && disposed) releaseCompilationState()
+        }
+    }
+
+    private fun releaseCompilationState() {
+        if (compilationStateReleased.compareAndSet(false, true)) Disposer.dispose(rootDisposable)
+    }
+
+    private fun compileAfterDisposal(s: String): ResultWithDiagnostics<LinkedSnippet<CompiledScript>> {
+        lprintln(
+            "info,kotlin",
+            "compile skipped: engine filePrefix=$filePrefix was disposed before this snippet compiled, preview=${compileSnippetPreview(s)}"
+        )
+        return ResultWithDiagnostics.Failure(
+            ScriptDiagnostic(
+                ScriptDiagnostic.unspecifiedError,
+                "This box's Kotlin engine was disposed before the code compiled: its document was closed, or the box was deleted or reset.",
+                ScriptDiagnostic.Severity.ERROR,
+                null,
+                null,
+                null
+            )
+        )
+    }
+
 
     companion object {
+
+        init {
+            // Keep the compiler's shared IntelliJ application alive after the last compilation state
+            // in the JVM is disposed, as the Kotlin compile daemon does. Without it, disposing the
+            // last engine (closing the only open document is enough) disposes the application and
+            // nulls `ApplicationManager`, and any PSI work still in flight on another thread fails —
+            // fatally for the whole JVM when that work is the first compile (see [dispose]). It also
+            // saves rebuilding the application for the next document. An explicit
+            // `-Dkotlin.environment.keepalive` wins.
+            if (CompilerSystemProperties.KOTLIN_COMPILER_ENVIRONMENT_KEEPALIVE_PROPERTY.value == null) {
+                CompilerSystemProperties.KOTLIN_COMPILER_ENVIRONMENT_KEEPALIVE_PROPERTY.value = "true"
+            }
+        }
 
         var sharedClassLoader: ClassLoader? = null
 

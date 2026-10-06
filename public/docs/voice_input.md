@@ -10,7 +10,7 @@ there it goes wherever your typed prompts go ([AI Overview](aiFeatures.md)).
 Speech recognition is an optional Python dependency group. Install it once into the virtual
 environment Field uses, from the Field checkout:
 
-```bash
+```diffstatic {data-lang=bash}
 uv sync --inexact --group voice
 ```
 
@@ -44,7 +44,7 @@ Right Alt is not the default outside macOS because on Windows and on most non-US
 layouts it is AltGr, which types characters. To use another key, set it from the browser console
 (or the Electron developer tools) with its `KeyboardEvent.code`:
 
-```js
+```diffstatic {data-lang=js}
 localStorage.setItem("fieldVoiceKey", "F13")
 ```
 
@@ -83,7 +83,7 @@ fragment shader", Whisper `large-v3-turbo` on an M1 Max produced:
 To add words of your own that should always be recognized, list them, separated by commas or
 newlines:
 
-```js
+```diffstatic {data-lang=js}
 localStorage.setItem("fieldVoiceVocabulary", "GpuRadixSort, RenderToTexture, Lygia")
 ```
 

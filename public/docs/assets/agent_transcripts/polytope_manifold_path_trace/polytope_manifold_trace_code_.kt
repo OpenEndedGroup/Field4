@@ -3,7 +3,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.manifold.ManifoldLibrary
 import afield.manifold.Solid
@@ -18,7 +17,6 @@ import afield.stdlib.polytope.canonicalConway
 import afield.stdlib.polytope.triangulate
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // The Boolean stage is the middle of this chain rather than an extra, so this refuses

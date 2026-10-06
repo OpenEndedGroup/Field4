@@ -9,6 +9,7 @@ import afield.stdlib.Vec4
 import afield.stdlib.boundsArray
 import afield.stdlib.signedVolume
 import afield.stdlib.topology
+import kotlin.math.abs
 
 /**
  * One 3D output for everything Field can draw.
@@ -61,6 +62,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     internal var background: String? = null
     internal var autoFrame: Boolean = true
     internal var inspector: ThreeInspector? = null
+    internal var cameraLink: ThreeCameraLinkSpec? = null
+    internal var turntable: ThreeTurntableSpec? = null
+    internal var shot: ThreeShotSpec? = null
     private var helpersExplicit: Boolean? = null
 
     /**
@@ -98,6 +102,17 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * A drawable's group is one number for the whole drawable — unlike an FLine batch, which carries a
      * per-vertex `group` attribute — so the viewer moves it by its object transform rather than by
      * rewriting a buffer. Same offsets, a great deal less work per slider frame.
+     * @param depthWrite whether the surface writes depth. Off by default for a translucent mesh
+     * (`opacity < 1`). three.js sorts translucent geometry per object, never per triangle, so a
+     * translucent shell that wrote depth would hide whatever happened to draw after it — the conduits
+     * inside a see-through wall cut off, the far side of a merged shell blending in wrong. On for an
+     * opaque mesh, which needs it to occlude itself.
+     * @param explode where each vertex goes at a [shot]'s full explode, as an offset: 3 floats a vertex, in the
+     * mesh's own units. Give every vertex of one part the same offset and the part moves as a piece — away
+     * from the model's centre, say. `null` (the default) leaves the mesh put.
+     * @param solidOpacity the opacity a [shot] draws this mesh at when its x-ray amount is `0`; at `1` it is
+     * [opacity]. A see-through wall that starts solid is `opacity = .4, solidOpacity = 1.0`. `null` keeps
+     * [opacity] throughout.
      */
     fun mesh(
         mesh: TriMesh,
@@ -113,7 +128,13 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         pickable: Boolean = false,
         group: Int = -1,
         unlit: Boolean = false,
+        depthWrite: Boolean = opacity >= 1.0,
+        explode: FloatArray? = null,
+        solidOpacity: Double? = null,
     ) {
+        require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
+            "solidOpacity must be between 0 and 1, got $solidOpacity"
+        }
         drawables += mesh.toThreeDrawable(
             style = ThreeDrawStyle.surface(
                 wireframe = wireframe,
@@ -121,7 +142,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
                 flatShading = flatShading,
                 opacity = opacity.toFloat(),
                 unlit = unlit,
-            ),
+            ).copy(depthWrite = depthWrite, solidOpacity = solidOpacity?.toFloat()),
+            explode = explode,
             label = label,
             panel = panel,
             group = group,
@@ -174,6 +196,91 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
     /** Scene background as a CSS colour. */
     fun background(css: String) {
         background = css
+    }
+
+    /**
+     * Open the view with **Link camera** already on, so it orbits, pans and zooms with the other
+     * linked views of [group] in this document — one box per view, or several channels of one box.
+     *
+     * The view adopts the camera of a view that was linked first. The button still unlinks it, and
+     * re-running the box does not undo that: the viewer acts on the request only when it changes.
+     * Only the camera is shared, exactly as with the button. A contact sheet keeps its own cameras,
+     * so a scene with more than one [panel] cannot link.
+     *
+     * @param group views link only within their group. `"default"` is the group the button joins,
+     * so a view linked here moves with one somebody linked by hand.
+     */
+    fun linkCamera(group: String = "default") {
+        require(group.isNotBlank() && group.length <= 64) {
+            "linkCamera needs a group name of 1 to 64 characters, got \"$group\""
+        }
+        cameraLink = ThreeCameraLinkSpec(group)
+    }
+
+    /**
+     * Turn the view slowly about its up axis, for a page that is looked at rather than used.
+     *
+     * On a contact sheet ([columns] and [panel]) every panel turns together, each about the centre
+     * of its own bounds, exactly as an orbit drag turns them. Each panel is framed once for the
+     * whole turn and afterwards only rotated, so a large sheet does not refit every panel's camera
+     * on every frame.
+     *
+     * The turn **pauses** for any press, wheel or key in the view, for the whole of a drag, and while
+     * a person moves a view linked to this one ([linkCamera]). It **resumes** [resumeAfterSeconds]
+     * after the last of those, from wherever the camera was left. It turns only while the page is
+     * visible and the view is on screen, and the viewer draws frames only while it turns. A [camera]
+     * (or a panel's camera) is fitted to the geometry at every angle of the turn, so nothing swings
+     * out of the frame; the view sits a little further back than the same camera standing still.
+     *
+     * Linked views turn as one. A single view drives — of the linked views that asked for a turn,
+     * the one whose view id sorts first — and the link carries its camera to the rest, so its rate is
+     * the one you see. If the driver pauses, goes off screen or closes, another view that asked takes
+     * over after a second of silence. A linked view that did not ask still follows.
+     *
+     * Not [threeTurntable], which lays fixed angles out side by side.
+     *
+     * @param degreesPerSecond positive turns the model counter-clockwise seen from above.
+     * @param resumeAfterSeconds the pause after the last interaction; `0` resumes on release.
+     */
+    fun turntable(degreesPerSecond: Double = 6.0, resumeAfterSeconds: Double = 2.0) {
+        require(degreesPerSecond.isFinite() && degreesPerSecond != 0.0 && abs(degreesPerSecond) <= 720.0) {
+            "turntable needs a non-zero rate of at most 720 degrees per second, got $degreesPerSecond"
+        }
+        require(resumeAfterSeconds.isFinite() && resumeAfterSeconds >= 0.0) {
+            "turntable needs a finite, non-negative resumeAfterSeconds, got $resumeAfterSeconds"
+        }
+        turntable = ThreeTurntableSpec(degreesPerSecond, resumeAfterSeconds)
+    }
+
+    /**
+     * Play a looping presentation move: the camera dollies in and out while the model explodes and its
+     * surfaces go see-through, on one clock for every panel of the view.
+     *
+     * Each [ThreeShotKey] says where in the loop it is and what the view looks like there: the camera's
+     * distance as a multiple of where it would otherwise stand, how far the model is exploded (a multiple of
+     * each mesh's `explode` offsets), and how far it is x-rayed (each mesh with a `solidOpacity` goes from
+     * that at `0` to its `opacity` at `1`). Between keys every value eases. The default is
+     * [ThreeShotSpec.MONEY_SHOT]: close and solid, pulling back as the walls go see-through, exploding at
+     * the widest, then gathering back in. With [turntable] the model also turns throughout.
+     *
+     * The clock is the wall clock, so separate views of one document keep in step without being linked.
+     * Like the turntable it **holds** for any press, wheel, key or drag in the view and resumes
+     * [resumeAfterSeconds] later from where it stopped, and it draws frames only while the view is on screen.
+     *
+     * @param periodSeconds one loop, from 2 seconds to an hour.
+     * @param keys the loop: at least two keys, the first at `0`, the last at `1`, in increasing order.
+     */
+    fun shot(periodSeconds: Double = 24.0, keys: List<ThreeShotKey> = ThreeShotSpec.MONEY_SHOT, resumeAfterSeconds: Double = 2.0) {
+        require(periodSeconds.isFinite() && periodSeconds in 2.0..3600.0) { "shot needs a period of 2 to 3600 seconds, got $periodSeconds" }
+        require(resumeAfterSeconds.isFinite() && resumeAfterSeconds >= 0.0) { "shot needs a finite, non-negative resumeAfterSeconds, got $resumeAfterSeconds" }
+        require(keys.size >= 2 && keys.first().at == 0.0 && keys.last().at == 1.0) { "a shot's keys run from at = 0 to at = 1, got ${keys.map { it.at }}" }
+        require(keys.zipWithNext().all { (a, b) -> b.at > a.at }) { "a shot's keys must be in increasing order of at, got ${keys.map { it.at }}" }
+        for (k in keys) {
+            require(k.distance.isFinite() && k.distance > 0.0 && k.distance <= 20.0) { "a shot key's distance is a multiple between 0 and 20, got ${k.distance}" }
+            require(k.explode.isFinite() && k.explode in 0.0..10.0) { "a shot key's explode is between 0 and 10, got ${k.explode}" }
+            require(k.xray.isFinite() && k.xray in 0.0..1.0) { "a shot key's xray is between 0 and 1, got ${k.xray}" }
+        }
+        shot = ThreeShotSpec(periodSeconds, keys.toList(), resumeAfterSeconds)
     }
 
     /** A titled viewport. Call it once per panel, in order; [columns] lays them out. */
@@ -267,6 +374,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         // The HUD's counts are the whole scene's, so the drawables' triangles are added to whatever
         // the FLine half contributed rather than replacing it.
         val drawableTriangles = drawables.sumOf { (it.geometry.index?.array?.size ?: 0) / 3 }
+        require(cameraLink == null || panels.size <= 1) {
+            "linkCamera() needs a single-view scene; a contact sheet of ${panels.size} panels keeps its own cameras"
+        }
 
         return ThreeGeometryPayload(
             uid = uid,
@@ -291,6 +401,9 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             frameWidth = frameWidth,
             frameHeight = frameHeight,
             inspector = inspector,
+            cameraLink = cameraLink,
+            turntable = turntable,
+            shot = shot,
         )
     }
 }
@@ -393,7 +506,7 @@ fun Box.three(
     block: ThreeSceneBuilder.() -> Unit,
 ): ThreeGeometryViewState {
     val builder = ThreeSceneBuilder(samplesPerCubic).apply(block)
-    val uid = "${this.id}_$name"
+    val uid = threeViewerUid(this, name)
     // The size must be in **pixels on the iframe itself**, and that is not decoration.
     //
     // `field.css:491` says `.disclosure-content iframe { width: 100% !important; height: 100% !important }`,
@@ -418,7 +531,7 @@ fun Box.three(
             "style='border:none;padding:0;margin:0;$sizing;height:${height}px'>"
     )
     val view = threeViewFor(uid)
-    view.bindSource(this)
+    view.bindSource(this, "${this.id}_$name")
     view.update(builder.payload(uid, frameWidth = width, frameHeight = height))
     return view
 }
