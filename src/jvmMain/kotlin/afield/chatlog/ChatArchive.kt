@@ -275,6 +275,8 @@ data class ChatNode(
     val outputTokens: Long? = null,
     val rounds: Int? = null,
     val blocks: List<ChatBlockEntry>,
+    /** In a series ([ChatlogStore]), the chat this node comes from. */
+    val chat: String? = null,
 )
 
 @Serializable

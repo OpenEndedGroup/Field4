@@ -68,12 +68,15 @@ object ChatLensViewer {
  * Show [lens] beside [chat] in this box's `lens` output channel. [chat] may itself be a lens (`<chat>#<lens>`):
  * the viewer then shows every level of the chain, each beside the one it summarizes.
  */
-fun Box.showChatLens(chat: String, lens: String, height: Int = 900) {
+fun Box.showChatLens(chat: String, lens: String, height: Int = 900, width: Int? = null) {
+    // One column per level of the chain: give each its reading width unless told otherwise.
+    val columns = chat.count { it == '#' } + 2
+    val w = width ?: (520 * columns)
     val id = "chat-lens-" + UUID.randomUUID().toString().take(8)
     val q = { s: String -> URLEncoder.encode(s, Charsets.UTF_8) }
     val src = "/api/chatlog/lens?document=${q(inside.filename)}&chat=${q(chat)}&lens=${q(lens)}"
     display("lens", """
-        <div id="$id" class="chat-lens" style="height:${height}px" data-src="$src"></div>
+        <div id="$id" class="chat-lens" style="height:${height}px;width:${w}px" data-src="$src"></div>
         <script type="module">
             import { mountChatLens } from "/chatLens.js";
             mountChatLens(document.getElementById("$id"));
