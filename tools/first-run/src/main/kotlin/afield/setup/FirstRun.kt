@@ -175,7 +175,7 @@ fun main(args: Array<String>) {
     val previous = Properties().also { if (config.isFile) config.inputStream().use(it::load) }
     val defaultMode = if ("--server-only" in args || previous.getProperty("launchMode") == "server-only") "2" else "1"
     ui.section(1, "How would you like to start?")
-    ui.choice(1, "Desktop app", "Field in its own window.")
+    ui.choice(1, "Desktop app [recommended]", "Field in its own window.")
     ui.choice(2, "Browser / server", "Use your browser; skip Electron and desktop bridge compilers.")
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
