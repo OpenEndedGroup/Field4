@@ -165,6 +165,7 @@ object DemoTranscriptExecSmokeTest {
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",
+        "ai4_iframe_hello",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to

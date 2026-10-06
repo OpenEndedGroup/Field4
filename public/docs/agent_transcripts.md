@@ -114,6 +114,14 @@ Minimal blank-canvas macro that creates one runnable output box.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/hello_display/metadata.edn)
 
+### ai4_iframe_hello
+
+A single box embeds a page served by Field and exposes its iframe to AI4. Run the box, open its
+AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tools](ai4_live_iframe.md)
+explains the opt-in and the tools.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
+
 ### marf_field_clocks
 
 Three boxes make the [MARF field-clock](marf.md) distinction visible. The first prints four
