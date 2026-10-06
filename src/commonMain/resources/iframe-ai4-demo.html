@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI4 iframe hello</title>
+  <link rel="stylesheet" href="/iosevka.css">
+  <style>
+    :root { color-scheme: dark; font-family: "Iosevka Web", Iosevka, monospace; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; background: #0c0c0c; color: #e8e8e8; }
+    main { max-width: 650px; }
+    small { display: block; margin-bottom: 30px; color: #909090; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { font-size: 27px; font-weight: 500; margin: 0 0 8px; }
+    p { color: #aaa; margin: 0 0 26px; }
+    label { display: block; margin-bottom: 8px; font-size: 14px; }
+    input { display: block; width: 100%; padding: 14px 15px; background: #191919; color: #fff;
+      border: 1px solid #777; border-radius: 0; outline: none; font: 19px "Iosevka Web", Iosevka, monospace; }
+    input:focus { border-color: #f2f2f2; }
+    #echo { margin-top: 20px; padding-top: 16px; border-top: 1px solid #444; color: #aaa; min-height: 48px; }
+    #echo strong { color: #fff; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <main>
+    <small>Field · live iframe</small>
+    <h1>A textbox for AI4</h1>
+    <p>Ask the agent in the hosting box to write “hello” here.</p>
+    <label for="message">Message</label>
+    <input id="message" type="text" autocomplete="off" placeholder="Waiting for AI4…">
+    <div id="echo" aria-live="polite">Nothing typed yet.</div>
+  </main>
+  <script>
+    window.iframeHello = { message: "", edits: 0 };
+    const input = document.querySelector("#message");
+    input.addEventListener("input", () => {
+      window.iframeHello.message = input.value;
+      window.iframeHello.edits += 1;
+      document.querySelector("#echo").innerHTML = input.value
+        ? "Received: <strong></strong>" : "Nothing typed yet.";
+      const strong = document.querySelector("#echo strong");
+      if (strong) strong.textContent = input.value;
+    });
+  </script>
+</body>
+</html>

@@ -4,8 +4,9 @@ This page is about what Field does behind the scenes when you run a box. You do 
 start writing boxes. It is for when something that looks like an ordinary call turns out not to be
 one, or when a child box cannot see a value its parent set.
 
-- **Running versus launching.** `alt-return` runs a line or a block; `alt-0` runs everything in the
-  box; `alt-click` and `alt-up` *launch* it. Running evaluates and stops. Launching gives the code a
+- **Running versus launching.** `alt-enter` runs a selection, a line, or its outer enclosing block;
+  `alt-0` runs everything in the box; `alt-click` and `alt-up` *launch* it. Running evaluates and
+  stops. Launching gives the code a
   chance to put something into the animation loop and keep going. The keys themselves, the `?`
   cheat sheet and the `F1` palette are in the [Survival Guide](survivalGuide.md).
 - **What happens between the keystroke and the compiler** — fragments, macro expansion, the
@@ -20,6 +21,34 @@ one, or when a child box cannot see a value its parent set.
 For a friendly tour of `connect` / `prop` / `once` in use, rather than in mechanism, read the
 [Feature Overview](funFeatures.md); for the graphics-box API on top of all this, see
 [afield.four Graphics](afield_four_graphics.md). This page is the layer underneath both.
+
+---
+
+## Running code around the cursor
+
+In the code editor, **Alt+Enter** runs the selected text if you have a selection. With no
+selection, it runs the line under the cursor. If that line is inside a `{ … }` block, it runs the
+**outer enclosing block**, from its opening line through its closing line. This includes the whole
+outer block when the cursor is inside a nested block:
+
+```diffstatic {data-lang=kotlin}
+repeat(2) {
+    if (true) {
+        println("hello") // Alt+Enter here runs the whole repeat(2) block
+    }
+}
+```
+
+Select just the inner lines when you want to run less. **Alt+0** runs the whole box, regardless of
+the cursor position.
+
+To tune a value while watching its effect, put the cursor on a numeric literal and use **Increment
+number under cursor and rerun** or **Decrement number under cursor and rerun**. The shortcuts are
+**Command+Option+K/J** on Mac and **Ctrl+Alt+K/J** elsewhere (K increments, J decrements). Each
+command changes that number and then performs the same run as Alt+Enter, so a number inside a block
+reruns the outer enclosing block. Integers change by one; decimal numbers use a step scaled to the
+value and keep their decimal precision. You can also find both commands by name in the **F1**
+palette.
 
 ---
 

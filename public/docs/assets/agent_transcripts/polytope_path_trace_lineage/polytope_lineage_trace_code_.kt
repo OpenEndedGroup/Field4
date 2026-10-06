@@ -3,7 +3,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.polytope.ElementId
@@ -12,7 +11,6 @@ import afield.stdlib.polytope.canonicalConway
 import afield.stdlib.polytope.triangulate
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // ---- the topology ---------------------------------------------------------------

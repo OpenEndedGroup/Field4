@@ -580,11 +580,9 @@ Gets you started. With some mouse clicks you can get to here:
 
 Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double click` to add a keyframe, right click to change the keyframe type.
 
-These boxes are _input_ and _output_, so this code here, which converts a keyframe set into a Field `Fn` (see [functions_examples]) is:
+These boxes are _input_ and _output_, so this code here, which converts a keyframe set into a Field `Fn` (see [Functions](functions_examples.md)) is:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-
 val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
 val k2 = keyframes(channel = "k", name = "bob2", listOf(0.0, 1.0))
 
@@ -608,12 +606,12 @@ Once you have a keyframe, you can do a few things with it:
 ```diffstatic {data-lang=kotlin}
 val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
 
-k.setTime(0.5) // just set the position of the yellow line 
+k.setTime(0.5) // move the orange playhead
 val v : Double = k.evaluateValueAt(0.5)  
 val dv : Double = k.evaluateDerivativeAt(0.5)
 ```
 
-Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new.
+Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new. [The keyframe editor](keyframe_editor.md) has the rest: every gesture, the five key types, overlays, and a starting point to open.
 
 ## Time sliders & Custom UI
 
@@ -903,9 +901,9 @@ output areas reformatted into a single narrow column, the real AI4 conversation 
 Anything, and a full Monaco editor on whatever is selected. There is one selection behind all of
 it, shared with the desktop — the phone follows Field's, and a pick made on the phone becomes
 Field's — so a piece can be running on a projector while you hold its controls and walk around in
-front of it. Here is the Group tab at iPhone size, showing the sliders, the XY pad, the toggle and the text field one box published with `controlGroup(...)`:
+front of it. On the left is a box in the desktop app, its code open in the editor; on the right is the same box on the phone, the Group tab at iPhone size showing the step sequencer it published with `controlGroup(...)`: you sweep the bars and paint the grid with a finger, and the playhead the box drives moves across both. See [Sequencer controls](visualizers.md#sequencer-controls-multisliders-grids-ranges-and-menus) for the code:
 
-![The Group tab of the Field mobile controller at iPhone size: a gain slider at 0.35, an orbit XY pad, an armed toggle reading ON and a name text field, with the six tabs Pad, Group, Outputs, Chat, Select and Edit along the bottom](assets/mobile_controllers/group.png){ width="320" }
+![The Field desktop app with the same box: on the canvas the sequencer box and its open output panel with the velocity bars, the pattern grid, the band slider and the wave menu, the orange playhead on one column; beside it the code editor open on the box's Kotlin, the controlGroup declaring the four controls and the loop that drives the playheads](assets/mobile_controllers/desktop-sequencer.png){ height="420" } ![The Group tab of the Field mobile controller at iPhone size showing a step sequencer: a velocity multislider of sixteen bars, a four-row pattern grid with cells in red, green and blue and an orange playhead on the sixth column, a band range slider and a wave menu reading saw, with the six tabs along the bottom](assets/mobile_controllers/group-sequencer.png){ height="420" }
 
 [Field from your phone](mobile_controllers.md) has the URL, what each of the six tabs does, and the
 warning that goes with any of this: the page can run boxes, edit code and call AI4 tools, so it

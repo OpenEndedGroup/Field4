@@ -39,7 +39,7 @@ What was uncovered before this page existed, and is what it adds:
 | HTTP **read** routes | 45 | nothing — the mutating census skips `get` outright |
 | **all-method** routes (`route(…) { handle { … } }`) | 13 | nothing — they name no verb, so no verb regex saw them |
 | `staticFiles` directory mounts | 6 | nothing — invisible to every route regex in the tree |
-| `/ws` **command** names (`handlers`) | 127 | nothing |
+| `/ws` **command** names (`handlers`) | 130 | nothing |
 | `/ws` **raw channels** (`rawHandlers`) | 10 | nothing — a second dispatch table nothing had counted |
 
 The second and fifth rows arrived on 2026-08-22, and the first row moved from 34 to 36 the
@@ -265,7 +265,7 @@ Ktor's containment check applies to it as it does to the five above.
 
 ## The `/ws` command surface
 
-128 command names, in the `handlers` table. This is the real command API, it is roughly twice
+130 command names, in the `handlers` table. This is the real command API, it is roughly twice
 the size of the HTTP write surface, and until this page nothing enumerated it. It is not the
 only `/ws` dispatch table: ten more channels live in `rawHandlers` and are counted in
 [their own section](#the-other-ws-dispatch-table-rawhandlers) below.
@@ -281,7 +281,7 @@ the file, and the reach is described per file below in prose that a human checke
 
 | declaring file | commands |
 | --- | --- |
-| `Server.kt` | 49 |
+| `Server.kt` | 51 |
 | `agent_backdoor.kt` | 23 |
 | `history.kt` | 13 |
 | `executing.kt` | 9 |
@@ -299,12 +299,13 @@ the file, and the reach is described per file below in prose that a human checke
 | `DocsSearchInstaller.kt` | 1 |
 | `documentGuides.kt` | 1 |
 | `fileproxy.kt` | 1 |
+| `visualizers.kt` | 1 |
 
 What each of those reaches, checked against the code rather than inferred from the name:
 
 | file | what its commands reach |
 | --- | --- |
-| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, and `set-string`, which writes box source to disk |
+| `Server.kt` | document and box state, the completion engine, clipboard, layers, FLine editing, `set-string`, which writes box source to disk, and the live output iframe ready/reply relay. The relay accepts client readiness and replies within the existing `/ws` trust boundary; a native client can claim readiness, and a matching pending reply is accepted only from the selected socket |
 | `agent_backdoor.kt` | the agent path: read/write boxes, run transcripts, screenshot, macros. The published automation surface |
 | `history.kt` | the document history store — versions, screenshots, restore |
 | `executing.kt` | **box execution.** `launch-all`, `launch-batch`, `launch-fragment`, `stop-box`, `stop-all`. This is arbitrary Kotlin in Field's own JVM |
@@ -322,6 +323,7 @@ What each of those reaches, checked against the code rather than inferred from t
 | `DocsSearchInstaller.kt` | documentation search |
 | `documentGuides.kt` | document-relative guide listing and reading, revision-checked saves, and shared file-proxy creation; writes reject read-only documents |
 | `fileproxy.kt` | **creates a file-proxy box**, which writes a new file into the workspace |
+| `visualizers.kt` | one control-widget callback: `array-update` carries a multislider, matrix, range-slider or menu value as a list of doubles to the callback box code registered for that control id, and records it in the control cache. Unguarded beyond the `/ws` boundary, like `slider-update` and `button-update` beside it; guarding the control-message family is one change for all of them |
 
 `executing.kt` is the row that decides how seriously to read the rest. A command that reaches
 `launch-all` runs the code in the document, in Field's JVM, with Field's privileges. There is
@@ -370,6 +372,7 @@ in-route same-site check stops a web page.
 | `ai-state-tree` | `Ai4Installer.kt` |
 | `ai-transcribe` | `VoiceTranscriber.kt` |
 | `ai-transcribe-warm` | `VoiceTranscriber.kt` |
+| `array-update` | `visualizers.kt` |
 | `blame-history-line` | `history.kt` |
 | `button-update` | `ButtonControlHandler.kt` |
 | `chat_history` | `Ai4Installer.kt` |
@@ -425,6 +428,8 @@ in-route same-site check stops a web page.
 | `launch-batch` | `executing.kt` |
 | `launch-fragment` | `executing.kt` |
 | `line-note` | `Server.kt` |
+| `live-output-iframe-ready` | `Server.kt` |
+| `live-output-iframe-reply` | `Server.kt` |
 | `list-history-versions` | `history.kt` |
 | `load-chat-messages` | `chat.kt` |
 | `macro-transcript-command` | `Server.kt` |
@@ -512,7 +517,7 @@ publishes head and per-eye viewing geometry up it, so the Mac can render the fra
 about to display. Everything else on `/ws` is the browser or a native client asking this process for
 something.
 
-These sit behind the same `/ws` upgrade as the 127 commands, so the same sentence applies: the
+These sit behind the same `/ws` upgrade as the 130 commands, so the same sentence applies: the
 guard arrived 2026-08-19 in `3aa64af4d` and is off by default.
 
 ## What the guard does and does not prove

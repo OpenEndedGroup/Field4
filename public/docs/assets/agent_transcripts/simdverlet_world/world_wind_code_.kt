@@ -15,24 +15,28 @@ val cloth = sim.addCloth(
     pinned = { c, _ -> c == 0 },
 )
 
-// Two models of air, and they are not alternatives.
-//
-// `sim.addWind` is per-particle drag, F = drag * (w - v). It works on anything and it cannot
-// tell which way the fabric is facing -- two identical sheets, one face-on and one edge-on,
-// get exactly the same force out of it. So it leans a sheet; it does not fly one.
+/*
+Two models of air, and they are not alternatives.
+
+`sim.addWind` is per-particle drag, F = drag * (w - v). It works on anything and it cannot
+tell which way the fabric is facing -- two identical sheets, one face-on and one edge-on,
+get exactly the same force out of it. So it leans a sheet; it does not fly one.
+*/
 val wind = sim.addWind(
     velocityX = 9f,
     drag = 0.05f,
-    turbulence = 0.7f,       // gusts, as a fraction of the mean speed
-    turbulenceScale = 0.5f,  // inverse gust size, in world units
-    seed = 12,               // same seed, same weather, forever
+    turbulence = 0.7f, // gusts, as a fraction of the mean speed
+    turbulenceScale = 0.5f, // inverse gust size, in world units
+    seed = 12, // same seed, same weather, forever
 )
 
-// `cloth.addWind` is the per-quad model, which uses the sheet's own grid: normal from the
-// diagonals, area from half its length, F = 0.5 rho Cd A (n . v_rel) |n . v_rel| n quartered
-// onto the corners. That single (n . v_rel) is the flutter: a quad turning edge-on stops being
-// pushed, overshoots, catches the wind on its other face, and the wave runs down the sheet.
-// Comment this line out and watch the flag stop flying and start leaning.
+/*
+`cloth.addWind` is the per-quad model, which uses the sheet's own grid: normal from the
+diagonals, area from half its length, F = 0.5 rho Cd A (n . v_rel) |n . v_rel| n quartered
+onto the corners. That single (n . v_rel) is the flutter: a quad turning edge-on stops being
+pushed, overshoots, catches the wind on its other face, and the wave runs down the sheet.
+Comment this line out and watch the flag stop flying and start leaning.
+*/
 val aero = cloth.addWind(wind)
 
 // The view from above: keep x, and put z where y usually goes.

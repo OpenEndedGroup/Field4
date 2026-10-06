@@ -2518,6 +2518,17 @@ class Server {
                 Handled.yes
             })
 
+            handlers["live-output-iframe-ready"] = mutableSetOf({ _, _ ->
+                LiveOutputIframeBridge.ready(thisSession.get())
+                Handled.yes
+            })
+            handlers["live-output-iframe-reply"] = mutableSetOf({ message, _ ->
+                LiveOutputIframeBridge.reply(
+                    thisSession.get(), Json.decodeFromJsonElement<LiveOutputIframeReply>(message.payload!!)
+                )
+                Handled.yes
+            })
+
             handlers["set-string"] = mutableSetOf({ message, reply ->
 
                 val set = Json.decodeFromJsonElement<Set_string>(message.payload!!)
@@ -3254,6 +3265,7 @@ class Server {
             })
 
             registerButtonUpdateHandler() // afield/ButtonControlHandler.kt — see its KDoc
+            registerArrayControlUpdateHandler() // afield/visualizers.kt
             handlers["fline-click"] = mutableSetOf({ message, reply ->
                 val click = Json.decodeFromJsonElement<FLineClick>(message.payload!!)
                 lprintln("debug,fline", "Received FLine click: ${click.callbackId}")
@@ -5063,6 +5075,7 @@ class Server {
                             } finally {
                                 orderedControls.cancel()
                                 controlConsumer.cancel()
+                                LiveOutputIframeBridge.gone(ts)
                                 detachDocumentSession(ts)
                                 leaveSelectionContexts(ts)
                                 afield.graphics.detachThreeGlobalListener(ts)

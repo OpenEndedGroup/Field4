@@ -17,7 +17,9 @@ module += "sync" to computeTask { _, cmd, _ -> computeMemoryBarrier(cmd) }
 module += "measure" to m
 renderer += "spinGlassMeasure" to module
 
-m.x = groups; m.y = 1; m.z = 1
+m.x = groups
+m.y = 1
+m.z = 1
 m.spins = { sgSpins }
 m.jRight = { sgJRight }
 m.jDown = { sgJDown }

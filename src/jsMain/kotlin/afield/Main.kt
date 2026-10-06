@@ -6801,6 +6801,7 @@ suspend fun main() {
             )
         )
     )
+    installLiveOutputIframeClient()
     initializeClient()
 
     // Fresh tab opened by a drag-drop "open as new document" action? Replay the

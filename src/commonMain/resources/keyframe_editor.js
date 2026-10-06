@@ -118,6 +118,13 @@ const STYLE_BLOCK = `
   pointer-events: none;
 }
 
+.kf-linked-cursor {
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
 .kf-playhead-dot {
   fill: #ffab47;
   stroke: var(--kf-bg);
@@ -465,6 +472,145 @@ const STYLE_BLOCK = `
 
 `;
 
+// Copied keys, shared by every editor on the page.
+const KF_CLIPBOARD = "field.keyframes.clipboard.v1";
+
+const KF_TYPE_ICONS = {
+        linear: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="12" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/></svg>`,
+        hold: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><polyline points="2,4 9,4 9,10 14,10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+        bezierFree: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C6,12 10,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+        bezierFlat: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,10 C6,10 10,4 14,4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="0.8" opacity="0.5"/></svg>`,
+        bezierContinuous: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C5,12 5,2 8,7 C11,12 11,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
+};
+
+// The page the menu is drawn in: the one holding this editor's iframe when it is reachable (same
+// origin), else this document.
+function kfMenuHost() {
+        try {
+                const frame = window.frameElement;
+                if (frame && window.parent && window.parent.document) {
+                        return { doc: window.parent.document, win: window.parent, frame };
+                }
+        } catch (_) {
+                // Cross-origin parent: draw here.
+        }
+        return { doc: document, win: window, frame: null };
+}
+
+// The menu's own styles, self-contained because the host page has none of the editor's variables.
+const KF_MENU_CSS = `
+.kfm {
+  position: fixed;
+  z-index: 2147483600;
+  min-width: 200px;
+  max-width: 340px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  background: #0a0d13;
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: 12px/1.3 "Iosevka Web", ui-monospace, Menlo, monospace;
+}
+.kfm-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 2px 6px 4px;
+}
+.kfm-divider { height: 1px; background: rgba(255, 255, 255, 0.08); margin: 3px 0; }
+.kfm-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.kfm-item:hover:not(:disabled) { background: rgba(106, 227, 255, 0.1); border-color: rgba(106, 227, 255, 0.35); }
+.kfm-item:disabled { opacity: 0.35; cursor: default; }
+.kfm-item.is-danger:hover:not(:disabled) { background: rgba(255, 90, 90, 0.12); border-color: rgba(255, 90, 90, 0.4); }
+.kfm-hint { color: rgba(255, 255, 255, 0.4); font-size: 11px; }
+.kfm-fields { display: flex; gap: 6px; padding: 2px 4px 6px; }
+.kfm-field { display: flex; flex-direction: column; gap: 2px; flex: 1; font-size: 10px; color: rgba(255, 255, 255, 0.5); }
+.kfm-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #05070b;
+  color: #6ae3ff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 4px 6px;
+  font: 13px/1.2 "Iosevka Web", ui-monospace, Menlo, monospace;
+}
+.kfm-field input:focus { outline: none; border-color: #6ae3ff; }
+.kfm-field input:disabled { opacity: 0.4; }
+.kfm-types { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 0 2px 2px; }
+.kfm-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font: 9px/1.1 "Iosevka Web", ui-monospace, Menlo, monospace;
+  cursor: pointer;
+}
+.kfm-type svg { width: 18px; height: 15px; }
+.kfm-types-wide { grid-template-columns: repeat(4, 1fr); }
+.kfm-section {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 6px 6px 2px;
+}
+.kfm-ease { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; padding: 0 4px 2px; }
+.kfm-ease-row { display: flex; align-items: center; gap: 1px; }
+.kfm-ease-row > span { flex: 1; font-size: 10px; color: rgba(255, 255, 255, 0.65); }
+.kfm-ease-type {
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+.kfm-ease-type svg { width: 16px; height: 14px; }
+.kfm-ease-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+.kfm-ease-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
+.kfm-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+.kfm-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
+`;
+
+function injectMenuStyles(doc) {
+        if (doc.getElementById("kf-menu-style")) return;
+        const style = doc.createElement("style");
+        style.id = "kf-menu-style";
+        style.textContent = KF_MENU_CSS;
+        (doc.head || doc.documentElement).appendChild(style);
+}
+
 let stylesInjected = false;
 
 function injectStyles() {
@@ -677,6 +823,9 @@ export class KeyframeEditor {
 
                 this.root = root;
                 this.options = {
+                        // Everything given, so callbacks added later (onPreview, onViewChange, onFit,
+                        // onHover) arrive; the defaults below then fill in what was not given.
+                        ...options,
                         width: options.width ?? 640,
                         height: options.height ?? 320,
                         padding: options.padding ?? 36,
@@ -886,7 +1035,21 @@ export class KeyframeEditor {
                 });
 
                 hitRegion.addEventListener("pointerdown", (event) => {
-                        if (event.button === 1 || event.button === 2) {
+                        if (event.button === 2) {
+                                // A right-drag pans; a right-click that does not move opens the curve's menu.
+                                const start = event;
+                                const point = this.pointerToValues(event);
+                                const up = (e) => {
+                                        window.removeEventListener("pointerup", up);
+                                        if (Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < 4) {
+                                                this.openMenu(start, { kind: "background", point });
+                                        }
+                                };
+                                window.addEventListener("pointerup", up);
+                                this.startPan(event);
+                                return;
+                        }
+                        if (event.button === 1) {
                                 this.startPan(event);
                                 return;
                         }
@@ -897,7 +1060,15 @@ export class KeyframeEditor {
 
                 hitRegion.addEventListener("contextmenu", (event) => {
                         event.preventDefault();
-                        this.hideContextMenu();
+                });
+
+                // Where Paste puts keys when there is no playhead in view.
+                hitRegion.addEventListener("pointermove", (event) => {
+                        this._lastPointerTime = this.pointerToValues(event).time;
+                        if (typeof this.options.onHover === "function") this.options.onHover(this._lastPointerTime);
+                });
+                hitRegion.addEventListener("pointerleave", () => {
+                        if (typeof this.options.onHover === "function") this.options.onHover(null);
                 });
 
                 hitRegion.addEventListener("dblclick", (event) => {
@@ -928,6 +1099,7 @@ export class KeyframeEditor {
                                 const newTMin = anchorTime - anchorTimeRatio * newTimeSpan;
                                 const newTMax = anchorTime + (1 - anchorTimeRatio) * newTimeSpan;
                                 this.setViewTimeRange([newTMin, newTMax], { render: false });
+                                this.announceView();
 
                                 // Zoom value axis only when Shift is also held
                                 if (event.shiftKey) {
@@ -945,6 +1117,7 @@ export class KeyframeEditor {
                                 const valueShift = -(event.deltaY / height) * valueSpan;
                                 const [tMin, tMax] = this.viewTimeRange;
                                 this.setViewTimeRange([tMin + timeShift, tMax + timeShift], { render: false });
+                                this.announceView();
                                 const [vMin, vMax] = this.viewValueRange;
                                 this.setViewValueRange([vMin + valueShift, vMax + valueShift], { render: false });
                         }
@@ -974,165 +1147,411 @@ export class KeyframeEditor {
                 this.renderGrid();
         }
 
+        // ── Menu, keyboard, history and clipboard ───────────────────────
+        //
+        // The menu is drawn in the page that holds the editor's iframe when it can reach it (Field's
+        // own page, same origin), so it is never clipped by the editor's 232 px frame and can carry
+        // as much as it needs. Without that page it falls back to this document.
+
         buildContextMenu() {
-                const menu = document.createElement("div");
-                menu.className = "kf-menu is-hidden";
                 this.menuTargetId = null;
-                this.menuTypeButtons = {};
-
-                // Compact SVG icon definitions for each type
-                const typeIcons = {
-                        linear: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><line x1="2" y1="12" x2="14" y2="2" stroke="currentColor" stroke-width="1.5"/></svg>`,
-                        hold: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><polyline points="2,4 9,4 9,10 14,10" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
-                        bezierFree: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C6,12 10,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
-                        bezierFlat: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,10 C6,10 10,4 14,4" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="10" x2="5" y2="10" stroke="currentColor" stroke-width="0.8" opacity="0.5"/></svg>`,
-                        bezierContinuous: `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><path d="M2,12 C5,12 5,2 8,7 C11,12 11,2 14,2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`,
-                };
-
-                const resetButton = document.createElement("button");
-                resetButton.type = "button";
-                resetButton.className = "kf-menu-item";
-                resetButton.textContent = "Reset view";
-                resetButton.addEventListener("click", () => {
-                        this.resetView();
-                        this.hideContextMenu();
-                });
-
-                const lockButton = document.createElement("button");
-                lockButton.type = "button";
-                lockButton.className = "kf-menu-item";
-                lockButton.textContent = "Lock";
-                lockButton.addEventListener("click", () => {
-                        if (this.menuTargetId) {
-                                const ids =
-                                    this.state.selectedIds.includes(this.menuTargetId) && this.state.selectedIds.length > 1
-                                        ? [...this.state.selectedIds]
-                                        : [this.menuTargetId];
-                                this.toggleLock(ids);
-                        }
-                        this.hideContextMenu();
-                });
-                this._lockButton = lockButton;
-
-                const deleteButton = document.createElement("button");
-                deleteButton.type = "button";
-                deleteButton.className = "kf-menu-item";
-                deleteButton.textContent = "Delete";
-                deleteButton.addEventListener("click", () => {
-                        if (this.menuTargetId) {
-                                this.removeKeyframe(this.menuTargetId);
-                        }
-                        this.hideContextMenu();
-                });
-
-                const divider = document.createElement("div");
-                divider.className = "kf-menu-divider";
-
-                const typeGroup = document.createElement("div");
-                typeGroup.className = "kf-menu-group";
-
-                Object.entries(this.options.types).forEach(([key, meta]) => {
-                        const button = document.createElement("button");
-                        button.type = "button";
-                        button.className = "kf-type-icon";
-                        button.title = meta.label ?? key;
-                        button.innerHTML = typeIcons[key] || `<span style="font-size:9px">${(meta.label ?? key).charAt(0)}</span>`;
-                        button.addEventListener("click", () => {
-                                if (this.menuTargetId) {
-                                        const ids =
-                                            this.state.selectedIds.includes(this.menuTargetId) && this.state.selectedIds.length > 1
-                                                ? [...this.state.selectedIds]
-                                                : [this.menuTargetId];
-                                        this.setKeyframeTypeBatch(ids, key);
-                                }
-                                this.hideContextMenu();
-                        });
-                        this.menuTypeButtons[key] = button;
-                        typeGroup.appendChild(button);
-                });
-
-                menu.appendChild(resetButton);
-                menu.appendChild(lockButton);
-                menu.appendChild(deleteButton);
-                menu.appendChild(divider);
-                menu.appendChild(typeGroup);
-
-                this.wrapper.appendChild(menu);
-                this.contextMenu = menu;
+                this.menuEl = null;
+                this._menuCleanup = [];
+                this._lastPointerTime = null;
+                this.resetHistory();
 
                 this.handleGlobalPointerDown = (event) => {
-                        if (!this.contextMenu || this.contextMenu.classList.contains("is-hidden")) {
-                                return;
-                        }
-                        if (this.contextMenu.contains(event.target)) {
-                                return;
-                        }
-                        this.hideContextMenu();
+                        if (this.menuEl && !this.menuEl.contains(event.target)) this.hideContextMenu();
                 };
-
-                this.handleEscapeKey = (event) => {
-                        if (event.key === "Escape") {
-                                this.hideContextMenu();
-                        }
-                };
-
-                window.addEventListener("pointerdown", this.handleGlobalPointerDown);
-                window.addEventListener("keydown", this.handleEscapeKey);
+                this.handleKeyDown = (event) => this.onKeyDown(event);
+                window.addEventListener("pointerdown", this.handleGlobalPointerDown, true);
+                window.addEventListener("keydown", this.handleKeyDown);
         }
 
-        showContextMenu(event, id) {
-                if (!this.contextMenu) return;
-                const target = this.keyframes.find((kf) => kf.id === id);
-                if (!target) return;
-                this.menuTargetId = id;
-                // Update lock button label
-                if (this._lockButton) {
-                        const ids =
-                            this.state.selectedIds.includes(id) && this.state.selectedIds.length > 1
-                                ? [...this.state.selectedIds]
-                                : [id];
-                        const anyLocked = ids.some((lockId) => {
-                                const kf = this.keyframes.find((k) => k.id === lockId);
-                                return kf?.locked;
-                        });
-                        this._lockButton.textContent = anyLocked ? "Unlock" : "Lock";
+        onKeyDown(event) {
+                const target = event.target;
+                if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+                const key = event.key;
+                const lower = typeof key === "string" ? key.toLowerCase() : key;
+                const mod = event.metaKey || event.ctrlKey;
+                const consume = () => { event.preventDefault(); event.stopPropagation(); };
+                if (key === "Escape") {
+                        if (this.menuEl) this.hideContextMenu();
+                        else if (this.state.selectedIds.length) this.setSelection([], null);
+                        return;
                 }
-                this.contextMenu.classList.remove("is-hidden");
-                this.contextMenu.style.left = "0px";
-                this.contextMenu.style.top = "0px";
-                const wrapperRect = this.wrapper.getBoundingClientRect();
-                const menuRect = this.contextMenu.getBoundingClientRect();
-                const localX = event.clientX - wrapperRect.left;
-                const localY = event.clientY - wrapperRect.top;
-                const wrapperWidth = this.wrapper.clientWidth || this.options.width;
-                const wrapperHeight = this.wrapper.clientHeight || this.options.height;
-                const maxX = Math.max(wrapperWidth - menuRect.width - 8, 8);
-                const maxY = Math.max(wrapperHeight - menuRect.height - 8, 8);
-                const clampedX = clamp(localX, 8, maxX);
-                const clampedY = clamp(localY, 8, maxY);
-                this.contextMenu.style.left = `${clampedX}px`;
-                this.contextMenu.style.top = `${clampedY}px`;
-                this.updateContextMenuSelection(target.type);
+                if (mod && lower === "z") { consume(); event.shiftKey ? this.redo() : this.undo(); return; }
+                if (mod && lower === "y") { consume(); this.redo(); return; }
+                if (mod && lower === "c") { consume(); this.copySelection(); return; }
+                if (mod && lower === "x") { consume(); this.cutSelection(); return; }
+                if (mod && lower === "v") { consume(); this.paste(); return; }
+                if (mod && lower === "d") { consume(); this.duplicateSelection(); return; }
+                if (mod && lower === "a") { consume(); this.setSelection(this.keyframes.map((kf) => kf.id), null); return; }
+                if ((key === "Delete" || key === "Backspace") && this.state.selectedIds.length) {
+                        consume();
+                        this.removeKeyframes([...this.state.selectedIds]);
+                        this.hideContextMenu();
+                        return;
+                }
+                const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+                if (arrows[key] && this.state.selectedIds.length) {
+                        consume();
+                        const [dt, dv] = arrows[key];
+                        const scale = event.shiftKey ? 1 : 0.1;
+                        this.nudgeSelection(dt * this.timeNudgeStep() * scale, dv * this.valueNudgeStep() * scale);
+                }
+        }
+
+        /** One grid step of time; arrow keys move a tenth of it, Shift-arrow all of it. */
+        timeNudgeStep() {
+                return this.computeTimeStep(rangeSize(this.viewTimeRange));
+        }
+
+        valueNudgeStep() {
+                const ticks = this.getValueTicks(...this.viewValueRange);
+                return ticks.length > 1 ? Math.abs(ticks[1] - ticks[0]) : rangeSize(this.viewValueRange) / 4;
+        }
+
+        nudgeSelection(dt, dv) {
+                const moving = this.keyframes.filter((kf) => this.isSelected(kf.id) && !kf.locked);
+                if (!moving.length) return;
+                moving.forEach((kf) => this.updateKeyframe(kf.id, { time: kf.time + dt, value: kf.value + dv }));
+                // A run of nudges is one undo step.
+                this.refresh({ coalesce: "nudge" });
+        }
+
+        // History: a snapshot after every committed edit; refresh() records it.
+
+        _snapshot() {
+                return JSON.stringify(this.keyframes.map((kf) => ({
+                        id: kf.id, time: kf.time, value: kf.value, type: kf.type, locked: !!kf.locked, handles: kf.handles,
+                })));
+        }
+
+        /** Forget the history: what is showing now is where undo stops. */
+        resetHistory() {
+                this._history = [this._snapshot()];
+                this._historyIndex = 0;
+                this._coalesce = null;
+        }
+
+        _record(coalesce = null) {
+                if (!this._history) return;
+                const snap = this._snapshot();
+                if (snap === this._history[this._historyIndex]) return;
+                const now = performance.now();
+                if (coalesce && this._coalesce?.key === coalesce && now - this._coalesce.at < 800 && this._historyIndex > 0) {
+                        this._history[this._historyIndex] = snap;
+                        this._coalesce.at = now;
+                        return;
+                }
+                this._history.splice(this._historyIndex + 1);
+                this._history.push(snap);
+                if (this._history.length > 200) this._history.shift();
+                this._historyIndex = this._history.length - 1;
+                this._coalesce = coalesce ? { key: coalesce, at: now } : null;
+        }
+
+        _restore(snap) {
+                this.keyframes = JSON.parse(snap).map((kf) => this.prepareKeyframe(kf));
+                const present = new Set(this.keyframes.map((kf) => kf.id));
+                const selection = this.state.selectedIds.filter((id) => present.has(id));
+                this.setSelection(selection, selection[selection.length - 1] ?? null, { render: false });
+                this._coalesce = null;
+                this.refresh({ record: false });
+        }
+
+        canUndo() { return this._historyIndex > 0; }
+        canRedo() { return this._historyIndex < this._history.length - 1; }
+
+        undo() {
+                if (!this.canUndo()) return;
+                this._historyIndex -= 1;
+                this._restore(this._history[this._historyIndex]);
+        }
+
+        redo() {
+                if (!this.canRedo()) return;
+                this._historyIndex += 1;
+                this._restore(this._history[this._historyIndex]);
+        }
+
+        // Clipboard: shared by every editor on the page (localStorage), so keys copy between curves.
+
+        selectedKeyframes() {
+                return this.keyframes.filter((kf) => this.isSelected(kf.id)).sort((a, b) => a.time - b.time);
+        }
+
+        copySelection() {
+                const keys = this.selectedKeyframes();
+                if (!keys.length) return false;
+                try {
+                        localStorage.setItem(KF_CLIPBOARD, JSON.stringify(keys.map((kf) => ({
+                                time: kf.time, value: kf.value, type: kf.type, handles: kf.handles,
+                        }))));
+                } catch (_) {
+                        return false;
+                }
+                return true;
+        }
+
+        cutSelection() {
+                if (this.copySelection()) this.removeKeyframes(this.selectedKeyframes().map((kf) => kf.id));
+        }
+
+        clipboardKeyframes() {
+                try {
+                        const keys = JSON.parse(localStorage.getItem(KF_CLIPBOARD) || "null");
+                        return Array.isArray(keys) && keys.length ? keys : null;
+                } catch (_) {
+                        return null;
+                }
+        }
+
+        /**
+         * Pastes the copied keys, keeping their spacing, with the first at [atTime]: by default the
+         * playhead when it is in view, else where the pointer last was over the graph.
+         */
+        paste(atTime = null) {
+                const clip = this.clipboardKeyframes();
+                if (!clip) return;
+                const [viewMin, viewMax] = this.viewTimeRange;
+                const playheadInView = Number.isFinite(this.playhead) && this.playhead >= viewMin && this.playhead <= viewMax;
+                const base = atTime ?? (playheadInView ? this.playhead : this._lastPointerTime ?? clip[0].time);
+                const ids = clip.map((kf) => {
+                        const pasted = this.prepareKeyframe({ ...kf, id: undefined, locked: false, time: base + (kf.time - clip[0].time) });
+                        this.keyframes.push(pasted);
+                        return pasted.id;
+                });
+                this.setSelection(ids, ids[ids.length - 1], { render: false });
+                this.refresh();
+        }
+
+        /** A copy of the selection, just after it. */
+        duplicateSelection() {
+                const keys = this.selectedKeyframes();
+                if (!keys.length || !this.copySelection()) return;
+                const span = keys[keys.length - 1].time - keys[0].time;
+                this.paste(keys[0].time + span + this.timeNudgeStep() * 0.5);
+        }
+
+        // The menu itself.
+
+        showContextMenu(event, id, options = {}) {
+                if (!this.keyframes.find((kf) => kf.id === id)) return;
+                this.openMenu(event, { kind: "key", id, ...options });
+        }
+
+        openMenu(event, context) {
+                this.hideContextMenu();
+                const host = kfMenuHost();
+                injectMenuStyles(host.doc);
+                const doc = host.doc;
+                const menu = doc.createElement("div");
+                menu.className = "kfm";
+                const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+                const shortcut = (k, shift = false) => (mac ? (shift ? "⇧⌘" : "⌘") + k : "Ctrl+" + (shift ? "Shift+" : "") + k);
+                const close = () => this.hideContextMenu();
+
+                const header = (text) => {
+                        const el = doc.createElement("div");
+                        el.className = "kfm-header";
+                        el.textContent = text;
+                        menu.appendChild(el);
+                };
+                const divider = () => {
+                        const el = doc.createElement("div");
+                        el.className = "kfm-divider";
+                        menu.appendChild(el);
+                };
+                const item = (label, hint, action, { disabled = false, danger = false } = {}) => {
+                        const el = doc.createElement("button");
+                        el.type = "button";
+                        el.className = "kfm-item" + (danger ? " is-danger" : "");
+                        el.disabled = disabled;
+                        el.innerHTML = `<span></span><span class="kfm-hint"></span>`;
+                        el.firstChild.textContent = label;
+                        el.lastChild.textContent = hint || "";
+                        el.addEventListener("click", () => { close(); action(); });
+                        menu.appendChild(el);
+                        return el;
+                };
+
+                if (context.kind === "key") {
+                        const id = context.id;
+                        this.menuTargetId = id;
+                        const ids = this.state.selectedIds.includes(id) && this.state.selectedIds.length > 1
+                            ? [...this.state.selectedIds] : [id];
+                        const target = this.keyframes.find((kf) => kf.id === id);
+                        const anyLocked = ids.some((kid) => this.keyframes.find((kf) => kf.id === kid)?.locked);
+                        header(ids.length > 1 ? `${ids.length} keys` : "Key");
+
+                        if (ids.length === 1) {
+                                const row = doc.createElement("div");
+                                row.className = "kfm-fields";
+                                const field = (label, value) => {
+                                        const wrap = doc.createElement("label");
+                                        wrap.className = "kfm-field";
+                                        const name = doc.createElement("span");
+                                        name.textContent = label;
+                                        const input = doc.createElement("input");
+                                        input.type = "text";
+                                        input.inputMode = "decimal";
+                                        input.spellcheck = false;
+                                        input.value = String(Number(value.toFixed(4)));
+                                        input.disabled = !!target.locked;
+                                        wrap.append(name, input);
+                                        row.appendChild(wrap);
+                                        return input;
+                                };
+                                const timeInput = field("time", target.time);
+                                const valueInput = field("value", target.value);
+                                const apply = () => {
+                                        const t = parseFloat(timeInput.value);
+                                        const v = parseFloat(valueInput.value);
+                                        const kf = this.keyframes.find((item) => item.id === id);
+                                        if (!kf || kf.locked || !Number.isFinite(t) || !Number.isFinite(v)) return;
+                                        if (t === kf.time && v === kf.value) return;
+                                        this.updateKeyframe(id, { time: t, value: v });
+                                        this.refresh();
+                                };
+                                [timeInput, valueInput].forEach((input) => {
+                                        input.addEventListener("keydown", (e) => {
+                                                e.stopPropagation();
+                                                if (e.key === "Enter") { apply(); close(); }
+                                                if (e.key === "Escape") close();
+                                        });
+                                        input.addEventListener("change", apply);
+                                });
+                                menu.appendChild(row);
+                                context.inputs = { time: timeInput, value: valueInput };
+                        }
+
+                        // Types: the built-in five, then the library's groups, then this box's own.
+                        const typeButton = (type, meta, className, text) => {
+                                const b = doc.createElement("button");
+                                b.type = "button";
+                                b.className = className + (target.type === type ? " is-active" : "");
+                                b.title = meta.label ?? type;
+                                b.innerHTML = (KF_TYPE_ICONS[type] || "") + (text != null ? `<span></span>` : "");
+                                if (text != null) b.lastChild.textContent = text;
+                                b.addEventListener("click", () => { close(); this.setKeyframeTypeBatch(ids, type); });
+                                return b;
+                        };
+                        const section = (title) => {
+                                const el = doc.createElement("div");
+                                el.className = "kfm-section";
+                                el.textContent = title;
+                                menu.appendChild(el);
+                        };
+                        const entries = Object.entries(this.options.types);
+                        const basic = doc.createElement("div");
+                        basic.className = "kfm-types";
+                        entries.filter(([, m]) => !m.custom).forEach(([type, meta]) => {
+                                basic.appendChild(typeButton(type, meta, "kfm-type", (meta.label ?? type).replace("Bezier ", "").replace(/[()]/g, "")));
+                        });
+                        menu.appendChild(basic);
+
+                        const groups = new Map();
+                        entries.filter(([, m]) => m.custom).forEach(([type, meta]) => {
+                                if (!groups.has(meta.group)) groups.set(meta.group, []);
+                                groups.get(meta.group).push([type, meta]);
+                        });
+                        groups.forEach((members, title) => {
+                                section(title);
+                                if (members.every(([, m]) => m.family)) {
+                                        // A table: one family per row, its in / out / in-out across.
+                                        const table = doc.createElement("div");
+                                        table.className = "kfm-ease";
+                                        const families = [...new Set(members.map(([, m]) => m.family))];
+                                        families.forEach((family) => {
+                                                const cell = doc.createElement("div");
+                                                cell.className = "kfm-ease-row";
+                                                const name = doc.createElement("span");
+                                                name.textContent = family.toLowerCase();
+                                                cell.appendChild(name);
+                                                members.filter(([, m]) => m.family === family).forEach(([type, meta]) => {
+                                                        cell.appendChild(typeButton(type, meta, "kfm-ease-type", null));
+                                                });
+                                                table.appendChild(cell);
+                                        });
+                                        menu.appendChild(table);
+                                } else {
+                                        const grid = doc.createElement("div");
+                                        grid.className = "kfm-types kfm-types-wide";
+                                        members.forEach(([type, meta]) => grid.appendChild(typeButton(type, meta, "kfm-type", meta.label ?? type)));
+                                        menu.appendChild(grid);
+                                }
+                        });
+
+                        divider();
+                        item("Copy", shortcut("C"), () => this.copySelection());
+                        item("Cut", shortcut("X"), () => this.cutSelection());
+                        item("Duplicate", shortcut("D"), () => this.duplicateSelection());
+                        item("Paste here", shortcut("V"), () => this.paste(target.time), { disabled: !this.clipboardKeyframes() });
+                        divider();
+                        item(anyLocked ? "Unlock" : "Lock", "", () => this.toggleLock(ids));
+                        item(ids.length > 1 ? `Delete ${ids.length} keys` : "Delete", "⌫", () => this.removeKeyframes(ids), { danger: true });
+                } else {
+                        const point = context.point;
+                        header("Curve");
+                        item("Add key here", "double-click", () => this.addKeyframe(point));
+                        item("Paste here", shortcut("V"), () => this.paste(point.time), { disabled: !this.clipboardKeyframes() });
+                        item("Select all", shortcut("A"), () => this.setSelection(this.keyframes.map((kf) => kf.id), null), { disabled: !this.keyframes.length });
+                        divider();
+                        item("Undo", shortcut("Z"), () => this.undo(), { disabled: !this.canUndo() });
+                        item("Redo", shortcut("Z", true), () => this.redo(), { disabled: !this.canRedo() });
+                }
+                divider();
+                item("Fit the curve", "", () => this.resetView());
+
+                // Place it at the pointer, in the host page's coordinates, kept on screen.
+                let x = event.clientX;
+                let y = event.clientY;
+                if (host.frame) {
+                        const r = host.frame.getBoundingClientRect();
+                        const sx = r.width / (host.frame.clientWidth || r.width || 1);
+                        const sy = r.height / (host.frame.clientHeight || r.height || 1);
+                        x = r.left + x * sx;
+                        y = r.top + y * sy;
+                }
+                menu.style.left = "0px";
+                menu.style.top = "0px";
+                doc.body.appendChild(menu);
+                const box = menu.getBoundingClientRect();
+                const vw = host.win.innerWidth;
+                const vh = host.win.innerHeight;
+                menu.style.left = `${Math.max(8, Math.min(x + 4, vw - box.width - 8))}px`;
+                menu.style.top = `${Math.max(8, Math.min(y + 4, vh - box.height - 8))}px`;
+                this.menuEl = menu;
+
+                if (host.doc !== document) {
+                        const outside = (e) => { if (!menu.contains(e.target)) close(); };
+                        const escape = (e) => { if (e.key === "Escape") close(); };
+                        host.win.addEventListener("pointerdown", outside, true);
+                        host.win.addEventListener("keydown", escape, true);
+                        host.win.addEventListener("wheel", close, { capture: true, passive: true });
+                        this._menuCleanup.push(() => {
+                                host.win.removeEventListener("pointerdown", outside, true);
+                                host.win.removeEventListener("keydown", escape, true);
+                                host.win.removeEventListener("wheel", close, { capture: true });
+                        });
+                }
+                if (context.focus && context.inputs?.[context.focus]) {
+                        context.inputs[context.focus].focus();
+                        context.inputs[context.focus].select();
+                }
         }
 
         hideContextMenu() {
-                if (!this.contextMenu || this.contextMenu.classList.contains("is-hidden")) {
-                        return;
+                this._menuCleanup.forEach((fn) => fn());
+                this._menuCleanup = [];
+                if (this.menuEl) {
+                        this.menuEl.remove();
+                        this.menuEl = null;
+                        try { window.focus(); } catch (_) {}
                 }
-                this.contextMenu.classList.add("is-hidden");
                 this.menuTargetId = null;
-        }
-
-        updateContextMenuSelection(type) {
-                if (!this.menuTypeButtons) return;
-                Object.entries(this.menuTypeButtons).forEach(([key, button]) => {
-                        if (!button) return;
-                        if (key === type) {
-                                button.classList.add("is-active");
-                        } else {
-                                button.classList.remove("is-active");
-                        }
-                });
         }
 
         renderGrid() {
@@ -1297,12 +1716,14 @@ export class KeyframeEditor {
                 return ticks;
         }
 
-        refresh({ notify = true } = {}) {
+        refresh({ notify = true, record = true, coalesce = null } = {}) {
                 this.keyframes.sort((a, b) => a.time - b.time);
                 this.render();
                 if (notify && typeof this.options.onChange === "function") {
                         this.options.onChange(this.getKeyframes());
                 }
+                // Every committed edit is an undo step.
+                if (notify && record) this._record(coalesce);
         }
 
         render() {
@@ -1311,6 +1732,7 @@ export class KeyframeEditor {
                 this.renderKeyframes();
                 this.renderGraph();
                 this._renderBackendOverlays();
+                this._updateGraphDimming();
                 this.renderPlayhead();
         }
 
@@ -1383,6 +1805,14 @@ export class KeyframeEditor {
                                         this.setSelection([kf.id], kf.id);
                                 }
                                 this.showContextMenu(event, kf.id);
+                        });
+
+                        // Double-click a key to type its value.
+                        group.addEventListener("dblclick", (event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                this.setSelection([kf.id], kf.id);
+                                this.showContextMenu(event, kf.id, { focus: "value" });
                         });
 
                         this.keyframeLayer.appendChild(group);
@@ -1574,6 +2004,10 @@ export class KeyframeEditor {
                                 attrs['stroke-dasharray'] = ov.dashArray;
                         }
                         const path = createSVGElement('path', attrs);
+                        // Inline, because the group sits inside .kf-overlay, whose stylesheet stroke
+                        // would otherwise win over the attribute and turn every overlay grey.
+                        path.style.stroke = ov.color;
+                        path.style.strokeWidth = String(ov.strokeWidth);
                         this.backendOverlayGroup.appendChild(path);
                 }
         }
@@ -1662,6 +2096,74 @@ export class KeyframeEditor {
                 } else {
                         this.selectKeyframe(id);
                 }
+        }
+
+        /**
+         * The key types a box defined with interpolant(...): each becomes a type in the menu, drawn
+         * with a small picture of its shape.
+         */
+        setCustomTypes(list) {
+                if (!Array.isArray(list)) return;
+                list.forEach(({ name, icon, label, group, family, variant }) => {
+                        if (!name) return;
+                        this.options.types[name] = { label: label || name, custom: true, group: group || "This box", family, variant };
+                        if (Array.isArray(icon) && icon.length > 1) {
+                                const points = icon
+                                    .map(([u, v]) => `${(2 + u * 12).toFixed(2)},${(12 - Math.max(-0.2, Math.min(1.2, v)) * 10).toFixed(2)}`)
+                                    .join(" ");
+                                KF_TYPE_ICONS[name] = `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+                        }
+                });
+        }
+
+        /**
+         * While keys are dragged, ask the box for the shapes of the custom segments as they are now,
+         * at most every 40 ms. Nothing is saved; the edit is still committed when the drag ends.
+         */
+        previewKeys() {
+                if (typeof this.options.onPreview !== "function") return;
+                if (!this.keyframes.some((kf) => this.options.types[kf.type]?.custom)) return;
+                const now = performance.now();
+                if (this._lastPreview && now - this._lastPreview < 40) {
+                        clearTimeout(this._previewTimer);
+                        this._previewTimer = setTimeout(() => this.previewKeys(), 40);
+                        return;
+                }
+                this._lastPreview = now;
+                this.options.onPreview(this.toJSON());
+        }
+
+        /** Sampled shapes of the custom segments, as the box last computed them. */
+        setCustomSegments(list) {
+                this._customSegments = Array.isArray(list) ? list : [];
+                this.render();
+        }
+
+        customSegmentFor(prev, next) {
+                const close = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+                const candidates = (this._customSegments || []).filter((s) => s.type === prev.type && s.samples?.length > 1);
+                const exact = candidates.find((s) =>
+                        close(s.t0, prev.time) && close(s.v0, prev.value) && close(s.t1, next.time) && close(s.v1, next.value));
+                if (exact) return exact.samples;
+                // Mid-drag the keys have moved on since the box last answered: take the nearest shape
+                // of this type and stretch it onto where the keys are now. Exact for shapes written
+                // with lerp, close for the rest, and corrected by the box's next answer.
+                let best = null;
+                let bestDistance = Infinity;
+                candidates.forEach((s) => {
+                        const d = Math.abs(s.t0 - prev.time) + Math.abs(s.t1 - next.time);
+                        if (d < bestDistance) { bestDistance = d; best = s; }
+                });
+                if (!best) return null;
+                const spanWas = best.t1 - best.t0 || 1;
+                const riseWas = best.v1 - best.v0;
+                const rise = next.value - prev.value;
+                return best.samples.map(([time, value]) => {
+                        const f = (time - best.t0) / spanWas;
+                        const along = riseWas !== 0 ? (value - best.v0) / riseWas : 0;
+                        const offset = riseWas !== 0 ? 0 : value - best.v0;
+                        return [prev.time + f * (next.time - prev.time), prev.value + along * rise + offset];
+                });
         }
 
         getHandleModeForType(type) {
@@ -1918,6 +2420,19 @@ export class KeyframeEditor {
                 return keyframe;
         }
 
+        /** Removes several keys at once, committing (and notifying Kotlin) a single time. */
+        removeKeyframes(ids) {
+                const doomed = new Set(ids.filter((id) => !this.keyframes.find((kf) => kf.id === id)?.locked));
+                if (!doomed.size) return;
+                const remaining = this.keyframes.filter((kf) => !doomed.has(kf.id));
+                const lastIndex = Math.max(...this.keyframes.map((kf, i) => (doomed.has(kf.id) ? i : -1)));
+                const fallback = this.keyframes.slice(lastIndex + 1).find((kf) => !doomed.has(kf.id)) ?? remaining[remaining.length - 1];
+                this.keyframes.splice(0, this.keyframes.length, ...remaining);
+                const selection = fallback ? [fallback.id] : [];
+                this.setSelection(selection, selection[0] ?? null, { render: false });
+                this.refresh();
+        }
+
         removeKeyframe(id) {
                 const index = this.keyframes.findIndex((kf) => kf.id === id);
                 if (index === -1) return;
@@ -2043,6 +2558,7 @@ export class KeyframeEditor {
                                 });
                         });
                         this.refresh({ notify: false });
+                        this.previewKeys();
                         if (finalAnchor) {
                                 this.showDragLabel(finalAnchor);
                         } else {
@@ -2427,6 +2943,20 @@ export class KeyframeEditor {
                                 continue;
                         }
                         const span = Math.max(next.time - prev.time, EPSILON);
+                        if (this.options.types[prev.type]?.custom) {
+                                // A type defined in Kotlin (interpolant(...)): the box sends its shape,
+                                // sampled, for the keys either side. While those keys are being dragged
+                                // there is no matching shape yet, and the segment is drawn straight.
+                                const shape = this.customSegmentFor(prev, next);
+                                if (shape) {
+                                        shape.forEach(([time, value]) => {
+                                                if (time > samples[samples.length - 1].time) samples.push({ time, value });
+                                        });
+                                } else {
+                                        samples.push({ time: next.time, value: next.value });
+                                }
+                                continue;
+                        }
                         if (prev.type === "linear") {
                                 for (let step = 1; step <= stepsPerSegment; step += 1) {
                                         const u = step / stepsPerSegment;
@@ -2475,6 +3005,7 @@ export class KeyframeEditor {
                                 const timeShift = -(deltaX / width) * timeSpan;
                                 timeRange = [initialTimeRange[0] + timeShift, initialTimeRange[1] + timeShift];
                                 this.setViewTimeRange(timeRange, { render: false });
+                                this.announceView();
                         }
                         if (valueSpan) {
                                 const deltaY = ev.clientY - startY;
@@ -2596,10 +3127,79 @@ export class KeyframeEditor {
                 return this.playhead;
         }
 
+        /** Reset view: fit the keys, or the initial view when there are none. */
         resetView() {
-                this.setViewTimeRange([...this.initialTimeRange], { render: false });
-                this.setViewValueRange([...this.initialValueRange], { render: false });
+                if (!this.fitToKeyframes()) {
+                        this.setViewTimeRange([...this.initialTimeRange], { render: false });
+                        this.setViewValueRange([...this.initialValueRange], { render: false });
+                }
                 this.render();
+                // Linked lanes go back to framing all of their keys together.
+                if (typeof this.options.onFit === "function") this.options.onFit();
+        }
+
+        /** A pan or zoom made here, for the lanes linked to this one. */
+        announceView() {
+                if (typeof this.options.onViewChange !== "function") return;
+                const range = [...this.viewTimeRange];
+                cancelAnimationFrame(this._announceFrame);
+                this._announceFrame = requestAnimationFrame(() => this.options.onViewChange(range));
+        }
+
+        /** The span of this curve's keys in time, or null with none. */
+        keyTimeExtent() {
+                const times = this.keyframes.map((kf) => kf.time).filter(Number.isFinite);
+                return times.length ? [Math.min(...times), Math.max(...times)] : null;
+        }
+
+        /** A time line drawn for the pointer hovering over a linked lane; null hides it. */
+        setLinkedCursor(time) {
+                if (!this.svg) return;
+                if (!this._linkedCursor || !this.svg.contains(this._linkedCursor)) {
+                        this._linkedCursor = createSVGElement("line", { class: "kf-linked-cursor" });
+                        this.svg.appendChild(this._linkedCursor);
+                }
+                const line = this._linkedCursor;
+                const [t0, t1] = this.viewTimeRange;
+                if (!Number.isFinite(time) || time < t0 || time > t1) {
+                        line.style.display = "none";
+                        return;
+                }
+                const x = this.timeToX(time);
+                line.style.display = "";
+                line.setAttribute("x1", x);
+                line.setAttribute("x2", x);
+                line.setAttribute("y1", this.options.padding);
+                line.setAttribute("y2", this.options.padding + this.innerHeight);
+        }
+
+        /**
+         * Frames every key, with a little room: time always includes 0 and rounds out to whole
+         * units, value always includes 0 and 1. Returns false when there is nothing to fit.
+         */
+        fitToKeyframes() {
+                // Linked lanes (the other editors in this box) share one time axis: fit them all.
+                const times = [...this.keyframes.map((kf) => kf.time), ...(this.linkedTimes || [])].filter(Number.isFinite);
+                // The curve, not just its keys: an elastic or a spring goes well past them.
+                const values = [...this.keyframes.map((kf) => kf.value), ...this.sampleCurve({ stepsPerSegment: 24 }).map((s) => s.value)]
+                    .filter(Number.isFinite);
+                if (!times.length) return false;
+                const pad = (min, max, ratio) => {
+                        if (Math.abs(max - min) < 1e-6) {
+                                const delta = Math.max(Math.abs(min) * 0.1, 1);
+                                return [min - delta, max + delta];
+                        }
+                        const span = max - min;
+                        return [min - span * ratio, max + span * ratio];
+                };
+                let tMin = Math.min(0, ...times);
+                let tMax = Math.max(...times);
+                if (tMax - tMin < 1) tMax = tMin + 1;
+                const [t0, t1] = pad(tMin, tMax, 0.08);
+                if (Math.ceil(t1) - Math.floor(t0) > 0) this.setViewTimeRange([Math.floor(t0), Math.ceil(t1)], { render: false });
+                const [v0, v1] = pad(Math.min(0, ...values), Math.max(1, ...values), 0.08);
+                if (v1 - v0 > 0) this.setViewValueRange([v0, v1], { render: false });
+                return true;
         }
 
         setViewTimeRange(range, { render = true } = {}) {

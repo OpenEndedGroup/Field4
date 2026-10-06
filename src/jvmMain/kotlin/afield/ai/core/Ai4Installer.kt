@@ -454,7 +454,7 @@ class Ai4CodeToolProviders(
                 Box.withBoxContext(target) {
                     val lines = source.trimEnd().lines()
                     val breaks = lines.mapIndexedNotNull { index, line ->
-                        if (line.trim().startsWith("//%-") || line.trim().startsWith("/*%-*/")) index else null
+                        if (afield.macros.isFragmentBreak(line)) index else null
                     } + lines.size
 
                     var at = 0

@@ -13,8 +13,11 @@ in LFS: without it, Git leaves a small text pointer where the compiler JAR shoul
 Allow several gigabytes for the checkout, downloaded runtimes, dependency caches and build output.
 The tracked checkout alone is about 1.3 GB. Start with at least **10 GB of free space**; this is a
 planning allowance, not a measured minimum. For this beta, **16 GB RAM is recommended** for the
-source build. The Kotlin compiler is allowed a 10 GB heap; an 8 GB machine has not been qualified.
-The first launch needs internet access and may spend several minutes downloading and compiling.
+source build. The Kotlin compiler is allowed a 10 GB heap. CI checks cover server-only startup;
+desktop and graphics workloads on 8 GB machines have not been qualified.
+The first launch needs internet access to download dependencies and compile the project.
+Fresh Windows and Apple-silicon macOS CI launches took about 20–25 minutes; your machine
+and connection will affect that time. Later launches reuse the download and compiler caches.
 A long-running Gradle task is normal; `BUILD FAILED` is not.
 
 <div class="field-data-table" markdown>
@@ -93,14 +96,42 @@ runtimes and Gradle's incremental outputs. `./field.sh --offline` uses the cache
 a machine that has never completed an online build.
 
 On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
-Choose the desktop app or browser/server mode, and optionally request Vulkan diagnostics or
-Python prerequisites. It shows the exact package-manager commands and requires typing `INSTALL`
+Choose the recommended desktop app or browser/server mode, then select optional features from
+the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
+Prerequisites appear at the right. Features with missing tools are disabled unless Windows
+setup can install every missing tool through winget. Install other prerequisites and rerun setup. Unsupported platform features and NVIDIA-only
+features without a working `nvidia-smi` are omitted. Limited terminals use numbered checkboxes:
+type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
+It shows the exact package-manager commands and requires typing `INSTALL`
 before running them. Administrator authentication belongs to your OS package manager; no API keys
 are requested. You can leave the commands for later and install them yourself.
 
 Python prerequisites do not include a configured JEP runtime: complete that in the welcome page's
 **Python** panel. Vulkan diagnostics do not install your GPU driver. AI features, model services
-and agent tooling remain optional separate setups.
+and agent tooling have their own guides and prerequisites.
+
+The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader tools;
+Ceres, TetGen, Manifold and paint; Pure Data, Csound and LuaJIT; and optional
+physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
+Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
+
+On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
+CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
+existing installations. Selectable rows marked **install:** need those prerequisites first.
+After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
+so the new PATH is visible. In Python's installer, enable **Add python.exe to PATH**.
+Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
+Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
+
+For the native libraries and learned shaders that Field has a preparation task for, setup shows
+that task and checks its build tools. Type **BUILD** to run it, or leave it for later. **INSTALL**
+approves the displayed system packages only. Windows native-library builds need Visual Studio
+C++ Build Tools and a Developer PowerShell; the default Windows app launch does not.
+
+Large model environments and downloads, GPU SDKs, containers, Python interpreter selection and
+permissions remain explicit steps in each feature’s guide. Setup shows those steps and platform
+limits. A completed build or saved selection does not establish that a model, GPU or device works;
+use the feature’s runtime probe or example after preparation.
 
 Your choices live in `~/.field4/first-run.properties`. Reopen the tool with `./field.sh --setup`
 (Windows: `.\field.bat --setup`); this command configures setup and exits. Noninteractive launches

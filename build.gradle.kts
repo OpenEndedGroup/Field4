@@ -1319,6 +1319,20 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // itself non-reproducible. See dev_docs/HERMETIC_COMPLETION_INPUTS.md.
     maxHeapSize = "4g"
 
+    // AI4's per-turn tool-I/O log, its tool-evidence store and the request ledger all default to
+    // `~/.afield/logs/`, where `tools/ai_tool_usage.py`, the tool-use improvement monitor and every
+    // usage count read them as real sessions. Bridge fixtures were writing there on every run:
+    // on 2026-10-06, 1,015 of 3,835 tool-I/O files were `conv_test`, and all 120 Anthropic ones
+    // were `claude-test` (so the logs showed Anthropic sessions where no real one had ever run),
+    // and the one improvement dry run on record reviewed twelve fixtures and nothing else.
+    // Pointing them under build/ here means no test can forget to turn them off, and the tests
+    // that read the log still have one. Relative, so this checkout's absolute path stays out of
+    // the task's inputs (see `SmileNativeLibraryPath`); the worker's working directory is the
+    // project. Set before the `afield.` forwarding below, so an explicit `-D…` still wins.
+    systemProperty("afield.ai4.toolIoLog.path", "build/test-ai-logs/ai4_tool_io")
+    systemProperty("afield.ai4.toolEvidence.path", "build/test-ai-logs/ai4_tool_io/evidence")
+    systemProperty("afield.ai.usageLog.path", "build/test-ai-logs/ai_usage")
+
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
     // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
@@ -1346,7 +1360,7 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
     from({ smileOpenBlasRuntime.map { zipTree(it) } }) {
         include(
             "**/libopenblas.so.0", "**/libopenblas*.dylib", "**/libopenblas.dll",
-            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack.dll",
+            "**/libarpack.so.*", "**/libarpack*.dylib", "**/libarpack*.dll",
         )
         eachFile { path = name }
         includeEmptyDirs = false
@@ -1356,7 +1370,9 @@ val prepareSmileNative = tasks.register<org.gradle.api.tasks.Sync>("prepareSmile
         val directory = smileNativeDirectory.get().asFile.toPath()
         fun alias(prefix: String, target: String) {
             val source = Files.list(directory).use { files ->
-                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow()
+                files.filter { it.fileName.toString().startsWith(prefix) }.findFirst().orElseThrow {
+                    GradleException("Missing $prefix native library in $directory for $bytedecoPlatformClassifier")
+                }
             }
             val destination = directory.resolve(target)
             if (source != destination) Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING)
@@ -2087,6 +2103,38 @@ tasks.register<JavaExec>("checkAgentTranscripts") {
     // KotlinInterface2 be constructed at all.
     jvmArgs("-XX:+UnlockExperimentalVMOptions")
     jvmArgs(requiredRunJvmArgs())
+}
+
+// Box code as published has to compile, and has to avoid the idioms agents keep copying from it
+// (dev_docs/agents/BOX_CODE_REVISION_PASS.md). Both read AFIELD_GUARD_CHANGED_PATHS_FILE, which
+// tools/check_staged_generated_artifacts.py writes, so a landing checks only what it changed; run
+// by hand with neither, they cover the whole corpus (the compile takes as long as the smoke sweep).
+tasks.register<JavaExec>("checkBoxCodeCompiles") {
+    group = "verification"
+    description = "Compiles, without evaluating, every box of the changed agent transcripts (all of them when no change list is given)."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeCompileGuard")
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<JavaExec>("formatBoxCode") {
+    group = "formatting"
+    description = "Formats box code in transcripts (or the given files) with the editor's formatter, in place; --check only reports."
+    javaLauncher.set(javaToolchains.fieldLauncher())
+    classpath = sourceSets["jvmMain"].runtimeClasspath
+    mainClass.set("afield.examples.BoxCodeFormat")
+    workingDir = rootDir
+    jvmArgs("-XX:+UnlockExperimentalVMOptions")
+    jvmArgs(requiredRunJvmArgs())
+}
+
+tasks.register<Exec>("checkBoxIdioms") {
+    group = "verification"
+    description = "Flags redundant renderer lookups, bindPushConstant calls and spaced //%- markers in the changed box code (tools/check_box_idioms.py)."
+    workingDir = rootDir
+    commandLine("uv", "run", "--project", ".", "--group", "backdoor", "--frozen", "python", "tools/check_box_idioms.py")
 }
 
 // The *other* half of the same artifact, and the half nothing checked until 2026-08-06:
@@ -3475,6 +3523,9 @@ tasks.register<Exec>("buildLearnedShaders") {
     if (gradle.startParameter.isOffline) environment("UV_OFFLINE", "1")
 }
 
+// Native preparation scripts use the platform Python command, like the source launcher.
+val nativeBuildPython = if (System.getProperty("os.name").startsWith("Windows")) "python" else "python3"
+
 // Build native/field-tetgen: TetGen behind a flat C ABI, for the body-fitted structural route.
 //
 // Unlike Ceres there is nothing to find_package — TetGen is two source files with no dependencies —
@@ -3500,7 +3551,7 @@ val buildTetgenNative = tasks.register("buildTetgenNative") {
     outputs.dir(layout.buildDirectory.dir("field-tetgen/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3587,7 +3638,7 @@ val fetchDocsDirtSamples = tasks.register("fetchDocsDirtSamples") {
     outputs.upToDateWhen { false }
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath) +
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath) +
             if (gradle.startParameter.isOffline) listOf("--check") else emptyList()
         val result = providers.exec {
             commandLine(command)
@@ -3624,7 +3675,7 @@ val buildLibpdNative = tasks.register("buildLibpdNative") {
     outputs.dir(layout.buildDirectory.dir("field-libpd/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
@@ -3660,7 +3711,7 @@ val buildCsoundNative = tasks.register("buildCsoundNative") {
     outputs.dir(layout.buildDirectory.dir("field-csound/build"))
 
     doLast {
-        val command = listOf("python3", script.asFile.absolutePath)
+        val command = listOf(nativeBuildPython, script.asFile.absolutePath)
         val result = providers.exec {
             commandLine(command)
             isIgnoreExitValue = true
