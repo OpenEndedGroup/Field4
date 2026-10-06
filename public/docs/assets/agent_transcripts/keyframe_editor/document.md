@@ -99,25 +99,32 @@ loop {
 
 From `code`
 
-Run this box: two key types written in Kotlin. Each returns the curve's value across a
+Run this box: three key types written in Kotlin. Each returns the curve's value across a
 segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
 Right-click a key and they are in the menu, after the five built in.
 
 ```edn [field-box id="kf_custom" role="properties"]
-{"id" "kf_custom" "index" 3 "name" "custom types" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "custom types" "_tombstone" false "frame" #afield/rect [760.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_custom_code_.kt" "lines" 11 "characters" 566 "sha256" "a5ef363119c0bd642dfb872996032d5d76e088ccd71aede01d8cb63efc569772"}]}
+{"id" "kf_custom" "index" 3 "name" "custom types" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "custom types" "_tombstone" false "frame" #afield/rect [760.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_custom_code_.kt" "lines" 18 "characters" 830 "sha256" "2b5e5aa4ee39a55d740841c30bed3cccafddb7a20150f65b96611accd4a2695b"}]}
 ```
 
 ```kotlin [field-property box="kf_custom" name="code" path="kf_custom_code_.kt"]
-// Run this box: two key types written in Kotlin. Each returns the curve's value across a
+// Run this box: three key types written in Kotlin. Each returns the curve's value across a
 // segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
 // Right-click a key and they are in the menu, after the five built in.
 interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
 interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+// Deterministic chaos: the logistic map, seeded by where we are, and pinned to both keys.
+interpolant("chaos") {
+    var x = 0.1 + 0.8 * u
+    repeat(30) { x = 3.97 * x * (1 - x) }
+    lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
+}
 
 val custom = keyframes(name = "custom", keys = listOf(
     Keyframe(0.0, 0.1, "overshoot"),
     Keyframe(1.5, 0.8, "wobble"),
-    Keyframe(3.0, 0.2, "linear"),
+    Keyframe(3.0, 0.3, "chaos"),
+    Keyframe(4.5, 0.6, "linear"),
 ))
 ```
 

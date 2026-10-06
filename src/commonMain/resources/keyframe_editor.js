@@ -2100,6 +2100,23 @@ export class KeyframeEditor {
                 });
         }
 
+        /**
+         * While keys are dragged, ask the box for the shapes of the custom segments as they are now,
+         * at most every 40 ms. Nothing is saved; the edit is still committed when the drag ends.
+         */
+        previewKeys() {
+                if (typeof this.options.onPreview !== "function") return;
+                if (!this.keyframes.some((kf) => this.options.types[kf.type]?.custom)) return;
+                const now = performance.now();
+                if (this._lastPreview && now - this._lastPreview < 40) {
+                        clearTimeout(this._previewTimer);
+                        this._previewTimer = setTimeout(() => this.previewKeys(), 40);
+                        return;
+                }
+                this._lastPreview = now;
+                this.options.onPreview(this.toJSON());
+        }
+
         /** Sampled shapes of the custom segments, as the box last computed them. */
         setCustomSegments(list) {
                 this._customSegments = Array.isArray(list) ? list : [];
@@ -2108,10 +2125,29 @@ export class KeyframeEditor {
 
         customSegmentFor(prev, next) {
                 const close = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
-                const found = (this._customSegments || []).find((s) =>
-                        s.type === prev.type && close(s.t0, prev.time) && close(s.v0, prev.value) &&
-                        close(s.t1, next.time) && close(s.v1, next.value));
-                return found ? found.samples : null;
+                const candidates = (this._customSegments || []).filter((s) => s.type === prev.type && s.samples?.length > 1);
+                const exact = candidates.find((s) =>
+                        close(s.t0, prev.time) && close(s.v0, prev.value) && close(s.t1, next.time) && close(s.v1, next.value));
+                if (exact) return exact.samples;
+                // Mid-drag the keys have moved on since the box last answered: take the nearest shape
+                // of this type and stretch it onto where the keys are now. Exact for shapes written
+                // with lerp, close for the rest, and corrected by the box's next answer.
+                let best = null;
+                let bestDistance = Infinity;
+                candidates.forEach((s) => {
+                        const d = Math.abs(s.t0 - prev.time) + Math.abs(s.t1 - next.time);
+                        if (d < bestDistance) { bestDistance = d; best = s; }
+                });
+                if (!best) return null;
+                const spanWas = best.t1 - best.t0 || 1;
+                const riseWas = best.v1 - best.v0;
+                const rise = next.value - prev.value;
+                return best.samples.map(([time, value]) => {
+                        const f = (time - best.t0) / spanWas;
+                        const along = riseWas !== 0 ? (value - best.v0) / riseWas : 0;
+                        const offset = riseWas !== 0 ? 0 : value - best.v0;
+                        return [prev.time + f * (next.time - prev.time), prev.value + along * rise + offset];
+                });
         }
 
         getHandleModeForType(type) {
@@ -2506,6 +2542,7 @@ export class KeyframeEditor {
                                 });
                         });
                         this.refresh({ notify: false });
+                        this.previewKeys();
                         if (finalAnchor) {
                                 this.showDragLabel(finalAnchor);
                         } else {

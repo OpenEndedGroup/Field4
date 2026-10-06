@@ -40,14 +40,14 @@ Double-click empty graph to add a key. Drag a key to move it in time and value a
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 // The iframe arrives before its keys do; wait until the editor is drawing all four.
 val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
 """.trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 ui.pause(200)
 ui.eval("""
-  const frame = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const frame = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = frame.contentDocument;
   const fr = frame.getBoundingClientRect();
   const centre = el => { const r = el.getBoundingClientRect(); return [fr.left + r.left + r.width / 2, fr.top + r.top + r.height / 2]; };
@@ -111,7 +111,7 @@ for (attempt in 1..3) {
 ui.pause(300)
 // The menu opens in this page; if it did not, say what is showing instead.
 val shown = ui.eval("""
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = f.contentDocument, fr = f.getBoundingClientRect();
   const m = document.querySelector('.kfm');
   const el = d.elementFromPoint(${peak.first} - fr.left, ${peak.second} - fr.top);
@@ -180,17 +180,29 @@ Here is the menu for a key, open over the curve. With several keys selected it a
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x520" clip="0,0,700,520" hide-toasts=true screenshot="assets/keyframe_editor/key_menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-key-menu" alt="The brightness editor with the menu for the key at time 1 open beside it, reaching past the editor's own frame. The menu is headed KEY and has time and value fields reading 1 and 0.9, five type buttons labelled Linear, Hold, Free, Flat and Continuous with Linear highlighted, then Copy, Cut, Duplicate and Paste here with their shortcuts, Lock, Delete, and Fit the curve"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
 """.trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
-val peak = ui.eval("""
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+val peakScript = """
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const fr = f.getBoundingClientRect();
   const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
-  return (fr.left + r.left + r.width / 2) + ',' + (fr.top + r.top + r.height / 2);
-""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+""".trimIndent()
+// Measured only once the page has stopped moving: the panel may still be opening or panning into view.
+fun peakNow(): List<Double> {
+    var last = ""
+    repeat(30) {
+        val now = ui.eval(peakScript).toString().trim('"')
+        if (now == last) return now.split(",").map { it.toDouble() }
+        last = now
+        ui.pause(150)
+    }
+    return last.split(",").map { it.toDouble() }
+}
+val peak = peakNow()
 ui.moveMouse(peak[0], peak[1], 4)
 ui.rightClickAt(peak[0], peak[1])
 ui.pause(800)
@@ -242,25 +254,38 @@ Beyond those five, every editor has fifty more types, grouped in the key menu:
 ```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="760x1000" clip-selector=".kfm" hide-toasts=true screenshot="assets/keyframe_editor/library_menu.png" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_editing.yaml" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-library-menu" alt="The key menu, tall: the key's time and value fields; the five built-in types; under EASE a table of ten families, sine, quad, cubic, quart, quint, expo, circ, back, elastic and bounce, each with small icons for in, out and in-out, the elastic and bounce icons visibly wobbling; under SPLINE, Catmull-Rom, TCB tense, TCB loose, TCB overshoot, TCB corner, monotone and Steffen; under SHAPE, smoothstep, smootherstep, cosine, sigmoid, approach, slow middle, spring, 4 steps and 8 steps; under NOISE, noise, busy, drift and jitter; then Copy, Cut, Duplicate, Paste here, Lock, Delete and Fit the curve"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready = """
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
 """.trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
-val key = ui.eval("""
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+val keyScript = """
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const fr = f.getBoundingClientRect();
   const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[0].getBoundingClientRect();
-  return (fr.left + r.left + r.width / 2) + ',' + (fr.top + r.top + r.height / 2);
-""".trimIndent()).toString().trim('"').split(",").map { it.toDouble() }
+  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+""".trimIndent()
+// Measured only once the page has stopped moving: the panel may still be opening or panning into view.
+fun keyNow(): List<Double> {
+    var last = ""
+    repeat(30) {
+        val now = ui.eval(keyScript).toString().trim('"')
+        if (now == last) return now.split(",").map { it.toDouble() }
+        last = now
+        ui.pause(150)
+    }
+    return last.split(",").map { it.toDouble() }
+}
+val key = keyNow()
 ui.moveMouse(key[0], key[1], 4)
 for (attempt in 1..3) {
-    ui.rightClickAt(key[0], key[1])
+    val k = keyNow()
+    ui.rightClickAt(k[0], k[1])
     ui.pause(600)
     if (ui.eval("return !!document.querySelector('.kfm .kfm-ease')").toString() == "true") break
 }
 val state = ui.eval("""
-  const f = Array.from(document.querySelectorAll('iframe')).find(f => (f.src || '').indexOf('/keyframe?') >= 0);
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = f.contentDocument, fr = f.getBoundingClientRect();
   const el = d.elementFromPoint(${key[0]} - fr.left, ${key[1]} - fr.top);
   const top = document.elementFromPoint(${key[0]}, ${key[1]});
@@ -276,8 +301,7 @@ ui.pause(400)
 
 `interpolant("name") { ... }` defines a key type of your own: a segment shape written in Kotlin, as the value the curve should have at each point of the segment. Inside the braces `u` runs from 0 to 1 across the segment, `t` is the time itself, `v0` and `v1` are the values of the keys either side, and `lerp(f)` is "this far from `v0` to `v1`", so `lerp(u)` is a straight line. `before` and `after` are the keys beyond the segment's two, when there are any, for a shape that needs to know where the curve came from and where it is going, as the splines do. The new types appear in the key menu, after the five built in. This box defines three: an overshoot, a wobble that dies away into the next key, and deterministic chaos, which shows that a type can be any Kotlin at all, loops and variables included:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/custom_types.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-custom-types" alt="A curve of four keys. From 0.1 at time 0 it rises fast and overshoots past 0.8, curling back down to the key at time 1.5; from there it falls towards 0.3 at time 3 in a wobble that dies away as it arrives; between time 3 and 4.5 it climbs to 0.6 through a jagged, noisy-looking scribble that starts and ends exactly on the two keys"}
-:::static
+```diffstatic {data-lang=kotlin}
 interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
 interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
 // Deterministic chaos: the logistic map, seeded by where we are, and pinned to both keys.
@@ -295,7 +319,54 @@ val custom = keyframes(name = "custom", keys = listOf(
 ))
 ```
 
-A key type is saved with the box, as its source, so a curve keeps its shape even before the box defines its types again, or after the definition has been deleted. Define a type again to change it; every segment that uses it follows. While you drag a key, a segment of your own type is drawn straight, and takes its shape again when you let go.
+Drag a key and the shapes either side of it follow, worked out in Kotlin as you move:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x330" clip="0,0,700,330" hide-toasts=true video="assets/keyframe_editor/custom_types.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml" fps="20" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-custom-types" alt="The custom curve of four keys: an overshoot from 0.1 up to the key at time 1.5, a wobble down to 0.3 at time 3, and a jagged chaotic scribble up to 0.6 at time 4.5. The second key is dragged twice round a small circle; the overshoot before it and the wobble after it stretch, flatten and re-form continuously as it moves, then it comes back to where it started"}
+ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
+val ready = """
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+  return f && f.contentDocument ? f.contentDocument.querySelectorAll('.kf-keyframe').length : 0;
+""".trimIndent()
+var tries = 0
+while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
+val keyScript = """
+  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+  const fr = f.getBoundingClientRect();
+  const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
+  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+""".trimIndent()
+// Measured only once the page has stopped moving: the panel may still be opening or panning into view.
+fun keyNow(): List<Double> {
+    var last = ""
+    repeat(30) {
+        val now = ui.eval(keyScript).toString().trim('"')
+        if (now == last) return now.split(",").map { it.toDouble() }
+        last = now
+        ui.pause(150)
+    }
+    return last.split(",").map { it.toDouble() }
+}
+val key = keyNow()
+
+// Round a circle that starts and ends on the key, twice, with Alt held so nothing snaps.
+val radius = 42.0
+val cx = key[0] - radius
+val cy = key[1]
+ui.moveMouse(key[0], key[1], 6)
+ui.pause(300)
+ui.down("Alt")
+ui.mouseDown()
+for (i in 1..160) {
+    val a = i / 80.0 * 2 * Math.PI
+    ui.moveMouse(cx + radius * Math.cos(a), cy + radius * Math.sin(a), 1)
+    ui.pause(20)
+}
+ui.mouseUp()
+ui.up("Alt")
+ui.pause(700)
+```
+
+A key type is saved with the box, as its source, so a curve keeps its shape even before the box defines its types again, or after the definition has been deleted. Define a type again to change it; every segment that uses it follows.
 
 ## Reading the curve
 
@@ -308,6 +379,7 @@ brightness.getTimeRange()              // (first key time, last key time)
 brightness.getKeyframes()              // the keys: time, value, type, handles
 brightness.setTime(1.5)                // where the editor draws its playhead
 ```
+
 
 `getTimeRange()` is how a loop wraps a curve whose length you change in the editor: `val (t0, t1) = brightness.getTimeRange()`, then use `t0 + (t % (t1 - t0))`.
 

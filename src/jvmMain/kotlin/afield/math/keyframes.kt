@@ -79,6 +79,15 @@ class KeyframeEvaluator(jsonString: String) {
         sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}, "types":${customTypesJson()}, "segments":${customSegmentsJson()}}""")
     }
 
+    /**
+     * The shapes of the custom segments for [keysJson], keys being dragged that are not this
+     * evaluator's yet: computed on a throwaway copy, so nothing is saved and nothing else changes.
+     */
+    internal fun sendPreviewSegments(keysJson: String) {
+        val preview = KeyframeEvaluator(keysJson).also { it.associatedBox = associatedBox }
+        sendIfLive("""{"type":"segments", "segments":${preview.customSegmentsJson()}}""")
+    }
+
     /** Sends only the shapes of the custom segments, after an edit in the editor changed the keys. */
     internal fun sendCustomSegments() {
         if (keyframes.zipWithNext().none { (a, _) -> segmentKind(a.type) == "custom" }) return
@@ -587,6 +596,13 @@ fun installKeyframeHandler() {
                 knownKeyframeTargets[t.getString("debug_uid")]?.session = s
                 knownKeyframeTargets[t.getString("debug_uid")]?.sendAll()
             }
+            if (t.has("debug_uid") && t.has("type") && t.getString("type") == "preview") {
+                val evaluator = knownKeyframeTargets[t.getString("debug_uid")]
+                if (evaluator != null) {
+                    evaluator.session = s
+                    evaluator.sendPreviewSegments(t.getJSONArray("keyframes").toString())
+                }
+            }
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "keyframes") {
                 val debugUid = t.getString("debug_uid")
                 knownKeyframeTargets[debugUid]?.session = s
@@ -633,7 +649,10 @@ fun installKeyframeHandler() {
  *                              used to seed the editor when no persisted data exists. Pass `"[]"` for no defaults.
  */
 private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
-    val uid = this.id + "_" + name
+    // Per document as well as per box: box ids repeat across documents (a starting point opened twice,
+    // a copied document), and two documents must not share one editor.
+    val document = if (isInsideInitialized()) inside.filename else ""
+    val uid = this.id + "_" + name + if (document.isEmpty()) "" else "_" + Integer.toHexString(document.hashCode())
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
     // With no channel the panel is named after the curve, which is what a reader wants to see.
