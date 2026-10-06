@@ -169,6 +169,7 @@ object ChatArchive {
             calls = b.programCalls().map { ChatCall(it, families.familyOf(it.name)) },
             images = b.images().map { img -> ChatImageEntry(img, resolved(chat, img)) },
             chars = b.content.length,
+            model = b.model,
             text = b.content,
         )
     }
@@ -229,6 +230,8 @@ data class ChatBlockEntry(
     val calls: List<ChatCall> = emptyList(),
     val images: List<ChatImageEntry> = emptyList(),
     val chars: Int,
+    /** The model a reply records (`<<model:…>>`), so a re-rendered block keeps its badge. */
+    val model: afield.AiChatModelIdentity? = null,
     /** The block's markdown, images as references; left out of the index file. */
     @kotlinx.serialization.Transient
     val text: String = "",

@@ -22,6 +22,11 @@ data class AiChatBlock(
      * lens summarizes, from `<<source:…>>` marker lines at the top of the block. Empty for an ordinary chat.
      */
     val sources: List<String> = emptyList(),
+    /**
+     * The block's own address in the chat it came from, from an `<<at:…>>` marker line. The chat archive adds
+     * one to every block it hands the lens viewer, so a line can be drawn to it; ordinary chats have none.
+     */
+    val address: String? = null,
 ) {
     val isProgress: Boolean get() = role.startsWith("progress")
     val title: String get() = content.lines().firstOrNull()?.trim().orEmpty()
@@ -31,20 +36,25 @@ data class AiChatBlock(
     val isStatusOnly: Boolean get() = isProgress && (body.isBlank() || body == title)
 }
 
+/** The marker lines at the top of a block: an `<<at:…>>` address and `<<source:…>>` citations, in any order. */
+data class AiChatLensMarkers(val address: String?, val sources: List<String>, val body: String)
+
 /**
- * Leading `<<source:a..b, c>>` lines: a lens block's citations of the chat it summarizes. A range runs
- * `from..to` because block addresses (`<nodeId>.b<index>`) contain `-`.
+ * Leading `<<at:address>>` and `<<source:a..b, c>>` lines. A source is a lens block's citation of the chat it
+ * summarizes; a range runs `from..to` because block addresses (`<nodeId>.b<index>`) contain `-`.
  */
-fun splitSourceMarkers(content: String): Pair<List<String>, String> {
+fun splitLensMarkers(content: String): AiChatLensMarkers {
     val sources = mutableListOf<String>()
+    var address: String? = null
     var rest = content
-    while (rest.startsWith("<<source:")) {
+    while (rest.startsWith("<<source:") || rest.startsWith("<<at:")) {
         val line = rest.substringBefore('\n')
         if (!line.endsWith(">>")) break
-        sources += line.removePrefix("<<source:").removeSuffix(">>").split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        if (line.startsWith("<<at:")) address = line.removePrefix("<<at:").removeSuffix(">>").trim()
+        else sources += line.removePrefix("<<source:").removeSuffix(">>").split(',').map { it.trim() }.filter { it.isNotEmpty() }
         rest = rest.substringAfter('\n', "").trimStart()
     }
-    return sources to rest
+    return AiChatLensMarkers(address, sources, rest)
 }
 
 private val chatMarkers = listOf("<<you>>", "<<ai>>", "<<progress>>", "<<progress-open>>", "<<queued>>")
@@ -77,9 +87,9 @@ fun parseAiChatBlocks(history: String?): List<AiChatBlock> {
         val content = buffer.toString().trim()
         if (content.isNotEmpty()) {
             val (model, rest) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
-            val (sources, body) = splitSourceMarkers(rest)
+            val markers = splitLensMarkers(rest)
             // A block that was only marker lines still renders (a model badge with no text yet), as it always has.
-            blocks.add(AiChatBlock(role, body, model, sources))
+            blocks.add(AiChatBlock(role, markers.body, model, markers.sources, markers.address))
         }
         buffer.clear()
     }

@@ -201,4 +201,22 @@ object ChatLogViews {
             "compression" to if (lensChars == 0) 0.0 else Math.round(citedChars * 10.0 / lensChars) / 10.0,
         )
     }
+
+    private val blobRef = Regex("""ai4img:([0-9a-f]{16}\.[a-z0-9.+-]+)""")
+
+    /** [markdown] with every `ai4img:` reference replaced by the URL [url] gives its blob name (`<sha>.<ext>`). */
+    fun withImageUrls(markdown: String, url: (String) -> String): String = blobRef.replace(markdown) { url(it.groupValues[1]) }
+
+    /**
+     * [blocks] as chat markup again, each with an `<<at:address>>` line, so the chat panel's renderer draws
+     * them as the panel would and tags every block with where it came from (the lens viewer's line ends).
+     */
+    fun addressedTranscript(blocks: List<ChatBlockEntry>): String = buildString {
+        for (b in blocks) {
+            append("<<").append(b.role).append(">>\n")
+            b.model?.let { append(it.marker()) }
+            append("<<at:").append(b.address).append(">>\n")
+            append(b.text.trim()).append("\n")
+        }
+    }
 }

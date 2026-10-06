@@ -5,7 +5,7 @@ let AI4 agents write **lenses**: shorter, filtered versions of the chat, drawn i
 the chat panel, with lines running across from each summary block to the stretch of the original
 it stands for. Lenses can be stacked, so the hierarchy is a lens of a lens.
 
-Status (2026-10-06): phases 1–3 built (sections 8–10); phases 4–5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
+Status (2026-10-06): phases 1–4 built (sections 8–11); phase 5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
 there is no fidelity checking. Tool records count only for which tool ran, whether it failed and
 how long it took. What matters is the shape of the chat and the moments the machine itself
 changed: notes, the house playbook, recipes, searches and stabilization.
@@ -244,3 +244,38 @@ box in a playground document (its own Field, port 9530, `AFIELD_AI_MODEL` set on
 Lessons from driving it: build the `agent-task --goal` text with `shlex.quote` in a script; a
 `$(cat …)` escaped into a `--command` string arrives literally (the agent asked for the brief
 instead of guessing). Clear a lens box's chat with `raw-send ai-chat-history {uid, clear:true}`.
+
+## 11. Phase 4: the viewer
+
+`showChatLens(chat, lens)` (box code, `ChatLensViewer.kt`) shows a lens beside its chat in the box's
+`lens` channel; `chatLens.js` draws it inside Field's own page, so both columns are the chat panel's
+`aiChatHistoryToHtml` with `field.css` and the panel's colours (the root carries `.ai-chat-window`).
+- The source column is the chat's current branch, sent with an `<<at:address>>` line on every block;
+  the renderer puts it on the block as `data-ai-address` (rounds get `data-ai-from`/`data-ai-to`).
+- A band runs from each lens block to each stretch it cites. A block folded inside a closed round is
+  represented by the round's line, so a band never points at nothing. Hover lights the band and both
+  ends; clicking either end brings the other into view; **follow** (on by default) moves the chat
+  as the lens scrolls, in proportion to how far through the lens block the reader is.
+- What the lens leaves out reads dimmer in the chat column: the lens is also a filter.
+- Lens blocks are labelled with the lens and its model (`episodes · gpt-6.1-sol`); in an ordinary
+  panel a block with sources and no model reads `Lens`.
+- Pictures come from the chat's `ai4_blobs/` through `/api/chatlog/blob` and load eagerly (a late
+  picture would move every band below it).
+- Routes `/api/chatlog/lens` and `/api/chatlog/blob` (`ChatlogRoutes.kt`) answer only for a document
+  that registered a chat archive, and only loopback + same-site: chats can hold private work. They
+  are in `dev_docs/server_surface_inventory.md`.
+- UI regression `chat-lens` builds a fixture archive in a temp folder (no model, no house data).
+
+The second lens, *episodes* over house-machine-10 on `gpt-6.1-sol`: one block per goal-sized
+episode, "Insight:" and "Machine:" marked, citations tight. 7 rounds, under 2 minutes, 260 k input
+tokens (221 k cached), 4.5 k output; 51 blocks (38 episodes, 13 requests), 3 insights, 23 machine
+changes, 8.3× shorter than what it cites. Its bands run to single replies and rounds, which is what
+the viewer needed to be useful.
+
+Found on the way: a new output channel opens closed, and the viewer measures itself, so
+`showChatLens` opens its channel; `screenshot-box` measures the output area, which the viewer
+overflows, so captures use `screenshot-window`.
+
+Left for phase 5: lens of a lens (the viewer would show three columns); abandoned branches in the
+source column when a lens cites them; the offline single-file export; a series lens across houses;
+and keeping a lens's brief in its box rather than in the chat message.

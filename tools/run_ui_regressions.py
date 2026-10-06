@@ -3992,6 +3992,17 @@ def tests(files: dict[str, Path], *, port: int, timeout: float) -> list[UiRegres
             screenshot=shell_join(["screenshot-box", "@last", "{screenshot}", "--padding", "16", "--open-outputs", "--timeout", pw_timeout]),
         ),
         UiRegression(
+            id="chat-lens",
+            description="The lens viewer draws a lens beside its chat with bands to the stretches it cites; a band into a folded round ends on the round's line, uncited blocks dim, pictures load from the chat's blobs.",
+            commands=[
+                "new-box --name ChatLensRegression --x 40 --y 40",
+                shell_join(["run", "@last", "--file", str(TOOLS_ROOT / "ui_regressions/chat-lens.kt"), "--timeout", timeout_text]),
+                shell_join(["page-eval", "--body", "--file", str(TOOLS_ROOT / "ui_regressions/chat-lens.js"), "--timeout", pw_timeout]),
+            ],
+            # screenshot-box measures the output area, which the viewer overflows; the window shows it.
+            screenshot=shell_join(["screenshot-window", "{screenshot}", "--timeout", pw_timeout]),
+        ),
+        UiRegression(
             id="viewer-panel-sizing",
             description="An embedded viewer panel reaches the size the viewer declares, instead of opening at the DEFAULT_W/DEFAULT_H constants. See dev_docs/OUTPUT_PANEL_SIZING.md.",
             commands=[
