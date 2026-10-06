@@ -3558,8 +3558,15 @@ class KotlinExecution : BoxExecution {
             reply(Message("complete").payload(emptyCompletion()))
         }
 
-        runBlocking {
-            launch(Runloop.runLoop.main) {
+        // Launched, not wrapped in runBlocking: this runs on the Netty event loop serving the browser's
+        // websocket (Server.kt launches every handler in the /ws session's scope). Blocking it for the
+        // length of a completion -- seconds on a cold K1 delegate, then candidate classification --
+        // stalled every message on that loop, keepalive pongs included, until clients dropped the
+        // connection. The runloop still does the work one completion at a time; the browser matches
+        // each reply to its own request.
+        @OptIn(DelicateCoroutinesApi::class)
+        GlobalScope.launch(Runloop.runLoop.main) {
+            try {
                 val c = runCatching {
                     inside.ki.complete(allCode, position)
                 }.getOrElse {
@@ -3644,6 +3651,13 @@ class KotlinExecution : BoxExecution {
                         replyEmpty("error")
                     }
                 }
+            } catch (t: Throwable) {
+                // A throw after the engine call (classification, enrichment) used to go unanswered, and
+                // the popup waited out its timeout.
+                completionFailure(
+                    "completion exception uid='${inside.id}' property='$property' position=$position error='${t.javaClass.simpleName}: ${t.message.orEmpty()}'"
+                )
+                replyEmpty("exception")
             }
         }
     }
