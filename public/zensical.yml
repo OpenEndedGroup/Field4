@@ -122,6 +122,8 @@ nav:
       - Proving a Function's Range: fn_intervals.md
     - Time & Signals:
       - Values Over Time (Interpolants & Keyframes): interpolants_examples.md
+      # Directly after the interpolants page: that page eases a value from code, this one draws it.
+      - Keyframe Editor: keyframe_editor.md
       # Directly after the interpolants page, which is the other half of the same subject: that
       # page is a value eased once to a target that stays put, this one is springs and a steering
       # model for a target that keeps moving. Filed under Time & Signals rather than beside

@@ -116,6 +116,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `keyframe_editor.yaml` — the keyframe editor page's three boxes: a curve played into a meter, one key of each type, and an `onChange` overlay.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
   `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one

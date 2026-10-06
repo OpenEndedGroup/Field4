@@ -1121,6 +1121,18 @@ is provably inside the search space. The empty half of that cost plane is the fi
 
 [Open ↗](offline.html?file=assets/agent_transcripts/morpho_circuit_search/metadata.edn)
 
+### keyframe_editor
+
+The keyframe editor, `keyframes(...)`, as the three boxes of its page,
+[The keyframe editor](keyframe_editor.md). `brightness` plays a hand-drawn curve with a `loop`, moving
+the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
+curve while it plays. `shape` starts a curve with one key of each type through
+`keys = listOf(Keyframe(...))`. `smoothed` draws a smoothed copy of its curve as an overlay and keeps
+it up to date with `onChange`. CI launches `brightness`, executes the other two, advances 90 frames,
+and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes
