@@ -98,8 +98,8 @@ a machine that has never completed an online build.
 On the first **interactive** launch, a small Kotlin welcome tool runs before Field's full build.
 Choose the recommended desktop app or browser/server mode, then select optional features from
 the checkbox list: **Up/Down** moves, **Space** toggles and **Enter** reviews your choices.
-Prerequisites appear at the right. Features with missing tools are disabled; install those
-prerequisites and rerun setup to enable them. Unsupported platform features and NVIDIA-only
+Prerequisites appear at the right. Features with missing tools are disabled unless Windows
+setup can install every missing tool through winget. Install other prerequisites and rerun setup. Unsupported platform features and NVIDIA-only
 features without a working `nvidia-smi` are omitted. Limited terminals use numbered checkboxes:
 type numbers or names to toggle, then Enter to review. Leave everything unchecked to skip extras.
 It shows the exact package-manager commands and requires typing `INSTALL`
@@ -114,6 +114,14 @@ The menu covers Python/JEP, computer vision and voice; Vulkan/OpenXR and shader 
 Ceres, TetGen, Manifold and paint; Pure Data, Csound and LuaJIT; and optional
 physics, video, audio-AI and training workers, guide/template services and audio samples. It also includes agent and documentation tooling.
 Kotlin, JavaScript, Faust, ordinary audio and browser drawing work without selecting any extras.
+
+On Windows, setup uses winget when it is available. It offers missing CPython 3.12, uv,
+CMake, Rustup and Git LFS with exact package IDs, interactive installers and no upgrades to
+existing installations. Selectable rows marked **install:** need those prerequisites first.
+After `INSTALL`, open a fresh terminal and rerun `.\field.bat --setup` before optional builds
+so the new PATH is visible. In Python's installer, enable **Add python.exe to PATH**.
+Visual Studio C++ Build Tools, GPU drivers and Vulkan SDK setup remain in their feature guides.
+Without winget, install or update Microsoft's App Installer, or follow the manual instructions.
 
 For the native libraries and learned shaders that Field has a preparation task for, setup shows
 that task and checks its build tools. Type **BUILD** to run it, or leave it for later. **INSTALL**

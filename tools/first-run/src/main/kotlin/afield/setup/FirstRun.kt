@@ -88,6 +88,12 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
             if (packages.isNotEmpty()) commands += listOf("sudo", "pacman", "-S", "--needed", "--") + packages
             if (packages.isNotEmpty()) notes += "Use a fully updated Arch system. If package downloads return 404, update the system normally before retrying."
         }
+        "winget" -> {
+            val winget = wingetPlan(missing)
+            commands += winget.commands
+            notes += winget.notes
+            if ("vulkan" in extras) notes += "Use Field's Vulkan panel for Windows GPU driver/SDK setup."
+        }
         "brew" -> {
             if ("git-lfs" in missing) packages += "git-lfs"
             if (python) packages += "python@3.12"
@@ -109,7 +115,7 @@ internal fun packagePlan(manager: String?, desktop: Boolean, missing: Set<String
     }
     if ("python" in extras) notes += "This installs Python prerequisites, not JEP. After launch, select the interpreter in the Python panel and install JEP matching Field's bundled 4.3.1 JAR."
     if ("vulkan" in extras) notes += "Vulkan diagnostics are not a GPU driver. Install the driver for your GPU and check the Vulkan panel after launch."
-    if ("uv" in missing) notes += "Install uv using its official instructions before running the selected Python/agent/shader tools: https://docs.astral.sh/uv/getting-started/installation/"
+    if ("uv" in missing && manager != "winget") notes += "Install uv using its official instructions before running the selected Python/agent/shader tools: https://docs.astral.sh/uv/getting-started/installation/"
     if ("cl" in missing) notes += "Native Windows builds need Visual Studio C++ Build Tools; rerun setup from its Developer PowerShell so cl.exe is on PATH."
     if (manager == "brew" && "csound" in extras) notes += "Homebrew flex/bison may be keg-only; expose their bin directories on PATH before building Csound."
     return InstallPlan(commands, notes)
@@ -124,6 +130,8 @@ internal fun findExecutable(name: String, environment: Map<String, String> = Sys
 }
 
 internal fun toolAvailable(name: String): Boolean {
+    // Windows' App Execution Alias can exist without an installed Python interpreter.
+    if (name == "python" && System.getProperty("os.name").startsWith("Windows")) return commandWorks("python", "--version")
     if (findExecutable(name) != null) return true
     if (name != "git-lfs") return false
     // Git for Windows can resolve bundled LFS through its exec-path even when only Git/cmd is
@@ -151,7 +159,7 @@ private fun readAnswer(prompt: String): String? {
 private fun runCommand(command: List<String>, root: File): Boolean {
     terminalUi.paragraph("Running")
     terminalUi.command(command)
-    return runCatching { ProcessBuilder(command).directory(root).inheritIO().start().waitFor() == 0 }
+    return runCatching { commandSucceeded(command, ProcessBuilder(command).directory(root).inheritIO().start().waitFor()) }
         .onFailure { println(terminalUi.error("Could not run it: ${it.message}")) }.getOrDefault(false)
 }
 
@@ -181,6 +189,7 @@ fun main(args: Array<String>) {
     val manager = when {
         os.startsWith("Mac") -> "brew".takeIf { toolAvailable(it) }
         os.startsWith("Linux") -> listOf("apt-get", "dnf", "pacman").firstOrNull { toolAvailable(it) }
+        os.startsWith("Windows") -> "winget".takeIf { commandWorks(it, "--version") }
         else -> null
     }
     val basic = mutableSetOf("git-lfs")
@@ -194,6 +203,7 @@ fun main(args: Array<String>) {
     val lfsPointers = hasLfsPointers(root)
     ui.status("Compiler content", if (lfsPointers) "Git LFS download needed" else "present", lfsPointers)
     if (root.usableSpace < 10_000_000_000L) ui.paragraph("Make room before the initial build or optional downloads.")
+    if (platform == "windows" && manager == null) ui.paragraph("Winget is unavailable. Install or update Microsoft's App Installer, or install prerequisites manually.", dim = true)
     if (!interactive) {
         printExtras(root, platform)
         ui.paragraph("Read-only report: no interactive terminal, no packages installed, no preferences changed.")
@@ -208,13 +218,15 @@ fun main(args: Array<String>) {
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
     ui.section(2, "Make it yours")
-    val options = featureOptions(platform)
+    val options = featureOptions(platform, winget = manager == "winget")
     val remembered = previous.getProperty("extras", "").split(',').filter(String::isNotEmpty).toSet()
     val extras = selectFeatures(options, remembered) ?: return
     val applicable = extrasCatalog.filter { it.id in extras && platform in it.platforms }.map { it.id }.toSet()
     val required = basic.filter { mode == "1" || it in setOf("git-lfs", "curl", "tar", "gzip") }
-    val selectedTools = required.toSet() + extraTools(extras, platform)
-    val selectedMissing = selectedTools.filter { !toolAvailable(it) }.toSet()
+    val selectedTools = required.toSet() + extraTools(extras, platform) +
+        if (platform == "windows" && "paint" in extras) setOf("rustup") else emptySet()
+    val selectedMissing = selectedTools.filter { !toolAvailable(it) }.toSet() +
+        options.filter { it.extra.id in extras }.flatMap { it.missing }
     val release = File("/etc/os-release").takeIf { it.isFile }?.readText().orEmpty()
     val proposed = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release))
     val plan = if (manager == "pacman") omitInstalledPacmanPackages(proposed, installedPacmanPackages(proposed)) else proposed
@@ -236,12 +248,16 @@ fun main(args: Array<String>) {
     }
     println()
     ui.paragraph("Only the commands you approve will run. No API keys requested; no services started or LAN access enabled.", dim = true)
+    var installed = false
     if (plan.commands.isNotEmpty()) {
         ui.paragraph("Your package manager may ask for administrator credentials.", dim = true)
         val install = readAnswer("INSTALL to run system packages / Enter for later: ") ?: return
-        if (install == "INSTALL" && plan.commands.any { !runCommand(it, root) }) {
-            println(ui.error("Installation failed. Fix the reported error and rerun --setup."))
-            exitProcess(1)
+        if (install == "INSTALL") {
+            if (plan.commands.any { !runCommand(it, root) }) {
+                println(ui.error("Installation failed. Fix the reported error and rerun --setup."))
+                exitProcess(1)
+            }
+            installed = true
         }
     }
     // Only obtain LFS content with the human's explicit consent, and never interpret a shell string.
@@ -256,7 +272,8 @@ fun main(args: Array<String>) {
     }
     val ready = required.all { toolAvailable(it) } && !hasLfsPointers(root)
     var built = false
-    if (prepare.isNotEmpty()) {
+    val deferPreparation = shouldDeferPreparation(manager, installed)
+    if (prepare.isNotEmpty() && !deferPreparation) {
         if (readAnswer("BUILD to prepare the displayed extras / Enter for later: ") == "BUILD") {
             // Only tools for executable preparations gate BUILD; guidance-only selections do not.
             val buildExtras = extrasCatalog.filter { it.id in applicable && it.task != null }.map { it.id }.toSet()
@@ -293,6 +310,7 @@ fun main(args: Array<String>) {
     ui.section(4, if (ready) "You're set" else "A little more to do")
     if (ready) ui.success("Ready for Field's first build") else println(ui.warning("Required tools or Git LFS content are still missing."))
     ui.paragraph("Saved choices: ${config.absolutePath}", dim = true)
+    if (deferPreparation) ui.paragraph("Windows tools installed or already present. Open a fresh terminal and rerun .\\field.bat --setup so PATH changes are visible; optional builds have been left for later.")
     if (extras.isNotEmpty()) ui.paragraph("Selected extras are saved requests. Preparation and runtime availability are separate checks.", dim = true)
     println()
     ui.paragraph("Launch: ${if (os.startsWith("Windows")) ".\\field.bat" else "./field.sh"}${if (mode == "2") " --server-only" else ""}")

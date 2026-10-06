@@ -62,11 +62,7 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
 
     fun welcome() {
         println("\n${wordmark()}\n")
-        val title = if (width >= 40) "FIELD 4  /  MAKE YOURSELF AT HOME" else "FIELD 4 / SETUP"
-        println(" ".repeat(((width - title.length) / 2).coerceAtLeast(0)) + strong(title))
-        println()
-        paragraph("Code, graphics, sound. A workspace for trying things.")
-        paragraph("Let's get the essentials ready. Everything else can wait.", dim = true)
+        paragraph("Field·4 is an experimental, live-coding environment for new-media art and data visualization.")
     }
 
     fun section(number: Int, title: String, total: Int = 4) {
