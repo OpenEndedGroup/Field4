@@ -142,8 +142,8 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
-        // The keyframe editor: a launched loop playing a curve into a meter, and two executed boxes
-        // (typed keys; an onChange overlay). Pure CPU — the editor is an iframe in `display` — so what
+        // The keyframe editor: a launched loop playing a curve into a meter, and three executed boxes
+        // (typed keys; an onChange overlay; key types of its own with interpolant(...)). Pure CPU — the editor is an iframe in `display` — so what
         // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
         // through the real box path.
         "keyframe_editor",

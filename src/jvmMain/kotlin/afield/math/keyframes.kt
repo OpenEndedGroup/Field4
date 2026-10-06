@@ -79,22 +79,36 @@ class KeyframeEvaluator(jsonString: String) {
         sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}, "types":${customTypesJson()}, "segments":${customSegmentsJson()}}""")
     }
 
+    /**
+     * The shapes of the custom segments for [keysJson], keys being dragged that are not this
+     * evaluator's yet: computed on a throwaway copy, so nothing is saved and nothing else changes.
+     */
+    internal fun sendPreviewSegments(keysJson: String) {
+        val preview = KeyframeEvaluator(keysJson).also { it.associatedBox = associatedBox }
+        sendIfLive("""{"type":"segments", "segments":${preview.customSegmentsJson()}}""")
+    }
+
     /** Sends only the shapes of the custom segments, after an edit in the editor changed the keys. */
     internal fun sendCustomSegments() {
         if (keyframes.zipWithNext().none { (a, _) -> segmentKind(a.type) == "custom" }) return
         sendIfLive("""{"type":"segments", "segments":${customSegmentsJson()}}""")
     }
 
-    // Each custom type with a small drawing of it (0 to 1 across, 0 to 1 up) for the key menu.
+    // Every type beyond the built-in five — the library's, then this box's — with where it sits in
+    // the menu and a small drawing of it (0 to 1 across, 0 to 1 up), between made-up neighbours.
     private fun customTypesJson(): String {
-        val types = interpolantsFor(associatedBox)
-        return types.values.joinToString(",", "[", "]") { it ->
-            val icon = (0..16).joinToString(",", "[", "]") { i ->
-                val u = i / 16.0
-                val v = it.evaluate(KeySegment(u, u, 0.0, 1.0, 0.0, 1.0))
+        val types = libraryInterpolants.values + interpolantsFor(associatedBox).values
+        return types.joinToString(",", "[", "]") { it ->
+            val icon = (0..24).joinToString(",", "[", "]") { i ->
+                val u = i / 24.0
+                val v = it.evaluate(KeySegment(u, u, 0.0, 1.0, 0.0, 1.0, ICON_BEFORE, ICON_AFTER))
                 "[${fmt(u)},${fmt(v)}]"
             }
-            """{"name":${Json.encodeToString(it.name)},"icon":$icon}"""
+            val e = it.entry
+            val meta = if (e == null) """"label":${Json.encodeToString(it.name)},"group":"This box""""
+            else """"label":${Json.encodeToString(e.label)},"group":${Json.encodeToString(e.group)}""" +
+                (e.family?.let { f -> ""","family":${Json.encodeToString(f)},"variant":${Json.encodeToString(e.variant)}""" } ?: "")
+            """{"name":${Json.encodeToString(it.name)},$meta,"icon":$icon}"""
         }
     }
 
@@ -381,7 +395,10 @@ class KeyframeEvaluator(jsonString: String) {
     private fun customValue(prev: Keyframe, next: Keyframe, time: Double): Double {
         val span = max(next.time - prev.time, EPSILON)
         val u = ((time - prev.time) / span).coerceIn(0.0, 1.0)
-        return custom(prev.type)!!.evaluate(KeySegment(time, u, prev.time, next.time, prev.value, next.value))
+        val i = keyframes.indexOf(prev)
+        val before = if (i > 0) keyframes[i - 1] else null
+        val after = if (i >= 0) keyframes.getOrNull(i + 2) else null
+        return custom(prev.type)!!.evaluate(KeySegment(time, u, prev.time, next.time, prev.value, next.value, before, after))
     }
 
     private fun buildRationalControls(prev: Keyframe, next: Keyframe, span: Double): BezierControls {
@@ -487,6 +504,11 @@ class KeyframeEvaluator(jsonString: String) {
 
     companion object {
         private const val EPSILON = 1e-6
+
+        // The neighbours a menu icon is drawn between, so the splines have something to look at.
+        // Chosen to pull against the segment, so tension, bias and monotonicity look different.
+        private val ICON_BEFORE = Keyframe(-1.0, 0.9, "linear")
+        private val ICON_AFTER = Keyframe(2.0, 0.1, "linear")
     }
 }
 
@@ -574,6 +596,13 @@ fun installKeyframeHandler() {
                 knownKeyframeTargets[t.getString("debug_uid")]?.session = s
                 knownKeyframeTargets[t.getString("debug_uid")]?.sendAll()
             }
+            if (t.has("debug_uid") && t.has("type") && t.getString("type") == "preview") {
+                val evaluator = knownKeyframeTargets[t.getString("debug_uid")]
+                if (evaluator != null) {
+                    evaluator.session = s
+                    evaluator.sendPreviewSegments(t.getJSONArray("keyframes").toString())
+                }
+            }
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "keyframes") {
                 val debugUid = t.getString("debug_uid")
                 knownKeyframeTargets[debugUid]?.session = s
@@ -620,7 +649,10 @@ fun installKeyframeHandler() {
  *                              used to seed the editor when no persisted data exists. Pass `"[]"` for no defaults.
  */
 private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
-    val uid = this.id + "_" + name
+    // Per document as well as per box: box ids repeat across documents (a starting point opened twice,
+    // a copied document), and two documents must not share one editor.
+    val document = if (isInsideInitialized()) inside.filename else ""
+    val uid = this.id + "_" + name + if (document.isEmpty()) "" else "_" + Integer.toHexString(document.hashCode())
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
     // With no channel the panel is named after the curve, which is what a reader wants to see.

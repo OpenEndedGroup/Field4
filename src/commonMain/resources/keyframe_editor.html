@@ -65,6 +65,10 @@
                 onChange() {
                         broadcastKeyframes('change');
                 },
+                onPreview(keyframes) {
+                        // Shapes for a drag in progress: the box answers with a 'segments' message.
+                        sendMessage({ type: 'preview', keyframes });
+                },
         });
 
         // Resize the editor when the iframe / container is resized

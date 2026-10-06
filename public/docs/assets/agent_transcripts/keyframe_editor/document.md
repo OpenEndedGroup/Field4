@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 3 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 4 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. shape
@@ -89,5 +89,42 @@ loop {
     brightness.setTime(t)
     level.set(brightness.evaluateValueAt(t))
 }
+```
+
+## 4. custom types
+
+<!-- field-box id="kf_custom" index="3" -->
+
+### Narrative
+
+From `code`
+
+Run this box: three key types written in Kotlin. Each returns the curve's value across a
+segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
+Right-click a key and they are in the menu, after the five built in.
+
+```edn [field-box id="kf_custom" role="properties"]
+{"id" "kf_custom" "index" 3 "name" "custom types" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "custom types" "_tombstone" false "frame" #afield/rect [760.0 520.0 300.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "kf_custom_code_.kt" "lines" 18 "characters" 830 "sha256" "2b5e5aa4ee39a55d740841c30bed3cccafddb7a20150f65b96611accd4a2695b"}]}
+```
+
+```kotlin [field-property box="kf_custom" name="code" path="kf_custom_code_.kt"]
+// Run this box: three key types written in Kotlin. Each returns the curve's value across a
+// segment; u runs 0 to 1, lerp(f) is "f of the way from this key's value to the next".
+// Right-click a key and they are in the menu, after the five built in.
+interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
+interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+// Deterministic chaos: the logistic map, seeded by where we are, and pinned to both keys.
+interpolant("chaos") {
+    var x = 0.1 + 0.8 * u
+    repeat(30) { x = 3.97 * x * (1 - x) }
+    lerp(u) + 0.25 * sin(PI * u) * (x - 0.5)
+}
+
+val custom = keyframes(name = "custom", keys = listOf(
+    Keyframe(0.0, 0.1, "overshoot"),
+    Keyframe(1.5, 0.8, "wobble"),
+    Keyframe(3.0, 0.3, "chaos"),
+    Keyframe(4.5, 0.6, "linear"),
+))
 ```
 
