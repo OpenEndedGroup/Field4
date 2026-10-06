@@ -1325,6 +1325,7 @@ export class KeyframeEditor {
                 this.renderKeyframes();
                 this.renderGraph();
                 this._renderBackendOverlays();
+                this._updateGraphDimming();
                 this.renderPlayhead();
         }
 
@@ -1588,6 +1589,10 @@ export class KeyframeEditor {
                                 attrs['stroke-dasharray'] = ov.dashArray;
                         }
                         const path = createSVGElement('path', attrs);
+                        // Inline, because the group sits inside .kf-overlay, whose stylesheet stroke
+                        // would otherwise win over the attribute and turn every overlay grey.
+                        path.style.stroke = ov.color;
+                        path.style.strokeWidth = String(ov.strokeWidth);
                         this.backendOverlayGroup.appendChild(path);
                 }
         }

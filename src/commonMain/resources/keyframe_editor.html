@@ -78,8 +78,8 @@
                 ro.observe(host);
         }
 
-        let playhead = timeRange[0];
-        editor.setPlayhead(playhead);
+        // No playhead until the box sets one (setTime): a curve nobody is playing has none.
+        let playhead = null;
 
 
         connectWebSocket();
@@ -266,9 +266,22 @@
                 if (!Array.isArray(keyframes)) return;
                 syncState.isApplyingRemote = true;
                 editor.keyframes = keyframes.map((kf) => editor.prepareKeyframe(kf));
+                // A bezier key that arrives without handles (keys = listOf(Keyframe(...)) in a box)
+                // gets the handles the editor would give it, from its neighbours. They go back to
+                // the box once, so the curve it evaluates is the curve drawn here.
+                let derived = false;
+                keyframes.forEach((source, i) => {
+                        const kf = editor.keyframes[i];
+                        if (!source.handles && editor.getHandleModeForType(kf.type)) {
+                                editor.initializeHandlesFromNeighbors(kf);
+                                editor.applyHandleMode(kf);
+                                derived = true;
+                        }
+                });
                 fitViewToKeyframes(editor.keyframes);
                 editor.refresh({ notify: false });
                 syncState.isApplyingRemote = false;
+                if (derived) editor.refresh();
                 if (typeof playheadOverride === 'number') {
                         applyRemotePlayhead(playheadOverride);
                 }

@@ -194,7 +194,8 @@ class KeyframeEvaluator(jsonString: String) {
     /**
      * Callback invoked whenever the keyframe data changes (e.g. user edits in the UI).
      * Receives the updated list of [Keyframe]s.
-     * If it returns an [Fn], that function is displayed as an overlay on the editor.
+     * If it returns an [Fn], that function replaces the editor's overlay (the one [setOverlay] draws
+     * with its default id).
      * Return `null` to leave the overlay unchanged, or clear it explicitly with [clearOverlay].
      */
     var onChange: ((List<Keyframe>) -> Fn?)? = null
@@ -581,7 +582,9 @@ fun installKeyframeHandler() {
                 if (evaluator != null) {
                     val overlayFn = evaluator.onChange?.invoke(evaluator.getKeyframes())
                     if (overlayFn != null) {
-                        evaluator.setOverlay(overlayFn, id = "_onChange")
+                        // The same overlay setOverlay(fn) draws, so a box can draw it at start and
+                        // let onChange keep it up to date: `k.setOverlay(f(keys)); k.onChange = f`.
+                        evaluator.setOverlay(overlayFn)
                     }
                 }
 
@@ -627,9 +630,11 @@ private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJs
     if (!alreadyLive) {
         display(
             displayChannel, """
-<iframe src='/keyframe?uid=${uid}' style='border:none;padding:0;margin:0;width:100%;height:100%'>
+<iframe src='/keyframe?uid=${uid}' data-afield-intrinsic-width='560' data-afield-intrinsic-height='232' style='border:none;padding:0;margin:0;width:100%;min-width:560px;height:232px !important;display:block'>
 """
         )
+        // The editor is a fixed 200 px tall, hence `height … !important`: field.css stretches panel
+        // iframes to 100% !important, and a panel whose content reaches its bottom never shrinks.
         // An editor exists to be drawn in, so show it. Only when it is first shown: an editor the
         // person collapsed stays collapsed across reruns, because a live one is not re-sent.
         if (existing == null) displayOpen(displayChannel)

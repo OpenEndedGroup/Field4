@@ -11,7 +11,8 @@ This page collects the tools for all three and draws the motion in each, with a
 `showSignals` plot where the value is a signal over time and an `FLine` where the
 shape is spatial.
 For recovering a hidden value from noisy measurements, see
-[State estimation](state_estimation_examples.md).
+[State estimation](state_estimation_examples.md). To draw a value over time by
+hand rather than ease it from code, see [The keyframe editor](keyframe_editor.md).
 
 ## Interpolants: easing a value to a target
 
