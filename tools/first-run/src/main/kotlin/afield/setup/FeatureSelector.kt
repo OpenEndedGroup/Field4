@@ -7,8 +7,8 @@ import org.jline.terminal.TerminalBuilder
 import org.jline.utils.InfoCmp.Capability
 import java.util.concurrent.TimeUnit
 
-internal data class FeatureOption(val number: Int, val extra: Extra, val prerequisites: List<String>, val missing: List<String>) {
-    val enabled get() = missing.isEmpty()
+internal data class FeatureOption(val number: Int, val extra: Extra, val prerequisites: List<String>, val missing: List<String>, val installable: Set<String> = emptySet()) {
+    val enabled get() = missing.all { it in installable }
 }
 
 internal fun commandWorks(vararg arguments: String): Boolean = runCatching {
@@ -23,6 +23,7 @@ internal fun featureOptions(
     nvidia: Boolean = commandWorks("nvidia-smi", "-L"),
     rustErrors: List<String> = paintToolchainErrors(),
     rustup: Boolean = commandWorks("rustup", "show", "active-toolchain"),
+    winget: Boolean = false,
 ): List<FeatureOption> = extrasCatalog.mapIndexedNotNull { index, extra ->
     // Keep catalog numbers stable even when a platform-specific feature is omitted.
     if (platform !in extra.platforms || extra.id == "syphon") return@mapIndexedNotNull null
@@ -36,7 +37,8 @@ internal fun featureOptions(
             if (name !in missing) missing += "$name >=1.85"
         }
     }
-    FeatureOption(index + 1, extra, tools + if (gpu) listOf("NVIDIA") else emptyList(), missing)
+    FeatureOption(index + 1, extra, tools + if (gpu) listOf("NVIDIA") else emptyList(), missing,
+        if (platform == "windows" && winget) wingetPackages.keys else emptySet())
 }
 
 internal class FeatureSelection(val options: List<FeatureOption>, initial: Set<String> = emptySet()) {
@@ -51,7 +53,11 @@ internal class FeatureSelection(val options: List<FeatureOption>, initial: Set<S
 
 internal fun featureRow(ui: TerminalUi, option: FeatureOption, checked: Boolean, focused: Boolean = false): String {
     val prefix = "${if (focused) ">" else " "} ${option.number.toString().padStart(2, ' ')} [${if (checked) "x" else if (!option.enabled) "-" else " "}] "
-    val requirements = if (!option.enabled) "needs ${option.missing.joinToString(", ")}" else option.prerequisites.joinToString(", ")
+    val requirements = when {
+        !option.enabled -> "needs ${option.missing.joinToString(", ")}"
+        option.missing.isNotEmpty() -> "install: ${option.missing.joinToString(", ")}"
+        else -> option.prerequisites.joinToString(", ")
+    }
     // Keep one row per feature. Narrow terminals abbreviate the title before the prerequisites.
     val maxRight = (ui.width - prefix.length - 12).coerceAtLeast(0)
     fun shorten(text: String, limit: Int) = if (text.length <= limit) text else if (limit >= 3) text.take(limit - 3) + "..." else text.take(limit)
@@ -60,7 +66,7 @@ internal fun featureRow(ui: TerminalUi, option: FeatureOption, checked: Boolean,
     val gap = " ".repeat((ui.width - prefix.length - title.length - right.length).coerceAtLeast(0))
     val label = if (option.enabled) ui.strong(title) else ui.crossed(title)
     return (if (focused) ui.accent(prefix) else ui.quiet(prefix)) + label + gap +
-        if (option.enabled) ui.quiet(right) else ui.warning(right)
+        if (option.missing.isEmpty()) ui.quiet(right) else ui.warning(right)
 }
 
 internal fun selectFeatures(options: List<FeatureOption>, initial: Set<String>): Set<String>? {
