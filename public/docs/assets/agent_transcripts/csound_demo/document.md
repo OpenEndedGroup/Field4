@@ -221,7 +221,7 @@ From `code`
 Launch "pluck" first. Every line here talks to the Csound it is playing.
 
 ```edn [field-box id="cs_talk" role="properties"]
-{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 16 "characters" 817 "sha256" "48f469c0807467c6826a9163cae7487fe06818b5e4f299011e7d2c7ccf42054f"}]}
+{"id" "cs_talk" "index" 6 "name" "talk to pluck" "parents" ["root"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root"} "name" "talk to pluck" "_tombstone" false "frame" #afield/rect [40.0 320.0 160.0 80.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "cs_talk_code_.kt" "lines" 19 "characters" 1028 "sha256" "885e40d1dada63470823ff50a1ef7244be2fa88933d6163e6e7c7105d7e24b72"}]}
 ```
 
 ```kotlin [field-property box="cs_talk" name="code" path="cs_talk_code_.kt"]
@@ -231,6 +231,9 @@ val pluck = csoundOf("pluck").csound
 pluck.setChannel("cutoff", 900)                 // chnget "cutoff" reads it next k-cycle
 pluck.setStringChannel("voice", "from Kotlin")  // an S channel; Reverb outvalues it back
 println("level now: ${"%.4f".format(pluck.channel("level"))}")
+
+// Every channel the orchestra allocated, with the range chn_k declared for it.
+pluck.channels().forEach { c -> println("${c.name}: ${c.hints?.let { "${it.default} in ${it.min}..${it.max}" } ?: "no hints"}") }
 
 // Score events with p-fields from Kotlin values: a rising arpeggio, half a second apart.
 listOf(57, 60, 64, 69).forEachIndexed { k, note ->

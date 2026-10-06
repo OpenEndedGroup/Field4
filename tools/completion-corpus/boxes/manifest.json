@@ -113,7 +113,7 @@
   {"doc": "csound_demo", "box": "cs_measured", "codeSha256": "a4fcc807aada77b5", "codeLines": 18, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "csound_demo", "box": "cs_root", "codeSha256": "b23df90773d7f2a2", "codeLines": 2, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "csound_demo", "box": "cs_table", "codeSha256": "8a44250daa7e1a63", "codeLines": 20, "receivers": ["afield.Box"], "preamble": ""},
-  {"doc": "csound_demo", "box": "cs_talk", "codeSha256": "0e036960ecfbbc70", "codeLines": 16, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "csound_demo", "box": "cs_talk", "codeSha256": "1a510b41aaaecaf5", "codeLines": 19, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "dataframe_typed_columns", "box": "dataframe_derived", "codeSha256": "929fb4b80f76071c", "codeLines": 15, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "dataframe_typed_columns", "box": "dataframe_live", "codeSha256": "501b20b83cea1b0d", "codeLines": 27, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "dataframe_typed_columns", "box": "dataframe_one_pass", "codeSha256": "f678b808aafef606", "codeLines": 13, "receivers": ["afield.Box"], "preamble": ""},
