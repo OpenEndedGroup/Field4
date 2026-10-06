@@ -121,12 +121,7 @@ operations:
           // which is before any code in the next fragment runs — so the slots have to be
           // registered here, in an earlier fragment, or {{ mega.all }} has nothing to resolve to.
           //%-
-          // The renderer comes from the `agent_graphics_context` parent this box is connected
-          // under, and it is fetched rather than inherited so the box still *compiles* on its own —
-          // which is what the transcript corpus harness does to it. `afield_four_traditional_triangle`,
-          // the other child of that parent, has always done it this way.
-          val renderer: Renderer = fromContext()
-
+          // `renderer` is inherited from the `agent_graphics_context` parent this box is connected under.
           val camera = Camera()
           camera.at = vec(0, 0, -18)
           var kc by keyCamera(camera = camera)

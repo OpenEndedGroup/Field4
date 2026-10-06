@@ -31,54 +31,49 @@ expect:
  *
  * Runnable-object test style, matching [ReplBootstrapGateTest].
  *
- * ### RED since 2026-08-25, deliberately: an upstream 2.4.20 REPL regression
+ * ### Red from 2026-08-25 to 2026-10-04: Wither's IR pass never recognised its own `with`
  *
- * [testReceiverInjection] fails with an `IrErrorCallExpression` reaching codegen:
+ * [testReceiverInjection] failed with an `IrErrorCallExpression` reaching codegen:
  *
  *     Unresolved reference: this@R|<local>/<with holder>|
  *     AssertionError: Unexpected IR element found during code generation ... or it should have been lowered
  *
- * It is left failing on purpose. What is known, so nobody re-derives it:
+ * fir2ir emitting that error call is expected. Wither's FIR half binds the injected receiver to a
+ * synthetic holder that fir2ir cannot translate, and its IR half (`WitherReceiverTransformer`) exists
+ * to patch it: it removes each `with(...)` statement, stores the argument in a temporary, and
+ * replaces each `<with holder>` error call with a read of that temporary. The bug was that the pass
+ * never matched the `with(...)` call. The IR dump in the failure still held
  *
- *  - **Not our fork patches.** Control matrix: the whole pre-uplift jar set passes; the uplifted set
- *    with our patched files reverted to `origin/2.4.20` still fails; the uplifted+patched set fails.
- *    See the memory note `kotlin-fork-uplift-recipe`.
- *  - **Not plugin-jar drift.** `libs/wither-plugin.jar` was rebuilt from `~/temp/wither` at the same
- *    commit that produced the working jar, against the uplifted fork: 18 classes, identical surface,
- *    same failure. (When rebuilding: `-jvm-target 22`, not 24 — the compiler host is a JDK 22 and
- *    class file 68 will not load — plus `-opt-in=…ExperimentalCompilerApi` and
- *    `-opt-in=…UnsafeDuringIrConstructionAPI` from its build file.)
- *  - **REPL-only, and shape-independent.** The same program in a plain `.kt` file compiles and prints
- *    `hi-W` on the uplifted compiler. Inside a snippet, all six shapes tried fail identically: named
- *    fun at snippet top level, bare snippet body, local fun, lambda, member fun of a snippet class,
- *    property initializer. So there is no box-code spelling that avoids it.
- *  - **Where it dies.** `Fir2IrVisitor.visitThisReceiverExpression` dispatches on
- *    `calleeReference.referencedMemberSymbol` over four symbol kinds (class / script / REPL-snippet /
- *    callable) and falls to `else -> null` for anything else, then to `visitQualifiedAccessExpression`,
- *    which emits the error call above at `CallAndReferenceGenerator.kt:1285`. Wither binds its
- *    rewritten `this` to a synthetic `FirReceiverParameter` (`fakeLegacyReceiver`, built in
- *    `WitherContextArgumentCleaner`), which is none of those four. The REPL branch that does exist,
- *    `generateThisReceiverAccessForReplSnippet`, only maps receivers already in
- *    `firSnippet.receivers` — the snippet's *declared* implicit receivers, i.e. `Box` — matched by
- *    index, and a plugin cannot add itself to that list.
- *  - **Not yet proven:** why the plain-file path succeeds. Either the `FirCallableSymbol` branch finds
- *    an `IrParameterKind.ExtensionReceiver` on the parents stack (`Fir2IrVisitor.kt:906`, which
- *    `?: return null`s when absent), or `injectGetValueCall` short-circuits first. Which one it is
- *    decides whether a fix teaches the REPL branch about plugin-injected receivers or fixes the
- *    callable branch for snippet-class members.
+ *     CALL 'public final fun with (vararg values: kotlin.Any?): kotlin.Unit [companion] declared in io.github.kyay10.wither.WithKt'
  *
- * The repro, for whoever picks this up — five lines through any [KotlinInterface2]:
+ * The callee comes from `libs/wither-annotations.jar`, and in IR its parent is the JVM file facade
+ * class, not the package fragment. A temporary probe in the pass printed `parent=IrClassImpl
+ * parentOrigin=FILE_CLASS isTopLevel=true kotlinFqName=io.github.kyay10.wither`. Wither matched on
+ * `callableId` against the package-level `CallableId(io.github.kyay10.wither, with)`; under a
+ * facade class that id is `io/github/kyay10/wither/WithKt.with`, so the two were never equal. (Since
+ * 5052517 the pass refused any parent that was not a package fragment, which fails the same way.)
+ * `~/temp/wither` `field/kotlin-2.5.0-beta1` @ face220 accepts both top-level shapes and compares
+ * package plus name.
  *
- *     class Greeter(val name: String) { fun greet(): String = "hi-" + name }
- *     fun demo(): String { io.github.kyay10.wither.with(Greeter("W")); return greet() }
- *     demo()
+ * Measured 2026-10-04 on Kotlin 2.5.0-Beta1, same worktree and harness, changing only
+ * `libs/wither-plugin.jar`:
  *
- * and the plain-file control, which passes: compile the same code with
- * `K2JVMCompiler -Xplugin=libs/wither-plugin.jar -jvm-target 22` and run it.
+ *  - the jar on `main` before this change (sha1 `2869851…`): XFAIL, `with` CALL still in the IR, `got: null`;
+ *  - 5052517 (`1e6f4c6…`): XFAIL, same IR, same `got: null`;
+ *  - face220 (`be020c9…`): passes; `demo()` returns `hi-W`.
  *
- * Wither is an experiment, not load-bearing, so red is acceptable here. The fix belongs upstream (or
- * as a third patch in our fork, since it is in a file we already patch) — not in Wither, whose
- * approach is legitimate and works everywhere except a REPL snippet.
+ * With face220, `kotlin.repl-snippet-declarations.smoke`, `kotlin.repl.provide-delegate` and
+ * `kotlin.repl-local-fun-statements.box` also pass. Those runs used the versions of those tests that
+ * expect 5052517's `has no callableId` fix.
+ *
+ * Not measured: why the jar set from before the 2.4.20 uplift passed. The earlier diagnosis in this
+ * KDoc blamed `Fir2IrVisitor.visitThisReceiverExpression` for producing the error call. That is true,
+ * but fir2ir is supposed to produce it, as described above. Nobody checked how the older compiler
+ * parented the callee.
+ *
+ * When rebuilding the jar: `JAVA_HOME=<jdk-22> ./gradlew --configure-on-demand :compiler-plugin:jar`
+ * in `~/temp/wither` (class file 66; the compiler host is a JDK 22). The build is reproducible, so
+ * compare `shasum` with `libs/`.
  */
 object WitherSmokeTest {
 

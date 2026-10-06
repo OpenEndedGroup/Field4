@@ -23,12 +23,25 @@ The database defaults to:
 ```
 
 Override it with `-Dafield.codeUse.path=...` or `AFIELD_CODE_USE_PATH`.
+Servers started by the backdoor and the test runners set the variable to
+`build/field-automation-logs/code-use/field-code-use.sqlite` in their checkout
+(see `FIELD_BACKDOOR.md`), so their queries do not see the user's history.
 SQLite uses WAL mode and stores full source once by SHA-256. Context, snippet,
 compile, evaluation, launch, symbol-use, and unresolved-use rows refer to that
 content-addressed source.
 
 Capture and analysis are best effort. Full event or analyzer queues increment
 drop counters; SQLite or analyzer failure must not fail compilation or execution.
+
+Every Field on the machine shares the default database, so one Field's writer
+can find the write lock held past the 5 s `busy_timeout`. That `SQLITE_BUSY` is
+transient: the writer rolls its batch back, keeps it, and retries with backoff.
+The summary counts the retries in `writerBusyRetries`, includes the held batch in
+`queueSize`, and puts the busy error in `writerError` and `message` until a
+commit lands. Any other database error stops the writer for the life of the
+process. The summary then reports `enabled: false` with that error in
+`writerError` and `message`, and the Field's console has a
+`code-use telemetry disabled: ...` line.
 
 ## Browser and HTTP API
 
@@ -97,8 +110,12 @@ failure, malformed JSON, or process failure degrades to
 
 ```bash
 uv run --project . --group backdoor python tools/run_field_tests.py --id examples.code-use.telemetry-store
+uv run --project . --group backdoor python tools/run_field_tests.py --id examples.code-use.writer-busy-recovery
 ```
 
-The smoke stores events in a temporary database and checks hashing, retained
+The first smoke stores events in a temporary database and checks hashing, retained
 failures, analyzer rows, line callers, related source, hot symbols, and early
-document symbols.
+document symbols. The second holds the write lock from another connection through
+two busy timeouts. It checks that the writer stays enabled and reports the wait,
+that it commits every held event once the lock is released, and that the
+per-snippet `unresolved_uses` delete uses `idx_unresolved_uses_snippet`.

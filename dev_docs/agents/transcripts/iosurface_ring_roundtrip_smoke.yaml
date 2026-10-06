@@ -40,11 +40,9 @@ operations:
       frame: { x: 320.0, y: 140.0, w: 350.0, h: 100.0 }
       properties:
         code: |
-          import afield.four.Renderer
           import afield.four.Target
           import afield.four.TexturePreviewCache
           import afield.four.browser.*
-          import afield.four.modules.fromContext
           import afield.four.stream.FieldRTTStreamer
           import afield.four.texture.MetalIOSurface
           import afield.stdlib.vec
@@ -55,7 +53,6 @@ operations:
           import java.util.concurrent.CopyOnWriteArrayList
           import javax.imageio.ImageIO
 
-          val renderer: Renderer = fromContext()
           val device = renderer.device
           println("iosurface-ring driver=${device.physicalDevice.driverName} metalObjects=${device.supportsMetalObjects} externalMemoryHost=${device.supportsExternalMemoryHost}")
 

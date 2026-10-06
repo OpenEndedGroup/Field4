@@ -3,7 +3,7 @@
 This is a machine-readable narrative mirror of `metadata.edn`. The canonical storage format is still EDN; this file is written beside it for code and AI tools.
 
 ```edn [field-document version="1" source="metadata.edn"]
-{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "fileManagerAccessHistory"]}
+{"format" "field-document-md" "version" 1 "source" "metadata.edn" "boxes" 2 "persistentProperties" ["frame" "name" "code" "code_language" "contents_language" "default_property" "file_proxy_mode" "file_proxy_path" "file_proxy_original_path" "file_proxy_mime" "filename" "preamble" "introduction" "attic" "notes" "geometryReviews" "geometryAppearance" "fragment" "stackSL" "rectSL" "msl" "vertex" "vertex_fragment" "task" "mesh" "raygen" "miss" "closesthit" "anyhit" "intersection" "callable" "fragment_s" "vertex_s" "task_s" "mesh_s" "raygen_s" "miss_s" "closesthit_s" "anyhit_s" "intersection_s" "callable_s" "children" "parents" "compute" "compute_s" "customization" "source_id" "templateId" "_tombstone" "isRemoteJSRoot" "isPythonRoot" ".*_editorState" "metadata" "nested" "nestedIn" "playlist" "pauseList" "bookmarks" "drawing" "panes" "slideShow" "autorun" "layers" "layerFrames" "_controlGroupValues" "keyframeData" "keyframeInterpolants" "ai4_auto_name" "ai4_auto_name_signature" "ai4_chat_history" "ai4_chat_running" "ai4_session" "fileManagerAccessHistory"]}
 ```
 
 ## 1. window + renderer
@@ -56,7 +56,7 @@ motion blur — in exchange for fill, material and z order, because `min` is
 union and a union has no layers.
 
 ```edn [field-box id="rectsl_sdf_live" role="properties"]
-{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 100 "characters" 4285 "sha256" "1702ef1894debe88f4fd0ffcbd520c9db4470ae3ae0f33507819b6ddec234fc5"}]}
+{"id" "rectsl_sdf_live" "index" 1 "name" "rectsl scene as a distance field" "parents" ["root" "rectsl_sdf_renderer"] "children" [] "properties" {"children" #{} "parents" #{#afield/box "root" #afield/box "rectsl_sdf_renderer"} "name" "rectsl scene as a distance field" "_tombstone" false "frame" #afield/rect [300.0 140.0 330.0 100.0]} "blockProperties" [{"name" "code" "language" "kotlin" "path" "rectsl_sdf_live_code_.kt" "lines" 96 "characters" 4178 "sha256" "3a648fe9b1881cabf9cef4d50f82f7050f40b3ff122577c78df5ed9b5648a412"}]}
 ```
 
 ```kotlin [field-property box="rectsl_sdf_live" name="code" path="rectsl_sdf_live_code_.kt"]
@@ -74,18 +74,14 @@ union and a union has no layers.
 // blending *between* rectangles, boolean ops, per-pixel normals and sub-frame
 // motion blur — in exchange for fill, material and z order, because `min` is
 // union and a union has no layers.
-import afield.four.Renderer
 import afield.four.modules.Mesh
 import afield.four.modules.Module
-import afield.four.modules.fromContext
 import afield.four.modules.parameters
 import afield.four.modules.pointer
 import afield.rectsl.RectAnimationOracle
 import afield.rectsl.RectSLGlsl
 import afield.rectsl.RectSLSdfLook
 import afield.rectsl.RectSLSdfShader
-
-val renderer: Renderer = fromContext()
 
 // 1. An ordinary RectSL scene. Nothing here is SDF-specific: one animated
 //    template, six copies from `array`. Edit it and re-run.

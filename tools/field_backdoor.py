@@ -293,6 +293,8 @@ def parse_agent_check(spec: str) -> dict[str, Any]:
         return {"kind": kind, "parent": parent, "child": child}
     if kind == "output-picture":
         return {"kind": kind, "box": rest}
+    if kind in ("effects-absent", "effects-present", "tool-used"):
+        return {"kind": kind, "text": rest.strip()}
     if kind == "output-rising":
         parts = rest.split(":")
         if len(parts) != 3:
@@ -3701,6 +3703,12 @@ def build_command_parser() -> argparse.ArgumentParser:
     agent_task_parser.add_argument("--model", default="")
     agent_task_parser.add_argument("--focus-box", default="")
     agent_task_parser.add_argument("--chat-box", default="", help="Run the task as this box's real AI4 panel turn (live only)")
+    agent_task_parser.add_argument("--programs", choices=("", "on", "off"), default="",
+                                   help="off withholds RunToolProgramRequest (the tool-program A/B arm)")
+    agent_task_parser.add_argument("--context", choices=("", "legacy"), default="",
+                                   help="legacy sends instructions inside the stored message (the context-pipeline A/B arm)")
+    agent_task_parser.add_argument("--follow-up", dest="follow_ups", action="append", default=[],
+                                   help="A further user turn in the same conversation, after the goal's; repeatable")
     agent_task_parser.add_argument("--timeout", type=float)
 
     agent_eval_parser = subparsers.add_parser("agent-eval", add_help=False)
@@ -3714,6 +3722,10 @@ def build_command_parser() -> argparse.ArgumentParser:
                                    help="After the run, rewrite the Distilled section of AI4's lessons file from its tool misuse")
     agent_eval_parser.add_argument("--blind", action="store_true",
                                    help="Withhold ViewBoxOutputRequest from every task (the visual tasks' counterfactual)")
+    agent_eval_parser.add_argument("--programs", choices=("", "on", "off"), default="",
+                                   help="off withholds RunToolProgramRequest from every task (the tool-program A/B arm)")
+    agent_eval_parser.add_argument("--context", choices=("", "legacy"), default="",
+                                   help="legacy sends every task's instructions inside the stored message (the context-pipeline A/B arm)")
     agent_eval_parser.add_argument("--timeout", type=float)
 
     raw_send = subparsers.add_parser("raw-send", add_help=False)
@@ -4720,6 +4732,9 @@ async def dispatch_command(
             "model": args.model,
             "focusBox": args.focus_box,
             "chatBox": args.chat_box,
+            "programs": args.programs,
+            "context": args.context,
+            "followUps": list(args.follow_ups),
         }
         if args.script:
             payload["script"] = client.read_text_source(args.script, command_line=command_line)
@@ -4746,6 +4761,8 @@ async def dispatch_command(
             "lessons": args.lessons,
             "distil": bool(args.distil),
             "blind": bool(args.blind),
+            "programs": args.programs,
+            "context": args.context,
         }
         timeout = args.timeout or max(client.default_timeout, 3600.0)
         event = await client.call_for_single_reply("agent-eval", payload, timeout=timeout)

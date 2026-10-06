@@ -212,6 +212,80 @@ object CompletionAaE2EProbe {
         val repl = "val s: Structure = TODO()\ns.proxy"
         check("intro import afield.four.buffers", repl, repl.length, "proxying", "AA+intro")
 
+        // A package path inside a TYPE, edited in place: `prop<afield.‸stdlib.Vec4>(x)`. A qualified type
+        // is a KtUserType, not a qualified expression, and the dot path answered "no qualified expr"
+        // (55 misses per editing bucket of completion.lowering-invariant.probe, 2026-10-04). It only ever
+        // worked while typing, because `prop<afield.` with nothing after it parses as a comparison. The
+        // last pair is the wrong-receiver half: inside `listOf(1).map<…>`, the nearest qualified
+        // expression is the call, so falling through would answer with List's members.
+        println("── a package path inside a type ──")
+        val fcwn = "val v = fromContextWithNameOrNull<afield.stdlib.Vec4>(\"v\")"
+        check("type argument → sub-package", fcwn, fcwn.indexOf("stdlib"), "stdlib", "AA")
+        val jdk = "var f: java.util.concurrent.Future<Int>? = null"
+        check("property type → JDK sub-package", jdk, jdk.indexOf("concurrent"), "concurrent", "AA")
+        val nested = "val h = mutableListOf<afield.four.fabricated.StandardRenderer.Bundle>()"
+        check("type argument → nested class", nested, nested.indexOf("Bundle"), "Bundle", "AA")
+        val inCall = "val m = listOf(1).map<Int, afield.stdlib.Vec4> { TODO() }"
+        check("type argument of a qualified call", inCall, inCall.indexOf("stdlib"), "stdlib", "AA")
+        absent("…not the call's receiver", inCall, inCall.indexOf("stdlib"), "size")
+
+        // A package path to a package NOBODY IMPORTED. Writing the path out is the reason to have one, and
+        // the sidecar indexed only imported packages' contents, so `afield.pd.‸` listed sub-packages and
+        // no classes: "0 matched in package", 56 misses of completion.lowering-invariant.probe on
+        // 2026-10-04. AA answering empty handed these to K1, so the backend assertion in `check` is what
+        // proves the sidecar now answers them. `afield.pd` and `afield.four.fabricated` are outside the REPL
+        // intro; the JDK is not on the binary roots at all, so its classes come from AA's package scope.
+        println("── a package nobody imported ──")
+        val pd = "val p = afield.pd.PdInstance"
+        check("unimported package → class", pd, pd.indexOf("PdInstance"), "PdInstance", "AA")
+        val pdFn = "afield.pd.parsePd"
+        check("unimported package → top-level fun", pdFn, pdFn.length, "parsePdMessageLine", "AA")
+        val fabType = "val chains = mutableListOf<afield.four.fabricated.FabricateBuiltChain>()"
+        check("type argument → class of an unimported package", fabType, fabType.indexOf("FabricateBuiltChain"),
+            "FabricateBuiltChain", "AA")
+        val atomic = "val n = java.util.concurrent.atomic.AtomicLong(0)"
+        check("JDK package → class", atomic, atomic.indexOf("AtomicLong"), "AtomicLong", "AA")
+        // A JDK package is full of package-private helpers the box cannot name.
+        absent("JDK package hides package-private classes", atomic, atomic.indexOf("AtomicLong"), "Striped64")
+
+        // The same paths on the caret's OWN `import` line, where every package answered 0 with "no
+        // qualified expr": the sidecar left the import the caret was on inside its synthetic wrapper
+        // function, where an import is a syntax error. Nothing looked wrong from the panel, because an
+        // empty AA answer hands the request to K1, which filled it — so the backend=AA that `check`
+        // asserts is the whole point of these. The star and alias forms are the path of `import a.b.*`
+        // and `import a.b.C as D`, typed in place.
+        println("── the caret's own import line ──")
+        for ((desc, line, want) in listOf(
+            Triple("a package's top-level fun", "import kotlin.math.‸", "sin"),
+            Triple("a package nobody imported", "import afield.pd.‸", "PdInstance"),
+            Triple("a sub-package at a prefix", "import afield.four.fab‸", "fabricated"),
+            Triple("a root package", "import kot‸", "kotlin"),
+            Triple("a JDK class", "import java.util.concurrent.atomic.‸", "AtomicLong"),
+            Triple("the path of a star import", "import afield.morpho.‸*", "MorphoCircuit"),
+            Triple("the path of an aliased import", "import afield.four.fabricated.FabricateMat‸ as FM", "FabricateMaterial"),
+            Triple("an enum's entry", "import afield.stdlib.Functions.RectifyMode.‸", "FULL"),
+            Triple("a Java class's static", "import java.lang.Math.‸", "toRadians"),
+        )) {
+            val s = line.replace("‸", "") + "\nval q = 1"
+            check("import line → $desc", s, line.indexOf('‸'), want, "AA+import")
+        }
+        val importMath = "import kotlin.math.\nval q = 1"
+        run {
+            // Inserted as a NAME: `import kotlin.math.sin(` does not parse.
+            total++
+            val m = meta(runBlocking { runCatching { active.complete(importMath, importMath.indexOf('\n')) }.getOrNull() })
+            val row = m.firstOrNull { it.text.trimEnd('(') == "sin" }
+            if (row?.text == "sin" && active.lastCompletionBackend == KotlinEngineConfig.CompletionBackend.AA) {
+                pass++; println("  ✓ [AA+import] an import line inserts `sin` without a call's `(`")
+            } else println("  ✗ [AA+import] an import line inserts '${row?.text}' (backend=${active.lastCompletionBackend})")
+        }
+        // Kotlin imports an enum's entries but not its `values`; and the other lines' imports are hoisted
+        // as before, the alias form included, when the caret is in the body.
+        val importEnum = "import afield.stdlib.Functions.RectifyMode.\nval q = 1"
+        absent("import line offers no enum `values`", importEnum, importEnum.indexOf('\n'), "values")
+        val aliased = "import afield.four.fabricated.FabricateMaterial as FM\nval m: FM = TODO()\nm.alpha"
+        check("an aliased import on another line still resolves", aliased, aliased.length, "alphaMode", "AA+import")
+
         // …and the seam that actually bit the human. An unresolved receiver must produce NOTHING, so
         // KI2 falls through to K1. When AA instead answered it with every prefix-matching extension in
         // its index (an error type is a subtype of everything, so they all "applied"), the non-empty

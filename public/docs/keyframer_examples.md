@@ -1027,7 +1027,7 @@ values of the push constant, and compares both ends against the keyframe they ar
 
 - [Values over time](interpolants_examples.md#keyframes-morphing-a-whole-parameter-state-including-code)
   — blending two keys, including code values that step rather than smear.
-- [Sweeping a keyframe space overnight](keyframe_autosweep.md) — treat a directory of saved keys
+- [Sweeping saved keyframes overnight](keyframe_autosweep.md) — treat a directory of saved keys
   as a space and let `KeyframeSweep` render blends of them you never tried, each beside the key
   that produced it.
 

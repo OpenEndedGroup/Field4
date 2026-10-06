@@ -90,17 +90,41 @@ object PersonalLayer {
      * bytes: the reload appears to succeed and changes nothing. Staging each generation at its own
      * path sidesteps the whole question.
      *
+     * The path is per process as well as per generation. Every Field started from one checkout shares
+     * `build/personal`, and with a bare `gen-N` a second Field (a backdoor-managed server, a test run)
+     * staging its own `gen-0` overwrote the jar a running Field held open: that Field could still use
+     * the classes it had loaded but no longer read their bytes (`getResourceAsStream` gave null),
+     * which held every house panel build at its identity check until a restart.
+     *
      * Directories are passed through — a directory root is re-read from the filesystem on each
-     * lookup, so it has no staleness problem to solve. Old generation directories are left behind
-     * deliberately: their layers may still be alive, and they are small and under `build/`.
+     * lookup, so it has no staleness problem to solve. A process's own old generations are left
+     * behind deliberately, since their layers may still be alive; whole directories of processes
+     * that have exited are removed the next time any Field stages.
      */
     val activeRoots: List<File>
         @Synchronized get() = stagedRoots ?: stage().also { stagedRoots = it }
 
+    /** Where process [pid] stages [root] for [generation]. */
+    internal fun stagedPath(root: File, generation: Int, pid: Long = ProcessHandle.current().pid()): File =
+        File(root.parentFile, "generations/pid-$pid/gen-$generation/${root.name}")
+
+    /** Removes the `pid-*` staging directories of exited processes; [self], live and unparsable names stay. */
+    internal fun removeExitedStaging(
+        generations: File,
+        self: Long = ProcessHandle.current().pid(),
+        alive: (Long) -> Boolean = { pid -> ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false) },
+    ) {
+        generations.listFiles { f -> f.isDirectory && f.name.startsWith("pid-") }?.forEach { dir ->
+            val pid = dir.name.removePrefix("pid-").toLongOrNull() ?: return@forEach
+            if (pid != self && !alive(pid)) dir.deleteRecursively()
+        }
+    }
+
     private fun stage(): List<File> = roots.map { root ->
         if (root.isDirectory) return@map root
         runCatching {
-            val staged = File(root.parentFile, "generations/gen-$generation/${root.name}")
+            runCatching { removeExitedStaging(File(root.parentFile, "generations")) }
+            val staged = stagedPath(root, generation)
             staged.parentFile.mkdirs()
             root.copyTo(staged, overwrite = true)
         }.getOrElse {

@@ -1,8 +1,5 @@
 import afield.four.Renderer
 import afield.four.util.Window
-var Box.learned by Inheritance<afield.four.physics.ShaderBoids>() /**/
-val Once.learned by Onceing<afield.four.physics.ShaderBoids>() /**/
-val Why.learned by Whying() /**/
 var Box.learnedRule by Inheritance<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
 val Once.learnedRule by Onceing<afield.stdlib.EquivariantWeights>() /*from:lb_train*/ /**/
 val Why.learnedRule by Whying() /*from:lb_train*/ /**/

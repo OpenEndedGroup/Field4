@@ -20,6 +20,10 @@ half, for agents and for the human driving them:
             pass, `handoff-close` finishes one
   revise    the harness: sync, partition the queue per page, run one agent per page in
             parallel, apply what they recorded, optionally commit one commit per page
+  import-drafts
+            turn the KDoc a fast model drafted for undocumented declarations (completion's
+            generated_completion_docs.json) into `kdoc-draft` notes on their Kotlin lines, so the
+            same agents, memories, review and landing handle them as handle the human's notes
 
 Design notes, in the order they bite:
 
@@ -89,6 +93,14 @@ HISTORY_LIMIT = 12
 WRITTEN_KEYS = frozenset({"id", "pageUrl", "note", "tags", "anchor", "kind", "thread", "source",
                           "resolvedAtEpochMs", "resolution", "updatedAtEpochMs", "createdAtEpochMs",
                           "recordedInCheckout", "recordedAtCommit", "handoff"})
+
+# The kinds of note that ask for work. A `kdoc-draft` is a model's KDoc for an undocumented
+# declaration, imported by `import-drafts`; it is worked exactly like a human's note.
+DRAFT_KIND = "kdoc-draft"
+REQUEST_KINDS = ("note", DRAFT_KIND)
+DRAFT_CACHE_FILE = "generated_completion_docs.json"
+DRAFT_DECLINED_FILE = "generated_completion_docs.declined.json"
+FILESTORE_ENV = "AFIELD_FILESTORE_DIR"
 
 ENTRY_KINDS = ("comment", "memory", "question", "reply", "resolution", "reopen", "run", "handoff", "blocked", "unblocked")
 HANDOFF_DIR = "dev_docs/handoffs"
@@ -931,6 +943,8 @@ def sync_note(note: dict[str, Any], git: Git, *, page_cache: dict[str, PageSourc
     note that was anchored wrongly in the first place (forward tracking would faithfully carry
     the mistake along).
     """
+    if note.get("kind") == DRAFT_KIND:
+        return sync_draft(note, git)
     page_cache = {} if page_cache is None else page_cache
     url = note.get("pageUrl", "")
     if url not in page_cache:
@@ -1030,6 +1044,207 @@ def sync_store(store: Store, git: Git, *, ids: Iterable[str] = (), include_resol
 
     store.mutate(merge)
     return results
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KDoc drafts: completion's generated docs, as notes
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# When completion shows a declaration that has no KDoc, a fast model drafts some
+# (`Ai4CompletionDoc`) and caches it in `generated_completion_docs.json`. Those drafts used to be
+# moved into the source by a separate agent run of their own. Now `import-drafts` makes each one a
+# note anchored to its declaration's line, so it goes through the same harness as everything else:
+# one agent per file, with DOCS_WRITING_RULES.md, the file's memories, and the human's own notes on
+# the same KDoc in the same brief, edits in a pass worktree, review, and `tools/land.py`.
+#
+# The cache stays owned by the Field server, which holds it in memory and rewrites it whole, so
+# nothing here writes it. A draft the agent did not use (its note resolved, the declaration still
+# without KDoc) is listed in the `.declined.json` file beside it instead, which completion reads so
+# it neither shows nor regenerates that draft.
+
+_DECLARATION_KEYWORDS = r"(?:fun|val|var|class|interface|object|typealias|enum\s+class|data\s+class|annotation\s+class)"
+
+
+def draft_cache_path(git: Git, explicit: str | None = None) -> Path:
+    """Where Field keeps the drafts: `$AFIELD_FILESTORE_DIR`, else `.field/filestore/` in the checkout."""
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+    configured = os.environ.get(FILESTORE_ENV, "").strip()
+    base = Path(configured).expanduser() if configured else git.root / ".field" / "filestore"
+    return (base / DRAFT_CACHE_FILE).resolve()
+
+
+def in_our_tree(source_path: str) -> bool:
+    """Mirrors `Ai4CompletionDoc.isInOurTree`: a repo-relative `src/` path, never a dependency jar."""
+    return source_path.startswith("src/") and ".." not in source_path
+
+
+def source_page_url(kotlin_path: str) -> str | None:
+    """The `reference/source/…` page `resolve_page_source` maps back to *kotlin_path*, as a URL."""
+    match = re.fullmatch(r"src/([^/]+)/kotlin/(.+)\.kt", kotlin_path)
+    if not match:
+        return None
+    return f"{DOCS_ORIGIN}{DOCS_ROOT}reference/source/{match.group(1)}/{match.group(2)}/"
+
+
+def simple_name(source_name: str) -> str:
+    return source_name.rsplit(".", 1)[-1].strip("`")
+
+
+def locate_declaration(text: str, name: str, near: int) -> int | None:
+    """The 1-based line declaring *name* closest to line *near*, or None."""
+    pattern = re.compile(rf"\b{_DECLARATION_KEYWORDS}\b[^\n=]*?\b{re.escape(name)}\b")
+    hits = [i + 1 for i, line in enumerate(text.split("\n")) if pattern.search(line)]
+    return min(hits, key=lambda n: abs(n - near)) if hits else None
+
+
+def has_kdoc_above(text: str, line: int) -> bool:
+    """Whether the declaration on 1-based *line* carries a KDoc block (annotations may sit between)."""
+    lines = text.split("\n")
+    if not 1 <= line <= len(lines):
+        return False
+    if "/**" in lines[line - 1].split("//")[0]:
+        return True
+    i = line - 2
+    while i >= 0 and lines[i].strip().startswith("@"):
+        i -= 1
+    if i < 0 or not lines[i].rstrip().endswith("*/"):
+        return False
+    while i >= 0:
+        if "/**" in lines[i]:
+            return True
+        if "/*" in lines[i]:
+            return False
+        i -= 1
+    return False
+
+
+def read_declined(cache: Path) -> set[str]:
+    path = cache.with_name(DRAFT_DECLINED_FILE)
+    with contextlib.suppress(FileNotFoundError, json.JSONDecodeError):
+        return set(json.loads(path.read_text(encoding="utf-8")).get("keys", []))
+    return set()
+
+
+def write_declined(cache: Path, keys: Iterable[str]) -> None:
+    keys = set(keys)
+    if not keys:
+        return
+    path = cache.with_name(DRAFT_DECLINED_FILE)
+    merged = sorted(read_declined(cache) | keys)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(path.name + ".tmp")
+    temp.write_text(json.dumps({"version": 1, "keys": merged}, indent=2) + "\n", encoding="utf-8")
+    os.replace(temp, path)
+
+
+def _draft_source(git: Git, path: str, line: int, draft: dict[str, Any], status: str,
+                  previous: dict[str, Any] | None = None) -> dict[str, Any]:
+    text = git.show(None, path) or ""
+    url = source_page_url(path) or ""
+    head = git.head()
+    source = {"page": page_relative_candidates(url)[0] if url else "", "pageKind": "generated",
+              "trackedAtEpochMs": now_ms(), "trackedHead": head, "path": path, "startLine": line, "endLine": line,
+              "status": status, "origins": origins_for(git, None, path, line, line), "anchoredAt": head,
+              "method": "declaration", "excerpt": excerpt(text, line, line),
+              "generated": {"generator": "afield.docs.SourcePageGenerator", "from": path,
+                            "regenerate": "./gradlew generateSourcePages"},
+              "draft": draft}
+    if previous and previous.get("firstAnchoredAt"):
+        source["firstAnchoredAt"] = previous["firstAnchoredAt"]
+    return source
+
+
+def sync_draft(note: dict[str, Any], git: Git) -> dict[str, Any]:
+    """A draft's `source`: followed by blame like any note, and found again by name when that fails."""
+    previous = dict(note.get("source") or {})
+    draft = previous.get("draft") or {}
+    tracked = track_forward(git, previous) if previous.get("origins") else None
+    if tracked:
+        return _draft_source(git, tracked.path, tracked.start_line, draft, tracked.status, previous)
+    path = previous.get("path") or ""
+    text = git.show(None, path) if path else None
+    line = locate_declaration(text, simple_name(draft.get("symbol", "")), int(previous.get("startLine") or 0)) if text else None
+    if line is None:
+        return {**previous, "status": "orphaned", "trackedAtEpochMs": now_ms(),
+                "reason": f"no declaration of `{draft.get('symbol', '?')}` in {path or 'its file'} any more"}
+    return _draft_source(git, path, line, draft, "reanchored", previous)
+
+
+def draft_note_id(key: str) -> str:
+    return "draft-" + key[:24]
+
+
+def import_drafts(store: Store, git: Git, cache: Path, *, limit: int = 0,
+                  log: Callable[[str], None] = lambda _m: None) -> dict[str, int]:
+    """Add a `kdoc-draft` note for every cached draft that is ours to edit and not yet a note."""
+    counts = {"imported": 0, "known": 0, "outside": 0, "declined": 0, "documented": 0, "stale": 0}
+    if not cache.is_file():
+        log(f"no draft cache at {cache}")
+        return counts
+    records = (json.loads(cache.read_text(encoding="utf-8") or "{}").get("records") or {})
+    declined = read_declined(cache)
+    existing = {n.get("id") for n in store.notes()}
+    created: list[dict[str, Any]] = []
+    for key, record in sorted(records.items(), key=lambda kv: (kv[1].get("sourcePath", ""), kv[1].get("sourceLine", 0))):
+        path, documentation = str(record.get("sourcePath", "")), str(record.get("documentation", "")).strip()
+        if not documentation:
+            continue
+        if not in_our_tree(path) or not source_page_url(path) or not (git.root / path).is_file():
+            counts["outside"] += 1
+            continue
+        if draft_note_id(key) in existing:
+            counts["known"] += 1
+            continue
+        if key in declined:
+            counts["declined"] += 1
+            continue
+        symbol = str(record.get("sourceName", ""))
+        text = git.show(None, path) or ""
+        line = locate_declaration(text, simple_name(symbol), int(record.get("sourceLine") or 0))
+        if line is None:
+            counts["stale"] += 1
+            log(f"  stale: {symbol} is no longer declared in {path}")
+            continue
+        if has_kdoc_above(text, line):
+            counts["documented"] += 1
+            continue
+        draft = {"key": key, "symbol": symbol, "model": record.get("model", ""), "cache": str(cache),
+                 "cachedLine": record.get("sourceLine")}
+        created_ms = now_ms()
+        created.append({"id": draft_note_id(key), "pageUrl": source_page_url(path), "note": documentation,
+                        "kind": DRAFT_KIND, "tags": [DRAFT_KIND], "anchor": {}, "thread": [],
+                        "createdAtEpochMs": created_ms, "updatedAtEpochMs": created_ms,
+                        "recordedInCheckout": str(git.root),
+                        "source": _draft_source(git, path, line, draft, "anchored")})
+        log(f"  {path}:{line} {symbol}")
+        if limit and len(created) >= limit:
+            break
+    counts["imported"] = len(created)
+    if created:
+        def add(notes: list[dict[str, Any]]) -> None:
+            ids = {n.get("id") for n in notes}
+            notes.extend(n for n in created if n["id"] not in ids)
+        store.mutate(add)
+    return counts
+
+
+def declined_drafts(git: Git, result: "RunResult") -> list[dict[str, Any]]:
+    """Drafts this run resolved without the declaration gaining KDoc: the agent chose not to use them."""
+    resolved = {op.get("id") for op in result.ops if op.get("op") == "resolve"}
+    out = []
+    for note in result.partition.notes:
+        if note.get("kind") != DRAFT_KIND or note["id"] not in resolved:
+            continue
+        source = note.get("source") or {}
+        draft = source.get("draft") or {}
+        # The file as the agent left it; `git.show` would answer from its cache of the text before the run.
+        file = git.root / source.get("path", "")
+        text = file.read_text(encoding="utf-8", errors="replace") if file.is_file() else ""
+        line = locate_declaration(text, simple_name(draft.get("symbol", "")), int(source.get("startLine") or 0))
+        if line is None or not has_kdoc_above(text, line):
+            out.append(note)
+    return out
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1156,7 +1371,13 @@ def render_note(note: dict[str, Any], git: Git | None, *, context: int = 3) -> s
                    f"edit the source, not the page (regenerate: {gen.get('regenerate') or 'see header'}).")
     if source.get("heading"):
         out.append(f"Section: {source['heading']}")
-    out.append("Note:\n" + indent(note.get("note", "").strip()))
+    if note.get("kind") == DRAFT_KIND:
+        draft = source.get("draft") or {}
+        out.append(f"Draft KDoc for `{draft.get('symbol', '?')}`, written by {draft.get('model') or 'a fast model'} for a "
+                   "declaration with none. Not the human's words, and not checked: see \"KDoc drafts\" above.")
+        out.append("Draft:\n" + indent(note.get("note", "").strip()))
+    else:
+        out.append("Note:\n" + indent(note.get("note", "").strip()))
     if anchor.get("exact"):
         out.append("Quote (as rendered):\n" + indent(anchor["exact"].strip()))
     if git and source.get("startLine"):
@@ -1312,7 +1533,7 @@ def _apply_handoff(notes: list[dict[str, Any]], op: dict[str, Any], author: str,
     # The notes a handoff came from wait on it either way, and return to the queue when it closes
     # so the page can follow whatever was done. A blocking handoff holds the rest of its page too.
     for note in notes:
-        if note.get("kind") != "note" or note_state(note) not in ("open", "question"):
+        if note.get("kind") not in REQUEST_KINDS or note_state(note) not in ("open", "question"):
             continue
         on_page = bool(op.get("blocking")) and ((page and _page_key(note) == page) or note.get("pageUrl") == op["pageUrl"])
         if note["id"] in op.get("notes", []) or on_page:
@@ -1429,6 +1650,15 @@ How to work:
 - Text inside a code fence is executed and captured by the docs runner; edit a fence only if the
   note is about that code, and keep it runnable.
 - A generated page ("DO NOT EDIT") is fixed in the Kotlin/KDoc it is generated from.
+
+KDoc drafts: a note shown as "Draft KDoc for `name`" is not from the human. A fast model wrote it
+for a declaration with no KDoc, from the declaration's source alone, and nobody has checked it.
+Treat it as a suggestion. Read the declaration and what calls it. Then write KDoc that is true and
+follows the rules: integrate the parts that hold up, correct the ones that do not, and leave out
+whatever only restates the signature. Resolve the draft saying what you wrote. If the declaration
+needs no KDoc (it is private, or obvious from its name and type), resolve it saying why and add
+nothing; the harness then tells completion to stop offering that draft. Ask a question if the
+behaviour cannot be settled from source. A human note on the same lines comes first.
 
 Record an outcome for EVERY note, with this command (it writes to your run journal, not the store):
 
@@ -1943,6 +2173,11 @@ def revise(args: argparse.Namespace, store: Store, git: Git, control: RunControl
                     partition = running.pop(future)
                     result = future.result()
                     apply_run(store, result, run_id, agent.name)
+                    for note in declined_drafts(git, result):
+                        draft = (note.get("source") or {}).get("draft") or {}
+                        if draft.get("cache") and draft.get("key"):
+                            write_declined(Path(draft["cache"]), [draft["key"]])
+                            log(f"  declined draft {draft.get('symbol')}: completion will no longer offer it")
                     remaining = untouched_notes(result) if result.limited else []
                     if result.limited and remaining and not any(op.get("op") == "handoff" and op.get("blocking") for op in result.ops):
                         # What it recorded is applied; the notes it did not reach go back to the front
@@ -2266,6 +2501,8 @@ def pass_status(git: Git, store: Store) -> dict[str, Any]:
     for note in notes:
         state = note_state(note)
         counts[state] = counts.get(state, 0) + 1
+        if note.get("kind") == DRAFT_KIND and state == "open":
+            counts["drafts-open"] = counts.get("drafts-open", 0) + 1
     handoffs = []
     for item in notes:
         if item.get("kind") != "handoff":
@@ -2457,7 +2694,7 @@ def pass_commit_message(state: dict[str, Any], notes: list[dict[str, Any]], file
     runs = set(state.get("runs", []))
     resolved: dict[str, list[dict[str, Any]]] = {}
     for note in notes:
-        if not is_resolved(note) or note.get("kind") != "note":
+        if not is_resolved(note) or note.get("kind") not in REQUEST_KINDS:
             continue
         last = next((e for e in reversed(note.get("thread", [])) if e.get("kind") == "resolution"), None)
         if last and last.get("runId") in runs:
@@ -2889,8 +3126,15 @@ def branches_carrying(git: Git, path: str) -> list[str]:
     if not path:
         return []
     out = git.run("for-each-ref", "--format=%(refname:short)", "refs/heads/", check=False)
-    return [b for b in out.split() if b != "main" and subprocess.run(
-        ["git", "cat-file", "-e", f"{b}:{path}"], cwd=git.root, capture_output=True).returncode == 0]
+    branches = [b for b in out.split() if b != "main"]
+    if not branches:
+        return []
+    # One cat-file for every branch: a process per branch made `pass status` outlast the server's
+    # 60 s timeout once the checkout held hundreds of branches.
+    checked = subprocess.run(["git", "cat-file", "--batch-check=%(objecttype)"], cwd=git.root, capture_output=True, text=True,
+                             input="".join(f"{b}:{path}\n" for b in branches))
+    answers = checked.stdout.splitlines()
+    return [b for b, answer in zip(branches, answers) if not answer.endswith("missing")]
 
 
 def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -3172,6 +3416,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--state", choices=("done", "dropped", "taken"), default="done",
                    help="taken: someone is working on it (still blocks); dropped: abandoned (releases the notes)")
 
+    p = sub.add_parser("import-drafts", help="turn completion's generated KDoc drafts into kdoc-draft notes")
+    p.add_argument("--cache", help=f"the drafts (default: ${FILESTORE_ENV} or .field/filestore/{DRAFT_CACHE_FILE})")
+    p.add_argument("--limit", type=int, default=0, help="import at most this many")
+    p.add_argument("--json", action="store_true")
+
     p = sub.add_parser("revise", help="run one agent per page over the queue, in parallel")
     add_revise_arguments(p)
 
@@ -3326,6 +3575,16 @@ def main(argv: list[str] | None = None) -> int:
         result = record(store, {"op": "handoff-close", "id": find_note(store.notes(), args.id)["id"],
                                 "text": args.text, "state": args.state})
         print(f"handoff {result.get('id', '')[:8]}: {args.state}")
+        return 0
+    if args.command == "import-drafts":
+        cache = draft_cache_path(git, args.cache)
+        counts = import_drafts(store, git, cache, limit=args.limit, log=(lambda _m: None) if args.json else print)
+        if args.json:
+            print(json.dumps({"cache": str(cache), **counts}))
+        else:
+            print(f"{counts['imported']} draft(s) imported from {cache}; {counts['known']} already notes, "
+                  f"{counts['documented']} already documented, {counts['declined']} declined before, "
+                  f"{counts['stale']} stale, {counts['outside']} outside src/")
         return 0
     if args.command == "revise":
         return revise(args, store, git)

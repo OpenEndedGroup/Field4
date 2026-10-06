@@ -58,6 +58,12 @@ expect:
  *     fir2ir skips a script's `_` entries. The fork now builds a snippet's `_` entry as a local of
  *     `$$eval`. Cases V–Y; Z1–Z4 cover the name-based forms that reach the same path.
  *
+ * And one that is not the compiler's at all: **a call, as a statement, to a function with no
+ * `callableId`** — a local function, or a member of a local or anonymous class — failed with
+ * `IrGenerationExtensionException: … has no callableId`, thrown from the Wither plugin's IR pass,
+ * which looked up the `callableId` of every statement-level callee. Fixed in Field's build of
+ * Wither (`~/temp/wither`, branch `field/kotlin-2.5.0-beta1`). Cases LF1–LF9.
+ *
  * Each case drives the real engine: a fresh [KotlinInterface2] with an implicit `Box` receiver, the
  * stdlib `intro`, then [standardExecutionPractice] — the same preamble-then-body snippet sequence a
  * launched box runs through.
@@ -449,6 +455,146 @@ object ReplSnippetDeclarationsSmokeTest {
             )
         )
 
+        println("-- calls, as statements, to functions that have no callableId --")
+        // Found 2026-09-16 and again 2026-10-04 in box code; fixed in Field's build of the Wither
+        // plugin (libs/wither-plugin.jar), not in the fork. Wither's IR pass asked every call that
+        // stands as a statement for its callee's `callableId`, which throws for a local function and
+        // for a member of a local or anonymous class, a property setter included. The compile then
+        // died with `IrGenerationExtensionException: IrFunctionImpl@... has no callableId`, reported
+        // against the box's last line. A call whose value is used, as in case I, is never a
+        // statement, which is why I passed throughout.
+        case(
+            "LF1 local fun in run { }, called as a statement", null,
+            """
+            var out = 0
+            run {
+                fun bump() { out += 1 }
+                bump()
+                bump()
+            }
+            out
+            """.trimIndent(),
+            expected = "= 2"
+        )
+        case(
+            "LF2 local fun inside a named fun", null,
+            """
+            var total = 0
+            fun outer(): Int {
+                fun inner(k: Int) { total += k }
+                inner(2)
+                inner(3)
+                return total
+            }
+            outer()
+            """.trimIndent(),
+            expected = "= 5"
+        )
+        case(
+            "LF3 local fun inside a local fun, inside a lambda", null,
+            """
+            run {
+                var n = 0
+                fun outer() {
+                    fun inner() { n += 10 }
+                    inner()
+                    inner()
+                }
+                outer()
+                n
+            }
+            """.trimIndent(),
+            expected = "= 20"
+        )
+        case(
+            "LF4 local fun capturing a lambda parameter, in listOf(...).map { }", null,
+            """
+            var count = 0
+            val doubled = listOf(1, 2, 3).map { x ->
+                fun add() { count += x }
+                add()
+                x * 2
+            }
+            "${'$'}count ${'$'}doubled"
+            """.trimIndent(),
+            expected = "= 6 [2, 4, 6]"
+        )
+        case(
+            "LF5 local fun capturing enclosing vars and a List, the once.keys shape", null,
+            """
+            var x = 0.0
+            var y = 0.0
+            val sizes = listOf(3.0, 4.0, 5.0)
+            val placed = mutableListOf<String>()
+            listOf("a", "b", "c").forEach { key ->
+                fun layout() {
+                    x += sizes[placed.size]
+                    y = x * 2
+                    placed += "${'$'}key@${'$'}x,${'$'}y"
+                }
+                layout()
+            }
+            placed.joinToString(" ")
+            """.trimIndent(),
+            expected = "= a@3.0,6.0 b@7.0,14.0 c@12.0,24.0"
+        )
+        case(
+            "LF6 local fun reading an inherited (preamble) property", EXPORT_PREAMBLE,
+            """
+            var acc = 0.0
+            run {
+                fun add() { acc += _qqq }
+                add()
+                add()
+            }
+            acc
+            """.trimIndent(),
+            expected = "= 20.0"
+        )
+        case(
+            "LF7 member of a local class, called as a statement", null,
+            """
+            run {
+                class Counter { var n = 0; fun bump() { n += 1 } }
+                val c = Counter()
+                c.bump()
+                c.bump()
+                c.n
+            }
+            """.trimIndent(),
+            expected = "= 2"
+        )
+        case(
+            "LF8 property write inside an anonymous ReadWriteProperty", null,
+            """
+            import kotlin.properties.ReadWriteProperty
+            import kotlin.reflect.KProperty
+            fun make(): ReadWriteProperty<Any?, Int> = object : ReadWriteProperty<Any?, Int> {
+                private var v = 40
+                override fun getValue(thisRef: Any?, property: KProperty<*>): Int = v
+                override fun setValue(thisRef: Any?, property: KProperty<*>, value: Int) { v = value }
+            }
+            var a: Int by make()
+            a += 2
+            a
+            """.trimIndent(),
+            expected = "= 42"
+        )
+        case(
+            "LF9 property write inside an anonymous ReadOnlyProperty", null,
+            """
+            import kotlin.properties.ReadOnlyProperty
+            import kotlin.reflect.KProperty
+            fun make(): ReadOnlyProperty<Any?, Int> = object : ReadOnlyProperty<Any?, Int> {
+                private var v = 0
+                override fun getValue(thisRef: Any?, property: KProperty<*>): Int { v = 42; return v }
+            }
+            val a: Int by make()
+            a
+            """.trimIndent(),
+            expected = "= 42"
+        )
+
         println("-- the real keyCamera delegate, as five published sites spell it --")
         compilesOnly(
             "R var kc by keyCamera(camera=camera)",
@@ -488,3 +634,74 @@ object ReplSnippetDeclarationsSmokeTest {
 
     fun plainDelegate() = PlainDelegate()
 }
+
+/*
+FIELD_TEST
+id: kotlin.repl-local-fun-statements.box
+runner: backdoor-box
+tags: [smoke, kotlin, k2, repl, regression, backdoor]
+timeoutSec: 120
+expect:
+  outputContains:
+    - "local-fun-statements 2 5 20 6 [2, 4, 6] [a@3.0, b@7.0, c@12.0] 2"
+*/
+/**
+ * Cases LF1–LF5 and LF7 above, run as one real box through the backdoor rather than through a bare
+ * engine. Each value printed comes from a call, as a statement, to a function with no `callableId`:
+ * before the Wither fix any one of them failed the whole box with
+ * `IrGenerationExtensionException: … has no callableId`.
+ */
+private val LOCAL_FUN_STATEMENTS_SNIPPET = """
+var out = 0
+run {
+    fun bump() { out += 1 }
+    bump()
+    bump()
+}
+
+var total = 0
+fun outer(): Int {
+    fun inner(k: Int) { total += k }
+    inner(2)
+    inner(3)
+    return total
+}
+
+var nested = 0
+run {
+    fun outerLocal() {
+        fun innerLocal() { nested += 10 }
+        innerLocal()
+        innerLocal()
+    }
+    outerLocal()
+}
+
+var count = 0
+val doubled = listOf(1, 2, 3).map { x ->
+    fun add() { count += x }
+    add()
+    x * 2
+}
+
+var px = 0.0
+val sizes = listOf(3.0, 4.0, 5.0)
+val placed = mutableListOf<String>()
+listOf("a", "b", "c").forEach { key ->
+    fun layout() {
+        px += sizes[placed.size]
+        placed += key + "@" + px
+    }
+    layout()
+}
+
+val bumps = run {
+    class Counter { var n = 0; fun bump() { n += 1 } }
+    val c = Counter()
+    c.bump()
+    c.bump()
+    c.n
+}
+
+println(listOf("local-fun-statements", out, outer(), nested, count, doubled, placed, bumps).joinToString(" "))
+""".trimIndent()

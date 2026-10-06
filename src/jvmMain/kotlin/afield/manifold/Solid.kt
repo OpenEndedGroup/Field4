@@ -83,6 +83,7 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
     internal val ptr: MemorySegment
         get() {
             check(!release.released) { "this Solid is closed — it was released explicitly or by its enclosing scope" }
+            ManifoldNative.pin(this)
             return release.handle
         }
 
@@ -980,6 +981,8 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
                 return wrap(ManifoldNative.compose, vec)
             } finally {
                 ManifoldNative.unit(ManifoldNative.deleteManifoldVec, vec)
+                // The vector holds raw pointers; keep their owners alive until it is gone.
+                java.lang.ref.Reference.reachabilityFence(solids)
             }
         }
 
@@ -1042,6 +1045,8 @@ class Solid internal constructor(handle: MemorySegment) : AutoCloseable, ToHTML 
                 return wrap(ManifoldNative.batchHull, vec)
             } finally {
                 ManifoldNative.unit(ManifoldNative.deleteManifoldVec, vec)
+                // The vector holds raw pointers; keep their owners alive until it is gone.
+                java.lang.ref.Reference.reachabilityFence(solids)
             }
         }
 
@@ -1288,8 +1293,8 @@ internal class NativeRelease(val handle: MemorySegment, private val kind: Kind) 
         if (released) return
         released = true
         when (kind) {
-            Kind.MANIFOLD -> ManifoldNative.unit(ManifoldNative.deleteManifold, handle)
-            Kind.SECTION -> ManifoldNative.unit(ManifoldNative.deleteSection, handle)
+            Kind.MANIFOLD -> ManifoldNative.release(ManifoldNative.deleteManifold, handle)
+            Kind.SECTION -> ManifoldNative.release(ManifoldNative.deleteSection, handle)
         }
     }
 }

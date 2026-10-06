@@ -1,5 +1,12 @@
 # Verifying that `field.sh` opens the workspace it says it will
 
+The 2026-10-04 first-run hardening adds a standalone Kotlin setup tool, pinned/checksummed
+Windows GraalVM provisioning, a Finder launcher that delegates to `field.sh`, server-only mode,
+and local/protected server defaults. Earlier unverified Windows notes below are historical;
+Linux checks and portable PowerShell syntax checks do not qualify a real Windows desktop.
+Use the manual `first-run` workflow to obtain fresh platform evidence before release.
+
+
 `tools/test_field_sh_launcher.py` proves what `field.sh` *parses* and what argv it hands to the
 backend, under all five shells, against a fake `java` that records its arguments. What it cannot
 prove is the sentence a user actually cares about: **Field started, and the workspace it opened is

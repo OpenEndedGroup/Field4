@@ -36,8 +36,8 @@ Three choices change what the numbers mean:
   are left that way. `colormapDiverging(...)` is the right way to look at them.
 - **Gradients are in true units-per-pixel.** The Sobel derivative factor is `[-1, 0, 1]/2` and the
   smoothing factor is normalised, so `sobel().dx` on a ramp of slope *s* really is *s*, and a unit
-  step edge integrates to a total gradient of exactly 1. That makes a threshold like `0.05` mean
-  something, instead of depending on which textbook's unscaled kernel you happened to use.
+  step edge integrates to a total gradient of exactly 1. A threshold like `0.05` therefore means
+  the same thing on every gradient operator here.
 
 Build one from a function, a file, a `BufferedImage`, PNG bytes or a plain `FloatArray`:
 
@@ -97,10 +97,10 @@ side, maps every panel through one shared display range, and pushes one PNG to t
 choose one common automatic range, or you can pass `displayRange = -1f..1f` (for example). No AWT is
 involved, so it works anywhere.
 
-## Filters — and choosing the right one
+## Choosing a filter
 
-Four smoothers with genuinely different characters, and the box prints each one's residual against
-the clean source. On impulse noise the median is two orders of magnitude better than the Gaussian.
+This box runs four smoothers over the same noisy image and prints each one's residual against the
+clean source. On impulse noise the median is two orders of magnitude better than the Gaussian.
 The bilateral filter, which is excellent at preserving edges, is bad at impulses: a salt pixel is
 far away in *range* and so keeps its own weight.
 
@@ -234,7 +234,7 @@ Run headless, Harris and Shi–Tomasi each return exactly four corners, and the 
 **0.94 px** from the true corner of the square (sub-pixel refinement is on by default, via a
 three-tap parabola fit in x and y). `cornersToFLines(...)` turns them into drawable crosses or boxes.
 
-## Hough — global structure from local evidence
+## Hough lines
 
 Every edge pixel votes for every line through it; a real line becomes a bright peak in `(rho, theta)`
 accumulator space, with no grouping step in between.
@@ -419,29 +419,19 @@ amplified difference between them.
 `magma`, `inferno`, `plasma`, `turbo`, `coolwarm`, `grayscale`); `colormapDiverging(name)` picks a
 symmetric range around zero, the right default for anything signed.
 
-## Where the pictures come from
+## Trying it yourself
 
-Everything on this page is real output, and there are three routes to reproducing it:
+The [`imaging_cv_examples`](agent_transcripts.md#imaging_cv_examples) starting point builds the
+examples on this page as live boxes. Change a sigma, a threshold or the planted motion, re-run the
+box, and watch the picture update.
 
-<div class="field-data-table" markdown>
-
-| what | how |
-|---|---|
-| the code fences above | executed by the docs build; the image under each is that box's own output |
-| the analytic figures | `python3 tools/run_field_tests.py --id imaging.gallery --port 9520` |
-| the whole family, live | replay `dev_docs/agents/transcripts/imaging_cv_examples.yaml` |
-
-</div>
-
-The gallery is a FIELD_TEST: it builds every figure from real `Img` pipelines and **fails** if the
-invariants break: if Canny stops being thinner than a raw threshold, if the four corner marks drift
-more than four pixels off the four corners, if Hough stops recovering the planted lines, if the
-Laplacian pyramid stops round-tripping, or if a flow arrow disagrees with the planted motion by more
-than three pixels.
-
-The transcript is a loadable document: replay it into a fresh Field with the agent backdoor
-(`field_run_transcript`) and you get six live boxes you can edit. Change a sigma, a threshold or the
-planted motion, re-run the box, and watch it update. See [Agent transcripts](agent_transcripts.md).
+??? aside "Where the figures come from"
+    The images under the code fences are those boxes' own output, captured by the docs build. The
+    figures without a fence come from the `imaging.gallery` FIELD_TEST
+    (`python3 tools/run_field_tests.py --id imaging.gallery`), which builds each one from real `Img`
+    pipelines and fails if Canny stops being thinner than a raw threshold, the corner marks drift
+    off the square's corners, Hough stops recovering the planted lines, the Laplacian pyramid stops
+    round-tripping, or a flow arrow disagrees with the planted motion.
 
 ## Speed, against OpenCV
 
@@ -452,12 +442,15 @@ puts them beside OpenCV in the same JVM, on the same pixels: `tools/imaging-benc
 ./gradlew :tools:imaging-bench:jmh
 ```
 
-Underneath is a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`), and
-three of the operations get more from doing less work than from doing it wider — `pyrDown` filters
-only the rows and columns that survive the decimation, `boxBlur` accumulates a row at a time instead
-of a column, and `bilateral` reads a table instead of calling `Math.exp` per tap.
-`dev_docs/IMAGING_VECTOR_KERNELS.md` is that layer: what is in it, the checklist for adding an
-operator, and three lessons about register accumulators that cost real time to learn.
+The table below compares the two in milliseconds per call.
+
+??? aside "How the kernels are written"
+    Underneath is a small layer of vectorized span kernels (Java Vector API, `imaging_simd.kt`).
+    Three operations are fast mostly because they do less work: `pyrDown` filters only the rows and
+    columns that survive the decimation, `boxBlur` accumulates a row at a time instead of a column,
+    and `bilateral` reads a table instead of calling `Math.exp` per tap.
+    `dev_docs/IMAGING_VECTOR_KERNELS.md` describes the layer and has the checklist for adding an
+    operator.
 
 <!-- BEGIN imaging-bench table — generated by tools/imaging_bench_doc.py, do not edit -->
 

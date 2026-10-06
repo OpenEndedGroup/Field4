@@ -24,6 +24,12 @@ typealias LlmToolTranscriptEntry = OpenAiIdeCodexBridge.ToolTranscriptEntry
 
 enum class LlmReasoningEffort { LOW, MEDIUM, HIGH }
 
+/** A provider-scoped local preference; explicit per-call choices still take precedence. */
+fun configuredAiReasoningEffort(): LlmReasoningEffort =
+    LlmReasoningEffort.entries.firstOrNull {
+        it.name.equals(configuredAiModelSettings().reasoningEffort, ignoreCase = true)
+    } ?: LlmReasoningEffort.MEDIUM
+
 /**
  * Provider-aware factory: builds the agent engine matching the /welcome provider
  * setting. Shared by the IDE installer and the docs-search bridge so provider
@@ -32,7 +38,7 @@ enum class LlmReasoningEffort { LOW, MEDIUM, HIGH }
 fun createLlmBridge(
     model: String = Ai4ModelDefaults.flagshipModel(),
     log: LogSink = StdoutLog,
-    reasoningEffort: LlmReasoningEffort = LlmReasoningEffort.MEDIUM
+    reasoningEffort: LlmReasoningEffort = configuredAiReasoningEffort()
 ): LlmBridge =
     if (configuredAiProvider() == "anthropic")
         AnthropicBridge(model = model, log = log)
@@ -76,7 +82,11 @@ interface LlmBridge {
         maxToolRounds: Int = 24,
         imageDataUrls: List<String> = emptyList(),
         onTextDelta: ((String) -> Unit)? = null,
-        onProgress: ((LlmProgressUpdate) -> Unit)? = null
+        onProgress: ((LlmProgressUpdate) -> Unit)? = null,
+        // The turn's prompt in parts (TurnContext). A bridge that understands it sends the ephemeral
+        // instructions per request and stores only TurnContext.durablePrompt; one that does not sends
+        // userPrompt, which callers set to TurnContext.legacyPrompt. Null: userPrompt is everything.
+        turnContext: TurnContext? = null
     ): LlmSendResult
 }
 
@@ -105,7 +115,8 @@ class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
         maxToolRounds: Int,
         imageDataUrls: List<String>,
         onTextDelta: ((String) -> Unit)?,
-        onProgress: ((LlmProgressUpdate) -> Unit)?
+        onProgress: ((LlmProgressUpdate) -> Unit)?,
+        turnContext: TurnContext?
     ): LlmSendResult =
         inner.send(
             state,
@@ -117,6 +128,7 @@ class OpenAiLlmBridge(private val inner: OpenAiIdeCodexBridge) : LlmBridge {
             maxToolRounds,
             imageDataUrls,
             onTextDelta,
-            onProgress
+            onProgress,
+            turnContext
         )
 }

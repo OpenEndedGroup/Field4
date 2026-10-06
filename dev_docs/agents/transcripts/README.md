@@ -92,6 +92,7 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   relaunch the workloads to compare allocation with Field's in-place linalg operations.
 
 - `hello_display.yaml`: smallest useful blank-canvas transcript; creates one box, displays HTML, and can be undone.
+- `ai4_iframe_hello.yaml`: one Field-served webpage in an output iframe, with a textbox and opt-in AI4 tools for inspecting and driving that live page. Run the host box after opening its starting point.
 - `hello_display_capture.yaml`: same as `hello_display.yaml` but paired with the backdoor capture-command chain (`wait-output` / `output` / `screenshot-box`) documented under "Capturing output and screenshots" — the worked example of capturing a macro's output and a cropped screenshot.
 - `polytope_conway_demo.yaml`: one deliberately compact **polytope review box**. It marks two opposite cube faces with different height attributes, selects and applies `kis` only to those faces, converts the authoritative polygon faces to separate `FLine`s, and ends in the on-canvas `threeLines(...)` viewer. Orbit and hover the result; clicking a face reports its output id, transform role, source elements, and resolved height. Its inspection output also exercises the registered data-class visualizers for the transform and its polygon-to-triangle provenance.
 - `polytope_conway_gallery.yaml`: the same algebra as **four small boxes, one question each** — the demo set `dev_docs/POLYTOPE_ALGEBRA.md` §6 asks for, and the loadable companion to `public/docs/polytope_examples.md`. (1) an editable Conway-expression contact sheet whose captions are read off the topology, so retyping the expression list rebuilds everything; (2) a topology-only dual whose missing coordinates are shown by two *real* caught exceptions before a realization policy is applied; (3) a selective **and** non-uniform `kis` whose deployed scalar is painted onto pickable output faces; (4) a realization before/after leaving the solver's own diagnostics as the box's final value. Each box names the one line to change. Pure CPU.
@@ -105,12 +106,18 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
   `afield.paint.PaintCanvas` — three strokes that run a brush dry, a flow field of a few hundred
   blended strokes, and a pencil drawing with hatching and chalk. Needs `./gradlew buildPaintNative`;
   without it every box says so and stops.
+- `ai4_paint_studio.yaml`: one box that makes the paint canvas a studio for AI4 — an
+  `agentExtension` with eleven `paint.*` tools, canvas and craft context, `/canvas`, `/palette` and
+  `/gallery`, and the canvas as `branchState`, so a chat rewind restores it; and a Scribbler box whose
+  `aiTool("scribble")` paints on the Studio's canvas. The transcript only runs the boxes; painting
+  needs a person (or `agent-task --chat-box Studio`) and a provider.
 - `syphon_bridge.yaml`: three boxes over `afield.syphon` (macOS) — list the Syphon servers on the
   machine, publish an animated picture as "Field pattern", and receive it back through Syphon into
   a `display`. Needs `./gradlew buildSyphonNative` (Xcode); compiled, not evaluated, by CI.
 - `syphon_gpu.yaml`: a renderer, a RenderToTexture published with `followOnGpu` (GPU copy into an
   IOSurface, no readback) as "Field GPU", and a Syphon client drawn as a texture over the window.
 - `inertial_movement.yaml`: three pure-CPU `loop { }` boxes on interrupted motion, shortest first —
+- `keyframe_editor.yaml` — the keyframe editor page's four boxes: a curve played into a meter, one key of each type, an `onChange` overlay, and key types of its own written with `interpolant(...)`.
   no Window, no Renderer, all **launched** rather than executed. `inertial_hello` is five
   declarations and a `showSignals` call: the least you can write and see `inertialTo` work.
   `inertial_vs_restarting` adds a `startAt` per frame, so the restarted arm and the re-solving one
@@ -200,6 +207,9 @@ Those boxes are read-only reference: they are a saved document, not transcripts.
 - `sound_render_path.yaml`: **one beat, three ways of sounding it** — roll, synth stand-in, Dirt
   samples, the per-event fallback and the library search, the companion to `sound.md`. Promoted from
   `public/docs/assets/sound_render_path/` on 2026-10-02; the page's wavs and roll stay there.
+- `stipple_sheet.yaml`: **the stipple transport sheet** — the companion to
+  `stipple_transport.md`. Loads the committed two-image model and deforms particles and a lattice
+  under transport-time, movie-time and step sliders. Pure CPU.
 - `frames_lifecycle.yaml`: **a frame loop, from start to cleanup** — the companion to
   `animation_time_model.md`. Runs until stopped, stops itself with `end()`, re-run replaces, and a
   fourth box the reader drives to see which of `.end { }` and `finally` each way of stopping reaches.

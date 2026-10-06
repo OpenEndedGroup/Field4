@@ -2,8 +2,9 @@ package afield
 
 import afield.logger.lprintln
 import afield.stdlib.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 private val provisionalByDocument =
@@ -72,29 +73,50 @@ private fun currentDocument(): String? =
 private fun documentKeyFor(box: Box): String? =
     if (box.isInsideInitialized()) box.inside.filename else currentDocument()
 
-private fun reloadShaderRuntimeForProvisionalProperty(target: Box, property: String) {
-    if (property !in shaderProvisionalProperties) return
+/**
+ * Rebuilds the live shader modules whose source a provisional decision changed, one reload per box and
+ * shader kind however many of its properties were decided (accept-all on a box with both `vertex` and
+ * `fragment` pending compiles it once, against both new stages).
+ *
+ * Launched on the runloop and not awaited. The callers are the `provisional-accept` / `-reject` /
+ * `-accept-all` / `-reject-all` handlers, which run on the Netty event loop serving that browser's /ws
+ * socket; waiting there for the runloop to come free and then for a GLSL/Slang compile plus pipeline
+ * rebuild stalled every message on the socket, keepalive pongs included, until clients dropped it
+ * ("1011 keepalive ping timeout"). Nothing after the call needs the reload: the handlers send no reply,
+ * the property is written and the provisional set sent before this runs, and a reload reports its own
+ * errors onto the shader property. The runloop runs launches in order, so a later decision or `alt-r`
+ * on the same box still follows this one.
+ */
+@OptIn(DelicateCoroutinesApi::class)
+private fun reloadShaderRuntimeForProvisionalProperties(decided: List<Pair<Box, String>>) {
+    val propertiesByBox = decided
+        .filter { (_, property) -> property in shaderProvisionalProperties }
+        .groupBy({ it.first }, { it.second })
+    if (propertiesByBox.isEmpty()) return
+    GlobalScope.launch(Runloop.runLoop.main) {
+        propertiesByBox.forEach { (target, properties) -> reloadShaderRuntime(target, properties.toSet()) }
+    }
+}
+
+private fun reloadShaderRuntime(target: Box, properties: Set<String>) {
+    fun changed(kind: Set<String>) = properties.any { it in kind }
     runCatching {
-        runBlocking {
-            withContext(Runloop.runLoop.main) {
-                if (property in graphicsShaderProperties && runCatching { target._shader != null }.getOrDefault(false)) {
-                    reloadShader(target)
-                }
-                if (property in computeShaderProperties && runCatching { target._computeShader != null }.getOrDefault(false)) {
-                    reloadComputeShader(target)
-                }
-                if (property in meshShaderProperties && runCatching { target._meshShader != null }.getOrDefault(false)) {
-                    reloadMeshShader(target)
-                }
-                if (property in rayShaderProperties && runCatching { target._rayTracingShader != null }.getOrDefault(false)) {
-                    reloadRayTracingShader(target)
-                }
-            }
+        if (changed(graphicsShaderProperties) && runCatching { target._shader != null }.getOrDefault(false)) {
+            reloadShader(target)
+        }
+        if (changed(computeShaderProperties) && runCatching { target._computeShader != null }.getOrDefault(false)) {
+            reloadComputeShader(target)
+        }
+        if (changed(meshShaderProperties) && runCatching { target._meshShader != null }.getOrDefault(false)) {
+            reloadMeshShader(target)
+        }
+        if (changed(rayShaderProperties) && runCatching { target._rayTracingShader != null }.getOrDefault(false)) {
+            reloadRayTracingShader(target)
         }
     }.onFailure { throwable ->
         lprintln(
             "warning,ai4",
-            "Unable to refresh shader runtime after provisional decision for ${target.id}/$property: ${
+            "Unable to refresh shader runtime after provisional decision for ${target.id}/${properties.joinToString("+")}: ${
                 throwable.message ?: throwable::class.java.name
             }"
         )
@@ -200,7 +222,7 @@ fun acceptProvisional(document: String, uid: String, property: String): Boolean 
         archiveMarkdown = provisionalArchive(document, uid, property)?.markdown
     )
     removeProvisional(document, uid, property)
-    reloadShaderRuntimeForProvisionalProperty(target, property)
+    reloadShaderRuntimeForProvisionalProperties(listOf(target to property))
     return true
 }
 
@@ -222,7 +244,7 @@ fun rejectProvisional(document: String, uid: String, property: String): Boolean 
     val target = thisSessionInfo.get().boxes[uid]
     val removed = removeProvisional(document, uid, property)
     if (removed && target != null) {
-        reloadShaderRuntimeForProvisionalProperty(target, property)
+        reloadShaderRuntimeForProvisionalProperties(listOf(target to property))
     }
     return removed
 }
@@ -233,8 +255,8 @@ fun acceptAllProvisional(document: String) {
         sendProvisionalSet(document)
         return
     }
-    entries.forEach { entry ->
-        val target = thisSessionInfo.get().boxes[entry.uid] ?: return@forEach
+    val accepted = entries.mapNotNull { entry ->
+        val target = thisSessionInfo.get().boxes[entry.uid] ?: return@mapNotNull null
         target.setPropertyRaw(entry.property, entry.contents, doResync = true)
         FlightRecorder.recordAiProvisionalAccepted(
             box = target,
@@ -242,18 +264,19 @@ fun acceptAllProvisional(document: String) {
             acceptedValue = entry.contents,
             archiveMarkdown = provisionalArchive(document, entry.uid, entry.property)?.markdown
         )
-        reloadShaderRuntimeForProvisionalProperty(target, entry.property)
+        target to entry.property
     }
     clearProvisional(document)
+    reloadShaderRuntimeForProvisionalProperties(accepted)
 }
 
 fun rejectAllProvisional(document: String) {
     val entries = provisionalEntries(document)
     clearProvisional(document)
-    entries.forEach { entry ->
-        val target = thisSessionInfo.get().boxes[entry.uid] ?: return@forEach
-        reloadShaderRuntimeForProvisionalProperty(target, entry.property)
-    }
+    val sessionBoxes = thisSessionInfo.get().boxes
+    reloadShaderRuntimeForProvisionalProperties(
+        entries.mapNotNull { entry -> sessionBoxes[entry.uid]?.let { it to entry.property } }
+    )
 }
 
 fun sendProvisionalSet(document: String) {

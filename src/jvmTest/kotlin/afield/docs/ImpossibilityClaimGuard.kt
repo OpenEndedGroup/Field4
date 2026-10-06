@@ -534,14 +534,17 @@ object ImpossibilityClaimGuard {
      * claim units by line, rather than re-implementing the citation regexes here. One parser, one set
      * of accepted spellings; if `CitationGuard` learns a new form, this learns it too.
      */
-    fun rule(root: File, page: File, name: String): List<Ruling> {
+    fun rule(root: File, page: File, name: String, found: List<Claim> = claims(page, name)): List<Ruling> {
+        // Most pages make no claim, and resolving every citation on them (which reads the files they
+        // cite) was most of this guard's time. Nothing below runs without a claim to rule on.
+        if (found.isEmpty()) return emptyList()
         val lines = page.readText().split("\n")
         val citationLines = CitationGuard.parse(page, name)
             .filter { CitationGuard.resolve(root, it) is CitationGuard.Resolution.Resolved }
             .map { it.pageLine }
             .toSet()
 
-        return claims(page, name).map { claim ->
+        return found.map { claim ->
             val body = claim.unit.mapNotNull { lines.getOrNull(it) }.joinToString("\n")
 
             REPRODUCER.find(body)?.let { m ->
@@ -613,8 +616,10 @@ object ImpossibilityClaimGuard {
     }
 
     fun inventory(root: File, pages: List<File>): Inventory {
-        val cs = pages.flatMap { claims(it, it.relativeToOrSelf(root).path) }
-        val rs = pages.flatMap { rule(root, it, it.relativeToOrSelf(root).path) }
+        // Claims once per page, shared with the ruling: rule() used to find them all again.
+        val perPage = pages.map { page -> val name = page.relativeToOrSelf(root).path; Triple(page, name, claims(page, name)) }
+        val cs = perPage.flatMap { it.third }
+        val rs = perPage.flatMap { (page, name, found) -> rule(root, page, name, found) }
         return Inventory(cs, rs)
     }
 

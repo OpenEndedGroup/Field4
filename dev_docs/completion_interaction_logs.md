@@ -15,7 +15,13 @@ The JVM appends JSONL to:
 ```
 
 Set `AFIELD_COMPLETION_INTERACTION_LOG_PATH` or
-`-Dafield.completion.interactionLog.path=…` to choose another directory. Logging is local; nothing in
+`-Dafield.completion.interactionLog.path=…` to choose another directory. A Field started by agent
+tooling (the backdoor's managed server, the smoke, docs and UI runners) writes to
+`build/field-automation-logs/completion_interactions/` in its own checkout instead. Before
+2026-10-06 those sessions wrote here too: a record whose `documentPath` is under
+`build/field-automation-workspace/` is automation, not someone typing. A Field launched by hand
+(`./field.sh`, `./gradlew runJvm`) still writes here whatever its workspace is.
+Logging is local; nothing in
 this path uploads the records. These logs contain full source and should be handled like the documents
 they describe.
 

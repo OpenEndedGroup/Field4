@@ -3,18 +3,17 @@
 *Every public declaration used below is listed, with its KDoc, in the codebase reference:
 [Math](reference/math.md) and [Data](reference/data.md).*
 
-You have two streams of numbers and one question: **are they related?** Almost every answer Field
-has to it lives in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
-`afield/stdlib/quantilewarp.kt`, about 3800 lines between them. This is a worked example of all
-three, and the argument it makes is that *"are they related?"* is six different questions with six
-different answers, and picking the wrong one is how you miss a relationship that is staring at you.
+You have two streams of numbers and want to know whether they are related. Field's tools for that
+live in `afield/stdlib/stats.kt`, `afield/stdlib/correlations.kt` and
+`afield/stdlib/quantilewarp.kt`, and this page works through all three. Each dependence coefficient
+answers a slightly different version of the question, so the page shows which one to use for which
+kind of relationship.
 
-Summary statistics are one half: count, quartiles, IQR, MAD, skew, kurtosis, histograms and a
-streaming window of all of it. Dependence coefficients are the other: Pearson, Spearman, Kendall,
-Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling versions of the last two.
-And one file is the odd one out. `quantilewarp.kt` reshapes a signal's *distribution* into one you
-chose, which is what you reach for when the problem is not "are these related" but "this signal is
-the wrong shape to work with".
+`stats.kt` has the summary statistics: count, quartiles, IQR, MAD, skew, kurtosis, histograms and
+a streaming window of all of it. `correlations.kt` has the dependence coefficients: Pearson,
+Spearman, Kendall, Chatterjee's xi, distance correlation, a MIC-like grid scan, and rolling
+versions of the last two. `quantilewarp.kt` reshapes a signal's *distribution* into one you
+choose, for when a signal has the wrong shape to work with.
 
 ## Where the family lives
 
@@ -32,16 +31,14 @@ the wrong shape to work with".
 
 </div>
 
-Two things this family is **not**. It is not a statistics library: there are no p-values, no
-confidence intervals and no hypothesis tests anywhere in it. Whether a number means anything is
-yours to establish, and *Measuring the null yourself* below writes the permutation test that does
-it. And
-`micTicNaive` is not MICe/TICe. The file's own header comment
+There are no p-values, confidence intervals or hypothesis tests in these files. Whether a number
+means anything is yours to establish, and *Measuring the null yourself* below writes the
+permutation test that does it. Note too that `micTicNaive` is not MICe/TICe. The file's own header comment
 (`correlations.kt:36#WHAT THE MIC/TIC SCAN HERE IS AND IS NOT:`) says it is an equipartition-grid approximation that will not
 reproduce published numbers.
 
-If you want the two-fence version of the dependence story next to the interpolants it grew out of,
-[Values Over Time](interpolants_examples.md) has it. This page is the family's home.
+[Values Over Time](interpolants_examples.md) has a shorter version of the dependence examples,
+next to the interpolants.
 
 ## Summary statistics
 
@@ -178,11 +175,11 @@ estimates and its two obvious modes get about one bin each. `buildHistogram` tak
 argument (`stats.kt:1214#There is no bin-count parameter`), so if you need finer bins for a signal
 like this, bin it yourself.
 
-## Six questions, six answers
+## Comparing the dependence coefficients
 
-Every coefficient in `StatsDependence` takes two equal-length
-`DoubleArray`s and returns one number, and they are *not* interchangeable. Six shapes, drawn with
-every coefficient underneath, make the case:
+Every coefficient in `StatsDependence` takes two equal-length `DoubleArray`s and returns one
+number, but they measure different things. This example draws six shapes of relationship and
+prints every coefficient under each:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/statistics_examples/dependence_grid.png" wait="3.0" capture="box" open-outputs="true" w="1010" h="1100" padding="14"}
 :::static
@@ -249,7 +246,7 @@ Read the captions across the grid, or the same numbers as a table:
 | same mean, growing spread | −0.002 | 0.007 | 0.008 | 0.026 | **0.193** | 0.183 |
 | independent | 0.001 | −0.003 | −0.001 | −0.036 | 0.068 | 0.076 |
 
-Five things fall out of that table, and each one is a rule about which measure to reach for.
+The table says which measure to use for which question.
 
 **Pearson answers "is this a straight line", and nothing else.** `r = −0.000` on the parabola,
 where `y` is a *noiseless, exact* function of `x`: the dependence is total and the coefficient is
@@ -532,7 +529,7 @@ sampled against the batch call was **8.6×10⁻¹⁴**. `RollingDependenceTest` 
 
 ## Reshaping a distribution: `quantilewarp.kt`
 
-The odd file out. `AdaptiveQuantileWarp` does not measure anything: it fits a monotone 8-knot
+`AdaptiveQuantileWarp` does not measure anything: it fits a monotone 8-knot
 PCHIP curve from the measured quantiles of recent samples onto the quantiles of a target
 distribution, so a signal of the wrong shape becomes one of the right shape. The default target is
 `TargetDistributions.UnitNormal` (`quantilewarp.kt:94#val UnitNormal = QuantileFunction { p ->`), and the default eight probabilities are
@@ -623,7 +620,7 @@ exact answer, so the oracle is built in the fence out of `inverseStandardNormalC
 (`quantilewarp.kt:908#fun inverseStandardNormalCdf(p: Double): Double {`, itself accurate to six decimals: it returns 1.959964 at p=0.975 and
 −3.090232 at p=0.001) and a binary search over the sorted fitting sample.
 
-Three sharp edges, all measured:
+Three things to watch for:
 
 - **Outside the fitted range, `evaluate` extrapolates linearly from the endpoint tangent**
   (`quantilewarp.kt:183#tangent, with nothing clamping the result`), and for a compressed tail that
@@ -667,7 +664,7 @@ also allocates two n×n matrices, so switch to `RollingDistanceCorrelation` or s
 problem turns out to be that the signal is the wrong shape rather than unrelated to anything, that
 is `quantilewarp.kt`.
 
-Everything on this page is also **five live, editable boxes**: the `statistics_examples` starting
+Everything on this page is also available as live, editable boxes: the `statistics_examples` starting
 point listed under *Pure-compute scenes* in
 [Agent transcripts](agent_transcripts.md#pure-compute-scenes) opens the whole thing in a fresh
 document, each box printing the numbers above so a re-run checks itself. Change a shape, a window

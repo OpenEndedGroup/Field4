@@ -2,12 +2,10 @@ import afield.four.fabricated.PathTraceEnvironment
 import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
-import afield.four.modules.fromContext
 import afield.four.util.Camera
 import afield.stdlib.linalg.Vector3f
 import afield.stdlib.linalg.Vector4f
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 // A bright strip light with four slats under it, and nothing else lit. Everything is

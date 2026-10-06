@@ -15,7 +15,7 @@ val smooth = mutableListOf<Float>()
 val filtered = mutableListOf<Float>()
 
 val ema = EMAFilter(alpha = 0.08f)
-val oneEuro = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f)
+val oneEuro = OneEuroFilter(minCutoff = 1.0f, beta = 0.02f, sampleRate = 120f)
 val band = BandPassFilter(frequency = 5f, sampleRate = 120f, q = 0.8f)
 
 for (i in 0 until 420) {
@@ -44,9 +44,9 @@ showSignals(
 
 One `showSignals` call puts all three streams on one axis. Watch the chain order: `band` is applied to `s`, the output of `ema` and `oneEuro`, not to `signal`, so the band-pass sees a stream the two smoothers have already been through.
 
-![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, an orange smoothed trace attenuated to roughly a fifth of it and lagging behind, and a green band-pass trace that stays almost flat at zero](assets/timeseries_examples/filter_chains.png)
+![Three traces over 420 samples: a jagged blue raw signal swinging between +1 and -1, a smooth orange trace at about half that height and some fifteen samples behind it, and a green band-pass trace swinging gently around zero at the same slow rate](assets/timeseries_examples/filter_chains.png)
 
-That order is why the band-pass trace sits nearly flat: most of the 4.7 Hz content it is tuned for was taken out upstream. The smoothed trace has a catch of its own. `OneEuroFilter` derives its `dt` from `System.currentTimeMillis()` between calls, so a `for` loop over a stored array hands it about a millisecond per sample and it smooths far harder than its 1 Hz `minCutoff` implies; the attenuation and the lag visible here are that, not a missing fundamental. Its cutoffs are in Hz and mean what they say when the samples really do arrive at 120 Hz.
+That order is why the band-pass trace is small and slow: the 4.7 Hz content it is tuned for was mostly taken out upstream, so what passes is the leakage of the 1.2 Hz swing through its skirt. The two filters with cutoffs in Hz are told the rate: `BandPassFilter` and `OneEuroFilter` take `sampleRate = 120f`, so those cutoffs mean what they say for stored data pushed through in a loop.
 
 ## Distribution-aware event flags
 
@@ -92,18 +92,15 @@ For inline diagnostics of similar live values, continue with [Visualizers](visua
 
 ## From time to frequency
 
-The two examples above smooth, gate, and flag a stream sample by sample, all of it in the time
-domain. Sometimes the question is what the signal is *made of* —
-which frequencies carry the energy, how bright the timbre is, where a chirp is heading.
-`afield.stdlib` answers that side of it with a pure-Kotlin FFT, a windowed `Spectrum` and a
-`Spectrogram` (an STFT) on top of it, the classic spectral features, and a resonator filterbank
-that gets at frequency without running a transform at all. That last one is the odd member of the
-family, and the only one where the frequencies it reports are frequencies you chose.
+Sometimes the question is what a signal is *made of*: which frequencies carry the energy, how
+bright the timbre is, where a chirp is heading. For that Field has an FFT, a windowed `Spectrum`,
+a `Spectrogram` (a short-time FFT, or STFT), the usual spectral features, and a resonator bank,
+which measures energy at frequencies you choose without running a transform at all. Any length
+of signal can be transformed, not just powers of two, and nothing needs an external library or a
+GPU.
 
-Nothing here needs an external DSP library or a GPU. The FFT is an iterative Cooley–Tukey radix-2
-core with a Bluestein (chirp-z) fallback, so arbitrary non-power-of-two lengths transform exactly.
-Forward and inverse both round-trip. Every example below is a live box: it synthesises its own
-signal, runs the transform, and paints the result into its own output panel.
+Each example below synthesises its own signal, analyses it, and draws the result into the box's
+output.
 
 ## One spectrum
 
@@ -151,17 +148,16 @@ println("peak=${"%.0f".format(peak)}Hz centroid=${"%.0f".format(centroid)}Hz rol
 
 ![a cyan magnitude curve on a dark plot, frequency in Hz along the bottom out to 4000 and magnitude up the side to 400. A very narrow spike just under 700 Hz reaches almost the top of the frame; a broad low hump peaks around 70 near 1700 Hz, with a second narrow spike at about 1800 Hz standing on its right shoulder at roughly three-fifths the tall spike's height. Two dashed yellow verticals cross the whole plot, labelled in the legend as the centroid at 1621 Hz and the 85% rolloff at 2172 Hz, and both sit to the right of the tall spike](assets/spectral_examples/one_spectrum.png)
 
-The one-sided magnitude curve carries dashed reference lines at the spectral centroid and the 85%
-rolloff, with the tone/chirp structure laid out across 0 Hz → Nyquist.
+The tall spike is the steady 700 Hz tone, the broad hump is the chirp's energy spread across the
+frequencies it swept, and the dashed lines mark the spectral centroid and the 85% rolloff.
 
 ## A spectrogram of a chirp
 
 A single spectrum is one slice. An STFT frames the signal, windows each frame, hops forward, and
 transforms — giving you a spectrogram: a time × frequency heatmap. The rising chirp becomes a
 diagonal ridge, the steady tones stay as horizontal lines, and the per-frame **spectral centroid**
-draws a bright trace climbing with the chirp. `Box.showHeatmap(...)` does the drawing: it maps the
-`[frame][bin]` matrix through a colormap, bilinear-upsamples it, flips the y-axis, and displays the
-resulting PNG in the box's output.
+draws a bright trace climbing with the chirp. `showHeatmap(...)` draws the `[frame][bin]` matrix
+through a colormap, low frequencies at the bottom, into the box's output.
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/spectral_examples/spectrogram.png" wait="2.5" capture="box" open-outputs="true" padding="20"}
 :::static

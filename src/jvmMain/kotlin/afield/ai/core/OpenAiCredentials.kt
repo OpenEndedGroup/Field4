@@ -33,7 +33,8 @@ data class OpenAiCredentialStatus(
 data class AiModelSettings(
     val flagshipModel: String = "",
     val fastModel: String = "",
-    val fallbackModel: String = ""
+    val fallbackModel: String = "",
+    val reasoningEffort: String = ""
 )
 
 data class AiProviderStatus(
@@ -149,7 +150,7 @@ private fun readAiModelSettings(provider: String = configuredAiProvider()): AiMo
         }.getOrNull() ?: "openai"
         return if (savedProvider == provider) props.getProperty(name, "").trim() else ""
     }
-    return AiModelSettings(value("flagshipModel"), value("fastModel"), value("fallbackModel"))
+    return AiModelSettings(value("flagshipModel"), value("fastModel"), value("fallbackModel"), value("reasoningEffort"))
 }
 
 fun configuredAiModelSettings(provider: String = configuredAiProvider()): AiModelSettings = readAiModelSettings(provider)

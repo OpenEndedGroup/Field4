@@ -64,8 +64,97 @@
                 },
                 onChange() {
                         broadcastKeyframes('change');
+                        shareExtent();
+                },
+                onPreview(keyframes) {
+                        // Shapes for a drag in progress: the box answers with a 'segments' message.
+                        sendMessage({ type: 'preview', keyframes });
+                },
+                // Linked lanes: the other editors in this box share one time axis.
+                onViewChange(range) {
+                        linkState.manual = true;
+                        postLink({ kind: 'view', range });
+                },
+                onFit() {
+                        linkState.manual = false;
+                        postLink({ kind: 'auto' });
+                        applyLinkedView();
+                },
+                onHover(time) {
+                        postLink({ kind: 'hover', time });
                 },
         });
+
+        // ── Linked lanes ───────────────────────────────────────────────────────────────
+        // Every editor of one box (or one channel group within it) is on a BroadcastChannel named
+        // for that group. Until someone pans or zooms, each frames the time span of all their keys
+        // together, which comes out the same in every lane; a pan or zoom in any lane is then
+        // adopted by the others, and Fit the curve returns them all to framing everything.
+        const linkGroup = (urlParams.get('group') || '').trim();
+        const link = linkGroup && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('kf-link:' + linkGroup) : null;
+        const linkState = { manual: false, extents: new Map() };
+
+        function postLink(message) {
+                if (link) link.postMessage({ ...message, from: clientUid });
+        }
+
+        function linkedTimes() {
+                const times = [];
+                linkState.extents.forEach((extent, from) => {
+                        if (from !== clientUid && Array.isArray(extent)) times.push(...extent);
+                });
+                return times;
+        }
+
+        function applyLinkedView() {
+                editor.linkedTimes = linkedTimes();
+                if (!linkState.manual) {
+                        editor.fitToKeyframes();
+                        editor.render();
+                }
+        }
+
+        function shareExtent() {
+                const extent = editor.keyTimeExtent();
+                linkState.extents.set(clientUid, extent);
+                postLink({ kind: 'extent', extent });
+        }
+
+        if (link) {
+                link.onmessage = ({ data }) => {
+                        if (!data || data.from === clientUid) return;
+                        switch (data.kind) {
+                                case 'hello':
+                                        // A lane has just opened: tell it our keys, and our view if it is chosen.
+                                        shareExtent();
+                                        if (linkState.manual) postLink({ kind: 'view', range: editor.viewTimeRange });
+                                        break;
+                                case 'extent':
+                                        linkState.extents.set(data.from, data.extent);
+                                        applyLinkedView();
+                                        break;
+                                case 'view':
+                                        if (!Array.isArray(data.range)) break;
+                                        linkState.manual = true;
+                                        editor.setViewTimeRange(data.range, { render: false });
+                                        editor.render();
+                                        break;
+                                case 'auto':
+                                        linkState.manual = false;
+                                        applyLinkedView();
+                                        break;
+                                case 'hover':
+                                        editor.setLinkedCursor(data.time);
+                                        break;
+                                case 'bye':
+                                        linkState.extents.delete(data.from);
+                                        applyLinkedView();
+                                        break;
+                        }
+                };
+                window.addEventListener('pagehide', () => postLink({ kind: 'bye' }));
+                postLink({ kind: 'hello' });
+        }
 
         // Resize the editor when the iframe / container is resized
         if (typeof ResizeObserver !== 'undefined') {
@@ -78,8 +167,8 @@
                 ro.observe(host);
         }
 
-        let playhead = timeRange[0];
-        editor.setPlayhead(playhead);
+        // No playhead until the box sets one (setTime): a curve nobody is playing has none.
+        let playhead = null;
 
 
         connectWebSocket();
@@ -228,7 +317,15 @@
                         return;
                 }
 
+                if (message.type === 'segments') {
+                        editor.setCustomSegments(message.segments);
+                        return;
+                }
+
                 if (Array.isArray(message.keyframes) || message.type === 'keyframes' || message.type === 'state') {
+                        // Custom key types first: a key of an unknown type would be read as linear.
+                        if (Array.isArray(message.types)) editor.setCustomTypes(message.types);
+                        if (Array.isArray(message.segments)) editor._customSegments = message.segments;
                         applyRemoteKeyframes(message.keyframes, message.playhead);
                         return;
                 }
@@ -266,9 +363,31 @@
                 if (!Array.isArray(keyframes)) return;
                 syncState.isApplyingRemote = true;
                 editor.keyframes = keyframes.map((kf) => editor.prepareKeyframe(kf));
-                fitViewToKeyframes(editor.keyframes);
+                // A bezier key that arrives without handles (keys = listOf(Keyframe(...)) in a box)
+                // gets the handles the editor would give it, from its neighbours. They go back to
+                // the box once, so the curve it evaluates is the curve drawn here.
+                let derived = false;
+                keyframes.forEach((source, i) => {
+                        const kf = editor.keyframes[i];
+                        if (!source.handles && editor.getHandleModeForType(kf.type)) {
+                                editor.initializeHandlesFromNeighbors(kf);
+                                editor.applyHandleMode(kf);
+                                derived = true;
+                        }
+                });
+                if (link) {
+                        // A linked lane frames all the lanes' keys, unless someone has chosen a view.
+                        editor.linkedTimes = linkedTimes();
+                        if (!linkState.manual) fitViewToKeyframes(editor.keyframes);
+                } else {
+                        fitViewToKeyframes(editor.keyframes);
+                }
                 editor.refresh({ notify: false });
                 syncState.isApplyingRemote = false;
+                if (derived) editor.refresh({ record: false });
+                // Keys from the box (a run, or setKeys from code) are where undo starts.
+                editor.resetHistory();
+                shareExtent();
                 if (typeof playheadOverride === 'number') {
                         applyRemotePlayhead(playheadOverride);
                 }
@@ -285,43 +404,9 @@
 
         function fitViewToKeyframes(keyframes) {
                 if (!Array.isArray(keyframes) || !keyframes.length) return;
-                const times = keyframes.map((item) => item.time).filter(Number.isFinite);
-                const values = keyframes.map((item) => item.value).filter(Number.isFinite);
-                if (times.length) {
-                        // Always include 0 in the time range and snap to nice boundaries
-                        let tMin = Math.min(0, ...times);
-                        let tMax = Math.max(...times);
-                        // Ensure a minimum visible span
-                        if (tMax - tMin < 1) tMax = tMin + 1;
-                        const [min, max] = padRange(tMin, tMax, 0.08);
-                        // Round to nice boundaries (floor/ceil to nearest step)
-                        const niceMin = Math.floor(min);
-                        const niceMax = Math.ceil(max);
-                        if (niceMax - niceMin > 0) {
-                                editor.setViewTimeRange([niceMin, niceMax], { render: false });
-                        }
-                }
-                if (values.length) {
-                        // Always include 0 and 1 for value range (keyframes are 0-1)
-                        let vMin = Math.min(0, ...values);
-                        let vMax = Math.max(1, ...values);
-                        const [min, max] = padRange(vMin, vMax, 0.08);
-                        if (max - min > 0) {
-                                editor.setViewValueRange([min, max], { render: false });
-                        }
-                }
+                editor.fitToKeyframes();
         }
 
-        function padRange(min, max, padRatio) {
-                if (!Number.isFinite(min) || !Number.isFinite(max)) return [min, max];
-                if (Math.abs(max - min) < 1e-6) {
-                        const delta = Math.max(Math.abs(min) * 0.1, 1);
-                        return [min - delta, max + delta];
-                }
-                const span = max - min;
-                const pad = span * padRatio;
-                return [min - pad, max + pad];
-        }
 </script>
 </body>
 </html>

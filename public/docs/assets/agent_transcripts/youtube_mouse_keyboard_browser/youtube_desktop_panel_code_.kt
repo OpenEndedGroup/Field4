@@ -1,9 +1,7 @@
 import afield.four.Target
 import afield.four.browser.FieldUiBrowserTexture
 import afield.four.browser.PuppetBrowserWindowPanel
-import afield.four.modules.fromContext
 
-val renderer: Renderer = fromContext()
 prop<afield.four.browser.PuppetBrowser>(browserControl)
 
 val browser = FieldUiBrowserTexture(

@@ -304,11 +304,16 @@ class FieldMcpServer:
             flat = flatten_ai_tool_name(ai4_name)
             if flat in native or flat in name_map:
                 continue  # never shadow a native tool
-            tools.append({
+            tool = {
                 "name": flat,
                 "description": d.get("description", f"ai4 tool {ai4_name}."),
                 "inputSchema": d.get("inputSchema") or {"type": "object", "properties": {}},
-            })
+            }
+            # MCP tool annotations (readOnlyHint / destructiveHint) come from the tool's declared
+            # effects (ToolMeta.kt); a client may use them to decide what needs a confirmation.
+            if isinstance(d.get("annotations"), dict):
+                tool["annotations"] = d["annotations"]
+            tools.append(tool)
             name_map[flat] = ai4_name
         changed = not self._ai_tools_loaded or {t["name"] for t in tools} != {t["name"] for t in self._ai_tools}
         self._ai_tools = tools

@@ -224,6 +224,20 @@ class RunnerCaptureTransactionTests(unittest.TestCase):
                         "audio": "audio_run", "ui_drive": "ui_drives_run"}[kind], 1)
                 self.assertEqual(list(self.root.glob(".field-capture-*")), [])
 
+    def test_incremental_fresh_cache_reuses_committed_outputs_for_every_capture_kind(self):
+        # A fresh worktree has the committed assets but no runner cache. Incremental must adopt
+        # them, not re-capture: capture="ui" once re-drove every UI fence on the site this way.
+        for kind in ("screenshot", "video", "audio", "ui_drive"):
+            with self.subTest(kind=kind):
+                self.state.cache, self.state.cache_metadata = {}, {}
+                self.state.runner_mode = "incremental"
+                destinations, capture, kwargs = self.prepare(kind)
+                capture(**kwargs)
+                self.assertEqual(self.state._run_capture_child.call_count, 0)
+                for destination in destinations:
+                    self.assertEqual(destination.read_bytes(), b"previous good capture")
+                self.state.runner_mode = "always"
+
     def test_successful_child_without_output_is_failure_for_every_capture_kind(self):
         for kind in ("screenshot", "video", "audio", "ui_drive"):
             with self.subTest(kind=kind):

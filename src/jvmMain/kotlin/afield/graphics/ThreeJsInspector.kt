@@ -212,6 +212,7 @@ data class ThreeReviewState(
     val renderUpAxis: ThreeUpAxis = ThreeUpAxis.Y,
     val hidden: List<String> = emptyList(),
     val camera: DoubleArray = doubleArrayOf(),
+    val cameraUp: DoubleArray = doubleArrayOf(0.0, 1.0, 0.0),
     val cameraFov: Double? = null,
     val cameraZoom: Double? = null,
     val target: DoubleArray = doubleArrayOf(),

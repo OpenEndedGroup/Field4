@@ -11,9 +11,145 @@ import org.jetbrains.kotlin.psi.psiUtil.startOffset
 
 fun formatKotlinCode(code: String, blockifyComments: Boolean = true): String {
     // Box code is a script: top-level statements, not only declarations.
-    val formatted = Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = 200), KotlinCode(code, FileType.SCRIPT))
+    // ktfmt attaches comments that follow the last statement of a script to that statement's last
+    // token, so a closing `}` swallows them (`}// note`). A sentinel statement after them gives them
+    // something to precede; it is removed again below.
+    val endsInComment = code.lines().lastOrNull { it.isNotBlank() }?.trim()?.startsWith("//") == true
+    val input = if (endsInComment) code.trimEnd() + "\n" + END_SENTINEL + "\n" else code
+    var formatted = restoreFragmentBreaks(
+        Formatter.format(Formatter.KOTLINLANG_FORMAT.copy(maxWidth = MAX_WIDTH), KotlinCode(input, FileType.SCRIPT))
+    )
+    if (endsInComment) formatted = formatted.trimEnd().removeSuffix(END_SENTINEL).trimEnd() + "\n"
+    formatted = restoreStatementSpacing(code, formatted)
+    formatted = joinAssignmentBreaks(formatted)
+    formatted = collapseOneLineLambdaAssignments(formatted)
     return if (blockifyComments) blockifyLineCommentRuns(formatted) else formatted
 }
+
+/**
+ * Undo ktfmt's break after `=` when the right-hand side is one multi-line call or block:
+ *
+ * ```
+ * val cloth =                 val cloth = sim.addCloth(
+ *     sim.addCloth(               width = 22,
+ *         width = 22,     ->  )
+ *     )
+ * ```
+ *
+ * The kotlinlang style breaks there whenever a dotted call's arguments go vertical, which pushes
+ * the name a reader is scanning for onto a line of its own and every argument one level deeper.
+ * The join only applies when the opening line ends the bracket it opens on its own closing line at
+ * the same indentation, and never across a raw string, whose indentation is its content. ktfmt
+ * re-breaks it on the next format and this re-joins it, so the pair is still a fixed point.
+ */
+fun joinAssignmentBreaks(code: String): String {
+    val lines = code.split("\n").toMutableList()
+    var i = 0
+    while (i + 1 < lines.size) {
+        val head = lines[i]
+        val next = lines[i + 1]
+        val indent = head.length - head.trimStart().length
+        val opener = next.trimEnd().lastOrNull()
+        val closer = when (opener) { '(' -> ")"; '{' -> "}"; '[' -> "]"; else -> null }
+        if (!head.trimEnd().endsWith(" =") || head.trimStart().startsWith("//") || closer == null ||
+            next.length - next.trimStart().length != indent + 4
+        ) { i++; continue }
+        val end = (i + 2 until lines.size).firstOrNull { j ->
+            val l = lines[j]
+            l.isNotBlank() && l.length - l.trimStart().length <= indent + 4
+        }
+        val body = if (end == null) emptyList() else lines.subList(i + 2, end)
+        val closes = end != null && lines[end].length - lines[end].trimStart().length == indent + 4 &&
+            lines[end].trimStart().startsWith(closer)
+        if (!closes || body.any { "\"\"\"" in it } || "\"\"\"" in next) { i++; continue }
+        val joined = head.trimEnd() + " " + next.trim()
+        val dedented = body.map { if (it.isBlank()) it else it.removePrefix("    ") }
+        val closing = lines[end!!].removePrefix("    ")
+        val replacement = listOf(joined) + dedented + closing
+        for (k in i..end) lines.removeAt(i)
+        lines.addAll(i, replacement)
+        i += 1
+    }
+    return lines.joinToString("\n")
+}
+
+// Box code is read in an editor beside a canvas and in a docs column, and it was mostly written
+// to about 100. At 200, ktfmt joined deliberately wrapped string concatenations into one line.
+private const val MAX_WIDTH = 120
+
+private val BLANK_LINE = Regex("""\n[ \t]*\n""")
+
+/**
+ * Take out the blank lines ktfmt adds between top-level statements of a script.
+ *
+ * In script mode ktfmt separates every pair of top-level statements with a blank line, so a box's
+ * consecutive `buf.add(...)` lines come back double-spaced. Blank lines the author wrote are kept:
+ * for each adjacent pair of statements, a gap that had no blank line in [input] has none in
+ * [formatted]. ktfmt never reorders, adds or drops statements, so the two lists pair up by
+ * position; if they do not (a parse problem on either side), [formatted] is returned unchanged.
+ */
+fun restoreStatementSpacing(input: String, formatted: String): String {
+    fun statements(code: String) = try {
+        FieldKtParser.parse(code).script?.blockExpression?.statements
+    } catch (t: Throwable) {
+        null
+    }
+    val before = statements(input) ?: return formatted
+    val after = statements(formatted) ?: return formatted
+    if (before.size != after.size) return formatted
+    val out = StringBuilder(formatted)
+    for (k in after.indices.reversed()) {
+        if (k == 0) continue
+        val gapBefore = input.substring(before[k - 1].textRange.endOffset, before[k].textRange.startOffset)
+        if (BLANK_LINE.containsMatchIn(gapBefore)) continue
+        val start = after[k - 1].textRange.endOffset
+        val end = after[k].textRange.startOffset
+        out.replace(start, end, BLANK_LINE.replace(formatted.substring(start, end), "\n"))
+    }
+    return out.toString()
+}
+
+/**
+ * Put `x = {\n    e\n}` back on one line as `x = { e }`.
+ *
+ * At the top level of a script (and only there) ktfmt spreads every lambda on the right of an
+ * assignment over three lines, so `mesh.tint = { tint }` takes three and a block of them reads as
+ * a column of braces. Collapsed only when the body is one line, carries no comment, and the result
+ * fits [MAX_WIDTH].
+ */
+fun collapseOneLineLambdaAssignments(code: String): String {
+    val lines = code.split("\n")
+    val out = ArrayList<String>(lines.size)
+    var i = 0
+    while (i < lines.size) {
+        val head = lines[i]
+        if (i + 2 < lines.size && head.endsWith(" = {") && !head.trimStart().startsWith("//")) {
+            val indent = head.length - head.trimStart().length
+            val body = lines[i + 1]
+            val close = lines[i + 2]
+            val joined = "$head ${body.trim()} }"
+            if (body.length - body.trimStart().length == indent + 4 && close == " ".repeat(indent) + "}" &&
+                "//" !in body && "/*" !in body && "\"\"\"" !in body && joined.length <= MAX_WIDTH
+            ) {
+                out += joined
+                i += 3
+                continue
+            }
+        }
+        out += head
+        i++
+    }
+    return out.joinToString("\n")
+}
+
+private const val END_SENTINEL = "__afieldFormatterEnd__"
+
+// ktfmt puts a space after every `//`, which turns a `//%-` fragment break into `// %-`. The
+// splitter accepts both (isFragmentBreak), but the documented spelling is the one boxes should
+// carry, and older Field read the spaced form as a plain comment.
+private val SPACED_FRAGMENT_BREAK = Regex("""(?m)^(\s*)//\s+%-""")
+
+fun restoreFragmentBreaks(code: String): String = code.replace(SPACED_FRAGMENT_BREAK, "$1//%-")
 
 // Two // lines read as a pair of remarks as often as they read as one paragraph, so the run has
 // to be longer than that to be worth a pair of delimiters.
@@ -155,9 +291,17 @@ private fun splitGlslStatements(code: String): String {
     var inString: Char? = null
     var escaped = false
 
+    // Whether the newline `out` ends with was put there by us, after a `;` or a brace, rather than
+    // copied from the source. The source's own newline after it is then the same line break; a
+    // further one is a blank line the author wrote, and is kept.
+    var inserted = false
+
     fun appendNewlineIfNeeded() {
         while (out.endsWith(' ') || out.endsWith('\t')) out.setLength(out.length - 1)
-        if (!out.endsWith('\n')) out.append('\n')
+        if (!out.endsWith('\n')) {
+            out.append('\n')
+            inserted = true
+        }
         atLineStart = true
     }
 
@@ -209,6 +353,17 @@ private fun splitGlslStatements(code: String): String {
             continue
         }
 
+        // A template span ({% include %}, {{ value }}, {# note #}) is Field's, not GLSL's: copy it as
+        // it stands rather than reading its braces as a block.
+        if (c == '{' && (next == '%' || next == '{' || next == '#')) {
+            val closer = when (next) { '%' -> "%}"; '#' -> "#}"; else -> "}}" }
+            val end = code.indexOf(closer, i + 2).let { if (it < 0) code.length else it + 2 }
+            out.append(code, i, end)
+            atLineStart = false
+            i = end
+            continue
+        }
+
         when {
             c == '/' && next == '/' -> {
                 out.append(c).append(next)
@@ -245,9 +400,14 @@ private fun splitGlslStatements(code: String): String {
             }
             c == '}' -> {
                 appendNewlineIfNeeded()
+                // `} pc;` closes a block that declares an instance; the name stays on the brace's line.
+                val instance = BLOCK_INSTANCE.find(code, i + 1)?.takeIf { it.range.first == i + 1 }
                 if (next == ';') {
                     out.append("};")
                     i += 2
+                } else if (instance != null) {
+                    out.append("} ").append(instance.groupValues[1].replace(Regex("""\s+"""), "")).append(';')
+                    i = instance.range.last + 1
                 } else {
                     out.append(c)
                     i++
@@ -260,7 +420,14 @@ private fun splitGlslStatements(code: String): String {
                 i++
             }
             c == '\n' -> {
-                appendNewlineIfNeeded()
+                while (out.endsWith(' ') || out.endsWith('\t')) out.setLength(out.length - 1)
+                when {
+                    !out.endsWith('\n') -> out.append('\n')
+                    inserted -> inserted = false
+                    // A blank line; formatGlslCode collapses a run of them to one.
+                    else -> out.append('\n')
+                }
+                atLineStart = true
                 i++
             }
             c.isWhitespace() -> {
@@ -270,6 +437,7 @@ private fun splitGlslStatements(code: String): String {
             else -> {
                 out.append(c)
                 atLineStart = false
+                inserted = false
                 i++
             }
         }
@@ -277,6 +445,8 @@ private fun splitGlslStatements(code: String): String {
 
     return out.toString()
 }
+
+private val BLOCK_INSTANCE = Regex("""[ \t]*([A-Za-z_]\w*(?:\s*\[[^\]\n]*\])?)[ \t]*;""")
 
 private fun cleanGlslSpacing(line: String): String {
     return line

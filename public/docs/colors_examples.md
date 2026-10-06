@@ -2,7 +2,7 @@
 
 *Every public declaration used below is listed, with its KDoc, in the codebase reference: [`colors.kt`](reference/graphics.md#colors-kt). Start from [what's already in the box](reference/index.md).*
 
-Picking one color is easy. Trouble starts at six or seven, once they have to work as a set on a single page. Both examples below spend a whole palette on geometry rather than laying it out as a chart of hex values, because drawing it is how you find out which entry is the weak one.
+This page builds palettes, sets of colors that have to work together on one drawing. Both examples draw the whole palette as geometry, because a drawing shows which entry is weak far sooner than a list of hex values does.
 
 Every constructor returns an sRGB-encoded `Vec4` with components in `[0,1]`. There are four color spaces to build from:
 
@@ -89,4 +89,4 @@ lines(rings, channel = "colors-rings", w = 1120.0, h = 740.0, fitToSize = true)
 
 ![](assets/colors_examples/palette_background_paths.png)
 
-The test is seven close curves, all still readable, none collapsing into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).
+Every ring stays readable and none sinks into the background. If nothing reaches `minContrast` the best candidate found is returned rather than an exception, so the call always hands back the count you asked for and it is the picture that tells you whether it managed. For more on constructing the underlying paths, see [FLine examples](fline_examples.md); for functional signal stacks that can drive color or geometry, see [Functions examples](functions_examples.md).
