@@ -113,6 +113,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
      * @param solidOpacity the opacity a [shot] draws this mesh at when its x-ray amount is `0`; at `1` it is
      * [opacity]. A see-through wall that starts solid is `opacity = .4, solidOpacity = 1.0`. `null` keeps
      * [opacity] throughout.
+     * @param edges draw the mesh's outline over it: open boundaries and creases sharper than 1°, not the
+     * diagonals that triangulate a flat face ([outlineEdges]). They are what keeps a solid, flat-shaded model
+     * legible, and they move with [explode]. Unlike [wireframe], which draws every triangle edge.
+     * @param edgeColor the outline's colour (its alpha is not used); `null` is a near-black.
      */
     fun mesh(
         mesh: TriMesh,
@@ -131,6 +135,8 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
         depthWrite: Boolean = opacity >= 1.0,
         explode: FloatArray? = null,
         solidOpacity: Double? = null,
+        edges: Boolean = false,
+        edgeColor: Vec4? = null,
     ) {
         require(solidOpacity == null || (solidOpacity.isFinite() && solidOpacity in 0.0..1.0)) {
             "solidOpacity must be between 0 and 1, got $solidOpacity"
@@ -151,6 +157,10 @@ class ThreeSceneBuilder internal constructor(private val samplesPerCubic: Int) {
             callbackId = onClick?.let { registerThreeSurfaceClickCallback(it) } ?: "",
             hoverColor = hoverColor?.let { floatArrayOf(it.x, it.y, it.z, it.w) },
             pickable = pickable,
+        )
+        if (edges) drawables += mesh.toThreeEdgeDrawable(
+            color = edgeColor?.let { floatArrayOf(it.x, it.y, it.z) } ?: floatArrayOf(.08f, .1f, .12f),
+            panel = panel, group = group, id = id, explode = explode,
         )
     }
 
