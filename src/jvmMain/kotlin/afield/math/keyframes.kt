@@ -51,16 +51,36 @@ class KeyframeEvaluator(jsonString: String) {
         cachedSamples = null
     }
 
-    fun setTime(t: Double) {
+    // The playhead and overlays a box last asked for. The editor may not have connected yet, and it
+    // reconnects whenever its output panel is redrawn, so these are replayed on every hello rather
+    // than sent once and lost.
+    @Volatile private var playhead: Double? = null
+    private val overlays = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    private fun sendIfLive(message: String) {
+        if (!hasLiveSession) return
         inMain {
-            session.send("""{"type":"playhead", "time":${t}}""")
+            session.send(message)
         }
     }
 
+    /** Moves the editor's playhead to [t]: an orange line, and a dot where it crosses the curve. */
+    fun setTime(t: Double) {
+        if (playhead == t) return
+        playhead = t
+        sendIfLive("""{"type":"playhead", "time":${t}}""")
+    }
+
+    /** Sends the current keys to the editor. */
     fun send() {
-        inMain {
-            session.send("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}}""")
-        }
+        sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}}""")
+    }
+
+    /** Everything the editor should show on (re)connecting: keys, overlays, playhead. */
+    internal fun sendAll() {
+        send()
+        overlays.values.forEach(::sendIfLive)
+        playhead?.let { sendIfLive("""{"type":"playhead", "time":${it}}""") }
     }
 
     /**
@@ -69,6 +89,25 @@ class KeyframeEvaluator(jsonString: String) {
      * @return The interpolated value at the given time
      */
     fun evaluateValueAt(time: Double): Double {
+        // Hold and linear segments are exact; only bezier segments go through the sampled curve.
+        val keys = keyframes
+        if (keys.size >= 2 && time > keys.first().time && time < keys.last().time) {
+            var lo = 0
+            var hi = keys.size - 1
+            while (hi - lo > 1) {
+                val mid = (lo + hi) / 2
+                if (keys[mid].time <= time) lo = mid else hi = mid
+            }
+            val prev = keys[lo]
+            val next = keys[hi]
+            when (segmentKind(prev.type)) {
+                "hold" -> return prev.value
+                "linear" -> {
+                    val span = next.time - prev.time
+                    return if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
+                }
+            }
+        }
         if (cachedSamples == null) {
             cachedSamples = sampleCurve(stepsPerSegment = 96)
         }
@@ -216,7 +255,7 @@ class KeyframeEvaluator(jsonString: String) {
      * the main keyframe graph as a non-interactive visual reference.
      *
      * @param samples list of (time, value) points defining the overlay curve
-     * @param color   CSS color string for the overlay stroke (default: cyan)
+     * @param color   CSS color string for the overlay stroke (default: orange, `#ff9800`)
      * @param strokeWidth SVG stroke width (default: 1.5)
      * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
      * @param id      unique id for this overlay; allows updating/replacing specific overlays
@@ -233,9 +272,8 @@ class KeyframeEvaluator(jsonString: String) {
         }
         val dashPart = if (dashArray != null) ""","dashArray":"$dashArray"""" else ""
         val json = """{"type":"overlay","id":"$id","samples":$pointsJson,"color":"$color","strokeWidth":$strokeWidth$dashPart}"""
-        inMain {
-            session.send(json)
-        }
+        overlays[id] = json
+        sendIfLive(json)
     }
 
     /**
@@ -243,7 +281,7 @@ class KeyframeEvaluator(jsonString: String) {
      *
      * @param fn        the function to sample
      * @param sampleCount number of sample points (default: 200)
-     * @param color     CSS color string for the overlay stroke (default: cyan)
+     * @param color     CSS color string for the overlay stroke (default: orange, `#ff9800`)
      * @param strokeWidth SVG stroke width (default: 1.5)
      * @param dashArray optional SVG dash pattern string (e.g. "4 2"), null for solid
      * @param id        unique id for this overlay; allows updating/replacing specific overlays
@@ -270,21 +308,27 @@ class KeyframeEvaluator(jsonString: String) {
      * @param id the overlay id to remove (default: "default")
      */
     fun clearOverlay(id: String = "default") {
-        inMain {
-            session.send("""{"type":"clearOverlay","id":"$id"}""")
-        }
+        overlays.remove(id)
+        sendIfLive("""{"type":"clearOverlay","id":"$id"}""")
     }
 
     /**
      * Remove all overlay curves from the editor.
      */
     fun clearAllOverlays() {
-        inMain {
-            session.send("""{"type":"clearAllOverlays"}""")
-        }
+        overlays.clear()
+        sendIfLive("""{"type":"clearAllOverlays"}""")
     }
 
     // ── Sampling ─────────────────────────────────────────────────────
+
+    // How a segment leaving a key of [type] is shaped. The editor draws a type it does not know as
+    // linear, so evaluation does too, rather than guessing bezier.
+    private fun segmentKind(type: String): String = when (type) {
+        "hold" -> "hold"
+        "bezierFree", "bezierFlat", "bezierContinuous" -> "bezier"
+        else -> "linear"
+    }
 
     /**
      * Samples the entire curve into discrete points
@@ -298,7 +342,7 @@ class KeyframeEvaluator(jsonString: String) {
             val prev = keyframes[i - 1]
             val next = keyframes[i]
 
-            when (prev.type) {
+            when (segmentKind(prev.type)) {
                 "hold" -> {
                     val span = max(next.time - prev.time, EPSILON)
                     for (step in 1..stepsPerSegment) {
@@ -519,7 +563,7 @@ fun installKeyframeHandler() {
             val t = JSONObject(text)
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "hello") {
                 knownKeyframeTargets[t.getString("debug_uid")]?.session = s
-                knownKeyframeTargets[t.getString("debug_uid")]?.send()
+                knownKeyframeTargets[t.getString("debug_uid")]?.sendAll()
             }
             if (t.has("debug_uid") && t.has("type") && t.getString("type") == "keyframes") {
                 val debugUid = t.getString("debug_uid")
@@ -600,6 +644,9 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
     // Track association for persistence
     eval.associatedBoxId = this.id
     eval.associatedName = name
+    // Each run says afresh what happens on an edit: a callback a previous run set, and this run
+    // no longer does, must not keep firing.
+    eval.onChange = null
     return eval
 }
 

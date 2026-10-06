@@ -285,43 +285,9 @@
 
         function fitViewToKeyframes(keyframes) {
                 if (!Array.isArray(keyframes) || !keyframes.length) return;
-                const times = keyframes.map((item) => item.time).filter(Number.isFinite);
-                const values = keyframes.map((item) => item.value).filter(Number.isFinite);
-                if (times.length) {
-                        // Always include 0 in the time range and snap to nice boundaries
-                        let tMin = Math.min(0, ...times);
-                        let tMax = Math.max(...times);
-                        // Ensure a minimum visible span
-                        if (tMax - tMin < 1) tMax = tMin + 1;
-                        const [min, max] = padRange(tMin, tMax, 0.08);
-                        // Round to nice boundaries (floor/ceil to nearest step)
-                        const niceMin = Math.floor(min);
-                        const niceMax = Math.ceil(max);
-                        if (niceMax - niceMin > 0) {
-                                editor.setViewTimeRange([niceMin, niceMax], { render: false });
-                        }
-                }
-                if (values.length) {
-                        // Always include 0 and 1 for value range (keyframes are 0-1)
-                        let vMin = Math.min(0, ...values);
-                        let vMax = Math.max(1, ...values);
-                        const [min, max] = padRange(vMin, vMax, 0.08);
-                        if (max - min > 0) {
-                                editor.setViewValueRange([min, max], { render: false });
-                        }
-                }
+                editor.fitToKeyframes();
         }
 
-        function padRange(min, max, padRatio) {
-                if (!Number.isFinite(min) || !Number.isFinite(max)) return [min, max];
-                if (Math.abs(max - min) < 1e-6) {
-                        const delta = Math.max(Math.abs(min) * 0.1, 1);
-                        return [min - delta, max + delta];
-                }
-                const span = max - min;
-                const pad = span * padRatio;
-                return [min - pad, max + pad];
-        }
 </script>
 </body>
 </html>
