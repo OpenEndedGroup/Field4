@@ -189,8 +189,12 @@ class ChatArchiveTest {
             val stats = ChatLogViews.lensStats(tree, good)
             assertEquals(5, stats["citedBlocks"])
             val bad = "<<ai>>\n<<source:t-2.b1..t-1.b0>>\nBackwards.\n<<ai>>\nUncited."
-            assertEquals(1, ChatLogViews.lensProblems(tree, bad).size)
-            assertTrue(ChatLogViews.lensProblems(tree, "<<ai>>\nNothing cited.").any { "no block cites" in it })
+            assertEquals(2, ChatLogViews.lensProblems(tree, bad).size, "a backwards stretch, and a block that cites nothing")
+            assertTrue(ChatLogViews.lensProblems(tree, "<<ai>>\nNothing cited.").any { "cites nothing" in it })
+            // The mistake a live agent made: each source line above its block's marker instead of under it.
+            val above = "<<source:t-1.b0..t-1.b2>>\n<<ai>>\nPlanned.\n\n<<source:t-2.b0..t-2.b1>>\n<<ai>>\nGable."
+            val refused = ChatLogViews.lensProblems(tree, above)
+            assertTrue(refused.any { "begin with" in it } && refused.any { "inside its text" in it } && refused.any { "cites nothing" in it }, refused.toString())
         } finally {
             dir.deleteRecursively()
         }
@@ -209,6 +213,49 @@ class ChatArchiveTest {
             assertEquals(listOf("storyline"), store.lenses(id))
             assertTrue(store.readLens(id, "storyline")!!.contains("one line per turn"))
             assertFailsWith<IllegalArgumentException> { store.writeLens(id, "../escape", "x", "", emptyMap()) }
+        } finally {
+            dir.deleteRecursively()
+            lenses.deleteRecursively()
+        }
+    }
+
+    private fun lensOf(blocks: List<ChatBlockEntry>) = blocks.map { it.address }
+
+    @Test fun aLensIsAChatSoALensCanBeWrittenOverALens() {
+        val dir = document()
+        val lenses = Files.createTempDirectory("lenses").toFile()
+        try {
+            val store = ChatlogStore(listOf(dir), lenses)
+            val chat = dir.name
+            store.writeLens(chat, "steps", "<<you>>\n<<source:t-1.b0>>\nPlan it.\n<<ai>>\n<<source:t-1.b1..t-1.b2>>\nPlanned and looked.\n<<ai>>\n<<source:t-2.b1>>\nGable.", "", emptyMap())
+            val lens = store.tree("$chat#steps")
+            assertEquals(listOf("lens:steps.b0", "lens:steps.b1", "lens:steps.b2"), lens.headBlocks.map { it.address })
+            assertEquals(listOf("t-1.b1..t-1.b2"), lens.block("lens:steps.b1")!!.sources, "a lens block keeps what it cites")
+            assertTrue("## Turn 1 · lens:steps.b0" in ChatLogViews.outline(lens), "a lens outlines like a chat")
+
+            val over = "<<summary>>\n<<source:lens:steps.b0..lens:steps.b2>>\nPlanned, looked, then a gable."
+            assertEquals(emptyList(), ChatLogViews.lensProblems(lens, over), "a lens over a lens cites the lens's addresses")
+            assertEquals("summary", ChatArchive.lensTree(ChatArchive.chats(dir).single(), "lens:x", "x", over).headBlocks.single().kind)
+            store.writeLens("$chat#steps", "overview", over, "", emptyMap())
+            assertEquals(listOf("$chat#steps#overview", "$chat#steps", chat), store.chain("$chat#steps#overview"))
+            assertEquals("lens:overview.b0", store.tree("$chat#steps#overview").headBlocks.single().address)
+
+            val transcript = ChatLogViews.addressedTranscript(lens.headBlocks)
+            assertTrue("<<at:lens:steps.b1>>\n<<source:t-1.b1..t-1.b2>>" in transcript, "the viewer gets both the address and the citation")
+            val back = parseAiChatBlocks(transcript)
+            assertEquals(listOf("lens:steps.b0", "lens:steps.b1", "lens:steps.b2"), back.map { it.address })
+            assertFailsWith<IllegalArgumentException> { store.tree("$chat#missing") }
+
+            // A series runs chats (or their lenses) end to end, as one chat.
+            val series = store.tree("series:*")
+            assertEquals(lensOf(store.tree(chat).headBlocks), lensOf(series.headBlocks), "a series of one is that chat's current branch")
+            assertTrue("# $chat" in ChatLogViews.outline(series), "a series outline says where each chat begins")
+            val ofLenses = store.tree("series:*@steps")
+            assertEquals("lens:$chat#steps.b0", ofLenses.headBlocks.first().address, "lens nodes are named by their chat")
+            assertEquals(emptyList(), ChatLogViews.lensProblems(ofLenses, "<<summary>>\n<<source:lens:$chat#steps.b0..lens:$chat#steps.b2>>\nOne house."))
+            store.writeLens("series:*@steps", "arc", "<<summary>>\n<<source:lens:$chat#steps.b0..lens:$chat#steps.b2>>\nOne house.", "", emptyMap())
+            assertEquals(listOf("arc"), store.lenses("series:*@steps"))
+            assertTrue(store.tree("series:*@steps#arc").headBlocks.single().sources.isNotEmpty())
         } finally {
             dir.deleteRecursively()
             lenses.deleteRecursively()
