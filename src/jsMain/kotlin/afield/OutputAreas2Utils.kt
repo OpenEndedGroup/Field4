@@ -300,82 +300,7 @@ private fun renderMarkdown(markdown: String?): String {
     return html.toString()
 }
 
-private data class ChatTurn(val role: String, val content: String, val model: AiChatModelIdentity? = null)
-
-private fun parseChatHistory(history: String?): List<ChatTurn> {
-    val text = (history ?: "").replace("\r\n", "\n")
-    val tokens = mutableListOf<String>()
-    var idx = 0
-    while (idx < text.length) {
-        val markers = listOf(
-            "<<you>>",
-            "<<ai>>",
-            "<<progress>>",
-            "<<progress-open>>",
-            "<<queued>>"
-        )
-        val hits = markers.mapNotNull { marker ->
-            val at = text.indexOf(marker, idx)
-            if (at == -1) null else at to marker
-        }
-        val hit = hits.minByOrNull { it.first }
-        val next = hit?.first ?: -1
-        val marker = hit?.second
-        if (next == -1) {
-            tokens.add(text.substring(idx))
-            break
-        }
-        if (next > idx) tokens.add(text.substring(idx, next))
-        tokens.add(marker!!)
-        idx = next + marker.length
-    }
-
-    val turns = mutableListOf<ChatTurn>()
-    var currentRole: String? = null
-    val buffer = StringBuilder()
-
-    fun flush() {
-        val role = currentRole ?: return
-        val content = buffer.toString().trim()
-        if (content.isNotEmpty()) {
-            val (model, body) = if (role == "ai") AiChatModelIdentity.splitFromContent(content) else null to content
-            turns.add(ChatTurn(role, body, model))
-        }
-        buffer.clear()
-    }
-
-    for (token in tokens) {
-        when (token) {
-            "<<you>>" -> {
-                flush()
-                currentRole = "you"
-            }
-            "<<ai>>" -> {
-                flush()
-                currentRole = "ai"
-            }
-            "<<progress>>" -> {
-                flush()
-                currentRole = "progress"
-            }
-            "<<progress-open>>" -> {
-                flush()
-                currentRole = "progress-open"
-            }
-            "<<queued>>" -> {
-                flush()
-                currentRole = "queued"
-            }
-            else -> buffer.append(token)
-        }
-    }
-
-    flush()
-    if (turns.isEmpty() && text.trim().isNotEmpty()) {
-        turns.add(ChatTurn("ai", text.trim()))
-    }
-    return turns
-}
+// The transcript parser is shared with the chat archive: parseAiChatBlocks (commonMain, aiChatBlocks.kt).
 
 @OptIn(ExperimentalJsExport::class)
 @JsExport
@@ -386,7 +311,7 @@ fun aiChatMarkdownToHtml(markdown: String?): String {
 @OptIn(ExperimentalJsExport::class)
 @JsExport
 fun aiChatHistoryToHtml(history: String?): String {
-    val turns = parseChatHistory(history)
+    val turns = parseAiChatBlocks(history)
     if (turns.isEmpty()) return ""
     val html = StringBuilder()
     var statusRowOpen = false
@@ -441,7 +366,7 @@ fun aiChatHistoryToHtml(history: String?): String {
     return "<div class=\"ai-chat-thread\">$html</div>"
 }
 
-private fun renderProgressTurn(turn: ChatTurn): String {
+private fun renderProgressTurn(turn: AiChatBlock): String {
     val lines = turn.content.lines()
     val title = lines.firstOrNull()?.trim()?.ifBlank { null } ?: "AI activity"
     val body = lines.drop(1).joinToString("\n").trim().ifBlank { turn.content }
@@ -464,5 +389,5 @@ private fun renderProgressTurn(turn: ChatTurn): String {
 
 // `<<progress-open>>` is the newest activity of a turn still running with nothing streamed after it
 // (AiLiveConversation.render); the final render and an interrupted-turn recovery both demote it.
-private fun shimmerIfLive(turn: ChatTurn, html: String): String =
+private fun shimmerIfLive(turn: AiChatBlock, html: String): String =
     if (turn.role == "progress-open") "<span class=\"ai-chat-shimmer\">$html</span>" else html
