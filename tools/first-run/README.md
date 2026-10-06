@@ -27,8 +27,8 @@ leaves those actions for later. Setup still saves your choices.
 
 Widen the terminal to at least 120 columns for the original wordmark used by `Server.kt`.
 Smaller windows get compact lettering. The shared artwork is compiled directly into the
-standalone tool, with no extra runtime dependency. True-color terminals get a diagonal
-teal, blue, violet and amber wash; other ANSI terminals use four colors. Windows Terminal
+standalone tool, with no extra runtime dependency. The artwork uses cyan
+in color-capable terminals. Windows Terminal
 supports the color treatment. Pipes, legacy Windows consoles, `TERM=dumb`, `CLICOLOR=0`
 and `NO_COLOR` get plain output.
 
