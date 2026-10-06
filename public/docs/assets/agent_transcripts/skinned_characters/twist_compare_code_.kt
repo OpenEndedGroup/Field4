@@ -23,7 +23,6 @@ val twistTime = 1.0f
 // applyToMesh time, so both tubes show whichever pose was written LAST. Measured 2026-09-19 -- with
 // lbs-then-dqs both rendered round, and with lbs-then-lbs both rendered pinched, while the printed
 // numbers stayed correct. A two-mesh comparison here would be a figure that lies.
-val renderer: Renderer = fromContext()
 
 var (module, models) = gltfModelHere(RiggedFixture.locate())
 var m = Mesh()

@@ -3126,8 +3126,15 @@ def branches_carrying(git: Git, path: str) -> list[str]:
     if not path:
         return []
     out = git.run("for-each-ref", "--format=%(refname:short)", "refs/heads/", check=False)
-    return [b for b in out.split() if b != "main" and subprocess.run(
-        ["git", "cat-file", "-e", f"{b}:{path}"], cwd=git.root, capture_output=True).returncode == 0]
+    branches = [b for b in out.split() if b != "main"]
+    if not branches:
+        return []
+    # One cat-file for every branch: a process per branch made `pass status` outlast the server's
+    # 60 s timeout once the checkout held hundreds of branches.
+    checked = subprocess.run(["git", "cat-file", "--batch-check=%(objecttype)"], cwd=git.root, capture_output=True, text=True,
+                             input="".join(f"{b}:{path}\n" for b in branches))
+    answers = checked.stdout.splitlines()
+    return [b for b, answer in zip(branches, answers) if not answer.endswith("missing")]
 
 
 def batch_overview(git: Git, notes: list[dict[str, Any]]) -> list[dict[str, Any]]:

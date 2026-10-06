@@ -16,6 +16,9 @@ command palette. Field opens the `ai-chat` output area for that box. The chat
 receives the box's current code and can use the Field tools made available by
 the server to inspect or propose edits to box properties and related source.
 
+To speak a prompt instead of typing it, hold Right Option (Right Ctrl on
+Windows and Linux): see [Talking to AI4](voice_input.md).
+
 ![an AI Chat output area opened beneath a box named Texture. The reader's question, right-aligned in italics, is "how does Camera work in this code?"; under a GPT-5.2 label the answer runs as headed prose with copyable code blocks, quoting the box's own three lines back, then the push-constant block from the vertex shader, then the opening of `Camera.kt` with its file path named](assets/screenshot_47.png)
 
 The conversation belongs to the box. Field saves it with the document, including model

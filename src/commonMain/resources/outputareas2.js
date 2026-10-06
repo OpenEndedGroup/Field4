@@ -1,5 +1,32 @@
 import { mountStateTreeBrowser } from "./stateTreeBrowser.js";
-import { aiChatMarkdownToHtml, aiChatHistoryToHtml, send, sendWithReply } from "./afield.mjs";
+import { aiChatMarkdownToHtml, aiChatHistoryToHtml, aiChatSetToolFamilies, send, sendWithReply } from "./afield.mjs";
+import { renderAiChatFences } from "./aiChatFenceRenderers.js";
+import { installAiChatFenceCatalog } from "./aiChatFenceCatalog.js";
+
+// Rebuild every open chat once, for a catalog that arrived after it first rendered.
+function rerenderOpenChats() {
+        document.querySelectorAll(".ai-chat-messages").forEach(messages => {
+                const markdown = messages.__chatMarkdown;
+                if (markdown == null) return;
+                messages.__chatMarkdown = null;
+                renderChatMessages(messages, markdown);
+        });
+}
+
+// This local catalog also supplies AI4's JVM instructions. If it arrives after a chat first
+// opens, rebuild that chat once so its existing fenced blocks gain their previews.
+installAiChatFenceCatalog().then(rerenderOpenChats)
+        .catch(error => console.warn("AI4 fence catalog unavailable:", error));
+
+// The tool families a round's summary line counts ("2 notes · 1 edit"); the chat archive reads the
+// same file (afield.chatlog). Without it a round still shows its calls, time and failures.
+fetch(new URL("./ai4-chat-tool-families.json", import.meta.url))
+        .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.text();
+        })
+        .then(text => { aiChatSetToolFamilies(text); rerenderOpenChats(); })
+        .catch(error => console.warn("AI4 chat tool families unavailable:", error));
 
 const DEFAULT_W = 480;
 const DEFAULT_H = 150;
@@ -1817,6 +1844,17 @@ function renderChatMessages(messages, markdown, options) {
                 top: pending ? pending.top : messages.scrollTop
         };
         messages.__chatScrollRestore = restore;
+        if (!messages.__chatRoundStates) {
+                // A round (a folded run of tool activity) stays as the reader left it: the whole thread is
+                // re-rendered on every streamed update, which would otherwise close it again.
+                messages.__chatRoundStates = new Map();
+                messages.addEventListener("click", event => {
+                        const summary = event.target.closest?.(".ai-chat-round > summary");
+                        if (!summary || !messages.contains(summary)) return;
+                        const round = summary.parentElement;
+                        messages.__chatRoundStates.set(round.dataset.aiRound, !round.open);
+                }, true);
+        }
         if (!messages.__chatScrollInputBound) {
                 const cancelRestore = () => { messages.__chatScrollRestore = null; };
                 for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
@@ -1832,8 +1870,14 @@ function renderChatMessages(messages, markdown, options) {
                 const height = img.naturalHeight || Number(img.getAttribute("height"));
                 if (width > 0 && height > 0) dimensions.set(img.getAttribute("src"), {width, height});
         });
+        // Round numbers belong to one transcript: another box's chat, or a cleared one, starts afresh.
+        const previous = messages.__chatMarkdown;
+        if (previous != null && messages.__chatRoundStates && previous.slice(0, 256) !== text.slice(0, 256)) {
+                messages.__chatRoundStates.clear();
+        }
         messages.innerHTML = aiChatHistoryToHtml(text);
         messages.__chatMarkdown = text;
+        restoreRoundStates(messages);
         // Phase-lock the live-status shimmer to the document clock; a burst of tool updates would
         // otherwise restart the sweep on every render and it would never get across the text.
         messages.querySelectorAll(".ai-chat-shimmer").forEach(el => {
@@ -1841,6 +1885,10 @@ function renderChatMessages(messages, markdown, options) {
         });
         decorateAfieldLinks(messages);
         applyCodeHighlight(messages);
+        let pendingFenceRenders = renderAiChatFences(messages, (event) => {
+                if (event === "settled") pendingFenceRenders--;
+                finish();
+        });
         const images = Array.from(messages.querySelectorAll("img"));
         images.forEach(img => {
                 const size = dimensions.get(img.getAttribute("src"));
@@ -1857,7 +1905,7 @@ function renderChatMessages(messages, markdown, options) {
         };
         const finish = () => {
                 settle();
-                if (images.every(img => img.complete) && messages.__chatScrollRestore === restore) {
+                if (images.every(img => img.complete) && pendingFenceRenders === 0 && messages.__chatScrollRestore === restore) {
                         messages.__chatScrollRestore = null;
                 }
         };
@@ -1868,6 +1916,15 @@ function renderChatMessages(messages, markdown, options) {
                 img.addEventListener("error", finish, {once: true});
         });
         requestAnimationFrame(finish);
+}
+
+function restoreRoundStates(messages) {
+        const states = messages.__chatRoundStates;
+        if (!states || states.size === 0) return;
+        messages.querySelectorAll(".ai-chat-round[data-ai-round]").forEach(round => {
+                const open = states.get(round.dataset.aiRound);
+                if (open !== undefined) round.open = open;
+        });
 }
 
 // Fetch on panel creation, without replacing a newer streamed/local turn or another box's chat.

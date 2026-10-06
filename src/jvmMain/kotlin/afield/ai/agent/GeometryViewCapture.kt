@@ -4,6 +4,7 @@ import afield.Runloop
 import afield.ai.core.ToolImage
 import afield.ai.core.aiToolMapper
 import afield.ensureSharedPlaywrightBrowser
+import afield.evaluateWithin
 import afield.globalServerPort
 import afield.playwrightDispatcher
 import com.microsoft.playwright.Browser
@@ -41,7 +42,8 @@ internal object GeometryViewCapture {
                         "note" to prepared["note"], "state" to prepared["state"], "observationText" to prepared["observationText"])
                     // The Playwright Java argument codec accepts a narrower set of number classes
                     // than our JSON tree (notably not Long). Carry one JSON string and decode in JS.
-                    val stateJson = page.evaluate(INSPECT_SCRIPT, aiToolMapper.writeValueAsString(args)) as String
+                    val stateJson = evaluateWithin(page, INSPECT_SCRIPT, aiToolMapper.writeValueAsString(args),
+                        20_000, "Geometry inspection") as String
                     val bytes = page.screenshot(Page.ScreenshotOptions().setTimeout(15_000.0))
                     val after = page.evaluate("() => window.FieldInspector.snapshot().artifactDigest")
                     check(after == request.expectedRevision) { "Geometry changed while its picture was captured; inspect the new revision" }
@@ -85,7 +87,11 @@ internal object GeometryViewCapture {
             api.restore(next);
             if (r.pick) api.pick(r.pick.x, r.pick.y, r.pick.kind);
             if (r.region) api.region(r.region);
-            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            // A viewer that is not rendering never runs a frame callback; say so instead of waiting.
+            await new Promise((resolve, reject) => {
+                const timer = setTimeout(() => reject(new Error('The viewer rendered no frame within 5 s')), 5000);
+                requestAnimationFrame(() => requestAnimationFrame(() => { clearTimeout(timer); resolve(); }));
+            });
             const result = {state: api.snapshot(), sources: api.sources(), parts: api.parts()};
             if (observationText != null) {
                 const observation = api.observe(observationText);

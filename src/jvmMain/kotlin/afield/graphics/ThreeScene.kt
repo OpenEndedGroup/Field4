@@ -71,6 +71,12 @@ data class ThreeDrawStyle(
     /** Optional display opacity multiplier in X-ray mode; null follows the viewer slider. */
     @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
     val xrayOpacity: Float? = null,
+    /**
+     * The opacity a [ThreeSceneBuilder.shot] draws this surface at when the shot's x-ray amount is `0`;
+     * at `1` it is [opacity]. `null` keeps [opacity] throughout. Lets a see-through view start solid.
+     */
+    @kotlinx.serialization.EncodeDefault(kotlinx.serialization.EncodeDefault.Mode.NEVER)
+    val solidOpacity: Float? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeDrawStyle",
@@ -342,6 +348,53 @@ data class ThreeTurntableSpec(
 )
 
 /**
+ * One moment of a [ThreeShotSpec]: where in the loop it is, and how the view looks there. Between two keys
+ * every value eases (smoothstep) from one to the other.
+ */
+@Serializable
+data class ThreeShotKey(
+    /** Where in the loop, from `0` (its start) to `1` (its end, which should look like the start). */
+    val at: Double,
+    /** Camera distance as a multiple of the distance the view would otherwise stand at. */
+    val distance: Double = 1.0,
+    /** How far the model is exploded, as a multiple of each mesh's own explode offsets. */
+    val explode: Double = 0.0,
+    /** How far surfaces with a solid opacity are x-rayed: `0` draws them solid, `1` at their own opacity. */
+    val xray: Double = 1.0,
+)
+
+/**
+ * A looping camera and model move for presentation. Written by [ThreeSceneBuilder.shot].
+ *
+ * One clock drives all three of [ThreeShotKey]'s values in every panel of the view. It is the wall clock, so
+ * separate views of a document stay in step without being linked.
+ */
+@Serializable
+data class ThreeShotSpec(
+    /** How long one loop takes. */
+    val periodSeconds: Double = 24.0,
+    /** The loop, first key at `0` and last at `1`. */
+    val keys: List<ThreeShotKey> = MONEY_SHOT,
+    /** How long the loop stays held after the last press, wheel, key or drag in the view. */
+    val resumeAfterSeconds: Double = 2.0,
+) {
+    companion object {
+        /**
+         * Close in and solid; pull back as the surfaces go see-through; explode at the widest; hold; then
+         * gather back in to where it started.
+         */
+        val MONEY_SHOT: List<ThreeShotKey> = listOf(
+            ThreeShotKey(0.0, distance = 0.6, explode = 0.0, xray = 0.0),
+            ThreeShotKey(0.15, distance = 0.7, explode = 0.0, xray = 0.0),
+            ThreeShotKey(0.4, distance = 1.0, explode = 0.0, xray = 1.0),
+            ThreeShotKey(0.62, distance = 1.4, explode = 1.0, xray = 1.0),
+            ThreeShotKey(0.82, distance = 1.4, explode = 1.0, xray = 1.0),
+            ThreeShotKey(1.0, distance = 0.6, explode = 0.0, xray = 0.0),
+        )
+    }
+}
+
+/**
  * One viewport in a multi-panel scene, with its own camera and its own caption.
  *
  * # Why panels rather than iframes
@@ -400,6 +453,8 @@ internal val THREE_DEFAULT_SURFACE: FloatArray get() = DEFAULT_SURFACE
  * @param creaseAngleDegrees the angle above which an edge is kept hard. The rasterizer's default.
  * @param id [ThreeDrawable.id] — a stable name echoed back on every hit.
  * @param pickable [ThreeDrawable.pickable]; implied by a non-empty [callbackId] or a [hoverColor].
+ * @param explode per-vertex offsets (3 floats a vertex) a [ThreeSceneBuilder.shot]'s explode moves each
+ * vertex by at full explode; carried through the crease shading onto the vertices it emits.
  */
 fun TriMesh.toThreeDrawable(
     style: ThreeDrawStyle = ThreeDrawStyle.surface(),
@@ -411,9 +466,25 @@ fun TriMesh.toThreeDrawable(
     callbackId: String = "",
     hoverColor: FloatArray? = null,
     pickable: Boolean = false,
+    explode: FloatArray? = null,
 ): ThreeDrawable {
     val ready = if (hasNormals) this else shadedNormals(creaseAngleDegrees)
     val n = ready.vertexCount
+    // Explode offsets belong to vertices, and the shading above may split a vertex at a crease. It keeps the
+    // triangles in order, so every emitted corner takes the offset of the corner it came from.
+    val explodeOffsets = explode?.let { source ->
+        require(source.size == vertexCount * 3) { "explode needs 3 floats per vertex (${vertexCount * 3}), got ${source.size}" }
+        require(source.all { it.isFinite() }) { "explode offsets must be finite" }
+        if (ready === this) source.copyOf() else {
+            check(ready.triangleCount == triangleCount) { "shading changed the triangles, so explode offsets cannot follow them" }
+            FloatArray(n * 3).also { out ->
+                for (corner in indices.indices) {
+                    val from = indices[corner]; val to = ready.indices[corner]
+                    for (c in 0 until 3) out[to * 3 + c] = source[from * 3 + c]
+                }
+            }
+        }
+    }
 
     val normals = FloatArray(n * 3)
     val readyNormals = checkNotNull(ready.normals) {
@@ -446,7 +517,7 @@ fun TriMesh.toThreeDrawable(
         "normal" to ThreeAttribute(itemSize = 3, array = normals),
         "color" to ThreeAttribute(itemSize = 3, array = colors),
         "alpha" to ThreeAttribute(itemSize = 1, array = FloatArray(n) { 1f }),
-    )
+    ) + (explodeOffsets?.let { mapOf("explode" to ThreeAttribute(itemSize = 3, array = it)) } ?: emptyMap())
     val maxIndex = ready.indices.maxOrNull() ?: 0
     return ThreeDrawable(
         geometry = ThreeGeometryData(

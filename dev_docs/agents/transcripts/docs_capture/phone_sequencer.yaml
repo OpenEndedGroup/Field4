@@ -1,0 +1,53 @@
+name: phone_sequencer
+description: >
+  The step sequencer from `public/docs/visualizers.md`, as one launched box, for the desktop and
+  phone figures in `public/docs/mobile_controllers.md` (and the tour, `funFeatures.md`, which shows
+  them side by side). Launched, so its `loop` is driving the playheads when the shots are taken.
+
+  Capture-only, so it lives under transcripts/docs_capture/: AgentTranscriptMaterializer scans the
+  transcripts/ directory itself and would expect a committed starting-point bundle for anything
+  directly inside it.
+operations:
+  - create:
+      box: seq_box
+      name: sequencer
+      frame: { x: 60.0, y: 60.0, w: 200.0, h: 90.0 }
+      properties:
+        code: |
+          var velocity = 16 { i -> 0.5 + 0.4 * Math.sin(i * 0.6) }
+          var pattern = 4 { r -> 16 { c -> if ((c + r * 3) % 8 == 0) 1 + (c / 4) % 3 else 0 } }
+          var band = 200.0..900.0
+          var wave = "saw"
+
+          lateinit var steps: ArrayControlHandle<List<Double>>
+          lateinit var grid: ArrayControlHandle<List<List<Int>>>
+          lateinit var range: ArrayControlHandle<ClosedFloatingPointRange<Double>>
+
+          controlGroup("sequencer") {
+              steps = multiSlider("velocity", count = 16, initialValues = velocity) { velocity = it }
+              grid = matrix("pattern", rows = 4, columns = 16, states = 4, initialValue = pattern) {
+                  pattern = it
+                  print(it.h)
+              }
+              range = rangeSlider("band", min = 20.0, max = 2000.0, initialValue = band) {
+                  band = it
+                  print(it.h)
+              }
+              menu("wave", listOf("sine", "saw", "square", "noise"), initialIndex = 1) { _, name ->
+                  wave = name
+              }
+          }
+
+          displayOpen("sequencer")
+
+          // Eight steps a second, read off the clock every frame.
+          val start = System.nanoTime()
+          loop {
+              val step = ((System.nanoTime() - start) / 125_000_000L).toInt()
+              steps.playhead(step % 16)
+              grid.playhead(step % 16)
+              range.playhead(20.0 + (step % 64) / 63.0 * 1980.0)
+          }
+  - launch: { box: seq_box }
+  - wait:
+      millis: 1500

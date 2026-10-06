@@ -67,6 +67,11 @@ OFFLINE_REF = re.compile(r"""(?P<lead>[^\s"'()]*?)offline\.html\?file=(?P<file>[
 # Set equality both ways, so a new carrier page fails as loudly as a removed one: adding a
 # transcript to a page already on this list is routine and does not touch it, but a *new* page
 # growing an offline link is exactly the moment to check the link's shape.
+def ledger_line(rel: str) -> str:
+    """The exact CARRIER_PAGES entry a newly measured carrier page needs."""
+    return f'"{rel}",'
+
+
 CARRIER_PAGES = {
     "public/docs/afield_four_graphics.md",
     "public/docs/agent_transcripts.md",
@@ -96,6 +101,10 @@ CARRIER_PAGES = {
     # Added 2026-09-28: the Pd page embeds its demo document (iframe + "Open ↗"). Shape checked:
     # `offline.html?file=assets/agent_transcripts/pure_data_demo/metadata.edn`, no leading slash.
     "public/docs/pure_data.md",
+    # Added 2026-10-04: `489bd01b5` landed the Python CV page with a starting-point link and left
+    # this ledger behind (red on `main`). Shape checked:
+    # `offline.html?file=assets/agent_transcripts/fieldcv_webcam/metadata.edn`, no leading slash.
+    "public/docs/python_cv.md",
     "public/docs/rectsl_examples.md",
     "public/docs/solid_notation.md",
     "public/docs/sound_paths.md",
@@ -258,7 +267,8 @@ def main() -> int:
         for extra in sorted(seen - CARRIER_PAGES):
             ledger_problems.append(
                 f"{extra}: carries {per_page[extra]} `offline.html?file=` link(s) and is not in "
-                f"CARRIER_PAGES. Check the shape, then add it."
+                f"CARRIER_PAGES. Check the shape, then add this line to CARRIER_PAGES in "
+                f"tools/check_doc_offline_links.py (alphabetical):\n      {ledger_line(extra)}"
             )
 
     if failures:

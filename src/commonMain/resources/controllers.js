@@ -720,10 +720,16 @@
       uid: info.selectedUid || "",
       property: info.selectedProperty || "",
       // A meter's value changes on every poll and must not force a re-render; see updateMeterDisplays.
-      controls: controls.map((control) => (control.type === "meter" ? { ...control, value: null } : control)),
+      // Nor may an array control's value or playhead: see updateArrayDisplays.
+      controls: controls.map((control) => {
+        if (control.type === "meter") return { ...control, value: null };
+        if (ARRAY_TYPES.has(control.type)) return { ...control, value: null, text: null, x: null, y: null };
+        return control;
+      }),
     });
     if (signature === state.controlsSignature || state.activeControlId) {
       updateMeterDisplays(controls);
+      updateArrayDisplays(controls);
       renderGroupReadout();
       return;
     }
@@ -746,6 +752,7 @@
       groupControls.appendChild(renderControl(control));
     });
     updateMeterDisplays(controls);
+    updateArrayDisplays(controls);
     renderGroupReadout();
   }
 
@@ -757,6 +764,11 @@
       case "meter": return renderMeterControl(control);
       case "string": return renderStringControl(control);
       case "color": return renderColorControl(control);
+      case "multislider":
+      case "matrix":
+      case "range":
+      case "menu":
+      case "gesture": return renderArrayControl(control);
       default: return renderSliderControl(control);
     }
   }
@@ -803,6 +815,133 @@
     parts.shell.appendChild(button);
     return parts.shell;
   }
+
+  const ARRAY_TYPES = new Set(["multislider", "matrix", "range", "menu", "gesture"]);
+
+  /**
+   * A multislider, matrix, range slider or menu (afield/visualizers.kt).
+   *
+   * Builds the markup the canvas builds and leaves drawing and gestures to arrayControls.js, so the
+   * phone and the canvas cannot disagree about how a sweep or a paint stroke behaves. The container
+   * is marked data-send="false": arrayControls.js then reports each throttled change as a
+   * `field-array-input` event, which this page sends over its own socket.
+   */
+  function renderArrayControl(control) {
+    const parts = controlShell(control, "");
+    const kind = control.type;
+    const box = document.createElement("div");
+    box.className = `field-array field-${kind} phone-array`;
+    Object.assign(box.dataset, {
+      kind,
+      controlId: control.id,
+      values: control.text || "",
+      send: "false",
+      min: String(control.min ?? 0),
+      max: String(control.max ?? 1),
+      step: String(control.step ?? 0),
+      count: String(control.columns || 1),
+      rows: String(control.rows || 1),
+      columns: String(control.columns || 1),
+      states: String(control.states || 2),
+      xMin: String(control.xMin ?? -1),
+      xMax: String(control.xMax ?? 1),
+      yMin: String(control.yMin ?? -1),
+      yMax: String(control.yMax ?? 1),
+      x: String(control.x ?? 0),
+      y: String(control.y ?? 0),
+    });
+    if (control.polar) box.dataset.polar = "true";
+
+    const svg = (classes, viewBox, style) => {
+      const el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      el.setAttribute("class", `array-visual ${classes}`);
+      el.setAttribute("viewBox", viewBox);
+      if (!control.polar) el.setAttribute("preserveAspectRatio", "none");
+      el.setAttribute("style", style);
+      return el;
+    };
+    const dial = "width:min(100%, 320px);height:auto;aspect-ratio:1";
+
+    if (kind === "multislider") {
+      box.appendChild(control.polar
+        ? svg("polar-visual multislider-visual", "0 0 200 200", dial)
+        : svg("multislider-visual", `0 0 ${control.columns || 1} 1`, "height:140px"));
+    } else if (kind === "matrix") {
+      if (control.polar) {
+        box.appendChild(svg("polar-visual matrix-visual matrix-polar", "0 0 200 200", dial));
+      } else {
+        const grid = document.createElement("div");
+        grid.className = "array-visual matrix-visual";
+        grid.style.gridTemplateColumns = `repeat(${control.columns || 1}, 1fr)`;
+        box.appendChild(grid);
+      }
+    } else if (kind === "range") {
+      if (control.polar) {
+        box.appendChild(svg("polar-visual range-visual range-polar", "0 0 200 200", dial));
+      } else {
+        const track = document.createElement("div");
+        track.className = "array-visual range-visual";
+        track.innerHTML = '<div class="range-track"></div><div class="range-fill"></div>' +
+          '<div class="range-thumb" data-end="0"></div><div class="range-thumb" data-end="1"></div>' +
+          '<div class="range-playhead"></div>';
+        box.appendChild(track);
+      }
+    } else if (kind === "gesture") {
+      box.appendChild(svg("polar-visual gesture-visual", "0 0 200 200", dial));
+    } else if (kind === "menu") {
+      const select = document.createElement("select");
+      select.className = "field-menu-select phone-menu";
+      (control.options || []).forEach((option, i) => {
+        const el = document.createElement("option");
+        el.value = String(i);
+        el.textContent = option;
+        select.appendChild(el);
+      });
+      select.value = String(Number((control.text || "0").split(",")[0]) || 0);
+      box.appendChild(select);
+    }
+    parts.shell.appendChild(box);
+    return parts.shell;
+  }
+
+  /**
+   * Brings array controls up to date in place: a value changed elsewhere, and the playhead the box is
+   * driving. Never under a finger — the gesture this phone is making wins until it lets go.
+   */
+  function updateArrayDisplays(controls) {
+    const api = window.FieldArrayControls;
+    if (!api) return;
+    controls.forEach((control) => {
+      if (!ARRAY_TYPES.has(control.type)) return;
+      document.querySelectorAll(`.field-array[data-control-id="${CSS.escape(control.id)}"]`).forEach((box) => {
+        if (control.value != null) api.setPlayhead(box, control.value);
+        if (api.isActive(box)) return;
+        if (control.type === "gesture" && control.x != null && control.y != null &&
+            (String(control.x) !== box.dataset.x || String(control.y) !== box.dataset.y)) {
+          box.dataset.x = String(control.x);
+          box.dataset.y = String(control.y);
+          api.render(box);
+        }
+        if (control.text == null || control.text === box.dataset.values) return;
+        box.dataset.values = control.text;
+        if (control.type === "menu") {
+          const select = box.querySelector("select");
+          if (select && document.activeElement !== select) select.value = String(Number(control.text.split(",")[0]) || 0);
+        }
+        api.render(box);
+      });
+    });
+  }
+
+  document.addEventListener("field-vec2-input", (event) => {
+    const { controlId, x, y } = event.detail || {};
+    if (controlId) send({ type: "vec2", controlId, x, y });
+  });
+
+  document.addEventListener("field-array-input", (event) => {
+    const { controlId, values } = event.detail || {};
+    if (controlId) send({ type: "array", controlId, values });
+  });
 
   /** A read-only level bar. No listeners at all — a meter reports and cannot be touched. */
   function renderMeterControl(control) {

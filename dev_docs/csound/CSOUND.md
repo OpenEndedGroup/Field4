@@ -119,7 +119,12 @@ syntax and manual link (`csound.js`).
 - **Csound 6 does not apply a `chn_k` default.** `idflt` is stored as a host hint
   (`csoundGetControlChannelHints`) and the channel stays 0. `CsoundInstance` therefore writes each
   declared `chn_k` default once at construction (`applyDeclaredDefaults`), never on a live
-  recompile. Before this, the docs page's Pluck fence and the demo's **pluck** box played a
+  recompile. Since 2026-10-04 the declared channels come from `csoundListChannels` (exposed as
+  `CsoundInstance.channels()`), not a regex over the orchestra: a `chn_k Sname, ...` with a string
+  variable for the name now gets its default, and a commented-out `chn_k` is not seen. Pinned by
+  `CsoundTest.channelDefaultsComeFromCsoundsChannelList`; negative control: the old regex left
+  `gain` at 0.0 (expected 0.5). The listed input/output bits accumulate (`chnget` and `chnset`
+  add theirs), so they say how a channel is used, not its declared `imode`. Before this, the docs page's Pluck fence and the demo's **pluck** box played a
   `butterlp` at 0 Hz, which is silence, until a Kotlin box wrote `cutoff`. Pinned by
   `CsoundTest.aChnKChannelStartsAtItsDeclaredDefault`.
 - **`CsoundDocsFencesTest`** renders every `data-lang=csound` fence in `public/docs/csound.md` the

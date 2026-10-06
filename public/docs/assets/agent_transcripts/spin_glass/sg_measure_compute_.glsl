@@ -2,8 +2,12 @@
 #extension GL_EXT_buffer_reference : require
 layout(local_size_x = 64) in;
 
-layout(std430, buffer_reference) buffer Spins { float s[]; };
-layout(std430, buffer_reference) buffer Bonds { float j[]; };
+layout(std430, buffer_reference) buffer Spins {
+    float s[];
+};
+layout(std430, buffer_reference) buffer Bonds {
+    float j[];
+};
 
 layout(push_constant) uniform PushC {
     Spins spins;
@@ -24,7 +28,7 @@ void main() {
     uint y = idx / L;
     uint xr = (x + 1u) % L;
     uint yd = (y + 1u) % L;
-    float s  = pc.spins.s[idx];
+    float s = pc.spins.s[idx];
     float sr = pc.spins.s[y * L + xr];
     float sd = pc.spins.s[yd * L + x];
     // count each bond once (right + down), so sum over sites is the total energy

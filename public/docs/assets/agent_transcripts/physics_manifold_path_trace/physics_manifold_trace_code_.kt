@@ -3,7 +3,6 @@ import afield.four.fabricated.PathTraceMaterial
 import afield.four.fabricated.PathTraceScene
 import afield.four.fabricated.PathTracingRenderer
 import afield.four.fabricated.importTriMesh
-import afield.four.modules.fromContext
 import afield.four.physics.PlaneCollider
 import afield.four.physics.SimdVerlet
 import afield.four.physics.SphereCollider
@@ -17,7 +16,6 @@ import afield.stdlib.isWatertight
 import afield.stdlib.linalg.Vector3f
 import java.io.File
 
-val renderer: Renderer = fromContext()
 prop<PathTracingRenderer>(tracer)
 
 require(ManifoldLibrary.isAvailable) {

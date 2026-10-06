@@ -335,8 +335,7 @@ class DocumentWriteBackLedgerTest {
     @Test
     fun aReadOnlyLoadDoesNotSeedAgentGuides() {
         // The eighth producer, and the only one on the load path: `SavingContext.load` calls
-        // `ensureDirectory`, which seeds AGENTS.md and README.md into any document directory
-        // lacking them. Nothing to do with saving, and nothing the funnel guard can see.
+        // `ensureDirectory`, which seeds AGENTS.md into any document directory lacking it. Nothing to do with saving, and nothing the funnel guard can see.
         val readOnly = tempDocument("guides")
         session(readOnly, readOnly = true)
         SavingContext().ensureDirectory(readOnly.absolutePath)
@@ -423,14 +422,14 @@ class DocumentWriteBackLedgerTest {
             """{"cursorState":[{"position":{"lineNumber":1,"column":1}}],"viewState":{"scrollLeft":0}}"""
 
         /**
-         * What a first save into an empty directory leaves behind. Six files for one box.
+         * What a first save into an empty directory leaves behind. Five files for one box.
          *
          * Three of them are the document: `metadata.edn`, `document.md`, and a `_code_.kt` sidecar
          * because `code` is in `Box.ioSeparateProperties`.
          *
-         * The other three are the surprise, and they are the bug in miniature. `AGENTS.md` and
-         * `README.md` come from `ensureAgentGuides`, which `ensureDirectory` calls on *every* load
-         * and save. `history_metrics.edn` is there because `checkDifference` counts writing a file
+         * The other two are the surprise, and they are the bug in miniature. `AGENTS.md` comes
+         * from `ensureAgentGuides`, which `ensureDirectory` calls on *every* load and save (it
+         * seeded a `README.md` as well until 2026-10-03). `history_metrics.edn` is there because `checkDifference` counts writing a file
          * that did not exist as an alteration, so a first save is "altered" and the whole
          * `if (altered)` fan-out runs.
          *
@@ -445,8 +444,7 @@ class DocumentWriteBackLedgerTest {
             "document.md",
             "sample_code_.kt",
             "history_metrics.edn",
-            "AGENTS.md",
-            "README.md"
+            "AGENTS.md"
         )
 
         /**
@@ -470,9 +468,9 @@ class DocumentWriteBackLedgerTest {
         /**
          * Names Field derives from a document, matched anywhere in a tracked path.
          *
-         * Mirrors the `.gitignore` block added alongside this test. `document.md` and the
-         * `AGENTS.md`/`README.md` pair are deliberately absent: they are derived under
-         * `metadata_store/` but authored content everywhere else.
+         * Mirrors the `.gitignore` block added alongside this test. `document.md`, `AGENTS.md`
+         * and `README.md` (which older Fields seeded) are deliberately absent: they are derived
+         * under `metadata_store/` but authored content everywhere else.
          */
         private val DERIVED_ARTEFACT = Regex(
             """(^|/)(operations\.yaml|history_metrics\.edn|transcript\.edn)$|/backups/|/history_screenshots/"""

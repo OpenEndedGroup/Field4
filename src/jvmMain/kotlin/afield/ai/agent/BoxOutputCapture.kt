@@ -2,6 +2,7 @@ package afield.ai.agent
 
 import afield.BoxScreenshotRequest
 import afield.ExpectedOutputs
+import afield.SCREENSHOT_PREP_STALLED
 import afield.SessionInformation
 import afield.buildPlaywrightDocumentUrl
 import afield.ensureSharedPlaywrightBrowser
@@ -210,7 +211,10 @@ internal fun jpegDataUrl(image: BufferedImage, maxSide: Int = 1200, quality: Flo
  *    alive for ever;
  *  - after [IDLE_RELEASE_MS] without a capture, **unless** it is the only client of an ephemeral
  *    document: detaching the last client of a scratch document retires it (cleanupDetachedSession), and
- *    a headless task can easily spend two minutes between looks. Those are released by their owner.
+ *    a headless task can easily spend two minutes between looks. Those are released by their owner;
+ *  - by [capture]'s retry, when a capture on it fails outright, including a prep that stalled or that
+ *    the Playwright driver timed out ([afield.evaluateWithin]). All of the capture pages and the
+ *    backdoor share one Playwright thread, so a page that cannot answer must not be asked again.
  *
  * A late panel is not a problem: a page that attaches after a box ran asks for `replay-output-areas`
  * and gets every retained panel (OutputAreaReplay), so "run first, look later" works.
@@ -266,7 +270,8 @@ object BoxOutputCapture {
             val first = runCatching { captureOnce(info, uid, channels) }
             first.getOrElse { failure ->
                 // A browser reset elsewhere (the global page's recovery closes the shared browser) kills
-                // this context too. Drop it and try once more on a fresh one.
+                // this context too, and a page that stalled in prep stays stalled. Drop it and try once
+                // more on a fresh one.
                 lprintln("warning,ai4", "box output capture failed for $uid (${failure.message}); retrying on a fresh page")
                 dropHeld(info.filename)
                 runCatching { captureOnce(info, uid, channels) }.getOrElse {
@@ -339,6 +344,8 @@ object BoxOutputCapture {
             uid = uid, padding = 12.0, panIntoView = true, hideMonaco = true, openOutputs = true,
             preserveSelection = true, includeNotifications = false, expectOutputs = ExpectedOutputs.PANEL
         ))
+        // A stalled page will stall again; throwing sends capture() to drop it and retry on a fresh one.
+        check(!prep.message.startsWith(SCREENSHOT_PREP_STALLED)) { prep.message }
         val clip = prep.clip
         if (!prep.success || clip == null) {
             return BoxOutputShot.failed(prep.message.ifBlank { "the page could not frame the box's output" }, channels)

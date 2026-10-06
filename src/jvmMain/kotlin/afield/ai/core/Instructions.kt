@@ -269,6 +269,11 @@ $includeGuidance
     // The text these join to is "$core\n\nTools available:\n${ads joined by \n}\n\nGuidance:\n$guidance$lessons";
     // each fragment carries the separator in front of it, so the join is a plain concatenation.
     val fragments = core.toMutableList()
+    if (mode == InstructionMode.Chat) {
+        AiChatFenceCatalog.instructionText().takeIf { it.isNotBlank() }?.let {
+            fragments += ContextFragment("fences.catalogue", "\n\n$it")
+        }
+    }
     toolAds.indices.groupConsecutiveBy { adSources[it] }.forEachIndexed { group, (source, indices) ->
         val text = indices.joinToString("\n") { toolAds[it] }
         fragments += ContextFragment(

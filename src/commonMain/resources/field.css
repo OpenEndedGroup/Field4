@@ -805,6 +805,45 @@ pre code {
     opacity: 1;
 }
 
+.ai-chat-window .ai-chat-fence-source-toggle {
+    position: absolute;
+    top: 4px;
+    right: 38px;
+    z-index: 10;
+    padding: 4px 7px;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 3px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+    cursor: pointer;
+}
+
+.ai-chat-fence-preview {
+    min-height: 50px;
+    padding: 30px 10px 10px;
+    overflow-x: auto;
+    border: 1px solid var(--field-border-strong);
+    border-radius: 5px;
+    background: var(--field-surface);
+    color: var(--field-fg);
+    font: 11px "iosevka", monospace;
+}
+
+.ai-chat-fence-preview svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: auto;
+}
+
+.ai-chat-fence-error {
+    min-height: 0;
+    padding: 8px 10px;
+    color: #e9a2a2;
+    white-space: pre-wrap;
+}
+
 .ai-chat-window {
     /* Rhymes with the history panel: a black shell, an editor-grey well for
        the input, cyan for Field's own voice and orange for yours. */
@@ -1026,6 +1065,53 @@ pre code {
     margin-top: 4px;
     color: var(--ai-chat-ai-fg, var(--field-fg-muted));
     opacity: 0.8;
+}
+
+/* A round: the tool activity between two pieces of text, folded to one status-row line
+   ("7 tool calls · 3.4 s · 1 failed · 2 notes"). Opened, it shows the activity as it always
+   rendered, under the same rule as the AI's own turns. */
+.ai-chat-round {
+    margin: 2px 6px;
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
+    font: 10px/1.5 var(--field-font);
+}
+
+.ai-chat-round > summary {
+    cursor: pointer;
+    list-style-position: inside;
+}
+
+.ai-chat-round-line {
+    opacity: 0.75;
+}
+
+.ai-chat-round-sep {
+    opacity: 0.5;
+}
+
+.ai-chat-round-failed {
+    color: #e9a2a2;
+}
+
+/* The families that change the work or the machine read a step brighter than the rest of the line. */
+.ai-chat-round-family[data-family="notes"],
+.ai-chat-round-family[data-family="recipes"],
+.ai-chat-round-family[data-family="design"] {
+    color: var(--field-fg-strong);
+}
+
+.ai-chat-round-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 4px;
+    padding-left: 4px;
+    border-left: 2px solid var(--ai-chat-ai-rule, var(--field-border-medium));
+}
+
+.ai-chat-round-body > .ai-chat-progress,
+.ai-chat-round-body > .ai-chat-status-row {
+    margin-left: 2px;
 }
 
 .ai-chat-turn.ai {
@@ -4362,6 +4448,12 @@ kbd {
     background: var(--field-hover);
     margin-left: 3px;
     margin-right: 3px;
+}
+
+/* The block caret sits on top of the text it covers, so while it blinks on it took the mousedown
+   meant for a clickable decoration under it (a flipbox): let clicks through to the text. */
+.monaco-editor .cursors-layer .cursor {
+    pointer-events: none;
 }
 
 .coverMarker {
