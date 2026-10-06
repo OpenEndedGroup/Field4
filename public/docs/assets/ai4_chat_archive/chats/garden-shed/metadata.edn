@@ -1,0 +1,1 @@
+{:version 2 :boxes [{"id" "b_shed" "properties" {"name" "Shed plan" "ai4_chat_history" #afield/file "b_shed_ai4_chat_history_.md" "ai4_session" #afield/file "b_shed_ai4_session_.jsonl"}}]}

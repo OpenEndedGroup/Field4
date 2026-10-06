@@ -141,6 +141,9 @@ You can paste images into the chat input. Field sends those attachments with
 the next message, which is useful when the desired change is easier to point at
 than describe.
 
+A chat is saved with its box, rewound turns included. [Reading saved AI4 chats](ai4_chat_archive.md)
+shows how to read one back as a tree and have AI4 write a shorter version of it beside the original.
+
 ![two boxes on the canvas, window joined to Texture by a cyan cable, with the Texture box's AI Chat area open below them. The question is "what do you see in this image?", and above it sits the pasted attachment itself: a screenshot of these same two boxes. The answer describes a dark node-based canvas with a smaller node labelled window and a larger one labelled Texture, a curved cable between them, and a panel labelled AI Chat. An empty input reading "Ask about this box..." is at the bottom](assets/screenshot_53.png)
 
 For a complete conversation that changes code and inspects its result, try
