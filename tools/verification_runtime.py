@@ -109,6 +109,14 @@ def automation_log_environment(repo_root: Path) -> dict[str, str]:
     ``CompletionOwnImportRegression``, and 192 of the 974 tool-I/O sessions since 2026-09-20 were
     docs-runner or scratch turns.
 
+    The code-use database (``AFIELD_CODE_USE_PATH``, ``CodeUseTelemetryService``) moves too. Its
+    AI4 tools and ``/api/code-use`` routes query it machine-wide and filter by document only after
+    taking the newest rows, so agent runs crowded out the user's own: on 2026-10-06, 424,607 of its
+    465,786 snippets came from managed servers, scratch sessions and the jvm-main tests they spawn
+    (which inherit this environment), and 32 of its newest 500 failures came from a user document.
+    An agent's history-mining queries (line callers, hot symbols, peer callers) therefore start from
+    this checkout's own runs; ``--attach-existing`` still reaches the user's history.
+
     The request ledger (``AFIELD_AI_USAGE_LOG_PATH``) stays in ``~/.afield/logs``: an agent's AI
     call costs real money on the same key, ``tools/ai_usage.py`` accounts for that spend across the
     machine, and each record already names its checkout and port.
@@ -119,6 +127,7 @@ def automation_log_environment(repo_root: Path) -> dict[str, str]:
         "AFIELD_AI4_TOOL_IO_LOG_PATH": str(root / "ai4_tool_io"),
         "AFIELD_AI4_TOOL_EVIDENCE_PATH": str(root / "ai4_tool_io" / "evidence"),
         "AFIELD_AI4_CAPTURE_DIR": str(root / "ai4_box_captures"),
+        "AFIELD_CODE_USE_PATH": str(root / "code-use" / "field-code-use.sqlite"),
     }
 
 

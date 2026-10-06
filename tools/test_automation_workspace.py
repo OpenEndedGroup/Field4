@@ -93,6 +93,14 @@ class AutomationWorkspaceTests(unittest.TestCase):
         # The request ledger is the machine-wide account of AI spend, agents' included.
         self.assertEqual(environment["AFIELD_AI_USAGE_LOG_PATH"], user_logs + "/ai_usage")
 
+    def test_server_environment_gives_code_use_telemetry_a_checkout_local_database(self) -> None:
+        # Exported in the agent's shell, this is usually the database the user's own Field writes.
+        users_database = str(Path.home() / ".afield" / "code-use" / "field-code-use.sqlite")
+        environment = automation_server_environment(9477, base={"AFIELD_CODE_USE_PATH": users_database})
+        logs = Path(__file__).resolve().parent.parent / "build" / "field-automation-logs"
+
+        self.assertEqual(environment["AFIELD_CODE_USE_PATH"], str(logs / "code-use" / "field-code-use.sqlite"))
+
     def test_docs_server_never_inherits_or_rewrites_the_global_preference(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
