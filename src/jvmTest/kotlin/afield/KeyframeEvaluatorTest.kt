@@ -95,4 +95,43 @@ class KeyframeEvaluatorTest {
         assertEquals(listOf(0.0), reloaded.getKeyframeTimes())
         assertEquals(listOf(0.5), reloaded.getKeyframeValues())
     }
+
+    @Test
+    fun theExactDerivativeAgreesWithAFineDifference() {
+        val k = keys(Triple(0.0, 0.1, "bezierContinuous"), Triple(1.0, 0.9, "bezierFree"), Triple(2.0, 0.2, "linear"))
+        listOf(0.13, 0.5, 0.87, 1.3, 1.7).forEach { t ->
+            val h = 1e-6
+            val numeric = (k.evaluateValueAt(t + h) - k.evaluateValueAt(t - h)) / (2 * h)
+            near(numeric, k.evaluateDerivativeAt(t), 1e-4)
+        }
+        near(0.0, keys(Triple(0.0, 0.3, "hold"), Triple(1.0, 0.9, "linear")).evaluateDerivativeAt(0.5))
+    }
+
+    @Test
+    fun aBezierSegmentIsSmoothAndMonotoneInTime() {
+        // Continuous values everywhere along an eased segment: no step bigger than the curve can make.
+        val k = keys(Triple(0.0, 0.0, "bezierContinuous"), Triple(1.0, 1.0, "linear"))
+        var last = k.evaluateValueAt(0.0)
+        (1..1000).forEach { i ->
+            val v = k.evaluateValueAt(i / 1000.0)
+            assertTrue(abs(v - last) < 0.01, "jump of ${abs(v - last)} at ${i / 1000.0}")
+            last = v
+        }
+    }
+
+    @Test
+    fun editingFromCodeSavesWithTheBox() {
+        val box = Box("kf_api")
+        val k = KeyframeEvaluator("[]")
+        k.associatedBox = box
+        k.associatedName = "x"
+        k.add(1.0, 0.5)
+        k.add(0.0, 0.2, "hold")
+        assertEquals(listOf(0.0, 1.0), KeyframeEvaluator(loadKeyframeData(box, "x")!!).getKeyframeTimes())
+        k.edit { replaceAll { it.copy(value = it.value * 2) } }
+        assertEquals(listOf(0.4, 1.0), KeyframeEvaluator(loadKeyframeData(box, "x")!!).getKeyframeValues())
+        k.removeAt(0)
+        assertEquals(1, KeyframeEvaluator(loadKeyframeData(box, "x")!!).getKeyframeCount())
+        near(1.0, k.evaluateValueAt(5.0))
+    }
 }
