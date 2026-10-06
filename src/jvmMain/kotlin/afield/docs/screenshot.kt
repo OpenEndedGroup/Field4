@@ -2764,6 +2764,23 @@ class DocsUiDriver internal constructor(
         runBlocking(playwrightDispatcher) { pageProvider().mouse().dblclick(x, y) }
     }
 
+    /**
+     * Scroll the real wheel by ([dx], [dy]) at ([x], [y]) in CSS px, with the [modifiers] held:
+     * `"Control"` for a pinch-style zoom, say.
+     */
+    fun wheel(x: Double, y: Double, dx: Double, dy: Double, vararg modifiers: String) {
+        runBlocking(playwrightDispatcher) {
+            val page = pageProvider()
+            page.mouse().move(x, y)
+            modifiers.forEach { page.keyboard().down(it) }
+            try {
+                page.mouse().wheel(dx, dy)
+            } finally {
+                modifiers.reversed().forEach { page.keyboard().up(it) }
+            }
+        }
+    }
+
     /** Right-click the real mouse at ([x], [y]) in CSS px, to open a context menu. */
     fun rightClickAt(x: Double, y: Double) {
         runBlocking(playwrightDispatcher) {

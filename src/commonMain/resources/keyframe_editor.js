@@ -118,6 +118,13 @@ const STYLE_BLOCK = `
   pointer-events: none;
 }
 
+.kf-linked-cursor {
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
 .kf-playhead-dot {
   fill: #ffab47;
   stroke: var(--kf-bg);
@@ -816,6 +823,9 @@ export class KeyframeEditor {
 
                 this.root = root;
                 this.options = {
+                        // Everything given, so callbacks added later (onPreview, onViewChange, onFit,
+                        // onHover) arrive; the defaults below then fill in what was not given.
+                        ...options,
                         width: options.width ?? 640,
                         height: options.height ?? 320,
                         padding: options.padding ?? 36,
@@ -1055,6 +1065,10 @@ export class KeyframeEditor {
                 // Where Paste puts keys when there is no playhead in view.
                 hitRegion.addEventListener("pointermove", (event) => {
                         this._lastPointerTime = this.pointerToValues(event).time;
+                        if (typeof this.options.onHover === "function") this.options.onHover(this._lastPointerTime);
+                });
+                hitRegion.addEventListener("pointerleave", () => {
+                        if (typeof this.options.onHover === "function") this.options.onHover(null);
                 });
 
                 hitRegion.addEventListener("dblclick", (event) => {
@@ -1085,6 +1099,7 @@ export class KeyframeEditor {
                                 const newTMin = anchorTime - anchorTimeRatio * newTimeSpan;
                                 const newTMax = anchorTime + (1 - anchorTimeRatio) * newTimeSpan;
                                 this.setViewTimeRange([newTMin, newTMax], { render: false });
+                                this.announceView();
 
                                 // Zoom value axis only when Shift is also held
                                 if (event.shiftKey) {
@@ -1102,6 +1117,7 @@ export class KeyframeEditor {
                                 const valueShift = -(event.deltaY / height) * valueSpan;
                                 const [tMin, tMax] = this.viewTimeRange;
                                 this.setViewTimeRange([tMin + timeShift, tMax + timeShift], { render: false });
+                                this.announceView();
                                 const [vMin, vMax] = this.viewValueRange;
                                 this.setViewValueRange([vMin + valueShift, vMax + valueShift], { render: false });
                         }
@@ -2989,6 +3005,7 @@ export class KeyframeEditor {
                                 const timeShift = -(deltaX / width) * timeSpan;
                                 timeRange = [initialTimeRange[0] + timeShift, initialTimeRange[1] + timeShift];
                                 this.setViewTimeRange(timeRange, { render: false });
+                                this.announceView();
                         }
                         if (valueSpan) {
                                 const deltaY = ev.clientY - startY;
@@ -3117,6 +3134,43 @@ export class KeyframeEditor {
                         this.setViewValueRange([...this.initialValueRange], { render: false });
                 }
                 this.render();
+                // Linked lanes go back to framing all of their keys together.
+                if (typeof this.options.onFit === "function") this.options.onFit();
+        }
+
+        /** A pan or zoom made here, for the lanes linked to this one. */
+        announceView() {
+                if (typeof this.options.onViewChange !== "function") return;
+                const range = [...this.viewTimeRange];
+                cancelAnimationFrame(this._announceFrame);
+                this._announceFrame = requestAnimationFrame(() => this.options.onViewChange(range));
+        }
+
+        /** The span of this curve's keys in time, or null with none. */
+        keyTimeExtent() {
+                const times = this.keyframes.map((kf) => kf.time).filter(Number.isFinite);
+                return times.length ? [Math.min(...times), Math.max(...times)] : null;
+        }
+
+        /** A time line drawn for the pointer hovering over a linked lane; null hides it. */
+        setLinkedCursor(time) {
+                if (!this.svg) return;
+                if (!this._linkedCursor || !this.svg.contains(this._linkedCursor)) {
+                        this._linkedCursor = createSVGElement("line", { class: "kf-linked-cursor" });
+                        this.svg.appendChild(this._linkedCursor);
+                }
+                const line = this._linkedCursor;
+                const [t0, t1] = this.viewTimeRange;
+                if (!Number.isFinite(time) || time < t0 || time > t1) {
+                        line.style.display = "none";
+                        return;
+                }
+                const x = this.timeToX(time);
+                line.style.display = "";
+                line.setAttribute("x1", x);
+                line.setAttribute("x2", x);
+                line.setAttribute("y1", this.options.padding);
+                line.setAttribute("y2", this.options.padding + this.innerHeight);
         }
 
         /**
@@ -3124,7 +3178,8 @@ export class KeyframeEditor {
          * units, value always includes 0 and 1. Returns false when there is nothing to fit.
          */
         fitToKeyframes() {
-                const times = this.keyframes.map((kf) => kf.time).filter(Number.isFinite);
+                // Linked lanes (the other editors in this box) share one time axis: fit them all.
+                const times = [...this.keyframes.map((kf) => kf.time), ...(this.linkedTimes || [])].filter(Number.isFinite);
                 // The curve, not just its keys: an elastic or a spring goes well past them.
                 const values = [...this.keyframes.map((kf) => kf.value), ...this.sampleCurve({ stepsPerSegment: 24 }).map((s) => s.value)]
                     .filter(Number.isFinite);

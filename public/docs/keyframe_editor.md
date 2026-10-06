@@ -86,18 +86,18 @@ fun drag(from: Pair<Double, Double>, to: Pair<Double, Double>) {
     ui.mouseUp()
 }
 
-ui.pause(500)
+ui.pause(300)
 
 // Double-click empty graph: a new key.
 val p = at("pos(3.2, 0.8)")
 ui.moveMouse(p.first, p.second, 12)
 ui.pause(300)
 ui.doubleClickAt(p.first, p.second)
-ui.pause(450)
+ui.pause(250)
 
 // Drag it: time and value move together.
 drag(at("key(3)"), at("pos(3.4, 0.55)"))
-ui.pause(450)
+ui.pause(250)
 
 // Right-click a key for its menu, and make it a bezier.
 val peak = at("key(1)")
@@ -106,7 +106,7 @@ ui.moveMouse(peak.first, peak.second, 10)
 var opened = false
 for (attempt in 1..3) {
     ui.rightClickAt(peak.first, peak.second)
-    ui.pause(700)
+    ui.pause(400)
     opened = ui.eval("return !!document.querySelector('.kfm .kfm-type')").toString() == "true"
     if (opened) break
 }
@@ -125,31 +125,31 @@ val b = at("button('Bezier (Continuous)')")
 ui.moveMouse(b.first, b.second, 10)
 ui.pause(400)
 ui.clickAt(b.first, b.second)
-ui.pause(450)
+ui.pause(250)
 
 // Pull its handle to reshape the curve either side.
 drag(at("handle(1)"), at("pos(1.9, 0.98)"))
-ui.pause(450)
+ui.pause(250)
 
 // Sweep a time band to select two keys, then drag them together.
 drag(at("pos(2.1, 0.02)"), at("pos(3.7, 0.02)"))
-ui.pause(600)
+ui.pause(350)
 drag(at("key(2)"), at("pos(2.5, 0.7)"))
-ui.pause(450)
+ui.pause(250)
 
 // Double-click a key and type its value exactly.
 val last = at("key(4)")
 ui.moveMouse(last.first, last.second, 10)
 ui.doubleClickAt(last.first, last.second)
-ui.pause(700)
+ui.pause(400)
 ui.typeSlowly("0.6", 140)
 ui.pause(300)
 ui.press("Enter")
-ui.pause(500)
+ui.pause(300)
 
 // And undo it.
 ui.down("Meta"); ui.press("KeyZ"); ui.up("Meta")
-ui.pause(800)
+ui.pause(450)
 ```
 
 <div class="field-data-table" markdown>
@@ -422,8 +422,7 @@ wobble.onChange = smooth
 
 Each editor is one value, so a movement in two dimensions is two editors. Here `x` and `y` curves move the handle of an XY pad:
 
-```diffstatic_runner {data-lang=kotlin video="assets/keyframe_editor/two_curves.mp4" capture="box" open-outputs="true" wait-output="true" wait-output-kind="display" execution="launch" duration="5" fps="20" timeout="180" w="700" embed=true name="keyframe-two-curves" alt="Two editors, x and y, each with a playhead sweeping across it, above an XY pad named spot whose handle traces a loop as the two curves are played together"}
-:::static
+```diffstatic {data-lang=kotlin}
 val x = keyframes(name = "x", defaults = listOf(vec(0.0, -0.6), vec(1.0, 0.6), vec(2.0, 0.3), vec(3.0, -0.6)))
 val y = keyframes(name = "y", defaults = listOf(vec(0.0, -0.4), vec(1.5, 0.7), vec(3.0, -0.4)))
 
@@ -440,7 +439,72 @@ loop {
 }
 ```
 
-Each editor shows in its own output panel, named after it. To group a box's editors under one heading, give them a channel: `keyframes("motion", "x")` shows in `motion/x`.
+The editors in one box share a time axis, like the lanes of a dope sheet. Pan or zoom time in one and the others follow, the pointer's time is marked in all of them, and Fit the curve frames every lane's keys together. Each keeps its own value axis:
+
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x900" clip="0,0,700,900" hide-toasts=true video="assets/keyframe_editor/two_curves.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_two_lanes.yaml" fps="15" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-two-curves" alt="Two editors, x and y, stacked above an XY pad named spot whose handle traces a loop while both playheads sweep. The pointer moves across the x lane and a dashed time line follows it in the y lane. A zoom in the x lane narrows the time axis of both lanes at once; a scroll in the y lane slides both along in time; Fit the curve, chosen from the y lane's menu, returns both to showing all their keys"}
+ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
+// The two lanes' plotting areas, in page coordinates, once both are showing their keys.
+val lanes = """
+  const frames = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0);
+  if (frames.length < 2) return '';
+  const parts = frames.map(f => {
+    const fr = f.getBoundingClientRect();
+    const hit = Array.from(f.contentDocument.querySelectorAll('rect')).find(r => r.style.cursor === 'crosshair');
+    if (!hit || f.contentDocument.querySelectorAll('.kf-keyframe').length < 3) return '';
+    const r = hit.getBoundingClientRect();
+    return [fr.left + r.left, fr.top + r.top, r.width, r.height].map(Math.round).join(' ');
+  });
+  return parts.every(p => p) ? parts.join(';') : '';
+""".trimIndent()
+var rects = ""
+var tries = 0
+while (tries++ < 60) {
+    val now = ui.eval(lanes).toString().trim('"')
+    if (now.isNotEmpty() && now == rects) break
+    rects = now
+    ui.pause(200)
+}
+val (lx, ly) = rects.split(";").map { r -> r.split(" ").map { it.toDouble() } }
+fun at(lane: List<Double>, fx: Double, fy: Double) = (lane[0] + lane[2] * fx) to (lane[1] + lane[3] * fy)
+
+ui.pause(600)
+// The pointer's time is marked in the other lane.
+val (h0x, h0y) = at(lx, 0.15, 0.5)
+ui.moveMouse(h0x, h0y, 4)
+val (h1x, h1y) = at(lx, 0.85, 0.5)
+ui.moveMouse(h1x, h1y, 40)
+ui.pause(400)
+// Zoom time in x: y follows.
+val (zx, zy) = at(lx, 0.35, 0.5)
+ui.moveMouse(zx, zy, 10)
+repeat(8) { ui.wheel(zx, zy, 0.0, -50.0, "Control"); ui.pause(70) }
+ui.pause(700)
+// Slide along in time from y: x follows.
+val (px, py) = at(ly, 0.5, 0.5)
+ui.moveMouse(px, py, 16)
+repeat(10) { ui.wheel(px, py, 30.0, 0.0); ui.pause(60) }
+ui.pause(700)
+// Fit the curve, from y's own menu: both lanes show all their keys again.
+val (fx, fy) = at(ly, 0.9, 0.15)
+ui.moveMouse(fx, fy, 8)
+ui.rightClickAt(fx, fy)
+ui.pause(600)
+val fit = ui.eval("""
+  const b = Array.from(document.querySelectorAll('.kfm .kfm-item')).find(e => e.textContent.indexOf('Fit the curve') >= 0);
+  if (!b) return '';
+  const r = b.getBoundingClientRect();
+  return Math.round(r.left + r.width / 2) + ',' + Math.round(r.top + r.height / 2);
+""".trimIndent()).toString().trim('"')
+if (fit.isNotEmpty()) {
+    val (bx, by) = fit.split(",").map { it.toDouble() }
+    ui.moveMouse(bx, by, 8)
+    ui.pause(300)
+    ui.clickAt(bx, by)
+}
+ui.pause(1500)
+```
+
+Each editor shows in its own output panel, named after it. To keep separate sets in one box, give each set a channel: `keyframes("motion", "x")` and `keyframes("motion", "y")` show as `motion/x` and `motion/y`, and share a time axis with each other but not with the box's other editors.
 
 ## Start from a working document
 

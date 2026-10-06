@@ -655,6 +655,8 @@ private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJs
     val uid = this.id + "_" + name + if (document.isEmpty()) "" else "_" + Integer.toHexString(document.hashCode())
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
+    // The lanes that share a time axis: this box's editors, or one channel group of them.
+    val group = this.id + "/" + (channel ?: "") + if (document.isEmpty()) "" else "@" + Integer.toHexString(document.hashCode())
     // With no channel the panel is named after the curve, which is what a reader wants to see.
     val displayChannel = if (channel == null || channel == name) name else "$channel/$name"
 
@@ -666,7 +668,7 @@ private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJs
     if (!alreadyLive) {
         display(
             displayChannel, """
-<iframe src='/keyframe?uid=${uid}' data-afield-intrinsic-width='560' data-afield-intrinsic-height='232' style='border:none;padding:0;margin:0;width:100%;min-width:560px;height:232px !important;display:block'>
+<iframe src='/keyframe?uid=${uid}&group=${java.net.URLEncoder.encode(group, "UTF-8")}' data-afield-intrinsic-width='560' data-afield-intrinsic-height='232' style='border:none;padding:0;margin:0;width:100%;min-width:560px;height:232px !important;display:block'>
 """
         )
         // The editor is a fixed 200 px tall, hence `height … !important`: field.css stretches panel
