@@ -308,12 +308,21 @@ class AstraBridgeContractTest {
         bridge.send(state, "Inspect", maxToolRounds = 0)
         assertEquals(requests[0]["tools"], requests[1]["tools"])
         assertEquals("none", requests[1]["tool_choice"].asText())
-        assertTrue(requests[1]["instructions"].asText().contains("For this response only"))
-        assertFalse(requests[1]["input"].any { it["role"]?.asText() == "developer" })
+        // Nothing chains onto the forced final request, so its stop is input, which keeps the cached prefix.
+        assertFalse(requests[1].has("instructions"))
+        assertTrue(requests[1]["input"].single { it["role"]?.asText() == "developer" }.toString().contains("For this response only"))
+        assertEquals("call_one", requests[1]["input"].single { it["type"]?.asText() == "function_call_output" }["call_id"].asText())
         assertFalse(requests[0]["tools"].any { it["type"].asText() == "tool_search" }, "Program catalogue must not also require provider discovery")
         assertTrue(requests[0]["tools"].any { it["name"]?.asText() == "DescribeToolsRequest" })
     }
 
+    /**
+     * The house-machine-11 shape (2026-10-05): a turn hits its tool-round cap, the forced final request
+     * (tool_choice none, "without calling tools") also compacts the conversation, and the next two turns,
+     * chained onto that response, answer "tool execution is still disabled here" with no calls. The next
+     * turn must branch from the response that made the pending calls, carrying their "not run" outputs and
+     * the forced answer as plain assistant text, and nothing the forced request was sent or reasoned.
+     */
     @Test
     fun aCappedTurnCanResumeToolsWithoutCarryingTheStopInstruction() {
         for (provider in listOf("openai", "openrouter")) withServer(provider) { server, requests, bridge ->
@@ -322,39 +331,99 @@ class AstraBridgeContractTest {
             server.createContext("/v1/responses") { exchange ->
                 requests.add(mapper.readTree(exchange.requestBody))
                 val n = requests.size
-                val body = if (n == 1 || n == 3) response("resp_$n", """[{
-                    "type":"function_call","id":"fc_$n","call_id":"call_$n",
-                    "name":"InspectPanel","arguments":"{}","status":"completed"
-                }]""") else finalResponse("resp_$n")
+                val body = when (n) {
+                    1, 3 -> response("resp_$n", """[{
+                        "type":"function_call","id":"fc_$n","call_id":"call_$n",
+                        "name":"InspectPanel","arguments":"{}","status":"completed"
+                    }]""")
+                    2 -> response("resp_2", """[
+                        {"type":"compaction","id":"cmp_forced","encrypted_content":"protocol-fixture"},
+                        {"type":"reasoning","id":"rs_forced","summary":[{"type":"summary_text","text":"FORCED-REASONING: no tools now."}]},
+                        {"type":"message","id":"msg_forced","role":"assistant","status":"completed",
+                         "content":[{"type":"output_text","text":"Inspected roof.","annotations":[]}]}
+                    ]""")
+                    else -> finalResponse("resp_$n")
+                }
                 exchange.responseHeaders.add("Content-Type", "application/json")
                 exchange.sendResponseHeaders(200, body.toByteArray().size.toLong())
                 exchange.responseBody.use { it.write(body.toByteArray()) }
             }
+            fun items(i: Int) = requests[i]["input"].takeIf { it.isArray }?.toList().orEmpty()
+            fun notRun(i: Int) = items(i).filter { it["type"]?.asText() == "function_call_output" && it["call_id"]?.asText() == "call_1" }
+
             val state = OpenAiIdeCodexBridge.ThreadState("cap", "conv_test", "test", previousResponseId = "resp_legacy")
             assertTrue(bridge.send(state, "Inspect", maxToolRounds = 0).hitToolRoundCap)
             assertEquals(0, executions, "An aborted call must never execute")
+            assertEquals("none", requests[1]["tool_choice"].asText())
             val resumed = bridge.threadStateFromJson(bridge.threadStateToJson(state))
             assertTrue(resumed.lastTurnHitToolRoundCap, "The cap survives a persisted thread")
+            assertEquals(listOf(OpenAiIdeCodexBridge.PendingToolCall("call_1", "InspectPanel")), resumed.cappedTurnContinuation?.pendingCalls)
+            assertEquals("Inspected roof.", resumed.cappedTurnContinuation?.finalText?.trim())
+
             val result = bridge.send(resumed, "Continue", maxToolRounds = 2)
             assertFalse(result.hitToolRoundCap)
             assertEquals(1, executions)
             assertEquals(4, requests.size)
-            // The model was told, in the next turn's own input and once, that its tool budget has reset.
-            assertFalse(requests[0]["input"].toString().contains("That limit has reset"))
-            assertTrue(requests[2]["input"].toString().contains("That limit has reset"))
             assertFalse(resumed.lastTurnHitToolRoundCap)
+            assertEquals(null, resumed.cappedTurnContinuation)
+
+            // The next turn continues from before the forced final request, never from it.
+            if (provider == "openai") assertEquals("resp_1", requests[2]["previous_response_id"].asText())
             for (i in listOf(2, 3)) {
                 assertEquals("auto", requests[i]["tool_choice"].asText())
                 assertFalse(requests[i].has("instructions"), "The turn-scoped stop must not be sent on subsequent ordinary requests")
                 assertFalse(requests[i]["input"].toString().contains("For this response only"))
+                assertFalse(requests[i]["input"].toString().contains("FORCED-REASONING"), "The forced request's reasoning stays on its branch")
+                assertFalse(requests[i]["input"].toString().contains("cmp_forced"))
             }
-            if (provider == "openai") assertEquals("resp_2", requests[2]["previous_response_id"].asText())
-            else {
-                val aborted = requests[2]["input"].single { it["call_id"]?.asText() == "call_1" && it["type"]?.asText() == "function_call_output" }
-                assertTrue(aborted["output"].asText().contains("max_tool_rounds_reached"))
-                assertTrue(requests[2]["input"].toString().contains("Inspected roof."))
-            }
+            // Its input: the pending call's "not run" output, the forced answer as plain assistant text, then
+            // the prompt, which says once that the tool budget has reset.
+            val turn = items(2)
+            val output = notRun(2).single()
+            assertTrue(output["output"].asText().contains("max_tool_rounds_reached"))
+            val answer = turn.single { it["role"]?.asText() == "assistant" }
+            assertEquals("Inspected roof.", answer["content"].asText().trim())
+            assertTrue(turn.indexOf(output) < turn.indexOf(answer) && turn.indexOf(answer) < turn.lastIndex)
+            assertTrue(turn.last().toString().contains("That limit has reset") && turn.last().toString().contains("Continue"))
+            assertFalse(requests[0]["input"].toString().contains("That limit has reset"))
+
+            // The turn after that is an ordinary one: chained onto its predecessor, no note, nothing repeated.
+            bridge.send(resumed, "And the walls", maxToolRounds = 2)
+            assertEquals(5, requests.size)
+            // Stateless history replays the previous turn's prompt, note and all, but adds no new one.
+            assertEquals(if (provider == "openai") 1 else 2,
+                requests[4]["input"].toString().split("That limit has reset").size)
+            if (provider == "openai") {
+                assertEquals("resp_4", requests[4]["previous_response_id"].asText())
+                assertEquals("And the walls\n", requests[4]["input"].asText())
+            } else assertEquals(1, notRun(4).size, "Stateless history holds the continuation once")
         }
+    }
+
+    @Test
+    fun aTurnThatFailsBeforeItsFirstResponseSendsTheCappedContinuationAgain() = withServer { server, requests, bridge ->
+        bridge.registerTool(InspectPanel::class.java) { _, _ -> error("must not run") }
+        server.createContext("/v1/responses") { exchange ->
+            requests.add(mapper.readTree(exchange.requestBody))
+            val (status, body) = when (requests.size) {
+                1 -> 200 to response("resp_pending", """[{"type":"function_call","id":"fc_test","call_id":"call_one","name":"InspectPanel","arguments":"{}","status":"completed"}]""")
+                3 -> 400 to """{"error":{"message":"Bad request","type":"invalid_request_error","code":"invalid_request"}}"""
+                else -> 200 to finalResponse("resp_${requests.size}")
+            }
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(status, body.toByteArray().size.toLong())
+            exchange.responseBody.use { it.write(body.toByteArray()) }
+        }
+        val state = OpenAiIdeCodexBridge.ThreadState("retry-cap", "conv_test", "test", previousResponseId = "resp_old")
+        assertTrue(bridge.send(state, "Inspect", maxToolRounds = 0).hitToolRoundCap)
+        assertFails { bridge.send(state, "Continue") }
+        assertEquals("resp_pending", state.previousResponseId)
+        assertTrue(state.lastTurnHitToolRoundCap)
+        bridge.send(state, "Continue")
+        assertEquals(requests[2]["input"], requests.last()["input"])
+        assertEquals("resp_pending", requests.last()["previous_response_id"].asText())
+        assertTrue(requests.last()["input"].any { it["type"]?.asText() == "function_call_output" && it["call_id"]?.asText() == "call_one" })
+        assertFalse(state.lastTurnHitToolRoundCap)
     }
 
     @Test
