@@ -41,7 +41,6 @@ class KeyframeEvaluator(jsonString: String) {
     @Volatile internal var associatedBox: Box? = null
 
     private var keyframes: List<Keyframe>
-    private var cachedSamples: List<Sample>? = null
 
     fun isEmpty(): Boolean = keyframes.isEmpty()
 
@@ -53,7 +52,6 @@ class KeyframeEvaluator(jsonString: String) {
     fun set(jsonString: String) {
         val json = Json { ignoreUnknownKeys = true }
         keyframes = json.decodeFromString<List<Keyframe>>(jsonString).sortedBy { it.time }
-        cachedSamples = null
     }
 
     // The playhead and overlays a box last asked for. The editor may not have connected yet, and it
@@ -94,65 +92,45 @@ class KeyframeEvaluator(jsonString: String) {
      * @return The interpolated value at the given time
      */
     fun evaluateValueAt(time: Double): Double {
-        // Hold and linear segments are exact; only bezier segments go through the sampled curve.
         val keys = keyframes
-        if (keys.size >= 2 && time > keys.first().time && time < keys.last().time) {
-            var lo = 0
-            var hi = keys.size - 1
-            while (hi - lo > 1) {
-                val mid = (lo + hi) / 2
-                if (keys[mid].time <= time) lo = mid else hi = mid
+        if (keys.isEmpty()) return 0.0
+        if (time <= keys.first().time) return keys.first().value
+        if (time >= keys.last().time) return keys.last().value
+        val (prev, next) = segmentAt(keys, time)
+        return when (segmentKind(prev.type)) {
+            "hold" -> prev.value
+            "linear" -> {
+                val span = next.time - prev.time
+                if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
             }
-            val prev = keys[lo]
-            val next = keys[hi]
-            when (segmentKind(prev.type)) {
-                "hold" -> return prev.value
-                "linear" -> {
-                    val span = next.time - prev.time
-                    return if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
-                }
+            else -> {
+                val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
+                rationalBezierPoint(controls, solveBezierParameter(controls, time)).y
             }
         }
-        if (cachedSamples == null) {
-            cachedSamples = sampleCurve(stepsPerSegment = 96)
+    }
+
+    // The two keys either side of [time], which lies strictly inside the keys' range.
+    private fun segmentAt(keys: List<Keyframe>, time: Double): Pair<Keyframe, Keyframe> {
+        var lo = 0
+        var hi = keys.size - 1
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (keys[mid].time <= time) lo = mid else hi = mid
         }
+        return keys[lo] to keys[hi]
+    }
 
-        val samples = cachedSamples ?: return 0.0
-
-        if (samples.isEmpty()) return 0.0
-        if (time <= samples.first().time) return samples.first().value
-
-        val last = samples.last()
-        if (time >= last.time) return last.value
-
-        // Binary search for the sample
-        var low = 0
-        var high = samples.size - 1
-
-        while (low <= high) {
-            val mid = (low + high) / 2
-            val sample = samples[mid]
-
-            if (abs(sample.time - time) < EPSILON) {
-                return sample.value
-            }
-
-            if (sample.time < time) {
-                low = mid + 1
-            } else {
-                high = mid - 1
-            }
+    // The curve parameter at which a bezier segment reaches [time]. Its control points' times are
+    // kept in order, so time rises monotonically along the segment and bisection converges.
+    private fun solveBezierParameter(controls: BezierControls, time: Double): Double {
+        var lo = 0.0
+        var hi = 1.0
+        repeat(52) {
+            val mid = (lo + hi) / 2
+            if (rationalBezierPoint(controls, mid).x < time) lo = mid else hi = mid
         }
-
-        // Interpolate between samples
-        val left = max(0, high)
-        val right = min(samples.size - 1, low)
-        val segment = samples[right].time - samples[left].time
-
-        if (segment < EPSILON) return samples[left].value
-
-        val t = (time - samples[left].time) / segment
-        return samples[left].value + (samples[right].value - samples[left].value) * t
+        return (lo + hi) / 2
     }
 
     /**
@@ -203,55 +181,75 @@ class KeyframeEvaluator(jsonString: String) {
     // ── Derivative ───────────────────────────────────────────────────
 
     /**
-     * Evaluates the numerical derivative (rate of change) of the curve at the given time.
+     * The rate of change of the curve at [time], in value per unit of time: exact, from the shape of
+     * the segment [time] falls in. Zero outside the keys and along a hold. At a key it is the slope
+     * of the segment leaving it (arriving, at the last key).
      *
-     * Uses a central-difference scheme at the given [time], with an adaptive step size
-     * based on the local sample spacing. At the boundaries of the keyframe range the
-     * derivative is one-sided (forward or backward difference).
-     *
-     * @param time the time at which to compute the derivative
-     * @param h    half-width of the finite-difference stencil (default: auto from sample density)
-     * @return     approximate dValue/dTime at [time]
+     * @param h    a half-width for a central difference instead; `0.0` (the default) is exact
      */
     fun evaluateDerivativeAt(time: Double, h: Double = 0.0): Double {
-        if (keyframes.isEmpty()) return 0.0
-
-        // Auto step: use ~1/4 of the smallest segment gap or a fixed small value
-        val step = if (h > 0.0) h else {
-            if (keyframes.size < 2) 1e-4
-            else {
-                var minGap = Double.MAX_VALUE
-                for (i in 1 until keyframes.size) {
-                    val gap = keyframes[i].time - keyframes[i - 1].time
-                    if (gap > EPSILON && gap < minGap) minGap = gap
-                }
-                (minGap * 0.25).coerceIn(1e-6, 0.01)
-            }
-        }
-
-        val (tMin, tMax) = getTimeRange()
-
-        // Central difference, falling back to one-sided at boundaries
-        return when {
-            time - step < tMin -> {
-                // Forward difference
-                val f0 = evaluateValueAt(time)
-                val f1 = evaluateValueAt(time + step)
-                (f1 - f0) / step
-            }
-            time + step > tMax -> {
-                // Backward difference
-                val f0 = evaluateValueAt(time - step)
-                val f1 = evaluateValueAt(time)
-                (f1 - f0) / step
+        val keys = keyframes
+        if (keys.size < 2) return 0.0
+        if (h > 0.0) return (evaluateValueAt(time + h) - evaluateValueAt(time - h)) / (2.0 * h)
+        if (time < keys.first().time || time > keys.last().time) return 0.0
+        val t = time.coerceAtMost(keys.last().time - EPSILON)
+        val (prev, next) = segmentAt(keys, t)
+        return when (segmentKind(prev.type)) {
+            "hold" -> 0.0
+            "linear" -> {
+                val span = next.time - prev.time
+                if (span < EPSILON) 0.0 else (next.value - prev.value) / span
             }
             else -> {
-                // Central difference (2nd-order accurate)
-                val fMinus = evaluateValueAt(time - step)
-                val fPlus = evaluateValueAt(time + step)
-                (fPlus - fMinus) / (2.0 * step)
+                val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
+                val (dx, dy) = rationalBezierTangent(controls, solveBezierParameter(controls, t.coerceAtLeast(prev.time)))
+                if (abs(dx) < 1e-12) 0.0 else dy / dx
             }
         }
+    }
+
+    // ── Editing from code ────────────────────────────────────────────
+
+    /**
+     * Replaces the keys with [keys], as an edit would: the editor shows them and they are saved with
+     * the box. A bezier key without handles gets the ones the editor derives from its neighbours.
+     * [onChange] is not called; it is for edits made in the editor.
+     */
+    fun setKeys(keys: List<Keyframe>) {
+        keyframes = keys.sortedBy { it.time }
+        persist()
+        send()
+    }
+
+    /** Adds a key at [time] with [value] and [type]; see [setKeys]. Returns the new key. */
+    fun add(time: Double, value: Double, type: String = "linear"): Keyframe =
+        Keyframe(time, value, type).also { setKeys(keyframes + it) }
+
+    /** Removes [key] (compared by value); see [setKeys]. */
+    fun remove(key: Keyframe) = setKeys(keyframes - key)
+
+    /** Removes the key at [index], in time order; see [setKeys]. */
+    fun removeAt(index: Int) = setKeys(keyframes.filterIndexed { i, _ -> i != index })
+
+    /** Removes every key; see [setKeys]. */
+    fun clear() = setKeys(emptyList())
+
+    /**
+     * Edits the keys as a list, then saves and shows the result; see [setKeys].
+     *
+     * ```kotlin
+     * curve.edit {
+     *     replaceAll { it.copy(value = it.value * 0.5) }   // halve every value
+     *     add(Keyframe(6.0, 0.0, "bezierFlat"))
+     * }
+     * ```
+     */
+    fun edit(block: MutableList<Keyframe>.() -> Unit) = setKeys(keyframes.toMutableList().apply(block))
+
+    private fun persist() {
+        val box = associatedBox ?: return
+        val name = associatedName ?: return
+        saveKeyframeData(box, name, Json.encodeToString(keyframes))
     }
 
     // ── Overlay graph ────────────────────────────────────────────────
@@ -336,61 +334,6 @@ class KeyframeEvaluator(jsonString: String) {
         else -> "linear"
     }
 
-    /**
-     * Samples the entire curve into discrete points
-     */
-    private fun sampleCurve(stepsPerSegment: Int = 48): List<Sample> {
-        if (keyframes.isEmpty()) return emptyList()
-
-        val samples = mutableListOf(Sample(keyframes[0].time, keyframes[0].value))
-
-        for (i in 1 until keyframes.size) {
-            val prev = keyframes[i - 1]
-            val next = keyframes[i]
-
-            when (segmentKind(prev.type)) {
-                "hold" -> {
-                    val span = max(next.time - prev.time, EPSILON)
-                    for (step in 1..stepsPerSegment) {
-                        val t = step.toDouble() / stepsPerSegment
-                        val time = prev.time + span * t
-                        val value = if (step == stepsPerSegment) next.value else prev.value
-                        samples.add(Sample(time, value))
-                    }
-                }
-
-                "linear" -> {
-                    val span = max(next.time - prev.time, EPSILON)
-                    for (step in 1..stepsPerSegment) {
-                        val t = step.toDouble() / stepsPerSegment
-                        val time = prev.time + span * t
-                        val value = prev.value + (next.value - prev.value) * t
-                        samples.add(Sample(time, value))
-                    }
-                }
-
-                else -> { // bezier types
-                    val span = max(next.time - prev.time, EPSILON)
-                    val controls = buildRationalControls(prev, next, span)
-
-                    for (step in 1..stepsPerSegment) {
-                        val u = step.toDouble() / stepsPerSegment
-                        val point = rationalBezierPoint(controls, u)
-
-                        // Skip if time goes backwards
-                        if (point.x <= samples.last().time) {
-                            continue
-                        }
-
-                        samples.add(Sample(point.x, point.y))
-                    }
-                }
-            }
-        }
-
-        return samples
-    }
-
     private fun buildRationalControls(prev: Keyframe, next: Keyframe, span: Double): BezierControls {
         val delta = next.value - prev.value
 
@@ -469,6 +412,21 @@ class KeyframeEvaluator(jsonString: String) {
         return Point(x, y)
     }
 
+    // d(x, y)/du of the rational segment at [u], by the quotient rule on N(u) / D(u).
+    private fun rationalBezierTangent(c: BezierControls, u: Double): Point {
+        val mt = 1 - u
+        val b = doubleArrayOf(mt * mt * mt, 3 * mt * mt * u, 3 * mt * u * u, u * u * u)
+        val db = doubleArrayOf(-3 * mt * mt, 3 * mt * mt - 6 * mt * u, 6 * mt * u - 3 * u * u, 3 * u * u)
+        val p = arrayOf(c.p0, c.p1, c.p2, c.p3)
+        var d = 0.0; var dd = 0.0; var nx = 0.0; var dnx = 0.0; var ny = 0.0; var dny = 0.0
+        for (i in 0..3) {
+            d += b[i] * p[i].w; dd += db[i] * p[i].w
+            nx += b[i] * p[i].w * p[i].x; dnx += db[i] * p[i].w * p[i].x
+            ny += b[i] * p[i].w * p[i].y; dny += db[i] * p[i].w * p[i].y
+        }
+        return Point((dnx * d - nx * dd) / (d * d), (dny * d - ny * dd) / (d * d))
+    }
+
     private fun clamp(value: Double, min: Double, max: Double): Double {
         return when {
             value < min -> min
@@ -506,11 +464,6 @@ data class Handle(
 )
 
 // Internal data classes
-
-private data class Sample(
-    val time: Double,
-    val value: Double
-)
 
 private data class ControlPoint(
     val x: Double,

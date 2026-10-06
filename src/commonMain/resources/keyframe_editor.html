@@ -281,7 +281,9 @@
                 fitViewToKeyframes(editor.keyframes);
                 editor.refresh({ notify: false });
                 syncState.isApplyingRemote = false;
-                if (derived) editor.refresh();
+                if (derived) editor.refresh({ record: false });
+                // Keys from the box (a run, or setKeys from code) are where undo starts.
+                editor.resetHistory();
                 if (typeof playheadOverride === 'number') {
                         applyRemotePlayhead(playheadOverride);
                 }
