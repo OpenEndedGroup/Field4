@@ -214,7 +214,7 @@ A key's type shapes the segment that leaves it, up to the next key:
 
 </div>
 
-To start a curve with keys of particular types, pass `keys` instead of `defaults`. This curve has one of each:
+To start a curve with keys of particular types, pass `keys` instead of `defaults`; to add types of your own, see below. This curve has one of each:
 
 ```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/types.png" capture="box" open-outputs="true" wait="2.0" timeout="120" w="700" embed=true name="keyframe-types" alt="A curve through six keys. From time 0 a straight line climbs to 0.8 at time 1; from there the value holds flat to time 2 and drops on a dashed line to 0.3; it then eases smoothly up to a rounded peak of 0.9 at time 3 and down through 0.5 at time 4, before a straight line to 0.2 at time 5. Bezier keys show their handles"}
 :::static
@@ -229,6 +229,24 @@ val shape = keyframes(name = "shape", keys = listOf(
 ```
 
 A bezier key given without handles gets the handles the editor would give it, worked out from its neighbours.
+
+### Your own key types
+
+`interpolant("name") { ... }` defines a key type of your own: a segment shape written in Kotlin, as the value the curve should have at each point of the segment. Inside the braces `u` runs from 0 to 1 across the segment, `t` is the time itself, `v0` and `v1` are the values of the keys either side, and `lerp(f)` is "this far from `v0` to `v1`", so `lerp(u)` is a straight line. The new types appear in the key menu, after the five built in. This box defines an overshoot and a decaying wobble, and starts a curve with one of each:
+
+```diffstatic_runner {data-lang=kotlin screenshot="assets/keyframe_editor/custom_types.png" capture="box" open-outputs="true" wait="2.5" timeout="120" w="700" embed=true name="keyframe-custom-types" alt="A curve of three keys. From 0.1 at time 0 it rises fast and overshoots past 0.8, curling back down to the key at time 1.5; from there it falls towards 0.2 at time 3 in a wobble that dies away as it arrives"}
+:::static
+interpolant("overshoot") { lerp(1 + 2.7 * (u - 1).pow(3) + 1.7 * (u - 1).pow(2)) }
+interpolant("wobble") { lerp(u) + 0.08 * sin(u * 6 * PI) * (1 - u) }
+
+val custom = keyframes(name = "custom", keys = listOf(
+    Keyframe(0.0, 0.1, "overshoot"),
+    Keyframe(1.5, 0.8, "wobble"),
+    Keyframe(3.0, 0.2, "linear"),
+))
+```
+
+A key type is saved with the box, as its source, so a curve keeps its shape even before the box defines its types again, or after the definition has been deleted. Define a type again to change it; every segment that uses it follows. While you drag a key, a segment of your own type is drawn straight, and takes its shape again when you let go.
 
 ## Reading the curve
 

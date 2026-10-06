@@ -574,6 +574,10 @@ object MacroRegistry {
         callRewrite["sourceBlock"] = { box, id, args ->
             box.macro_sourceBlock(args)
         }
+        // interpolant("name") { body }: keeps the body's source so a saved curve can rebuild its shape.
+        callRewrite["interpolant"] = { box, id, args ->
+            box.macro_interpolant(args)
+        }
 
         runAll(macroRegistration)
     }

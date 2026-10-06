@@ -74,10 +74,42 @@ class KeyframeEvaluator(jsonString: String) {
         sendIfLive("""{"type":"playhead", "time":${t}}""")
     }
 
-    /** Sends the current keys to the editor. */
+    /** Sends the current keys to the editor, with this box's custom key types and their segments. */
     fun send() {
-        sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}}""")
+        sendIfLive("""{"type":"keyframes", "keyframes":${Json.encodeToString(keyframes)}, "types":${customTypesJson()}, "segments":${customSegmentsJson()}}""")
     }
+
+    /** Sends only the shapes of the custom segments, after an edit in the editor changed the keys. */
+    internal fun sendCustomSegments() {
+        if (keyframes.zipWithNext().none { (a, _) -> segmentKind(a.type) == "custom" }) return
+        sendIfLive("""{"type":"segments", "segments":${customSegmentsJson()}}""")
+    }
+
+    // Each custom type with a small drawing of it (0 to 1 across, 0 to 1 up) for the key menu.
+    private fun customTypesJson(): String {
+        val types = interpolantsFor(associatedBox)
+        return types.values.joinToString(",", "[", "]") { it ->
+            val icon = (0..16).joinToString(",", "[", "]") { i ->
+                val u = i / 16.0
+                val v = it.evaluate(KeySegment(u, u, 0.0, 1.0, 0.0, 1.0))
+                "[${fmt(u)},${fmt(v)}]"
+            }
+            """{"name":${Json.encodeToString(it.name)},"icon":$icon}"""
+        }
+    }
+
+    // The shape of every custom segment, sampled, so the editor (which cannot run Kotlin) can draw it.
+    private fun customSegmentsJson(): String = keyframes.zipWithNext()
+        .filter { (a, _) -> segmentKind(a.type) == "custom" }
+        .joinToString(",", "[", "]") { (a, b) ->
+            val pts = (0..64).joinToString(",", "[", "]") { i ->
+                val time = a.time + (b.time - a.time) * i / 64.0
+                "[${fmt(time)},${fmt(customValue(a, b, time))}]"
+            }
+            """{"t0":${fmt(a.time)},"v0":${fmt(a.value)},"t1":${fmt(b.time)},"v1":${fmt(b.value)},"type":${Json.encodeToString(a.type)},"samples":$pts}"""
+        }
+
+    private fun fmt(d: Double): String = if (d.isFinite()) d.toString() else "0.0"
 
     /** Everything the editor should show on (re)connecting: keys, overlays, playhead. */
     internal fun sendAll() {
@@ -103,6 +135,7 @@ class KeyframeEvaluator(jsonString: String) {
                 val span = next.time - prev.time
                 if (span < EPSILON) next.value else prev.value + (next.value - prev.value) * (time - prev.time) / span
             }
+            "custom" -> customValue(prev, next, time)
             else -> {
                 val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
                 rationalBezierPoint(controls, solveBezierParameter(controls, time)).y
@@ -199,6 +232,13 @@ class KeyframeEvaluator(jsonString: String) {
             "linear" -> {
                 val span = next.time - prev.time
                 if (span < EPSILON) 0.0 else (next.value - prev.value) / span
+            }
+            // A Kotlin lambda has no derivative to read off, so: a central difference inside the segment.
+            "custom" -> {
+                val hh = max((next.time - prev.time) * 1e-4, 1e-9)
+                val a = (t - hh).coerceAtLeast(prev.time)
+                val b = (t + hh).coerceAtMost(next.time)
+                if (b - a < 1e-12) 0.0 else (customValue(prev, next, b) - customValue(prev, next, a)) / (b - a)
             }
             else -> {
                 val controls = buildRationalControls(prev, next, max(next.time - prev.time, EPSILON))
@@ -331,7 +371,17 @@ class KeyframeEvaluator(jsonString: String) {
     private fun segmentKind(type: String): String = when (type) {
         "hold" -> "hold"
         "bezierFree", "bezierFlat", "bezierContinuous" -> "bezier"
-        else -> "linear"
+        "linear" -> "linear"
+        else -> if (custom(type) != null) "custom" else "linear"
+    }
+
+    // A key type defined with interpolant(...) in this editor's box.
+    private fun custom(type: String): KeyInterpolant? = interpolantNamed(associatedBox, type)
+
+    private fun customValue(prev: Keyframe, next: Keyframe, time: Double): Double {
+        val span = max(next.time - prev.time, EPSILON)
+        val u = ((time - prev.time) / span).coerceIn(0.0, 1.0)
+        return custom(prev.type)!!.evaluate(KeySegment(time, u, prev.time, next.time, prev.value, next.value))
     }
 
     private fun buildRationalControls(prev: Keyframe, next: Keyframe, span: Double): BezierControls {
@@ -530,6 +580,7 @@ fun installKeyframeHandler() {
                 val keyframesJsonStr = t.getJSONArray("keyframes").toString()
                 val evaluator = knownKeyframeTargets[debugUid]
                 evaluator?.set(keyframesJsonStr)
+                evaluator?.sendCustomSegments()
 
                 // Fire the change callback; if it returns an Fn, show it as an overlay
                 if (evaluator != null) {
