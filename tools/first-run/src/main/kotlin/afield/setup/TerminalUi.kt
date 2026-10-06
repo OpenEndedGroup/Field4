@@ -2,7 +2,6 @@ package afield.setup
 
 import afield.asciiWelcome
 import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 
 internal enum class TerminalColor { NONE, ANSI, TRUE_COLOR }
 
@@ -57,27 +56,7 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
         val lines = logoLines()
         val contentWidth = lines.maxOf(String::length)
         val indent = " ".repeat(((width - contentWidth) / 2).coerceAtLeast(0))
-        val colors = listOf(intArrayOf(58, 213, 202), intArrayOf(126, 155, 255), intArrayOf(202, 139, 242), intArrayOf(255, 195, 131))
-        return lines.mapIndexed { row, line ->
-            indent + buildString {
-                line.forEachIndexed { column, glyph ->
-                    if (glyph == ' ' || color == TerminalColor.NONE) append(glyph)
-                    else if (color == TerminalColor.ANSI) {
-                        val band = (column * 4 / contentWidth).coerceAtMost(3)
-                        append("\u001b[${listOf(96, 94, 95, 93)[band]}m$glyph")
-                    } else {
-                        // A diagonal wash across the same geometry: cool faces, warm far edge.
-                        val position = ((column.toDouble() / contentWidth * .85 + row.toDouble() / lines.size * .15) * 3).coerceIn(0.0, 3.0)
-                        val left = position.toInt().coerceAtMost(2)
-                        val blend = position - left
-                        val shade = if (glyph == ':') .65 else 1.0
-                        val rgb = (0..2).map { ((colors[left][it] * (1 - blend) + colors[left + 1][it] * blend) * shade).roundToInt() }
-                        append("\u001b[38;2;${rgb.joinToString(";")}m$glyph")
-                    }
-                }
-                append(reset)
-            }
-        }.joinToString("\n")
+        return lines.joinToString("\n") { line -> indent + accent(line) }
     }
 
     fun welcome() {
@@ -89,16 +68,16 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
         paragraph("Let's get the essentials ready. Everything else can wait.", dim = true)
     }
 
-    fun section(number: String, title: String) {
+    fun section(number: Int, title: String, total: Int = 4) {
         println()
-        val label = "$number  $title"
-        if (label.length + 2 > width) {
-            println("  " + accent(number))
-            paragraph(title, indent = 4, paint = ::strong)
-            println()
-            return
+        val progress = "$number/$total"
+        val available = width - 2 - title.length - progress.length
+        if (available < 2) {
+            println(" ".repeat((width - progress.length).coerceAtLeast(0)) + quiet(progress))
+            paragraph(title, paint = ::strong)
+        } else {
+            println("  " + strong(title) + " " + quiet("-".repeat(available - 2)) + " " + quiet(progress))
         }
-        println("  " + accent(number) + "  " + strong(title) + " " + quiet("-".repeat((width - label.length - 4).coerceIn(0, 60))))
         println()
     }
 
@@ -123,8 +102,8 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
     }
 
     fun choice(number: Int, title: String, hint: String = "", unavailable: Boolean = false) {
-        val numberLabel = accent(number.toString().padStart(2, '0'))
-        if (title.length + 6 + (if (unavailable) 16 else 0) > width) {
+        val numberLabel = accent(number.toString())
+        if (title.length + number.toString().length + 4 + (if (unavailable) 16 else 0) > width) {
             println("  $numberLabel")
             paragraph(title, indent = 6, paint = ::strong)
             if (unavailable) paragraph("separate setup", indent = 6, paint = ::warning)

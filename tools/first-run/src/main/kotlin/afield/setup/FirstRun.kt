@@ -174,12 +174,12 @@ fun main(args: Array<String>) {
     }
     val previous = Properties().also { if (config.isFile) config.inputStream().use(it::load) }
     val defaultMode = if ("--server-only" in args || previous.getProperty("launchMode") == "server-only") "2" else "1"
-    ui.section("01", "How would you like to start?")
+    ui.section(1, "How would you like to start?")
     ui.choice(1, "Desktop app", "Field in its own window.")
     ui.choice(2, "Browser / server", "Use your browser; skip Electron and desktop bridge compilers.")
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
-    ui.section("02", "Make it yours")
+    ui.section(2, "Make it yours")
     printExtras(root, platform, compact = true)
     var choice = readAnswer("Extras by number or name / more / Enter to skip: ") ?: return
     if (choice.equals("more", ignoreCase = true)) {
@@ -197,7 +197,7 @@ fun main(args: Array<String>) {
     val release = File("/etc/os-release").takeIf { it.isFile }?.readText().orEmpty()
     val plan = packagePlan(manager, mode == "1", selectedMissing, applicable, usesT64Packages(release))
     val prepare = preparationCommands(extras, platform)
-    ui.section("03", "Your setup plan")
+    ui.section(3, "Your setup plan")
     ui.status("Launch mode", if (mode == "1") "Desktop app" else "Browser / server")
     ui.status("Optional features", if (extras.isEmpty()) "none needed to get started" else extras.joinToString(", "))
     ui.status("Prerequisite tools", if (selectedMissing.isEmpty()) "found" else "missing " + selectedMissing.sorted().joinToString(), selectedMissing.isNotEmpty())
@@ -268,7 +268,7 @@ fun main(args: Array<String>) {
     }
     config.parentFile.mkdirs()
     config.outputStream().use { settings.store(it, "Field first-run choices; no credentials") }
-    ui.section("04", if (ready) "You're set" else "A little more to do")
+    ui.section(4, if (ready) "You're set" else "A little more to do")
     if (ready) ui.success("Ready for Field's first build") else println(ui.warning("Required tools or Git LFS content are still missing."))
     ui.paragraph("Saved choices: ${config.absolutePath}", dim = true)
     if (extras.isNotEmpty()) ui.paragraph("Selected extras are saved requests. Preparation and runtime availability are separate checks.", dim = true)
