@@ -1319,6 +1319,20 @@ tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
     // itself non-reproducible. See dev_docs/HERMETIC_COMPLETION_INPUTS.md.
     maxHeapSize = "4g"
 
+    // AI4's per-turn tool-I/O log, its tool-evidence store and the request ledger all default to
+    // `~/.afield/logs/`, where `tools/ai_tool_usage.py`, the tool-use improvement monitor and every
+    // usage count read them as real sessions. Bridge fixtures were writing there on every run:
+    // on 2026-10-06, 1,015 of 3,835 tool-I/O files were `conv_test`, and all 120 Anthropic ones
+    // were `claude-test` (so the logs showed Anthropic sessions where no real one had ever run),
+    // and the one improvement dry run on record reviewed twelve fixtures and nothing else.
+    // Pointing them under build/ here means no test can forget to turn them off, and the tests
+    // that read the log still have one. Relative, so this checkout's absolute path stays out of
+    // the task's inputs (see `SmileNativeLibraryPath`); the worker's working directory is the
+    // project. Set before the `afield.` forwarding below, so an explicit `-D…` still wins.
+    systemProperty("afield.ai4.toolIoLog.path", "build/test-ai-logs/ai4_tool_io")
+    systemProperty("afield.ai4.toolEvidence.path", "build/test-ai-logs/ai4_tool_io/evidence")
+    systemProperty("afield.ai.usageLog.path", "build/test-ai-logs/ai_usage")
+
     // A test worker is a fresh JVM and does not inherit the build's system properties, so the
     // `-Dafield.…=write` switches our characterization tests document for regenerating their
     // goldens never actually reached them. Forward that one namespace and nothing else: it keeps
