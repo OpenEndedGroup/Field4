@@ -33,6 +33,7 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
     fun quiet(text: String) = styled(text, "2")
     fun good(text: String) = styled(text, "92")
     fun warning(text: String) = styled(text, "93")
+    fun crossed(text: String) = styled(text, "2;9")
     fun error(text: String) = styled(text, "91;1")
 
     private val compactWordmark = listOf(
@@ -102,7 +103,7 @@ internal class TerminalUi(val color: TerminalColor, val width: Int) {
     }
 
     fun choice(number: Int, title: String, hint: String = "", unavailable: Boolean = false) {
-        val numberLabel = accent(number.toString())
+        val numberLabel = accent(number.toString().padStart(2, ' '))
         if (title.length + number.toString().length + 4 + (if (unavailable) 16 else 0) > width) {
             println("  $numberLabel")
             paragraph(title, indent = 6, paint = ::strong)

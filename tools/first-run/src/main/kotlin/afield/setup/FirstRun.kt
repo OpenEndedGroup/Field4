@@ -180,16 +180,9 @@ fun main(args: Array<String>) {
     val mode = readAnswer("Choose 1 or 2 [$defaultMode]: ")?.ifEmpty { defaultMode } ?: return
     if (mode !in setOf("1", "2")) { println(ui.error("Choose 1 or 2. No changes made.")); exitProcess(1) }
     ui.section(2, "Make it yours")
-    printExtras(root, platform, compact = true)
-    var choice = readAnswer("Extras by number or name / more / Enter to skip: ") ?: return
-    if (choice.equals("more", ignoreCase = true)) {
-        printExtras(root, platform)
-        choice = readAnswer("Extras by number or name; spaces between choices: ") ?: return
-    }
-    val extras = try { selectedExtras(choice) } catch (error: IllegalArgumentException) {
-        println(ui.error("${error.message} No changes made."))
-        exitProcess(1)
-    }
+    val options = featureOptions(platform)
+    val remembered = previous.getProperty("extras", "").split(',').filter(String::isNotEmpty).toSet()
+    val extras = selectFeatures(options, remembered) ?: return
     val applicable = extrasCatalog.filter { it.id in extras && platform in it.platforms }.map { it.id }.toSet()
     val required = basic.filter { mode == "1" || it in setOf("git-lfs", "curl", "tar", "gzip") }
     val selectedTools = required.toSet() + extraTools(extras, platform)

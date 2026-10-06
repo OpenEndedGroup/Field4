@@ -117,43 +117,27 @@ internal fun artifactCandidates(root: File, id: String, platform: String, enviro
     return if (override != null) listOf(File(override).let { if (it.isAbsolute) it else File(root, override) }) else paths.map { File(root, it) }
 }
 
-internal fun printExtras(root: File, platform: String, selected: Set<String>? = null, compact: Boolean = false) {
+internal fun printExtras(root: File, platform: String, selected: Set<String>? = null) {
     val ui = terminalUi
-    if (selected != null) println()
-    if (selected == null) ui.paragraph("Pick what interests you. Enter skips all extras.", dim = true)
-    var previousGroup: String? = null
-    val entries = extrasCatalog.withIndex().let { entries ->
-        if (compact || selected != null) entries.toList() else entries.groupBy { it.value.group }.values.flatten()
-    }
-    entries.forEach { (index, extra) ->
-        if ((selected == null && (!compact || index < 2)) || (selected != null && extra.id in selected)) {
-            if (!compact && selected == null && previousGroup != extra.group) {
-                println()
-                ui.paragraph(extra.group, dim = true)
-                previousGroup = extra.group
-            }
-            ui.choice(index + 1, extra.title, extra.id, platform !in extra.platforms)
-            if (platform in extra.platforms) {
-                val tools = extraTools(setOf(extra.id), platform)
-                val missing = tools.filter { !toolAvailable(it) }
-                // The inventory stays scannable; details appear for selected features or missing tools.
-                if (tools.isNotEmpty() && (selected != null || missing.isNotEmpty())) {
-                    println("      " + if (missing.isEmpty()) ui.good("tools found") else ui.warning("needs " + missing.sorted().joinToString()))
-                }
-                val candidates = artifactCandidates(root, extra.id, platform)
-                if (candidates.isNotEmpty() && selected != null) {
-                    val present = candidates.firstOrNull { it.isFile && it.length() > 0 }
-                    if (present != null) ui.paragraph("Artifact found: $present (runtime not checked)", dim = true, indent = 6)
-                    else ui.paragraph("No local artifact found; an external library may be configured in Field.", dim = true, indent = 6)
-                }
-            }
-            if (selected != null) {
-                ui.paragraph(extra.advice, indent = 6)
-                ui.paragraph("Guide: ${extra.guide}", dim = true, indent = 6)
-            }
-        }
+    if (selected == null) {
+        featureOptions(platform).forEach { println(featureRow(ui, it, false)) }
+        println()
+        ui.paragraph("Already included: Kotlin, JavaScript, Faust, ordinary audio and browser drawing.", dim = true)
+        return
     }
     println()
-    if (compact) ui.paragraph("Type more for all ${extrasCatalog.size} features: native libraries, audio, shaders, workers and developer tools.")
-    ui.paragraph("Already included: Kotlin, JavaScript, Faust, ordinary audio and browser drawing.", dim = true)
+    extrasCatalog.forEachIndexed { index, extra ->
+        if (extra.id !in selected) return@forEachIndexed
+        ui.choice(index + 1, extra.title)
+        if (platform in extra.platforms) {
+            val candidates = artifactCandidates(root, extra.id, platform)
+            if (candidates.isNotEmpty()) {
+                val present = candidates.firstOrNull { it.isFile && it.length() > 0 }
+                if (present != null) ui.paragraph("Artifact found: $present (runtime not checked)", dim = true, indent = 6)
+                else ui.paragraph("No local artifact found; an external library may be configured in Field.", dim = true, indent = 6)
+            }
+        }
+        ui.paragraph(extra.advice, indent = 6)
+        ui.paragraph("Guide: ${extra.guide}", dim = true, indent = 6)
+    }
 }
