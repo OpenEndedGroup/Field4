@@ -29,6 +29,7 @@ import unittest
 from pathlib import Path
 
 from tools.check_doc_offline_links import (
+    ledger_line,
     CARRIER_PAGES,
     OFFLINE_REF,
     RECORDED_OCCURRENCES,
@@ -163,7 +164,17 @@ class AgainstTheRealTree(unittest.TestCase):
             rel for rel in pages
             if OFFLINE_REF.search((REPO_ROOT / rel).read_text(encoding="utf-8"))
         }
-        self.assertEqual(measured, CARRIER_PAGES)
+        to_add = "\n".join(f"    {ledger_line(r)}" for r in sorted(measured - CARRIER_PAGES))
+        to_drop = ", ".join(sorted(CARRIER_PAGES - measured))
+        self.assertEqual(
+            measured, CARRIER_PAGES,
+            "CARRIER_PAGES in tools/check_doc_offline_links.py is out of date. "
+            + (f"Check each link's shape, then add:\n{to_add}\n" if to_add else "")
+            + (f"Delete: {to_drop}" if to_drop else ""),
+        )
+
+    def test_the_mismatch_message_names_the_line_to_add(self) -> None:
+        self.assertEqual(ledger_line("public/docs/x.md"), '"public/docs/x.md",')
 
     def test_no_authored_page_writes_the_old_shape_any_more(self) -> None:
         """Set equality is not enough on its own: this is the direct statement of the fix."""

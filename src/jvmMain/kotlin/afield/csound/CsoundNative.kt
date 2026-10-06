@@ -141,6 +141,8 @@ internal object CsoundNative {
     private val getAudioChannelH by lazy { handle("csoundGetAudioChannel", v(ADDRESS, ADDRESS, ADDRESS)) }
     private val getChannelPtrH by lazy { handle("csoundGetChannelPtr", i(ADDRESS, ADDRESS, ADDRESS, JAVA_INT)) }
     private val getControlChannelHintsH by lazy { handle("csoundGetControlChannelHints", i(ADDRESS, ADDRESS, ADDRESS)) }
+    private val listChannelsH by lazy { handle("csoundListChannels", i(ADDRESS, ADDRESS)) }
+    private val deleteChannelListH by lazy { handle("csoundDeleteChannelList", v(ADDRESS, ADDRESS)) }
     private val setOutputChannelCallbackH by lazy { handle("csoundSetOutputChannelCallback", v(ADDRESS, ADDRESS)) }
     private val setInputChannelCallbackH by lazy { handle("csoundSetInputChannelCallback", v(ADDRESS, ADDRESS)) }
     private val newOpcodeListH by lazy { handle("csoundNewOpcodeList", i(ADDRESS, ADDRESS)) }
@@ -231,6 +233,17 @@ internal object CsoundNative {
         getChannelPtrH.invokeExact(cs, out, name, type) as Int
     fun controlChannelHints(cs: MemorySegment, name: MemorySegment, hints: MemorySegment): Int =
         getControlChannelHintsH.invokeExact(cs, name, hints) as Int
+    /** `csoundListChannels`: the channel count (negative on error); `*out` is a `controlChannelInfo_t[]` or NULL. */
+    fun listChannels(cs: MemorySegment, out: MemorySegment): Int = listChannelsH.invokeExact(cs, out) as Int
+    fun deleteChannelList(cs: MemorySegment, list: MemorySegment) { deleteChannelListH.invokeExact(cs, list) }
+
+    /** `sizeof(controlChannelInfo_t)` on LP64: `char* name; int type; controlChannelHints_t hints` (hints at 16, 56 bytes). */
+    const val CHANNEL_INFO_SIZE = 72L
+    const val CHANNEL_INFO_HINTS_OFFSET = 16L
+
+    /** `CSOUND_CHANNEL_TYPE_MASK`: the low bits of a channel's type say control, audio or string. */
+    const val CHANNEL_TYPE_MASK = 15
+
     fun setOutputChannelCallback(cs: MemorySegment, cb: MemorySegment) { setOutputChannelCallbackH.invokeExact(cs, cb) }
     fun setInputChannelCallback(cs: MemorySegment, cb: MemorySegment) { setInputChannelCallbackH.invokeExact(cs, cb) }
     fun newOpcodeList(cs: MemorySegment, out: MemorySegment): Int = newOpcodeListH.invokeExact(cs, out) as Int
