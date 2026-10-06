@@ -5503,6 +5503,13 @@ def build_backdoor_command(
             ]))
         elif capture_mode == "box":
             target_uid = default_target_uid
+            # Tall output crops can extend beyond the viewport, where Chromium paints
+            # white unless the document root has Field's background. The WebGL
+            # backdrop can also composite white in clipped headless screenshots.
+            backdoor_commands.append(shlex.join([
+                "page-eval", "--file", str(repo_root / "tools/lighting/capture_background.js"),
+                "--timeout", str(options.timeout),
+            ]))
             parts = [
                 "screenshot-box",
                 target_uid,
