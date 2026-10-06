@@ -48,6 +48,10 @@ val ready = """
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
 ui.pause(200)
+// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+// the lanes repaint inside their own frames, so without this the video holds a stale picture while
+// the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
+ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
 ui.eval("""
   const frame = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
   const d = frame.contentDocument;
@@ -77,11 +81,19 @@ fun at(expr: String): Pair<Double, Double> {
     return x to y
 }
 
+// The pointer moves in small timed steps, as a hand does, rather than in one call.
+fun glide(x0: Double, y0: Double, x1: Double, y1: Double, steps: Int) {
+    for (k in 1..steps) {
+        ui.moveMouse(x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps, 1)
+        ui.pause(40)
+    }
+}
+
 fun drag(from: Pair<Double, Double>, to: Pair<Double, Double>) {
     ui.moveMouse(from.first, from.second, 6)
     ui.pause(250)
     ui.mouseDown()
-    ui.moveMouse(to.first, to.second, 48)
+    glide(from.first, from.second, to.first, to.second, 30)
     ui.pause(150)
     ui.mouseUp()
 }
@@ -469,13 +481,24 @@ while (tries++ < 60) {
 }
 val (lx, ly) = rects.split(";").map { r -> r.split(" ").map { it.toDouble() } }
 fun at(lane: List<Double>, fx: Double, fy: Double) = (lane[0] + lane[2] * fx) to (lane[1] + lane[3] * fy)
+// The pointer moves in small timed steps, as a hand does, rather than in one call.
+fun glide(x0: Double, y0: Double, x1: Double, y1: Double, steps: Int) {
+    for (k in 1..steps) {
+        ui.moveMouse(x0 + (x1 - x0) * k / steps, y0 + (y1 - y0) * k / steps, 1)
+        ui.pause(40)
+    }
+}
 
+// Keep the main page producing frames. The recorder only gets a new one when this page paints, and
+// the lanes repaint inside their own frames, so without this the video holds a stale picture while
+// the curves, playheads and pad go on changing underneath. One pixel, all but transparent.
+ui.eval("const k = document.createElement('div'); k.style = 'position:fixed;left:0;top:0;width:1px;height:1px;pointer-events:none;z-index:2147483647'; document.body.appendChild(k); let on = false; (function tick() { on = !on; k.style.opacity = on ? '0.011' : '0.010'; requestAnimationFrame(tick); })(); return 'ok'")
 ui.pause(600)
 // The pointer's time is marked in the other lane.
 val (h0x, h0y) = at(lx, 0.15, 0.5)
 ui.moveMouse(h0x, h0y, 4)
 val (h1x, h1y) = at(lx, 0.85, 0.5)
-ui.moveMouse(h1x, h1y, 40)
+glide(h0x, h0y, h1x, h1y, 30)
 ui.pause(400)
 // Zoom time in x: y follows.
 val (zx, zy) = at(lx, 0.35, 0.5)
@@ -521,7 +544,7 @@ val bandY = lx[1] + lx[3] * 0.92
 ui.moveMouse(k1x - 30, bandY, 10)
 ui.down("Meta")
 ui.mouseDown()
-ui.moveMouse(k1x + 90, bandY, 24)
+glide(k1x - 30, bandY, k1x + 90, bandY, 20)
 ui.mouseUp()
 ui.up("Meta")
 ui.pause(700)
@@ -530,7 +553,7 @@ ui.moveMouse(k1x, k1y, 10)
 ui.pause(250)
 ui.down("Alt")
 ui.mouseDown()
-ui.moveMouse(k1x + 70, k1y, 40)
+glide(k1x, k1y, k1x + 70, k1y, 30)
 ui.mouseUp()
 ui.up("Alt")
 ui.pause(1500)
