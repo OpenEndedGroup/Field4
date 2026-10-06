@@ -123,7 +123,8 @@ shared undo, successful rebuild and an impossible opening that leaves the design
 The opening error identifies the intersecting wall, required clearance and available intervals.
 The specimen and its recipe, reports, images and domain policy remain private.
 
-`solidParts` is extracted independently into `graphics/SolidInspection.kt`: a map of named native
+`solidParts` is extracted independently into `graphics/SolidParts.kt` (its outline, topology and artifact
+identity functions in `graphics/SolidInspection.kt`): a map of named native
 boundaries becomes a precise viewer with crease outlines, canonical topology and an artifact
 identity. Display origin/Z-up rotation do not change canonical coordinates; assembly displacements
 use the same display rotation. The focused extraction/lifecycle/tool suite passed 27 tests.
