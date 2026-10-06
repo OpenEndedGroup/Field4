@@ -4,6 +4,8 @@
 
 Each editor holds one number over time. A box can have as many as it likes, one per parameter.
 
+If you would rather draw the change in one gesture than place keys, the drawing layer does that too: draw a line, or a hairpin, inside a frame on the canvas, and the box reads it back as a value at each moment by cutting it with `notation.space(...).vertical(t)`. See [Reading by intersection](drawing_and_notation.md#reading-by-intersection), and the [crescendo](drawing_and_notation.md#a-crescendo) drawn there with a pen.
+
 !!! note "Not the Keyframer"
     This page is about a single hand-drawn curve. [Keyframes: capturing, persisting and replaying live state](keyframer_examples.md) is something else: it snapshots a whole set of a box's values and blends between the snapshots.
 
@@ -321,7 +323,7 @@ val custom = keyframes(name = "custom", keys = listOf(
 
 Drag a key and the shapes either side of it follow, worked out in Kotlin as you move:
 
-```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x330" clip="0,0,700,330" hide-toasts=true video="assets/keyframe_editor/custom_types.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml" fps="20" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-custom-types" alt="The custom curve of four keys: an overshoot from 0.1 up to the key at time 1.5, a wobble down to 0.3 at time 3, and a jagged chaotic scribble up to 0.6 at time 4.5. The second key is dragged twice round a small circle; the overshoot before it and the wobble after it stretch, flatten and re-form continuously as it moves, then it comes back to where it started"}
+```diffstatic_runner {data-lang=kotlin capture="ui" region="window" viewport="700x330" clip="0,0,700,330" hide-toasts=true video="assets/keyframe_editor/custom_types.mp4" transcript="../../dev_docs/agents/transcripts/docs_capture/keyframe_custom_types.yaml" fps="20" padding="0" wait="0" timeout="240" embed=true hidden=true name="keyframe-custom-types" alt="The custom curve of four keys: an overshoot from 0.1 up to the key at time 1.5, a wobble down to 0.3 at time 3, and a jagged chaotic scribble up to 0.6 at time 4.5. The second key is dragged through half a circle over the top and let go further right and level with where it began, and the overshoot before it and the wobble after it re-form as it moves and settle when it stops; then the third key is dragged through half a circle below and let go to the right, the wobble and the chaotic scribble either side of it following"}
 ui.waitForSelector("iframe[src*='/keyframe?']", 20000.0)
 val ready = """
   const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
@@ -329,41 +331,46 @@ val ready = """
 """.trimIndent()
 var tries = 0
 while (ui.eval(ready).toString().trim('"') != "4" && tries++ < 60) ui.pause(250)
-val keyScript = """
-  const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
-  const fr = f.getBoundingClientRect();
-  const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[1].getBoundingClientRect();
-  return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
-""".trimIndent()
-// Measured only once the page has stopped moving: the panel may still be opening or panning into view.
-fun keyNow(): List<Double> {
+// Key [i] in page coordinates, measured once the page has stopped moving.
+fun keyAt(i: Int): List<Double> {
+    val script = """
+      const f = Array.from(document.querySelectorAll('iframe')).filter(f => (f.src || '').indexOf('/keyframe?') >= 0 && f.getBoundingClientRect().width > 0).pop();
+      const fr = f.getBoundingClientRect();
+      const r = f.contentDocument.querySelectorAll('.kf-keyframe circle')[$i].getBoundingClientRect();
+      return Math.round(fr.left + r.left + r.width / 2) + ',' + Math.round(fr.top + r.top + r.height / 2);
+    """.trimIndent()
     var last = ""
     repeat(30) {
-        val now = ui.eval(keyScript).toString().trim('"')
+        val now = ui.eval(script).toString().trim('"')
         if (now == last) return now.split(",").map { it.toDouble() }
         last = now
         ui.pause(150)
     }
     return last.split(",").map { it.toDouble() }
 }
-val key = keyNow()
 
-// Round a circle that starts and ends on the key, twice, with Alt held so nothing snaps.
-val radius = 42.0
-val cx = key[0] - radius
-val cy = key[1]
-ui.moveMouse(key[0], key[1], 6)
-ui.pause(300)
-ui.down("Alt")
-ui.mouseDown()
-for (i in 1..160) {
-    val a = i / 80.0 * 2 * Math.PI
-    ui.moveMouse(cx + radius * Math.cos(a), cy + radius * Math.sin(a), 1)
-    ui.pause(20)
+// Half a circle from the key, ending somewhere else, then let go: Alt held so nothing snaps.
+fun halfCircle(i: Int, radius: Double, up: Boolean) {
+    val key = keyAt(i)
+    val cx = key[0] + radius
+    val cy = key[1]
+    ui.moveMouse(key[0], key[1], 6)
+    ui.pause(300)
+    ui.down("Alt")
+    ui.mouseDown()
+    for (step in 1..70) {
+        val a = Math.PI + step / 70.0 * Math.PI
+        ui.moveMouse(cx + radius * Math.cos(a), cy + (if (up) 1 else -1) * radius * Math.sin(a), 1)
+        ui.pause(22)
+    }
+    ui.mouseUp()
+    ui.up("Alt")
 }
-ui.mouseUp()
-ui.up("Alt")
-ui.pause(700)
+
+halfCircle(1, 40.0, up = true)
+ui.pause(1200)
+halfCircle(2, 40.0, up = false)
+ui.pause(1400)
 ```
 
 A key type is saved with the box, as its source, so a curve keeps its shape even before the box defines its types again, or after the definition has been deleted. Define a type again to change it; every segment that uses it follows.
@@ -444,3 +451,4 @@ Open **keyframe_editor** from Starting points on the welcome screen, or [open it
 - [Values over time: interpolants & keyframes](interpolants_examples.md): easing a value to a target from code, rather than drawing it.
 - [Visualizers & Controls](visualizers.md): sliders, multisliders and the gesture recorder, for values you set or perform rather than draw.
 - [Keyframes: capturing, persisting and replaying live state](keyframer_examples.md): snapshots of a box's whole state.
+- [Drawing and Notation](drawing_and_notation.md#reading-by-intersection): a value over time drawn freehand on the canvas, and read back by cutting it.
