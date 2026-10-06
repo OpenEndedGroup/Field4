@@ -10,6 +10,30 @@ import kotlin.js.JsName
 import kotlin.math.max
 import kotlin.math.min
 
+/** One command addressed to an iframe in a particular box output, in one live Electron tab. */
+@Serializable
+data class LiveOutputIframeCommand(
+    val id: String,
+    val boxUid: String,
+    val channel: String,
+    val operation: String,
+    val javascript: String = "",
+    val url: String = "",
+    val method: String = "",
+    val params: JsonObject = JsonObject(emptyMap()),
+    val sessionId: String? = null,
+    val timeoutMillis: Long = 10_000,
+)
+
+@Serializable
+data class LiveOutputIframeReply(
+    val id: String,
+    val ok: Boolean,
+    val value: JsonElement = JsonNull,
+    val frameUrl: String = "",
+    val error: String = "",
+)
+
 var _uid = 0
 
 fun Any?.toJsonElement(): JsonElement = when (this) {

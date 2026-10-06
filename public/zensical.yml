@@ -324,6 +324,7 @@ nav:
     # front page links it too.
     - Agent Transcript Gallery: agent_transcripts.md
     - AI Overview: aiFeatures.md
+    - Let AI4 Drive a Live Webpage: ai4_live_iframe.md
     - Experimenting with AI4: ai4_experiments.md
     - Talking a Function into Existence: function_conversation.md
     - Talking a Shader into Existence: stacksl_conversation.md
