@@ -1,5 +1,6 @@
 package afield
 
+import afield.logger.lprintln
 import afield.stdlib.Vec2
 import afield.stdlib.Functions.Fn
 import io.ktor.websocket.*
@@ -34,6 +35,10 @@ class KeyframeEvaluator(jsonString: String) {
     /** The box ID + name uid this evaluator is associated with */
     var associatedBoxId: String? = null
     var associatedName: String? = null
+
+    // The box itself, so an edit arriving on the editor's websocket — where no session is current —
+    // can still be written back to it.
+    @Volatile internal var associatedBox: Box? = null
 
     private var keyframes: List<Keyframe>
     private var cachedSamples: List<Sample>? = null
@@ -580,18 +585,15 @@ fun installKeyframeHandler() {
                     }
                 }
 
-                // Persist to box property
-                if (evaluator != null && evaluator.associatedBoxId != null && evaluator.associatedName != null) {
-                    val boxId = evaluator.associatedBoxId!!
-                    val kfName = evaluator.associatedName!!
+                // Persist to the box. Not through thisSessionInfo: it is not set on this socket's
+                // thread, which is how every edit used to be dropped without a word.
+                val box = evaluator?.associatedBox
+                val kfName = evaluator?.associatedName
+                if (box != null && kfName != null) {
                     try {
-                        val si = thisSessionInfo.get()
-                        val box = si?.boxes?.get(boxId)
-                        if (box != null) {
-                            saveKeyframeData(box, kfName, keyframesJsonStr)
-                        }
+                        saveKeyframeData(box, kfName, keyframesJsonStr)
                     } catch (e: Exception) {
-                        // silently ignore persistence errors
+                        lprintln("warning,keyframes", "could not save keyframes '$kfName' on ${box.id}: ${e.message}")
                     }
                 }
             }
@@ -610,11 +612,12 @@ fun installKeyframeHandler() {
  * @param defaultKeyframesJson  a JSON array string (e.g. `[{"time":0,"value":0,"type":"linear"}]`)
  *                              used to seed the editor when no persisted data exists. Pass `"[]"` for no defaults.
  */
-private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
+private fun Box.keyframesImpl(channel: String?, name: String, defaultKeyframesJson: String): KeyframeEvaluator {
     val uid = this.id + "_" + name
     // Use a channel that includes the name so multiple keyframes on the same
     // channel don't overwrite each other's iframes.
-    val displayChannel = if (channel == name) channel else "$channel/$name"
+    // With no channel the panel is named after the curve, which is what a reader wants to see.
+    val displayChannel = if (channel == null || channel == name) name else "$channel/$name"
 
     // Only send the display/iframe if the evaluator isn't already live —
     // re-sending it would replace the renderer causing flicker and zoom reset.
@@ -627,6 +630,9 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
 <iframe src='/keyframe?uid=${uid}' style='border:none;padding:0;margin:0;width:100%;height:100%'>
 """
         )
+        // An editor exists to be drawn in, so show it. Only when it is first shown: an editor the
+        // person collapsed stays collapsed across reruns, because a live one is not re-sent.
+        if (existing == null) displayOpen(displayChannel)
     }
 
     // Load persisted keyframe data if available
@@ -644,6 +650,7 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
     // Track association for persistence
     eval.associatedBoxId = this.id
     eval.associatedName = name
+    eval.associatedBox = this
     // Each run says afresh what happens on an edit: a callback a previous run set, and this run
     // no longer does, must not keep firing.
     eval.onChange = null
@@ -653,7 +660,8 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
 /**
  * Creates (or reconnects to) a keyframe curve editor displayed in the given output [channel].
  *
- * @param channel  the output-area channel in which to embed the editor iframe (default `"debug"`)
+ * @param channel  the output-area channel in which to embed the editor; by default the panel is named
+ *                 [name]. Give one to group editors: `keyframes("motion", "x")` shows in `motion/x`
  * @param name     a unique name for this set of keyframes within the box (used as persistence key)
  * @param defaultTimes  optional list of time positions (e.g. `listOf(0, 10, 30)`) used to seed
  *                      the editor with initial keyframes when no persisted data exists for [name].
@@ -661,7 +669,7 @@ private fun Box.keyframesImpl(channel: String, name: String, defaultKeyframesJso
  *                      Once the user edits the curve the persisted data takes precedence.
  * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
  */
-fun Box.keyframes(channel: String = "debug", name: String, defaultTimes: List<Number>? = null): KeyframeEvaluator {
+fun Box.keyframes(channel: String? = null, name: String, defaultTimes: List<Number>? = null): KeyframeEvaluator {
     val json = if (!defaultTimes.isNullOrEmpty()) {
         defaultTimes.joinToString(",", "[", "]") { t ->
             """{ "time": ${t.toDouble()}, "value": 0.0, "type": "linear" }"""
@@ -679,13 +687,13 @@ fun Box.keyframes(channel: String = "debug", name: String, defaultTimes: List<Nu
  * val n = keyframes("out", "n", listOf(Vec2(0.0, 0.0), Vec2(5.0, 1.0), Vec2(10.0, 0.0)))
  * ```
  *
- * @param channel  the output-area channel (default `"debug"`)
+ * @param channel  the output-area channel; by default the panel is named [name]
  * @param name     unique persistence key for this keyframe set
  * @param defaults list of [Vec2] where `x` = time, `y` = value; used only when no persisted data exists
  * @return a [KeyframeEvaluator] that can be queried with [KeyframeEvaluator.evaluateValueAt]
  */
 @JvmName("keyframesVec2")
-fun Box.keyframes(channel: String = "debug", name: String, defaults: List<Vec2>): KeyframeEvaluator {
+fun Box.keyframes(channel: String? = null, name: String, defaults: List<Vec2>): KeyframeEvaluator {
     val json = if (defaults.isNotEmpty()) {
         defaults.joinToString(",", "[", "]") { v ->
             """{ "time": ${v.x}, "value": ${v.y}, "type": "linear" }"""
@@ -693,3 +701,28 @@ fun Box.keyframes(channel: String = "debug", name: String, defaults: List<Vec2>)
     } else "[]"
     return keyframesImpl(channel, name, json)
 }
+
+/**
+ * Creates (or reconnects to) a keyframe curve editor, seeded with [keys] — keys with their types,
+ * so a curve can start with a held step or an eased segment rather than straight lines.
+ *
+ * ```kotlin
+ * val gain = keyframes(name = "gain", keys = listOf(
+ *     Keyframe(0.0, 0.0, "bezierFlat"),
+ *     Keyframe(1.0, 1.0, "hold"),
+ *     Keyframe(2.0, 0.3, "linear"),
+ *     Keyframe(3.0, 0.8, "linear"),
+ * ))
+ * ```
+ *
+ * A key's type shapes the segment that leaves it: `"linear"`, `"hold"`, `"bezierFree"`,
+ * `"bezierFlat"` or `"bezierContinuous"`. Bezier keys with no handles start with handles the
+ * editor derives from their neighbours.
+ *
+ * @param channel  the output-area channel; by default the panel is named [name]
+ * @param name     unique persistence key for this keyframe set
+ * @param keys     used only when no persisted data exists for [name]
+ */
+@JvmName("keyframesKeys")
+fun Box.keyframes(channel: String? = null, name: String, keys: List<Keyframe>): KeyframeEvaluator =
+    keyframesImpl(channel, name, if (keys.isEmpty()) "[]" else Json.encodeToString(keys))
