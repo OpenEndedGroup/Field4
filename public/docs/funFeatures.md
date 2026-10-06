@@ -580,11 +580,9 @@ Gets you started. With some mouse clicks you can get to here:
 
 Scroll with `scroll` gestures, zoom with `ctrl-scroll`, `double click` to add a keyframe, right click to change the keyframe type.
 
-These boxes are _input_ and _output_, so this code here, which converts a keyframe set into a Field `Fn` (see [functions_examples]) is:
+These boxes are _input_ and _output_, so this code here, which converts a keyframe set into a Field `Fn` (see [Functions](functions_examples.md)) is:
 
 ```diffstatic {data-lang=kotlin}
-import afield.stdlib.Functions
-
 val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
 val k2 = keyframes(channel = "k", name = "bob2", listOf(0.0, 1.0))
 
@@ -608,12 +606,12 @@ Once you have a keyframe, you can do a few things with it:
 ```diffstatic {data-lang=kotlin}
 val k = keyframes(channel = "k", name = "bob", listOf(0.0, 1.0))
 
-k.setTime(0.5) // just set the position of the yellow line 
+k.setTime(0.5) // move the orange playhead
 val v : Double = k.evaluateValueAt(0.5)  
 val dv : Double = k.evaluateDerivativeAt(0.5)
 ```
 
-Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new.
+Edited keyframes are stored inside the box — the `defaults` is just there in case the box is new. [The keyframe editor](keyframe_editor.md) has the rest: every gesture, the five key types, overlays, and a starting point to open.
 
 ## Time sliders & Custom UI
 

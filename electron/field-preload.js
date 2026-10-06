@@ -43,6 +43,9 @@ ipcRenderer.on("field4-rtt-error", (_, meta) => {
 });
 
 contextBridge.exposeInMainWorld("fieldElectron", {
+  outputIframe(request) {
+    return ipcRenderer.invoke("field4-live-output-iframe", request);
+  },
   captureHistoryScreenshot() {
     return ipcRenderer.invoke("field4-history-capture-window");
   },

@@ -2759,6 +2759,21 @@ class DocsUiDriver internal constructor(
         }
     }
 
+    /** Double-click the real mouse at ([x], [y]) in CSS px: adding a key in the keyframe editor, say. */
+    fun doubleClickAt(x: Double, y: Double) {
+        runBlocking(playwrightDispatcher) { pageProvider().mouse().dblclick(x, y) }
+    }
+
+    /** Right-click the real mouse at ([x], [y]) in CSS px, to open a context menu. */
+    fun rightClickAt(x: Double, y: Double) {
+        runBlocking(playwrightDispatcher) {
+            pageProvider().mouse().click(
+                x, y,
+                com.microsoft.playwright.Mouse.ClickOptions().setButton(com.microsoft.playwright.options.MouseButton.RIGHT)
+            )
+        }
+    }
+
     /**
      * Type [text] one key at a time, [delayMs] apart, so a recording shows the typing. Each key is
      * its own trip to the Playwright thread and the wait between keys is [pause], so the recorder

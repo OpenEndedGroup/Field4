@@ -114,6 +114,14 @@ Minimal blank-canvas macro that creates one runnable output box.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/hello_display/metadata.edn)
 
+### ai4_iframe_hello
+
+A single box embeds a page served by Field and exposes its iframe to AI4. Run the box, open its
+AI Chat panel, and ask it to write “hello” in the textbox. [Live iframe tools](ai4_live_iframe.md)
+explains the opt-in and the tools.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/ai4_iframe_hello/metadata.edn)
+
 ### marf_field_clocks
 
 Three boxes make the [MARF field-clock](marf.md) distinction visible. The first prints four
@@ -1120,6 +1128,18 @@ is provably inside the search space. The empty half of that cost plane is the fi
 ![Four search drivers on a recursive eight-bit adder, every curve flattening short of zero, beside a cost plane holding only the two reference designs and nothing the search found](assets/morpho_examples/search-adder.png)
 
 [Open ↗](offline.html?file=assets/agent_transcripts/morpho_circuit_search/metadata.edn)
+
+### keyframe_editor
+
+The keyframe editor, `keyframes(...)`, as the three boxes of its page,
+[The keyframe editor](keyframe_editor.md). `brightness` plays a hand-drawn curve with a `loop`, moving
+the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
+curve while it plays. `shape` starts a curve with one key of each type through
+`keys = listOf(Keyframe(...))`. `smoothed` draws a smoothed copy of its curve as an overlay and keeps
+it up to date with `onChange`. CI launches `brightness`, executes the other two, advances 90 frames,
+and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
 
 ### keyframer_worked_example
 

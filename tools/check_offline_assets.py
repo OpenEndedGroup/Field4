@@ -18,6 +18,7 @@ CANONICAL_FILES = (
     "src/commonMain/resources/geometry_review_controls.js",
     "src/commonMain/resources/threejs_tools.js",
     "src/commonMain/resources/threejs_camera_link.js",
+    "src/commonMain/resources/threejs_shot.js",
     "src/commonMain/resources/threejs_export.js",
     "src/commonMain/resources/vendor/three/0.184.0/three.module.js",
     "src/commonMain/resources/vendor/three/0.184.0/three.core.js",

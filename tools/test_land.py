@@ -273,6 +273,9 @@ class LandQueueTest(unittest.TestCase):
         self.run_lander()
         self.assertEqual(self.git(origin, "rev-parse", "main"), self.git(self.primary, "rev-parse", "main"))
         self.assertIn("pushed main", self.land(Path(self._tmp.name) / "p1", "mine").stdout)
+        status = self.land(self.primary, "status", "--plain").stdout
+        self.assertIn("recent pushes", status)
+        self.assertIn("-> origin, 2 commit(s)", status)  # the branch commit and its Land merge
         before = self.git(origin, "rev-parse", "main")
         self.land(self.branch_with("p2", "BREAKS"), "enqueue", "--push")
         self.run_lander()
@@ -292,6 +295,7 @@ class LandQueueTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.run_lander()
         self.assertTrue((self.primary / "theirs.txt").exists())
+        self.assertIn("-> origin", self.land(self.primary, "status", "--plain").stdout)
         self.assertEqual(self.git(origin, "rev-parse", "main"), self.git(self.primary, "rev-parse", "main"))
 
     def test_a_wedged_build_is_stopped_retried_once_then_bounced(self) -> None:

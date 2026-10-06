@@ -492,6 +492,7 @@ class _Style:
             "branch": "\ue0a0" if nerd else "", "user": "\uf007" if nerd else "",
             "gradle": "\ue660" if nerd else "", "note": "\uf249" if nerd else "#",
             "log": "\uf15c" if nerd else "", "main": "\uf126" if nerd else "",
+            "push": "\uf062" if nerd else "^", "pull": "\uf063" if nerd else "v",
         }
 
     def c(self, code: str, text: str) -> str:
@@ -590,7 +591,8 @@ def _pretty_status(queue: Path, recent: int) -> None:
     print()
 
     finished = sorted(
-        [(LANDED, i) for i in _items(queue, LANDED)] + [(BOUNCED, i) for i in _items(queue, BOUNCED)],
+        [(LANDED, i) for i in _items(queue, LANDED)] + [(BOUNCED, i) for i in _items(queue, BOUNCED)]
+        + [("push", e) for e in _events(queue, "push")],
         key=lambda pair: pair[1].get("finished", ""),
     )[-recent:]
     rule("recent")
@@ -598,7 +600,21 @@ def _pretty_status(queue: Path, recent: int) -> None:
         print(st.dim("  nothing yet"))
     for state, item in reversed(finished):
         ago = _span(_since(item.get("finished")))
+        if state == "push":
+            commits = item.get("commits", "?")
+            what = f"main {item.get('sha', '')[:9]} \u2192 origin  ({commits} commit{'s' if commits != '1' else ''})"
+            if item.get("error"):
+                print(f"  {st.red(g['push'] + ' push failed')}  {what}  {st.dim(ago + ' ago')}")
+                print(f"    {st.red(item['error'][: width - 6])}")
+            else:
+                print(f"  {st.cyan(g['push'] + ' pushed')}  {what}  {st.dim(ago + ' ago')}")
+            continue
         took = _took(item)
+        if state == LANDED and _is_pull(item):
+            origin_note = "from origin \u00b7 " + g["main"] + " " + item.get("landed_as", "")[:9]
+            print(f"  {st.cyan(g['pull'] + ' pulled')}  {who(item)}  {st.dim(origin_note)}"
+                  f"  {st.dim(ago + ' ago')}" + (st.dim(f" \u00b7 took {_span(took)}") if took is not None else ""))
+            continue
         if state == LANDED:
             how = (g["gradle"] + " guard") if _ran_gradle(item) else "no gradle"
             print(f"  {st.green(g['ok'])} {who(item)}  {st.dim(g['main'] + ' ' + item.get('landed_as', '')[:9])}"
@@ -692,6 +708,12 @@ def cmd_status(args: argparse.Namespace) -> int:
             ahead += typical
     else:
         print("\nqueued   nothing")
+    pushes = _events(queue, "push")[-args.recent:]
+    if pushes:
+        print("\nrecent pushes (oldest first):")
+        for e in pushes:
+            line = f"push     main {e.get('sha', '')[:9]} -> origin, {e.get('commits', '?')} commit(s), {_span(_since(e.get('finished')))} ago"
+            print(line + (f"\n         FAILED: {e['error']}" if e.get("error") else ""))
     for state in (BOUNCED, LANDED):
         recent = _items(queue, state)[-args.recent:]
         if recent:
@@ -941,14 +963,45 @@ def _push_main(primary: Path, sha: str, out) -> str | None:
     """Push main to origin. None on success, else why not. Never forces, never touches local main."""
     out.write(f"merge_regen: pushing main {sha[:9]} to origin\n")
     out.flush()
+    count = _git(primary, "rev-list", "--count", f"refs/remotes/origin/main..{sha}", check=False) or "?"
     result = subprocess.run(["git", "push", "origin", f"{sha}:refs/heads/main"], cwd=primary,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     out.write(result.stdout)
-    if result.returncode == 0:
-        return None
-    if "rejected" in result.stdout or "fetch first" in result.stdout or "non-fast-forward" in result.stdout:
-        return "origin/main has commits main lacks; run `uv run python tools/land.py sync --push`"
-    return " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
+    why = None
+    if result.returncode != 0:
+        if "rejected" in result.stdout or "fetch first" in result.stdout or "non-fast-forward" in result.stdout:
+            why = "origin/main has commits main lacks; run `uv run python tools/land.py sync --push`"
+        else:
+            why = " ".join(result.stdout.split())[-300:] or f"git push exited {result.returncode}"
+    _record_event(_queue_dir(primary), "push", sha=sha, commits=count, error=why)
+    return why
+
+
+def _record_event(queue: Path, kind: str, **fields) -> None:
+    """Pushes (and anything else that is not a queue item) for status's `recent`, one JSON per line."""
+    with (queue / "events.jsonl").open("a") as f:
+        f.write(json.dumps({"kind": kind, "finished": _now(), **fields}) + "\n")
+
+
+def _events(queue: Path, kind: str) -> list[dict]:
+    try:
+        lines = (queue / "events.jsonl").read_text().splitlines()
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if event.get("kind") == kind:
+            out.append(event)
+    return out
+
+
+def _is_pull(item: dict) -> bool:
+    """A sync item: origin's main, landed through the queue."""
+    return item["branch"].startswith("sync/origin")
 
 
 def _collect_failures(wt: Path, since: float, log: Path) -> str | None:

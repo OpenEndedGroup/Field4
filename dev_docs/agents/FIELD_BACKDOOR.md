@@ -67,6 +67,18 @@ runners, `field_session.py` and `run_desktop_playwright.py`). The AI request led
 (`~/.afield/logs/ai_usage/`) stays machine-wide, because agent turns spend real
 tokens on the same key.
 
+Code-use telemetry follows the logs: an automated server, and every `run-jvm-main`
+child it spawns, records into `build/field-automation-logs/code-use/field-code-use.sqlite`
+(`AFIELD_CODE_USE_PATH`), not `~/.afield/code-use/`. The AI4 code-use tools and
+`/api/code-use/*` routes on that server therefore see only this checkout's runs. For
+`failures`, which is what an agent fixing its own error needs, that is the point. The
+history-mining kinds (`line-callers`, `hot-symbols`, `early-document-symbols`, and the
+peer callers in `related-source-for-code` and `semantic-analyze`) start empty in a
+fresh worktree. To ask them about the user's history, attach to the user's Field
+(`--attach-existing`), which queries its own database. Gradle's JavaExec and test JVMs
+(`checkAgentTranscripts` among them) and a Field launched by hand still write to
+`~/.afield/code-use/`.
+
 A Field the backdoor starts is `./gradlew runJvm`, so the first launch from a fresh
 worktree compiles everything (Kotlin JVM + JS, webpack) before the JVM exists. The
 startup wait follows the managed-server log (`ManagedStartupWatch` in

@@ -142,6 +142,11 @@ object DemoTranscriptExecSmokeTest {
         // buys is that `inertialTo`, `MovementState` and the control-group callbacks are exercised
         // through the real box path, which no unit test covers.
         "inertial_movement",
+        // The keyframe editor: a launched loop playing a curve into a meter, and two executed boxes
+        // (typed keys; an onChange overlay). Pure CPU — the editor is an iframe in `display` — so what
+        // running it buys is keyframes(...), KeyframeEvaluator and the Keyframe-seeded overload
+        // through the real box path.
+        "keyframe_editor",
         // BSP-OT matching: two still boxes executed (one of them a million points a side, a few
         // seconds) and a launched morph loop stopped after 90 frames.
         "point_matching",
@@ -165,6 +170,7 @@ object DemoTranscriptExecSmokeTest {
         "linalg_thumbnails_demo",
         "hello_display",
         "hello_display_capture",
+        "ai4_iframe_hello",
         "two_box_context",
         // Compiles a data class onto the shared classloader and uses it from three other boxes, one
         // of them through @rootExported. Slower than its neighbours — box 1 shells out to

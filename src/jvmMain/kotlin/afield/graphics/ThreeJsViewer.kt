@@ -369,6 +369,9 @@ data class ThreeGeometryPayload(
     /** Turn slowly about the up axis until somebody interacts. See [ThreeSceneBuilder.turntable]. */
     @EncodeDefault(EncodeDefault.Mode.NEVER)
     val turntable: ThreeTurntableSpec? = null,
+    /** A looping dolly, explode and x-ray move. See [ThreeSceneBuilder.shot]. */
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val shot: ThreeShotSpec? = null,
 ) {
     override fun toString(): String = prettySummary(
         "ThreeGeometryPayload",
@@ -387,7 +390,8 @@ data class ThreeGeometryPayload(
         "panels" to panels.size,
         "camera" to camera,
         "cameraLink" to cameraLink,
-        "turntable" to turntable
+        "turntable" to turntable,
+        "shot" to shot
     )
 }
 

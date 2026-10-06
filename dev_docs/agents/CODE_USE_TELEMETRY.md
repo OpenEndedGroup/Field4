@@ -23,6 +23,9 @@ The database defaults to:
 ```
 
 Override it with `-Dafield.codeUse.path=...` or `AFIELD_CODE_USE_PATH`.
+Servers started by the backdoor and the test runners set the variable to
+`build/field-automation-logs/code-use/field-code-use.sqlite` in their checkout
+(see `FIELD_BACKDOOR.md`), so their queries do not see the user's history.
 SQLite uses WAL mode and stores full source once by SHA-256. Context, snippet,
 compile, evaluation, launch, symbol-use, and unresolved-use rows refer to that
 content-addressed source.

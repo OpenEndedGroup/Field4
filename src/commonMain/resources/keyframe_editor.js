@@ -1020,7 +1020,12 @@ export class KeyframeEditor {
                 deleteButton.textContent = "Delete";
                 deleteButton.addEventListener("click", () => {
                         if (this.menuTargetId) {
-                                this.removeKeyframe(this.menuTargetId);
+                                // The whole selection when the key you right-clicked is part of it.
+                                const ids =
+                                    this.state.selectedIds.includes(this.menuTargetId) && this.state.selectedIds.length > 1
+                                        ? [...this.state.selectedIds]
+                                        : [this.menuTargetId];
+                                this.removeKeyframes(ids);
                         }
                         this.hideContextMenu();
                 });
@@ -1072,6 +1077,15 @@ export class KeyframeEditor {
 
                 this.handleEscapeKey = (event) => {
                         if (event.key === "Escape") {
+                                this.hideContextMenu();
+                                return;
+                        }
+                        // Delete or Backspace removes the selected keys, unless you are typing somewhere.
+                        if ((event.key === "Delete" || event.key === "Backspace") && this.state.selectedIds.length) {
+                                const target = event.target;
+                                if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+                                event.preventDefault();
+                                this.removeKeyframes([...this.state.selectedIds]);
                                 this.hideContextMenu();
                         }
                 };
@@ -1311,6 +1325,7 @@ export class KeyframeEditor {
                 this.renderKeyframes();
                 this.renderGraph();
                 this._renderBackendOverlays();
+                this._updateGraphDimming();
                 this.renderPlayhead();
         }
 
@@ -1574,6 +1589,10 @@ export class KeyframeEditor {
                                 attrs['stroke-dasharray'] = ov.dashArray;
                         }
                         const path = createSVGElement('path', attrs);
+                        // Inline, because the group sits inside .kf-overlay, whose stylesheet stroke
+                        // would otherwise win over the attribute and turn every overlay grey.
+                        path.style.stroke = ov.color;
+                        path.style.strokeWidth = String(ov.strokeWidth);
                         this.backendOverlayGroup.appendChild(path);
                 }
         }
@@ -1916,6 +1935,19 @@ export class KeyframeEditor {
                 this.setSelection([keyframe.id], keyframe.id, { render: false });
                 this.refresh();
                 return keyframe;
+        }
+
+        /** Removes several keys at once, committing (and notifying Kotlin) a single time. */
+        removeKeyframes(ids) {
+                const doomed = new Set(ids.filter((id) => !this.keyframes.find((kf) => kf.id === id)?.locked));
+                if (!doomed.size) return;
+                const remaining = this.keyframes.filter((kf) => !doomed.has(kf.id));
+                const lastIndex = Math.max(...this.keyframes.map((kf, i) => (doomed.has(kf.id) ? i : -1)));
+                const fallback = this.keyframes.slice(lastIndex + 1).find((kf) => !doomed.has(kf.id)) ?? remaining[remaining.length - 1];
+                this.keyframes.splice(0, this.keyframes.length, ...remaining);
+                const selection = fallback ? [fallback.id] : [];
+                this.setSelection(selection, selection[0] ?? null, { render: false });
+                this.refresh();
         }
 
         removeKeyframe(id) {
@@ -2596,10 +2628,39 @@ export class KeyframeEditor {
                 return this.playhead;
         }
 
+        /** Reset view: fit the keys, or the initial view when there are none. */
         resetView() {
-                this.setViewTimeRange([...this.initialTimeRange], { render: false });
-                this.setViewValueRange([...this.initialValueRange], { render: false });
+                if (!this.fitToKeyframes()) {
+                        this.setViewTimeRange([...this.initialTimeRange], { render: false });
+                        this.setViewValueRange([...this.initialValueRange], { render: false });
+                }
                 this.render();
+        }
+
+        /**
+         * Frames every key, with a little room: time always includes 0 and rounds out to whole
+         * units, value always includes 0 and 1. Returns false when there is nothing to fit.
+         */
+        fitToKeyframes() {
+                const times = this.keyframes.map((kf) => kf.time).filter(Number.isFinite);
+                const values = this.keyframes.map((kf) => kf.value).filter(Number.isFinite);
+                if (!times.length) return false;
+                const pad = (min, max, ratio) => {
+                        if (Math.abs(max - min) < 1e-6) {
+                                const delta = Math.max(Math.abs(min) * 0.1, 1);
+                                return [min - delta, max + delta];
+                        }
+                        const span = max - min;
+                        return [min - span * ratio, max + span * ratio];
+                };
+                let tMin = Math.min(0, ...times);
+                let tMax = Math.max(...times);
+                if (tMax - tMin < 1) tMax = tMin + 1;
+                const [t0, t1] = pad(tMin, tMax, 0.08);
+                if (Math.ceil(t1) - Math.floor(t0) > 0) this.setViewTimeRange([Math.floor(t0), Math.ceil(t1)], { render: false });
+                const [v0, v1] = pad(Math.min(0, ...values), Math.max(1, ...values), 0.08);
+                if (v1 - v0 > 0) this.setViewValueRange([v0, v1], { render: false });
+                return true;
         }
 
         setViewTimeRange(range, { render = true } = {}) {
