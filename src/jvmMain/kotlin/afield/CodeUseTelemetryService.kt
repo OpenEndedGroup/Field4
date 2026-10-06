@@ -35,9 +35,14 @@ import kotlin.io.path.absolutePathString
 data class CodeUseSummary(
     val enabled: Boolean,
     val databasePath: String,
+    // Events not yet committed, including a batch the writer is holding through SQLITE_BUSY retries.
     val queueSize: Int,
     val droppedEvents: Long,
     val quietMode: Boolean = false,
+    // Batch commits retried because another connection held the write lock past busy_timeout.
+    val writerBusyRetries: Long = 0,
+    // The SQLITE_BUSY the writer is waiting out, or the error that stopped it; empty when healthy.
+    val writerError: String = "",
     val analyzerQueueSize: Int = 0,
     val droppedAnalysisJobs: Long = 0,
     val analyzerCompletedJobs: Long = 0,
@@ -300,6 +305,9 @@ private data class CodeUseSemanticSidecarHealthResult(
  * analysis. One worker persists content-addressed source plus event/context rows; a separate
  * low-priority worker resolves likely source symbols. Queue overflow, database failure, and
  * analyzer failure are reported in [CodeUseSummary] but must not break user-code execution.
+ * Every Field on the machine shares the default database, so the writer treats SQLITE_BUSY (a
+ * lock held past `busy_timeout`) as transient: it rolls the batch back, keeps it, and retries
+ * with backoff. Any other database error stops the writer, and the summary names that error.
  *
  * The built-in analyzer uses [KotlinSourceIndex] and records only unambiguous unqualified or
  * receiver-qualified matches. [semanticAnalyzeCode] may ask the configured out-of-process K2
@@ -317,6 +325,11 @@ object CodeUseTelemetryService {
     private const val ANALYSIS_QUEUE_CAPACITY = 2048
     private const val MAX_SOURCE_CHARS = 1_000_000
     private const val SUMMARY_CACHE_TTL_MS = 5_000L
+    private const val WRITER_BATCH = 256
+    private const val WRITER_BUSY_BACKOFF_MS = 250L
+    private const val WRITER_BUSY_BACKOFF_MAX_MS = 30_000L
+    // The startup prune commits after this many snippets, so it never holds the write lock for long.
+    private const val PRUNE_BATCH = 100
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -356,6 +369,14 @@ object CodeUseTelemetryService {
 
     @Volatile
     private var enabled = true
+
+    private val writerBusyRetries = AtomicLong(0)
+    // Events taken off [queue] whose batch has not committed yet.
+    @Volatile private var writerHeldEvents = 0
+    // The SQLITE_BUSY the writer is currently waiting out; cleared by the next commit.
+    @Volatile private var writerBusyError = ""
+    // Why the writer stopped; set before [enabled] goes false.
+    @Volatile private var disabledReason = ""
 
     @Volatile
     private var quietMode = runCatching { currentFieldPreferences().quietMode }.getOrDefault(false)
@@ -544,13 +565,15 @@ object CodeUseTelemetryService {
 
     private fun computingSummaryPlaceholder(): CodeUseSummary {
         val health = semanticSidecarHealthCache?.second
-        val message = if (enabled) "Gathering code-use statistics…" else "Code-use telemetry is disabled."
+        val message = if (enabled) writerBusyMessage() ?: "Gathering code-use statistics…" else disabledStatusMessage()
         return CodeUseSummary(
             enabled = enabled,
             databasePath = databasePath.absolutePathString(),
-            queueSize = queue.size,
+            queueSize = pendingEventCount(),
             droppedEvents = droppedEvents.get(),
             quietMode = quietMode,
+            writerBusyRetries = writerBusyRetries.get(),
+            writerError = writerStatusError(),
             analyzerQueueSize = analysisQueue.size,
             droppedAnalysisJobs = droppedAnalysisJobs.get(),
             analyzerCompletedJobs = analyzerCompletedJobs.get(),
@@ -571,9 +594,11 @@ object CodeUseTelemetryService {
             return CodeUseSummary(
                 enabled = false,
                 databasePath = databasePath.absolutePathString(),
-                queueSize = queue.size,
+                queueSize = pendingEventCount(),
                 droppedEvents = droppedEvents.get(),
                 quietMode = quietMode,
+                writerBusyRetries = writerBusyRetries.get(),
+                writerError = writerStatusError(),
                 analyzerQueueSize = analysisQueue.size,
                 droppedAnalysisJobs = droppedAnalysisJobs.get(),
                 analyzerCompletedJobs = analyzerCompletedJobs.get(),
@@ -584,7 +609,7 @@ object CodeUseTelemetryService {
                 semanticBackend = semanticHealth.backend,
                 semanticMessage = semanticHealth.message,
                 semanticSidecarUrl = semanticHealth.url,
-                message = "Code-use telemetry is disabled; SQLite initialization failed."
+                message = disabledStatusMessage()
             )
         }
         return runCatching {
@@ -594,9 +619,11 @@ object CodeUseTelemetryService {
                 CodeUseSummary(
                     enabled = true,
                     databasePath = databasePath.absolutePathString(),
-                    queueSize = queue.size,
+                    queueSize = pendingEventCount(),
                     droppedEvents = droppedEvents.get(),
                     quietMode = quietMode,
+                    writerBusyRetries = writerBusyRetries.get(),
+                    writerError = writerStatusError(),
                     analyzerQueueSize = analysisQueue.size,
                     droppedAnalysisJobs = droppedAnalysisJobs.get(),
                     analyzerCompletedJobs = analyzerCompletedJobs.get(),
@@ -619,16 +646,22 @@ object CodeUseTelemetryService {
                     textualUseEdges = confidence.textualUseEdges,
                     unknownUseEdges = confidence.unknownUseEdges,
                     unresolvedUseEdges = confidence.unresolvedUseEdges,
-                    message = if (quietMode) "Quiet mode is on; background semantic catch-up is paused." else ""
+                    message = listOfNotNull(
+                        writerBusyMessage(),
+                        "Quiet mode is on; background semantic catch-up is paused.".takeIf { quietMode }
+                    ).joinToString(" ")
                 )
             }
         }.getOrElse {
+            // The statistics query failed, not necessarily the writer: report the writer's own state.
             CodeUseSummary(
-                enabled = false,
+                enabled = enabled,
                 databasePath = databasePath.absolutePathString(),
-                queueSize = queue.size,
+                queueSize = pendingEventCount(),
                 droppedEvents = droppedEvents.get(),
                 quietMode = quietMode,
+                writerBusyRetries = writerBusyRetries.get(),
+                writerError = writerStatusError(),
                 analyzerQueueSize = analysisQueue.size,
                 droppedAnalysisJobs = droppedAnalysisJobs.get(),
                 analyzerCompletedJobs = analyzerCompletedJobs.get(),
@@ -639,9 +672,21 @@ object CodeUseTelemetryService {
                 semanticBackend = semanticHealth.backend,
                 semanticMessage = semanticHealth.message,
                 semanticSidecarUrl = semanticHealth.url,
-                message = it.message ?: it.javaClass.name
+                message = "Could not read code-use statistics: ${it.message ?: it.javaClass.name}"
             )
         }
+    }
+
+    private fun pendingEventCount(): Int = queue.size + writerHeldEvents
+
+    private fun writerStatusError(): String = if (enabled) writerBusyError else disabledReason
+
+    private fun disabledStatusMessage(): String = "Code-use telemetry is disabled; the writer stopped on: $disabledReason"
+
+    private fun writerBusyMessage(): String? {
+        val error = writerBusyError.takeIf { it.isNotEmpty() } ?: return null
+        return "Waiting for the database write lock, holding $writerHeldEvents event(s) " +
+            "(${writerBusyRetries.get()} retries so far): $error"
     }
 
     fun recentSnippets(limit: Int = 100): List<CodeUseSnippetRow> =
@@ -1993,33 +2038,77 @@ object CodeUseTelemetryService {
     }
 
     private fun writerLoop() {
+        val batch = ArrayList<CodeUseEvent>(WRITER_BATCH + 1)
+        var conn: Connection? = null
+        var busyStreak = 0
         try {
             Class.forName("org.sqlite.JDBC")
-            ensureSchema()
-            openConnection().use { conn ->
-                conn.autoCommit = false
-                while (true) {
-                    val first = queue.poll(1, TimeUnit.SECONDS) ?: continue
-                    writeEvent(conn, first)
-                    var drained = 0
-                    while (drained < 256) {
-                        val next = queue.poll() ?: break
-                        writeEvent(conn, next)
-                        drained++
-                    }
-                    conn.commit()
-                    // A summary computed while this batch was still queued must not remain cached
-                    // for the full TTL after the rows become visible. Besides making status polls
-                    // truthful sooner, this closes a race in callers that wait for persistence by
-                    // polling summary().
-                    summaryCache = null
+            while (true) {
+                if (batch.isEmpty()) {
+                    batch += queue.poll(1, TimeUnit.SECONDS) ?: continue
+                    queue.drainTo(batch, WRITER_BATCH)
+                    writerHeldEvents = batch.size
                 }
+                try {
+                    ensureSchema()
+                    val c = conn ?: openConnection().also { it.autoCommit = false; conn = it }
+                    batch.forEach { writeEvent(c, it) }
+                    c.commit()
+                } catch (t: Throwable) {
+                    if (!isSqliteBusy(t)) throw t
+                    // Another connection held the write lock past busy_timeout. Roll back, keep the
+                    // whole batch, and write it again on a fresh connection after the backoff.
+                    conn?.let { c ->
+                        runCatching { c.rollback() }
+                        runCatching { c.close() }
+                    }
+                    conn = null
+                    busyStreak++
+                    writerBusyRetries.incrementAndGet()
+                    writerBusyError = t.message ?: t.javaClass.name
+                    if (busyStreak == 1) {
+                        lprintln("warning,code-use", "code-use writer is waiting for the database lock, holding ${batch.size} event(s): $writerBusyError")
+                    }
+                    summaryCache = null
+                    Thread.sleep(busyBackoffMs(busyStreak))
+                    continue
+                }
+                if (busyStreak > 0) {
+                    lprintln("info,code-use", "code-use writer committed ${batch.size} held event(s) after $busyStreak SQLITE_BUSY retries")
+                    busyStreak = 0
+                    writerBusyError = ""
+                }
+                batch.forEach(::enqueueAnalysisFor)
+                batch.clear()
+                writerHeldEvents = 0
+                // A summary computed while this batch was still queued must not remain cached
+                // for the full TTL after the rows become visible. Besides making status polls
+                // truthful sooner, this closes a race in callers that wait for persistence by
+                // polling summary().
+                summaryCache = null
             }
         } catch (t: Throwable) {
+            runCatching { conn?.close() }
+            disabledReason = t.message ?: t.javaClass.name
             enabled = false
+            summaryCache = null
             if (disabledMessage.compareAndSet(0, 1)) {
-                lprintln("warning,code-use", "code-use telemetry disabled: ${t.message ?: t.javaClass.name}")
+                lprintln("warning,code-use", "code-use telemetry disabled: $disabledReason")
             }
+        }
+    }
+
+    private fun busyBackoffMs(streak: Int): Long =
+        (WRITER_BUSY_BACKOFF_MS shl (streak - 1).coerceIn(0, 8)).coerceAtMost(WRITER_BUSY_BACKOFF_MAX_MS)
+
+    /** Queues analysis of an event's source. Called only once the event's batch has committed. */
+    private fun enqueueAnalysisFor(event: CodeUseEvent) {
+        when (event) {
+            is CodeUseEvent.CompileResult ->
+                enqueueAnalysis(event.snippetId, event.source, event.sourceName, event.createdAtEpochMs, event.context.mode)
+            is CodeUseEvent.LaunchLifecycle ->
+                if (event.source.isNotBlank()) enqueueAnalysis(event.snippetId, event.source, "", event.createdAtEpochMs, event.context.mode)
+            is CodeUseEvent.EvaluationResult -> Unit
         }
     }
 
@@ -2687,6 +2776,18 @@ object CodeUseTelemetryService {
             st.execute("CREATE INDEX IF NOT EXISTS idx_eval_snippet ON eval_events(snippet_id, created_at DESC)")
             st.execute("CREATE INDEX IF NOT EXISTS idx_launch_snippet ON launch_events(snippet_id, created_at DESC)")
             st.execute("CREATE INDEX IF NOT EXISTS idx_symbol_uses_symbol ON symbol_uses(symbol_id, snippet_id)")
+            // analyzeAndStore and the startup prune delete a snippet's unresolved rows inside a write
+            // transaction. Unindexed, each delete scanned the table (5-7 s at 2.9M rows) while holding
+            // the lock, outlasting busy_timeout for every other writer on the shared database. The
+            // first build on such a database takes about 20 s and adds about 125 MiB.
+            val building = st.executeQuery("SELECT 1 FROM sqlite_master WHERE type = 'index' AND name = 'idx_unresolved_uses_snippet'")
+                .use { !it.next() } && st.executeQuery("SELECT 1 FROM unresolved_uses LIMIT 1").use { it.next() }
+            if (building) lprintln("info,code-use", "building the unresolved_uses(snippet_id) index; this holds the database write lock while it runs")
+            val buildStart = System.nanoTime()
+            st.execute("CREATE INDEX IF NOT EXISTS idx_unresolved_uses_snippet ON unresolved_uses(snippet_id)")
+            if (building) {
+                lprintln("info,code-use", "built the unresolved_uses(snippet_id) index in ${(System.nanoTime() - buildStart) / 1_000_000} ms")
+            }
         }
     }
 
@@ -2709,7 +2810,6 @@ object CodeUseTelemetryService {
                     ps.setLong(6, event.createdAtEpochMs)
                     ps.executeUpdate()
                 }
-                enqueueAnalysis(event.snippetId, event.source, event.sourceName, event.createdAtEpochMs, event.context.mode)
             }
 
             is CodeUseEvent.EvaluationResult -> {
@@ -2752,9 +2852,6 @@ object CodeUseTelemetryService {
                     ps.setString(5, event.exceptionJson)
                     ps.setLong(6, event.createdAtEpochMs)
                     ps.executeUpdate()
-                }
-                if (event.source.isNotBlank()) {
-                    enqueueAnalysis(event.snippetId, event.source, "", event.createdAtEpochMs, event.context.mode)
                 }
             }
         }
@@ -3036,34 +3133,47 @@ object CodeUseTelemetryService {
             }
         }
         if (snippetIds.isEmpty()) return
-        conn.autoCommit = false
+        // Commit per chunk so the prune never holds the write lock the other Fields' writers need
+        // for longer than one chunk. A chunk that fails is rolled back; the rest waits for the next start.
+        var pruned = 0
         try {
-            conn.prepareStatement("DELETE FROM symbol_uses WHERE snippet_id = ?").use { ps ->
-                snippetIds.forEach {
-                    ps.setString(1, it)
-                    ps.addBatch()
+            snippetIds.chunked(PRUNE_BATCH).forEach { chunk ->
+                conn.autoCommit = false
+                try {
+                    for (table in listOf("symbol_uses", "unresolved_uses")) {
+                        conn.prepareStatement("DELETE FROM $table WHERE snippet_id = ?").use { ps ->
+                            chunk.forEach {
+                                ps.setString(1, it)
+                                ps.addBatch()
+                            }
+                            ps.executeBatch()
+                        }
+                    }
+                    conn.commit()
+                } catch (t: Throwable) {
+                    runCatching { conn.rollback() }
+                    throw t
+                } finally {
+                    conn.autoCommit = true
                 }
-                ps.executeBatch()
+                pruned += chunk.size
             }
-            conn.prepareStatement("DELETE FROM unresolved_uses WHERE snippet_id = ?").use { ps ->
-                snippetIds.forEach {
-                    ps.setString(1, it)
-                    ps.addBatch()
-                }
-                ps.executeBatch()
-            }
-            conn.commit()
-            lprintln("info,code-use", "pruned analyzer rows for ${snippetIds.size} import/preamble-only snippet(s)")
+            lprintln("info,code-use", "pruned analyzer rows for $pruned import/preamble-only snippet(s)")
         } catch (t: Throwable) {
-            runCatching { conn.rollback() }
-            lprintln("warning,code-use", "could not prune import/preamble-only analyzer rows: ${t.message ?: t.javaClass.name}")
-        } finally {
-            conn.autoCommit = true
+            lprintln("warning,code-use", "pruned analyzer rows for $pruned of ${snippetIds.size} import/preamble-only snippet(s), then stopped: ${t.message ?: t.javaClass.name}")
         }
     }
 
     private fun pruneLegacySourceIndexMatchRows(conn: Connection) {
         var deleted = 0
+        // A DELETE takes the write lock before it scans. Look first with a read, which blocks no
+        // writer: these rows are long gone from most databases, and the scan takes about a second.
+        val hasLegacyRows = runCatching {
+            conn.prepareStatement("SELECT 1 FROM symbol_uses WHERE confidence = 'source-index-match' LIMIT 1").use { ps ->
+                ps.executeQuery().use { it.next() }
+            }
+        }.getOrDefault(true)
+        if (!hasLegacyRows) return
         conn.autoCommit = false
         try {
             conn.prepareStatement("DELETE FROM symbol_uses WHERE confidence = 'source-index-match'").use { ps ->

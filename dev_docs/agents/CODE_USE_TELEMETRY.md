@@ -33,6 +33,16 @@ content-addressed source.
 Capture and analysis are best effort. Full event or analyzer queues increment
 drop counters; SQLite or analyzer failure must not fail compilation or execution.
 
+Every Field on the machine shares the default database, so one Field's writer
+can find the write lock held past the 5 s `busy_timeout`. That `SQLITE_BUSY` is
+transient: the writer rolls its batch back, keeps it, and retries with backoff.
+The summary counts the retries in `writerBusyRetries`, includes the held batch in
+`queueSize`, and puts the busy error in `writerError` and `message` until a
+commit lands. Any other database error stops the writer for the life of the
+process. The summary then reports `enabled: false` with that error in
+`writerError` and `message`, and the Field's console has a
+`code-use telemetry disabled: ...` line.
+
 ## Browser and HTTP API
 
 Open `/code-use` (also served as `/code-use.html`). The page has Timeline,
@@ -100,8 +110,12 @@ failure, malformed JSON, or process failure degrades to
 
 ```bash
 uv run --project . --group backdoor python tools/run_field_tests.py --id examples.code-use.telemetry-store
+uv run --project . --group backdoor python tools/run_field_tests.py --id examples.code-use.writer-busy-recovery
 ```
 
-The smoke stores events in a temporary database and checks hashing, retained
+The first smoke stores events in a temporary database and checks hashing, retained
 failures, analyzer rows, line callers, related source, hot symbols, and early
-document symbols.
+document symbols. The second holds the write lock from another connection through
+two busy timeouts. It checks that the writer stays enabled and reports the wait,
+that it commits every held event once the lock is released, and that the
+per-snippet `unresolved_uses` delete uses `idx_unresolved_uses_snippet`.
