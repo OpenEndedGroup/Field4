@@ -283,6 +283,29 @@ data class ChatTree(
 
     fun block(address: String): ChatBlockEntry? =
         node(address.substringBeforeLast(".b"))?.blocks?.firstOrNull { it.address == address }
+
+    /** Nodes from the root to [id], root first. */
+    fun pathTo(id: String): List<ChatNode> {
+        val byId = nodes.associateBy { it.id }
+        val seen = HashSet<String>()
+        return generateSequence(byId[id]) { n -> n.parent?.takeIf(seen::add)?.let(byId::get) }.toList().reversed()
+    }
+
+    /**
+     * The blocks from [from] to [to] inclusive, in reading order along the branch that leads to [to]: so a range
+     * may start on the shared trunk and end on an abandoned branch. Null when either end does not exist or
+     * [from] does not come before [to] on that branch.
+     */
+    fun span(from: String, to: String): List<ChatBlockEntry>? {
+        val end = block(to) ?: return null
+        val along = pathTo(end.node).flatMap { it.blocks }
+        val i = along.indexOfFirst { it.address == from }
+        val j = along.indexOfFirst { it.address == to }
+        return if (i < 0 || j < i) null else along.subList(i, j + 1)
+    }
+
+    /** The current branch's blocks in reading order. */
+    val headBlocks: List<ChatBlockEntry> get() = headPath.flatMap { it.blocks }
 }
 
 /** The family table the archive uses unless given another: the `ai4-chat-tool-families.json` resource. */

@@ -1,6 +1,7 @@
 package afield.chatlog
 
 import afield.AiChatBlock
+import afield.AiChatRound
 import afield.images
 import afield.parseAiChatBlocks
 import afield.programCalls
@@ -145,6 +146,72 @@ class ChatArchiveTest {
             assertTrue(tree.nodes.none { it.type == "unrecorded" })
         } finally {
             dir.deleteRecursively()
+        }
+    }
+
+    @Test fun roundsAndSourceMarkersAreShared() {
+        val run = parseAiChatBlocks("<<progress>>\nWaiting for model\n<<progress>>\nDocumentGuideAppendRequest finished (1500 ms)\nok\n<<progress>>\nAttachmentRequest failed (0 ms)\nno")
+        assertTrue(AiChatRound.folds(run))
+        assertEquals("2 tool calls · 1.5 s · 1 failed · 1 note · 1 look", AiChatRound(run, ChatToolFamilies.default).line())
+        val lens = parseAiChatBlocks("<<ai>>\n<<source:t-1.b0..t-1.b2, t-2.b1>>\nPlanned it, then a gable.")
+        assertEquals(listOf("t-1.b0..t-1.b2", "t-2.b1"), lens.single().sources)
+        assertEquals("Planned it, then a gable.", lens.single().content)
+    }
+
+    @Test fun agentsReadTheChatByAddress() {
+        val dir = document()
+        try {
+            val tree = ChatArchive.tree(ChatArchive.chats(dir).single())
+            val outline = ChatLogViews.outline(tree)
+            assertTrue("## Turn 1 · t-1.b0" in outline, outline)
+            assertTrue("> plan it" in outline)
+            assertTrue("t-1.b1 reply:" in outline && "Output of box 'Plan' (main)" in outline, "replies carry their image captions")
+            assertTrue("## Abandoned branch t-dead" in outline, "rewound turns are on the map")
+
+            val whole = ChatLogViews.read(tree, null, null)
+            assertNull(whole.next)
+            assertTrue("[t-1.b0] <<you>>\nplan it" in whole.text, whole.text)
+            assertFalse("roof?" in whole.text, "reading with no range follows the current branch")
+            val dead = ChatLogViews.read(tree, "t-1.b0", "t-dead.b2")
+            assertTrue("roof?" in dead.text, "a range can end on an abandoned branch")
+            val paged = ChatLogViews.read(tree, null, null, maxChars = 60)
+            assertNotNull(paged.next)
+            assertNull(tree.span("t-2.b0", "t-dead.b0"), "no stretch crosses from one branch to another")
+
+            assertEquals(listOf("t-2.b1"), ChatLogViews.search(tree, "gable").map { it.address })
+            assertEquals(listOf("t-1.b2", "t-dead.b1"), ChatLogViews.search(tree, "", family = "looking").map { it.address })
+            val images = ChatLogViews.images(tree)
+            assertEquals(listOf("t-1.b1", "t-dead.b2"), images.map { it.address })
+            assertEquals("Output of box 'Plan' (main)", images[0].caption)
+
+            val good = "<<ai>>\n<<source:t-1.b0..t-1.b2>>\nPlanned.\n<<ai>>\n<<source:t-2.b0..t-2.b1>>\nGable."
+            assertEquals(emptyList(), ChatLogViews.lensProblems(tree, good))
+            val stats = ChatLogViews.lensStats(tree, good)
+            assertEquals(5, stats["citedBlocks"])
+            val bad = "<<ai>>\n<<source:t-2.b1..t-1.b0>>\nBackwards.\n<<ai>>\nUncited."
+            assertEquals(1, ChatLogViews.lensProblems(tree, bad).size)
+            assertTrue(ChatLogViews.lensProblems(tree, "<<ai>>\nNothing cited.").any { "no block cites" in it })
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    @Test fun lensesAreStoredBesideTheirBrief() {
+        val dir = document()
+        val lenses = Files.createTempDirectory("lenses").toFile()
+        try {
+            val store = ChatlogStore(listOf(dir), lenses)
+            val id = store.all().map { it.first }.single()
+            assertEquals(dir.name, id, "a document with one chat names it")
+            val tree = store.tree(id)
+            assertSame(tree, store.tree(id), "an unchanged chat is read once")
+            store.writeLens(id, "storyline", "<<ai>>\n<<source:t-1.b0>>\nPlanned.", "one line per turn", mapOf("blocks" to 1))
+            assertEquals(listOf("storyline"), store.lenses(id))
+            assertTrue(store.readLens(id, "storyline")!!.contains("one line per turn"))
+            assertFailsWith<IllegalArgumentException> { store.writeLens(id, "../escape", "x", "", emptyMap()) }
+        } finally {
+            dir.deleteRecursively()
+            lenses.deleteRecursively()
         }
     }
 }

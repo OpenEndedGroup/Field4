@@ -338,7 +338,7 @@ fun aiChatHistoryToHtml(history: String?): String {
         if (turn.isProgress) {
             val end = (i until turns.size).firstOrNull { !turns[it].isProgress } ?: turns.size
             val run = turns.subList(i, end)
-            html.append(if (foldsIntoRound(run)) renderRound(run, roundOrdinal++) else renderProgressRun(run))
+            html.append(if (AiChatRound.folds(run)) renderRound(run, roundOrdinal++) else renderProgressRun(run))
             i = end
             continue
         }
@@ -364,7 +364,9 @@ fun aiChatHistoryToHtml(history: String?): String {
                     "<button type=\"button\" class=\"ai-chat-turn-action\" data-ai-action=\"rewind\" title=\"Rewind to before this message (the rest is kept as a branch)\">rewind</button>" +
                     "</span>"
             } else ""
-            html.append("<div class=\"ai-chat-turn ${turn.role}\"$turnAttrs>" + badge + aiChatMarkdownToHtml(turn.content) + actions + "</div>")
+            // A lens block's citations, for the viewer that draws a line from it to the chat it summarizes.
+            val sourceAttr = if (turn.sources.isNotEmpty()) " data-ai-sources=\"${escapeHtml(turn.sources.joinToString(","))}\"" else ""
+            html.append("<div class=\"ai-chat-turn ${turn.role}\"$turnAttrs$sourceAttr>" + badge + aiChatMarkdownToHtml(turn.content) + actions + "</div>")
         }
     }
     return "<div class=\"ai-chat-thread\">$html</div>"
@@ -396,49 +398,24 @@ private fun renderProgressRun(run: List<AiChatBlock>): String {
     return html.toString()
 }
 
-/** The tool calls a progress block records: a tool program counts as the calls it made. */
-private fun callsOf(block: AiChatBlock): List<AiChatToolCall> =
-    block.programCalls().ifEmpty { listOfNotNull(block.toolCall()) }
-
-/** A run folds into one round when it holds a tool call and something besides it. */
-private fun foldsIntoRound(run: List<AiChatBlock>): Boolean =
-    run.size >= 2 && run.any { it.toolCall() != null }
-
-private fun formatDuration(ms: Long): String = when {
-    ms < 1000 -> "<1 s"
-    ms < 10_000 -> "${(ms / 100) / 10.0} s"
-    ms < 60_000 -> "${ms / 1000} s"
-    ms < 3_600_000 -> "${ms / 60_000} min"
-    else -> "${ms / 3_600_000} h ${(ms % 3_600_000) / 60_000} min"
-}
-
 /**
  * A run of tool activity between two pieces of text, folded to one line: how many calls, how long they took,
  * how many failed, and the families worth naming (notes, recipe calls, edits, build steps, looks). The run's
  * own rendering is inside. While the turn runs, the live item's title follows the summary, shimmering, so
- * the round can stay closed and still show what is happening.
+ * the round can stay closed and still show what is happening. [AiChatRound] (commonMain) does the counting,
+ * so the chat archive describes a round in the same words.
  */
 private fun renderRound(run: List<AiChatBlock>, ordinal: Int): String {
-    val calls = run.flatMap(::callsOf)
-    val ms = run.sumOf { it.toolCall()?.ms ?: 0L }
-    val failed = calls.count { !it.ok } + run.count { it.title.startsWith("Failed") || it.title.startsWith("Error") }
-    val families = toolFamilies
-    val parts = mutableListOf<String>()
-    parts += if (calls.size == 1) "1 tool call" else "${calls.size} tool calls"
-    if (ms > 0) parts += formatDuration(ms)
-    if (failed > 0) parts += "<span class=\"ai-chat-round-failed\">$failed failed</span>"
-    if (families != null) {
-        val counts = calls.groupingBy { families.familyOf(it.name) }.eachCount()
-        for (family in families.families) {
-            val n = counts[family.name] ?: continue
-            if (family.count.size < 2) continue
-            parts += "<span class=\"ai-chat-round-family\" data-family=\"${escapeHtml(family.name)}\" title=\"${escapeHtml(family.label)}\">" +
-                "$n ${escapeHtml(if (n == 1) family.count[0] else family.count[1])}</span>"
-        }
+    val round = AiChatRound(run, toolFamilies)
+    val parts = mutableListOf(round.callsText())
+    if (round.ms > 0) parts += formatAiChatDuration(round.ms)
+    if (round.failed > 0) parts += "<span class=\"ai-chat-round-failed\">${round.failedText()}</span>"
+    for ((family, n) in round.families) {
+        parts += "<span class=\"ai-chat-round-family\" data-family=\"${escapeHtml(family.name)}\" title=\"${escapeHtml(family.label)}\">" +
+            "${escapeHtml(round.familyText(family, n))}</span>"
     }
-    val live = run.lastOrNull { it.role == "progress-open" }
-    val liveHtml = live?.let { " <span class=\"ai-chat-round-live\">— ${shimmerIfLive(it, escapeHtml(it.title.ifBlank { "AI activity" }))}</span>" }.orEmpty()
-    val failedAttr = if (failed > 0) " data-failed=\"$failed\"" else ""
+    val liveHtml = round.live?.let { " <span class=\"ai-chat-round-live\">— ${shimmerIfLive(it, escapeHtml(it.title.ifBlank { "AI activity" }))}</span>" }.orEmpty()
+    val failedAttr = if (round.failed > 0) " data-failed=\"${round.failed}\"" else ""
     return "<details class=\"ai-chat-round\" data-ai-round=\"$ordinal\"$failedAttr>" +
         "<summary><span class=\"ai-chat-round-line\">${parts.joinToString("<span class=\"ai-chat-round-sep\"> · </span>")}</span>$liveHtml</summary>" +
         "<div class=\"ai-chat-round-body\">${renderProgressRun(run)}</div>" +
