@@ -5,7 +5,7 @@ let AI4 agents write **lenses**: shorter, filtered versions of the chat, drawn i
 the chat panel, with lines running across from each summary block to the stretch of the original
 it stands for. Lenses can be stacked, so the hierarchy is a lens of a lens.
 
-Status (2026-10-06): phase 1 built (section 8); phases 2–5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
+Status (2026-10-06): phases 1 and 2 built (sections 8 and 9); phases 3–5 planned. Revised after Marc's notes: we trust the chat (it made a house), so
 there is no fidelity checking. Tool records count only for which tool ran, whether it failed and
 how long it took. What matters is the shape of the chat and the moments the machine itself
 changed: notes, the house playbook, recipes, searches and stabilization.
@@ -184,3 +184,28 @@ theirs inline in `metadata.edn`):
   recorded yet. Several older chats end in one unrecorded status line.
 - Tool time includes calls that hung: house-machine-10's 10.5 h includes `ViewBoxOutput` and
   `InspectGeometryView` calls of 49–50 minutes from the night the connection dropped.
+
+How big the chats really are (o200k tokens, every branch, images as their captions): your
+messages 13 k, replies 63 k, so **77 k tokens of conversation in all twelve chats** (the largest
+house about 10 k). Tool and status lines add 90 k. The 131 M input tokens above are what building
+the houses cost, since each round re-sent its context. A lens can therefore read a whole house's
+text, and a series lens fits in one context; the index and paged reads are for precision, not
+cost.
+
+Model for lens runs: `gpt-6.1-sol`, set per process with `AFIELD_AI_MODEL=gpt-6.1-sol` on the
+playground's Field, not in `~/.afield/ai-models.properties`, which is machine-wide and would move
+the house host (9835) off `gpt-6-astra` too.
+
+## 9. Phase 2: rounds in the live panel
+
+Each run of progress blocks between two pieces of text that holds a tool call folds into one
+`<details class="ai-chat-round">`. Its summary line, in the status row's type, gives calls (a tool
+program counts as the calls it made), time, failures and the families that have a `count` noun in
+the table ("4 tool calls · 22 s · 1 failed · 1 edit · 3 build steps"). Inside is the run as it always
+rendered. A running round stays closed and ends with the live status, shimmering. A round the reader
+opens or closes keeps that state through re-renders (`renderChatMessages`, `__chatRoundStates`,
+numbered by `data-ai-round`). A run of status lines alone stays a status row.
+
+The panel loads the family table by fetch (`aiChatSetToolFamilies`) and re-renders open chats when
+it arrives. On house-machine-10 the panel shows 56 round lines where it showed 125 tool blocks.
+UI regression: `ai-chat-rounds`.

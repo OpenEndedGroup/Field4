@@ -3,6 +3,7 @@ package afield.chatlog
 import afield.AiChatBlock
 import afield.AiChatImage
 import afield.AiChatToolCall
+import afield.AiChatToolFamilies
 import afield.Edn
 import afield.EdnValue
 import afield.images
@@ -108,7 +109,7 @@ object ChatArchive {
     private fun sha256(text: String): String =
         MessageDigest.getInstance("SHA-256").digest(text.toByteArray()).joinToString("") { "%02x".format(it) }
 
-    fun tree(chat: StoredChat, families: ChatToolFamilies = ChatToolFamilies.default): ChatTree {
+    fun tree(chat: StoredChat, families: AiChatToolFamilies = ChatToolFamilies.default): ChatTree {
         val lines = chat.session.lineSequence().filter { it.isNotBlank() }.mapNotNull {
             runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull()
         }.toList()
@@ -150,7 +151,7 @@ object ChatArchive {
         return ChatTree(chat.document, chat.boxId, chat.boxName, head, nodes)
     }
 
-    private fun entry(chat: StoredChat, address: String, nodeId: String, b: AiChatBlock, families: ChatToolFamilies, turn: Int?): ChatBlockEntry {
+    private fun entry(chat: StoredChat, address: String, nodeId: String, b: AiChatBlock, families: AiChatToolFamilies, turn: Int?): ChatBlockEntry {
         val call = b.toolCall()
         val kind = when {
             b.role == "you" -> "user"
@@ -199,7 +200,7 @@ object ChatArchive {
     private fun JsonObject.long(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
 }
 
-/** A tool call with the family [ChatToolFamilies] puts it in. */
+/** A tool call with the family [AiChatToolFamilies] puts it in. */
 @Serializable
 data class ChatCall(val call: AiChatToolCall, val family: String)
 
@@ -283,31 +284,11 @@ data class ChatTree(
         node(address.substringBeforeLast(".b"))?.blocks?.firstOrNull { it.address == address }
 }
 
-/**
- * Tool families from `ai4-chat-tool-families.json` (commonMain resources): which calls write notes, change
- * recipes, edit the design, run builds, look at pictures. First match wins; `*` matches any run of characters.
- */
-class ChatToolFamilies(val families: List<Family>) {
-    @Serializable
-    data class Family(val name: String, val label: String, val purpose: String = "", val match: List<String>)
-
-    @Serializable
-    private data class Catalog(val version: Int, val families: List<Family>)
-
-    private val compiled = families.map { f -> f to f.match.map { glob -> Regex(glob.split('*').joinToString(".*") { Regex.escape(it) }) } }
-
-    fun familyOf(name: String): String = compiled.firstOrNull { (_, globs) -> globs.any { it.matches(name) } }?.first?.name ?: "other"
-
-    fun label(name: String): String = families.firstOrNull { it.name == name }?.label ?: "Other"
-
-    companion object {
-        fun parse(json: String): ChatToolFamilies =
-            ChatToolFamilies(Json { ignoreUnknownKeys = true }.decodeFromString<Catalog>(json).families)
-
-        val default: ChatToolFamilies by lazy {
-            parse(checkNotNull(ChatToolFamilies::class.java.getResourceAsStream("/ai4-chat-tool-families.json")) {
-                "ai4-chat-tool-families.json is missing from the classpath"
-            }.bufferedReader(Charsets.UTF_8).use { it.readText() })
-        }
+/** The family table the archive uses unless given another: the `ai4-chat-tool-families.json` resource. */
+object ChatToolFamilies {
+    val default: AiChatToolFamilies by lazy {
+        AiChatToolFamilies.parse(checkNotNull(ChatToolFamilies::class.java.getResourceAsStream("/ai4-chat-tool-families.json")) {
+            "ai4-chat-tool-families.json is missing from the classpath"
+        }.bufferedReader(Charsets.UTF_8).use { it.readText() })
     }
 }

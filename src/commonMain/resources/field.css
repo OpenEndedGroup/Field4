@@ -1067,6 +1067,53 @@ pre code {
     opacity: 0.8;
 }
 
+/* A round: the tool activity between two pieces of text, folded to one status-row line
+   ("7 tool calls · 3.4 s · 1 failed · 2 notes"). Opened, it shows the activity as it always
+   rendered, under the same rule as the AI's own turns. */
+.ai-chat-round {
+    margin: 2px 6px;
+    color: var(--ai-chat-ai-fg, var(--field-fg-muted));
+    font: 10px/1.5 var(--field-font);
+}
+
+.ai-chat-round > summary {
+    cursor: pointer;
+    list-style-position: inside;
+}
+
+.ai-chat-round-line {
+    opacity: 0.75;
+}
+
+.ai-chat-round-sep {
+    opacity: 0.5;
+}
+
+.ai-chat-round-failed {
+    color: #e9a2a2;
+}
+
+/* The families that change the work or the machine read a step brighter than the rest of the line. */
+.ai-chat-round-family[data-family="notes"],
+.ai-chat-round-family[data-family="recipes"],
+.ai-chat-round-family[data-family="design"] {
+    color: var(--field-fg-strong);
+}
+
+.ai-chat-round-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 4px;
+    padding-left: 4px;
+    border-left: 2px solid var(--ai-chat-ai-rule, var(--field-border-medium));
+}
+
+.ai-chat-round-body > .ai-chat-progress,
+.ai-chat-round-body > .ai-chat-status-row {
+    margin-left: 2px;
+}
+
 .ai-chat-turn.ai {
     align-self: flex-start;
     text-align: left;

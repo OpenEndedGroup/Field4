@@ -1,11 +1,15 @@
 {
   "version": 1,
-  "note": "Groups AI4 tool calls by what they do to the work, for the chat archive (afield.chatlog). Names are as aiChatToolName gives them: no 24-hex wire suffix, no trailing 'Request'. A pattern ending in '*' matches a prefix. The first family that matches wins, so list narrower families first. Entries starting _field_ are box-authored tools (aiTool{}); the house-sketch kit's are listed because its chats are the first corpus.",
+  "note": "Groups AI4 tool calls by what they do to the work, for the chat archive (afield.chatlog). Names are as aiChatToolName gives them: no 24-hex wire suffix, no trailing 'Request'. A pattern ending in '*' matches a prefix. The first family that matches wins, so list narrower families first. Entries starting _field_ are box-authored tools (aiTool{}); the house-sketch kit's are listed because its chats are the first corpus. 'count' gives the nouns a chat-panel round summary uses ('2 notes'); families without it are not counted there.",
   "families": [
     {
       "name": "notes",
       "label": "Notes and playbook",
       "purpose": "The agent writes down what it decided or learned: document guides, geometry findings and their replies, its scratchpad and checklist.",
+      "count": [
+        "note",
+        "notes"
+      ],
       "match": [
         "DocumentGuideCreate",
         "DocumentGuideAppend",
@@ -21,6 +25,10 @@
       "name": "recipes",
       "label": "Recipes and search",
       "purpose": "The machine itself changes: recipe and routing-search candidates are proposed, tested against fixtures, applied or rebaselined.",
+      "count": [
+        "recipe call",
+        "recipe calls"
+      ],
       "match": [
         "_field_recipe_*",
         "_field_routing_candidate*",
@@ -32,6 +40,10 @@
       "name": "design",
       "label": "Design edits",
       "purpose": "The thing being made changes: sketch and services edits, box properties, files, new boxes.",
+      "count": [
+        "edit",
+        "edits"
+      ],
       "match": [
         "_field_*_edit*",
         "SetBoxProperty",
@@ -46,6 +58,10 @@
       "name": "builds",
       "label": "Builds and stabilization",
       "purpose": "Long-running work is started, waited on and inspected until it settles.",
+      "count": [
+        "build step",
+        "build steps"
+      ],
       "match": [
         "StartStudyBuild",
         "WaitStudyBuild",
@@ -61,6 +77,10 @@
       "name": "looking",
       "label": "Looking",
       "purpose": "The agent looks at pictures of its work: box output and geometry views, attachments.",
+      "count": [
+        "look",
+        "looks"
+      ],
       "match": [
         "ViewBoxOutput",
         "InspectGeometryView",
