@@ -39,6 +39,10 @@ class KeySegment internal constructor(
     val v0: Double,
     /** The value of the next key. */
     val v1: Double,
+    /** The key before this segment's first, if there is one: for shapes that look past the segment. */
+    val before: Keyframe? = null,
+    /** The key after this segment's second, if there is one. */
+    val after: Keyframe? = null,
 ) {
     /** The segment's length in time. */
     val span: Double get() = t1 - t0
@@ -59,6 +63,8 @@ class KeyInterpolant internal constructor(
     val boxId: String,
     val source: String,
     @Volatile private var block: (KeySegment.() -> Double)?,
+    /** Where the type sits in the key menu; [KeyTypeLibrary] entries say, a box's own are "This box". */
+    val entry: KeyTypeEntry? = null,
 ) {
     /** The value of segment [s] under this type. A definition that cannot run gives the straight line. */
     fun evaluate(s: KeySegment): Double {
@@ -168,9 +174,16 @@ internal fun interpolantsFor(box: Box?): Map<String, KeyInterpolant> {
 
 /** The key type [name] in [box]: this run's definition, else one saved with the box. */
 internal fun interpolantNamed(box: Box?, name: String): KeyInterpolant? {
-    if (box == null) return null
-    liveInterpolants[box.id]?.get(name)?.let { return it }
-    return interpolantsFor(box)[name]
+    if (box != null) {
+        liveInterpolants[box.id]?.get(name)?.let { return it }
+        interpolantsFor(box)[name]?.let { return it }
+    }
+    return libraryInterpolants[name]
+}
+
+/** The library's types, as interpolants: every editor has them. */
+internal val libraryInterpolants: Map<String, KeyInterpolant> by lazy {
+    KeyTypeLibrary.entries.associate { it.name to KeyInterpolant(it.name, "", "", it.shape, it) }
 }
 
 /** The `interpolant("name") { body }` macro: keeps the body's source next to the lambda. */

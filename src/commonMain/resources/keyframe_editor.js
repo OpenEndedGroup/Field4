@@ -496,7 +496,9 @@ const KF_MENU_CSS = `
   position: fixed;
   z-index: 2147483600;
   min-width: 200px;
-  max-width: 280px;
+  max-width: 340px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   background: #0a0d13;
   color: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -563,6 +565,33 @@ const KF_MENU_CSS = `
   cursor: pointer;
 }
 .kfm-type svg { width: 18px; height: 15px; }
+.kfm-types-wide { grid-template-columns: repeat(4, 1fr); }
+.kfm-section {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 6px 6px 2px;
+}
+.kfm-ease { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; padding: 0 4px 2px; }
+.kfm-ease-row { display: flex; align-items: center; gap: 1px; }
+.kfm-ease-row > span { flex: 1; font-size: 10px; color: rgba(255, 255, 255, 0.65); }
+.kfm-ease-type {
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+.kfm-ease-type svg { width: 16px; height: 14px; }
+.kfm-ease-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
+.kfm-ease-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
 .kfm-type:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
 .kfm-type.is-active { color: #6ae3ff; border-color: #6ae3ff; }
 `;
@@ -1382,19 +1411,62 @@ export class KeyframeEditor {
                                 context.inputs = { time: timeInput, value: valueInput };
                         }
 
-                        const types = doc.createElement("div");
-                        types.className = "kfm-types";
-                        Object.entries(this.options.types).forEach(([type, meta]) => {
+                        // Types: the built-in five, then the library's groups, then this box's own.
+                        const typeButton = (type, meta, className, text) => {
                                 const b = doc.createElement("button");
                                 b.type = "button";
-                                b.className = "kfm-type" + (target.type === type ? " is-active" : "");
+                                b.className = className + (target.type === type ? " is-active" : "");
                                 b.title = meta.label ?? type;
-                                b.innerHTML = (KF_TYPE_ICONS[type] || "") + `<span></span>`;
-                                b.lastChild.textContent = (meta.label ?? type).replace("Bezier ", "").replace(/[()]/g, "");
+                                b.innerHTML = (KF_TYPE_ICONS[type] || "") + (text != null ? `<span></span>` : "");
+                                if (text != null) b.lastChild.textContent = text;
                                 b.addEventListener("click", () => { close(); this.setKeyframeTypeBatch(ids, type); });
-                                types.appendChild(b);
+                                return b;
+                        };
+                        const section = (title) => {
+                                const el = doc.createElement("div");
+                                el.className = "kfm-section";
+                                el.textContent = title;
+                                menu.appendChild(el);
+                        };
+                        const entries = Object.entries(this.options.types);
+                        const basic = doc.createElement("div");
+                        basic.className = "kfm-types";
+                        entries.filter(([, m]) => !m.custom).forEach(([type, meta]) => {
+                                basic.appendChild(typeButton(type, meta, "kfm-type", (meta.label ?? type).replace("Bezier ", "").replace(/[()]/g, "")));
                         });
-                        menu.appendChild(types);
+                        menu.appendChild(basic);
+
+                        const groups = new Map();
+                        entries.filter(([, m]) => m.custom).forEach(([type, meta]) => {
+                                if (!groups.has(meta.group)) groups.set(meta.group, []);
+                                groups.get(meta.group).push([type, meta]);
+                        });
+                        groups.forEach((members, title) => {
+                                section(title);
+                                if (members.every(([, m]) => m.family)) {
+                                        // A table: one family per row, its in / out / in-out across.
+                                        const table = doc.createElement("div");
+                                        table.className = "kfm-ease";
+                                        const families = [...new Set(members.map(([, m]) => m.family))];
+                                        families.forEach((family) => {
+                                                const cell = doc.createElement("div");
+                                                cell.className = "kfm-ease-row";
+                                                const name = doc.createElement("span");
+                                                name.textContent = family.toLowerCase();
+                                                cell.appendChild(name);
+                                                members.filter(([, m]) => m.family === family).forEach(([type, meta]) => {
+                                                        cell.appendChild(typeButton(type, meta, "kfm-ease-type", null));
+                                                });
+                                                table.appendChild(cell);
+                                        });
+                                        menu.appendChild(table);
+                                } else {
+                                        const grid = doc.createElement("div");
+                                        grid.className = "kfm-types kfm-types-wide";
+                                        members.forEach(([type, meta]) => grid.appendChild(typeButton(type, meta, "kfm-type", meta.label ?? type)));
+                                        menu.appendChild(grid);
+                                }
+                        });
 
                         divider();
                         item("Copy", shortcut("C"), () => this.copySelection());
@@ -2016,9 +2088,9 @@ export class KeyframeEditor {
          */
         setCustomTypes(list) {
                 if (!Array.isArray(list)) return;
-                list.forEach(({ name, icon }) => {
+                list.forEach(({ name, icon, label, group, family, variant }) => {
                         if (!name) return;
-                        this.options.types[name] = { label: name, custom: true };
+                        this.options.types[name] = { label: label || name, custom: true, group: group || "This box", family, variant };
                         if (Array.isArray(icon) && icon.length > 1) {
                                 const points = icon
                                     .map(([u, v]) => `${(2 + u * 12).toFixed(2)},${(12 - Math.max(-0.2, Math.min(1.2, v)) * 10).toFixed(2)}`)
@@ -3016,7 +3088,9 @@ export class KeyframeEditor {
          */
         fitToKeyframes() {
                 const times = this.keyframes.map((kf) => kf.time).filter(Number.isFinite);
-                const values = this.keyframes.map((kf) => kf.value).filter(Number.isFinite);
+                // The curve, not just its keys: an elastic or a spring goes well past them.
+                const values = [...this.keyframes.map((kf) => kf.value), ...this.sampleCurve({ stepsPerSegment: 24 }).map((s) => s.value)]
+                    .filter(Number.isFinite);
                 if (!times.length) return false;
                 const pad = (min, max, ratio) => {
                         if (Math.abs(max - min) < 1e-6) {

@@ -1136,8 +1136,9 @@ The keyframe editor, `keyframes(...)`, as the three boxes of its page,
 the editor's playhead with `setTime` and sending `evaluateValueAt` to a meter, so you can edit the
 curve while it plays. `shape` starts a curve with one key of each type through
 `keys = listOf(Keyframe(...))`. `smoothed` draws a smoothed copy of its curve as an overlay and keeps
-it up to date with `onChange`. CI launches `brightness`, executes the other two, advances 90 frames,
-and stops.
+it up to date with `onChange`. `custom types` defines an overshoot, a wobble and a chaotic scribble
+(the logistic map, pinned to both keys) as key types of its own with `interpolant(...)`, which then appear in the key menu. CI launches `brightness`, executes the
+other three, advances 90 frames, and stops.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
 

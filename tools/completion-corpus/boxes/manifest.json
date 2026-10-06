@@ -256,6 +256,7 @@
   {"doc": "keyframe_code_blend", "box": "kfb_runtime", "codeSha256": "0af5ed8c1cb270a3", "codeLines": 82, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_code_blend", "box": "kfb_static", "codeSha256": "0988b322a05f053e", "codeLines": 26, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_editor", "box": "kf_brightness", "codeSha256": "0b85846252750011", "codeLines": 14, "receivers": ["afield.Box"], "preamble": ""},
+  {"doc": "keyframe_editor", "box": "kf_custom", "codeSha256": "e766ad1cedd57598", "codeLines": 11, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_editor", "box": "kf_shape", "codeSha256": "03f091b3a3962d99", "codeLines": 9, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_editor", "box": "kf_smoothed", "codeSha256": "11394166c34fc7c0", "codeLines": 9, "receivers": ["afield.Box"], "preamble": ""},
   {"doc": "keyframe_key_discovery", "box": "kf_before_after", "codeSha256": "d03d699bfb9d73ab", "codeLines": 69, "receivers": ["afield.Box"], "preamble": ""},

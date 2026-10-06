@@ -162,4 +162,36 @@ class KeyframeEvaluatorTest {
         assertEquals("lerp(smoothstep(u))", org.json.JSONObject(box.getPropertyRaw("keyframeInterpolants") as String).getString("ease"))
         assertTrue(Box.ioPersistentProperties.any { it.toRegex().matches("keyframeInterpolants") }, "keyframeInterpolants is not saved")
     }
+
+    @Test
+    fun everyLibraryTypeStartsAndEndsOnItsKeys() {
+        val before = Keyframe(-1.0, 0.9, "linear")
+        val after = Keyframe(3.0, 0.1, "linear")
+        KeyTypeLibrary.entries.forEach { e ->
+            listOf(null to null, before to after).forEach { (b, a) ->
+                val start = e.shape(KeySegment(0.0, 0.0, 0.0, 2.0, 0.2, 0.7, b, a))
+                val end = e.shape(KeySegment(2.0, 1.0, 0.0, 2.0, 0.2, 0.7, b, a))
+                assertTrue(abs(start - 0.2) < 1e-6, "${e.name} starts at $start, not 0.2")
+                assertTrue(abs(end - 0.7) < 1e-6, "${e.name} ends at $end, not 0.7")
+                (0..50).forEach { i ->
+                    val v = e.shape(KeySegment(i / 25.0, i / 50.0, 0.0, 2.0, 0.2, 0.7, b, a))
+                    assertTrue(v.isFinite(), "${e.name} is not finite at u=${i / 50.0}")
+                }
+            }
+        }
+        assertTrue(KeyTypeLibrary.entries.size >= 50, "the library has ${KeyTypeLibrary.entries.size} types")
+    }
+
+    @Test
+    fun theMonotoneSplinesDoNotOvershoot() {
+        val box = Box("kf_mono")
+        listOf("spline.monotone", "spline.steffen").forEach { type ->
+            val k = KeyframeEvaluator("""[{"time":0.0,"value":0.0,"type":"$type"},{"time":1.0,"value":1.0,"type":"$type"},{"time":2.0,"value":1.0,"type":"$type"},{"time":3.0,"value":0.0,"type":"linear"}]""")
+            k.associatedBox = box
+            (0..300).forEach { i ->
+                val v = k.evaluateValueAt(i / 100.0)
+                assertTrue(v >= -1e-9 && v <= 1.0 + 1e-9, "$type overshoots: $v at ${i / 100.0}")
+            }
+        }
+    }
 }
