@@ -87,7 +87,7 @@ Field sits in the middle of all this. A box can draw, which is LeWitt's directio
 
 ## Reading by intersection
 
-Cutting a drawing with a line is a good way to read it. A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
+Cutting a drawing with a line is a good way to read it. It also makes a drawn line a value over time, the freehand counterpart of placing keys in [the keyframe editor](keyframe_editor.md). A vertical line through a score picks out an instant, and a horizontal one picks out a pitch. `notation.space` names a region and says what its axes mean. The region can be a frame, a box, or a rectangle:
 
 ```diffstatic {data-lang=kotlin}
 val score = notation.space("score", x = 0.0..8.0, y = 84.0..48.0)   // eight beats; MIDI 84 at the top
