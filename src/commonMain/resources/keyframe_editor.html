@@ -64,12 +64,97 @@
                 },
                 onChange() {
                         broadcastKeyframes('change');
+                        shareExtent();
                 },
                 onPreview(keyframes) {
                         // Shapes for a drag in progress: the box answers with a 'segments' message.
                         sendMessage({ type: 'preview', keyframes });
                 },
+                // Linked lanes: the other editors in this box share one time axis.
+                onViewChange(range) {
+                        linkState.manual = true;
+                        postLink({ kind: 'view', range });
+                },
+                onFit() {
+                        linkState.manual = false;
+                        postLink({ kind: 'auto' });
+                        applyLinkedView();
+                },
+                onHover(time) {
+                        postLink({ kind: 'hover', time });
+                },
         });
+
+        // ── Linked lanes ───────────────────────────────────────────────────────────────
+        // Every editor of one box (or one channel group within it) is on a BroadcastChannel named
+        // for that group. Until someone pans or zooms, each frames the time span of all their keys
+        // together, which comes out the same in every lane; a pan or zoom in any lane is then
+        // adopted by the others, and Fit the curve returns them all to framing everything.
+        const linkGroup = (urlParams.get('group') || '').trim();
+        const link = linkGroup && typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('kf-link:' + linkGroup) : null;
+        const linkState = { manual: false, extents: new Map() };
+
+        function postLink(message) {
+                if (link) link.postMessage({ ...message, from: clientUid });
+        }
+
+        function linkedTimes() {
+                const times = [];
+                linkState.extents.forEach((extent, from) => {
+                        if (from !== clientUid && Array.isArray(extent)) times.push(...extent);
+                });
+                return times;
+        }
+
+        function applyLinkedView() {
+                editor.linkedTimes = linkedTimes();
+                if (!linkState.manual) {
+                        editor.fitToKeyframes();
+                        editor.render();
+                }
+        }
+
+        function shareExtent() {
+                const extent = editor.keyTimeExtent();
+                linkState.extents.set(clientUid, extent);
+                postLink({ kind: 'extent', extent });
+        }
+
+        if (link) {
+                link.onmessage = ({ data }) => {
+                        if (!data || data.from === clientUid) return;
+                        switch (data.kind) {
+                                case 'hello':
+                                        // A lane has just opened: tell it our keys, and our view if it is chosen.
+                                        shareExtent();
+                                        if (linkState.manual) postLink({ kind: 'view', range: editor.viewTimeRange });
+                                        break;
+                                case 'extent':
+                                        linkState.extents.set(data.from, data.extent);
+                                        applyLinkedView();
+                                        break;
+                                case 'view':
+                                        if (!Array.isArray(data.range)) break;
+                                        linkState.manual = true;
+                                        editor.setViewTimeRange(data.range, { render: false });
+                                        editor.render();
+                                        break;
+                                case 'auto':
+                                        linkState.manual = false;
+                                        applyLinkedView();
+                                        break;
+                                case 'hover':
+                                        editor.setLinkedCursor(data.time);
+                                        break;
+                                case 'bye':
+                                        linkState.extents.delete(data.from);
+                                        applyLinkedView();
+                                        break;
+                        }
+                };
+                window.addEventListener('pagehide', () => postLink({ kind: 'bye' }));
+                postLink({ kind: 'hello' });
+        }
 
         // Resize the editor when the iframe / container is resized
         if (typeof ResizeObserver !== 'undefined') {
@@ -290,12 +375,19 @@
                                 derived = true;
                         }
                 });
-                fitViewToKeyframes(editor.keyframes);
+                if (link) {
+                        // A linked lane frames all the lanes' keys, unless someone has chosen a view.
+                        editor.linkedTimes = linkedTimes();
+                        if (!linkState.manual) fitViewToKeyframes(editor.keyframes);
+                } else {
+                        fitViewToKeyframes(editor.keyframes);
+                }
                 editor.refresh({ notify: false });
                 syncState.isApplyingRemote = false;
                 if (derived) editor.refresh({ record: false });
                 // Keys from the box (a run, or setKeys from code) are where undo starts.
                 editor.resetHistory();
+                shareExtent();
                 if (typeof playheadOverride === 'number') {
                         applyRemotePlayhead(playheadOverride);
                 }
