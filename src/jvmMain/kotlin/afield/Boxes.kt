@@ -585,6 +585,8 @@ open class Box(val id: String, val output: DefaultOutput = DefaultOutput()) : Ha
             // The keys a keyframes(...) editor holds, as {name: [key, ...]} JSON (afield/math/keyframes.kt).
             // Without this entry an edited curve lived only as long as the Field process.
             "keyframeData",
+            // Custom key types (interpolant(...), afield/math/keyframeInterpolants.kt) as {name: source}.
+            "keyframeInterpolants",
             "ai4_auto_name",
             "ai4_auto_name_signature",
             "ai4_chat_history",

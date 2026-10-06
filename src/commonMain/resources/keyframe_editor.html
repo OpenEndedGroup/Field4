@@ -228,7 +228,15 @@
                         return;
                 }
 
+                if (message.type === 'segments') {
+                        editor.setCustomSegments(message.segments);
+                        return;
+                }
+
                 if (Array.isArray(message.keyframes) || message.type === 'keyframes' || message.type === 'state') {
+                        // Custom key types first: a key of an unknown type would be read as linear.
+                        if (Array.isArray(message.types)) editor.setCustomTypes(message.types);
+                        if (Array.isArray(message.segments)) editor._customSegments = message.segments;
                         applyRemoteKeyframes(message.keyframes, message.playhead);
                         return;
                 }

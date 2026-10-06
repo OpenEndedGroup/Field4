@@ -2010,6 +2010,38 @@ export class KeyframeEditor {
                 }
         }
 
+        /**
+         * The key types a box defined with interpolant(...): each becomes a type in the menu, drawn
+         * with a small picture of its shape.
+         */
+        setCustomTypes(list) {
+                if (!Array.isArray(list)) return;
+                list.forEach(({ name, icon }) => {
+                        if (!name) return;
+                        this.options.types[name] = { label: name, custom: true };
+                        if (Array.isArray(icon) && icon.length > 1) {
+                                const points = icon
+                                    .map(([u, v]) => `${(2 + u * 12).toFixed(2)},${(12 - Math.max(-0.2, Math.min(1.2, v)) * 10).toFixed(2)}`)
+                                    .join(" ");
+                                KF_TYPE_ICONS[name] = `<svg viewBox="0 0 16 14" xmlns="http://www.w3.org/2000/svg"><polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+                        }
+                });
+        }
+
+        /** Sampled shapes of the custom segments, as the box last computed them. */
+        setCustomSegments(list) {
+                this._customSegments = Array.isArray(list) ? list : [];
+                this.render();
+        }
+
+        customSegmentFor(prev, next) {
+                const close = (a, b) => Math.abs(a - b) <= 1e-6 * Math.max(1, Math.abs(a), Math.abs(b));
+                const found = (this._customSegments || []).find((s) =>
+                        s.type === prev.type && close(s.t0, prev.time) && close(s.v0, prev.value) &&
+                        close(s.t1, next.time) && close(s.v1, next.value));
+                return found ? found.samples : null;
+        }
+
         getHandleModeForType(type) {
                 return this.options.types[type]?.handleMode ?? null;
         }
@@ -2786,6 +2818,20 @@ export class KeyframeEditor {
                                 continue;
                         }
                         const span = Math.max(next.time - prev.time, EPSILON);
+                        if (this.options.types[prev.type]?.custom) {
+                                // A type defined in Kotlin (interpolant(...)): the box sends its shape,
+                                // sampled, for the keys either side. While those keys are being dragged
+                                // there is no matching shape yet, and the segment is drawn straight.
+                                const shape = this.customSegmentFor(prev, next);
+                                if (shape) {
+                                        shape.forEach(([time, value]) => {
+                                                if (time > samples[samples.length - 1].time) samples.push({ time, value });
+                                        });
+                                } else {
+                                        samples.push({ time: next.time, value: next.value });
+                                }
+                                continue;
+                        }
                         if (prev.type === "linear") {
                                 for (let step = 1; step <= stepsPerSegment; step += 1) {
                                         const u = step / stepsPerSegment;

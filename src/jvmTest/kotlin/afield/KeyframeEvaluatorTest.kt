@@ -134,4 +134,32 @@ class KeyframeEvaluatorTest {
         assertEquals(1, KeyframeEvaluator(loadKeyframeData(box, "x")!!).getKeyframeCount())
         near(1.0, k.evaluateValueAt(5.0))
     }
+
+    @Test
+    fun aCustomKeyTypeShapesTheSegmentThatLeavesIt() {
+        val box = Box("kf_custom")
+        box.registerInterpolant("square", "u * u") { lerp(u * u) }
+        val k = KeyframeEvaluator("""[{"time":0.0,"value":0.0,"type":"square"},{"time":2.0,"value":1.0,"type":"linear"}]""")
+        k.associatedBox = box
+        near(0.25, k.evaluateValueAt(1.0))            // u = 0.5, u² = 0.25
+        near(0.5, k.evaluateDerivativeAt(1.0), 1e-4)   // d/dt of (t/2)² at t = 1
+        near(1.0, k.evaluateValueAt(2.0))
+    }
+
+    @Test
+    fun anUndefinedKeyTypeIsAStraightLine() {
+        val k = KeyframeEvaluator("""[{"time":0.0,"value":0.0,"type":"nobody-defined-this"},{"time":1.0,"value":1.0,"type":"linear"}]""")
+        k.associatedBox = Box("kf_undefined")
+        near(0.3, k.evaluateValueAt(0.3))
+    }
+
+    @Test
+    fun theInterpolantMacroKeepsTheSourceAndTheSourceIsSavedWithTheBox() {
+        val box = Box("kf_macro")
+        val insert = box.macro_interpolant(listOf("(\"ease\")", " { lerp(smoothstep(u)) }"))!!
+        assertEquals("registerInterpolant(\"ease\", \"lerp(smoothstep(u))\") {\nlerp(smoothstep(u))\n}", insert.here)
+        box.registerInterpolant("ease", "lerp(smoothstep(u))") { lerp(smoothstep(u)) }
+        assertEquals("lerp(smoothstep(u))", org.json.JSONObject(box.getPropertyRaw("keyframeInterpolants") as String).getString("ease"))
+        assertTrue(Box.ioPersistentProperties.any { it.toRegex().matches("keyframeInterpolants") }, "keyframeInterpolants is not saved")
+    }
 }
