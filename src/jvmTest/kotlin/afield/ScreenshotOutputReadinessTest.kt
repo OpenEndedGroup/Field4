@@ -244,4 +244,45 @@ class ScreenshotOutputReadinessTest {
             assertTrue(failure.message!!.contains("did not answer within $wallClock ms"), failure.message)
         }
     }
+
+    // ---- the docs video path ----------------------------------------------------------------
+    //
+    // The video recorder waits for two painted frames after clearing a box's presentation and
+    // before every movie frame, the latter with the Field runloop parked as well. Each wait used to
+    // be a bare double-RAF evaluate, the same shape as the one that held the Playwright thread for
+    // 50 minutes.
+
+    @Test fun videoPaintWaitAnswersOnARenderingPage() = withPage(realOutput) { page ->
+        // A loaded host may be slow to schedule Chromium; the timeout leaves it room.
+        awaitPaintedFrames(page, "video paint", timeoutMs = 5_000)
+    }
+
+    @Test fun videoPaintWaitFailsOnAPageThatRendersNoFrames() = withPage(
+        realOutput, "window.requestAnimationFrame = () => 0;"
+    ) { page ->
+        val timeoutMs = 700
+        val started = System.nanoTime()
+        val failure = assertFailsWith<IllegalStateException> { awaitPaintedFrames(page, "video paint", timeoutMs) }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        // The page's own timer answers, before the driver's wall clock would.
+        assertTrue(elapsedMs < timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS, "took $elapsedMs ms: ${failure.message}")
+        assertTrue(
+            failure.message!!.contains("video paint: the page rendered no frame within $timeoutMs ms"),
+            failure.message
+        )
+        // The page still answers.
+        assertTrue(page.evaluate("() => document.querySelector('.box') !== null") == true)
+    }
+
+    @Test fun videoPaintWaitOnAPageThatCannotRunTimersIsStoppedByTheDriver() = withPage(
+        realOutput, "window.requestAnimationFrame = () => 0; window.setTimeout = () => 0;"
+    ) { page ->
+        val timeoutMs = 700
+        val wallClock = timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS
+        val started = System.nanoTime()
+        val failure = assertFailsWith<IllegalStateException> { awaitPaintedFrames(page, "video paint", timeoutMs) }
+        val elapsedMs = (System.nanoTime() - started) / 1_000_000
+        assertTrue(elapsedMs < wallClock + 10_000L, "took $elapsedMs ms: ${failure.message}")
+        assertTrue(failure.message!!.contains("video paint did not answer within $wallClock ms"), failure.message)
+    }
 }

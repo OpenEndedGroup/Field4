@@ -2070,8 +2070,43 @@ private suspend fun clearVideoPresentation(
             }""".trimIndent(),
             mapOf("uid" to uid, "clearOutputContents" to clearOutputContents)
         )
-        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+        awaitPaintedFrames(page, "docs video: painting the cleared presentation of box $uid")
     }
+}
+
+/**
+ * How long a docs video capture waits for the page to paint before failing the capture.
+ *
+ * Generous for a heavy WebGL scene, whose frame can take seconds, but finite: the frame loop of
+ * [recordFrameSynchronousToMp4] holds both the Field runloop and the one "afield-playwright" thread
+ * while it waits.
+ */
+private const val VIDEO_PAINT_TIMEOUT_MS = 15_000
+
+/**
+ * Wait until the page has painted the state already in its DOM: two animation frames, since the
+ * first callback runs before that frame's paint and the second after it.
+ *
+ * requestAnimationFrame never fires on a page that is not rendering, and a bare `page.evaluate` of
+ * that wait has no timeout (see [evaluateWithin]). Here the page's own timer gives up after
+ * [timeoutMs], and the driver's wall clock [SCREENSHOT_PREP_DRIVER_MARGIN_MS] later gives up on a
+ * page that cannot run timers either. Both throw, naming [what].
+ */
+internal fun awaitPaintedFrames(page: Page, what: String, timeoutMs: Int = VIDEO_PAINT_TIMEOUT_MS) {
+    val painted = evaluateWithin(
+        page,
+        """(timeoutMs) => new Promise((resolve) => {
+            const timer = setTimeout(() => resolve(false), timeoutMs);
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                clearTimeout(timer);
+                resolve(true);
+            }));
+        })""",
+        timeoutMs,
+        timeoutMs + SCREENSHOT_PREP_DRIVER_MARGIN_MS,
+        what
+    )
+    check(painted == true) { "$what: the page rendered no frame within $timeoutMs ms" }
 }
 
 /**
@@ -2491,8 +2526,8 @@ private suspend fun recordFrameSynchronousToMp4(
                         // `send(set-output)` is asynchronous. Without this barrier, frame N can
                         // contain output N in one run and output N-1 in another even though the
                         // simulation itself is identical. The browser ACK is scheduled only after
-                        // its output handler has mutated the DOM; two RAFs below then guarantee a
-                        // paint of that acknowledged state.
+                        // its output handler has mutated the DOM; awaitPaintedFrames below then
+                        // guarantees a paint of that acknowledged state.
                         withTimeout(10_000) {
                             while (!info.outputsDelivered()) delay(1)
                         }
@@ -2501,7 +2536,7 @@ private suspend fun recordFrameSynchronousToMp4(
                         }
                         // Let websocket output and layout reach a painted browser frame while
                         // Field itself remains parked at this exact runloop boundary.
-                        page.evaluate("() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))")
+                        awaitPaintedFrames(page, "docs video: painting frame ${frames.size + 1} of $targetFrames")
                         if (trimEditorToContent) {
                             editorContentBottom(page)?.let { if (it > contentBottom) contentBottom = it }
                         }
