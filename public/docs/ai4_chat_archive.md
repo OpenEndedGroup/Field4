@@ -88,7 +88,7 @@ Then ask, in that box's AI4 chat, for the lens you want, for example: "write a s
 
 `showChatLens(chat, lens)` shows a lens beside its chat in the box's `lens` output channel. The box's document needs to have run `registerChatlogTools` first, which this box does itself:
 
-```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/viewer.png" capture="window" embed=true w="900" h="50" wait="4.0" timeout="120" name="chat-lens-viewer" clip="0,0,2210,2600" alt="The lens viewer: the storyline lens on the left, the harbour chat on the right with its tool calls folded into round lines, and curved bands between them joining each lens block to the stretch of the chat it summarizes"}
+```diffstatic_runner {data-lang=kotlin screenshot="assets/ai4_chat_archive/viewer.png" capture="window" embed=true w="900" h="50" wait="4.0" timeout="120" name="chat-lens-viewer" clip="0,0,2210,1460" alt="The lens viewer: the storyline lens on the left, the harbour chat on the right with its tool calls folded into round lines, and curved bands between them joining each lens block to the stretch of the chat it summarizes"}
 import afield.chatlog.*
 import java.io.File
 

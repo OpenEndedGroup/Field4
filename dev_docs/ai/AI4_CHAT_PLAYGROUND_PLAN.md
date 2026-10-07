@@ -324,7 +324,7 @@ The series lens across houses, two ways (all twelve outlines are 80 k tokens):
 640 px, no `ai4_blobs/state/`), a hand-written `storyline` lens, and a `demo/` document of the page's four boxes.
 It replaced an invented `garden-shed` fixture at the human's request. Capture notes: `println` output is inline, not a panel, so the
 fences `display(...)` a `<pre>`; the viewer fence uses `capture="window"`, and its `clip` is in CSS px at the
-runner's 0.56 window scale, so `clip="0,0,2210,2600"` is the lens channel; `trim` cannot crop the grained
+runner's 0.56 window scale, so `clip="0,0,2210,1460"` is the lens channel; `trim` cannot crop the grained
 canvas background. When the lens markup or viewer changes, recapture with
 `FIELD_DOCS_RUNNER_MODE=always ... --page ai4_chat_archive.md` and update the lens record's stats from the
 `stats.png` capture.
