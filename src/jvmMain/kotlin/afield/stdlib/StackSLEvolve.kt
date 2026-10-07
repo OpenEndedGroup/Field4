@@ -196,9 +196,12 @@ class StackSLPalette(
     private val byKind: Map<StackSLWordKind, List<StackSLWord>> = words.groupBy { it.kind }
     private val kindOfToken: Map<String, StackSLWordKind> = words.associate { it.token to it.kind }
 
-    /** The modelled kind of [token]; a token that parses as a number is a [StackSLWordKind.PUSH]. */
+    /**
+     * The modelled kind of [token]; a token that parses as a number, or a vector literal such as
+     * `[0.9,0.1,0.1]` (which a proposed program may carry), is a [StackSLWordKind.PUSH].
+     */
     fun kindOf(token: String): StackSLWordKind =
-        kindOfToken[token] ?: if (isNumber(token)) StackSLWordKind.PUSH else StackSLWordKind.UNARY
+        kindOfToken[token] ?: if (isNumber(token) || VECTOR_LITERAL.matches(token)) StackSLWordKind.PUSH else StackSLWordKind.UNARY
 
     /** How many values [token] is modelled to consume. */
     fun consumes(token: String): Int = when (kindOf(token)) {
@@ -270,6 +273,9 @@ class StackSLPalette(
 
         /** A literal, group 1 the number and group 2 the suffix (`t`, `s3`, `c2`, …). */
         private val NUMBER = Regex("""(\d+(?:\.\d+)?)([a-z]\d*)?""")
+
+        /** A bracketed numeric vector literal, `[x]` to `[x,y,z,w]`; not a `[2z,1y]` stack selector. */
+        private val VECTOR_LITERAL = Regex("""\[-?\d*\.?\d+(?:,-?\d*\.?\d+){0,3}]""")
 
         /**
          * The default vocabulary: 96 words across the four kinds.
@@ -779,6 +785,16 @@ object StackSLTargets {
         }
     }
 
+    /** The built-in target called [name] at [dim], or `null` for a name that is not one of the five. */
+    fun byName(name: String, dim: Int): StackSLTarget? = when (name) {
+        "spot" -> spot(dim)
+        "rings" -> rings(dim)
+        "bands" -> bands(dim)
+        "checker" -> checker(dim)
+        "quadrants" -> quadrants(dim)
+        else -> null
+    }
+
     /** All five at [dim] square, in the order the contact sheet shows them. */
     fun all(dim: Int): List<StackSLTarget> =
         listOf(spot(dim), rings(dim), bands(dim), checker(dim), quadrants(dim))
@@ -900,10 +916,10 @@ class StackSLScoreCache {
     @Synchronized
     internal fun claim(
         target: StackSLTarget, dim: Int, time: Float, pyramidLevels: Int, caseGrid: Int, supersample: Int,
-        lpipsSide: Int, lpipsRegions: Boolean
+        lpipsSide: Int, lpipsRegions: Boolean, lpipsGrid: Int = 2
     ) {
         val key = "${target.name}#${System.identityHashCode(target)} @$dim x$supersample t=$time pyramid=$pyramidLevels " +
-            "cases=$caseGrid lpips=$lpipsSide regions=$lpipsRegions"
+            "cases=$caseGrid lpips=$lpipsSide regions=${if (lpipsRegions) lpipsGrid else 0}"
         val current = owner
         require(current == null || current == key) { "this cache belongs to $current, not $key" }
         owner = key
@@ -989,10 +1005,17 @@ class StackSLImageObjective(
      */
     val lpipsSide: Int = DEFAULT_LPIPS_SIDE,
     /**
-     * Also score LPIPS on each quadrant of the [lpipsSide] image, as four lexicase cases. Four
-     * more (smaller) LPIPS evaluations per candidate, so off unless you select by lexicase.
+     * Also score LPIPS on each region of an [lpipsGrid] by [lpipsGrid] tiling of the [lpipsSide]
+     * image, as lexicase cases. That is `lpipsGrid^2` more (smaller) LPIPS evaluations per
+     * candidate, so off unless you select by lexicase.
      */
-    val lpipsRegions: Boolean = false
+    val lpipsRegions: Boolean = false,
+    /**
+     * Regions per side when [lpipsRegions] is on: 2 is the four quadrants. Each region must be at
+     * least [Lpips.MIN_SIDE] square, so 3 needs an [lpipsSide] of 96. More regions pin *where* and
+     * *how many* more tightly; `bands` evolving the right stripes out of phase is what they are for.
+     */
+    val lpipsGrid: Int = 2
 ) : Objective<StackSLProgram> {
 
     init {
@@ -1005,8 +1028,10 @@ class StackSLImageObjective(
         require(lpipsSide >= Lpips.MIN_SIDE && lpipsSide % dim == 0) {
             "lpipsSide must be at least ${Lpips.MIN_SIDE} and a multiple of dim $dim, got $lpipsSide"
         }
-        require(!lpipsRegions || lpipsSide >= 2 * Lpips.MIN_SIDE) {
-            "lpipsRegions needs lpipsSide >= ${2 * Lpips.MIN_SIDE}, got $lpipsSide"
+        require(lpipsGrid >= 2) { "lpipsGrid must be >= 2, got $lpipsGrid" }
+        require(!lpipsRegions || (lpipsSide >= lpipsGrid * Lpips.MIN_SIDE && lpipsSide % lpipsGrid == 0)) {
+            "lpipsRegions on a $lpipsGrid x $lpipsGrid grid needs lpipsSide a multiple of $lpipsGrid and at least " +
+                "${lpipsGrid * Lpips.MIN_SIDE}, got $lpipsSide"
         }
         require(target.raster.width == dim && target.raster.height == dim) {
             "target '${target.name}' is ${target.raster.width}x${target.raster.height} but fitness runs at ${dim}x$dim"
@@ -1020,11 +1045,11 @@ class StackSLImageObjective(
     /** The target's pyramid and its LPIPS input, built once. */
     private val targetPyramid: List<CpuRaster> = pyramidOf(target.raster, pyramidLevels)
     private val targetPlanar: FloatArray = lpipsPlanar(target.raster, lpipsSide)
-    private val lpipsCaseCount: Int = if (lpipsRegions) 4 else 0
-    private val targetQuadrants: FloatArray? = if (lpipsRegions) quadrants(targetPlanar, lpipsSide) else null
+    private val lpipsCaseCount: Int = if (lpipsRegions) lpipsGrid * lpipsGrid else 0
+    private val targetQuadrants: FloatArray? = if (lpipsRegions) regions(targetPlanar, lpipsSide, lpipsGrid) else null
 
     init {
-        cache?.claim(target, dim, time, pyramidLevels, caseGrid, supersample, lpipsSide, lpipsRegions)
+        cache?.claim(target, dim, time, pyramidLevels, caseGrid, supersample, lpipsSide, lpipsRegions, lpipsGrid)
     }
 
     /**
@@ -1102,7 +1127,8 @@ class StackSLImageObjective(
         val side = max(Lpips.MIN_SIDE, other.raster.width)
         val want = lpipsPlanar(other.raster, side)
         return scoresAgainst(raster, other.raster, pyramidOf(other.raster, pyramidLevels), want,
-            if (lpipsRegions) quadrants(want, side) else null).fitness(metric)
+            if (lpipsRegions && side % lpipsGrid == 0 && side >= lpipsGrid * Lpips.MIN_SIDE) regions(want, side, lpipsGrid) else null
+        ).fitness(metric)
     }
 
     /** Both metrics' scores for a raster already rendered at [dim]. */
@@ -1138,12 +1164,13 @@ class StackSLImageObjective(
         val planar = lpipsPlanar(raster, lpipsSideHere)
         val lpipsFitness = 1.0 - Lpips.distancesPlanar(planar, 1, lpipsSideHere, lpipsSideHere, wantPlanar)[0]
         val lpipsCases = if (wantQuadrants == null) DoubleArray(0) else {
-            val half = lpipsSideHere / 2
-            val mine = quadrants(planar, lpipsSideHere)
-            val plane = 3 * half * half
-            DoubleArray(4) { q ->
+            val grid = lpipsGrid
+            val cell = lpipsSideHere / grid
+            val mine = regions(planar, lpipsSideHere, grid)
+            val plane = 3 * cell * cell
+            DoubleArray(grid * grid) { q ->
                 val d = Lpips.distancesPlanar(
-                    mine.copyOfRange(q * plane, (q + 1) * plane), 1, half, half,
+                    mine.copyOfRange(q * plane, (q + 1) * plane), 1, cell, cell,
                     wantQuadrants.copyOfRange(q * plane, (q + 1) * plane)
                 )[0]
                 1.0 - d
@@ -1229,16 +1256,23 @@ class StackSLImageObjective(
         }
 
         /** The four quadrants of a planar `3 x side x side` image, each planar, top-left first. */
-        fun quadrants(planar: FloatArray, side: Int): FloatArray {
-            val half = side / 2
+        fun quadrants(planar: FloatArray, side: Int): FloatArray = regions(planar, side, 2)
+
+        /**
+         * The cells of a [grid] by [grid] tiling of a planar `3 x side x side` image, each planar,
+         * row by row from the top left.
+         */
+        fun regions(planar: FloatArray, side: Int, grid: Int): FloatArray {
+            require(side % grid == 0) { "cannot cut a $side-pixel image into $grid equal regions" }
+            val cell = side / grid
             val plane = side * side
-            val qPlane = half * half
-            val out = FloatArray(4 * 3 * qPlane)
-            for (q in 0 until 4) {
-                val ox = (q % 2) * half
-                val oy = (q / 2) * half
-                for (c in 0 until 3) for (y in 0 until half) for (x in 0 until half) {
-                    out[q * 3 * qPlane + c * qPlane + y * half + x] = planar[c * plane + (oy + y) * side + ox + x]
+            val cPlane = cell * cell
+            val out = FloatArray(grid * grid * 3 * cPlane)
+            for (q in 0 until grid * grid) {
+                val ox = (q % grid) * cell
+                val oy = (q / grid) * cell
+                for (c in 0 until 3) for (y in 0 until cell) for (x in 0 until cell) {
+                    out[q * 3 * cPlane + c * cPlane + y * cell + x] = planar[c * plane + (oy + y) * side + ox + x]
                 }
             }
             return out
