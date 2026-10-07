@@ -1142,6 +1142,19 @@ other three, advances 90 frames, and stops.
 
 [Open ↗](offline.html?file=assets/agent_transcripts/keyframe_editor/metadata.edn)
 
+### gesture_to_keyframes
+
+A performed gesture turned into keys you can edit, and back, from
+[The keyframe editor](keyframe_editor.md#from-a-performed-gesture). One box holds a
+[gesture pad](visualizers.md#recording-a-gesture) with a hand-wobbly figure eight in it, and the x and
+y lanes that `bakeGesture` reduces the take to, within a tolerance of 0.02. Running the box bakes only
+when the lanes are empty, so your edits survive a rerun. Drag a key in either lane and press
+**replay lanes**: `setTake` sends the edited lanes back to the pad and its trail redraws. Shift-drag
+on the pad to record a take of your own, then press **bake take**. CI launches the box, advances 90
+frames, and stops.
+
+[Open ↗](offline.html?file=assets/agent_transcripts/gesture_to_keyframes/metadata.edn)
+
 ### keyframer_worked_example
 
 `KeyframeScope`, the thing that stops a look you spent twenty minutes

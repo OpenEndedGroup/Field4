@@ -34,17 +34,17 @@ class DocsAudioProvenanceGuardTest {
     /**
      * The corpus as it stands, pinned by count and by family.
      *
-     * These numbers are the audit's headline and the reason this file exists. Fourteen of the
-     * fifty-four never touch [patVoice] — seven a DoughDSP primitive, one real Dirt-Samples, one
-     * mixed, three a Faust program, two the dough wasm engine — and that minority is what refuted
+     * These numbers are the audit's headline and the reason this file exists. Thirty-three of the
+     * seventy-three never touch [patVoice] — eighteen a DoughDSP signal, nine real Dirt-Samples,
+     * one mixed, three a Faust program and two the dough wasm engine. That minority refuted
      * the "every audio figure in the documentation is `patVoice`" claim this file was written to
      * check.
      *
      * The *majority* moved, though, and the direction is worth recording rather than just
      * re-typing: it was 5 of 15 stand-in until `pattern_language.md` grew a mini-notation card per
-     * form of the notation, twenty-six clips of `patVoice` in one commit. So the stand-in is now
-     * 40 of 54, and `sound.md`'s section on this had to stop arguing that the stand-in is *not*
-     * what you hear on most of the site. A count pinned here and stated in prose there is exactly
+     * form of the notation, twenty-six clips of `patVoice` in one commit. The stand-in was then
+     * 40 of 54 and is now 40 of 73; `sound.md`'s section had to stop arguing that the stand-in is
+     * *not* what you hear on most of the site. A count pinned here and stated in prose there is exactly
      * the pair that drifts, which is why the assertion names the page.
      */
     @Test
@@ -62,7 +62,7 @@ class DocsAudioProvenanceGuardTest {
             Origin.STAND_IN_SYNTH to 40,
             Origin.DIRT_SAMPLES to 9,
             Origin.MIXED_SAMPLES_AND_STAND_IN to 1,
-            Origin.DOUGH_DSP to 16,
+            Origin.DOUGH_DSP to 18,
             Origin.FAUST to 3,
             Origin.DOUGH_WASM to 2,
         )
@@ -189,11 +189,9 @@ class DocsAudioProvenanceGuardTest {
         /**
          * How many `audio="…"` fences the docs publish.
          *
-         * Fifty-four, across nine pages: **twenty-nine** on `pattern_language.md` (three scene
-         * clips plus one per mini-notation card), six on `dough_dsp_sound.md`, three each on
-         * `sound.md`, `sound_paths.md`, `chain_ca_sound.md`, `chain_pattern_particles.md` and
-         * `chain_lambda_sound.md`, and two each on `faust.md` and `pat_spatial.md`. Pinned so a new
-         * clip cannot ship without a stated provenance.
+         * Seventy-three across fourteen pages, including twenty-nine on `pattern_language.md`
+         * and nine on `subharmonic_sound.md`. Pinned so a new clip cannot ship without a stated
+         * provenance.
          *
          * It was twelve until `sound_paths.md` published its one-buffer-three-paths comparison,
          * which is also where [Origin.FAUST] came from: a Faust program compiled at runtime is a
@@ -246,10 +244,10 @@ class DocsAudioProvenanceGuardTest {
          * `chain_ca_sound.md`'s three moved the same way (2026-10-02): [CaSoundDocs] now plays its
          * rows as `click`, `hh` and pitched `arpy` one-shots from the pinned subset.
          *
-         * `subharmonic_sound.md` added seven (2026-10-03), all [Origin.DOUGH_DSP]: pitch trackers
+         * `subharmonic_sound.md` added nine (2026-10-03), all [Origin.DOUGH_DSP]: pitch trackers
          * from `Subharmonic.kt` rendered by [SubharmonicSoundDocs] in the same Kotlin signal graph,
          * on a saw bassline, pinned Dirt-Samples one-shots and a committed public-domain film clip.
          */
-        const val EXPECTED_FENCE_COUNT = 71
+        const val EXPECTED_FENCE_COUNT = 73
     }
 }

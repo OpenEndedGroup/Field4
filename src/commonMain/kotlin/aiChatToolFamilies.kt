@@ -33,7 +33,9 @@ class AiChatToolFamilies(val families: List<Family>) {
     fun label(name: String): String = families.firstOrNull { it.name == name }?.label ?: "Other"
 
     companion object {
+        private val lenientJson = Json { ignoreUnknownKeys = true }
+
         fun parse(json: String): AiChatToolFamilies =
-            AiChatToolFamilies(Json { ignoreUnknownKeys = true }.decodeFromString<Catalog>(json).families)
+            AiChatToolFamilies(lenientJson.decodeFromString<Catalog>(json).families)
     }
 }

@@ -94,7 +94,7 @@ object OperationTranscriptMacroSmokeTest {
             val parent = box("transcript_parent", createIfMissing = false)
             val child = box("transcript_child", createIfMissing = false)
             require(parent.name == "Transcript Parent") { parent.name }
-            require(child.code == """println("child")""") { child.code }
+            require(child.code == """println("child")""") { child.code.orEmpty() }
             require(child in parent.children && parent in child.parents) { "Expected parent/child connection" }
             require(child.frame == Rect(240.0, 60.0, 200.0, 100.0)) { "Unexpected child frame: ${child.frame}" }
 

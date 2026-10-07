@@ -318,11 +318,12 @@ delegate is a breadth-first walk over `parents`, and that walk is now shared cod
 rather than a coincidence test. `propOr`, `setProp`, `rootProp`, `setRootProp` and `once` complete the
 family.
 
-What is genuinely left is four macros that generate Kotlin *declarations* and nothing else —
-`sourceBlock` (a lambda whose body is the original Kotlin), `jsonParser` (a generated class),
-`graphLens` (a `::` reference synthesised from a path) and `ai`. `hostMacroExpand` runs their
-expansions and hands the generated source back as **text**, which is inspectable and occasionally
-useful, and is honestly as far as an interpreter goes. 15 of 19 reachable, and the four are pinned as
+What is genuinely left is five macros whose effect needs Kotlin source rather than an ordinary
+host call — `sourceBlock` (a lambda whose body is the original Kotlin), `jsonParser` (a generated class),
+`graphLens` (a `::` reference synthesised from a path), `ai`, and `interpolant` (a saved Kotlin
+segment lambda). `hostMacroExpand` runs their expansions and hands the generated source back as
+**text**, which is inspectable and occasionally
+useful, and is honestly as far as an interpreter goes. 15 of 20 reachable, and the five are pinned as
 a set rather than as a count, because a set says which.
 
 ## `afield.four`: what blocks it, with citations
@@ -348,6 +349,9 @@ The five mechanisms these blockers were are all closed. For the record of what t
 
 **Status as of 2026-08-20 — all five are closed.** One column per row says what changed on the night
 that touched it, so the next night can diff this table rather than re-derive it.
+
+The A row below is that dated baseline; the current source-macro count and classification are above,
+after `interpolant` was registered.
 
 | # | Mechanism | Status 2026-08-20 | Evidence | Can the *effect* be reached? |
 | --- | --- | --- | --- | --- |

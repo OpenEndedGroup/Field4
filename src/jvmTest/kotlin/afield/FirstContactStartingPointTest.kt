@@ -15,7 +15,8 @@ class FirstContactStartingPointTest {
                 File("templates", name).copyRecursively(File(sources, name))
             }
             System.setProperty("afield.templates.dir", sources.absolutePath)
-            assertEquals(setOf("first-steps", "first-graphics"), templateStartingPoints().map { it.filename }.toSet())
+            // Other bundled or personal templates may coexist with the two newcomer examples.
+            assertTrue(templateStartingPoints().map { it.filename }.toSet().containsAll(setOf("first-steps", "first-graphics")))
             val workspace = File(temp, "workspace").apply { mkdirs() }
             for (name in listOf("first-steps", "first-graphics")) {
                 val first = openStartingPointIntoWorkspace(workspace.absolutePath, name)

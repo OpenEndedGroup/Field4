@@ -120,6 +120,11 @@ def _transcript_input(path: str) -> bool:
     )
 
 
+def _demo_input(path: str) -> bool:
+    # A new demo has no existing ledger entry to touch, so its own path must select the guards.
+    return _under(path, "dev_docs/agents/demos")
+
+
 def _box_code_input(path: str) -> bool:
     # The checker's own definition of its corpus, so the two cannot disagree about a path.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -254,15 +259,78 @@ def _citation_input_paths() -> frozenset[str]:
     return frozenset(resolved)
 
 
+_PERSONAL_BOUNDARY_REL = "src/jvmTest/kotlin/afield/docs/PersonalBoundaryTest.kt"
+_SCAN_ROOTS_DECL = re.compile(r"private val SCAN_ROOTS = listOf\((.*?)\n\s*\)", re.DOTALL)
+_SCAN_EXTENSIONS_DECL = re.compile(r"private val SCAN_EXTENSIONS = setOf\((.*?)\)", re.DOTALL)
+
+
+class PersonalBoundaryCorpusUnreadable(RuntimeError):
+    """``SCAN_ROOTS`` / ``SCAN_EXTENSIONS`` could not be read out of ``PersonalBoundaryTest``.
+
+    Raised rather than falling back to a copy, for the reason :class:`ReferenceRootsUnreadable`
+    gives: a silent fallback would keep selecting whatever the copy named on the day the guard moved.
+    """
+
+
+@functools.lru_cache(maxsize=1)
+def _personal_boundary_corpus() -> tuple[tuple[str, ...], frozenset[str]]:
+    """The roots and extensions ``PersonalBoundaryTest`` walks, read out of the guard itself.
+
+    ``citationGates`` runs that guard, and its subject is not the citation corpus: it walks
+    ``src/**``, ``dev_docs/**``, ``public/docs/**`` and ``templates/**`` for a committed file that
+    imports a private package, declares itself into one, or cites a path inside ``src/personal/``.
+    The citation selection below reaches ``src/jvmMain/**.kt``, ``public/docs/**.md`` and the files
+    the citation registries name, so a change staging only ``dev_docs/agents/**`` — an agent's
+    evidence directory, which is where that guard's failure happens — or only a template's
+    ``metadata.edn`` selected no gate that reads it, at commit time or at landing.
+
+    Derived rather than copied: widening ``SCAN_ROOTS`` or ``SCAN_EXTENSIONS`` there widens the
+    trigger here.
+    """
+    repo = Path(__file__).resolve().parents[1]
+    guard = repo / _PERSONAL_BOUNDARY_REL
+    if not guard.is_file():
+        raise PersonalBoundaryCorpusUnreadable(
+            f"{_PERSONAL_BOUNDARY_REL} is missing — the private-boundary guard moved. Point "
+            "_PERSONAL_BOUNDARY_REL at its new home; do not copy its corpus here."
+        )
+    source = guard.read_text()
+    roots_match = _SCAN_ROOTS_DECL.search(source)
+    extensions_match = _SCAN_EXTENSIONS_DECL.search(source)
+    if roots_match is None or extensions_match is None:
+        raise PersonalBoundaryCorpusUnreadable(
+            f"no `private val SCAN_ROOTS = listOf(...)` / `private val SCAN_EXTENSIONS = setOf(...)` "
+            f"in {_PERSONAL_BOUNDARY_REL} — the declarations this predicate reads were renamed or "
+            "reshaped. Update the regexes; do not copy the lists here."
+        )
+    roots = tuple(_KOTLIN_STRING.findall(roots_match.group(1)))
+    extensions = frozenset(_KOTLIN_STRING.findall(extensions_match.group(1)))
+    if not roots or not extensions:
+        raise PersonalBoundaryCorpusUnreadable(
+            f"SCAN_ROOTS or SCAN_EXTENSIONS in {_PERSONAL_BOUNDARY_REL} parsed to an empty list"
+        )
+    return roots, extensions
+
+
+def _personal_boundary_input(path: str) -> bool:
+    """Whether ``path`` is in the population ``PersonalBoundaryTest`` reads."""
+    roots, extensions = _personal_boundary_corpus()
+    if _under(path, "src/personal"):
+        return False
+    return any(_under(path, root) for root in roots) and path.rsplit(".", 1)[-1] in extensions
+
+
 def _citation_input(path: str) -> bool:
     if path in _citation_input_paths():
         return True
-    # Two focused tests intentionally discover their inputs rather than cite a fixed list:
-    # DocsFenceTreatmentTest checks every published Markdown page, while ServerSurfaceLedgerTest
-    # inventories the complete server route/command source surface.
+    # Three tests intentionally discover their inputs rather than cite a fixed list:
+    # DocsFenceTreatmentTest checks every published Markdown page, ServerSurfaceLedgerTest
+    # inventories the complete server route/command source surface, and PersonalBoundaryTest walks
+    # the corpus `_personal_boundary_corpus` reads out of it.
     return (
         (_under(path, "public/docs") and path.endswith(".md"))
         or (_under(path, "src/jvmMain/kotlin/afield") and path.endswith(".kt"))
+        or _personal_boundary_input(path)
     )
 
 
@@ -292,6 +360,9 @@ GUARDS = (
         ("public/docs/assets/agent_transcripts",),
     ),
     Guard("checkAgentTranscriptIndex", "agent transcript index", _transcript_input),
+    Guard("checkAgentTranscriptLayouts", "agent transcript and demo layouts", _demo_input),
+    Guard("checkAgentDemos", "saved demo consistency", _demo_input),
+    Guard("checkPythonTools", "demo registration and corpus ledgers", _demo_input),
     Guard(
         "checkCompletionCorpusFixtures",
         "completion-corpus fixtures",

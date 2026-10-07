@@ -700,6 +700,14 @@ constraints you applied. `width` is optional and otherwise fills the output area
 `drawables` list carries no mesh keys, so the editable path, the inspector and the mesh scenes above
 all share one format.
 
+A scene reaches the viewer in two parts: a small description over the websocket, and its numbers —
+FLine and mesh buffers, and a solid's exact boundary — as one binary download the viewer fetches
+when it needs them. A scene's geometry may be up to 512 MB; set `AFIELD_THREE_PAYLOAD_LIMIT_MB` to
+change that. A scene over the limit is not sent: the call that built it throws
+`ThreePayloadTooLargeException`, which gives the size and the largest drawables, and the view keeps
+what it was showing. Restyling parts with `styleParts` sends only the new styles, however large the
+scene is.
+
 Three.js ships with Field (`src/commonMain/resources/vendor/three/0.184.0/`), so the viewer works
 offline.
 

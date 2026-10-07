@@ -68,7 +68,6 @@ val Box.decorationState by Delegation<MutableMap<String, RawDecoration>>(
 /*
 need to gather this from a map and some fancy delegation tricks
  */
-@OptIn(ExperimentalUuidApi::class)
 /**
  * Push a set of decorations for [box] to all active sessions.
  *
@@ -79,6 +78,7 @@ need to gather this from a map and some fancy delegation tricks
  *
  * Callers typically update [Box.decorationState] and let the delegate invoke this.
  */
+@OptIn(ExperimentalUuidApi::class)
 fun setDecorations(box: Box, decor: List<RawDecoration>) {
 
     box.code_decorationCallbackTable.clear()
@@ -495,7 +495,7 @@ fun Marker.liveNumber(defaultValue: Number = 0.0): Double {
     }
 
     // Get the source code and split it into lines
-    val lines = this.box.code.split("\n")
+    val lines = this.box.code?.split("\n") ?: return cachedValue
 
     // Get the line where liveNumber is called
     val lineIndex = location.line - 1

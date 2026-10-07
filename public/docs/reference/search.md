@@ -4,7 +4,7 @@
 
 Optimisation over a space you can only sample. You say how to make a genome and how to vary one, you say what a genome scored, and a driver spends a budget of *evaluations* against that pair. Nothing in the drivers knows what a genome is, so it can be a cellular-automaton rule, an L-system, an `Fn` graph or a design vector. One file holds all five: random sampling, hill climbing, a (µ+λ) evolutionary loop, novelty search and MAP-Elites. The callers are on three other pages: [ALife](alife.md) evolves rules and L-systems, [Function](function.md) evolves function graphs, and [Simulation](simulation.md)'s `KratosStudy` searches a design space. `afield.morpho` keeps a search of its own. Read `PopulationSearch.kt` for why `random` is reported as a control arm, and why the budget is evaluations rather than generations: both decide whether a result means anything.
 
-1 source file(s), 50 public symbol(s), 25 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
+2 source file(s), 156 public symbol(s), 102 of them carrying KDoc. Everything below is the documentation that lives beside the code — the same text the [completion documentation panel](../completion_doc_browser.md) shows in the editor. A blank summary means the declaration has no KDoc yet, not that this page dropped it.
 
 <div class="codebase-reference" markdown>
 
@@ -169,5 +169,315 @@ The drivers. All four take the same budget and return the same shape of result.
 | [<code class="highlight"><span class="k">fun</span> <span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span> <span class="nf">mapElites</span><span class="p">(</span><span class="n">ops</span><span class="p">:</span> <span class="nc">GenomeOps</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">Objective</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClosedFloatingPointRange</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">bins</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="n">initial</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;map-elites&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">MapElitesRun</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/PopulationSearch/#L487) | MAP-Elites: keep the best genome found in each cell of a grid over the behaviour space. |
 | [<code class="highlight"><span class="k">class</span> <span class="nc">MapElitesRun</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">elites</span><span class="p">:</span> <span class="nc">Map</span><span class="p">&lt;</span><span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="nc">Individual</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">bins</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Int</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">axes</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">ClosedFloatingPointRange</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">offGridCandidates</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/PopulationSearch/#L551) | `mapElites`'s result: the archive, and the two numbers a QD result is reported as. |
 | [<code class="highlight"><span class="k">class</span> <span class="nc">NoveltyRun</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">(</span><span class="k">val</span> <span class="n">run</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">archive</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Individual</span><span class="p">&lt;</span><span class="nc">G</span><span class="p">&gt;</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/PopulationSearch/#L572) | `novelty`'s result: the underlying run plus the behavioural archive it grew. |
+
+## StackSLEvolve.kt { #stackslevolve-kt }
+
+Genetic programming over StackSL **token sequences**, scored by rendering the program and
+comparing it to a target image.
+
+This is a third shape of consumer for `PopulationSearch.kt`. The two that were there before it
+evolve *numbers or rule tables* — `FunctionEvolve.kt` mutates an `Fn` expression graph and
+`alife_evolve.kt` mutates rule tables, growth windows and grammar bodies — and neither has a
+phenotype you can look at. Here the genome is a program in a real language, the phenotype is a
+picture, and the thing in between is the production emitter plus `afield.stacksl.cpu`'s
+interpreter. Nothing about what a StackSL word *means* is restated in this file.
+
+### What is new here and what is not
+
+Being precise about this, because three of the four ingredients already existed:
+
+ - **Not new: linear-genome GP with this operator set.** `LSystemGenome` in `alife_evolve.kt`
+   already has `point`, `insert`, `delete`, `duplicate`, `swap`, single-point crossover and a
+   `signature`, over a string of turtle symbols. [`StackSLGenome`](search.md#stackslevolve-kt-stackslgenome)'s operators are that set,
+   lifted to a token list, and the resemblance is deliberate.
+ - **Not new: synthesising a program as text and letting a real compiler judge it.**
+   `afield.morpho.MorphoGenome` does exactly that for MorphoHDL, and already reports its invalid
+   fraction rather than hiding it. It predates `PopulationSearch` and runs on a private search
+   core.
+ - **New: the phenotype is an image**, produced by the same emitter a GPU reads, so fitness is a
+   measurement of a rendered picture rather than of a scalar or a netlist.
+ - **New: a program-text genome on the *generic* core**, so `PopulationSearch.random`,
+   `PopulationSearch.evolve`, `PopulationSearch.novelty`, `PopulationSearch.mapElites` and
+   `Selection.LEXICASE` are all available to it without any of them being written again.
+
+### Arity: there was nothing to repair and nothing to reject
+
+The plan this file was written against asked for a deliberate choice between *repairing* a token
+sequence into a legal stack effect and *rejecting* it as invalid. Measured against the real
+compiler, that is a false dichotomy for a straight-line program: **StackSL has no invalid
+straight-line programs.** `StackSLCompileOptions.defaultValues` fills any operand the stack does
+not have, and it does so *without* an ERROR diagnostic even at `tolerant = false` — `+` on its
+own compiles, `ok`, and leaves the stack at depth 1. The silent-pruning hazard that
+`finalStackDepth` exists to expose belongs to **definitions** (`: name … ;`), whose arity has to
+work out for the emitted function to be called at all; this generator emits no definitions, so
+it cannot hit it.
+
+So [`StackSLGenome`](search.md#stackslevolve-kt-stackslgenome) does not repair for validity and does not reject. It carries a *model* of
+each word's stack effect (`StackSLWord.consumes`) and uses it only to **steer** generation — the
+same relationship `MorphoWidthModel` has to MorphoHDL's real width inference, where "the compiler
+remains the judge; the model's accuracy shows up as `failureRate` and nowhere else". Here the
+model's accuracy shows up as `StackSLEvolveRun.danglingValues`, which counts values a program
+pushed and never consumed, read off the compiler's own analysis.
+
+### The gate that actually matters is on the image, not on the program
+
+A program that compiles perfectly and renders a flat grey rectangle is the single most likely way
+a search like this produces a fake result: two blanks agree with each other everywhere, and a
+plain error metric will happily rank one of them first. [`StackSLImageObjective`](search.md#stackslevolve-kt-stackslimageobjective) therefore scores
+a constant-colour render as invalid, inside the fitness function, and refuses a target that is
+itself blank.
+
+### Beating chance is not resembling the target
+
+The first version of this file scored `1 -` mean absolute RGB error, now `StackSLMetric.PIXEL`.
+Evolution beat the random control on four of five targets under it, and the pictures mostly did
+not look like their targets: a yellow disc evolved into dark diagonal streaks, four quadrants
+into a vertical gradient. An absolute error is satisfied first by matching the target's overall
+colour balance, and the search found that rather than the layout. `StackSLMetric.LPIPS`, the
+default, scores with a learned perceptual distance instead (`afield.onnx.Lpips`).
+`StackSLLayout.layoutAgreement` is the independent check on whether a result resembles its
+target, and `StackSLEvolveGallery.figureTargets` runs both metrics against each other and asserts
+on it.
+
+### Cost, so the budget is chosen rather than discovered
+
+One 32x32 candidate is about 1,000 pixel-shader invocations through `afield.stacksl.cpu`'s
+interpreter, which runs 1.3–1.6 x 10^4 a second per core (`dev_docs/STACKSL_CPU_BACKEND.md`):
+30 ms with `parallel = true` on ten cores, 70 ms to 130 ms on one, depending on how many `fbm`
+octaves the program has and what else the machine is doing. Compiling and expanding the
+template costs 0.35 ms and is noise by comparison. A 600-evaluation search is therefore about
+twenty seconds, and the two-arm comparison `evolveStackSLTowards` runs about forty.
+
+`evolveStackSLTowards` is the one-call entry point a box wants; see `public/docs/stacksl_evolve.md`.
+
+`src/jvmMain/kotlin/afield/stdlib/StackSLEvolve.kt` — [read the source](source/jvmMain/afield/stdlib/StackSLEvolve/)
+
+**Used in:** [Evolving a Shader Toward a Picture](../stacksl_evolve.md)
+
+### Top-level functions { #stackslevolve-kt-functions }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evolveStackSLTowards</span><span class="p">(</span><span class="n">target</span><span class="p">:</span> <span class="nc">StackSLTarget</span><span class="p">,</span> <span class="n">budget</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">600</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nc">Long</span> <span class="o">=</span> <span class="mi">1L</span><span class="p">,</span> <span class="n">genome</span><span class="p">:</span> <span class="nc">StackSLGenome</span> <span class="o">=</span> <span class="nc">StackSLGenome</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">target</span><span class="p">.</span><span class="n">raster</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="n">mu</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span> <span class="n">lambda</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">12</span><span class="p">,</span> <span class="n">selection</span><span class="p">:</span> <span class="nc">Selection</span> <span class="o">=</span> <span class="nc">Selection</span><span class="p">.</span><span class="nc">TOURNAMENT</span><span class="p">,</span> <span class="n">tournament</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="n">crossoverRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.25</span><span class="p">,</span> <span class="n">immigrantRate</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">pyramidLevels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">StackSLImageObjective</span><span class="p">.</span><span class="nc">DEFAULT&#95;PYRAMID&#95;LEVELS</span><span class="p">,</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">StackSLMetric</span> <span class="o">=</span> <span class="nc">StackSLMetric</span><span class="p">.</span><span class="nc">LPIPS</span><span class="p">,</span> <span class="n">cache</span><span class="p">:</span> <span class="nc">StackSLScoreCache</span><span class="o">?</span> <span class="o">=</span> <span class="nc">StackSLScoreCache</span><span class="p">(</span><span class="p">)</span><span class="p">,</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">lpipsSide</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">StackSLImageObjective</span><span class="p">.</span><span class="nc">DEFAULT&#95;LPIPS&#95;SIDE</span><span class="p">,</span> <span class="n">label</span><span class="p">:</span> <span class="nc">String</span> <span class="o">=</span> <span class="s">&quot;stacksl ${target.name}&quot;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLEvolveRun</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1435) | Evolve a StackSL program toward `target`, with the random control arm run beside it. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">danglingValuesOf</span><span class="p">(</span><span class="n">program</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1496) | How many values `program` pushes and never consumes, read off the compiler's own analysis. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nc">CpuRaster</span><span class="p">.</span><span class="nf">toImg</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1503) | A [`CpuRaster`](languages.md#stackslcpu-kt-cpuraster) as an RGB [`Img`](imaging.md#imaging-kt-img), for `montage` and `savePng`. Alpha is dropped, not premultiplied. |
+
+### Top-level values { #stackslevolve-kt-values }
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">DEFAULT&#95;FITNESS&#95;DIM</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1318) | Fitness resolution that costs about 30 ms a candidate on ten cores. See the file KDoc. |
+
+### StackSLWordKind { #stackslevolve-kt-stackslwordkind }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">StackSLWordKind</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L101)
+
+What a word does to the stack's *depth*, in the model this file steers generation with.
+
+Constants: `PUSH`, `UNARY`, `BINARY`, `TERNARY`.
+
+### StackSLWord { #stackslevolve-kt-stackslword }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLWord</span><span class="p">(</span><span class="k">val</span> <span class="n">token</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">kind</span><span class="p">:</span> <span class="nc">StackSLWordKind</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L126)
+
+One word in the generator's vocabulary, with the stack effect this file believes it has.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">consumes</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L128) | Values the word takes off the stack, in the model. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L135) |  |
+
+### StackSLProgram { #stackslevolve-kt-stackslprogram }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLProgram</span><span class="p">(</span><span class="k">val</span> <span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L146)
+
+A StackSL program as a token list — the genome.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">text</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L149) | The program as source text, one space between tokens. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L152) | How many tokens; the parsimony axis and one of the MAP-Elites axes. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L154) |  |
+
+### StackSLPalette { #stackslevolve-kt-stackslpalette }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLPalette</span><span class="p">(</span><span class="k">val</span> <span class="n">words</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLWord</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;NUMBERS</span><span class="p">,</span> <span class="k">val</span> <span class="n">numberShare</span><span class="p">:</span> <span class="nc">Double</span> <span class="o">=</span> <span class="mf">0.45</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L179)
+
+The vocabulary a search draws from, and the numeric-literal distribution beside it.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">words</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLWord</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">numbers</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Double</span><span class="p">&gt;</span></code> | Literal values the `number` draw picks from before jitter widens them. |
+| <code class="highlight"><span class="k">val</span> <span class="n">numberShare</span><span class="p">:</span> <span class="nc">Double</span></code> | Probability that a `PUSH` draw yields a fresh numeric literal rather than a named word. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">kindOf</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLWordKind</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L200) | The modelled kind of `token`; a token that parses as a number is a `StackSLWordKind.PUSH`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">consumes</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nc">String</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L204) | How many values `token` is modelled to consume. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">draw</span><span class="p">(</span><span class="n">kind</span><span class="p">:</span> <span class="nc">StackSLWordKind</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L212) | A fresh token of `kind`; a `PUSH` is a numeric literal with probability `numberShare`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">substitute</span><span class="p">(</span><span class="n">token</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L225) | A token of the *same* modelled kind as `token`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">drawNumber</span><span class="p">(</span><span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L234) | A numeric literal, occasionally with a StackSL suffix that turns it into a modulator. |
+
+### StackSLGenome { #stackslevolve-kt-stackslgenome }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLGenome</span><span class="p">(</span><span class="k">val</span> <span class="n">palette</span><span class="p">:</span> <span class="nc">StackSLPalette</span> <span class="o">=</span> <span class="nc">StackSLPalette</span><span class="p">.</span><span class="nc">DEFAULT</span><span class="p">,</span> <span class="k">val</span> <span class="n">minTokens</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="k">val</span> <span class="n">maxTokens</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span> <span class="p">:</span> <span class="nc">GenomeOps</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L324)
+
+A StackSL program presented to `PopulationSearch` as a genome.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">palette</span><span class="p">:</span> <span class="nc">StackSLPalette</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">minTokens</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">maxTokens</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">random</span><span class="p">(</span><span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLProgram</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L343) | An independent draw — and therefore exactly what `PopulationSearch.random` samples. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">val</span> <span class="n">mutations</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">Variation</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L356) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">crossover</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">,</span> <span class="n">rng</span><span class="p">:</span> <span class="nc">Random</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLProgram</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L410) | One-point crossover: a prefix of `a` and a suffix of `b`. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">signature</span><span class="p">(</span><span class="n">g</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L417) | The program text. See the class KDoc for why this is worth having. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">canonical</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLProgram</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L424) | Clamp to `minTokens..maxTokens`. **This is not a validity repair** — see the file KDoc: a straight-line StackSL program cannot be arity-invalid, because the compiler fills missing operands from `defaultValues` and does not complain. It is a bloat ceiling and nothing else. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">modelledDepthAt</span><span class="p">(</span><span class="n">tokens</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">String</span><span class="p">&gt;</span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L457) | The modelled stack depth just before token `index`, starting from StackSL's own depth of 1. |
+
+### RasterStructure { #stackslevolve-kt-rasterstructure }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">RasterStructure</span><span class="p">(</span><span class="k">val</span> <span class="n">spread</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">distinctColours</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">spatialFrequency</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">colourfulness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L487)
+
+The three numbers that say whether a raster is a picture or a rectangle of one colour.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">spread</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">distinctColours</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">spatialFrequency</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">colourfulness</span><span class="p">:</span> <span class="nc">Double</span></code> | Mean per-pixel `max(rgb) - min(rgb)` — how far the image is from grey. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L494) |  |
+
+### StackSLLayout { #stackslevolve-kt-stacksllayout }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLLayout</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L558)
+
+Does a picture have its target's layout? The check this file uses on a search's results, kept apart from anything a search optimises.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">layoutAgreement</span><span class="p">(</span><span class="n">candidate</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L578) | Would someone looking at `candidate` see `target`'s layout? Cohen's kappa: `1` exact, `0` no better than chance, negative for the target's negative. |
+| [<code class="highlight"><span class="k">const</span> <span class="k">val</span> <span class="nc">PALETTE&#95;LIMIT</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L632) | Most colours a target may have for `layoutAgreement` to label by nearest colour. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">principalAxis</span><span class="p">(</span><span class="n">raster</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span><span class="p">:</span> <span class="nc">DoubleArray</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L635) | The unit RGB direction of greatest variance over `raster`, by power iteration. |
+
+### StackSLTarget { #stackslevolve-kt-stacksltarget }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLTarget</span><span class="p">(</span><span class="k">val</span> <span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="k">val</span> <span class="n">raster</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L664)
+
+A named target image a search is aimed at.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">structure</span><span class="p">:</span> <span class="nc">RasterStructure</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L666) | The target's own structure — measured, so a blank target can be refused. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">flatColour</span><span class="p">:</span> <span class="nc">FloatArray</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L678) | The target's mean RGB — the colour of the best possible *flat* answer. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">flatRaster</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L686) | A raster of nothing but `flatColour` — the trivial answer, at the same size. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L698) |  |
+
+### StackSLTargets { #stackslevolve-kt-stacksltargets }
+
+[<code class="highlight"><span class="k">object</span> <span class="nc">StackSLTargets</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L745)
+
+Five synthetic targets, generated in plain Kotlin.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">spot</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L748) | A bright warm disc on near-black: radial, one hard edge. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">rings</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L754) | Concentric black-and-white rings: radial and periodic. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">bands</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L761) | Six hard vertical stripes, yellow against deep blue: high frequency in x, none in y. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">checker</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L767) | A 4x4 magenta-and-teal checkerboard: periodic in both axes. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">quadrants</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L773) | Four flat quadrants: piecewise constant, hard edges, four saturated colours. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">all</span><span class="p">(</span><span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">)</span><span class="p">:</span> <span class="nc">List</span><span class="p">&lt;</span><span class="nc">StackSLTarget</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L783) | All five at `dim` square, in the order the contact sheet shows them. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">generate</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nc">String</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="n">rgb</span><span class="p">:</span> <span class="p">(</span><span class="n">u</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nc">FloatArray</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L794) | Build a target from a `(u, v) -> rgb` function. |
+
+### StackSLMetric { #stackslevolve-kt-stackslmetric }
+
+[<code class="highlight"><span class="k">enum</span> <span class="k">class</span> <span class="nc">StackSLMetric</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L814)
+
+What [`StackSLImageObjective`](search.md#stackslevolve-kt-stackslimageobjective) counts as "close to the target".
+
+Constants: `PIXEL`, `LPIPS`, `LPIPS_PIXEL`.
+
+### StackSLScores { #stackslevolve-kt-stackslscores }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLScores</span><span class="p">(</span><span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelFitness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">pixelCases</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">lpipsFitness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">lpipsCases</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">,</span> <span class="k">val</span> <span class="n">behaviour</span><span class="p">:</span> <span class="nc">DoubleArray</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L847)
+
+One render's scores under both metrics, so one render can serve several objectives.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">valid</span><span class="p">:</span> <span class="nc">Boolean</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelFitness</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">pixelCases</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lpipsFitness</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">lpipsCases</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">behaviour</span><span class="p">:</span> <span class="nc">DoubleArray</span></code> |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">fitness</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="nc">StackSLMetric</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L856) | The scalar fitness under `metric`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">evaluation</span><span class="p">(</span><span class="n">metric</span><span class="p">:</span> <span class="nc">StackSLMetric</span><span class="p">)</span><span class="p">:</span> <span class="nc">Evaluation</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L863) | The search-facing `Evaluation` under `metric`. |
+
+### StackSLScoreCache { #stackslevolve-kt-stackslscorecache }
+
+[<code class="highlight"><span class="k">class</span> <span class="nc">StackSLScoreCache</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L889)
+
+Program text to [`StackSLScores`](search.md#stackslevolve-kt-stackslscores), for objectives that share one target.
+
+| Declaration | Summary |
+| --- | --- |
+| [<code class="highlight"><span class="k">val</span> <span class="n">hits</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L895) | Evaluations served from the cache rather than the interpreter. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">size</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L898) | Distinct programs scored. |
+
+### StackSLImageObjective { #stackslevolve-kt-stackslimageobjective }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLImageObjective</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">StackSLTarget</span><span class="p">,</span> <span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="n">target</span><span class="p">.</span><span class="n">raster</span><span class="p">.</span><span class="n">width</span><span class="p">,</span> <span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span> <span class="o">=</span> <span class="mf">1.75f</span><span class="p">,</span> <span class="k">val</span> <span class="n">caseGrid</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="k">val</span> <span class="n">pyramidLevels</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;PYRAMID&#95;LEVELS</span><span class="p">,</span> <span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">true</span><span class="p">,</span> <span class="k">val</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">StackSLMetric</span> <span class="o">=</span> <span class="nc">StackSLMetric</span><span class="p">.</span><span class="nc">LPIPS</span><span class="p">,</span> <span class="k">val</span> <span class="n">cache</span><span class="p">:</span> <span class="nc">StackSLScoreCache</span><span class="o">?</span> <span class="o">=</span> <span class="kc">null</span><span class="p">,</span> <span class="k">val</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="k">val</span> <span class="n">lpipsSide</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="nc">DEFAULT&#95;LPIPS&#95;SIDE</span><span class="p">,</span> <span class="k">val</span> <span class="n">lpipsRegions</span><span class="p">:</span> <span class="nc">Boolean</span> <span class="o">=</span> <span class="kc">false</span><span class="p">)</span> <span class="p">:</span> <span class="nc">Objective</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L958)
+
+Score a StackSL program by rendering it and comparing it to `target`.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">time</span><span class="p">:</span> <span class="nc">Float</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">caseGrid</span><span class="p">:</span> <span class="nc">Int</span></code> | The `StackSLMetric.PIXEL` lexicase cases: one per cell of this grid. |
+| <code class="highlight"><span class="k">val</span> <span class="n">pyramidLevels</span><span class="p">:</span> <span class="nc">Int</span></code> | Scales the `StackSLMetric.PIXEL` error is averaged over; 1 is a plain full-resolution mean. |
+| <code class="highlight"><span class="k">val</span> <span class="n">parallel</span><span class="p">:</span> <span class="nc">Boolean</span></code> | `false` renders each candidate on one thread — see `evolveStackSLTowards` for when to. |
+| <code class="highlight"><span class="k">val</span> <span class="n">metric</span><span class="p">:</span> <span class="nc">StackSLMetric</span></code> | What "close to the target" means. See [`StackSLMetric`](search.md#stackslevolve-kt-stackslmetric). |
+| <code class="highlight"><span class="k">val</span> <span class="n">cache</span><span class="p">:</span> <span class="nc">StackSLScoreCache</span><span class="o">?</span></code> | Scores already computed for this target, keyed by program text, shared between objectives. |
+| <code class="highlight"><span class="k">val</span> <span class="n">supersample</span><span class="p">:</span> <span class="nc">Int</span></code> | Render each candidate at this multiple of `dim` and average down: 1 (no supersampling) or a power of two. Without it a program can score by aliasing: stripes finer than a fitness pixel, sampled at pixel centres, can land on a pattern that resembles the target at 32 pixels and nothing at 128. Costs `supersample^2` times the render. |
+| <code class="highlight"><span class="k">val</span> <span class="n">lpipsSide</span><span class="p">:</span> <span class="nc">Int</span></code> | The side LPIPS sees. A render smaller than this is enlarged pixel by pixel (and the target with it) before comparison, because AlexNet's deeper stages are 1x1 at 32 pixels. Enlarging adds no detail, it gives the network room to look at the detail the render has. |
+| <code class="highlight"><span class="k">val</span> <span class="n">lpipsRegions</span><span class="p">:</span> <span class="nc">Boolean</span></code> | Also score LPIPS on each quadrant of the `lpipsSide` image, as four lexicase cases. Four more (smaller) LPIPS evaluations per candidate, so off unless you select by lexicase. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">flatFloor</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1038) | What a flat fill of the target's own mean colour would score — the trivial answer's fitness. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">skill</span><span class="p">(</span><span class="n">fitness</span><span class="p">:</span> <span class="nc">Double</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1049) | A fitness rescaled so 0 is the flat answer and 1 is exact. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">considered</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1053) | Candidates offered so far, including ones this objective rejected. |
+| [<code class="highlight"><span class="k">var</span> <span class="n">invalid</span><span class="p">:</span> <span class="nc">Int</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1057) | Candidates rejected as blank or as a crash. The `failureRate` of `MorphoSearchRun`, here. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">invalidRate</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1061) | Fraction of candidates that were not pictures. Reported, never hidden. |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">evaluate</span><span class="p">(</span><span class="n">genome</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">Evaluation</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1063) |  |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">render</span><span class="p">(</span><span class="n">genome</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">,</span> <span class="n">dim</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="kc">this</span><span class="p">.</span><span class="n">dim</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1081) | Render `genome` at `dim` — the same call `evaluate` makes, for a caller that wants the pixels. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">renderForFitness</span><span class="p">(</span><span class="n">genome</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">)</span><span class="p">:</span> <span class="nc">CpuRaster</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1088) | What `evaluate` scores: `genome` at `dim`, rendered at `dim * supersample` and box-filtered down, so detail finer than a fitness pixel averages out instead of aliasing. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">scoreAt</span><span class="p">(</span><span class="n">genome</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="p">,</span> <span class="n">other</span><span class="p">:</span> <span class="nc">StackSLTarget</span><span class="p">)</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1100) | Fitness of a program against a target at *that* target's resolution, under the same metric. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">scores</span><span class="p">(</span><span class="n">raster</span><span class="p">:</span> <span class="nc">CpuRaster</span><span class="p">)</span><span class="p">:</span> <span class="nc">StackSLScores</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1109) | Both metrics' scores for a raster already rendered at `dim`. |
+
+### StackSLEvolveRun { #stackslevolve-kt-stackslevolverun }
+
+[<code class="highlight"><span class="k">class</span> <span class="nf">StackSLEvolveRun</span><span class="p">(</span><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">StackSLTarget</span><span class="p">,</span> <span class="k">val</span> <span class="n">evolved</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">control</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span><span class="p">,</span> <span class="k">val</span> <span class="n">invalidRate</span><span class="p">:</span> <span class="nc">Double</span><span class="p">,</span> <span class="k">val</span> <span class="n">danglingValues</span><span class="p">:</span> <span class="nc">Int</span><span class="p">,</span> <span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">StackSLImageObjective</span><span class="p">)</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1331)
+
+One search, its control arm, and everything needed to say whether the result is real.
+
+| Declaration | Summary |
+| --- | --- |
+| <code class="highlight"><span class="k">val</span> <span class="n">target</span><span class="p">:</span> <span class="nc">StackSLTarget</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">evolved</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">control</span><span class="p">:</span> <span class="nc">SearchRun</span><span class="p">&lt;</span><span class="nc">StackSLProgram</span><span class="p">&gt;</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">invalidRate</span><span class="p">:</span> <span class="nc">Double</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">danglingValues</span><span class="p">:</span> <span class="nc">Int</span></code> |  |
+| <code class="highlight"><span class="k">val</span> <span class="n">objective</span><span class="p">:</span> <span class="nc">StackSLImageObjective</span></code> | The objective the evolved arm ran against — kept so `skill` and re-rendering are available. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">best</span><span class="p">:</span> <span class="nc">StackSLProgram</span><span class="o">?</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1341) | The evolved program, or `null` if every candidate was rejected. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">margin</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1344) | Evolved fitness minus control fitness at equal budget. The number a claim is made of. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">evolvedSkill</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1347) | Evolved fitness in `StackSLImageObjective.skill` units: 0 is a flat fill, 1 is exact. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">controlSkill</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1350) | The control's fitness in the same units. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">skillRatio</span><span class="p">:</span> <span class="nc">Double</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1360) | How many times further above the trivial flat answer `evolve` got than `random` did. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">evolvedLayout</span><span class="p">:</span> <span class="nc">Double</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1367) | `StackSLLayout.layoutAgreement` of the evolved program against the target, at the search's own resolution: does it put light and dark where the target does? Not what either arm optimised, which is why it is worth reporting beside their fitness. |
+| [<code class="highlight"><span class="k">val</span> <span class="n">controlLayout</span><span class="p">:</span> <span class="nc">Double</span> <span class="k">by</span> <span class="n">lazy</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1370) | The control's `evolvedLayout`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">contactSheet</span><span class="p">(</span><span class="n">side</span><span class="p">:</span> <span class="nc">Int</span> <span class="o">=</span> <span class="mi">160</span><span class="p">)</span><span class="p">:</span> <span class="nc">Img</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1384) | Target, evolved best and the control's best side by side at `side` pixels, for `showImg`. |
+| [<code class="highlight"><span class="k">fun</span> <span class="nf">summary</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1392) |  |
+| [<code class="highlight"><span class="k">override</span> <span class="k">fun</span> <span class="nf">toString</span><span class="p">(</span><span class="p">)</span><span class="p">:</span> <span class="nc">String</span></code>](source/jvmMain/afield/stdlib/StackSLEvolve/#L1404) |  |
 
 </div>

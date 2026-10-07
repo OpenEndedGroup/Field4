@@ -68,6 +68,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
@@ -100,6 +101,7 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
@@ -161,6 +163,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
@@ -197,6 +200,7 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
@@ -273,6 +277,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
@@ -305,6 +310,7 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
@@ -369,6 +375,7 @@ class IdeChatHelpers(
         agentMemory: AgentMemoryState? = null,
         documentGuides: DocumentGuideTools? = null,
         workspaceSymbolSearch: ((WorkspaceSymbolSearch) -> WorkspaceSymbolSearchResult)? = null,
+        workspaceSearch: ((WorkspaceSearchRequest) -> WorkspaceSearchResult)? = null,
         focus: ToolFocus? = null,
         dynamicTools: List<BoxTool> = emptyList(),
         fieldGraph: afield.ai.agent.FieldGraphTools? = null,
@@ -401,6 +408,7 @@ class IdeChatHelpers(
             agentMemory = agentMemory,
             documentGuides = documentGuides,
             workspaceSymbolSearch = workspaceSymbolSearch,
+            workspaceSearch = workspaceSearch,
             focus = focus,
             dynamicTools = dynamicTools,
             fieldGraph = fieldGraph,
@@ -432,3 +440,4 @@ class IdeChatHelpers(
         )
     }
 }
+
