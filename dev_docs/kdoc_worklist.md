@@ -2,9 +2,9 @@
 <!-- Regenerate: ./gradlew generateCodebaseReference -->
 # KDoc worklist
 
-The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9714 of 16405 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
+The other half of the coverage column on [the codebase reference](../public/docs/reference/index.md): 9730 of 16455 public symbols in `afield.stdlib`, `afield.visualization`, `afield.four.synth`, `afield.four.physics`, `afield.four.fabricated`, `afield.kratos`, `afield.tetgen` and `afield.pd`, plus the 10 small-language packages (`afield.clojure`, `afield.datalog`, `afield.forth`, `afield.ml`, `afield.morpho`, `afield.nano`, `afield.python`, `afield.rectsl`, `afield.remotejs` and `afield.stacksl`) carry a KDoc summary, and this is what is missing, most valuable first.
 
-**806 undocumented entry points** (types, top-level functions and values) and 5545 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
+**808 undocumented entry points** (types, top-level functions and values) and 5577 undocumented members. Overload families count once — documenting `pulseTrain` closes one gap, not six — and the members Kotlin generates for a `data class` are not counted at all.
 
 Ranking is by payoff, from signals the generator already has: files that a worked example page demonstrably calls come first, then types before functions before values, then the widest gaps. Write the KDoc next to the declaration, then run `./gradlew generateCodebaseReference` — the reference pages and this list both follow from the source.
 
@@ -46,6 +46,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [contours.kt](../src/jvmMain/kotlin/afield/stdlib/contours.kt) | Graphics | spatial_geometry_examples | 4 | 3 | 70% |
 | [SonicPi.kt](../src/jvmMain/kotlin/afield/four/synth/SonicPi.kt) | Audio | sonic_pi | 3 | 46 | 34% |
 | [SpectralEmbeddingProjection.kt](../src/jvmMain/kotlin/afield/stdlib/noir/audioai/SpectralEmbeddingProjection.kt) | Audio AI | audio_ai_spectral_embeddings, visualizers | 3 | 29 | 21% |
+| [LorisVisualizer.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisVisualizer.kt) | Visualization | loris | 2 | 6 | 27% |
 | [Functions.kt](../src/jvmMain/kotlin/afield/stdlib/Functions.kt) | Math | functions_examples | 1 | 47 | 84% |
 | [FunctionStudy.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionStudy.kt) | Function | function_conversation | 1 | 12 | 51% |
 | [pf.kt](../src/jvmMain/kotlin/afield/stdlib/pf.kt) | Math | state_estimation_examples | 1 | 8 | 76% |
@@ -82,6 +83,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [PopulationSearch.kt](../src/jvmMain/kotlin/afield/stdlib/PopulationSearch.kt) | Search | alife_examples | 0 | 20 | 50% |
 | [StudyBuilds.kt](../src/jvmMain/kotlin/afield/stdlib/StudyBuilds.kt) | Workspace | studies | 0 | 20 | 52% |
 | [alife_lsystem.kt](../src/jvmMain/kotlin/afield/stdlib/alife_lsystem.kt) | ALife | alife_examples | 0 | 20 | 59% |
+| [Loris.kt](../src/jvmMain/kotlin/afield/stdlib/loris/Loris.kt) | Audio | loris | 0 | 20 | 33% |
 | [particlevideo.kt](../src/jvmMain/kotlin/afield/stdlib/particlevideo.kt) | Video | particle_video | 0 | 20 | 45% |
 | [FunctionEvolve.kt](../src/jvmMain/kotlin/afield/stdlib/FunctionEvolve.kt) | Function | functions_examples, alife_examples | 0 | 19 | 50% |
 | [alife_ca.kt](../src/jvmMain/kotlin/afield/stdlib/alife_ca.kt) | ALife | alife_examples, chain_life3d_render | 0 | 19 | 71% |
@@ -247,6 +249,7 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | [LineNoteTools.kt](../src/jvmMain/kotlin/afield/stdlib/LineNoteTools.kt) | Workspace | — | 0 | 6 | 45% |
 | [growing.kt](../src/jvmMain/kotlin/afield/stdlib/growing.kt) | Data | — | 0 | 6 | 57% |
 | [jsonparsing.kt](../src/jvmMain/kotlin/afield/stdlib/jsonparsing.kt) | Data | — | 0 | 6 | 66% |
+| [LorisDocs.kt](../src/jvmMain/kotlin/afield/stdlib/loris/LorisDocs.kt) | Audio | — | 0 | 6 | 25% |
 | [DatalogWhyNot.kt](../src/jvmMain/kotlin/afield/datalog/DatalogWhyNot.kt) | Languages | — | 0 | 5 | 62% |
 | [SplatSequence.kt](../src/jvmMain/kotlin/afield/four/fabricated/SplatSequence.kt) | Renderers | — | 0 | 5 | 78% |
 | [CSVReader.kt](../src/jvmMain/kotlin/afield/four/physics/CSVReader.kt) | Simulation | — | 0 | 5 | 50% |
@@ -419,4 +422,4 @@ Ranking is by payoff, from signals the generator already has: files that a worke
 | `CorePattern` | interface | `src/jvmMain/kotlin/afield/ml/core/Core.kt:78` |
 | `CPWildcard` | class | `src/jvmMain/kotlin/afield/ml/core/Core.kt:82` |
 
-…and **686 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.
+…and **688 more** undocumented entry points not listed here. This section is capped at 120 so it stays a worklist rather than a dump; the per-file table above is complete.

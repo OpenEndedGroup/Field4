@@ -1,4 +1,4 @@
-@file:afield.CompletionCategory("Audio analysis")
+@file:afield.CompletionCategory("Audio")
 
 package afield.stdlib.loris
 
