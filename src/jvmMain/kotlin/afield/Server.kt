@@ -5820,6 +5820,18 @@ internal const val SEC_FETCH_MODE_HEADER = "Sec-Fetch-Mode"
 private val fieldApiSelfGuardedReadPrefixes = listOf("/api/docs-annotations", "/api/docs-improvement/pass")
 
 /**
+ * Annotation writes have their own machine and site policy, including an explicit cross-site
+ * opt-in. Defer only the routes that actually install that policy; a new or lookalike API path
+ * must still meet the application-wide guard until it has its own route-level protection.
+ */
+internal fun fieldApiWriteNeedsSameSite(method: HttpMethod, path: String): Boolean = when (method) {
+    HttpMethod.Post -> path != "/api/docs-annotations"
+    HttpMethod.Put -> !Regex("^/api/docs-annotations/[^/]+/resolve$").matches(path)
+    HttpMethod.Delete -> !Regex("^/api/docs-annotations/[^/]+$").matches(path)
+    else -> true
+}
+
+/**
  * Whether a *read* should be held to the same-site rule.
  *
  * The exposure this closes is a page you have open **reading** Field's answer: `anyHost()` in
@@ -5914,6 +5926,8 @@ internal fun Application.installFieldApiSameSiteGuard() {
         // cannot leak or that guard themselves — see [fieldApiReadNeedsSameSite].
         if (call.request.httpMethod == HttpMethod.Get || call.request.httpMethod == HttpMethod.Head) {
             if (!fieldApiReadNeedsSameSite(call.request.headers[SEC_FETCH_MODE_HEADER], path)) return@intercept
+        } else if (!fieldApiWriteNeedsSameSite(call.request.httpMethod, path)) {
+            return@intercept
         }
         if (isSameSiteRequest(
                 call.request.headers[SEC_FETCH_SITE_HEADER],
