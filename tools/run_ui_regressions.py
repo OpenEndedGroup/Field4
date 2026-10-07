@@ -850,15 +850,8 @@ try {
     .filter(([label, count]) => count > 1 && (label === "Go to Paired Shader Definition" || label.startsWith("Edit: ")))
     .map(([label, count]) => ({ label, count }));
   const editLabels = labels.filter((label) => label.startsWith("Edit: "));
-  // Mirrors monacoPropertyNames in BootstrapMonacoInit.kt; "msl" arrived with the Live Metal
-  // head (6a053253) and this list did not follow, so the handle count has been one short since.
-  const propertyIds = [
-    "code", "vertex", "fragment", "stackSL", "msl", "vertex_fragment", "compute", "task", "mesh",
-    "raygen", "miss", "closesthit", "anyhit", "intersection", "callable",
-    "vertex_s", "fragment_s", "compute_s", "task_s", "mesh_s", "raygen_s", "miss_s",
-    "closesthit_s", "anyhit_s", "intersection_s", "callable_s",
-    "preamble", "introduction", "attic", "notes", "metadata", "contents"
-  ].map((property) => `switch-property-${property}`);
+  // monacoPropertyNames, read from BootstrapMonacoInit.kt when this file is generated.
+  const propertyIds = __MONACO_PROPERTY_NAMES__.map((property) => `switch-property-${property}`);
   const fieldActionIds = ["paired-shader-definition", ...propertyIds];
   const fieldActions = ed && typeof ed.getAction === "function"
     ? fieldActionIds
@@ -3671,6 +3664,31 @@ def write_generated_file(relative: str, text: str) -> Path:
     return path
 
 
+MONACO_PROPERTY_NAMES_SOURCE = REPO_ROOT / "src/jsMain/kotlin/afield/BootstrapMonacoInit.kt"
+
+
+def monaco_property_names() -> list[str]:
+    """`monacoPropertyNames` from the frontend source, which registers one Edit action per name.
+
+    monaco-context-menu-actions used to carry its own copy of this list. The copy missed "msl"
+    and then "rectSL", and each time the regression failed with one more action handle than ids,
+    which reads like a duplicated registration but was only a stale list.
+    """
+    text = MONACO_PROPERTY_NAMES_SOURCE.read_text(encoding="utf-8")
+    match = re.search(r"\bval monacoPropertyNames = arrayOf\((.*?)\)", text, re.S)
+    names = re.findall(r'"([^"\\]+)"', match.group(1)) if match else []
+    if not names:
+        raise RuntimeError(f"no `val monacoPropertyNames = arrayOf(...)` in {MONACO_PROPERTY_NAMES_SOURCE}")
+    return names
+
+
+def monaco_context_menu_actions_js() -> str:
+    placeholder = "__MONACO_PROPERTY_NAMES__"
+    if MONACO_CONTEXT_MENU_ACTIONS_JS.count(placeholder) != 1:
+        raise RuntimeError(f"MONACO_CONTEXT_MENU_ACTIONS_JS must contain {placeholder} exactly once")
+    return MONACO_CONTEXT_MENU_ACTIONS_JS.replace(placeholder, json.dumps(monaco_property_names()))
+
+
 def prepare_generated_files() -> dict[str, Path]:
     return {
         "profile_vector_reuse": write_generated_file(
@@ -3709,7 +3727,7 @@ def prepare_generated_files() -> dict[str, Path]:
         "error_fix_import_snippet": write_generated_file("error-fix-import.kt", ERROR_FIX_IMPORT_SNIPPET),
         "error_fix_import_executes_js": write_generated_file("error-fix-import-executes.js", ERROR_FIX_IMPORT_EXECUTES_JS),
         "this_binding_js": write_generated_file("command-palette-this-binding.js", COMMAND_PALETTE_THIS_BINDING_JS),
-        "monaco_context_menu_actions_js": write_generated_file("monaco-context-menu-actions.js", MONACO_CONTEXT_MENU_ACTIONS_JS),
+        "monaco_context_menu_actions_js": write_generated_file("monaco-context-menu-actions.js", monaco_context_menu_actions_js()),
         "palette_smoke_sweep_js": write_generated_file("command-palette-smoke-sweep.js", COMMAND_PALETTE_SMOKE_SWEEP_JS),
         "editor_open_edit_sync_js": write_generated_file("editor-open-edit-sync.js", EDITOR_OPEN_EDIT_SYNC_JS),
         "insert_stack_marker_js": write_generated_file("insert-stack-marker.js", INSERT_STACK_MARKER_JS),

@@ -574,8 +574,11 @@ What it structurally cannot see:
   attached at launch (`Phased.kt:238#val launchJob = inMain(Box.boxContextElement(box) + ProfileOrigin(box, strand))`)
   and inherited by child coroutines. Work on a renderer thread, a background compile, a
   `DefaultDispatcher` worker — none of it reaches the counters.
+- **Field's own work in a box's context.** Starting the editor's completion for a box runs on
+  the Runloop under that box, but it is not the box's code, so it is not charged to the box
+  (`CoroutineProfiling.kt:52#if (context[ProfileExemptKey] != null) { task.run(); return }`).
 - **Any other document.** A resume whose origin belongs elsewhere is run untouched
-  (`CoroutineProfiling.kt:43#if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }`),
+  (`CoroutineProfiling.kt:51#if (capture == null || origin == null || origin.document != capture.document) { task.run(); return }`),
   which is a privacy property as much as a scoping one, and only one capture may be live in
   the process at a time (`CoroutineProfiling.kt:70#check(active == null || active?.document == document)`).
 - **Anything past its bounds.** Captures run 1 to 30 seconds

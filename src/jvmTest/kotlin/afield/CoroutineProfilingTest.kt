@@ -81,6 +81,31 @@ class CoroutineProfilingTest {
         } finally { CoroutineProfiles.request(origin.document,CoroutineProfileRequest("stop")) }
     }
 
+    /**
+     * The profiling-demo UI regression's fresh-server failures: the editor's completion bootstrap ran
+     * its evaluation in the box's context, so ~6.5 MB of script classloader was charged to the box.
+     * The exemption has to survive `Box.withBoxContext`, which re-wraps the work with a box origin.
+     */
+    @Test
+    fun exemptFieldWorkInABoxContextIsNotChargedToTheBox() {
+        val origin = owner()
+        val framer = Framer()
+        CoroutineProfiles.request(origin.document, CoroutineProfileRequest("start", 3.0))
+        try {
+            val scope = CoroutineScope(framer + origin)
+            val exempt = scope.launch(ProfileExempt) {
+                Box.withBoxContext(origin.box) { escaped = ByteArray(1 shl 20); yield() }
+            }
+            val boxWork = scope.launch { escaped = ByteArray(65536); yield() }
+            repeat(3) { framer.frame() }
+            assertTrue(exempt.isCompleted && boxWork.isCompleted)
+            val s = CoroutineProfiles.request(origin.document, CoroutineProfileRequest("stop"))
+            assertEquals(1, s.lanes.size, "Only the box's own coroutine has a lane")
+            assertTrue(s.spans.isNotEmpty())
+            assertTrue(s.spans.all { it.allocatedBytes < 1 shl 20 }, "The exempt megabyte was charged: ${s.spans}")
+        } finally { CoroutineProfiles.request(origin.document, CoroutineProfileRequest("stop")) }
+    }
+
     @Test fun laneLimitIsVisibleAndUnattachedBoxesCanCarryContext() {
         Box.boxContextElement(Box("unattached"))
         val origin = owner()

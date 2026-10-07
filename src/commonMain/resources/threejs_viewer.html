@@ -5708,6 +5708,20 @@ function applyPickThresholds(bounds) {
 // `const raycaster`. `null` bounds is the legacy pair, exactly.
 applyPickThresholds(null);
 
+/**
+ * What the asynchronous half of applyGeometry depends on: tool modules and the camera link. Payloads
+ * that agree on it settle identically, so a stream of them keeps the readiness the first reached. When
+ * every payload restarted readiness instead, a source sending faster than the settle (a tool sync and
+ * two frames) was never ready, and no capture of a live geometry stream could be taken. A saved review
+ * is restored against one geometry digest, so a reviewed payload always settles on its own (`null`).
+ */
+function captureSettleKey(payload) {
+    if (payload.inspector?.review) return null;
+    const inspector = payload.inspector || {};
+    return JSON.stringify([payload.toolModules || [], payload.cameraLinkScope ?? null, inspector.renderOrigin ?? null,
+        inspector.renderUpAxis ?? null, inspector.units ?? null, (payload.panels || []).length > 1]);
+}
+
 // [viewer-region wire-payload] BEGIN
 // What arrives on the websocket, made into what the rest of the viewer reads. `ThreeWire.kt` is the
 // other half.
@@ -5919,7 +5933,9 @@ async function wirePump() {
 
 function applyGeometry(payload) {
     if (!payload || payload.type !== 'three/geometry') return;
-    captureState = {ready:false, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null};
+    const settleKey = captureSettleKey(payload);
+    const settled = captureState.ready && settleKey !== null && captureState.settleKey === settleKey;
+    captureState = {ready:settled, error:null, revision:payload.revision || payload.inspector?.artifactDigest || null, settleKey};
     requestRender();
     payloadState = payload;
     editorState.pointerDown = null;
@@ -5981,7 +5997,7 @@ function applyGeometry(payload) {
         inspectorRefresh();
         requestRender();
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        if (payloadState === payload) captureState.ready = true;
+        if (payloadState === payload || (settleKey !== null && captureState.settleKey === settleKey)) captureState.ready = true;
     }).catch(error => {
         if (payloadState !== payload) return;
         captureState.error = 'Viewer tool: ' + String(error?.message || error);
