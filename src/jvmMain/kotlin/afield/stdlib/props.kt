@@ -71,7 +71,7 @@ fun Box.macro_prop(contents: List<String>): Insert? {
     val name = contents[1].trim().removeSurrounding("(", ")")
     return Insert(
         here = "$name", standaloneHere = "Unit",
-        preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
+        preamble = propTypeImports(contents[0]), preambleAfterImports = """
         var Box.${name} by Inheritance${contents[0]}() /**/
         val Once.${name} by Onceing${contents[0]}() /**/
         val Why.${name} by Whying() /**/
@@ -92,10 +92,33 @@ fun Box.macro_root_prop(contents: List<String>): Insert? {
     val name = contents[1].trim().removeSurrounding("(", ")")
     return Insert(
         here = "root.$name", standaloneHere = "Unit",
-        preamble = kotlinImportStatementFor(contents[0].replace("<", "").replace(">", "").trim())?: "", preambleAfterImports = """
+        preamble = propTypeImports(contents[0]), preambleAfterImports = """
         var Box.${name} by Inheritance${contents[0]}() /**/
         val Once.${name} by Onceing${contents[0]}() /**/
         val Why.${name} by Whying() /**/
     """.trimIndent(), target = this.root
     )
 }
+
+/**
+ * The imports the preamble needs for a `prop<T>` type argument: the classpath's import for `T`, plus every
+ * `import` line of this box's own code that names an identifier in `T`.
+ *
+ * The preamble is compiled apart from the box's code, so it does not see the box's imports. A type the
+ * classpath index cannot place on its own name — a nested one, `prop<StandardRenderer.Bundle>(bundle)`
+ * under `import afield.four.fabricated.StandardRenderer` — used to fail with an unresolved reference
+ * reported against the box's import line.
+ */
+internal fun Box.propTypeImports(typeArgument: String): String {
+    val type = typeArgument.replace("<", " ").replace(">", " ").trim()
+    val names = Regex("""[A-Za-z_]\w*""").findAll(type).map { it.value }.toSet()
+    val own = ((getPropertyRaw("code") as? String) ?: "").lineSequence().map(String::trim).filter { line ->
+        val m = PROP_IMPORT.matchEntire(line) ?: return@filter false
+        val imported = m.groupValues[2].ifEmpty { m.groupValues[1].substringAfterLast('.') }
+        imported in names
+    }.toList()
+    return (listOfNotNull(kotlinImportStatementFor(typeArgument.replace("<", "").replace(">", "").trim())) + own)
+        .distinct().joinToString("\n")
+}
+
+private val PROP_IMPORT = Regex("""import\s+([\w.]+)(?:\s+as\s+(\w+))?\s*;?""")

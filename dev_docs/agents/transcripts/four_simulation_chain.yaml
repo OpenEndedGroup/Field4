@@ -92,20 +92,12 @@ operations:
       frame: { x: 380.0, y: 40.0, w: 300.0, h: 100.0 }
       properties:
         code: |
-          /*
-          `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`
-          itself. And the `prop<>` type argument is written out in full on purpose: `prop<>`
-          rewrites the box's code and the rewrite does not carry the snippet's own imports, so
-          `prop<StandardRenderer.Bundle>(bundle)` under an
-          `import afield.four.fabricated.StandardRenderer` fails with
-          `Unresolved reference 'StandardRenderer'` reported against the *import* line, while
-          every other reference in the box resolves through it normally.
-          */
+          // `afield.four.fabricated` is not among a box's automatic imports, unlike `afield.four`.
           import afield.four.fabricated.StandardRenderer
           import afield.four.fabricated.applyScenePlan
           import afield.stdlib.linalg.Vector3f
 
-          prop<afield.four.fabricated.StandardRenderer.Bundle>(bundle)
+          prop<StandardRenderer.Bundle>(bundle)
 
           /*
           `renderer` is the parent box's `prop<Renderer>`, visible here through the preamble —
@@ -140,7 +132,6 @@ operations:
           import afield.four.fabricated.FabricatePassChain
           import afield.four.fabricated.FabricatePassLibrary
           import afield.four.fabricated.addPassChain
-          import afield.four.util.DownResult
           import afield.four.util.MouseEvent
           import afield.four.util.MouseEvents
 
@@ -213,19 +204,13 @@ operations:
 
           /*
           Handlers are held by name, so re-running replaces them rather than stacking a second
-          copy — no `once` needed here either.
-
-          The `onDown` is not optional even though it does nothing: MouseEvents only polls the
-          buttons some handler has *asked* about (`buttonsRequested = down.keys + up.keys`), and
-          `onDrag` only fires while a button is down, so without it no drag ever arrives and the
-          fluid sits there looking broken. And both lambdas name their parameter type because
-          `onDown`/`onUp` are overloaded on `() -> Boolean` and a `(MouseEvent) -> ...` form, and a
-          bare `{ true }` is ambiguous — everywhere, not just in a box.
+          copy — no `once` needed here either. `onUp` names its parameter type because it is
+          overloaded on `() -> Boolean` and a `(MouseEvent) -> Boolean` form, and a bare `{ true }`
+          is ambiguous.
           */
           val mouse = MouseEvents(renderer)
-          mouse.onDown("left", "fluid-paint") { _: MouseEvent -> DownResult.Keep }
-          mouse.onDrag("fluid-paint") { ev ->
-              paintAt = vec(ev.pos.x / renderer.window.width, ev.pos.y / renderer.window.height)
+          mouse.onDrag("left", "fluid-paint") { ev ->
+              paintAt = ev.uv // 0..1 across the window
               paintPush = vec(ev.delta.x * dragGain, ev.delta.y * dragGain)
               paintMass = 0.05f
               true // returning false *removes* the handler
