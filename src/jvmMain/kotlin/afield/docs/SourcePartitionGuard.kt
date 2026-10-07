@@ -113,12 +113,15 @@ object SourcePartitionGuard {
      * `public/docs/reference/index.md` went 9095 → 9122, of which the single departure was
      * `jsonparsing.kt`'s local `helperBlock`, the one this note used to name.
      *
-     * The 2 that remain are a different bug, and not one about braces: a `data class Foo(…)` with no
-     * body stays "pending" until a `{` arrives, so a later `init {` in the enclosing class is taken
-     * for its body and the locals inside it are attributed to `Foo`. Both live cases —
-     * `CommandBuffer.SecondaryInheritance` and `JoltPhysicsWorld.SurfaceQuery` — are that shape.
+     * The remainder were a different bug, and not one about braces: a `data class Foo(…)` with no
+     * body stayed "pending" until a `{` arrived, so a later `init {` in the enclosing class was taken
+     * for its body and the locals inside it were attributed to `Foo`. By 2026-10-07 there were three
+     * — `CommandBuffer.SecondaryInheritance`, `JoltPhysicsWorld.SurfaceQuery` and
+     * `StudyBuilds.Manifest` — one over this ratchet. `parseTopLevelDefinitions` now ends a pending
+     * header at the first code line that does not continue it (`KotlinSourceIndexClassHeaderTest`),
+     * which took the count to 0.
      */
-    private const val MAX_INDEX_OVER_REPORTS = 2
+    private const val MAX_INDEX_OVER_REPORTS = 0
 
     /** How many unattributed lines to keep per file for the `--verbose` sample. */
     private const val SAMPLES_PER_FILE = 12
